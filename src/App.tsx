@@ -22,8 +22,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/app" element={<AppLayout />}>
+          <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
             <Route path="massages" element={<MassageList />} />
             <Route path="massages/:id" element={<ShopDetail />} />
@@ -31,6 +30,7 @@ const App = () => (
             <Route path="booking/:id/customize" element={<Customize />} />
             <Route path="booking/:id/payment" element={<Payment />} />
           </Route>
+          <Route path="/landing" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
