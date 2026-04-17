@@ -1,3 +1,4 @@
+/// <reference types="google.maps" />
 import { useEffect, useRef, useState } from "react";
 import { Massage, MADRID_CENTER, distanceKm } from "../data";
 import { loadGoogleMaps, hasGoogleMapsKey, setStoredKey } from "../lib/googleMaps";
