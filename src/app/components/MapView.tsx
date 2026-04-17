@@ -121,7 +121,7 @@ function Pin({
       <div
         className={cn(
           "flex items-center justify-center rounded-full shadow-elegant transition-all",
-          variant === "user" && "h-4 w-4 bg-blue-500 ring-4 ring-blue-500/30",
+          variant === "user" && "h-4 w-4 bg-accent ring-4 ring-accent/30",
           variant === "studio" && "h-9 w-9 bg-primary text-primary-foreground hover:scale-110",
           variant === "active" && "h-11 w-11 bg-gradient-gold text-foreground scale-110 ring-4 ring-accent/40",
         )}
@@ -129,7 +129,7 @@ function Pin({
         {variant !== "user" && <MapPin className="h-4 w-4 fill-current" />}
       </div>
       {variant === "user" && (
-        <span className="absolute top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-blue-600 bg-background/90 rounded px-1.5 py-0.5">
+        <span className="absolute top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-accent-foreground bg-accent rounded px-1.5 py-0.5">
           You
         </span>
       )}
