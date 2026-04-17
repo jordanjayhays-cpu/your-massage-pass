@@ -1,0 +1,81 @@
+{
+  "nav": {
+    "studios": "Studios",
+    "how": "How it works",
+    "faq": "FAQ",
+    "join": "Join"
+  },
+  "hero": {
+    "badge": "Madrid only · Limited spots",
+    "title1": "Madrid relaxes",
+    "title2": "without limits.",
+    "subtitle": "One subscription. Unlimited massages at the best studios in the capital. From Salamanca to Malasaña, your body deserves more.",
+    "emailPlaceholder": "you@email.com",
+    "cta": "Reserve your spot",
+    "perks": {
+      "noCommitment": "No commitment",
+      "cancel": "Cancel anytime",
+      "launch": "Launch price"
+    }
+  },
+  "stats": {
+    "studios": "Madrid studios",
+    "price": "Per month, all in",
+    "massages": "Massages per month",
+    "districts": "Districts covered"
+  },
+  "how": {
+    "kicker": "How it works",
+    "title": "Three steps. Zero excuses.",
+    "step1": { "title": "Subscribe", "desc": "€79/month. No contracts, no surprises. Cancel anytime." },
+    "step2": { "title": "Pick a studio", "desc": "Book at any partner studio in Madrid from the app." },
+    "step3": { "title": "Enjoy without limits", "desc": "Come back as often as you want. Your body will thank you." }
+  },
+  "studios": {
+    "kicker": "Our studios",
+    "title": "The best hands in Madrid, on a single pass.",
+    "subtitle": "Carefully curated studios in the city's most vibrant neighborhoods.",
+    "specialties": {
+      "swedish": "Swedish & Aromatherapy",
+      "deep": "Deep Tissue",
+      "stone": "Hot Stone",
+      "sports": "Sports Recovery",
+      "thai": "Thai & Shiatsu",
+      "lomi": "Lomi Lomi",
+      "reflex": "Reflexology",
+      "cranio": "Craniosacral"
+    }
+  },
+  "pricing": {
+    "kicker": "Launch price",
+    "title": "One rate. The whole city.",
+    "perMonth": "/month",
+    "founder": "Founder pricing · Going up soon",
+    "features": {
+      "f1": "Unlimited massages at every studio",
+      "f2": "Book anytime from the app",
+      "f3": "Access to all massage types",
+      "f4": "No contract, cancel anytime",
+      "f5": "Personal support whenever you need it"
+    },
+    "cta": "Claim your founder spot"
+  },
+  "faq": {
+    "kicker": "Frequently asked",
+    "title": "Everything you need to know.",
+    "q1": "How does the subscription work?",
+    "a1": "You pay €79/month and book unlimited massages at any of our partner studios in Madrid. No per-visit charges.",
+    "q2": "Can I cancel anytime?",
+    "a2": "Yes. No contracts, no minimum. Cancel from the app in one click.",
+    "q3": "What types of massage are included?",
+    "a3": "All of them: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more — depending on the studio.",
+    "q4": "Can I go every day?",
+    "a4": "Yes. Unlimited bookings, subject to each studio's availability."
+  },
+  "footer": "Made calmly in Madrid",
+  "toast": {
+    "invalid": "Please enter a valid email",
+    "success": "Welcome! We'll let you know when spots open."
+  },
+  "lang": { "en": "EN", "es": "ES" }
+}
