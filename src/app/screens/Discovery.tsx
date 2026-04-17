@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
 import { MASSAGE_TYPES, MASSAGES } from "../data";
-import NearbyMap from "../components/NearbyMap";
+import GoogleMap from "../components/GoogleMap";
 import { useBooking } from "../BookingContext";
 
 export default function Discovery() {
@@ -48,7 +48,7 @@ export default function Discovery() {
         {/* Nearby map (real geolocation) */}
         <div>
           <h3 className="font-display text-lg font-semibold text-foreground mb-3">Studios near you</h3>
-          <NearbyMap
+          <GoogleMap
             massages={MASSAGES}
             compact
             onSelect={(m) => {
