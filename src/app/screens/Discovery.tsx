@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { MASSAGE_TYPES } from "../data";
+import { MASSAGE_TYPES, MASSAGES } from "../data";
+import NearbyMap from "../components/NearbyMap";
+import { useBooking } from "../BookingContext";
 
 export default function Discovery() {
   const navigate = useNavigate();
+  const { set } = useBooking();
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -43,7 +45,19 @@ export default function Discovery() {
           </div>
         </button>
 
-        {/* Types grid */}
+        {/* Nearby map (real geolocation) */}
+        <div>
+          <h3 className="font-display text-lg font-semibold text-foreground mb-3">Studios near you</h3>
+          <NearbyMap
+            massages={MASSAGES}
+            compact
+            onSelect={(m) => {
+              set({ massageId: m.id });
+              navigate(`/massages/${m.id}`);
+            }}
+          />
+        </div>
+
         <div>
           <h3 className="font-display text-lg font-semibold text-foreground mb-3">Massage types</h3>
           <div className="grid grid-cols-2 gap-3">
