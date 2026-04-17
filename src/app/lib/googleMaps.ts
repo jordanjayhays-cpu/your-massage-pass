@@ -1,4 +1,5 @@
-import { Loader } from "@googlemaps/js-api-loader";
+/// <reference types="google.maps" />
+import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const STORAGE_KEY = "mm-google-maps-key";
 let loaderPromise: Promise<typeof google> | null = null;
@@ -11,7 +12,6 @@ export function getStoredKey(): string | null {
 
 export function setStoredKey(key: string) {
   localStorage.setItem(STORAGE_KEY, key);
-  // Reset the loader so a new key can be used
   loaderPromise = null;
   currentKey = null;
 }
@@ -33,13 +33,20 @@ export async function loadGoogleMaps(): Promise<typeof google | null> {
   if (loaderPromise && currentKey === key) return loaderPromise;
 
   currentKey = key;
-  const loader = new Loader({
-    apiKey: key,
-    version: "weekly",
-    libraries: ["places", "marker"],
-  });
-
-  loaderPromise = loader.load().then(() => google);
+  loaderPromise = (async () => {
+    setOptions({
+      key,
+      v: "weekly",
+      libraries: ["places", "marker"],
+    });
+    // Pre-import the libraries we need
+    await Promise.all([
+      importLibrary("maps"),
+      importLibrary("places"),
+      importLibrary("marker"),
+    ]);
+    return google;
+  })();
   return loaderPromise;
 }
 
