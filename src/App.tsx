@@ -12,6 +12,9 @@ import ShopDetail from "./app/screens/ShopDetail";
 import Calendar from "./app/screens/Calendar";
 import Customize from "./app/screens/Customize";
 import Payment from "./app/screens/Payment";
+import Discovery from "./app/screens/Discovery";
+import MassageType from "./app/screens/MassageType";
+import Quiz from "./app/screens/Quiz";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +32,9 @@ const App = () => (
             <Route path="booking/:id/calendar" element={<Calendar />} />
             <Route path="booking/:id/customize" element={<Customize />} />
             <Route path="booking/:id/payment" element={<Payment />} />
+            <Route path="discovery" element={<Discovery />} />
+            <Route path="discovery/quiz" element={<Quiz />} />
+            <Route path="discovery/:type" element={<MassageType />} />
           </Route>
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Login />} />
@@ -37,6 +43,9 @@ const App = () => (
             <Route path="booking/:id/calendar" element={<Calendar />} />
             <Route path="booking/:id/customize" element={<Customize />} />
             <Route path="booking/:id/payment" element={<Payment />} />
+            <Route path="discovery" element={<Discovery />} />
+            <Route path="discovery/quiz" element={<Quiz />} />
+            <Route path="discovery/:type" element={<MassageType />} />
           </Route>
           <Route path="/landing" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
