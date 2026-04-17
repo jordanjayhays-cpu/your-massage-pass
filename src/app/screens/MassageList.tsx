@@ -5,7 +5,7 @@ import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from 
 import { useBooking } from "../BookingContext";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import MapView from "../components/MapView";
+import GoogleMap from "../components/GoogleMap";
 
 type Tab = "list" | "map";
 
@@ -131,7 +131,7 @@ export default function MassageList() {
           )}
         </div>
       ) : (
-        <MapView
+        <GoogleMap
           massages={filtered}
           onSelect={(m) => {
             set({ massageId: m.id });
