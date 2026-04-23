@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart } from "lucide-react";
 import madridHero from "@/assets/madrid-hero.jpg";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { saveLead } from "@/lib/supabase";
 
 const SHOPS = [
   { name: "Casa Cibeles", district: "Centro", specialtyKey: "swedish" },
@@ -23,15 +24,23 @@ const SHOPS = [
 const Index = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.includes("@")) {
       toast.error(t("toast.invalid"));
       return;
     }
-    toast.success(t("toast.success"));
-    setEmail("");
+    setLoading(true);
+    const ok = await saveLead(email, "", "landing_page");
+    setLoading(false);
+    if (ok) {
+      toast.success("You're in! Check your email for next steps.");
+      setEmail("");
+    } else {
+      toast.error("Something went wrong. Try again.");
+    }
   };
 
   const stats = [
@@ -110,19 +119,24 @@ const Index = () => {
               {t("hero.subtitle")}
             </p>
 
-            <form onSubmit={handleJoin} className="flex flex-col sm:flex-row gap-3 max-w-lg">
-              <Input
-                type="email"
-                placeholder={t("hero.emailPlaceholder")}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
-                aria-label="Email"
-              />
-              <Button type="submit" size="lg" className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
-                {t("hero.cta")}
-              </Button>
-            </form>
+            <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
+              <form onSubmit={handleJoin} className="flex-1 flex gap-2">
+                <Input
+                  type="email"
+                  placeholder={t("hero.emailPlaceholder")}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
+                  aria-label="Email"
+                />
+                <Button type="submit" size="lg" loading={loading} className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
+                  {t("hero.cta")}
+                </Button>
+              </form>
+              <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
+                Book now →
+              </a>
+            </div>
 
             <div className="flex flex-wrap items-center gap-6 mt-8 text-sm text-primary-foreground/80">
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.noCommitment")}</div>
@@ -235,19 +249,25 @@ const Index = () => {
                 ))}
               </ul>
 
-              <form onSubmit={handleJoin} className="flex flex-col gap-3">
-                <Input
-                  type="email"
-                  placeholder={t("hero.emailPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-12"
-                  aria-label="Email"
-                />
-                <Button type="submit" size="lg" className="h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant font-semibold">
-                  {t("pricing.cta")}
-                </Button>
-              </form>
+              <div className="space-y-3">
+                <form onSubmit={handleJoin} className="flex flex-col gap-3">
+                  <Input
+                    type="email"
+                    placeholder={t("hero.emailPlaceholder")}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-12"
+                    aria-label="Email"
+                  />
+                  <Button type="submit" size="lg" loading={loading} className="h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant font-semibold">
+                    {t("pricing.cta")}
+                  </Button>
+                </form>
+                <div className="text-center text-sm text-muted-foreground">or</div>
+                <a href="/app" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
+                  Open the app →
+                </a>
+              </div>
             </Card>
           </div>
         </div>
