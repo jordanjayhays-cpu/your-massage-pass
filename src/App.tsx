@@ -7,7 +7,7 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AppLayout from "./app/AppLayout";
 import Login from "./app/screens/Login";
-import MassageList from "./app/screens/Massagelist";
+import MassageList from "./app/screens/MassageList";
 import ShopDetail from "./app/screens/ShopDetail";
 import Calendar from "./app/screens/Calendar";
 import Customize from "./app/screens/Customize";
