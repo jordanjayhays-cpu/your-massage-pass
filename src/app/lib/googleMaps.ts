@@ -1,13 +1,19 @@
 /// <reference types="google.maps" />
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
+// Jordan's Google Maps API key — pre-configured for Massage Pass
+const DEFAULT_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
 const STORAGE_KEY = "mm-google-maps-key";
 let loaderPromise: Promise<typeof google> | null = null;
 let currentKey: string | null = null;
 
 export function getStoredKey(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(STORAGE_KEY);
+  // Check localStorage first (allows user override)
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) return stored;
+  // Fall back to default key (Jordan's key)
+  return DEFAULT_KEY;
 }
 
 export function setStoredKey(key: string) {
@@ -23,8 +29,8 @@ export function clearStoredKey() {
 }
 
 /**
- * Load the Google Maps JS SDK with the key stored in localStorage.
- * Returns null if no key is configured.
+ * Load the Google Maps JS SDK.
+ * Uses user's stored key if available, otherwise falls back to default key.
  */
 export async function loadGoogleMaps(): Promise<typeof google | null> {
   const key = getStoredKey();
@@ -37,13 +43,13 @@ export async function loadGoogleMaps(): Promise<typeof google | null> {
     setOptions({
       key,
       v: "weekly",
-      libraries: ["places", "marker"],
+      libraries: ["places", "marker", "geometry"],
     });
-    // Pre-import the libraries we need
     await Promise.all([
       importLibrary("maps"),
       importLibrary("places"),
       importLibrary("marker"),
+      importLibrary("geometry"),
     ]);
     return google;
   })();
