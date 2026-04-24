@@ -7,7 +7,7 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AppLayout from "./app/AppLayout";
 import Login from "./app/screens/Login";
-import MassageList from "./app/screens/MassageList";
+import MassageList from "./app/screens/Massagelist";
 import ShopDetail from "./app/screens/ShopDetail";
 import Calendar from "./app/screens/Calendar";
 import Customize from "./app/screens/Customize";
@@ -15,6 +15,11 @@ import Payment from "./app/screens/Payment";
 import Discovery from "./app/screens/Discovery";
 import MassageType from "./app/screens/MassageType";
 import Quiz from "./app/screens/Quiz";
+import PartnerLogin from "./app/screens/PartnerLogin";
+import PartnerDashboard from "./app/screens/PartnerDashboard";
+import PartnerProfile from "./app/screens/PartnerProfile";
+import PartnerServices from "./app/screens/PartnerServices";
+import PartnerCalendar from "./app/screens/PartnerCalendar";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +53,12 @@ const App = () => (
             <Route path="discovery/:type" element={<MassageType />} />
           </Route>
           <Route path="/landing" element={<Index />} />
+          {/* Partner Portal Routes */}
+          <Route path="/partner" element={<PartnerLogin />} />
+          <Route path="/partner/dashboard" element={<PartnerDashboard />} />
+          <Route path="/partner/profile" element={<PartnerProfile />} />
+          <Route path="/partner/services" element={<PartnerServices />} />
+          <Route path="/partner/calendar" element={<PartnerCalendar />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
