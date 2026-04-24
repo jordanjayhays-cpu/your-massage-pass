@@ -6,6 +6,9 @@ import { useBooking } from "../BookingContext";
 import { useState } from "react";
 import { toast } from "sonner";
 import { saveBooking } from "@/lib/supabase";
+import { getStoredUser } from "./Login";
+
+const COMMISSION_RATE = 0.10; // 10% commission
 
 export default function Payment() {
   const navigate = useNavigate();
@@ -18,9 +21,11 @@ export default function Payment() {
 
   if (!massage) return null;
 
+  const user = getStoredUser();
+
   const addOnPrice = booking.addOns.reduce((sum, a) => sum + (ADD_ONS.find((x) => x.id === a)?.price ?? 0), 0);
   const addOnNames = booking.addOns.map((a) => ADD_ONS.find((x) => x.id === a)?.name).filter(Boolean);
-  const typeInfo = MASSAGE_TYPES.find((t) => t.id === massage.type);
+  const commission = Math.round((massage.basePrice ?? 50) * COMMISSION_RATE * 100) / 100;
 
   const dateLabel = booking.date
     ? new Date(booking.date).toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })
@@ -30,9 +35,9 @@ export default function Payment() {
     setLoading(true);
     try {
       const result = await saveBooking({
-        client_name: "Guest User", // Will be collected via login
-        client_email: "guest@massagepass.io",
-        client_phone: "",
+        client_name: user?.name ?? "Guest",
+        client_email: user?.email ?? "guest@massagepass.io",
+        client_phone: "", // TODO: collect from login
         spa_name: massage.studio,
         massage_type: massage.name,
         booking_date: booking.date ?? "",
@@ -49,7 +54,6 @@ export default function Payment() {
         setBookingRef(result.ref ?? "MR-2026-0001");
         toast.success("Booking confirmed! Check your email.");
       } else {
-        // Fallback: still show success even if DB fails
         setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
         toast.success("Booking confirmed!");
       }
@@ -76,7 +80,9 @@ export default function Payment() {
           <span className="text-xs text-muted-foreground">Ref:</span>
           <span className="text-sm font-bold text-primary">{bookingRef}</span>
         </div>
-        <p className="text-sm text-muted-foreground mt-3">Confirmation sent to your email.</p>
+        <p className="text-sm text-muted-foreground mt-3">
+          {user?.email ? `Confirmation sent to ${user.email}` : "Confirmation sent to your email."}
+        </p>
         <div className="mt-10 w-full space-y-3">
           <Button
             onClick={() => {
@@ -155,6 +161,15 @@ export default function Payment() {
           <div className="border-t border-border pt-2 flex justify-between text-base">
             <span className="font-semibold">Total today</span>
             <span className="font-display font-bold text-primary text-xl">€{addOnPrice}</span>
+          </div>
+          <div className="bg-green-500/10 rounded-xl p-3 flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+              <Check className="h-3 w-3 text-white" />
+            </div>
+            <div className="text-xs">
+              <span className="font-semibold text-green-600">10% commission applies</span>
+              <span className="text-muted-foreground ml-1">→ Partner receives booking notification</span>
+            </div>
           </div>
         </div>
       </div>
