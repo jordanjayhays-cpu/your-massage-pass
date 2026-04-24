@@ -161,3 +161,11 @@
 
 .animate-float { animation: float 6s ease-in-out infinite; }
 .animate-fade-up { animation: fade-up 0.8s ease-out forwards; }
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
