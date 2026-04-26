@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart } from "lucide-react";
+import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star } from "lucide-react";
 import madridHero from "@/assets/madrid-hero.jpg";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { saveLead } from "@/lib/supabase";
@@ -56,9 +56,54 @@ const Index = () => {
     { icon: InfinityIcon, title: t("how.step3.title"), desc: t("how.step3.desc") },
   ];
 
-  const features = ["f1", "f2", "f3", "f4", "f5"].map((k) => t(`pricing.features.${k}`));
+  const features = [
+    "Unlimited massages per month",
+    "Access all 8+ partner studios",
+    "Same-day booking available",
+    "Cancel anytime — no questions",
+    "Your preferences saved everywhere",
+    "Automated reminders (SMS + email)",
+    "Referral credits (€10 per friend)",
+    "Instant booking confirmation",
+  ];
 
   const faqs = [1, 2, 3, 4].map((i) => ({ q: t(`faq.q${i}`), a: t(`faq.a${i}`) }));
+
+  // Features learned from booking platform research
+  const platformFeatures = [
+    {
+      icon: Bell,
+      title: "Automated reminders",
+      titleEs: "Recordatorios automáticos",
+      desc: "Never miss an appointment. We send you SMS + email reminders 24h and 1h before — like Fresha and Jane App do.",
+      descEs: "Nunca pierdas una cita. Te enviamos recordatorios por SMS y email 24h y 1h antes.",
+      highlight: "No more no-shows"
+    },
+    {
+      icon: User,
+      title: "Your personal profile",
+      titleEs: "Tu perfil personal",
+      desc: "Your massage history, preferred pressure, allergies, favorite therapists — all saved in one place. Book anywhere and your preferences follow you.",
+      descEs: "Tu historial de masajes, presión preferida, alergias, terapeutas favoritos — todo en un solo lugar.",
+      highlight: "Preferences travel with you"
+    },
+    {
+      icon: Gift,
+      title: "Referral credits",
+      titleEs: "Créditos por referrals",
+      desc: "Share with a friend. They get €10 off their first month. You get €10 credit. Everyone wins — modeled after Fresha's referral system.",
+      descEs: "Recomienda a un amigo. Ellos reciben €10 de descuento en su primer mes. Tú recibes €10 de crédito.",
+      highlight: "€10 for you, €10 for them"
+    },
+    {
+      icon: Star,
+      title: "Instant booking",
+      titleEs: "Reserva instantánea",
+      desc: "Real-time availability at every partner studio. Book in 2 taps. Get confirmed instantly — no phone calls, no waiting.",
+      descEs: "Disponibilidad en tiempo real en cada estudio parceiro. Reserva en 2 clics. Confirmación instantánea.",
+      highlight: "2 taps. Done."
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -215,6 +260,37 @@ const Index = () => {
                   {shop.name}
                 </h3>
                 <p className="text-sm text-muted-foreground">{t(`studios.specialties.${shop.specialtyKey}`)}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Platform features section — learned from Fresha, Jane App, Booksy */}
+      <section className="py-24 bg-gradient-warm border-t-4 border-accent">
+        <div className="container">
+          <div className="max-w-2xl mb-16">
+            <p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">What you get</p>
+            <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground text-balance">
+              Everything the best booking platforms offer — in one membership
+            </h2>
+            <p className="text-muted-foreground mt-4 text-lg">
+              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into MassagePass — and made it simple.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {platformFeatures.map((f) => (
+              <Card key={f.title} className="p-8 bg-card border-border shadow-soft hover:shadow-elegant transition-all duration-500 group relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mt-2 -mr-2 w-24 h-24 rounded-full bg-gradient-gold/20 blur-2xl group-hover:bg-gradient-gold/30 transition-all" />
+                <div className="h-12 w-12 rounded-xl bg-gradient-royal flex items-center justify-center shadow-elegant mb-5">
+                  <f.icon className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="inline-block rounded-full bg-accent/10 text-accent text-xs font-bold px-3 py-1 mb-3">
+                  {f.highlight}
+                </div>
+                <h3 className="font-display text-xl font-semibold text-foreground mb-2">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
               </Card>
             ))}
           </div>
