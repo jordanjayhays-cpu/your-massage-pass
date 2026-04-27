@@ -357,7 +357,7 @@ export const TIME_SLOTS = [
 ];
 
 export function getNextDays(n: number) {
-  const days: { date: Date; label: string; day: string; num: string }[] = [];
+  const days: { date: Date; iso: string; label: string; day: string; num: string }[] = [];
   const today = new Date();
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   for (let i = 0; i < n; i++) {
@@ -365,6 +365,7 @@ export function getNextDays(n: number) {
     d.setDate(today.getDate() + i);
     days.push({
       date: d,
+      iso: d.toISOString().slice(0, 10),
       label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayLabels[d.getDay()],
       day: dayLabels[d.getDay()],
       num: String(d.getDate()),
@@ -373,22 +374,11 @@ export function getNextDays(n: number) {
   return days;
 }
 
-export const PRESSURE_LEVELS: { id: string; name: string; description: string }[] = [
-  { id: "light", name: "Light", description: "Gentle, soothing touch" },
-  { id: "medium", name: "Medium", description: "Balanced, classic pressure" },
-  { id: "firm", name: "Firm", description: "Strong, focused pressure" },
-  { id: "deep", name: "Deep", description: "Intense, deep tissue work" },
-];
+export const PRESSURE_LEVELS: string[] = ["Light", "Medium", "Firm", "Deep"];
 
-export const FOCUS_AREAS: { id: string; name: string; emoji: string }[] = [
-  { id: "neck", name: "Neck", emoji: "🧠" },
-  { id: "shoulders", name: "Shoulders", emoji: "💪" },
-  { id: "back-upper", name: "Upper Back", emoji: "🔝" },
-  { id: "back-lower", name: "Lower Back", emoji: "⬇️" },
-  { id: "legs", name: "Legs", emoji: "🦵" },
-  { id: "feet", name: "Feet", emoji: "🦶" },
-  { id: "arms", name: "Arms", emoji: "💪" },
-  { id: "hands", name: "Hands", emoji: "🖐️" },
+export const FOCUS_AREAS: string[] = [
+  "Neck", "Shoulders", "Upper Back", "Lower Back",
+  "Legs", "Feet", "Arms", "Hands",
 ];
 
 export const ADD_ONS: { id: string; name: string; price: number; description: string }[] = [
@@ -401,35 +391,36 @@ export const ADD_ONS: { id: string; name: string; price: number; description: st
 export const QUIZ: {
   id: string;
   question: string;
-  options: { id: string; label: string; weights: Partial<Record<MassageType, number>> }[];
+  options: { id: string; label: string; scores: Partial<Record<MassageType, number>> }[];
 }[] = [
   {
     id: "goal",
     question: "What's your main goal today?",
     options: [
-      { id: "relax", label: "Pure relaxation", weights: { swedish: 3, lomi: 2, stone: 2 } },
-      { id: "pain", label: "Relieve pain or tension", weights: { deep: 3, sports: 2, thai: 1 } },
-      { id: "energy", label: "Feel energized", weights: { thai: 3, sports: 2 } },
-      { id: "ritual", label: "A special ritual", weights: { stone: 3, lomi: 3 } },
+      { id: "relax", label: "Pure relaxation", scores: { swedish: 3, lomi: 2, stone: 2 } },
+      { id: "pain", label: "Relieve pain or tension", scores: { deep: 3, sports: 2, thai: 1 } },
+      { id: "energy", label: "Feel energized", scores: { thai: 3, sports: 2 } },
+      { id: "ritual", label: "A special ritual", scores: { stone: 3, lomi: 3 } },
     ],
   },
   {
     id: "pressure",
     question: "How much pressure do you like?",
     options: [
-      { id: "light", label: "Light & gentle", weights: { swedish: 3, lomi: 2 } },
-      { id: "medium", label: "Medium", weights: { swedish: 2, stone: 2, lomi: 1 } },
-      { id: "firm", label: "Firm", weights: { thai: 3, sports: 2, deep: 1 } },
-      { id: "deep", label: "Deep & intense", weights: { deep: 3, sports: 2 } },
+      { id: "light", label: "Light & gentle", scores: { swedish: 3, lomi: 2 } },
+      { id: "medium", label: "Medium", scores: { swedish: 2, stone: 2, lomi: 1 } },
+      { id: "firm", label: "Firm", scores: { thai: 3, sports: 2, deep: 1 } },
+      { id: "deep", label: "Deep & intense", scores: { deep: 3, sports: 2 } },
     ],
   },
   {
     id: "experience",
     question: "How often do you get massages?",
     options: [
-      { id: "first", label: "First time", weights: { swedish: 3, stone: 1 } },
-      { id: "occasional", label: "Occasionally", weights: { swedish: 2, deep: 1, thai: 1 } },
-      { id: "regular", label: "Regularly", weights: { deep: 2, sports: 2, thai: 2 } },
+      { id: "first", label: "First time", scores: { swedish: 3, stone: 1 } },
+      { id: "occasional", label: "Occasionally", scores: { swedish: 2, deep: 1, thai: 1 } },
+      { id: "regular", label: "Regularly", scores: { deep: 2, sports: 2, thai: 2 } },
     ],
   },
 ];
+
