@@ -36,7 +36,7 @@ export default function Payment() {
     try {
       const result = await saveBooking({
         client_name: user?.name ?? "Guest",
-        client_email: user?.email ?? "guest@massagepass.io",
+        client_email: user?.email ?? "guest@massageclub.io",
         client_phone: "", // TODO: collect from login
         spa_name: massage.studio,
         massage_type: massage.name,
@@ -145,7 +145,7 @@ export default function Payment() {
               <CreditCard className="h-5 w-5 text-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">Massage Madrid Membership</p>
+              <p className="text-sm font-semibold">Massage Club Membership</p>
               <p className="text-xs text-muted-foreground">€79/month · Unlimited bookings</p>
             </div>
             <span className="text-xs font-semibold text-primary">Active</span>

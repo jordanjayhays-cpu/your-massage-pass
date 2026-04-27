@@ -147,7 +147,7 @@ export default function Login() {
         <div className="h-20 w-20 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-8">
           <span className="font-display font-bold text-foreground text-3xl">M</span>
         </div>
-        <h1 className="font-display text-4xl font-bold mb-3">Massage Madrid</h1>
+        <h1 className="font-display text-4xl font-bold mb-3">Massage Club</h1>
         <p className="text-primary-foreground/80 max-w-xs">
           Unlimited massages at the best studios in the capital.
         </p>

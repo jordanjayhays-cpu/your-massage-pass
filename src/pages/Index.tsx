@@ -115,7 +115,7 @@ const Index = () => {
               <span className="font-display font-bold text-foreground">M</span>
             </div>
             <span className="font-display text-xl font-semibold tracking-tight text-primary-foreground">
-              Massage Madrid
+              Massage Club
             </span>
           </a>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-primary-foreground/90">
@@ -275,7 +275,7 @@ const Index = () => {
               Everything the best booking platforms offer — in one membership
             </h2>
             <p className="text-muted-foreground mt-4 text-lg">
-              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into MassagePass — and made it simple.
+              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into Massage Club — and made it simple.
             </p>
           </div>
 
@@ -378,10 +378,10 @@ const Index = () => {
             <div className="h-8 w-8 rounded-full bg-gradient-gold flex items-center justify-center">
               <span className="font-display font-bold text-foreground text-sm">M</span>
             </div>
-            <span className="font-display text-lg font-semibold">Massage Madrid</span>
+            <span className="font-display text-lg font-semibold">Massage Club</span>
           </div>
           <p className="text-sm text-primary-foreground/70">
-            {t("footer")} · jordan@massagepass.io
+            {t("footer")} · jordan@massageclub.io
           </p>
         </div>
       </footer>
