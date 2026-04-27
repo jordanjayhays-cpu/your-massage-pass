@@ -26,6 +26,9 @@ export type Massage = {
   phone?: string;
   email?: string;
   services?: string[];
+  basePrice?: number;
+  km?: number;
+  walkingText?: string;
 };
 
 export const MASSAGES: Massage[] = [
