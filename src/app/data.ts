@@ -345,3 +345,88 @@ export function distanceKm(
       Math.sin(dLng / 2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+// ============ Additional exports ============
+
+export const TIME_SLOTS = [
+  "10:00", "11:00", "12:00", "13:00", "14:00",
+  "15:00", "16:00", "17:00", "18:00", "19:00", "20:00",
+];
+
+export function getNextDays(n: number) {
+  const days: { date: Date; label: string; day: string; num: string }[] = [];
+  const today = new Date();
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push({
+      date: d,
+      label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayLabels[d.getDay()],
+      day: dayLabels[d.getDay()],
+      num: String(d.getDate()),
+    });
+  }
+  return days;
+}
+
+export const PRESSURE_LEVELS: { id: string; name: string; description: string }[] = [
+  { id: "light", name: "Light", description: "Gentle, soothing touch" },
+  { id: "medium", name: "Medium", description: "Balanced, classic pressure" },
+  { id: "firm", name: "Firm", description: "Strong, focused pressure" },
+  { id: "deep", name: "Deep", description: "Intense, deep tissue work" },
+];
+
+export const FOCUS_AREAS: { id: string; name: string; emoji: string }[] = [
+  { id: "neck", name: "Neck", emoji: "🧠" },
+  { id: "shoulders", name: "Shoulders", emoji: "💪" },
+  { id: "back-upper", name: "Upper Back", emoji: "🔝" },
+  { id: "back-lower", name: "Lower Back", emoji: "⬇️" },
+  { id: "legs", name: "Legs", emoji: "🦵" },
+  { id: "feet", name: "Feet", emoji: "🦶" },
+  { id: "arms", name: "Arms", emoji: "💪" },
+  { id: "hands", name: "Hands", emoji: "🖐️" },
+];
+
+export const ADD_ONS: { id: string; name: string; price: number; description: string }[] = [
+  { id: "aromatherapy", name: "Aromatherapy", price: 10, description: "Essential oil blend" },
+  { id: "hot-stones", name: "Hot Stones", price: 15, description: "Heated basalt stones" },
+  { id: "scalp", name: "Scalp Massage", price: 12, description: "10-minute scalp work" },
+  { id: "extended", name: "+15 minutes", price: 20, description: "Extra time" },
+];
+
+export const QUIZ: {
+  id: string;
+  question: string;
+  options: { id: string; label: string; weights: Partial<Record<MassageType, number>> }[];
+}[] = [
+  {
+    id: "goal",
+    question: "What's your main goal today?",
+    options: [
+      { id: "relax", label: "Pure relaxation", weights: { swedish: 3, lomi: 2, stone: 2 } },
+      { id: "pain", label: "Relieve pain or tension", weights: { deep: 3, sports: 2, thai: 1 } },
+      { id: "energy", label: "Feel energized", weights: { thai: 3, sports: 2 } },
+      { id: "ritual", label: "A special ritual", weights: { stone: 3, lomi: 3 } },
+    ],
+  },
+  {
+    id: "pressure",
+    question: "How much pressure do you like?",
+    options: [
+      { id: "light", label: "Light & gentle", weights: { swedish: 3, lomi: 2 } },
+      { id: "medium", label: "Medium", weights: { swedish: 2, stone: 2, lomi: 1 } },
+      { id: "firm", label: "Firm", weights: { thai: 3, sports: 2, deep: 1 } },
+      { id: "deep", label: "Deep & intense", weights: { deep: 3, sports: 2 } },
+    ],
+  },
+  {
+    id: "experience",
+    question: "How often do you get massages?",
+    options: [
+      { id: "first", label: "First time", weights: { swedish: 3, stone: 1 } },
+      { id: "occasional", label: "Occasionally", weights: { swedish: 2, deep: 1, thai: 1 } },
+      { id: "regular", label: "Regularly", weights: { deep: 2, sports: 2, thai: 2 } },
+    ],
+  },
+];
