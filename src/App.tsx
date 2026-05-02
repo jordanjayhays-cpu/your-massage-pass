@@ -16,6 +16,7 @@ import Discovery from "./app/screens/Discovery";
 import MassageType from "./app/screens/MassageType";
 import Quiz from "./app/screens/Quiz";
 import PartnerLogin from "./app/screens/PartnerLogin";
+import PartnerOnboarding from "./app/screens/PartnerOnboarding";
 import PartnerDashboard from "./app/screens/PartnerDashboard";
 import PartnerProfile from "./app/screens/PartnerProfile";
 import PartnerServices from "./app/screens/PartnerServices";
@@ -54,6 +55,7 @@ const App = () => (
           </Route>
           <Route path="/landing" element={<Index />} />
           {/* Partner Portal Routes */}
+          <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
           <Route path="/partner/dashboard" element={<PartnerDashboard />} />
           <Route path="/partner/profile" element={<PartnerProfile />} />
