@@ -122,6 +122,7 @@ const Index = () => {
             <a href="#estudios" className="hover:text-accent transition-colors">{t("nav.studios")}</a>
             <a href="#como-funciona" className="hover:text-accent transition-colors">{t("nav.how")}</a>
             <a href="#faq" className="hover:text-accent transition-colors">{t("nav.faq")}</a>
+            <a href="/partner/onboarding" className="text-accent hover:text-accent/80 transition-colors font-semibold">List your studio</a>
           </nav>
           <div className="flex items-center gap-2">
             <LanguageToggle />
@@ -187,6 +188,9 @@ const Index = () => {
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.noCommitment")}</div>
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.cancel")}</div>
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.launch")}</div>
+              <a href="/partner/onboarding" className="flex items-center gap-2 ml-4 text-accent font-semibold hover:text-accent/80 transition-colors">
+                Are you a studio? List here →
+              </a>
             </div>
           </div>
         </div>
