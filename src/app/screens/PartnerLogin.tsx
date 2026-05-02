@@ -41,7 +41,7 @@ export default function PartnerLogin() {
           email,
           status: "pending"
         });
-        navigate("/partner/dashboard");
+        navigate("/partner/onboarding");
       }
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -50,7 +50,7 @@ export default function PartnerLogin() {
         setLoading(false);
         return;
       }
-      navigate("/partner/dashboard");
+      navigate("/partner/onboarding");
     }
     setLoading(false);
   };
