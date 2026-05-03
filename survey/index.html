@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Massage Club — Quick Survey</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #faf9f7; color: #1a1a1a; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .container { background: white; border-radius: 24px; padding: 40px 32px; max-width: 520px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .logo { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c9a84c; margin-bottom: 24px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
+    .question { margin-bottom: 20px; }
+    .question-label { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #333; }
+    .option { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1.5px solid #e5e5e5; border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+    .option:hover { border-color: #c9a84c; background: #fdf9f0; }
+    .option input[type="radio"], .option input[type="checkbox"] { width: 18px; height: 18px; accent-color: #c9a84c; flex-shrink: 0; }
+    .option-text { font-size: 14px; }
+    .option-other { display: none; margin-top: 6px; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 8px; width: 100%; font-size: 14px; }
+    .btn { display: block; width: 100%; padding: 14px; background: #1a1a1a; color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 24px; transition: background 0.15s; }
+    .btn:hover { background: #333; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-ghost { background: transparent; color: #666; border: 1.5px solid #e5e5e5; margin-top: 8px; }
+    .btn-ghost:hover { background: #f5f5f5; }
+    .progress { height: 3px; background: #e5e5e5; border-radius: 2px; margin-bottom: 32px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #c9a84c; transition: width 0.3s; }
+    .tagline { font-size: 12px; color: #999; text-align: center; margin-top: 16px; }
+    .result { text-align: center; padding: 20px 0; }
+    .result-icon { font-size: 48px; margin-bottom: 16px; }
+    .email-input { width: 100%; padding: 12px 16px; border: 1.5px solid #e5e5e5; border-radius: 12px; font-size: 14px; margin-top: 8px; }
+    .email-input:focus { outline: none; border-color: #c9a84c; }
+    input[type="text"] { width: 100%; padding: 12px 16px; border: 1.5px solid #e5e5e5; border-radius: 12px; font-size: 14px; margin-top: 8px; }
+    input[type="text"]:focus { outline: none; border-color: #c9a84c; }
+    .small { font-size: 12px; color: #999; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Logo -->
+  <div class="logo">Massage Club</div>
+
+  <!-- Progress bar -->
+  <div class="progress"><div class="progress-fill" id="progress" style="width:20%"></div></div>
+
+  <!-- STEP 1: How do you book? -->
+  <div class="step active" id="step1">
+    <h1>How do you usually book a massage in Madrid?</h1>
+    <p class="subtitle">Helps us understand where to meet you.</p>
+
+    <div class="question">
+      <div class="option" onclick="select('q1','whatsapp'); this.querySelector('input').checked=true">
+        <input type="radio" name="q1" value="whatsapp" id="q1-whatsapp">
+        <label class="option-text" for="q1-whatsapp">WhatsApp / text the studio</label>
+      </div>
+      <div class="option" onclick="select('q1','call'); this.querySelector('input').checked=true">
+        <input type="radio" name="q1" value="call" id="q1-call">
+        <label class="option-text" for="q1-call">Call the studio directly</label>
+      </div>
+      <div class="option" onclick="select('q1','fresha'); this.querySelector('input').checked=true">
+        <input type="radio" name="q1" value="fresha" id="q1-fresha">
+        <label class="option-text" for="q1-fresha">Fresha, Treatwell or another platform</label>
+      </div>
+      <div class="option" onclick="select('q1','walkin'); this.querySelector('input').checked=true">
+        <input type="radio" name="q1" value="walkin" id="q1-walkin">
+        <label class="option-text" for="q1-walkin">Walk in / no booking</label>
+      </div>
+      <div class="option" onclick="select('q1','other'); this.querySelector('input').checked=true">
+        <input type="radio" name="q1" value="other" id="q1-other">
+        <label class="option-text" for="q1-other">Other</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btn1" disabled onclick="go(2)">Continue</button>
+  </div>
+
+  <!-- STEP 2: Pain point -->
+  <div class="step" id="step2">
+    <h1>What's the hardest part about booking?</h1>
+    <p class="subtitle">Be honest — this helps us build the right thing.</p>
+
+    <div class="question">
+      <div class="option" onclick="select('q2','availability'); this.querySelector('input').checked=true">
+        <input type="radio" name="q2" value="availability" id="q2-avail">
+        <label class="option-text" for="q2-avail">Can't find a time that works</label>
+      </div>
+      <div class="option" onclick="select('q2','messages'); this.querySelector('input').checked=true">
+        <input type="radio" name="q2" value="messages" id="q2-messages">
+        <label class="option-text" for="q2-messages">Back-and-forth messages to confirm</label>
+      </div>
+      <div class="option" onclick="select('q2','trust'); this.querySelector('input').checked=true">
+        <input type="radio" name="q2" value="trust" id="q2-trust">
+        <label class="option-text" for="q2-trust">Not knowing which studio to trust</label>
+      </div>
+      <div class="option" onclick="select('q2','easy'); this.querySelector('input').checked=true">
+        <input type="radio" name="q2" value="easy" id="q2-easy">
+        <label class="option-text" for="q2-easy">It's easy — no problems</label>
+      </div>
+      <div class="option" onclick="select('q2','price'); this.querySelector('input').checked=true">
+        <input type="radio" name="q2" value="price" id="q2-price">
+        <label class="option-text" for="q2-price">Price / too expensive</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btn2" disabled onclick="go(3)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(1)">Back</button>
+  </div>
+
+  <!-- STEP 3: Frequency -->
+  <div class="step" id="step3">
+    <h1>How often do you get a massage?</h1>
+
+    <div class="question">
+      <div class="option" onclick="select('q3','weekly'); this.querySelector('input').checked=true">
+        <input type="radio" name="q3" value="weekly" id="q3-weekly">
+        <label class="option-text" for="q3-weekly">Weekly</label>
+      </div>
+      <div class="option" onclick="select('q3','biweekly'); this.querySelector('input').checked=true">
+        <input type="radio" name="q3" value="biweekly" id="q3-biweekly">
+        <label class="option-text" for="q3-biweekly">Every 2–4 weeks</label>
+      </div>
+      <div class="option" onclick="select('q3','monthly'); this.querySelector('input').checked=true">
+        <input type="radio" name="q3" value="monthly" id="q3-monthly">
+        <label class="option-text" for="q3-monthly">Monthly</label>
+      </div>
+      <div class="option" onclick="select('q3','rarely'); this.querySelector('input').checked=true">
+        <input type="radio" name="q3" value="rarely" id="q3-rarely">
+        <label class="option-text" for="q3-rarely">Every few months</label>
+      </div>
+      <div class="option" onclick="select('q3','first'); this.querySelector('input').checked=true">
+        <input type="radio" name="q3" value="first" id="q3-first">
+        <label class="option-text" for="q3-first">First time / rare</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btn3" disabled onclick="go(4)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(2)">Back</button>
+  </div>
+
+  <!-- STEP 4: Pricing model -->
+  <div class="step" id="step4">
+    <h1>What would you actually pay?</h1>
+    <p class="subtitle">Imagine an app where you can browse studios, see real availability, and book instantly.</p>
+
+    <div class="question">
+      <div class="option" onclick="select('q4','nothing'); this.querySelector('input').checked=true">
+        <input type="radio" name="q4" value="nothing" id="q4-nothing">
+        <label class="option-text" for="q4-nothing">€0 — I'd only use it if it's free</label>
+      </div>
+      <div class="option" onclick="select('q4','5_8'); this.querySelector('input').checked=true">
+        <input type="radio" name="q4" value="5_8" id="q4-5_8">
+        <label class="option-text" for="q4-5_8">€5–8 per booking</label>
+      </div>
+      <div class="option" onclick="select('q4','9_12'); this.querySelector('input').checked=true">
+        <input type="radio" name="q4" value="9_12" id="q4-9_12">
+        <label class="option-text" for="q4-9_12">€9–12 per booking</label>
+      </div>
+      <div class="option" onclick="select('q4','15plus'); this.querySelector('input').checked=true">
+        <input type="radio" name="q4" value="15plus" id="q4-15plus">
+        <label class="option-text" for="q4-15plus">€15+ per booking</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btn4" disabled onclick="go(5)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(3)">Back</button>
+  </div>
+
+  <!-- STEP 5: Membership -->
+  <div class="step" id="step5">
+    <h1>Would a membership work for you?</h1>
+    <p class="subtitle">Say €49/month for unlimited bookings. No per-session fees.</p>
+
+    <div class="question">
+      <div class="option" onclick="select('q5','yes'); this.querySelector('input').checked=true">
+        <input type="radio" name="q5" value="yes" id="q5-yes">
+        <label class="option-text" for="q5-yes">Yes — I'd book more if it was unlimited</label>
+      </div>
+      <div class="option" onclick="select('q5','maybe'); this.querySelector('input').checked=true">
+        <input type="radio" name="q5" value="maybe" id="q5-maybe">
+        <label class="option-text" for="q5-maybe">Maybe — depends on the price</label>
+      </div>
+      <div class="option" onclick="select('q5','nopay'); this.querySelector('input').checked=true">
+        <input type="radio" name="q5" value="nopay" id="q5-nopay">
+        <label class="option-text" for="q5-nopay">No — I'd rather pay per session</label>
+      </div>
+      <div class="option" onclick="select('q5','none'); this.querySelector('input').checked=true">
+        <input type="radio" name="q5" value="none" id="q5-none">
+        <label class="option-text" for="q5-none">Nothing — I don't get massages</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btn5" disabled onclick="go(6)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(4)">Back</button>
+  </div>
+
+  <!-- STEP 6: Features -->
+  <div class="step" id="step6">
+    <h1>What matters most? Pick up to 3.</h1>
+
+    <div class="question">
+      <div class="option" onclick="toggleFeature(this, 'availability')">
+        <input type="checkbox" value="availability" id="q6-avail">
+        <label class="option-text" for="q6-avail">Real-time availability — book instantly</label>
+      </div>
+      <div class="option" onclick="toggleFeature(this, 'reviews')">
+        <input type="checkbox" value="reviews" id="q6-reviews">
+        <label class="option-text" for="q6-reviews">Verified studio reviews</label>
+      </div>
+      <div class="option" onclick="toggleFeature(this, 'price')">
+        <input type="checkbox" value="price" id="q6-price">
+        <label class="option-text" for="q6-price">Cheaper than booking direct</label>
+      </div>
+      <div class="option" onclick="toggleFeature(this, 'reminders')">
+        <input type="checkbox" value="reminders" id="q6-reminders">
+        <label class="option-text" for="q6-reminders">Appointment reminders</label>
+      </div>
+      <div class="option" onclick="toggleFeature(this, 'cancel')">
+        <input type="checkbox" value="cancel" id="q6-cancel">
+        <label class="option-text" for="q6-cancel">Easy cancellation</label>
+      </div>
+      <div class="option" onclick="toggleFeature(this, 'sameday')">
+        <input type="checkbox" value="sameday" id="q6-sameday">
+        <label class="option-text" for="q6-sameday">Same-day bookings</label>
+      </div>
+      <div class="option" onclick="toggleFeature(this, 'district')">
+        <input type="checkbox" value="district" id="q6-district">
+        <label class="option-text" for="q6-district">Filter by neighborhood</label>
+      </div>
+    </div>
+
+    <button class="btn" id="btn6" disabled onclick="go(7)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(5)">Back</button>
+  </div>
+
+  <!-- STEP 7: Email -->
+  <div class="step" id="step7">
+    <h1>Last question — where should we notify you at launch?</h1>
+    <p class="subtitle">We'll send you a direct link before anyone else. No spam.</p>
+
+    <div class="question">
+      <label class="question-label" for="email">Your email</label>
+      <input type="text" id="email" placeholder="you@email.com" class="email-input">
+      <p class="small">Optional — but helps us validate this actually works</p>
+    </div>
+
+    <button class="btn" id="btn7" onclick="submit()">Submit</button>
+    <button class="btn btn-ghost" onclick="submitNoEmail()">Skip</button>
+  </div>
+
+  <!-- STEP 8: Done -->
+  <div class="step" id="step8">
+    <div class="result">
+      <div class="result-icon">✓</div>
+      <h1>You're in.</h1>
+      <p class="subtitle">We'll let you know the moment Massage Club goes live in Madrid.</p>
+    </div>
+  </div>
+
+  <p class="tagline">Massage Club · Madrid 2026</p>
+</div>
+
+<script>
+  const answers = {};
+  const features = new Set();
+  let current = 1;
+  const total = 7;
+
+  function select(q, val) {
+    answers[q] = val;
+    document.getElementById('btn' + q).disabled = false;
+  }
+
+  function toggleFeature(el, val) {
+    const input = el.querySelector('input');
+    input.checked = !input.checked;
+    if (input.checked) {
+      if (features.size < 3) features.add(val);
+      else { input.checked = false; alert('Pick up to 3'); }
+    } else {
+      features.delete(val);
+    }
+    answers['q6'] = Array.from(features).join(',');
+    document.getElementById('btn6').disabled = features.size === 0;
+  }
+
+  function go(n) {
+    document.getElementById('step' + current).classList.remove('active');
+    document.getElementById('step' + n).classList.add('active');
+    current = n;
+    document.getElementById('progress').style.width = ((current-1)/total*100) + '%';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function submit() {
+    const email = document.getElementById('email').value.trim();
+    answers['email'] = email;
+    answers['submitted_at'] = new Date().toISOString();
+    answers['source'] = 'survey_mvp';
+
+    // Send to N8N webhook or Supabase directly
+    // Using fetch so it works even without a backend
+    try {
+      await fetch('https://jglftdstrowwckwqmpue.supabase.co/rest/v1/rpc/submit_survey', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDg0NjE4Nzd9.Qf7dLCaXJqknXH7QDpLS2hS3a6JNFtSvLNJcL',
+        },
+        body: JSON.stringify(answers)
+      });
+    } catch(e) {
+      // Silent fail — don't block the success screen
+      console.log('Survey response:', JSON.stringify(answers));
+    }
+
+    go(8);
+  }
+
+  async function submitNoEmail() {
+    answers['email'] = '';
+    answers['submitted_at'] = new Date().toISOString();
+    answers['source'] = 'survey_mvp';
+    console.log('Survey response:', JSON.stringify(answers));
+    go(8);
+  }
+</script>
+</body>
+</html>
