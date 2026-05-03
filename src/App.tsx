@@ -22,6 +22,7 @@ import PartnerProfile from "./app/screens/PartnerProfile";
 import PartnerServices from "./app/screens/PartnerServices";
 import PartnerCalendar from "./app/screens/PartnerCalendar";
 import PartnerConnectCalendar from "./app/screens/PartnerConnectCalendar";
+import Survey from "./app/screens/Survey";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
           <Route path="/partner/services" element={<PartnerServices />} />
           <Route path="/partner/calendar" element={<PartnerCalendar />} />
           <Route path="/partner/connect-calendar" element={<PartnerConnectCalendar />} />
+          <Route path="/survey" element={<Survey />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

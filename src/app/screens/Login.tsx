@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Apple, Mail, User, ChevronRight } from "lucide-react";
+import { Apple, Mail, User, ChevronRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -189,6 +189,15 @@ export default function Login() {
         <p className="text-center text-xs text-primary-foreground/60 pt-4">
           By continuing you agree to our Terms & Privacy Policy.
         </p>
+
+        {/* Feedback link — for early users */}
+        <button
+          onClick={() => navigate("/survey")}
+          className="w-full flex items-center justify-center gap-2 mt-3 py-2 text-xs text-primary-foreground/50 hover:text-primary-foreground/80 transition"
+        >
+          <MessageCircle className="h-3 w-3" />
+          Share feedback — help us build this
+        </button>
       </div>
     </div>
   );
