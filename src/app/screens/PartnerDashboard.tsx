@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -20,6 +20,9 @@ type Booking = {
 type Partner = {
   business_name: string;
   address: string;
+  google_calendar_connected?: boolean;
+  google_calendar_id?: string;
+  auto_confirm_bookings?: boolean;
 };
 
 export default function PartnerDashboard() {
@@ -39,7 +42,7 @@ export default function PartnerDashboard() {
     if (!user) { toast.error("Please sign in"); navigate("/partner/login"); return; }
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
-      supabase.from("partners").select("business_name, address").eq("id", user.id).single(),
+      supabase.from("partners").select("business_name, address, google_calendar_connected, google_calendar_id, auto_confirm_bookings").eq("id", user.id).single(),
       supabase.from("bookings").select("*").eq("partner_id", user.id).order("booking_date", { ascending: false }).limit(20),
     ]);
 
@@ -126,6 +129,38 @@ export default function PartnerDashboard() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
               </button>
             ))}
+
+            {/* Calendar connect — spans full width */}
+            <button
+              onClick={() => navigate("/partner/connect-calendar")}
+              className="flex items-center gap-3 p-4 rounded-2xl border bg-card text-left hover:border-primary/50 transition col-span-2"
+            >
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                partner?.google_calendar_connected ? "bg-green-100" : "bg-secondary"
+              }`}>
+                {partner?.google_calendar_connected
+                  ? <Link2 className="h-5 w-5 text-green-600" />
+                  : <Calendar className="h-5 w-5 text-foreground" />
+                }
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">Calendar</p>
+                  {partner?.google_calendar_connected ? (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-600">Connected</span>
+                  ) : (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">Set up</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {partner?.google_calendar_connected
+                    ? `${partner.google_calendar_id || "Google Calendar"} · Tap to manage`
+                    : "Connect Google Calendar for real-time availability"
+                  }
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
           </div>
 
           {/* Pending actions */}

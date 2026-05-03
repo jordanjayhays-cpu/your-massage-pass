@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   // Handle OAuth errors
   if (error) {
     return Response.redirect(
-      `${url.origin}/partner/calendar?error=${encodeURIComponent(error)}`,
+      `${url.origin}/partner/connect-calendar?error=${encodeURIComponent(error)}`,
       302
     );
   }
@@ -35,7 +35,7 @@ serve(async (req: Request) => {
       client_secret: Deno.env.get("GOOGLE_CLIENT_SECRET")!,
       code,
       grant_type: "authorization_code",
-      redirect_uri: `${url.origin}/functions/v1/google-calendar-oauth`,
+      redirect_uri: `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-oauth`,
     }),
   });
 
@@ -43,7 +43,7 @@ serve(async (req: Request) => {
     const err = await tokenResponse.text();
     console.error("Token exchange failed:", err);
     return Response.redirect(
-      `${url.origin}/partner/calendar?error=token_exchange_failed`,
+      `${url.origin}/partner/connect-calendar?error=token_exchange_failed`,
       302
     );
   }
@@ -81,14 +81,14 @@ serve(async (req: Request) => {
   if (updateError) {
     console.error("Failed to update partner:", updateError);
     return Response.redirect(
-      `${url.origin}/partner/calendar?error=db_update_failed`,
+      `${url.origin}/partner/connect-calendar?error=db_update_failed`,
       302
     );
   }
 
   // Redirect back to partner portal with success
   return Response.redirect(
-    `${url.origin}/partner/calendar?connected=true`,
+    `${url.origin}/partner/connect-calendar?connected=true`,
     302
   );
 });
