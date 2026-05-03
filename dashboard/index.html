@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Massage Club — Mission Control</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #1e1e2e;
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .header h1 span {
+      color: #f5a623;
+    }
+    .badge {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4a;
+      color: #888;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* Metric Cards */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .metric {
+      background: #111118;
+      border: 1px solid #1e1e2e;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .metric .num {
+      font-size: 36px;
+      font-weight: 800;
+      color: #f5a623;
+      line-height: 1;
+    }
+    .metric .label {
+      font-size: 11px;
+      color: #666;
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Section */
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    /* Task List */
+    .tasks {
+      background: #111118;
+      border: 1px solid #1e1e2e;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .task {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #1a1a24;
+      transition: background 0.15s;
+    }
+    .task:last-child { border-bottom: none; }
+    .task:hover { background: #141420; }
+    .task .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+    .task.completed .check {
+      background: #22c55e;
+      border-color: #22c55e;
+      color: #fff;
+    }
+    .task.pending .check {
+      border-color: #444;
+    }
+    .task.in-progress .check {
+      border-color: #f5a623;
+      background: rgba(245,166,35,0.15);
+    }
+    .task .task-id {
+      font-size: 11px;
+      color: #444;
+      font-weight: 600;
+      min-width: 20px;
+    }
+    .task .task-text {
+      font-size: 14px;
+      color: #ccc;
+      flex: 1;
+    }
+    .task.completed .task-text {
+      text-decoration: line-through;
+      color: #555;
+    }
+    .task .tag {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .tag-pending { background: #1a1a2e; color: #666; }
+    .tag-progress { background: rgba(245,166,35,0.15); color: #f5a623; }
+    .tag-done { background: rgba(34,197,94,0.15); color: #22c55e; }
+
+    /* Quick Actions */
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      border: none;
+    }
+    .btn-primary {
+      background: #f5a623;
+      color: #000;
+    }
+    .btn-primary:hover { background: #f0b84a; }
+    .btn-secondary {
+      background: #1a1a2e;
+      color: #aaa;
+      border: 1px solid #2a2a4a;
+    }
+    .btn-secondary:hover { background: #222235; color: #fff; }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: #444;
+      margin-bottom: 24px;
+    }
+    .status-bar .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .dot-green { background: #22c55e; }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f5a623; }
+
+    /* Survey Preview Card */
+    .survey-card {
+      background: linear-gradient(135deg, #1a1520 0%, #0f1a14 100%);
+      border: 1px solid #f5a62340;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+    .survey-card .label {
+      font-size: 11px;
+      color: #f5a623;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .survey-card h2 {
+      font-size: 18px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .survey-card p {
+      font-size: 13px;
+      color: #777;
+      margin-bottom: 14px;
+    }
+    .survey-url {
+      background: #0a0a0f;
+      border: 1px solid #2a2a4a;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #666;
+      font-family: monospace;
+      word-break: break-all;
+    }
+    .survey-url strong { color: #22c55e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>Massage <span>Club</span> — Mission Control</h1>
+      <span class="badge" id="clock"></span>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span><span class="dot dot-green"></span> Hermes: Active</span>
+      <span><span class="dot dot-yellow" id="vercelDot"></span> Survey: Not deployed</span>
+      <span><span class="dot dot-yellow" id="supabaseDot"></span> Supabase: Schema pending</span>
+      <span><span class="dot dot-green" id="n8nDot"></span> N8N: Awaiting credentials</span>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="num">32</div>
+        <div class="label">Studios loaded</div>
+      </div>
+      <div class="metric">
+        <div class="num">0</div>
+        <div class="label">Survey responses</div>
+      </div>
+      <div class="metric">
+        <div class="num">0</div>
+        <div class="label">N8N posts done</div>
+      </div>
+      <div class="metric">
+        <div class="num">50</div>
+        <div class="label">Target responses</div>
+      </div>
+    </div>
+
+    <!-- Survey CTA -->
+    <div class="survey-card">
+      <div class="label">🎯 Active Objective</div>
+      <h2>Get 50 survey responses in 2 days</h2>
+      <p>Validates membership vs. pay-per-booking vs. commission. Share this link to start collecting.</p>
+      <div class="survey-url" id="surveyUrl">⏳ Deploy survey to Vercel to get live URL</div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="section">
+      <div class="section-title">Tasks</div>
+      <div class="tasks" id="taskList"></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section">
+      <div class="section-title">Quick Actions</div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="deploySurvey()">Deploy Survey to Vercel</button>
+        <button class="btn btn-secondary" onclick="addStudio()">+ Add Studio</button>
+        <button class="btn btn-secondary" onclick="refreshData()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <!-- N8N Setup -->
+    <div class="section">
+      <div class="section-title">N8N Setup — Social Media Automation</div>
+      <div class="tasks" id="n8nTasks"></div>
+    </div>
+
+    <!-- Supabase Setup -->
+    <div class="section">
+      <div class="section-title">Supabase Setup — Required to Go Live</div>
+      <div class="tasks" id="supabaseTasks"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // Task definitions
+    const tasks = [
+      { id: 1, text: "Push more studios (target 50+) — Felo scrape, Yelp, TripAdvisor research", status: "pending", cat: "studios" },
+      { id: 2, text: "Build customer booking flow UI (studio → service → date → slot → confirm)", status: "completed", cat: "booking" },
+      { id: 3, text: "Build menu scraping pipeline — pull service menus/prices from studio websites", status: "pending", cat: "studios" },
+      { id: 4, text: "Research Barcelona studios (next city)", status: "pending", cat: "studios" },
+      { id: 5, text: "Add ICS feed fallback track (for studios using Apple/Outlook calendars)", status: "pending", cat: "calendar" },
+      { id: 6, text: "Build N8N social media automation workflow — post survey to Reddit, Facebook, LinkedIn, WhatsApp", status: "pending", cat: "n8n" },
+      { id: 7, text: "Deploy standalone survey to Vercel — get live URL for distribution", status: "pending", cat: "survey" },
+    ];
+
+    const n8nSetupTasks = [
+      { id: "n1", text: "Give me your N8N URL (e.g. https://n8n.yourdomain.com)", status: "pending" },
+      { id: "n2", text: "Give me Reddit API credentials (or just your Reddit username/password)", status: "pending" },
+      { id: "n3", text: "Apply for Twitter/X Developer account (if not already done)", status: "pending" },
+      { id: "n4", text: "N8N Reddit workflow — auto-post survey to top 5 subreddits", status: "pending" },
+      { id: "n5", text: "N8N Twitter/X workflow — auto-post survey link", status: "pending" },
+    ];
+
+    const supabaseSetupTasks = [
+      { id: "s1", text: "Run supabase-mvp-schema.sql in Supabase SQL Editor (bookings + leads tables)", status: "pending" },
+      { id: "s2", text: "Run supabase-survey-schema.sql (survey_responses table)", status: "pending" },
+      { id: "s3", text: "Run supabase-partner-tables.sql (partner portal schema)", status: "pending" },
+      { id: "s4", text: "Run supabase-calendar-integration.sql (Google Calendar OAuth columns)", status: "pending" },
+      { id: "s5", text: "Rotate Supabase anon key — current one is invalid", status: "pending" },
+      { id: "s6", text: "Deploy Edge Functions via Supabase CLI (5 functions waiting)", status: "pending" },
+      { id: "s7", text: "Enable Google Calendar API in Google Cloud Console + create OAuth credentials", status: "pending" },
+    ];
+
+    function renderStatus(status) {
+      if (status === 'completed') return '<span class="tag tag-done">Done</span>';
+      if (status === 'in-progress') return '<span class="tag tag-progress">In Progress</span>';
+      return '<span class="tag tag-pending">Pending</span>';
+    }
+
+    function renderTasks(taskList, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = taskList.map(t => `
+        <div class="task ${t.status === 'completed' ? 'completed' : t.status === 'in-progress' ? 'in-progress' : 'pending'}">
+          <div class="check">${t.status === 'completed' ? '✓' : ''}</div>
+          <span class="task-id">#${t.id}</span>
+          <span class="task-text">${t.text}</span>
+          ${renderStatus(t.status)}
+        </div>
+      `).join('');
+    }
+
+    renderTasks(tasks, 'taskList');
+    renderTasks(n8nSetupTasks, 'n8nTasks');
+    renderTasks(supabaseSetupTasks, 'supabaseTasks');
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      const opts = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      document.getElementById('clock').textContent = now.toLocaleDateString('en-US', opts);
+    }
+    updateClock();
+    setInterval(updateClock, 60000);
+
+    // Placeholder actions
+    function deploySurvey() { alert('I\'ll deploy the survey to Vercel now. This takes about 2 minutes.'); }
+    function addStudio() { alert('Type the studio name and I\'ll research and add it.'); }
+    function refreshData() { updateClock(); alert('Dashboard refreshed.'); }
+  </script>
+</body>
+</html>
