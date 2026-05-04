@@ -175,7 +175,7 @@ const Index = () => {
                   className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
                   aria-label="Email"
                 />
-                <Button type="submit" size="lg" loading={loading} className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
+                <Button type="submit" size="lg" className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
                   {t("hero.cta")}
                 </Button>
               </form>
@@ -339,7 +339,7 @@ const Index = () => {
                     className="h-12"
                     aria-label="Email"
                   />
-                  <Button type="submit" size="lg" loading={loading} className="h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant font-semibold">
+                  <Button type="submit" size="lg" className="h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant font-semibold">
                     {t("pricing.cta")}
                   </Button>
                 </form>
