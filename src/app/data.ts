@@ -264,7 +264,6 @@ export const MASSAGES: Massage[] = [
     whatsapp: "+34 696 76 29 17",
     services: ["Thai Massage", "Couple's Massage"],
   },
-]
   {
     id: "thai-mthai",
     name: "Traditional Thai Massage",
