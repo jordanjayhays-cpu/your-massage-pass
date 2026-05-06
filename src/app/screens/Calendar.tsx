@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 export default function Calendar() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { date, time, set } = useBooking();
-  const massage = MASSAGES.find((m) => m.id === id);
+  const { date, time, set, shop } = useBooking();
+  // shop is set by MassageList when navigating through the app
+  const massage = shop || MASSAGES.find((m) => m.id === id);
   const days = getNextDays(14);
 
   return (

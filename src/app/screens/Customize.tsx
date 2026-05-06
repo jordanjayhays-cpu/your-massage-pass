@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 export default function Customize() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { pressure, focusAreas, addOns, notes, set, toggleFocus, toggleAddOn } = useBooking();
-  const massage = MASSAGES.find((m) => m.id === id);
+  const { pressure, focusAreas, addOns, notes, set, toggleFocus, toggleAddOn, shop } = useBooking();
+  const massage = shop || MASSAGES.find((m) => m.id === id);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

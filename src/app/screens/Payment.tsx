@@ -14,7 +14,7 @@ export default function Payment() {
   const navigate = useNavigate();
   const { id } = useParams();
   const booking = useBooking();
-  const massage = MASSAGES.find((m) => m.id === id);
+  const massage = booking.shop || MASSAGES.find((m) => m.id === id);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookingRef, setBookingRef] = useState("");

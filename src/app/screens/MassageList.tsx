@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Clock, List, Map as MapIcon, Compass, Sparkles, Play, Navigation, Loader2, LocateFixed } from "lucide-react";
+import { Search, Star, MapPin, Clock, List, Map as MapIcon, Sparkles, Play, Navigation, LocateFixed } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "../lib/googleMaps";
+import { fetchShops } from "@/lib/supabase";
+import type { Shop } from "@/lib/supabase";
 
 type Tab = "list" | "map";
 
@@ -31,25 +33,47 @@ export default function MassageList() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<Tab>("map"); // default to map
   const [typeFilter, setTypeFilter] = useState<MassageType | "all">("all");
-  const [selectedStudio, setSelectedStudio] = useState<typeof MASSAGES[0] | null>(null);
+  const [selectedStudio, setSelectedStudio] = useState<Shop | null>(null);
   const [geoReady, setGeoReady] = useState(false);
+  const [realShops, setRealShops] = useState<Shop[]>([]);
+  const [shopsLoading, setShopsLoading] = useState(true);
+
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
   const infoWindowRef = useRef<any>(null);
 
-  const filtered = MASSAGES
+  // Load real shops from Supabase — falls back to MASSAGES if DB is empty
+  useEffect(() => {
+    fetchShops().then(shops => {
+      setRealShops(shops);
+      setShopsLoading(false);
+    });
+  }, []);
+
+  // Combined shop list: real data first, then hardcoded fallback
+  const allShops: (Shop | typeof MASSAGES[0])[] = realShops.length > 0
+    ? realShops
+    : MASSAGES;
+
+  const filtered = allShops
     .filter((m) => {
       const matchesQ =
         m.name.toLowerCase().includes(q.toLowerCase()) ||
         m.studio.toLowerCase().includes(q.toLowerCase()) ||
-        m.district.toLowerCase().includes(q.toLowerCase());
+        ("district" in m && m.district?.toLowerCase().includes(q.toLowerCase()));
       const matchesType = typeFilter === "all" || m.type === typeFilter;
       return matchesQ && matchesType;
     })
-    .map((m) => ({ ...m, km: distanceKm(MADRID_CENTER, m) }))
-    .sort((a, b) => a.km - b.km);
+    .map((m) => ({
+      ...m,
+      km: "km" in m ? m.km : distanceKm(MADRID_CENTER, m as typeof MASSAGES[0]),
+    }))
+    .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
+
+  // Map markers: show real shops if available
+  const mapShops = realShops.length > 0 ? realShops : MASSAGES;
 
   // Initialize map
   useEffect(() => {
@@ -122,7 +146,11 @@ export default function MassageList() {
         };
       };
 
-      MASSAGES.forEach((m) => {
+      // Clear old markers
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
+
+      mapShops.forEach((m) => {
         const marker = new google.maps.Marker({
           position: { lat: m.lat, lng: m.lng },
           map,
@@ -132,14 +160,12 @@ export default function MassageList() {
         });
 
         marker.addListener("click", () => {
-          // Highlight selected
           markersRef.current.forEach((mr: any) => {
             mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false));
           });
           marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
-          setSelectedStudio(m);
+          setSelectedStudio(m as Shop);
           map.panTo({ lat: m.lat, lng: m.lng });
-
           infoWindowRef.current.setContent(buildInfoContent(m, navigate));
           infoWindowRef.current.open({ map, anchor: marker });
         });
@@ -151,10 +177,10 @@ export default function MassageList() {
     return () => {
       cancelled = true;
     };
-  }, [tab]);
+  }, [tab, realShops]);
 
-  const handleBook = (m: typeof MASSAGES[0]) => {
-    set({ massageId: m.id });
+  const handleBook = (m: Shop | typeof MASSAGES[0]) => {
+    set({ massageId: m.id, shop: m });
     navigate(`/massages/${m.id}`);
   };
 
@@ -231,31 +257,36 @@ export default function MassageList() {
       {/* Body */}
       {tab === "list" ? (
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {filtered.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => handleBook(m)}
-              className="w-full text-left rounded-2xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-elegant transition-all"
-            >
-              <div className="relative h-40">
-                <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
-                <div className="absolute top-3 right-3 flex items-center gap-1 bg-background/95 rounded-full px-2 py-1 text-xs font-semibold">
-                  <Star className="h-3 w-3 fill-accent text-accent" /> {m.rating}
+          {shopsLoading ? (
+            <p className="text-center text-muted-foreground py-12 text-sm">Loading studios…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12 text-sm">No matches. Try another search.</p>
+          ) : (
+            filtered.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => handleBook(m)}
+                className="w-full text-left rounded-2xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-elegant transition-all"
+              >
+                <div className="relative h-40">
+                  <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
+                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-background/95 rounded-full px-2 py-1 text-xs font-semibold">
+                    <Star className="h-3 w-3 fill-accent text-accent" /> {m.rating}
+                  </div>
+                  <div className="absolute bottom-3 left-3">
+                    <h3 className="font-display text-xl font-bold text-primary-foreground">{m.name}</h3>
+                    <p className="text-sm text-primary-foreground/90">{m.studio}</p>
+                  </div>
                 </div>
-                <div className="absolute bottom-3 left-3">
-                  <h3 className="font-display text-xl font-bold text-primary-foreground">{m.name}</h3>
-                  <p className="text-sm text-primary-foreground/90">{m.studio}</p>
+                <div className="flex items-center justify-between px-4 py-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {"district" in m ? m.district : ""}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {m.duration} min</span>
+                  <span>{m.reviews} reviews</span>
                 </div>
-              </div>
-              <div className="flex items-center justify-between px-4 py-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {m.district}</span>
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {m.duration} min</span>
-                <span>{m.reviews} reviews</span>
-              </div>
-            </button>
-          ))}
-          {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No matches. Try another search.</p>}
+              </button>
+            ))
+          )}
         </div>
       ) : (
         <div className="flex-1 relative flex flex-col">
@@ -322,13 +353,13 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
   );
 }
 
-function buildInfoContent(m: (typeof MASSAGES)[0], navigate: any) {
+function buildInfoContent(m: Shop | typeof MASSAGES[0], navigate: any) {
   return `
     <div style="font-family: system-ui; max-width: 220px; padding: 4px;">
       <img src="${m.image}" alt="" style="width:100%; height:80px; object-fit:cover; border-radius:10px; margin-bottom:8px;" />
       <div style="font-weight:700; font-size:13px; color:#1a0709;">${m.studio}</div>
       <div style="font-size:11px; color:#A21228; font-weight:600; margin-bottom:4px;">${m.name}</div>
-      <div style="font-size:11px; color:#666;">📍 ${m.district} · ${m.duration} min · ★ ${m.rating}</div>
+      <div style="font-size:11px; color:#666;">📍 ${"district" in m ? m.district : ""} · ${m.duration} min · ★ ${m.rating}</div>
     </div>
   `;
 }

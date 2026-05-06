@@ -1,12 +1,40 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, MapPin, Clock, Check } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Clock, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MASSAGES } from "../data";
+import { fetchShopById } from "@/lib/supabase";
+import type { Shop } from "@/lib/supabase";
 
 export default function ShopDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const massage = MASSAGES.find((m) => m.id === id);
+  const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    // Try real shop first
+    fetchShopById(id).then(real => {
+      if (real) {
+        setMassage(real);
+        setLoading(false);
+        return;
+      }
+      // Fall back to hardcoded MASSAGES
+      const fallback = MASSAGES.find(m => m.id === id) ?? null;
+      setMassage(fallback);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!massage) {
     return (
@@ -44,7 +72,7 @@ export default function ShopDetail() {
         <h1 className="font-display text-3xl font-bold text-foreground mt-2">{massage.name}</h1>
         <p className="text-primary font-semibold mt-1">{massage.studio}</p>
         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-          <MapPin className="h-3 w-3" /> {massage.district}, Madrid
+          <MapPin className="h-3 w-3" /> {"district" in massage ? massage.district : ""}, Madrid
         </p>
 
         <p className="text-foreground/80 leading-relaxed mt-4">{massage.description}</p>
