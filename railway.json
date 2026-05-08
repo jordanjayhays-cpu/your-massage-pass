@@ -1,0 +1,11 @@
+{
+  "build": {
+    "command": "npm install && npm run build",
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "numInstances": 1,
+    "restartPolicyType": "on-failure",
+    "restartPolicyLimit": 5
+  }
+}
