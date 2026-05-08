@@ -3,253 +3,593 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Partner Onboarding - Massage Club</title>
+  <title>Partner Onboarding — Massage Club</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; }
-    h1 { font-size: 24px; margin-bottom: 8px; }
-    .subtitle { color: #888; margin-bottom: 32px; font-size: 14px; }
-    .section { background: #1a1a1a; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-    .section h2 { font-size: 16px; margin-bottom: 16px; color: #e0e0e0; }
-    label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
-    input, select { width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 12px; }
-    input:focus, select:focus { outline: none; border-color: #6366f1; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #fff; min-height: 100vh; padding: 0; }
+    
+    /* Progress bar */
+    .progress-bar { position: fixed; top: 0; left: 0; right: 0; background: #161622; padding: 12px 20px; display: flex; align-items: center; gap: 8px; z-index: 100; border-bottom: 1px solid #222; }
+    .step-indicator { display: flex; align-items: center; gap: 8px; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; background: #222; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #555; transition: all 0.3s; }
+    .step-dot.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .step-dot.done { background: #059669; border-color: #059669; color: #fff; }
+    .step-label { font-size: 11px; color: #555; font-weight: 500; transition: color 0.3s; }
+    .step-label.active { color: #a5b4fc; }
+    .step-divider { flex: 1; height: 1px; background: #222; margin: 0 8px; }
+
+    .container { max-width: 560px; margin: 80px auto 40px; padding: 20px; }
+    
+    /* Header */
+    .header { text-align: center; margin-bottom: 32px; }
+    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header p { color: #666; font-size: 14px; }
+    .header .badge { display: inline-block; background: #1a1a2e; border: 1px solid #2d2d4a; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #a5b4fc; margin-bottom: 12px; }
+
+    /* Cards */
+    .card { background: #111118; border: 1px solid #1e1e2e; border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+    
+    /* Step content */
+    .step { display: none; }
+    .step.active { display: block; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .step h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .step .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+    
+    /* Form elements */
+    label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; font-weight: 500; letter-spacing: 0.3px; }
+    input, select, textarea { width: 100%; padding: 12px 14px; background: #0a0a0f; border: 1px solid #222; border-radius: 10px; color: #fff; font-size: 14px; transition: border-color 0.2s; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
+    input::placeholder, textarea::placeholder { color: #444; }
+    textarea { resize: vertical; min-height: 80px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .service-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .service-row input { margin-bottom: 0; flex: 1; }
-    .service-row input:first-child { flex: 2; }
-    button { width: 100%; padding: 14px; background: #6366f1; border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
-    button:hover { background: #4f46e5; }
-    button:disabled { background: #333; cursor: not-allowed; }
-    .success { background: #064e3b; border: 1px solid #059669; padding: 16px; border-radius: 8px; text-align: center; }
-    .success h3 { color: #34d399; margin-bottom: 8px; }
-    .error { background: #450a0a; border: 1px solid #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
-    .hidden { display: none; }
-    .loader { text-align: center; padding: 40px; color: #888; }
-    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px; }
-    .day-btn { padding: 8px 4px; background: #111; border: 1px solid #333; border-radius: 6px; color: #888; font-size: 12px; text-align: center; cursor: pointer; }
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+    
+    /* Service rows */
+    .service-row { background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .service-row input { margin-bottom: 8px; }
+    .service-row input:last-child { margin-bottom: 0; }
+    .remove-btn { color: #ef4444; font-size: 12px; cursor: pointer; margin-top: 6px; display: inline-block; }
+    .remove-btn:hover { color: #f87171; }
+    
+    /* Day/Time selector */
+    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
+    .day-btn { padding: 10px 4px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #666; font-size: 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .day-btn:hover { border-color: #6366f1; color: #a5b4fc; }
     .day-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    
     .time-slots { display: flex; flex-wrap: wrap; gap: 6px; }
-    .slot-btn { padding: 6px 10px; background: #111; border: 1px solid #333; border-radius: 6px; color: #888; font-size: 12px; cursor: pointer; }
-    .slot-btn.active { background: #059669; border-color: #059669; color: #fff; }
+    .time-slot { padding: 8px 12px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #666; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .time-slot:hover { border-color: #059669; color: #34d399; }
+    .time-slot.active { background: #059669; border-color: #059669; color: #fff; }
+    
+    .slot-group { margin-bottom: 16px; }
+    .slot-group-title { font-size: 11px; color: #555; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    /* Calendly field */
+    .calendly-hint { font-size: 12px; color: #555; margin-top: 8px; line-height: 1.5; }
+    .calendly-hint a { color: #6366f1; text-decoration: none; }
+    .calendly-hint a:hover { text-decoration: underline; }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #6366f1, #7c3aed); border: none; border-radius: 10px; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 20px; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary:active { transform: translateY(0); }
+    
+    .btn-add { background: #161622; border: 1px dashed #333; color: #666; font-size: 13px; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 8px; transition: all 0.2s; }
+    .btn-add:hover { border-color: #6366f1; color: #a5b4fc; }
+    
+    .btn-secondary { background: #1a1a28; border: 1px solid #2d2d4a; color: #a5b4fc; font-size: 13px; padding: 10px 16px; border-radius: 8px; cursor: pointer; margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-secondary:hover { background: #22223a; }
+
+    /* Navigation */
+    .nav-row { display: flex; gap: 12px; margin-top: 20px; }
+    .nav-row .btn-secondary { flex: 1; margin-top: 0; justify-content: center; }
+    .nav-row .btn-primary { flex: 2; margin-top: 0; }
+
+    /* Success */
+    .success-card { text-align: center; padding: 40px 28px; }
+    .success-icon { width: 64px; height: 64px; background: linear-gradient(135deg, #059669, #10b981); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 20px; }
+    .success-card h2 { font-size: 22px; margin-bottom: 8px; }
+    .success-card p { color: #666; font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+    .success-detail { background: #0a0a0f; border-radius: 10px; padding: 16px; text-align: left; margin-top: 20px; }
+    .success-detail p { font-size: 13px; color: #888; margin-bottom: 6px; }
+    .success-detail strong { color: #fff; }
+
+    /* Error */
+    .error-msg { background: #2d0a0a; border: 1px solid #dc2626; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; color: #f87171; }
+
+    /* Loader */
+    .loader { text-align: center; padding: 40px; color: #555; }
+    .spinner { width: 32px; height: 32px; border: 2px solid #222; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Benefit items */
+    .benefit-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #1a1a28; }
+    .benefit-item:last-child { border-bottom: none; }
+    .benefit-icon { width: 36px; height: 36px; background: #1a1a2e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .benefit-item h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .benefit-item p { font-size: 12px; color: #666; line-height: 1.4; }
+
+    /* Hidden */
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🏆 Partner Onboarding</h1>
-    <p class="subtitle">List your studio on Massage Club Madrid</p>
 
-    <div id="form-container">
-      <!-- Studio Info -->
-      <div class="section">
-        <h2>1. Your Studio</h2>
-        <label>Studio Name</label>
-        <input type="text" id="studio_name" placeholder="e.g. MTHAI Massage">
+<!-- Progress bar -->
+<div class="progress-bar" id="progress-bar">
+  <div class="step-indicator">
+    <div class="step-dot active" data-step="1">1</div>
+    <span class="step-label active">Studio</span>
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-indicator">
+    <div class="step-dot" data-step="2">2</div>
+    <span class="step-label">Services</span>
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-indicator">
+    <div class="step-dot" data-step="3">3</div>
+    <span class="step-label">Schedule</span>
+  </div>
+  <div class="step-divider"></div>
+  <div class="step-indicator">
+    <div class="step-dot" data-step="4">4</div>
+    <span class="step-label">Calendar</span>
+  </div>
+</div>
 
-        <label>Address (Madrid)</label>
-        <input type="text" id="address" placeholder="e.g. Calle de Serrano 45, Madrid">
+<div class="container">
+  <!-- Header -->
+  <div class="header" id="header">
+    <span class="badge">🏆 Spain's #1 massage subscription</span>
+    <h1>Partner Onboarding</h1>
+    <p>List your studio on Massage Club Madrid</p>
+  </div>
 
-        <label>Phone</label>
-        <input type="tel" id="phone" placeholder="e.g. +34 612 345 678">
-
-        <label>Email</label>
-        <input type="email" id="email" placeholder="studio@example.com">
+  <!-- Step 1: Studio Info -->
+  <div class="step active" id="step-1">
+    <div class="card">
+      <h2>Tell us about your studio</h2>
+      <p class="sub">Basic info to create your partner profile</p>
+      
+      <div class="field">
+        <label>Studio Name *</label>
+        <input type="text" id="studio_name" placeholder="e.g. MTHAI Massage & Spa">
       </div>
-
-      <!-- Services -->
-      <div class="section">
-        <h2>2. Services</h2>
-        <div id="services-list">
-          <div class="service-row">
-            <input type="text" class="svc-name" placeholder="Service name" value="Swedish Massage">
-            <input type="number" class="svc-price" placeholder="€" value="45">
-            <input type="number" class="svc-duration" placeholder="min" value="60">
-          </div>
-          <div class="service-row">
-            <input type="text" class="svc-name" placeholder="Service name" value="Deep Tissue Massage">
-            <input type="number" class="svc-price" placeholder="€" value="55">
-            <input type="number" class="svc-duration" placeholder="min" value="60">
-          </div>
+      
+      <div class="field">
+        <label>Contact Name *</label>
+        <input type="text" id="contact_name" placeholder="e.g. Carlos García">
+      </div>
+      
+      <div class="row">
+        <div class="field">
+          <label>Phone *</label>
+          <input type="tel" id="phone" placeholder="+34 612 345 678">
         </div>
-        <button onclick="addService()" style="background:#222; font-size:14px; margin-top:8px;">+ Add Service</button>
-      </div>
-
-      <!-- Availability -->
-      <div class="section">
-        <h2>3. Availability</h2>
-        <label>Select available days</label>
-        <div class="days-grid">
-          <div class="day-btn" data-day="1">Mon</div>
-          <div class="day-btn" data-day="2">Tue</div>
-          <div class="day-btn" data-day="3">Wed</div>
-          <div class="day-btn" data-day="4">Thu</div>
-          <div class="day-btn" data-day="5">Fri</div>
-          <div class="day-btn" data-day="6">Sat</div>
-          <div class="day-btn" data-day="0">Sun</div>
+        <div class="field">
+          <label>Email *</label>
+          <input type="email" id="email" placeholder="carlos@studio.com">
         </div>
-        <label>Time slots</label>
-        <div class="time-slots" id="time-slots"></div>
       </div>
-
-      <button id="submit-btn" onclick="submit()">Submit Application</button>
+      
+      <div class="field">
+        <label>Address (Madrid) *</label>
+        <input type="text" id="address" placeholder="Calle Serrano 45, Madrid">
+      </div>
+      
+      <div class="field">
+        <label>Short Bio</label>
+        <textarea id="description" placeholder="Tell customers what makes your studio special..."></textarea>
+      </div>
     </div>
+    
+    <button class="btn-primary" onclick="nextStep(1)">Continue →</button>
+  </div>
 
-    <div id="success-container" class="hidden">
-      <div class="success">
-        <h3>✅ You're In!</h3>
-        <p>Your studio is now listed on Massage Club Madrid. We'll be in touch within 24 hours.</p>
-        <p style="margin-top:12px; font-size:14px; color:#888;">Check your dashboard at <strong>/partner/dashboard</strong> once we verify your account.</p>
+  <!-- Step 2: Services -->
+  <div class="step" id="step-2">
+    <div class="card">
+      <h2>What do you offer?</h2>
+      <p class="sub">Add your services — customers will see these when booking</p>
+      
+      <div id="services-list">
+        <!-- Service rows injected here -->
       </div>
+      
+      <button class="btn-add" onclick="addService()">+ Add another service</button>
+    </div>
+    
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="prevStep(2)">← Back</button>
+      <button class="btn-primary" onclick="nextStep(2)">Continue →</button>
     </div>
   </div>
 
-  <script>
-    const SUPABASE_URL = 'https://jglftdstrowwckwqmpue.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNzI1MTUsImV4cCI6MjA2MTY0ODUxNX0.demo_key_replace_with_real_anon_key';
+  <!-- Step 3: Availability -->
+  <div class="step" id="step-3">
+    <div class="card">
+      <h2>When are you open?</h2>
+      <p class="sub">Select your available days and time slots</p>
+      
+      <label>Days open</label>
+      <div class="days-grid" id="days-grid">
+        <div class="day-btn" data-day="1">Mon</div>
+        <div class="day-btn" data-day="2">Tue</div>
+        <div class="day-btn" data-day="3">Wed</div>
+        <div class="day-btn" data-day="4">Thu</div>
+        <div class="day-btn" data-day="5">Fri</div>
+        <div class="day-btn" data-day="6">Sat</div>
+        <div class="day-btn" data-day="0">Sun</div>
+      </div>
+      
+      <label>Time slots</label>
+      <div class="slot-group">
+        <div class="slot-group-title">Morning</div>
+        <div class="time-slots" id="slots-morning"></div>
+      </div>
+      <div class="slot-group">
+        <div class="slot-group-title">Afternoon</div>
+        <div class="time-slots" id="slots-afternoon"></div>
+      </div>
+      <div class="slot-group">
+        <div class="slot-group-title">Evening</div>
+        <div class="time-slots" id="slots-evening"></div>
+      </div>
+    </div>
+    
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="prevStep(3)">← Back</button>
+      <button class="btn-primary" onclick="nextStep(3)">Continue →</button>
+    </div>
+  </div>
 
-    let selectedDays = [];
-    let selectedSlots = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+  <!-- Step 4: Calendar -->
+  <div class="step" id="step-4">
+    <div class="card">
+      <h2>Connect your calendar</h2>
+      <p class="sub">How will customers book appointments with you?</p>
+      
+      <div class="benefit-item">
+        <div class="benefit-icon">📅</div>
+        <div>
+          <h4>Option A — Calendly (fastest)</h4>
+          <p>Create a free Calendly account and paste your link below. Bookings sync automatically to your calendar.</p>
+        </div>
+      </div>
+      
+      <div class="field" style="margin-top: 16px;">
+        <label>Calendly URL</label>
+        <input type="url" id="calendly_url" placeholder="https://calendly.com/yourstudio">
+        <p class="calendly-hint">Don't have Calendly? <a href="https://calendly.com/signup" target="_blank">Create a free account →</a> It takes 2 minutes.</p>
+      </div>
+      
+      <div style="border-top: 1px solid #1a1a28; margin: 20px 0; padding-top: 20px;">
+        <div class="benefit-item" style="padding-top: 0; border-top: none;">
+          <div class="benefit-icon">🔗</div>
+          <div>
+            <h4>Option B — I'll manage bookings manually</h4>
+            <p>We'll send you booking requests by email. You confirm by replying. No calendar integration needed right now.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="prevStep(4)">← Back</button>
+      <button class="btn-primary" id="submit-btn" onclick="submitAll()">Submit Application</button>
+    </div>
+  </div>
 
-    // Build time slots
-    const slotsContainer = document.getElementById('time-slots');
-    for (let h = 9; h <= 20; h++) {
-      ['00', '30'].forEach(m => {
-        if (!(h === 20 && m === '30')) {
+  <!-- Success -->
+  <div class="step" id="step-success">
+    <div class="card success-card">
+      <div class="success-icon">✓</div>
+      <h2>You're on the list!</h2>
+      <p>We'll review your application and email you within <strong>24 hours</strong> to confirm your listing goes live.</p>
+      
+      <div class="success-detail">
+        <p><strong>What happens next:</strong></p>
+        <p>1. We verify your studio details</p>
+        <p>2. You get a partner login to manage your profile</p>
+        <p>3. Customers start seeing your studio in the app</p>
+      </div>
+      
+      <button class="btn-primary" style="margin-top: 20px;" onclick="document.location.reload()">Submit Another Studio</button>
+    </div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loader" class="hidden">
+    <div class="loader">
+      <div class="spinner"></div>
+      <p>Submitting your application...</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────
+  const SUPABASE_URL = 'https://jglftdstrowwckwqmpue.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNzI1MTUsImV4cCI6MjA2MTY0ODUxNX0.demo_key_replace_with_real_anon_key';
+
+  // ── State ───────────────────────────────────────────────────────────
+  let currentStep = 1;
+  let selectedDays = [1, 2, 3, 4, 5]; // Mon-Fri default
+  let selectedSlots = new Set(['09:00','10:00','11:00','14:00','15:00','16:00','17:00','18:00']);
+  let serviceCount = 0;
+
+  // ── Init ────────────────────────────────────────────────────────────
+  function init() {
+    buildTimeSlots();
+    buildDays();
+    addService(); // start with 1 service
+    updateProgress();
+  }
+
+  function buildTimeSlots() {
+    const groups = {
+      'slots-morning': [9, 10, 11, 12],
+      'slots-afternoon': [14, 15, 16],
+      'slots-evening': [17, 18, 19]
+    };
+    for (const [id, hours] of Object.entries(groups)) {
+      const container = document.getElementById(id);
+      hours.forEach(h => {
+        ['00', '30'].forEach(m => {
           const t = `${h.toString().padStart(2,'0')}:${m}`;
           const btn = document.createElement('div');
-          btn.className = 'slot-btn' + (selectedSlots.includes(t) ? ' active' : '');
+          btn.className = 'time-slot' + (selectedSlots.has(t) ? ' active' : '');
           btn.textContent = t;
           btn.dataset.time = t;
-          btn.onclick = () => { btn.classList.toggle('active'); if (btn.classList.contains('active')) selectedSlots.push(t); else selectedSlots = selectedSlots.filter(s => s !== t); };
-          slotsContainer.appendChild(btn);
-        }
+          btn.onclick = () => toggleSlot(btn, t);
+          container.appendChild(btn);
+        });
       });
     }
+  }
 
-    // Day buttons
+  function buildDays() {
     document.querySelectorAll('.day-btn').forEach(btn => {
+      const day = parseInt(btn.dataset.day);
+      if (selectedDays.includes(day)) btn.classList.add('active');
       btn.onclick = () => {
-        const day = parseInt(btn.dataset.day);
         btn.classList.toggle('active');
-        if (btn.classList.contains('active')) selectedDays.push(day);
-        else selectedDays = selectedDays.filter(d => d !== day);
+        const d = parseInt(btn.dataset.day);
+        if (btn.classList.contains('active')) selectedDays.push(d);
+        else selectedDays = selectedDays.filter(x => x !== d);
       };
     });
-    // Auto-select Mon-Fri
-    [1,2,3,4,5].forEach(d => {
-      document.querySelector(`.day-btn[data-day="${d}"]`).classList.add('active');
-      selectedDays.push(d);
-    });
+  }
 
-    function addService() {
-      const div = document.createElement('div');
-      div.className = 'service-row';
-      div.innerHTML = `<input type="text" class="svc-name" placeholder="Service name"><input type="number" class="svc-price" placeholder="€"><input type="number" class="svc-duration" placeholder="min">`;
-      document.getElementById('services-list').appendChild(div);
+  function toggleSlot(btn, t) {
+    btn.classList.toggle('active');
+    if (btn.classList.contains('active')) selectedSlots.add(t);
+    else selectedSlots.delete(t);
+  }
+
+  function addService() {
+    serviceCount++;
+    const div = document.createElement('div');
+    div.className = 'service-row';
+    div.id = `svc-${serviceCount}`;
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;color:#555;">Service ${serviceCount}</span>
+        <span class="remove-btn" onclick="removeService(${serviceCount})">Remove</span>
+      </div>
+      <input type="text" class="svc-name" placeholder="Service name (e.g. Swedish Massage)">
+      <div class="row">
+        <input type="number" class="svc-price" placeholder="Price (€)">
+        <input type="number" class="svc-duration" placeholder="Duration (min)">
+      </div>
+      <input type="text" class="svc-desc" placeholder="Brief description (optional)">
+    `;
+    document.getElementById('services-list').appendChild(div);
+  }
+
+  function removeService(id) {
+    const el = document.getElementById(`svc-${id}`);
+    if (document.querySelectorAll('.service-row').length > 1) {
+      el.remove();
+    } else {
+      el.querySelectorAll('input').forEach(i => i.value = '');
     }
+  }
 
-    async function submit() {
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true;
-      btn.textContent = 'Submitting...';
+  // ── Navigation ──────────────────────────────────────────────────────
+  function updateProgress() {
+    for (let i = 1; i <= 4; i++) {
+      const dot = document.querySelector(`.step-dot[data-step="${i}"]`);
+      const lbl = dot.parentElement.querySelector('.step-label');
+      if (i < currentStep) {
+        dot.className = 'step-dot done';
+        dot.textContent = '✓';
+        lbl.className = 'step-label';
+      } else if (i === currentStep) {
+        dot.className = 'step-dot active';
+        dot.textContent = i;
+        lbl.className = 'step-label active';
+      } else {
+        dot.className = 'step-dot';
+        dot.textContent = i;
+        lbl.className = 'step-label';
+      }
+    }
+  }
 
+  function showStep(n) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(`step-${n}`).classList.add('active');
+    currentStep = n;
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function validateStep(n) {
+    if (n === 1) {
+      const fields = ['studio_name', 'contact_name', 'phone', 'email', 'address'];
+      for (const id of fields) {
+        if (!document.getElementById(id).value.trim()) {
+          document.getElementById(id).focus();
+          return false;
+        }
+      }
+      // Basic email check
+      const email = document.getElementById('email').value;
+      if (!email.includes('@') || !email.includes('.')) {
+        alert('Please enter a valid email address');
+        document.getElementById('email').focus();
+        return false;
+      }
+    }
+    if (n === 2) {
+      const rows = document.querySelectorAll('.service-row');
+      let hasService = false;
+      rows.forEach(row => {
+        if (row.querySelector('.svc-name').value.trim()) hasService = true;
+      });
+      if (!hasService) { alert('Please add at least one service'); return false; }
+    }
+    if (n === 3) {
+      if (selectedDays.length === 0) { alert('Please select at least one day'); return false; }
+      if (selectedSlots.size === 0) { alert('Please select at least one time slot'); return false; }
+    }
+    return true;
+  }
+
+  function nextStep(n) {
+    if (!validateStep(n)) return;
+    showStep(n + 1);
+  }
+
+  function prevStep(n) {
+    showStep(n - 1);
+  }
+
+  // ── Submit ──────────────────────────────────────────────────────────
+  async function submitAll() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    try {
+      // Gather data
       const studio_name = document.getElementById('studio_name').value.trim();
-      const address = document.getElementById('address').value.trim();
+      const contact_name = document.getElementById('contact_name').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const email = document.getElementById('email').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const calendly_url = document.getElementById('calendly_url').value.trim();
 
-      if (!studio_name || !address || !phone || !email) {
-        alert('Please fill in all fields');
-        btn.disabled = false;
-        btn.textContent = 'Submit Application';
-        return;
-      }
-
-      // Get services
+      // Services
       const rows = document.querySelectorAll('.service-row');
       const services = [];
       rows.forEach(row => {
         const name = row.querySelector('.svc-name').value.trim();
-        const price = row.querySelector('.svc-price').value;
-        const duration = row.querySelector('.svc-duration').value;
-        if (name) services.push({ name, price: parseFloat(price) || 0, duration: parseInt(duration) || 60 });
+        const price = parseFloat(row.querySelector('.svc-price').value) || 0;
+        const duration = parseInt(row.querySelector('.svc-duration').value) || 60;
+        const desc = row.querySelector('.svc-desc').value.trim();
+        if (name) services.push({ name, price, duration, description: desc });
       });
 
-      try {
-        // Insert partner
-        const partnerRes = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+      // Insert partner
+      const partnerRes = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          studio_name,
+          contact_name,
+          phone,
+          email,
+          address,
+          description,
+          calendly_url: calendly_url || null,
+          status: 'pending',
+          city: 'Madrid'
+        })
+      });
+
+      if (!partnerRes.ok) {
+        const err = await partnerRes.text();
+        throw new Error(err || 'Failed to submit');
+      }
+
+      const partners = await partnerRes.json();
+      const partnerId = partners[0]?.id;
+      if (!partnerId) throw new Error('No partner ID returned');
+
+      // Insert services (parallel)
+      await Promise.all(services.map(svc =>
+        fetch(`${SUPABASE_URL}/rest/v1/partner_services`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Prefer': 'return=representation'
+            'Authorization': `Bearer ${SUPABASE_KEY}`
           },
           body: JSON.stringify({
-            studio_name,
-            address,
-            phone,
-            email,
-            status: 'pending',
-            city: 'Madrid'
+            partner_id: partnerId,
+            name: svc.name,
+            price: svc.price,
+            duration: svc.duration,
+            description: svc.description || null
           })
-        });
+        })
+      ));
 
-        if (!partnerRes.ok) {
-          const err = await partnerRes.text();
-          throw new Error(err);
+      // Insert availability (parallel)
+      const availPayload = [];
+      for (const day of selectedDays) {
+        for (const slot of Array.from(selectedSlots)) {
+          availPayload.push({
+            partner_id: partnerId,
+            day_of_week: day,
+            time_slot: slot
+          });
         }
-        const partners = await partnerRes.json();
-        const partnerId = partners[0]?.id;
-        if (!partnerId) throw new Error('No partner ID returned');
-
-        // Insert services
-        for (const svc of services) {
-          await fetch(`${SUPABASE_URL}/rest/v1/partner_services`, {
+      }
+      if (availPayload.length > 0) {
+        await Promise.all(availPayload.map(a =>
+          fetch(`${SUPABASE_URL}/rest/v1/partner_availability`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'apikey': SUPABASE_KEY,
               'Authorization': `Bearer ${SUPABASE_KEY}`
             },
-            body: JSON.stringify({
-              partner_id: partnerId,
-              name: svc.name,
-              price: svc.price,
-              duration: svc.duration
-            })
-          });
-        }
-
-        // Insert availability
-        for (const day of selectedDays) {
-          for (const slot of selectedSlots) {
-            await fetch(`${SUPABASE_URL}/rest/v1/partner_availability`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
-              },
-              body: JSON.stringify({
-                partner_id: partnerId,
-                day_of_week: day,
-                time_slot: slot
-              })
-            });
-          }
-        }
-
-        document.getElementById('form-container').classList.add('hidden');
-        document.getElementById('success-container').classList.remove('hidden');
-
-      } catch (e) {
-        alert('Error: ' + e.message);
-        btn.disabled = false;
-        btn.textContent = 'Submit Application';
+            body: JSON.stringify(a)
+          })
+        ));
       }
+
+      // Show success
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById('step-success').classList.add('active');
+      document.getElementById('progress-bar').style.display = 'none';
+      document.getElementById('header').style.display = 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (e) {
+      alert('Error: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'Submit Application';
     }
-  </script>
+  }
+
+  init();
+</script>
 </body>
 </html>
