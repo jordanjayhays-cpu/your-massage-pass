@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>List Your Studio — Massage Club Madrid</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    
+    .card { background: #111118; border: 1px solid #1e1e2e; border-radius: 24px; padding: 40px; width: 100%; max-width: 480px; }
+    
+    .badge { display: inline-block; background: #1a1a2e; border: 1px solid #2d2d4a; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #a5b4fc; margin-bottom: 16px; }
+    
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+    .sub { color: #666; font-size: 14px; margin-bottom: 32px; line-height: 1.5; }
+    
+    .field { margin-bottom: 18px; }
+    label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; font-weight: 500; }
+    input { width: 100%; padding: 13px 14px; background: #0a0a0f; border: 1px solid #222; border-radius: 10px; color: #fff; font-size: 15px; transition: border-color 0.2s; }
+    input:focus { outline: none; border-color: #6366f1; }
+    input::placeholder { color: #444; }
+    
+    .or { text-align: center; color: #444; font-size: 13px; margin: 12px 0; position: relative; }
+    .or span { background: #111118; padding: 0 12px; position: relative; z-index: 1; }
+    
+    .default-services { margin: 20px 0; }
+    .default-services p { font-size: 12px; color: #555; margin-bottom: 10px; }
+    .svc { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: all 0.2s; }
+    .svc:hover { border-color: #2d2d4a; }
+    .svc input[type="checkbox"] { width: auto; margin: 0; }
+    .svc-info { flex: 1; }
+    .svc-name { font-size: 14px; color: #e0e0e0; }
+    .svc-meta { font-size: 12px; color: #666; }
+    .svc-price { font-size: 14px; font-weight: 600; color: #a5b4fc; }
+    
+    .btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #6366f1, #7c3aed); border: none; border-radius: 12px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    
+    .success { text-align: center; display: none; }
+    .success.show { display: block; }
+    .success-icon { width: 72px; height: 72px; background: linear-gradient(135deg, #059669, #10b981); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px; }
+    .success h2 { font-size: 22px; margin-bottom: 8px; }
+    .success p { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+    
+    .trust { display: flex; gap: 16px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #1a1a28; }
+    .trust-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
+    .trust-item span { font-size: 16px; }
+    
+    .form.show { display: block; }
+    .form.hidden { display: none; }
+    
+    .error { background: #2d0a0a; border: 1px solid #dc2626; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; color: #f87171; display: none; }
+    .error.show { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <!-- Form -->
+  <div class="form" id="form">
+    <span class="badge">🏆 Spain's #1 massage subscription</span>
+    <h1>List your studio</h1>
+    <p class="sub">Get more customers. No contracts, no fees to start. Takes 2 minutes.</p>
+    
+    <div class="error" id="error"></div>
+    
+    <div class="field">
+      <label>Studio Name *</label>
+      <input type="text" id="studio_name" placeholder="e.g. MTHAI Massage & Spa">
+    </div>
+    
+    <div class="field">
+      <label>Address in Madrid *</label>
+      <input type="text" id="address" placeholder="Calle Serrano 45, Madrid">
+    </div>
+    
+    <div class="field">
+      <label>Phone or WhatsApp *</label>
+      <input type="tel" id="phone" placeholder="+34 612 345 678">
+    </div>
+    
+    <div class="or"><span>or</span></div>
+    
+    <div class="field">
+      <label>Calendly URL (skip if no account)</label>
+      <input type="url" id="calendly" placeholder="https://calendly.com/yourstudio">
+    </div>
+    
+    <div class="default-services">
+      <p>We'll list these services by default — edit later in your dashboard</p>
+      
+      <label class="svc" onclick="toggleSvc(this)">
+        <input type="checkbox" checked onclick="e => e.stopPropagation()" onchange="updateSvc('swedish', this.checked)">
+        <div class="svc-info">
+          <div class="svc-name">Swedish Massage</div>
+          <div class="svc-meta">60 min · Relaxing</div>
+        </div>
+        <div class="svc-price">€50</div>
+      </label>
+      
+      <label class="svc" onclick="toggleSvc(this)">
+        <input type="checkbox" checked onclick="e => e.stopPropagation()" onchange="updateSvc('deep', this.checked)">
+        <div class="svc-info">
+          <div class="svc-name">Deep Tissue Massage</div>
+          <div class="svc-meta">60 min · Therapeutic</div>
+        </div>
+        <div class="svc-price">€60</div>
+      </label>
+      
+      <label class="svc" onclick="toggleSvc(this)">
+        <input type="checkbox" onclick="e => e.stopPropagation()" onchange="updateSvc('thai', this.checked)">
+        <div class="svc-info">
+          <div class="svc-name">Thai Massage</div>
+          <div class="svc-meta">60 min · Stretching</div>
+        </div>
+        <div class="svc-price">€55</div>
+      </label>
+    </div>
+    
+    <button class="btn" id="submit-btn" onclick="submit()">List My Studio →</button>
+    
+    <div class="trust">
+      <div class="trust-item"><span>🔒</span> No credit card</div>
+      <div class="trust-item"><span>📋</span> No contracts</div>
+      <div class="trust-item"><span>⏱</span> Live in 24h</div>
+    </div>
+  </div>
+  
+  <!-- Success -->
+  <div class="success" id="success">
+    <div class="success-icon">✓</div>
+    <h2>You're listed!</h2>
+    <p>We'll email you within 24 hours to confirm your studio goes live in the Massage Club app.</p>
+    <p style="font-size:13px;color:#888;margin-top:12px;">You'll get a dashboard link to edit your services and schedule anytime.</p>
+    <button class="btn" style="margin-top:16px;" onclick="reset()">List Another Studio</button>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://jglftdstrowwckwqmpue.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNzI1MTUsImV4cCI6MjA2MTY0ODUxNX0.demo_key_replace_with_real_anon_key';
+
+  const services = {
+    swedish: { name: 'Swedish Massage', price: 50, duration: 60, checked: true },
+    deep: { name: 'Deep Tissue Massage', price: 60, duration: 60, checked: true },
+    thai: { name: 'Thai Massage', price: 55, duration: 60, checked: false }
+  };
+
+  function toggleSvc(el) {
+    const cb = el.querySelector('input[type="checkbox"]');
+    cb.checked = !cb.checked;
+    el.classList.toggle('active', cb.checked);
+  }
+
+  function updateSvc(key, checked) {
+    services[key].checked = checked;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function clearError() {
+    document.getElementById('error').classList.remove('show');
+  }
+
+  async function submit() {
+    clearError();
+    const btn = document.getElementById('submit-btn');
+    const name = document.getElementById('studio_name').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const calendly = document.getElementById('calendly').value.trim();
+
+    if (!name) { showError('Studio name is required'); return; }
+    if (!address) { showError('Address is required'); return; }
+    if (!phone) { showError('Phone or WhatsApp is required'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    try {
+      // Check if Calendly provided but no phone — that's ok, or vice versa
+      const activeServices = Object.entries(services).filter(([k, v]) => v.checked);
+
+      // Insert partner
+      const partnerRes = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          studio_name: name,
+          address,
+          phone,
+          email: phone + '@placeholder', // placeholder since no email field
+          calendly_url: calendly || null,
+          status: 'pending',
+          city: 'Madrid'
+        })
+      });
+
+      if (!partnerRes.ok) throw new Error(await partnerRes.text());
+      
+      const resp = await partnerRes.json();
+      const partner = Array.isArray(resp) ? resp[0] : resp;
+      const partnerId = partner?.id;
+      if (!partnerId) throw new Error('Failed to create studio record');
+
+      // Insert selected services
+      await Promise.all(activeServices.map(([k, v]) =>
+        fetch(`${SUPABASE_URL}/rest/v1/partner_services`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify({
+            partner_id: partnerId,
+            name: v.name,
+            price: v.price,
+            duration: v.duration
+          })
+        })
+      ));
+
+      // Insert default availability (Mon-Fri 9-19)
+      const days = [1, 2, 3, 4, 5];
+      const slots = [];
+      [9,10,11,12,14,15,16,17,18].forEach(h => {
+        ['00', '30'].forEach(m => slots.push(`${h.toString().padStart(2,'0')}:${m}`));
+      });
+      const availPayload = [];
+      for (const d of days) {
+        for (const s of slots) {
+          availPayload.push({ partner_id: partnerId, day_of_week: d, time_slot: s });
+        }
+      }
+      if (availPayload.length > 0) {
+        await Promise.all(availPayload.map(a =>
+          fetch(`${SUPABASE_URL}/rest/v1/partner_availability`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            body: JSON.stringify(a)
+          })
+        ));
+      }
+
+      // Show success
+      document.getElementById('form').classList.add('hidden');
+      document.getElementById('success').classList.add('show');
+
+    } catch (e) {
+      showError('Error: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'List My Studio →';
+    }
+  }
+
+  function reset() {
+    document.getElementById('form').classList.remove('hidden');
+    document.getElementById('success').classList.remove('show');
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-btn').textContent = 'List My Studio →';
+  }
+</script>
+</body>
+</html>
