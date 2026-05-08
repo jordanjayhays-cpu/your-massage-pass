@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Partner Onboarding - Massage Club</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 32px; font-size: 14px; }
+    .section { background: #1a1a1a; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .section h2 { font-size: 16px; margin-bottom: 16px; color: #e0e0e0; }
+    label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 12px; background: #111; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 12px; }
+    input:focus, select:focus { outline: none; border-color: #6366f1; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .service-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .service-row input { margin-bottom: 0; flex: 1; }
+    .service-row input:first-child { flex: 2; }
+    button { width: 100%; padding: 14px; background: #6366f1; border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    button:hover { background: #4f46e5; }
+    button:disabled { background: #333; cursor: not-allowed; }
+    .success { background: #064e3b; border: 1px solid #059669; padding: 16px; border-radius: 8px; text-align: center; }
+    .success h3 { color: #34d399; margin-bottom: 8px; }
+    .error { background: #450a0a; border: 1px solid #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+    .hidden { display: none; }
+    .loader { text-align: center; padding: 40px; color: #888; }
+    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px; }
+    .day-btn { padding: 8px 4px; background: #111; border: 1px solid #333; border-radius: 6px; color: #888; font-size: 12px; text-align: center; cursor: pointer; }
+    .day-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .time-slots { display: flex; flex-wrap: wrap; gap: 6px; }
+    .slot-btn { padding: 6px 10px; background: #111; border: 1px solid #333; border-radius: 6px; color: #888; font-size: 12px; cursor: pointer; }
+    .slot-btn.active { background: #059669; border-color: #059669; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏆 Partner Onboarding</h1>
+    <p class="subtitle">List your studio on Massage Club Madrid</p>
+
+    <div id="form-container">
+      <!-- Studio Info -->
+      <div class="section">
+        <h2>1. Your Studio</h2>
+        <label>Studio Name</label>
+        <input type="text" id="studio_name" placeholder="e.g. MTHAI Massage">
+
+        <label>Address (Madrid)</label>
+        <input type="text" id="address" placeholder="e.g. Calle de Serrano 45, Madrid">
+
+        <label>Phone</label>
+        <input type="tel" id="phone" placeholder="e.g. +34 612 345 678">
+
+        <label>Email</label>
+        <input type="email" id="email" placeholder="studio@example.com">
+      </div>
+
+      <!-- Services -->
+      <div class="section">
+        <h2>2. Services</h2>
+        <div id="services-list">
+          <div class="service-row">
+            <input type="text" class="svc-name" placeholder="Service name" value="Swedish Massage">
+            <input type="number" class="svc-price" placeholder="€" value="45">
+            <input type="number" class="svc-duration" placeholder="min" value="60">
+          </div>
+          <div class="service-row">
+            <input type="text" class="svc-name" placeholder="Service name" value="Deep Tissue Massage">
+            <input type="number" class="svc-price" placeholder="€" value="55">
+            <input type="number" class="svc-duration" placeholder="min" value="60">
+          </div>
+        </div>
+        <button onclick="addService()" style="background:#222; font-size:14px; margin-top:8px;">+ Add Service</button>
+      </div>
+
+      <!-- Availability -->
+      <div class="section">
+        <h2>3. Availability</h2>
+        <label>Select available days</label>
+        <div class="days-grid">
+          <div class="day-btn" data-day="1">Mon</div>
+          <div class="day-btn" data-day="2">Tue</div>
+          <div class="day-btn" data-day="3">Wed</div>
+          <div class="day-btn" data-day="4">Thu</div>
+          <div class="day-btn" data-day="5">Fri</div>
+          <div class="day-btn" data-day="6">Sat</div>
+          <div class="day-btn" data-day="0">Sun</div>
+        </div>
+        <label>Time slots</label>
+        <div class="time-slots" id="time-slots"></div>
+      </div>
+
+      <button id="submit-btn" onclick="submit()">Submit Application</button>
+    </div>
+
+    <div id="success-container" class="hidden">
+      <div class="success">
+        <h3>✅ You're In!</h3>
+        <p>Your studio is now listed on Massage Club Madrid. We'll be in touch within 24 hours.</p>
+        <p style="margin-top:12px; font-size:14px; color:#888;">Check your dashboard at <strong>/partner/dashboard</strong> once we verify your account.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://jglftdstrowwckwqmpue.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNzI1MTUsImV4cCI6MjA2MTY0ODUxNX0.demo_key_replace_with_real_anon_key';
+
+    let selectedDays = [];
+    let selectedSlots = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+
+    // Build time slots
+    const slotsContainer = document.getElementById('time-slots');
+    for (let h = 9; h <= 20; h++) {
+      ['00', '30'].forEach(m => {
+        if (!(h === 20 && m === '30')) {
+          const t = `${h.toString().padStart(2,'0')}:${m}`;
+          const btn = document.createElement('div');
+          btn.className = 'slot-btn' + (selectedSlots.includes(t) ? ' active' : '');
+          btn.textContent = t;
+          btn.dataset.time = t;
+          btn.onclick = () => { btn.classList.toggle('active'); if (btn.classList.contains('active')) selectedSlots.push(t); else selectedSlots = selectedSlots.filter(s => s !== t); };
+          slotsContainer.appendChild(btn);
+        }
+      });
+    }
+
+    // Day buttons
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.onclick = () => {
+        const day = parseInt(btn.dataset.day);
+        btn.classList.toggle('active');
+        if (btn.classList.contains('active')) selectedDays.push(day);
+        else selectedDays = selectedDays.filter(d => d !== day);
+      };
+    });
+    // Auto-select Mon-Fri
+    [1,2,3,4,5].forEach(d => {
+      document.querySelector(`.day-btn[data-day="${d}"]`).classList.add('active');
+      selectedDays.push(d);
+    });
+
+    function addService() {
+      const div = document.createElement('div');
+      div.className = 'service-row';
+      div.innerHTML = `<input type="text" class="svc-name" placeholder="Service name"><input type="number" class="svc-price" placeholder="€"><input type="number" class="svc-duration" placeholder="min">`;
+      document.getElementById('services-list').appendChild(div);
+    }
+
+    async function submit() {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      const studio_name = document.getElementById('studio_name').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+
+      if (!studio_name || !address || !phone || !email) {
+        alert('Please fill in all fields');
+        btn.disabled = false;
+        btn.textContent = 'Submit Application';
+        return;
+      }
+
+      // Get services
+      const rows = document.querySelectorAll('.service-row');
+      const services = [];
+      rows.forEach(row => {
+        const name = row.querySelector('.svc-name').value.trim();
+        const price = row.querySelector('.svc-price').value;
+        const duration = row.querySelector('.svc-duration').value;
+        if (name) services.push({ name, price: parseFloat(price) || 0, duration: parseInt(duration) || 60 });
+      });
+
+      try {
+        // Insert partner
+        const partnerRes = await fetch(`${SUPABASE_URL}/rest/v1/partners`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            studio_name,
+            address,
+            phone,
+            email,
+            status: 'pending',
+            city: 'Madrid'
+          })
+        });
+
+        if (!partnerRes.ok) {
+          const err = await partnerRes.text();
+          throw new Error(err);
+        }
+        const partners = await partnerRes.json();
+        const partnerId = partners[0]?.id;
+        if (!partnerId) throw new Error('No partner ID returned');
+
+        // Insert services
+        for (const svc of services) {
+          await fetch(`${SUPABASE_URL}/rest/v1/partner_services`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            body: JSON.stringify({
+              partner_id: partnerId,
+              name: svc.name,
+              price: svc.price,
+              duration: svc.duration
+            })
+          });
+        }
+
+        // Insert availability
+        for (const day of selectedDays) {
+          for (const slot of selectedSlots) {
+            await fetch(`${SUPABASE_URL}/rest/v1/partner_availability`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              },
+              body: JSON.stringify({
+                partner_id: partnerId,
+                day_of_week: day,
+                time_slot: slot
+              })
+            });
+          }
+        }
+
+        document.getElementById('form-container').classList.add('hidden');
+        document.getElementById('success-container').classList.remove('hidden');
+
+      } catch (e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Submit Application';
+      }
+    }
+  </script>
+</body>
+</html>
