@@ -23,6 +23,9 @@ import PartnerServices from "./app/screens/PartnerServices";
 import PartnerCalendar from "./app/screens/PartnerCalendar";
 import PartnerConnectCalendar from "./app/screens/PartnerConnectCalendar";
 import Survey from "./app/screens/Survey";
+import AdminInviteStudio from "./app/screens/AdminInviteStudio";
+import StudioSetup from "./app/screens/StudioSetup";
+import StudioPortal from "./app/screens/StudioPortal";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +68,10 @@ const App = () => (
           <Route path="/partner/calendar" element={<PartnerCalendar />} />
           <Route path="/partner/connect-calendar" element={<PartnerConnectCalendar />} />
           <Route path="/survey" element={<Survey />} />
+          {/* Studio Invite + Setup */}
+          <Route path="/admin/invite-studio" element={<AdminInviteStudio />} />
+          <Route path="/studio-setup" element={<StudioSetup />} />
+          <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
