@@ -22,7 +22,7 @@ const DEFAULT_SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","
 type Service = { name: string; type: string; duration: number; price: number; description: string };
 
 function StudioSetupInner() {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
 
