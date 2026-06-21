@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star } from "lucide-react";
+import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star, Store } from "lucide-react";
 import madridHero from "@/assets/madrid-hero.jpg";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { saveLead } from "@/lib/supabase";
