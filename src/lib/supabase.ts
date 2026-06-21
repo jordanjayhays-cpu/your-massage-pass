@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
+// ─── Config ───────────────────────────────────────────────────────────────────
+// Your Supabase project URL (safe to expose).
 const supabaseUrl = "https://jglftdstrowwckwqmpue.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY0ODQ2MTg3NywiZXhwIjoxOTY0MDM3ODc3fQ.DpLS2hS3a6JNFtSvLNJcL-T6M3F0Rp3Fz8lTQT5VxJQ";
+
+// 👇 Your Supabase publishable (public) key. Safe to expose in frontend code.
+// Hardcoded on purpose so no stale environment variable can override it.
+const supabaseKey = "sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -114,8 +119,11 @@ export async function fetchShops(): Promise<Shop[]> {
     .eq("status", "active")
     .limit(50);
 
-  if (error || !partners || partners.length === 0) {
-    // No real data yet — return empty; caller falls back to MASSAGES
+  if (error) {
+    console.error("[fetchShops] could not read partners:", error.message);
+    return [];
+  }
+  if (!partners || partners.length === 0) {
     return [];
   }
 
@@ -150,10 +158,7 @@ export async function fetchShops(): Promise<Shop[]> {
   const shops: Shop[] = [];
   for (const p of partners) {
     const svcs = servicesByPartner[p.id] ?? [];
-    if (svcs.length === 0) {
-      // Partner with no services — skip, or show a default entry
-      continue;
-    }
+    if (svcs.length === 0) continue;
     for (const svc of svcs) {
       shops.push({
         id: `${p.id}-${svc.name.toLowerCase().replace(/\s+/g, "-")}`,
@@ -162,7 +167,7 @@ export async function fetchShops(): Promise<Shop[]> {
         district: p.city ?? "Madrid",
         address: p.address ?? "",
         duration: svc.duration,
-        rating: 4.5,      // defaults until real reviews exist
+        rating: 4.5,
         reviews: 0,
         image: `https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80`,
         description: svc.description || p.description || "",
@@ -218,7 +223,6 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
 
   if (!svc) return null;
 
-  const serviceNameSlug = rest.join("-").replace(/-/g, " ");
   const matchedSvc = services?.find(s =>
     s.name.toLowerCase().replace(/\s+/g, "-") === id.split("-").slice(1).join("-")
   ) ?? svc;
