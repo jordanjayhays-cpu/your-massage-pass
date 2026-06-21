@@ -16,19 +16,36 @@ export default function StudioBookingPage() {
   const { studioId } = useParams();
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [taken, setTaken] = useState<Set<string>>(new Set());
 
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!studioId) return;
-    fetchStudioProfile(studioId).then(p => { setProfile(p); setLoading(false); });
+    (async () => {
+      const p = await fetchStudioProfile(studioId);
+      setProfile(p);
+      if (p) {
+        // Load already-booked slots so we never offer a taken time.
+        const today = isoDate(new Date());
+        const { data } = await supabase
+          .from("bookings")
+          .select("booking_date,booking_time")
+          .eq("partner_id", studioId)
+          .neq("status", "cancelled")
+          .gte("booking_date", today);
+        setTaken(new Set((data || []).map((b: any) => `${b.booking_date}__${b.booking_time}`)));
+      }
+      setLoading(false);
+    })();
   }, [studioId]);
 
   // availability grouped by weekday (0=Sun..6=Sat)
@@ -55,7 +72,10 @@ export default function StudioBookingPage() {
   }, [slotsByDay]);
 
   const service = profile?.services.find(s => s.id === serviceId) || null;
-  const times = date ? (slotsByDay[date.getDay()] || []) : [];
+  // Hide any slot already taken on the selected date (no double-booking).
+  const times = date
+    ? (slotsByDay[date.getDay()] || []).filter(t => !taken.has(`${isoDate(date)}__${t}`))
+    : [];
 
   if (loading) {
     return (
@@ -115,6 +135,7 @@ export default function StudioBookingPage() {
       const { data, error } = await supabase.from("bookings").insert({
         client_name: name.trim(),
         client_phone: phone.trim(),
+        client_email: email.trim() || null,
         spa_name: partner.business_name,
         massage_type: service.type || service.name,
         service_id: service.id,
@@ -126,6 +147,7 @@ export default function StudioBookingPage() {
         status: "pending",
       }).select("id").single();
       if (error) throw new Error(error.message);
+      setTaken(prev => new Set(prev).add(`${isoDate(date!)}__${time}`));
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
       setError(e?.message || "Something went wrong. Please try again.");
@@ -221,14 +243,18 @@ export default function StudioBookingPage() {
         {/* 3. Time */}
         {service && date && (
           <Section step="3" title="Pick a time">
-            <div className="flex flex-wrap gap-2">
-              {times.map(t => (
-                <button key={t} onClick={() => setTime(t)}
-                  className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
-                    time === t ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
-                  }`}>{t}</button>
-              ))}
-            </div>
+            {times.length === 0 ? (
+              <p className="text-sm text-gray-400">Fully booked that day — try another date.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {times.map(t => (
+                  <button key={t} onClick={() => setTime(t)}
+                    className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
+                      time === t ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
+                    }`}>{t}</button>
+                ))}
+              </div>
+            )}
           </Section>
         )}
 
@@ -239,6 +265,8 @@ export default function StudioBookingPage() {
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp" type="tel"
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (for your confirmation)" type="email"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
             </div>
           </Section>
