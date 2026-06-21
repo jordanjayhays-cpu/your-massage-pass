@@ -143,7 +143,7 @@ export default function Login() {
 
   return (
     <div className="relative flex flex-col h-full bg-gradient-hero text-primary-foreground p-8">
-      <div className="absolute right-5 top-5 flex flex-col gap-2 items-end">
+      <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-2">
         <Button
           onClick={() => navigate("/partner/onboarding")}
           variant="outline"
@@ -154,9 +154,9 @@ export default function Login() {
         <Button
           onClick={() => navigate("/partner/login")}
           variant="outline"
-          className="h-9 bg-transparent border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground text-xs"
+          className="h-11 bg-transparent border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
         >
-          <LogIn className="h-3.5 w-3.5" /> Partner login
+          <LogIn className="h-4 w-4" /> Partner login
         </Button>
       </div>
 
