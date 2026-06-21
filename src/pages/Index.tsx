@@ -24,6 +24,7 @@ const SHOPS = [
 
 const Index = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -35,10 +36,17 @@ const Index = () => {
     }
     setLoading(true);
     const ok = await saveLead(email, "", "landing_page");
+    // Prefill the in-app signup so they can finish creating an account
+    try {
+      const existing = JSON.parse(localStorage.getItem("mm-user") || "null") || {};
+      localStorage.setItem("mm-user", JSON.stringify({ ...existing, email: email.trim() }));
+    } catch {
+      localStorage.setItem("mm-user", JSON.stringify({ email: email.trim() }));
+    }
     setLoading(false);
     if (ok) {
-      toast.success("You're in! Check your email for next steps.");
-      setEmail("");
+      toast.success("Let's finish setting up your account.");
+      navigate("/app");
     } else {
       toast.error("Something went wrong. Try again.");
     }
