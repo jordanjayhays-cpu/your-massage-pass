@@ -174,9 +174,24 @@ const Index = () => {
               <span className="block italic font-normal text-accent">{t("hero.title2")}</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-primary-foreground/85 max-w-2xl mb-10 text-balance leading-relaxed">
+            <p className="text-lg md:text-xl text-primary-foreground/85 max-w-2xl mb-6 text-balance leading-relaxed">
               {t("hero.subtitle")}
             </p>
+
+            {/* Partner CTA — for massage studios (above the fold) */}
+            <div className="mb-6 inline-flex flex-wrap items-center gap-3 rounded-2xl border-2 border-accent bg-foreground/40 backdrop-blur-sm p-3 pl-5 shadow-gold">
+              <Store className="h-5 w-5 text-accent shrink-0" />
+              <span className="text-sm text-primary-foreground font-medium">
+                Own a massage studio?
+              </span>
+              <Button
+                asChild
+                size="sm"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+              >
+                <a href="/partner/onboarding">Partner with us →</a>
+              </Button>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
               <form onSubmit={handleJoin} className="flex-1 flex gap-2">
@@ -201,20 +216,6 @@ const Index = () => {
               New here? Enter your email above to create your account in seconds.
             </p>
 
-            {/* Partner CTA — for massage studios */}
-            <div className="mt-6 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-foreground/30 backdrop-blur-sm p-3 pl-5">
-              <Store className="h-5 w-5 text-accent shrink-0" />
-              <span className="text-sm text-primary-foreground/90">
-                Own a massage studio?
-              </span>
-              <Button
-                asChild
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-gold font-semibold"
-              >
-                <a href="/partner/onboarding">Partner with us →</a>
-              </Button>
-            </div>
 
             <div className="flex flex-wrap items-center gap-6 mt-8 text-sm text-primary-foreground/80">
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.noCommitment")}</div>
