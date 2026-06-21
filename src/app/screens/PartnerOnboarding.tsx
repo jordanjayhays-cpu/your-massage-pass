@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import {
   MapPin, Euro, Check, Loader2, Plus, Trash2, Sparkles, Zap,
-  Users, Clock, Shield, Instagram, Globe, Phone, Building2, ArrowLeft
+  Users, Clock, Shield, Instagram, Globe, Phone, Building2
 } from "lucide-react";
 
 // ─── Defaults ───
@@ -99,18 +99,20 @@ export default function PartnerOnboarding() {
   const geocode = async (): Promise<{ lat: number; lng: number; formatted: string } | null> => {
     const full = [studio.address, studio.postal_code, studio.city, studio.country].filter(Boolean).join(", ");
     if (!studio.address.trim()) return null;
-    const g = await loadGoogleMaps();
-    if (!g) return null;
-    return new Promise(resolve => {
-      new g.maps.Geocoder().geocode({ address: full }, (results: any, status: any) => {
-        if (status === "OK" && results && results[0]) {
-          const loc = results[0].geometry.location;
-          resolve({ lat: loc.lat(), lng: loc.lng(), formatted: results[0].formatted_address });
-        } else {
-          resolve(null);
-        }
-      });
-    });
+    try {
+      const g = await loadGoogleMaps();
+      if (!g) return null;
+      // The Geocoder lives in the "geocoding" library — load it explicitly.
+      const { Geocoder } = (await (g.maps as any).importLibrary("geocoding")) as any;
+      const geocoder = new Geocoder();
+      const results = await geocoder.geocode({ address: full });
+      const r = results?.results?.[0];
+      if (!r) return null;
+      const loc = r.geometry.location;
+      return { lat: loc.lat(), lng: loc.lng(), formatted: r.formatted_address };
+    } catch {
+      return null;
+    }
   };
 
   const pinLocation = async () => {
@@ -162,15 +164,19 @@ export default function PartnerOnboarding() {
     if (!email || !password) { toast.error("Enter your email and password to go live"); return; }
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
 
-    // Ensure the map will work: we need real coordinates.
-    let { latitude, longitude, formatted } = studio;
+    // Try to get real coordinates, but never block publishing on it.
+    let { latitude, longitude } = studio;
     if (!latitude || !longitude) {
       const r = await geocode();
-      if (r) { latitude = r.lat; longitude = r.lng; formatted = r.formatted; setStudio(p => ({ ...p, latitude: r.lat, longitude: r.lng, formatted: r.formatted })); }
+      if (r) {
+        latitude = r.lat; longitude = r.lng;
+        setStudio(p => ({ ...p, latitude: r.lat, longitude: r.lng, formatted: r.formatted }));
+      }
     }
     if (!latitude || !longitude) {
-      toast.error("We couldn't locate your address on the map. Check it and tap “Find my location” before publishing.");
-      return;
+      // Couldn't geocode — fall back to Madrid center so the studio still appears.
+      latitude = 40.4168; longitude = -3.7033;
+      toast("Saved your studio at Madrid center — tap “Find my location” later to fine-tune the pin.");
     }
 
     setLoading(true);
@@ -296,7 +302,7 @@ export default function PartnerOnboarding() {
 
   // ─── Progress ───
   const steps = [
-    { label: "Studio", done: !!businessName && geoStatus === "ok" },
+    { label: "Studio", done: !!businessName && !!studio.address.trim() },
     { label: "Hours", done: openDays.length > 0 },
     { label: "Team", done: therapists.some(t => t.name.trim()) },
     { label: "Services", done: services.some(s => s.name.trim()) },
@@ -311,14 +317,6 @@ export default function PartnerOnboarding() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-xl mx-auto px-4 py-8">
-
-        {/* Back to home */}
-        <button
-          onClick={() => navigate("/")}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeft size={16} /> Back to home
-        </button>
 
         {/* Header */}
         <div className="text-center mb-6">
@@ -343,7 +341,7 @@ export default function PartnerOnboarding() {
         {/* ─── STEP 1: BUSINESS DETAILS ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="1" done={!!businessName && geoStatus === "ok"} title="Business details" icon={<Building2 size={15} />} />
+            <SectionTitle n="1" done={!!businessName && !!studio.address.trim()} title="Business details" icon={<Building2 size={15} />} />
 
             <div className="space-y-3">
               <div>
@@ -387,7 +385,7 @@ export default function PartnerOnboarding() {
                   ? <><Loader2 size={15} className="animate-spin" /> Finding your address…</>
                   : geoStatus === "ok"
                   ? <><Check size={15} /> Location confirmed</>
-                  : <><MapPin size={15} /> Find my location on the map *</>}
+                  : <><MapPin size={15} /> Find my location on the map</>}
               </button>
               {geoStatus === "ok" && studio.formatted && (
                 <p className="text-xs text-green-600 -mt-1">✓ {studio.formatted} — this is where you'll show on the map.</p>
