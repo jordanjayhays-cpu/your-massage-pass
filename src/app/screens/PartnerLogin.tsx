@@ -50,7 +50,7 @@ export default function PartnerLogin() {
         setLoading(false);
         return;
       }
-      navigate("/partner/onboarding");
+      navigate("/partner/dashboard");
     }
     setLoading(false);
   };
