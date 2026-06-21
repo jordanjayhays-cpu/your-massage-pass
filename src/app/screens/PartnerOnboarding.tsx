@@ -332,6 +332,13 @@ export default function PartnerOnboarding() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-xl mx-auto px-4 py-8">
 
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft size={16} /> Back to home
+        </button>
+
         {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
