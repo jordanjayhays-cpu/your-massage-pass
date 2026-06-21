@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Apple, Mail, User, ChevronRight, MessageCircle, Store } from "lucide-react";
+import { Apple, Mail, User, ChevronRight, MessageCircle, Store, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
