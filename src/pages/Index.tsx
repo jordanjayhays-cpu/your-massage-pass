@@ -126,13 +126,17 @@ const Index = () => {
           </nav>
           <div className="flex items-center gap-2">
             <LanguageToggle />
-            <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
               <a href="/app">Open app</a>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="border-accent/60 bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
+              <a href="/partner/onboarding">For Studios</a>
             </Button>
             <Button asChild variant="secondary" size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-gold">
               <a href="#join">{t("nav.join")}</a>
             </Button>
           </div>
+
         </div>
       </header>
 
