@@ -125,7 +125,8 @@ export default function StudioBookingPage() {
     );
   }
 
-  const canBook = service && date && time && name.trim() && phone.trim();
+  // Name + at least one way to reach them (phone OR email). Phone is no longer required.
+  const canBook = service && date && time && name.trim() && (phone.trim() || email.trim());
 
   const handleBook = async () => {
     if (!canBook) return;
@@ -264,10 +265,11 @@ export default function StudioBookingPage() {
             <div className="space-y-2">
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp" type="tel"
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (for your confirmation)" type="email"
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+              <p className="text-xs text-gray-400">Add at least one way to reach you — email or phone.</p>
             </div>
           </Section>
         )}
