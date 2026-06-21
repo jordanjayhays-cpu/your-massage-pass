@@ -95,24 +95,38 @@ export default function PartnerOnboarding() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ─── Geocode the typed address → real map coordinates (uses the Maps JS SDK) ───
+  // ─── Geocode the typed address → real map coordinates ───
+  // Uses OpenStreetMap (free, no API key) first, with the Google Maps SDK
+  // geocoder as a fallback. Never throws.
   const geocode = async (): Promise<{ lat: number; lng: number; formatted: string } | null> => {
     const full = [studio.address, studio.postal_code, studio.city, studio.country].filter(Boolean).join(", ");
     if (!studio.address.trim()) return null;
+
+    // 1) OpenStreetMap / Nominatim — no key, CORS-friendly
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(full)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.[0]?.lat) {
+          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), formatted: data[0].display_name || full };
+        }
+      }
+    } catch { /* fall through to Google */ }
+
+    // 2) Google Maps geocoder (needs the Geocoding API enabled on the key)
     try {
       const g = await loadGoogleMaps();
-      if (!g) return null;
-      // The Geocoder lives in the "geocoding" library — load it explicitly.
-      const { Geocoder } = (await (g.maps as any).importLibrary("geocoding")) as any;
-      const geocoder = new Geocoder();
-      const results = await geocoder.geocode({ address: full });
-      const r = results?.results?.[0];
-      if (!r) return null;
-      const loc = r.geometry.location;
-      return { lat: loc.lat(), lng: loc.lng(), formatted: r.formatted_address };
-    } catch {
-      return null;
-    }
+      if (g) {
+        const { Geocoder } = (await (g.maps as any).importLibrary("geocoding")) as any;
+        const r = (await new Geocoder().geocode({ address: full }))?.results?.[0];
+        if (r) { const loc = r.geometry.location; return { lat: loc.lat(), lng: loc.lng(), formatted: r.formatted_address }; }
+      }
+    } catch { /* ignore */ }
+
+    return null;
   };
 
   const pinLocation = async () => {
