@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import {
   MapPin, Euro, Check, Loader2, Plus, Trash2, Sparkles, Zap,
-  Users, Clock, Shield, Instagram, Globe, Phone, Building2
+  Users, Clock, Shield, Instagram, Globe, Phone, Building2, ArrowLeft
 } from "lucide-react";
 
 // ─── Defaults ───
@@ -331,6 +331,13 @@ export default function PartnerOnboarding() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-xl mx-auto px-4 py-8">
+
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft size={16} /> Back to home
+        </button>
 
         {/* Header */}
         <div className="text-center mb-6">
