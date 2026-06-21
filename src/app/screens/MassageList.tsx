@@ -361,11 +361,4 @@ function buildInfoContent(m: Shop | typeof MASSAGES[0], navigate: any) {
       <div style="font-size:11px; color:#666;">📍 ${"district" in m ? m.district : ""} · ${m.duration} min · ★ ${m.rating}</div>
     </div>
   `;
-}~~~~
-
----
-
-## FILE: `src/app/screens/PartnerOnboarding.tsx`
-
-Replace the entire contents of `src/app/screens/PartnerOnboarding.tsx` with:
-
+}
