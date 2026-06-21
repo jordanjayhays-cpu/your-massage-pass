@@ -54,9 +54,7 @@ export default function MassageList() {
 
   // Combined shop list: onboarded studios from the DB + the curated demo
   // studios, so real listings add to (rather than replace) the existing ones.
-  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES].filter(
-    (m): m is Shop | typeof MASSAGES[0] => !!m && typeof m.name === "string" && typeof m.studio === "string"
-  );
+  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
 
   const filtered = allShops
     .filter((m) => {
@@ -363,4 +361,11 @@ function buildInfoContent(m: Shop | typeof MASSAGES[0], navigate: any) {
       <div style="font-size:11px; color:#666;">📍 ${"district" in m ? m.district : ""} · ${m.duration} min · ★ ${m.rating}</div>
     </div>
   `;
-}
+}~~~~
+
+---
+
+## FILE: `src/app/screens/PartnerOnboarding.tsx`
+
+Replace the entire contents of `src/app/screens/PartnerOnboarding.tsx` with:
+
