@@ -54,7 +54,10 @@ export default function MassageList() {
 
   // Combined shop list: onboarded studios from the DB + the curated demo
   // studios, so real listings add to (rather than replace) the existing ones.
-  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
+  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES].filter(
+    (m): m is Shop | typeof MASSAGES[0] =>
+      !!m && typeof m.name === "string" && typeof m.studio === "string"
+  );
 
   const filtered = allShops
     .filter((m) => {
