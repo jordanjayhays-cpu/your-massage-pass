@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -31,6 +31,8 @@ export default function PartnerDashboard() {
   const [partner, setPartner] = useState<Partner | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -40,6 +42,7 @@ export default function PartnerDashboard() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error("Please sign in"); navigate("/partner/login"); return; }
+    setShareUrl(`${window.location.origin}/s/${user.id}`);
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
       supabase.from("partners").select("business_name, address, google_calendar_connected, google_calendar_id, auto_confirm_bookings").eq("id", user.id).single(),
@@ -109,6 +112,54 @@ export default function PartnerDashboard() {
               </Card>
             ))}
           </div>
+
+          {/* Your booking link — the shareable page */}
+          <Card className="bg-gradient-to-br from-primary/10 to-card border-primary/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Link2 className="h-4 w-4 text-primary" />
+                <p className="text-sm font-bold">Your booking link</p>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Share this anywhere — your Google listing, Instagram bio, or a WhatsApp message. Customers book right from it.
+              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  readOnly
+                  value={shareUrl}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-xs text-muted-foreground"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(shareUrl);
+                    setCopied(true);
+                    toast.success("Link copied!");
+                    setTimeout(() => setCopied(false), 1500);
+                  }}
+                  className="h-10 px-3 rounded-xl bg-primary text-primary-foreground flex items-center gap-1.5 text-xs font-semibold"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Book your massage here: ${shareUrl}`)}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex-1 h-9 rounded-xl bg-[#25D366] text-white text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> Share on WhatsApp
+                </a>
+                <a
+                  href={shareUrl} target="_blank" rel="noreferrer"
+                  className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  Preview
+                </a>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Quick actions */}
           <div className="grid grid-cols-2 gap-3">
