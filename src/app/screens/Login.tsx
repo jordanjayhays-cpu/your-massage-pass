@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Apple, Mail, User, ChevronRight, MessageCircle } from "lucide-react";
+import { Apple, Mail, User, ChevronRight, MessageCircle, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -142,7 +142,15 @@ export default function Login() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-hero text-primary-foreground p-8">
+    <div className="relative flex flex-col h-full bg-gradient-hero text-primary-foreground p-8">
+      <Button
+        onClick={() => navigate("/partner/onboarding")}
+        variant="outline"
+        className="absolute right-5 top-5 h-11 border-accent bg-accent text-accent-foreground shadow-gold hover:bg-accent/90 hover:text-accent-foreground"
+      >
+        <Store className="h-4 w-4" /> Studio partner
+      </Button>
+
       <div className="flex-1 flex flex-col justify-center items-center text-center">
         <div className="h-20 w-20 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-8">
           <span className="font-display font-bold text-foreground text-3xl">M</span>
