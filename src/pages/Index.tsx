@@ -162,7 +162,21 @@ const Index = () => {
 
         <div className="container relative z-10 pt-32 pb-20">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-foreground/30 backdrop-blur-sm px-4 py-1.5 mb-8">
+            <Button
+              asChild
+              size="lg"
+              className="mb-5 h-auto min-h-14 w-full max-w-md justify-start gap-3 bg-accent px-5 py-3 text-left text-accent-foreground shadow-gold hover:bg-accent/90 sm:w-auto"
+            >
+              <a href="/partner/onboarding" aria-label="Open massage studio partner onboarding form">
+                <Store className="h-5 w-5 shrink-0" />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm font-bold">Massage studio?</span>
+                  <span className="text-xs font-medium opacity-90">Open the partner onboarding form →</span>
+                </span>
+              </a>
+            </Button>
+
+            <div className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-foreground/30 backdrop-blur-sm px-4 py-1.5 mb-6">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
               <span className="text-xs font-medium uppercase tracking-widest text-primary-foreground">
                 {t("hero.badge")}
@@ -177,21 +191,6 @@ const Index = () => {
             <p className="text-lg md:text-xl text-primary-foreground/85 max-w-2xl mb-6 text-balance leading-relaxed">
               {t("hero.subtitle")}
             </p>
-
-            {/* Partner CTA — for massage studios (above the fold) */}
-            <div className="mb-6 inline-flex flex-wrap items-center gap-3 rounded-2xl border-2 border-accent bg-foreground/40 backdrop-blur-sm p-3 pl-5 shadow-gold">
-              <Store className="h-5 w-5 text-accent shrink-0" />
-              <span className="text-sm text-primary-foreground font-medium">
-                Own a massage studio?
-              </span>
-              <Button
-                asChild
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
-              >
-                <a href="/partner/onboarding">Partner with us →</a>
-              </Button>
-            </div>
 
             <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
               <form onSubmit={handleJoin} className="flex-1 flex gap-2">
