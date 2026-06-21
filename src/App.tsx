@@ -26,6 +26,7 @@ import Survey from "./app/screens/Survey";
 import AdminInviteStudio from "./app/screens/AdminInviteStudio";
 import StudioSetup from "./app/screens/StudioSetup";
 import StudioPortal from "./app/screens/StudioPortal";
+import StudioBookingPage from "./app/screens/StudioBookingPage";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,9 @@ const App = () => (
           <Route path="/partner/calendar" element={<PartnerCalendar />} />
           <Route path="/partner/connect-calendar" element={<PartnerConnectCalendar />} />
           <Route path="/survey" element={<Survey />} />
+          {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
+          <Route path="/s/:studioId" element={<StudioBookingPage />} />
+          <Route path="/book/:studioId" element={<StudioBookingPage />} />
           {/* Studio Invite + Setup */}
           <Route path="/admin/invite-studio" element={<AdminInviteStudio />} />
           <Route path="/studio-setup" element={<StudioSetup />} />

@@ -54,17 +54,17 @@ export default function MassageList() {
 
   // Combined shop list: onboarded studios from the DB + the curated demo
   // studios, so real listings add to (rather than replace) the existing ones.
-  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES].filter(
-    (m): m is Shop | typeof MASSAGES[0] =>
-      !!m && typeof m.name === "string" && typeof m.studio === "string"
-  );
+  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
 
   const filtered = allShops
     .filter((m) => {
+      // Skip any malformed shop so a missing field can never crash the list.
+      if (!m || !m.name || !m.studio) return false;
+      const query = q.toLowerCase();
       const matchesQ =
-        m.name.toLowerCase().includes(q.toLowerCase()) ||
-        m.studio.toLowerCase().includes(q.toLowerCase()) ||
-        ("district" in m && m.district?.toLowerCase().includes(q.toLowerCase()));
+        m.name.toLowerCase().includes(query) ||
+        m.studio.toLowerCase().includes(query) ||
+        ("district" in m && m.district?.toLowerCase().includes(query));
       const matchesType = typeFilter === "all" || m.type === typeFilter;
       return matchesQ && matchesType;
     })

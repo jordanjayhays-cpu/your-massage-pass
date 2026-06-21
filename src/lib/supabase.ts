@@ -160,25 +160,30 @@ export async function fetchShops(): Promise<Shop[]> {
     const svcs = servicesByPartner[p.id] ?? [];
     if (svcs.length === 0) continue;
     for (const svc of svcs) {
+      const svcName = svc.name || "Massage";
+      const svcType = svc.type || "Massage";
+      const slug = svcName.toLowerCase().replace(/\s+/g, "-");
       shops.push({
-        id: `${p.id}-${svc.name.toLowerCase().replace(/\s+/g, "-")}`,
-        name: svc.name,
-        studio: p.business_name,
+        // "__" separator: the partner id is a UUID that itself contains "-",
+        // so we must not split on "-".
+        id: `${p.id}__${slug}`,
+        name: svcName,
+        studio: p.business_name || "Studio",
         district: p.city ?? "Madrid",
         address: p.address ?? "",
-        duration: svc.duration,
+        duration: svc.duration ?? 60,
         rating: 4.5,
         reviews: 0,
         image: `https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80`,
         description: svc.description || p.description || "",
-        tags: [svc.type],
-        type: svc.type.toLowerCase(),
+        tags: [svcType],
+        type: svcType.toLowerCase(),
         lat: p.latitude ?? 40.4168,
         lng: p.longitude ?? -3.7033,
         whatsapp: p.phone ? `+34 ${p.phone.replace(/\s+/g, "")}` : undefined,
         phone: p.phone,
         email: p.email,
-        services: svcs.map(s => s.name),
+        services: svcs.map(s => s.name || "Massage"),
         basePrice: svc.price,
         partner_id: p.id,
         partner_services: svcs,
@@ -190,9 +195,45 @@ export async function fetchShops(): Promise<Shop[]> {
   return shops;
 }
 
-/** Fetch a single shop by its composite ID (partner_id + service name slug). */
+/** Full studio profile for the shareable booking page (by partner UUID). */
+export interface StudioProfile {
+  partner: any;
+  services: any[];
+  availability: any[];
+  therapists: any[];
+}
+
+export async function fetchStudioProfile(partnerId: string): Promise<StudioProfile | null> {
+  if (!partnerId) return null;
+  const { data: partner } = await supabase
+    .from("partners")
+    .select("*")
+    .eq("id", partnerId)
+    .eq("status", "active")
+    .single();
+  if (!partner) return null;
+
+  const [{ data: services }, { data: availability }, { data: therapists }] = await Promise.all([
+    supabase.from("partner_services").select("*").eq("partner_id", partnerId),
+    supabase.from("partner_availability").select("*").eq("partner_id", partnerId),
+    supabase.from("therapists").select("*").eq("partner_id", partnerId),
+  ]);
+
+  return {
+    partner,
+    services: services ?? [],
+    availability: availability ?? [],
+    therapists: therapists ?? [],
+  };
+}
+
+/** Fetch a single shop by its composite ID (partnerUUID__serviceSlug). */
 export async function fetchShopById(id: string): Promise<Shop | null> {
-  const [partnerId, ...rest] = id.split("-");
+  // Real-studio ids use "__" between the partner UUID and the service slug.
+  // Demo (hardcoded) ids don't, so let the caller fall back to MASSAGES.
+  if (!id || !id.includes("__")) return null;
+  const partnerId = id.split("__")[0];
+  const slug = id.split("__").slice(1).join("__");
   if (!partnerId) return null;
 
   const { data: partner } = await supabase
@@ -224,28 +265,28 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
   if (!svc) return null;
 
   const matchedSvc = services?.find(s =>
-    s.name.toLowerCase().replace(/\s+/g, "-") === id.split("-").slice(1).join("-")
+    (s.name || "").toLowerCase().replace(/\s+/g, "-") === slug
   ) ?? svc;
 
   return {
     id,
-    name: matchedSvc.name,
-    studio: partner.business_name,
+    name: matchedSvc.name || "Massage",
+    studio: partner.business_name || "Studio",
     district: partner.city ?? "Madrid",
     address: partner.address ?? "",
-    duration: matchedSvc.duration,
+    duration: matchedSvc.duration ?? 60,
     rating: 4.5,
     reviews: 0,
     image: `https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80`,
     description: matchedSvc.description || partner.description || "",
-    tags: [matchedSvc.type],
-    type: matchedSvc.type.toLowerCase(),
+    tags: [matchedSvc.type || "Massage"],
+    type: (matchedSvc.type || "Massage").toLowerCase(),
     lat: partner.latitude ?? 40.4168,
     lng: partner.longitude ?? -3.7033,
     whatsapp: partner.phone ? `+34 ${partner.phone.replace(/\s+/g, "")}` : undefined,
     phone: partner.phone,
     email: partner.email,
-    services: services?.map(s => s.name) ?? [],
+    services: services?.map(s => s.name || "Massage") ?? [],
     basePrice: matchedSvc.price,
     partner_id: partner.id,
     partner_services: services ?? [],

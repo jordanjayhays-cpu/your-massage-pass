@@ -1,0 +1,291 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
+import {
+  MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
+  Phone, Instagram, MessageCircle, CalendarDays
+} from "lucide-react";
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+export default function StudioBookingPage() {
+  const { studioId } = useParams();
+  const [profile, setProfile] = useState<StudioProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [date, setDate] = useState<Date | null>(null);
+  const [time, setTime] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState<{ ref: string } | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!studioId) return;
+    fetchStudioProfile(studioId).then(p => { setProfile(p); setLoading(false); });
+  }, [studioId]);
+
+  // availability grouped by weekday (0=Sun..6=Sat)
+  const slotsByDay = useMemo(() => {
+    const m: Record<number, string[]> = {};
+    for (const a of profile?.availability ?? []) {
+      const d = Number(a.day_of_week);
+      (m[d] ||= []).push(a.time_slot);
+    }
+    for (const k of Object.keys(m)) m[Number(k)].sort();
+    return m;
+  }, [profile]);
+
+  // next 21 days that the studio is open
+  const openDates = useMemo(() => {
+    const out: Date[] = [];
+    const today = new Date();
+    for (let i = 0; i < 21 && out.length < 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      if ((slotsByDay[d.getDay()] || []).length > 0) out.push(d);
+    }
+    return out;
+  }, [slotsByDay]);
+
+  const service = profile?.services.find(s => s.id === serviceId) || null;
+  const times = date ? (slotsByDay[date.getDay()] || []) : [];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1a0709]">
+        <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a0709] text-white p-8 text-center">
+        <p className="text-lg font-semibold">Studio not found</p>
+        <p className="text-white/60 text-sm mt-1">This booking link may be inactive.</p>
+      </div>
+    );
+  }
+
+  const { partner } = profile;
+  const waDigits = (partner.phone || "").replace(/\D/g, "");
+
+  // ─── Confirmation screen ───
+  if (done) {
+    const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
+    const waMsg = encodeURIComponent(
+      `Hi ${partner.business_name}! I just booked ${service?.name} on ${prettyDate} at ${time}. Name: ${name}. (Ref ${done.ref})`
+    );
+    const waLink = waDigits ? `https://wa.me/${waDigits}?text=${waMsg}` : null;
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="h-16 w-16 rounded-full bg-emerald-500 flex items-center justify-center mb-4">
+          <Check className="h-8 w-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">You're booked! 🎉</h1>
+        <p className="text-gray-500 mt-1">{service?.name} · {prettyDate} at {time}</p>
+        <div className="mt-4 px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-mono">{done.ref}</div>
+        <p className="text-gray-500 text-sm mt-4 max-w-sm">
+          {partner.business_name} will confirm your appointment shortly.
+        </p>
+        {waLink && (
+          <a href={waLink} target="_blank" rel="noreferrer"
+            className="mt-6 inline-flex items-center gap-2 h-12 px-6 rounded-full bg-[#25D366] text-white font-semibold shadow-lg">
+            <MessageCircle size={18} /> Confirm on WhatsApp
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  const canBook = service && date && time && name.trim() && phone.trim();
+
+  const handleBook = async () => {
+    if (!canBook) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const { data, error } = await supabase.from("bookings").insert({
+        client_name: name.trim(),
+        client_phone: phone.trim(),
+        spa_name: partner.business_name,
+        massage_type: service.type || service.name,
+        service_id: service.id,
+        partner_id: partner.id,
+        booking_date: isoDate(date!),
+        booking_time: time,
+        duration: service.duration ?? 60,
+        price: service.price,
+        status: "pending",
+      }).select("id").single();
+      if (error) throw new Error(error.message);
+      setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
+    } catch (e: any) {
+      setError(e?.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#faf6ee]">
+      {/* Hero */}
+      <div className="relative h-44 bg-gradient-to-br from-[#A21228] to-[#5b0a16]">
+        {partner.cover_url && (
+          <img src={partner.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <div className="absolute bottom-4 left-0 right-0 px-5 max-w-lg mx-auto">
+          <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur text-white px-3 py-1 rounded-full text-xs font-semibold mb-2">
+            <Sparkles size={12} /> Book your massage
+          </div>
+          <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
+          {partner.address && (
+            <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
+              <MapPin size={12} /> {partner.address}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-5 py-5 space-y-5">
+        {/* About */}
+        {partner.description && <p className="text-sm text-gray-600">{partner.description}</p>}
+
+        {/* Quick facts */}
+        <div className="flex flex-wrap gap-2">
+          {(partner.languages || []).slice(0, 4).map((l: string) => (
+            <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
+          ))}
+          {(partner.amenities || []).slice(0, 4).map((a: string) => (
+            <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
+          ))}
+        </div>
+
+        {/* 1. Service */}
+        <Section step="1" title="Choose a service">
+          <div className="space-y-2">
+            {profile.services.map(s => (
+              <button key={s.id} onClick={() => setServiceId(s.id)}
+                className={`w-full text-left p-4 rounded-2xl border-2 transition ${
+                  serviceId === s.id ? "border-[#A21228] bg-[#A21228]/5" : "border-gray-200 bg-white"
+                }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-gray-900">{s.name}</p>
+                    {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
+                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {s.duration} min</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-[#A21228] flex items-center gap-0.5"><Euro size={13} />{s.price}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+            {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
+          </div>
+        </Section>
+
+        {/* 2. Date */}
+        {service && (
+          <Section step="2" title="Pick a day">
+            {openDates.length === 0 ? (
+              <p className="text-sm text-gray-400">No availability set yet — message the studio directly.</p>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                {openDates.map(d => {
+                  const active = date && isoDate(d) === isoDate(date);
+                  return (
+                    <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
+                      className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
+                        active ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
+                      }`}>
+                      <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                      <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
+                      <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* 3. Time */}
+        {service && date && (
+          <Section step="3" title="Pick a time">
+            <div className="flex flex-wrap gap-2">
+              {times.map(t => (
+                <button key={t} onClick={() => setTime(t)}
+                  className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
+                    time === t ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
+                  }`}>{t}</button>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* 4. Your details */}
+        {service && date && time && (
+          <Section step="4" title="Your details">
+            <div className="space-y-2">
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp" type="tel"
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+            </div>
+          </Section>
+        )}
+
+        {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+
+        {/* Sticky-ish CTA */}
+        <button onClick={handleBook} disabled={!canBook || submitting}
+          className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
+            canBook ? "bg-[#A21228] text-white shadow-lg" : "bg-gray-200 text-gray-400"
+          }`}>
+          {submitting ? <><Loader2 size={18} className="animate-spin" /> Booking…</>
+            : <><CalendarDays size={18} /> {service && date && time ? "Request booking" : "Select a service & time"}</>}
+        </button>
+
+        {/* Contact footer */}
+        <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
+          {waDigits && (
+            <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
+              <MessageCircle size={14} /> WhatsApp
+            </a>
+          )}
+          {partner.phone && (
+            <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
+              <Phone size={14} /> Call
+            </a>
+          )}
+          {partner.instagram && (
+            <a href={`https://instagram.com/${partner.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-pink-500">
+              <Instagram size={14} /> {partner.instagram}
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ step, title, children }: { step: string; title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="h-6 w-6 rounded-full bg-[#A21228] text-white flex items-center justify-center text-xs font-bold">{step}</div>
+        <h2 className="font-semibold text-gray-900">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
