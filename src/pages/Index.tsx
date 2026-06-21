@@ -188,8 +188,8 @@ const Index = () => {
                   className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
                   aria-label="Email"
                 />
-                <Button type="submit" size="lg" className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
-                  {t("hero.cta")}
+                <Button type="submit" size="lg" disabled={loading} className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
+                  {loading ? "…" : "Get started"}
                 </Button>
               </form>
               <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
@@ -197,13 +197,29 @@ const Index = () => {
               </a>
             </div>
 
+            <p className="text-xs text-primary-foreground/70 mt-3">
+              New here? Enter your email above to create your account in seconds.
+            </p>
+
+            {/* Partner CTA — for massage studios */}
+            <div className="mt-6 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-foreground/30 backdrop-blur-sm p-3 pl-5">
+              <Store className="h-5 w-5 text-accent shrink-0" />
+              <span className="text-sm text-primary-foreground/90">
+                Own a massage studio?
+              </span>
+              <Button
+                asChild
+                size="sm"
+                className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-gold font-semibold"
+              >
+                <a href="/partner/onboarding">Partner with us →</a>
+              </Button>
+            </div>
+
             <div className="flex flex-wrap items-center gap-6 mt-8 text-sm text-primary-foreground/80">
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.noCommitment")}</div>
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.cancel")}</div>
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.launch")}</div>
-              <a href="/partner/onboarding" className="flex items-center gap-2 ml-4 text-accent font-semibold hover:text-accent/80 transition-colors">
-                Are you a studio? List here →
-              </a>
             </div>
           </div>
         </div>
