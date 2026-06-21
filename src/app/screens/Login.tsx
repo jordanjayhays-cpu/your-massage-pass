@@ -184,6 +184,12 @@ export default function Login() {
         >
           <Mail className="h-5 w-5" /> Continue with Email
         </Button>
+        <Button
+          onClick={() => setStep("email")}
+          className="w-full h-12 bg-accent text-accent-foreground shadow-gold hover:bg-accent/90"
+        >
+          <User className="h-5 w-5" /> Sign up
+        </Button>
 
         {/* Quick entry */}
         <div className="mt-4 pt-4 border-t border-primary-foreground/20">
