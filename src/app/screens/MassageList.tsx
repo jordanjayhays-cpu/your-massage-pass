@@ -52,10 +52,9 @@ export default function MassageList() {
     });
   }, []);
 
-  // Combined shop list: real data first, then hardcoded fallback
-  const allShops: (Shop | typeof MASSAGES[0])[] = realShops.length > 0
-    ? realShops
-    : MASSAGES;
+  // Combined shop list: onboarded studios from the DB + the curated demo
+  // studios, so real listings add to (rather than replace) the existing ones.
+  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
 
   const filtered = allShops
     .filter((m) => {
@@ -72,8 +71,8 @@ export default function MassageList() {
     }))
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
-  // Map markers: show real shops if available
-  const mapShops = realShops.length > 0 ? realShops : MASSAGES;
+  // Map markers: real shops + demo shops together
+  const mapShops = [...realShops, ...MASSAGES];
 
   // Initialize map
   useEffect(() => {
