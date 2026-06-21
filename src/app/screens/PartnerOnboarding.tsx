@@ -1,17 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { loadGoogleMaps } from "../lib/googleMaps";
 import {
-  Search, MapPin, Phone, Globe, Euro, Check, Loader2,
-  Plus, Trash2, Sparkles, Zap, Users, Clock, Shield, Instagram
+  MapPin, Euro, Check, Loader2, Plus, Trash2, Sparkles, Zap,
+  Users, Clock, Shield, Instagram, Globe, Phone, Building2, ArrowLeft
 } from "lucide-react";
-
-// ─── Google Maps key (same one used in PartnerProfile) ───
-const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
 
 // ─── Defaults ───
 const MASSAGE_TYPES = ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Aromatherapy", "Thai", "Shiatsu", "Couples", "Facial", "Other"];
@@ -61,19 +59,19 @@ function slotsFromHours(h: DayHours): string[] {
 export default function PartnerOnboarding() {
   const navigate = useNavigate();
 
-  // ─── Studio ───
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showResults, setShowResults] = useState(false);
-  const [manualEntry, setManualEntry] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+  // ─── Studio (plain business details) ───
   const [studio, setStudio] = useState({
-    business_name: "", address: "", phone: "", website: "", instagram: "",
-    description: "", city: "Madrid", country: "Spain",
-    latitude: 0, longitude: 0, google_place_id: "",
+    business_name: "", address: "", postal_code: "", city: "Madrid", country: "Spain",
+    phone: "", website: "", instagram: "", description: "",
+    latitude: 0, longitude: 0, formatted: "",
   });
   const [amenities, setAmenities] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>(["Spanish", "English"]);
+  const [serviceLocation, setServiceLocation] = useState<"in_studio" | "mobile" | "both">("in_studio");
+  const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "ok" | "fail">("idle");
+
+  // ─── Add-ons (optional paid extras) ───
+  const [addons, setAddons] = useState<{ name: string; price: number }[]>([]);
 
   // ─── Hours ───
   const [hours, setHours] = useState<Record<number, DayHours>>(defaultHours());
@@ -97,51 +95,36 @@ export default function PartnerOnboarding() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowResults(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // ─── Google Places search ───
-  const searchPlaces = async (query: string) => {
-    if (query.length < 3) { setSearchResults([]); return; }
-    try {
-      const res = await fetch(
-        `https://corsproxy.io/?${encodeURIComponent(
-          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query + " massage spa madrid")}&key=${MAPS_KEY}`
-        )}`
-      );
-      const data = await res.json();
-      setSearchResults(data.results || []);
-      setShowResults(true);
-    } catch { /* silent */ }
+  // ─── Geocode the typed address → real map coordinates (uses the Maps JS SDK) ───
+  const geocode = async (): Promise<{ lat: number; lng: number; formatted: string } | null> => {
+    const full = [studio.address, studio.postal_code, studio.city, studio.country].filter(Boolean).join(", ");
+    if (!studio.address.trim()) return null;
+    const g = await loadGoogleMaps();
+    if (!g) return null;
+    return new Promise(resolve => {
+      new g.maps.Geocoder().geocode({ address: full }, (results: any, status: any) => {
+        if (status === "OK" && results && results[0]) {
+          const loc = results[0].geometry.location;
+          resolve({ lat: loc.lat(), lng: loc.lng(), formatted: results[0].formatted_address });
+        } else {
+          resolve(null);
+        }
+      });
+    });
   };
 
-  const selectPlace = async (place: any) => {
-    setShowResults(false);
-    setSearchQuery(place.name);
-    setStudio(prev => ({
-      ...prev,
-      business_name: place.name,
-      address: place.formatted_address || "",
-      latitude: place.geometry?.location?.lat || 0,
-      longitude: place.geometry?.location?.lng || 0,
-      google_place_id: place.place_id,
-    }));
-    try {
-      const res = await fetch(
-        `https://corsproxy.io/?${encodeURIComponent(
-          `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&key=${MAPS_KEY}`
-        )}`
-      );
-      const data = await res.json();
-      const d = data.result || {};
-      setStudio(prev => ({ ...prev, phone: d.formatted_phone_number || "", website: d.website || "" }));
-    } catch { /* silent */ }
+  const pinLocation = async () => {
+    if (!studio.address.trim()) { toast.error("Enter your street address first"); return; }
+    setGeoStatus("loading");
+    const r = await geocode();
+    if (r) {
+      setStudio(p => ({ ...p, latitude: r.lat, longitude: r.lng, formatted: r.formatted }));
+      setGeoStatus("ok");
+      toast.success("📍 Location confirmed on the map");
+    } else {
+      setGeoStatus("fail");
+      toast.error("Couldn't find that address — check the spelling");
+    }
   };
 
   // ─── Helpers ───
@@ -156,22 +139,39 @@ export default function PartnerOnboarding() {
   const updateService = (i: number, field: keyof Service, value: any) =>
     setServices(services.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
 
+  const addAddon = () => setAddons([...addons, { name: "", price: 10 }]);
+  const removeAddon = (i: number) => setAddons(addons.filter((_, idx) => idx !== i));
+  const updateAddon = (i: number, patch: Partial<{ name: string; price: number }>) =>
+    setAddons(addons.map((a, idx) => idx === i ? { ...a, ...patch } : a));
+
   const addTherapist = () => setTherapists([...therapists, { name: "", gender: "Any", specialties: [], workingDays: [1, 2, 3, 4, 5] }]);
   const removeTherapist = (i: number) => setTherapists(therapists.filter((_, idx) => idx !== i));
   const updateTherapist = (i: number, patch: Partial<Therapist>) =>
     setTherapists(therapists.map((t, idx) => idx === i ? { ...t, ...patch } : t));
 
-  const businessName = (studio.business_name || searchQuery).trim();
+  const businessName = studio.business_name.trim();
   const openDays = DAYS.filter(d => !hours[d.num].closed);
 
   // ─── Submit everything ───
   const handleGoLive = async () => {
-    if (!businessName) { toast.error("Enter your studio name first"); return; }
+    if (!businessName) { toast.error("Enter your studio name"); return; }
+    if (!studio.address.trim()) { toast.error("Enter your street address"); return; }
     if (!services.some(s => s.name.trim())) { toast.error("Add at least one service"); return; }
     if (openDays.length === 0) { toast.error("Set your opening hours for at least one day"); return; }
     if (!therapists.some(t => t.name.trim())) { toast.error("Add at least one therapist"); return; }
     if (!email || !password) { toast.error("Enter your email and password to go live"); return; }
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+
+    // Ensure the map will work: we need real coordinates.
+    let { latitude, longitude, formatted } = studio;
+    if (!latitude || !longitude) {
+      const r = await geocode();
+      if (r) { latitude = r.lat; longitude = r.lng; formatted = r.formatted; setStudio(p => ({ ...p, latitude: r.lat, longitude: r.lng, formatted: r.formatted })); }
+    }
+    if (!latitude || !longitude) {
+      toast.error("We couldn't locate your address on the map. Check it and tap “Find my location” before publishing.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -202,15 +202,16 @@ export default function PartnerOnboarding() {
         business_name: businessName,
         email,
         address: studio.address,
+        postal_code: studio.postal_code || null,
         phone: studio.phone,
         website: studio.website,
         instagram: studio.instagram || null,
         description: studio.description,
         city: studio.city,
         country: studio.country,
-        latitude: studio.latitude || null,
-        longitude: studio.longitude || null,
-        google_place_id: studio.google_place_id || null,
+        latitude,
+        longitude,
+        service_location: serviceLocation,
         amenities,
         languages,
         cancellation_hours: cancellationHours,
@@ -219,6 +220,13 @@ export default function PartnerOnboarding() {
         status: "active",
       });
       if (pErr) throw new Error(`Could not save your studio: ${pErr.message}`);
+
+      // 2b. Add-ons (optional)
+      await supabase.from("partner_addons").delete().eq("partner_id", userId);
+      const validAddons = addons.filter(a => a.name.trim());
+      if (validAddons.length) {
+        await supabase.from("partner_addons").insert(validAddons.map(a => ({ partner_id: userId, name: a.name, price: a.price })));
+      }
 
       // 3. Opening hours
       await supabase.from("business_hours").delete().eq("partner_id", userId);
@@ -244,7 +252,7 @@ export default function PartnerOnboarding() {
       if (sErr) throw new Error(`Could not save your services: ${sErr.message}`);
       const serviceIds = (savedServices ?? []).map(s => s.id);
 
-      // 5. Therapists (replace) — cascade clears their hours & service links
+      // 5. Therapists (replace)
       await supabase.from("therapists").delete().eq("partner_id", userId);
       const validTherapists = therapists.filter(t => t.name.trim());
       const { data: savedTherapists, error: tErr } = await supabase.from("therapists").insert(
@@ -256,22 +264,19 @@ export default function PartnerOnboarding() {
       if (tErr) throw new Error(`Could not save therapists: ${tErr.message}`);
       const savedT = savedTherapists ?? [];
 
-      // 6. Therapist working hours (use studio open/close for the days they work)
+      // 6. Therapist working hours
       const thoursRows = savedT.flatMap((row, idx) =>
         validTherapists[idx].workingDays
           .filter(day => !hours[day].closed)
-          .map(day => ({
-            therapist_id: row.id, day_of_week: day,
-            start_time: hours[day].open, end_time: hours[day].close,
-          }))
+          .map(day => ({ therapist_id: row.id, day_of_week: day, start_time: hours[day].open, end_time: hours[day].close }))
       );
       if (thoursRows.length) await supabase.from("therapist_hours").insert(thoursRows);
 
-      // 7. Link every therapist to every service (MVP: everyone does everything)
+      // 7. Link every therapist to every service
       const linkRows = savedT.flatMap(row => serviceIds.map(sid => ({ therapist_id: row.id, service_id: sid })));
       if (linkRows.length) await supabase.from("therapist_services").insert(linkRows);
 
-      // 8. Auto-generate bookable slots from opening hours (keeps customer app working)
+      // 8. Auto-generate bookable slots from opening hours
       await supabase.from("partner_availability").delete().eq("partner_id", userId);
       const slotRows = openDays.flatMap(d =>
         slotsFromHours(hours[d.num]).map(slot => ({ partner_id: userId, day_of_week: d.num, time_slot: slot }))
@@ -291,7 +296,7 @@ export default function PartnerOnboarding() {
 
   // ─── Progress ───
   const steps = [
-    { label: "Studio", done: !!businessName },
+    { label: "Studio", done: !!businessName && geoStatus === "ok" },
     { label: "Hours", done: openDays.length > 0 },
     { label: "Team", done: therapists.some(t => t.name.trim()) },
     { label: "Services", done: services.some(s => s.name.trim()) },
@@ -301,9 +306,19 @@ export default function PartnerOnboarding() {
   const chip = (active: boolean) =>
     `px-3 py-1.5 rounded-full text-xs font-medium border transition ${active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`;
 
+  const field = "w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-xl mx-auto px-4 py-8">
+
+        {/* Back to home */}
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft size={16} /> Back to home
+        </button>
 
         {/* Header */}
         <div className="text-center mb-6">
@@ -325,85 +340,100 @@ export default function PartnerOnboarding() {
           ))}
         </div>
 
-        {/* ─── STEP 1: STUDIO ─── */}
+        {/* ─── STEP 1: BUSINESS DETAILS ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="1" done={!!businessName} title="Your studio" />
-            <p className="text-sm text-gray-500 mb-3">Search to auto-fill, or enter details manually.</p>
+            <SectionTitle n="1" done={!!businessName && geoStatus === "ok"} title="Business details" icon={<Building2 size={15} />} />
 
-            <div className="relative" ref={searchRef}>
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input
-                value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); searchPlaces(e.target.value); }}
-                onFocus={() => searchQuery.length >= 3 && setShowResults(true)}
-                placeholder="e.g. Casa Delfines Spa, Madrid"
-                className="pl-9 h-11"
-              />
-              {showResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                  {searchResults.map((r: any) => (
-                    <button key={r.place_id} onClick={() => selectPlace(r)}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition">
-                      <div className="font-medium text-sm text-gray-900">{r.name}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{r.formatted_address}</div>
-                    </button>
-                  ))}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Studio / business name *</label>
+                <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))}
+                  placeholder="e.g. Casa Delfines Spa" className="h-11" />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Street address *</label>
+                <Input value={studio.address}
+                  onChange={e => { setStudio(p => ({ ...p, address: e.target.value })); setGeoStatus("idle"); }}
+                  placeholder="e.g. Calle de Alcalá 20" className="h-11" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Postal code</label>
+                  <Input value={studio.postal_code} onChange={e => { setStudio(p => ({ ...p, postal_code: e.target.value })); setGeoStatus("idle"); }}
+                    placeholder="28014" className="h-11" />
                 </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">City</label>
+                  <Input value={studio.city} onChange={e => { setStudio(p => ({ ...p, city: e.target.value })); setGeoStatus("idle"); }}
+                    placeholder="Madrid" className="h-11" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Country</label>
+                <Input value={studio.country} onChange={e => { setStudio(p => ({ ...p, country: e.target.value })); setGeoStatus("idle"); }}
+                  placeholder="Spain" className="h-11" />
+              </div>
+
+              {/* Pin location — required for the map */}
+              <button onClick={pinLocation}
+                className={`w-full h-11 rounded-lg border text-sm font-medium flex items-center justify-center gap-1.5 transition ${
+                  geoStatus === "ok" ? "border-green-300 bg-green-50 text-green-700" : "border-blue-300 text-blue-600 hover:bg-blue-50"
+                }`}>
+                {geoStatus === "loading"
+                  ? <><Loader2 size={15} className="animate-spin" /> Finding your address…</>
+                  : geoStatus === "ok"
+                  ? <><Check size={15} /> Location confirmed</>
+                  : <><MapPin size={15} /> Find my location on the map *</>}
+              </button>
+              {geoStatus === "ok" && studio.formatted && (
+                <p className="text-xs text-green-600 -mt-1">✓ {studio.formatted} — this is where you'll show on the map.</p>
               )}
+              {geoStatus === "fail" && (
+                <p className="text-xs text-orange-500 -mt-1">Couldn't find that address. Check the street, postal code and city, then try again.</p>
+              )}
+
+              {/* Contact */}
+              <div className="grid grid-cols-1 gap-3 pt-1">
+                <div className="relative">
+                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="Phone" className="pl-9 h-11" />
+                </div>
+                <div className="relative">
+                  <Globe size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder="Website (optional)" className="pl-9 h-11" />
+                </div>
+                <div className="relative">
+                  <Instagram size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input value={studio.instagram} onChange={e => setStudio(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram (optional)" className="pl-9 h-11" />
+                </div>
+              </div>
+
+              <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))}
+                placeholder="Short description of your studio (shown to customers)" className={`${field} resize-none h-20`} />
             </div>
 
-            {studio.business_name && (
-              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <Check size={16} className="text-green-600" />
-                  <span className="font-semibold text-green-800">{studio.business_name}</span>
-                </div>
-                {studio.address && <div className="flex items-center gap-2 text-sm text-green-700"><MapPin size={13} />{studio.address}</div>}
-                {studio.phone && <div className="flex items-center gap-2 text-sm text-green-700"><Phone size={13} />{studio.phone}</div>}
-                {studio.website && <div className="flex items-center gap-2 text-sm text-green-700"><Globe size={13} />{studio.website}</div>}
-              </div>
-            )}
-
-            {!studio.business_name && (
-              <button onClick={() => setManualEntry(v => !v)} className="mt-3 text-xs text-blue-600 font-medium hover:underline">
-                {manualEntry ? "← Back to search" : "Can't find your studio? Enter details manually"}
-              </button>
-            )}
-            {manualEntry && !studio.business_name && (
-              <div className="mt-3 space-y-2">
-                <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Studio / business name" className="h-11" />
-                <Input value={studio.address} onChange={e => setStudio(p => ({ ...p, address: e.target.value }))} placeholder="Address" className="h-11" />
-                <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="Phone (optional)" className="h-11" />
-              </div>
-            )}
-
-            {/* Description + Instagram */}
-            <textarea
-              value={studio.description}
-              onChange={e => setStudio(p => ({ ...p, description: e.target.value }))}
-              placeholder="Short description of your studio (shown to customers)"
-              className="mt-3 w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 resize-none h-20"
-            />
-            <div className="relative mt-2">
-              <Instagram size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input value={studio.instagram} onChange={e => setStudio(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram (optional)" className="pl-9 h-11" />
+            {/* Where do you work? */}
+            <p className="text-xs font-semibold text-gray-500 mt-4 mb-2">Where do you work?</p>
+            <div className="flex flex-wrap gap-2">
+              {([["in_studio", "At my studio"], ["mobile", "I travel to clients"], ["both", "Both"]] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setServiceLocation(val)} className={chip(serviceLocation === val)}>{label}</button>
+              ))}
             </div>
 
             {/* Amenities */}
             <p className="text-xs font-semibold text-gray-500 mt-4 mb-2">Amenities</p>
             <div className="flex flex-wrap gap-2">
-              {AMENITIES.map(a => (
-                <button key={a} onClick={() => toggleArr(amenities, a, setAmenities)} className={chip(amenities.includes(a))}>{a}</button>
-              ))}
+              {AMENITIES.map(a => <button key={a} onClick={() => toggleArr(amenities, a, setAmenities)} className={chip(amenities.includes(a))}>{a}</button>)}
             </div>
 
             {/* Languages */}
             <p className="text-xs font-semibold text-gray-500 mt-4 mb-2">Languages spoken</p>
             <div className="flex flex-wrap gap-2">
-              {LANGUAGES.map(l => (
-                <button key={l} onClick={() => toggleArr(languages, l, setLanguages)} className={chip(languages.includes(l))}>{l}</button>
-              ))}
+              {LANGUAGES.map(l => <button key={l} onClick={() => toggleArr(languages, l, setLanguages)} className={chip(languages.includes(l))}>{l}</button>)}
             </div>
           </CardContent>
         </Card>
@@ -418,20 +448,16 @@ export default function PartnerOnboarding() {
                 const h = hours[d.num];
                 return (
                   <div key={d.num} className="flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => updateHours(d.num, { closed: !h.closed })}
-                      className={`w-16 py-1.5 rounded-lg text-sm font-medium transition ${h.closed ? "bg-gray-100 text-gray-400" : "bg-blue-600 text-white"}`}
-                    >{d.label}</button>
-                    {h.closed ? (
-                      <span className="text-xs text-gray-400">Closed</span>
-                    ) : (
+                    <button onClick={() => updateHours(d.num, { closed: !h.closed })}
+                      className={`w-16 py-1.5 rounded-lg text-sm font-medium transition ${h.closed ? "bg-gray-100 text-gray-400" : "bg-blue-600 text-white"}`}>{d.label}</button>
+                    {h.closed ? <span className="text-xs text-gray-400">Closed</span> : (
                       <div className="flex items-center gap-1 text-sm">
                         <TimeInput value={h.open} onChange={v => updateHours(d.num, { open: v })} />
                         <span className="text-gray-400">–</span>
                         <TimeInput value={h.close} onChange={v => updateHours(d.num, { close: v })} />
                         <span className="text-gray-300 mx-1 text-xs">break</span>
-                        <TimeInput value={h.breakStart} onChange={v => updateHours(d.num, { breakStart: v })} placeholder="--" />
-                        <TimeInput value={h.breakEnd} onChange={v => updateHours(d.num, { breakEnd: v })} placeholder="--" />
+                        <TimeInput value={h.breakStart} onChange={v => updateHours(d.num, { breakStart: v })} />
+                        <TimeInput value={h.breakEnd} onChange={v => updateHours(d.num, { breakEnd: v })} />
                       </div>
                     )}
                   </div>
@@ -451,39 +477,30 @@ export default function PartnerOnboarding() {
                 <div key={i} className="p-3 border border-gray-200 rounded-xl bg-white">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-medium text-gray-500">Therapist {i + 1}</span>
-                    {therapists.length > 1 && (
-                      <button onClick={() => removeTherapist(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
-                    )}
+                    {therapists.length > 1 && <button onClick={() => removeTherapist(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name"
-                      className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })}
-                      className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name" className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
                       {GENDERS.map(g => <option key={g}>{g}</option>)}
                     </select>
                   </div>
                   <p className="text-xs text-gray-400 mt-2 mb-1">Specialties</p>
                   <div className="flex flex-wrap gap-1.5">
                     {MASSAGE_TYPES.map(m => (
-                      <button key={m}
-                        onClick={() => updateTherapist(i, { specialties: t.specialties.includes(m) ? t.specialties.filter(x => x !== m) : [...t.specialties, m] })}
-                        className={chip(t.specialties.includes(m))}>{m}</button>
+                      <button key={m} onClick={() => updateTherapist(i, { specialties: t.specialties.includes(m) ? t.specialties.filter(x => x !== m) : [...t.specialties, m] })} className={chip(t.specialties.includes(m))}>{m}</button>
                     ))}
                   </div>
                   <p className="text-xs text-gray-400 mt-2 mb-1">Working days</p>
                   <div className="flex flex-wrap gap-1.5">
                     {DAYS.map(d => (
-                      <button key={d.num}
-                        onClick={() => updateTherapist(i, { workingDays: t.workingDays.includes(d.num) ? t.workingDays.filter(x => x !== d.num) : [...t.workingDays, d.num] })}
-                        className={chip(t.workingDays.includes(d.num))}>{d.label}</button>
+                      <button key={d.num} onClick={() => updateTherapist(i, { workingDays: t.workingDays.includes(d.num) ? t.workingDays.filter(x => x !== d.num) : [...t.workingDays, d.num] })} className={chip(t.workingDays.includes(d.num))}>{d.label}</button>
                     ))}
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={addTherapist}
-              className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add therapist
             </button>
           </CardContent>
@@ -498,42 +515,50 @@ export default function PartnerOnboarding() {
                 <div key={i} className="p-3 border border-gray-200 rounded-xl bg-white">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-medium text-gray-500">Service {i + 1}</span>
-                    {services.length > 1 && (
-                      <button onClick={() => removeService(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
-                    )}
+                    {services.length > 1 && <button onClick={() => removeService(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name"
-                      className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                    <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)}
-                      className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                    <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
                       {SERVICE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                     </select>
-                    <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)}
-                      className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
                       {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>
                     <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2">
                       <Euro size={13} className="text-gray-400" />
-                      <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0}
-                        className="w-full py-2 text-sm focus:outline-none" />
+                      <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                     </div>
-                    <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))}
-                      className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
                       {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
                     </select>
-                    <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))}
-                      className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 col-span-2">
+                    <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 col-span-2">
                       {[0, 10, 15, 20, 30].map(b => <option key={b} value={b}>{b} min cleanup after</option>)}
                     </select>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={addService}
-              className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add service
             </button>
+
+            {/* Add-ons */}
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <p className="text-sm font-semibold text-gray-700">Add-ons <span className="font-normal text-gray-400">(optional)</span></p>
+              <p className="text-xs text-gray-400 mb-2">Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.</p>
+              {addons.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 mb-2">
+                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder="Add-on name" className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 w-24">
+                    <Euro size={13} className="text-gray-400" />
+                    <input value={a.price} onChange={e => updateAddon(i, { price: Number(e.target.value) })} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
+                  </div>
+                  <button onClick={() => removeAddon(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
+                </div>
+              ))}
+              <button onClick={addAddon} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"><Plus size={12} /> Add an add-on</button>
+            </div>
           </CardContent>
         </Card>
 
@@ -543,23 +568,20 @@ export default function PartnerOnboarding() {
             <SectionTitle n="5" done title="Booking policy" icon={<Shield size={15} />} />
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-700">Free cancellation up to</span>
-              <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))}
-                className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+              <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
                 {[0, 2, 4, 12, 24, 48].map(h => <option key={h} value={h}>{h === 0 ? "No free cancellation" : `${h}h before`}</option>)}
               </select>
             </div>
             <div className="flex items-center justify-between py-2 border-t border-gray-100">
               <span className="text-sm text-gray-700">Require a deposit</span>
-              <button onClick={() => setDepositRequired(v => !v)}
-                className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-blue-600" : "bg-gray-300"}`}>
+              <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-blue-600" : "bg-gray-300"}`}>
                 <span className={`absolute top-0.5 h-5 w-5 bg-white rounded-full transition ${depositRequired ? "left-6" : "left-0.5"}`} />
               </button>
             </div>
             {depositRequired && (
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-700">Deposit amount</span>
-                <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))}
-                  className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
                   {[10, 20, 30, 50, 100].map(p => <option key={p} value={p}>{p}% of price</option>)}
                 </select>
               </div>
@@ -575,15 +597,12 @@ export default function PartnerOnboarding() {
               <h2 className="font-semibold text-white">Create your account</h2>
             </div>
             <div className="space-y-3">
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email"
-                className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400" />
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (6+ characters)"
-                className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400" />
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400" />
+              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (6+ characters)" className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400" />
             </div>
             {error && <p className="text-red-200 text-sm mt-2">{error}</p>}
             <div className="mt-4 space-y-2">
-              <Button onClick={handleGoLive} disabled={loading}
-                className="w-full h-12 bg-white text-blue-700 hover:bg-blue-50 font-semibold text-base rounded-xl flex items-center justify-center gap-2">
+              <Button onClick={handleGoLive} disabled={loading} className="w-full h-12 bg-white text-blue-700 hover:bg-blue-50 font-semibold text-base rounded-xl flex items-center justify-center gap-2">
                 {loading ? <><Loader2 size={16} className="animate-spin" /> Publishing…</> : <><Sparkles size={16} /> Publish my listing</>}
               </Button>
               <p className="text-center text-blue-200 text-xs">Commission-only · No upfront cost · Cancel anytime</p>
@@ -612,14 +631,9 @@ function SectionTitle({ n, done, title, icon }: { n: string; done?: boolean; tit
   );
 }
 
-function TimeInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <input
-      type="time"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-[84px] text-sm px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400"
-    />
+    <input type="time" value={value} onChange={e => onChange(e.target.value)}
+      className="w-[84px] text-sm px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
   );
 }
