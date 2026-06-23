@@ -8,6 +8,8 @@ import {
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const PRESSURE_LEVELS = ["Light", "Medium", "Firm", "Deep"];
+const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
 
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -24,6 +26,11 @@ export default function StudioBookingPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  // Customize
+  const [pressure, setPressure] = useState("Medium");
+  const [focusAreas, setFocusAreas] = useState<string[]>([]);
+  const [addonNames, setAddonNames] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
   const [error, setError] = useState("");
@@ -76,6 +83,14 @@ export default function StudioBookingPage() {
   const times = date
     ? (slotsByDay[date.getDay()] || []).filter(t => !taken.has(`${isoDate(date)}__${t}`))
     : [];
+
+  const addons = profile?.addons ?? [];
+  const addonsTotal = addons
+    .filter((a: any) => addonNames.includes(a.name))
+    .reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
+  const total = (Number(service?.price) || 0) + addonsTotal;
+  const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
+    set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
 
   if (loading) {
     return (
@@ -144,7 +159,11 @@ export default function StudioBookingPage() {
         booking_date: isoDate(date!),
         booking_time: time,
         duration: service.duration ?? 60,
-        price: service.price,
+        price: total,
+        pressure,
+        focus_areas: focusAreas,
+        add_ons: addonNames,
+        notes: notes.trim() || null,
         status: "pending",
       }).select("id").single();
       if (error) throw new Error(error.message);
@@ -165,6 +184,10 @@ export default function StudioBookingPage() {
               booking_time: time,
               duration: service.duration ?? 60,
               spa_name: partner.business_name,
+              pressure,
+              focus_areas: focusAreas,
+              add_ons: addonNames,
+              notes: notes.trim() || null,
             },
           },
         });
@@ -283,9 +306,64 @@ export default function StudioBookingPage() {
           </Section>
         )}
 
-        {/* 4. Your details */}
+        {/* 4. Customize */}
         {service && date && time && (
-          <Section step="4" title="Your details">
+          <Section step="4" title="Customize your session">
+            <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {PRESSURE_LEVELS.map(p => (
+                <button key={p} onClick={() => setPressure(p)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    pressure === p ? "bg-[#A21228] text-white border-[#A21228]" : "bg-white text-gray-600 border-gray-200"
+                  }`}>{p}</button>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold text-gray-500 mb-2">Focus areas</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {FOCUS_AREAS.map(f => (
+                <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    focusAreas.includes(f) ? "bg-[#A21228] text-white border-[#A21228]" : "bg-white text-gray-600 border-gray-200"
+                  }`}>{f}</button>
+              ))}
+            </div>
+
+            {addons.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons</p>
+                <div className="space-y-2 mb-4">
+                  {addons.map((a: any) => {
+                    const on = addonNames.includes(a.name);
+                    return (
+                      <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
+                          on ? "border-[#A21228] bg-[#A21228]/5" : "border-gray-200 bg-white"
+                        }`}>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                          <p className="text-xs text-gray-400">+€{a.price}</p>
+                        </div>
+                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#A21228] bg-[#A21228]" : "border-gray-300"}`}>
+                          {on && <Check size={12} className="text-white" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist</p>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="Anything we should know? Injuries, allergies, preferences…"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228] resize-none h-24" />
+          </Section>
+        )}
+
+        {/* 5. Your details */}
+        {service && date && time && (
+          <Section step="5" title="Your details">
             <div className="space-y-2">
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
@@ -306,7 +384,9 @@ export default function StudioBookingPage() {
             canBook ? "bg-[#A21228] text-white shadow-lg" : "bg-gray-200 text-gray-400"
           }`}>
           {submitting ? <><Loader2 size={18} className="animate-spin" /> Booking…</>
-            : <><CalendarDays size={18} /> {service && date && time ? "Request booking" : "Select a service & time"}</>}
+            : service && date && time
+              ? <><CalendarDays size={18} /> Request booking · €{total}</>
+              : <><CalendarDays size={18} /> Select a service & time</>}
         </button>
 
         {/* Contact footer */}
