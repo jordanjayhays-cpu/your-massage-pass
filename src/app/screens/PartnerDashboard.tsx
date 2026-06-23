@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -78,9 +78,14 @@ export default function PartnerDashboard() {
       <div className="px-6 py-5 border-b border-border bg-card">
         <div className="max-w-xl mx-auto">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Welcome back</p>
-              <h1 className="font-display text-xl font-bold">{partner?.business_name ?? "Partner Dashboard"}</h1>
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate("/")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center" aria-label="Back home">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div>
+                <p className="text-xs text-muted-foreground">Welcome back</p>
+                <h1 className="font-display text-xl font-bold">{partner?.business_name ?? "Partner Dashboard"}</h1>
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={() => navigate("/partner/profile")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
