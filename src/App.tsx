@@ -27,6 +27,7 @@ import AdminInviteStudio from "./app/screens/AdminInviteStudio";
 import StudioSetup from "./app/screens/StudioSetup";
 import StudioPortal from "./app/screens/StudioPortal";
 import StudioBookingPage from "./app/screens/StudioBookingPage";
+import PartnerPhotos from "./app/screens/PartnerPhotos";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="/partner/services" element={<PartnerServices />} />
           <Route path="/partner/calendar" element={<PartnerCalendar />} />
           <Route path="/partner/connect-calendar" element={<PartnerConnectCalendar />} />
+          <Route path="/partner/photos" element={<PartnerPhotos />} />
           <Route path="/survey" element={<Survey />} />
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
           <Route path="/s/:studioId" element={<StudioBookingPage />} />
@@ -86,3 +88,5 @@ const App = () => (
 );
 
 export default App;
+
+
