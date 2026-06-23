@@ -42,7 +42,7 @@ export default function PartnerDashboard() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error("Please sign in"); navigate("/partner/login"); return; }
-    setShareUrl(`${window.location.origin}/s/${user.id}`);
+    setShareUrl(`https://book.massageclub.io/s/${user.id}`);
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
       supabase.from("partners").select("business_name, address, google_calendar_connected, google_calendar_id, auto_confirm_bookings").eq("id", user.id).single(),
