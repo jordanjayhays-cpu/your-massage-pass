@@ -201,6 +201,7 @@ export interface StudioProfile {
   services: any[];
   availability: any[];
   therapists: any[];
+  addons: any[];
 }
 
 export async function fetchStudioProfile(partnerId: string): Promise<StudioProfile | null> {
@@ -213,10 +214,11 @@ export async function fetchStudioProfile(partnerId: string): Promise<StudioProfi
     .single();
   if (!partner) return null;
 
-  const [{ data: services }, { data: availability }, { data: therapists }] = await Promise.all([
+  const [{ data: services }, { data: availability }, { data: therapists }, { data: addons }] = await Promise.all([
     supabase.from("partner_services").select("*").eq("partner_id", partnerId),
     supabase.from("partner_availability").select("*").eq("partner_id", partnerId),
     supabase.from("therapists").select("*").eq("partner_id", partnerId),
+    supabase.from("partner_addons").select("*").eq("partner_id", partnerId),
   ]);
 
   return {
@@ -224,6 +226,7 @@ export async function fetchStudioProfile(partnerId: string): Promise<StudioProfi
     services: services ?? [],
     availability: availability ?? [],
     therapists: therapists ?? [],
+    addons: addons ?? [],
   };
 }
 
