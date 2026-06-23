@@ -148,6 +148,30 @@ export default function StudioBookingPage() {
         status: "pending",
       }).select("id").single();
       if (error) throw new Error(error.message);
+
+      // Fire the notification emails directly (more reliable than the DB webhook).
+      try {
+        await supabase.functions.invoke("notify-studio", {
+          body: {
+            type: "INSERT",
+            table: "bookings",
+            record: {
+              partner_id: partner.id,
+              client_name: name.trim(),
+              client_phone: phone.trim(),
+              client_email: email.trim() || null,
+              massage_type: service.type || service.name,
+              booking_date: isoDate(date!),
+              booking_time: time,
+              duration: service.duration ?? 60,
+              spa_name: partner.business_name,
+            },
+          },
+        });
+      } catch (notifyErr) {
+        console.error("[booking] notify-studio invoke failed:", notifyErr);
+      }
+
       setTaken(prev => new Set(prev).add(`${isoDate(date!)}__${time}`));
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
