@@ -213,15 +213,22 @@ export default function StudioBookingPage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-4 left-0 right-0 px-5 max-w-lg mx-auto">
-          <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur text-white px-3 py-1 rounded-full text-xs font-semibold mb-2">
-            <Sparkles size={12} /> Book your massage
+          <div className="flex items-end gap-3">
+            {partner.logo_url && (
+              <img src={partner.logo_url} alt="" className="h-14 w-14 rounded-2xl object-cover border-2 border-white/80 shadow-lg flex-shrink-0" />
+            )}
+            <div>
+              <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur text-white px-3 py-1 rounded-full text-xs font-semibold mb-2">
+                <Sparkles size={12} /> Book your massage
+              </div>
+              <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
+              {partner.address && (
+                <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
+                  <MapPin size={12} /> {partner.address}
+                </p>
+              )}
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
-          {partner.address && (
-            <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
-              <MapPin size={12} /> {partner.address}
-            </p>
-          )}
         </div>
       </div>
 
@@ -238,6 +245,15 @@ export default function StudioBookingPage() {
             <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
           ))}
         </div>
+
+        {/* Gallery */}
+        {(partner.gallery || []).length > 0 && (
+          <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
+            {partner.gallery.map((url: string, i: number) => (
+              <img key={i} src={url} alt="" className="h-28 w-40 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
+            ))}
+          </div>
+        )}
 
         {/* 1. Service */}
         <Section step="1" title="Choose a service">

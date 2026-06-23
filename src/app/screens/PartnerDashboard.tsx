@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -164,8 +164,10 @@ export default function PartnerDashboard() {
           {/* Quick actions */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Edit Profile", sub: "Name, address, photos", path: "/partner/profile", icon: Settings },
+              { label: "Edit Profile", sub: "Name, address", path: "/partner/profile", icon: Settings },
               { label: "Add Services", sub: "Prices, durations", path: "/partner/services", icon: Star },
+              { label: "Photos", sub: "Cover, logo, gallery", path: "/partner/photos", icon: ImageIcon },
+              { label: "Availability", sub: "Opening hours", path: "/partner/calendar", icon: Clock },
             ].map(({ label, sub, path, icon: Icon }) => (
               <button
                 key={path}
