@@ -154,42 +154,38 @@ export async function fetchShops(): Promise<Shop[]> {
     availabilityByPartner[a.partner_id][a.day_of_week].push(a.time_slot);
   }
 
-  // Flatten into Shop entries (one per service type)
+  // One card PER STUDIO (not per service) — the card opens the studio's page.
+  const DEFAULT_IMG = "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80";
   const shops: Shop[] = [];
   for (const p of partners) {
     const svcs = servicesByPartner[p.id] ?? [];
     if (svcs.length === 0) continue;
-    for (const svc of svcs) {
-      const svcName = svc.name || "Massage";
-      const svcType = svc.type || "Massage";
-      const slug = svcName.toLowerCase().replace(/\s+/g, "-");
-      shops.push({
-        // "__" separator: the partner id is a UUID that itself contains "-",
-        // so we must not split on "-".
-        id: `${p.id}__${slug}`,
-        name: svcName,
-        studio: p.business_name || "Studio",
-        district: p.city ?? "Madrid",
-        address: p.address ?? "",
-        duration: svc.duration ?? 60,
-        rating: 4.5,
-        reviews: 0,
-        image: `https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80`,
-        description: svc.description || p.description || "",
-        tags: [svcType],
-        type: svcType.toLowerCase(),
-        lat: p.latitude ?? 40.4168,
-        lng: p.longitude ?? -3.7033,
-        whatsapp: p.phone ? `+34 ${p.phone.replace(/\s+/g, "")}` : undefined,
-        phone: p.phone,
-        email: p.email,
-        services: svcs.map(s => s.name || "Massage"),
-        basePrice: svc.price,
-        partner_id: p.id,
-        partner_services: svcs,
-        partner_availability: availabilityByPartner[p.id],
-      });
-    }
+    const types = [...new Set(svcs.map(s => s.type).filter(Boolean))];
+    const prices = svcs.map(s => Number(s.price)).filter(n => !isNaN(n));
+    shops.push({
+      id: p.id,                                   // studio id → routes to /s/<id>
+      name: p.business_name || "Studio",
+      studio: p.business_name || "Studio",
+      district: p.city ?? "Madrid",
+      address: p.address ?? "",
+      duration: svcs[0]?.duration ?? 60,
+      rating: 4.5,
+      reviews: 0,
+      image: p.cover_url || (Array.isArray(p.gallery) && p.gallery[0]) || p.logo_url || DEFAULT_IMG,
+      description: p.description || svcs[0]?.description || "",
+      tags: types.length ? types : ["Massage"],
+      type: (svcs[0]?.type || "Massage").toLowerCase(),
+      lat: p.latitude ?? 40.4168,
+      lng: p.longitude ?? -3.7033,
+      whatsapp: p.phone ? `+34 ${p.phone.replace(/\s+/g, "")}` : undefined,
+      phone: p.phone,
+      email: p.email,
+      services: svcs.map(s => s.name || "Massage"),
+      basePrice: prices.length ? Math.min(...prices) : undefined,
+      partner_id: p.id,
+      partner_services: svcs,
+      partner_availability: availabilityByPartner[p.id],
+    });
   }
 
   return shops;

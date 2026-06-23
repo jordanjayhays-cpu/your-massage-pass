@@ -182,6 +182,11 @@ export default function MassageList() {
   }, [tab, realShops]);
 
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
+    // Real (onboarded) studios open their full studio page; demo studios use the old flow.
+    if ("partner_id" in m && (m as Shop).partner_id) {
+      navigate(`/s/${(m as Shop).partner_id}`);
+      return;
+    }
     set({ massageId: m.id, shop: m });
     navigate(`/massages/${m.id}`);
   };
@@ -321,7 +326,11 @@ export default function MassageList() {
                       Book now →
                     </button>
                     <button
-                      onClick={() => navigate(`/massages/${selectedStudio.id}`)}
+                      onClick={() => {
+                        const s = selectedStudio as Shop;
+                        if (s.partner_id) navigate(`/s/${s.partner_id}`);
+                        else navigate(`/massages/${selectedStudio.id}`);
+                      }}
                       className="h-9 px-4 rounded-xl bg-secondary text-foreground text-xs font-semibold"
                     >
                       More info
