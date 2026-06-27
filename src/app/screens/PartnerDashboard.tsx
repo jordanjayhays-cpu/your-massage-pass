@@ -231,6 +231,7 @@ export default function PartnerDashboard() {
               { label: "Add Services", sub: "Prices, durations", path: "/partner/services", icon: Star },
               { label: "Photos", sub: "Cover, logo, gallery", path: "/partner/photos", icon: ImageIcon },
               { label: "Availability", sub: "Opening hours", path: "/partner/calendar", icon: Clock },
+              { label: "Clients", sub: "History & contacts", path: "/partner/clients", icon: Users },
             ].map(({ label, sub, path, icon: Icon }) => (
               <button
                 key={path}

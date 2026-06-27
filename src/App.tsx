@@ -1,4 +1,3 @@
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -29,6 +28,7 @@ import StudioSetup from "./app/screens/StudioSetup";
 import StudioPortal from "./app/screens/StudioPortal";
 import StudioBookingPage from "./app/screens/StudioBookingPage";
 import PartnerPhotos from "./app/screens/PartnerPhotos";
+import PartnerClients from "./app/screens/PartnerClients";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +72,7 @@ const App = () => (
           <Route path="/partner/calendar" element={<PartnerCalendar />} />
           <Route path="/partner/connect-calendar" element={<PartnerConnectCalendar />} />
           <Route path="/partner/photos" element={<PartnerPhotos />} />
+          <Route path="/partner/clients" element={<PartnerClients />} />
           <Route path="/survey" element={<Survey />} />
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
           <Route path="/s/:studioId" element={<StudioBookingPage />} />
@@ -89,4 +90,3 @@ const App = () => (
 );
 
 export default App;
-
