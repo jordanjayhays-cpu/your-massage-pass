@@ -29,6 +29,7 @@ import StudioPortal from "./app/screens/StudioPortal";
 import StudioBookingPage from "./app/screens/StudioBookingPage";
 import PartnerPhotos from "./app/screens/PartnerPhotos";
 import PartnerClients from "./app/screens/PartnerClients";
+import MyBookings from "./app/screens/MyBookings";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="discovery" element={<Discovery />} />
             <Route path="discovery/quiz" element={<Quiz />} />
             <Route path="discovery/:type" element={<MassageType />} />
+            <Route path="bookings" element={<MyBookings />} />
           </Route>
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Login />} />
@@ -60,6 +62,7 @@ const App = () => (
             <Route path="discovery" element={<Discovery />} />
             <Route path="discovery/quiz" element={<Quiz />} />
             <Route path="discovery/:type" element={<MassageType />} />
+            <Route path="bookings" element={<MyBookings />} />
           </Route>
           <Route path="/landing" element={<Index />} />
           {/* Partner Portal Routes */}

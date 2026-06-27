@@ -200,13 +200,22 @@ export default function MassageList() {
             <p className="text-xs uppercase tracking-widest text-primary font-semibold">Madrid</p>
             <h1 className="font-display text-2xl font-bold text-foreground mt-1">Find your escape</h1>
           </div>
-          <button
-            onClick={() => navigate("/discovery")}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-gradient-gold text-foreground text-xs font-semibold shadow-gold hover:opacity-90 transition"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            Discover
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/app/bookings")}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-card border border-border text-foreground text-xs font-semibold hover:border-primary/50 transition"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              My bookings
+            </button>
+            <button
+              onClick={() => navigate("/discovery")}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-gradient-gold text-foreground text-xs font-semibold shadow-gold hover:opacity-90 transition"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Discover
+            </button>
+          </div>
         </div>
 
         {/* Quiz CTA */}
