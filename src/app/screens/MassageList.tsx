@@ -6,8 +6,9 @@ import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from 
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "../lib/googleMaps";
-import { fetchShops } from "@/lib/supabase";
+import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+
 
 type Tab = "list" | "map";
 
