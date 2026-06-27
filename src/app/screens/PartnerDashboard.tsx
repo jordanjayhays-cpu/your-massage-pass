@@ -19,6 +19,8 @@ type Booking = {
   focus_areas?: string[];
   add_ons?: string[];
   notes?: string;
+  allergies?: string;
+  health_notes?: string;
   price?: number;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
