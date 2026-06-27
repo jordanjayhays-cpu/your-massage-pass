@@ -65,6 +65,7 @@ const App = () => (
             <Route path="discovery/quiz" element={<Quiz />} />
             <Route path="discovery/:type" element={<MassageType />} />
             <Route path="bookings" element={<MyBookings />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/landing" element={<Index />} />
           {/* Partner Portal Routes */}
