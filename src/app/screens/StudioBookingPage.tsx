@@ -36,6 +36,9 @@ export default function StudioBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
   const [error, setError] = useState("");
+  const [profileAllergies, setProfileAllergies] = useState<string>("");
+  const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
+
 
   useEffect(() => {
     if (!studioId) return;
