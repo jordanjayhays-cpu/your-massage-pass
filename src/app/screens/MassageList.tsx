@@ -55,6 +55,23 @@ export default function MassageList() {
     });
   }, []);
 
+  // Load signed-in user's avatar for the header profile button
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!cancelled && data?.avatar_url) setAvatarUrl(data.avatar_url);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+
   // Combined shop list: onboarded studios from the DB + the curated demo
   // studios, so real listings add to (rather than replace) the existing ones.
   const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
