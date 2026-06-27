@@ -14,6 +14,7 @@ type Booking = {
   massage_type: string;
   booking_date: string;
   booking_time: string;
+  duration?: number;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
 };
@@ -41,6 +42,8 @@ export default function PartnerDashboard() {
   const [calYear, setCalYear] = useState(now0.getFullYear());
   const [calMonth, setCalMonth] = useState(now0.getMonth()); // 0-11
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
+  const [calView, setCalView] = useState<"month" | "week">("month");
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -99,6 +102,26 @@ export default function PartnerDashboard() {
     setCalYear(d.getFullYear());
     setCalMonth(d.getMonth());
   };
+
+  // Week view: 7 days (Monday-first) for the current weekOffset.
+  const wkBase = new Date();
+  const wkMon = new Date(wkBase);
+  wkMon.setDate(wkBase.getDate() - ((wkBase.getDay() + 6) % 7) + weekOffset * 7);
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(wkMon); d.setDate(wkMon.getDate() + i);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  });
+  const weekLabel = `${new Date(weekDays[0] + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${new Date(weekDays[6] + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  // Time range for the grid — defaults to 8:00–21:00, widened if a booking falls outside.
+  const HOUR_PX = 44;
+  let startH = 8, endH = 21;
+  for (const ds of weekDays) for (const b of byDate[ds] || []) {
+    const [h, m] = b.booking_time.split(":").map(Number);
+    startH = Math.min(startH, h);
+    endH = Math.max(endH, Math.ceil((h * 60 + m + (b.duration || 60)) / 60));
+  }
+  startH = Math.max(0, startH); endH = Math.min(24, endH);
+  const weekdayAbbr = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const confirmedThisMonth = bookings.filter(b => {
     const d = new Date(b.booking_date);
     const now = new Date();
@@ -293,52 +316,117 @@ export default function PartnerDashboard() {
           {/* Month calendar — days with bookings are dotted; tap a day to see them */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-display text-base font-bold">Calendar</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-base font-bold">Calendar</h2>
+                <div className="flex rounded-lg bg-secondary p-0.5 text-xs font-semibold">
+                  <button onClick={() => setCalView("month")} className={`px-2.5 py-1 rounded-md ${calView === "month" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>Month</button>
+                  <button onClick={() => setCalView("week")} className={`px-2.5 py-1 rounded-md ${calView === "week" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>Week</button>
+                </div>
+              </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => shiftMonth(-1)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
+                <button onClick={() => calView === "month" ? shiftMonth(-1) : setWeekOffset(weekOffset - 1)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="text-sm font-semibold w-32 text-center">{monthLabel}</span>
-                <button onClick={() => shiftMonth(1)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
+                <span className="text-xs font-semibold w-24 text-center">{calView === "month" ? monthLabel : weekLabel}</span>
+                <button onClick={() => calView === "month" ? shiftMonth(1) : setWeekOffset(weekOffset + 1)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <Card className="bg-card border-border">
-              <CardContent className="p-3">
-                <div className="grid grid-cols-7 gap-1 mb-1">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
-                    <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {cells.map((dateStr, i) => {
-                    if (!dateStr) return <div key={`e${i}`} />;
-                    const count = byDate[dateStr]?.length || 0;
-                    const isToday = dateStr === todayISO();
-                    const isSelected = dateStr === selectedDate;
-                    const dayNum = Number(dateStr.split("-")[2]);
-                    return (
-                      <button
-                        key={dateStr}
-                        onClick={() => setSelectedDate(dateStr)}
-                        className={`relative aspect-square rounded-lg flex items-center justify-center text-sm transition ${
-                          isSelected ? "bg-primary text-primary-foreground font-bold"
-                            : isToday ? "bg-primary/10 text-primary font-semibold"
-                              : "hover:bg-secondary text-foreground"
-                        }`}
-                      >
-                        {dayNum}
-                        {count > 0 && (
-                          <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white" : "bg-primary"}`} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            {calView === "month" && (
+              <Card className="bg-card border-border">
+                <CardContent className="p-3">
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {weekdayAbbr.map(d => (
+                      <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {cells.map((dateStr, i) => {
+                      if (!dateStr) return <div key={`e${i}`} />;
+                      const count = byDate[dateStr]?.length || 0;
+                      const isToday = dateStr === todayISO();
+                      const isSelected = dateStr === selectedDate;
+                      const dayNum = Number(dateStr.split("-")[2]);
+                      return (
+                        <button
+                          key={dateStr}
+                          onClick={() => setSelectedDate(dateStr)}
+                          className={`relative aspect-square rounded-lg flex items-center justify-center text-sm transition ${
+                            isSelected ? "bg-primary text-primary-foreground font-bold"
+                              : isToday ? "bg-primary/10 text-primary font-semibold"
+                                : "hover:bg-secondary text-foreground"
+                          }`}
+                        >
+                          {dayNum}
+                          {count > 0 && (
+                            <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white" : "bg-primary"}`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {calView === "week" && (
+              <Card className="bg-card border-border">
+                <CardContent className="p-2">
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[560px]">
+                      {/* Day headers */}
+                      <div className="grid mb-1" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
+                        <div />
+                        {weekDays.map(ds => {
+                          const d = new Date(ds + "T00:00:00");
+                          const isToday = ds === todayISO();
+                          const isSel = ds === selectedDate;
+                          return (
+                            <button key={ds} onClick={() => setSelectedDate(ds)}
+                              className={`text-center py-1 rounded-md ${isSel ? "bg-primary text-primary-foreground" : isToday ? "text-primary" : "text-muted-foreground"}`}>
+                              <div className="text-[9px] uppercase">{weekdayAbbr[(d.getDay() + 6) % 7]}</div>
+                              <div className="text-xs font-bold">{d.getDate()}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Time grid */}
+                      <div className="relative" style={{ height: (endH - startH) * HOUR_PX }}>
+                        {Array.from({ length: endH - startH + 1 }, (_, i) => startH + i).map(hr => (
+                          <div key={hr} className="absolute left-0 right-0 border-t border-border/50" style={{ top: (hr - startH) * HOUR_PX }}>
+                            <span className="absolute -top-2 left-0 w-8 text-right pr-1 text-[9px] text-muted-foreground">{hr}:00</span>
+                          </div>
+                        ))}
+                        <div className="absolute inset-0 grid" style={{ gridTemplateColumns: "36px repeat(7, 1fr)" }}>
+                          <div />
+                          {weekDays.map(ds => (
+                            <div key={ds} className="relative border-l border-border/40">
+                              {(byDate[ds] || []).map(b => {
+                                const [h, m] = b.booking_time.split(":").map(Number);
+                                const top = ((h * 60 + m) - startH * 60) / 60 * HOUR_PX;
+                                const height = Math.max(20, ((b.duration || 60) / 60) * HOUR_PX);
+                                return (
+                                  <button key={b.id} onClick={() => setSelectedDate(ds)}
+                                    className={`absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 text-left overflow-hidden ${
+                                      b.status === "confirmed" ? "bg-green-500/85 text-white" : "bg-primary/85 text-white"
+                                    }`}
+                                    style={{ top, height }}>
+                                    <div className="text-[9px] font-semibold leading-tight truncate">{b.booking_time} {b.client_name}</div>
+                                    <div className="text-[8px] leading-tight truncate opacity-90">{b.massage_type}</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Selected day's appointments */}
             <div className="mt-3">
