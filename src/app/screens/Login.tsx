@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, Star, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
+
 
 // Store user info in localStorage for booking flow
 const USER_KEY = "mm-user";
@@ -21,6 +22,23 @@ export default function Login() {
   const [name, setName] = useState(getStoredUser()?.name ?? "");
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
   const [loading, setLoading] = useState(false);
+
+  // If the user is already signed in (or completes Google OAuth and lands back here),
+  // route them straight to the studios map.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session) navigate("/app/massages", { replace: true });
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") navigate("/app/massages", { replace: true });
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
 
   const handleEmailContinue = async () => {
     if (!email.includes("@")) {

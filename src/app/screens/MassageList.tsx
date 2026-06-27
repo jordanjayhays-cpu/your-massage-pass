@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Clock, List, Map as MapIcon, Sparkles, Play, Navigation, LocateFixed } from "lucide-react";
+import { Search, Star, MapPin, Clock, List, Map as MapIcon, Sparkles, Play, Navigation, LocateFixed, UserCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "../lib/googleMaps";
-import { fetchShops } from "@/lib/supabase";
+import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+
 
 type Tab = "list" | "map";
 
@@ -37,6 +38,8 @@ export default function MassageList() {
   const [geoReady, setGeoReady] = useState(false);
   const [realShops, setRealShops] = useState<Shop[]>([]);
   const [shopsLoading, setShopsLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -51,6 +54,23 @@ export default function MassageList() {
       setShopsLoading(false);
     });
   }, []);
+
+  // Load signed-in user's avatar for the header profile button
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!cancelled && data?.avatar_url) setAvatarUrl(data.avatar_url);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   // Combined shop list: onboarded studios from the DB + the curated demo
   // studios, so real listings add to (rather than replace) the existing ones.
@@ -201,6 +221,18 @@ export default function MassageList() {
             <h1 className="font-display text-2xl font-bold text-foreground mt-1">Find your escape</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/app/profile")}
+              aria-label="Profile"
+              className="h-9 w-9 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <UserCircle className="h-5 w-5 text-muted-foreground" />
+              )}
+            </button>
+
             <button
               onClick={() => navigate("/app/bookings")}
               className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-card border border-border text-foreground text-xs font-semibold hover:border-primary/50 transition"
