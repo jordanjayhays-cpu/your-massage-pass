@@ -231,8 +231,11 @@ export default function StudioBookingPage() {
         focus_areas: focusAreas,
         add_ons: addonNames,
         notes: notes.trim() || null,
+        allergies: profileAllergies || null,
+        health_notes: profileHealthNotes || null,
         status: "pending",
       }).select("id").single();
+
       if (error) throw new Error(error.message);
 
       // Fire the notification emails directly (more reliable than the DB webhook).
