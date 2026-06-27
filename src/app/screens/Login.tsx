@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, Star, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
+
 
 // Store user info in localStorage for booking flow
 const USER_KEY = "mm-user";
