@@ -63,7 +63,7 @@ export default function PartnerConnectCalendar() {
     setConnecting(true);
 
     // Google must redirect to the Supabase function (it exchanges the code for tokens).
-    const redirectUri = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/google-calendar-oauth";
+    const redirectUri = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/google-calendar-oauth?apikey=sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
     const state = partner.id; // so the function knows which studio to save tokens for
 
     const scopes = [
