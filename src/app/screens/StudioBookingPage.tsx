@@ -135,6 +135,18 @@ export default function StudioBookingPage() {
       `Hi ${partner.business_name}! I just booked ${service?.name} on ${prettyDate} at ${time}. Name: ${name}. (Ref ${done.ref})`
     );
     const waLink = waDigits ? `https://wa.me/${waDigits}?text=${waMsg}` : null;
+    // Let the customer drop the appointment into their own calendar.
+    const gcal = (() => {
+      if (!date || !time || !service) return null;
+      const [h, m] = time.split(":").map(Number);
+      const start = new Date(date); start.setHours(h, m, 0, 0);
+      const end = new Date(start.getTime() + (service.duration || 60) * 60000);
+      const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      const text = encodeURIComponent(`${service.name} — ${partner.business_name}`);
+      const details = encodeURIComponent(`Massage Club booking · Ref ${done.ref}`);
+      const loc = encodeURIComponent(partner.address || partner.business_name || "");
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
+    })();
     return (
       <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white flex flex-col items-center justify-center p-6 text-center">
         <div className="h-16 w-16 rounded-full bg-emerald-500 flex items-center justify-center mb-4">
@@ -146,12 +158,20 @@ export default function StudioBookingPage() {
         <p className="text-gray-500 text-sm mt-4 max-w-sm">
           {partner.business_name} will confirm your appointment shortly.
         </p>
-        {waLink && (
-          <a href={waLink} target="_blank" rel="noreferrer"
-            className="mt-6 inline-flex items-center gap-2 h-12 px-6 rounded-full bg-[#25D366] text-white font-semibold shadow-lg">
-            <MessageCircle size={18} /> Confirm on WhatsApp
-          </a>
-        )}
+        <div className="mt-6 flex flex-col items-center gap-3 w-full max-w-xs">
+          {waLink && (
+            <a href={waLink} target="_blank" rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-[#25D366] text-white font-semibold shadow-lg">
+              <MessageCircle size={18} /> Confirm on WhatsApp
+            </a>
+          )}
+          {gcal && (
+            <a href={gcal} target="_blank" rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
+              <CalendarDays size={18} /> Add to my calendar
+            </a>
+          )}
+        </div>
       </div>
     );
   }
@@ -426,16 +446,18 @@ export default function StudioBookingPage() {
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
-        {/* Sticky-ish CTA */}
-        <button onClick={handleBook} disabled={!canBook || submitting}
-          className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
-            canBook ? "bg-[#A21228] text-white shadow-lg" : "bg-gray-200 text-gray-400"
-          }`}>
-          {submitting ? <><Loader2 size={18} className="animate-spin" /> Booking…</>
-            : service && date && time
-              ? <><CalendarDays size={18} /> Request booking · €{total}</>
-              : <><CalendarDays size={18} /> Select a service & time</>}
-        </button>
+        {/* Sticky CTA — always reachable while scrolling */}
+        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#faf6ee] via-[#faf6ee] to-transparent">
+          <button onClick={handleBook} disabled={!canBook || submitting}
+            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
+              canBook ? "bg-[#A21228] text-white shadow-lg" : "bg-gray-200 text-gray-400"
+            }`}>
+            {submitting ? <><Loader2 size={18} className="animate-spin" /> Booking…</>
+              : service && date && time
+                ? <><CalendarDays size={18} /> Request booking · €{total}</>
+                : <><CalendarDays size={18} /> Select a service & time</>}
+          </button>
+        </div>
 
         {/* Contact footer */}
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
