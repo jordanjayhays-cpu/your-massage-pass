@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -11,12 +10,15 @@ type Booking = {
   id: string;
   client_name: string;
   client_email: string;
+  client_phone?: string;
   massage_type: string;
   booking_date: string;
   booking_time: string;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
 };
+
+const todayISO = () => new Date().toISOString().split("T")[0];
 
 type Partner = {
   business_name: string;
@@ -66,6 +68,11 @@ export default function PartnerDashboard() {
 
   const pendingCount = bookings.filter(b => b.status === "pending").length;
   const todayBookings = bookings.filter(b => b.booking_date === new Date().toISOString().split("T")[0]);
+
+  // Future (today onward), not cancelled, soonest first — what the studio needs to prepare for.
+  const upcoming = bookings
+    .filter(b => b.status !== "cancelled" && b.booking_date >= todayISO())
+    .sort((a, b) => `${a.booking_date} ${a.booking_time}`.localeCompare(`${b.booking_date} ${b.booking_time}`));
   const confirmedThisMonth = bookings.filter(b => {
     const d = new Date(b.booking_date);
     const now = new Date();
@@ -78,14 +85,9 @@ export default function PartnerDashboard() {
       <div className="px-6 py-5 border-b border-border bg-card">
         <div className="max-w-xl mx-auto">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={() => navigate("/")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center" aria-label="Back home">
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <div>
-                <p className="text-xs text-muted-foreground">Welcome back</p>
-                <h1 className="font-display text-xl font-bold">{partner?.business_name ?? "Partner Dashboard"}</h1>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Welcome back</p>
+              <h1 className="font-display text-xl font-bold">{partner?.business_name ?? "Partner Dashboard"}</h1>
             </div>
             <div className="flex gap-2">
               <button onClick={() => navigate("/partner/profile")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
@@ -261,6 +263,60 @@ export default function PartnerDashboard() {
               </div>
             </div>
           )}
+
+          {/* Upcoming bookings — what's coming, with one-tap contact */}
+          <div>
+            <h2 className="font-display text-base font-bold mb-3">
+              Upcoming bookings {upcoming.length > 0 && <span className="text-muted-foreground font-normal">({upcoming.length})</span>}
+            </h2>
+            {upcoming.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="p-6 text-center">
+                  <Calendar className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Nothing booked yet. Share your link to get your first booking.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {upcoming.map(b => {
+                  const waDigits = (b.client_phone || "").replace(/\D/g, "");
+                  const prettyDate = new Date(b.booking_date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+                  return (
+                    <Card key={b.id} className="bg-card border-border">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm">{b.client_name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type}</p>
+                            <p className="text-xs text-primary font-semibold mt-1">📅 {prettyDate} at {b.booking_time}</p>
+                          </div>
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${
+                            b.status === "confirmed" ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"
+                          }`}>{b.status}</span>
+                        </div>
+                        {(waDigits || b.client_email) && (
+                          <div className="flex gap-2 mt-3">
+                            {waDigits && (
+                              <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer"
+                                className="flex-1 h-9 rounded-xl bg-[#25D366] text-white text-xs font-semibold flex items-center justify-center gap-1.5">
+                                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                              </a>
+                            )}
+                            {b.client_email && (
+                              <a href={`mailto:${b.client_email}?subject=${encodeURIComponent(`Your booking at ${partner?.business_name ?? "our studio"}`)}`}
+                                className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center gap-1.5">
+                                ✉️ Email
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Recent bookings */}
           <div>
