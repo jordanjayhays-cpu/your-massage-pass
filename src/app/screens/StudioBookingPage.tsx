@@ -258,6 +258,8 @@ export default function StudioBookingPage() {
               focus_areas: focusAreas,
               add_ons: addonNames,
               notes: notes.trim() || null,
+              allergies: profileAllergies || null,
+              health_notes: profileHealthNotes || null,
             },
           },
         });
