@@ -29,6 +29,7 @@ import StudioPortal from "./app/screens/StudioPortal";
 import StudioBookingPage from "./app/screens/StudioBookingPage";
 import PartnerPhotos from "./app/screens/PartnerPhotos";
 import PartnerClients from "./app/screens/PartnerClients";
+import MyBookings from "./app/screens/MyBookings";
 
 const queryClient = new QueryClient();
 
