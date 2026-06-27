@@ -23,6 +23,23 @@ export default function Login() {
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
   const [loading, setLoading] = useState(false);
 
+  // If the user is already signed in (or completes Google OAuth and lands back here),
+  // route them straight to the studios map.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session) navigate("/app/massages", { replace: true });
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") navigate("/app/massages", { replace: true });
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+
   const handleEmailContinue = async () => {
     if (!email.includes("@")) {
       toast.error("Please enter a valid email");
