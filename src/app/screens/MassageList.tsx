@@ -38,6 +38,8 @@ export default function MassageList() {
   const [geoReady, setGeoReady] = useState(false);
   const [realShops, setRealShops] = useState<Shop[]>([]);
   const [shopsLoading, setShopsLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
