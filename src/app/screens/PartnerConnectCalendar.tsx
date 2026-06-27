@@ -39,11 +39,12 @@ export default function PartnerConnectCalendar() {
 
     const { data } = await supabase
       .from("partners")
-      .select("business_name, google_calendar_connected, google_calendar_id, auto_confirm_bookings")
+      .select("id, business_name, google_calendar_connected, google_calendar_id, auto_confirm_bookings")
       .eq("id", user.id)
       .single();
 
-    setPartner(data);
+    // Make sure we always have the studio id for the OAuth "state" (fixes state=undefined).
+    setPartner(data ? { ...data, id: data.id ?? user.id } : { id: user.id } as any);
     setLoading(false);
   };
 
