@@ -222,6 +222,18 @@ export default function MassageList() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => navigate("/app/profile")}
+              aria-label="Profile"
+              className="h-9 w-9 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                <UserCircle className="h-5 w-5 text-muted-foreground" />
+              )}
+            </button>
+
+            <button
               onClick={() => navigate("/app/bookings")}
               className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-card border border-border text-foreground text-xs font-semibold hover:border-primary/50 transition"
             >
