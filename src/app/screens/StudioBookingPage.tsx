@@ -76,13 +76,20 @@ export default function StudioBookingPage() {
       setName(prev => prev || fullName);
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, phone")
+        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes")
         .eq("id", user.id)
         .single();
       if (prof) {
         setName(prev => prev || prof.full_name || "");
         setPhone(prev => prev || prof.phone || "");
+        if (prof.preferred_pressure) setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
+        if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
+          setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
+        }
+        setProfileAllergies(prof.allergies || "");
+        setProfileHealthNotes(prof.health_notes || "");
       }
+
     })();
   }, []);
 
