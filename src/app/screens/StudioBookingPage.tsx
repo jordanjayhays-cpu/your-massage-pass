@@ -63,7 +63,7 @@ export default function StudioBookingPage() {
     })();
   }, [studioId]);
 
-  // Pre-fill name + email if the customer is signed in.
+  // Pre-fill name + email + phone if the customer is signed in.
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -71,8 +71,18 @@ export default function StudioBookingPage() {
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .single();
+      if (prof) {
+        setName(prev => prev || prof.full_name || "");
+        setPhone(prev => prev || prof.phone || "");
+      }
     })();
   }, []);
+
 
   // availability grouped by weekday (0=Sun..6=Sat)
   const slotsByDay = useMemo(() => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { Loader2, LogOut, CalendarDays, ArrowLeft } from "lucide-react";
+import { Loader2, LogOut, CalendarDays, ArrowLeft, UserCircle2 } from "lucide-react";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -138,12 +138,20 @@ export default function MyBookings() {
             <h1 className="text-2xl font-bold text-gray-900">My bookings</h1>
             <p className="text-xs text-gray-500 mt-0.5 truncate">Signed in as {name}</p>
           </div>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded-full border border-gray-200 bg-white"
-          >
-            <LogOut size={14} /> Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/app/profile")}
+              className="flex items-center gap-1 text-sm text-gray-700 px-3 py-1.5 rounded-full border border-gray-200 bg-white"
+            >
+              <UserCircle2 size={14} /> Profile
+            </button>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded-full border border-gray-200 bg-white"
+            >
+              <LogOut size={14} /> Sign out
+            </button>
+          </div>
         </div>
 
         <section className="mt-6">
