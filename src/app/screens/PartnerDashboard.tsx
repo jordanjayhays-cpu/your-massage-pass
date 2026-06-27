@@ -531,7 +531,7 @@ export default function PartnerDashboard() {
         const d = detail;
         const waDigits = (d.client_phone || "").replace(/\D/g, "");
         const prettyDate = new Date(d.booking_date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        const hasExtras = d.pressure || (d.focus_areas || []).length || (d.add_ons || []).length || d.notes;
+        const hasExtras = d.pressure || (d.focus_areas || []).length || (d.add_ons || []).length || d.notes || d.allergies || d.health_notes;
         return (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDetail(null)}>
             <div className="w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-2xl border border-border max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
