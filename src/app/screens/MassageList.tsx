@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Clock, List, Map as MapIcon, Sparkles, Play, Navigation, LocateFixed } from "lucide-react";
+import { Search, Star, MapPin, Clock, List, Map as MapIcon, Sparkles, Play, Navigation, LocateFixed, UserCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
