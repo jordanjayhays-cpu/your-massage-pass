@@ -36,6 +36,9 @@ export default function StudioBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
   const [error, setError] = useState("");
+  const [profileAllergies, setProfileAllergies] = useState<string>("");
+  const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
+
 
   useEffect(() => {
     if (!studioId) return;
@@ -73,13 +76,20 @@ export default function StudioBookingPage() {
       setName(prev => prev || fullName);
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, phone")
+        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes")
         .eq("id", user.id)
         .single();
       if (prof) {
         setName(prev => prev || prof.full_name || "");
         setPhone(prev => prev || prof.phone || "");
+        if (prof.preferred_pressure) setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
+        if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
+          setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
+        }
+        setProfileAllergies(prof.allergies || "");
+        setProfileHealthNotes(prof.health_notes || "");
       }
+
     })();
   }, []);
 
@@ -221,8 +231,11 @@ export default function StudioBookingPage() {
         focus_areas: focusAreas,
         add_ons: addonNames,
         notes: notes.trim() || null,
+        allergies: profileAllergies || null,
+        health_notes: profileHealthNotes || null,
         status: "pending",
       }).select("id").single();
+
       if (error) throw new Error(error.message);
 
       // Fire the notification emails directly (more reliable than the DB webhook).
@@ -245,6 +258,8 @@ export default function StudioBookingPage() {
               focus_areas: focusAreas,
               add_ons: addonNames,
               notes: notes.trim() || null,
+              allergies: profileAllergies || null,
+              health_notes: profileHealthNotes || null,
             },
           },
         });

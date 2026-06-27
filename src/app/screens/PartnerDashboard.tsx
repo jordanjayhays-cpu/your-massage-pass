@@ -19,6 +19,8 @@ type Booking = {
   focus_areas?: string[];
   add_ons?: string[];
   notes?: string;
+  allergies?: string;
+  health_notes?: string;
   price?: number;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
@@ -529,7 +531,7 @@ export default function PartnerDashboard() {
         const d = detail;
         const waDigits = (d.client_phone || "").replace(/\D/g, "");
         const prettyDate = new Date(d.booking_date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        const hasExtras = d.pressure || (d.focus_areas || []).length || (d.add_ons || []).length || d.notes;
+        const hasExtras = d.pressure || (d.focus_areas || []).length || (d.add_ons || []).length || d.notes || d.allergies || d.health_notes;
         return (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDetail(null)}>
             <div className="w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-2xl border border-border max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -556,6 +558,8 @@ export default function PartnerDashboard() {
                     {(d.focus_areas || []).length > 0 && <p><span className="text-muted-foreground">Focus areas:</span> {d.focus_areas!.join(", ")}</p>}
                     {(d.add_ons || []).length > 0 && <p><span className="text-muted-foreground">Add-ons:</span> {d.add_ons!.join(", ")}</p>}
                     {d.notes && <p><span className="text-muted-foreground">Notes:</span> {d.notes}</p>}
+                    {d.allergies && <p><span className="text-muted-foreground">Allergies:</span> {d.allergies}</p>}
+                    {d.health_notes && <p><span className="text-muted-foreground">Health notes:</span> {d.health_notes}</p>}
                   </div>
                 ) : null}
 
