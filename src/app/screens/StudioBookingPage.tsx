@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
@@ -19,7 +18,9 @@ export default function StudioBookingPage() {
   const { studioId } = useParams();
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [taken, setTaken] = useState<Set<string>>(new Set());
+  // How many bookings already exist for each `date__time` slot.
+  // A slot is full only when this count reaches the studio's therapist count.
+  const [slotCounts, setSlotCounts] = useState<Map<string, number>>(new Map());
 
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [date, setDate] = useState<Date | null>(null);
@@ -42,7 +43,8 @@ export default function StudioBookingPage() {
       const p = await fetchStudioProfile(studioId);
       setProfile(p);
       if (p) {
-        // Load already-booked slots so we never offer a taken time.
+        // Count how many bookings already exist per slot, so a slot only
+        // disappears once EVERY therapist is busy at that time (real capacity).
         const today = isoDate(new Date());
         const { data } = await supabase
           .from("bookings")
@@ -50,7 +52,12 @@ export default function StudioBookingPage() {
           .eq("partner_id", studioId)
           .neq("status", "cancelled")
           .gte("booking_date", today);
-        setTaken(new Set((data || []).map((b: any) => `${b.booking_date}__${b.booking_time}`)));
+        const counts = new Map<string, number>();
+        for (const b of data || []) {
+          const key = `${b.booking_date}__${b.booking_time}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+        setSlotCounts(counts);
       }
       setLoading(false);
     })();
@@ -80,9 +87,17 @@ export default function StudioBookingPage() {
   }, [slotsByDay]);
 
   const service = profile?.services.find(s => s.id === serviceId) || null;
-  // Hide any slot already taken on the selected date (no double-booking).
+
+  // Studio capacity = how many therapists work in parallel (min 1).
+  const therapistCount = Math.max(1, profile?.therapists?.length || 0);
+
+  // Spots still open for a given slot on the selected date.
+  const remainingFor = (t: string) =>
+    date ? therapistCount - (slotCounts.get(`${isoDate(date)}__${t}`) || 0) : 0;
+
+  // Only show a time while at least one therapist is still free for it.
   const times = date
-    ? (slotsByDay[date.getDay()] || []).filter(t => !taken.has(`${isoDate(date)}__${t}`))
+    ? (slotsByDay[date.getDay()] || []).filter(t => remainingFor(t) > 0)
     : [];
 
   const addons = profile?.addons ?? [];
@@ -196,7 +211,12 @@ export default function StudioBookingPage() {
         console.error("[booking] notify-studio invoke failed:", notifyErr);
       }
 
-      setTaken(prev => new Set(prev).add(`${isoDate(date!)}__${time}`));
+      setSlotCounts(prev => {
+        const next = new Map(prev);
+        const key = `${isoDate(date!)}__${time}`;
+        next.set(key, (next.get(key) || 0) + 1);
+        return next;
+      });
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
       setError(e?.message || "Something went wrong. Please try again.");
@@ -312,12 +332,23 @@ export default function StudioBookingPage() {
               <p className="text-sm text-gray-400">Fully booked that day — try another date.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {times.map(t => (
-                  <button key={t} onClick={() => setTime(t)}
-                    className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
-                      time === t ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
-                    }`}>{t}</button>
-                ))}
+                {times.map(t => {
+                  const left = remainingFor(t);
+                  const lowStock = therapistCount > 1 && left < therapistCount;
+                  return (
+                    <button key={t} onClick={() => setTime(t)}
+                      className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
+                        time === t ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
+                      }`}>
+                      {t}
+                      {lowStock && (
+                        <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
+                          {left} left
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Section>
