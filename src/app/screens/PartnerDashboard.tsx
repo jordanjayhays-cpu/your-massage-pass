@@ -15,6 +15,11 @@ type Booking = {
   booking_date: string;
   booking_time: string;
   duration?: number;
+  pressure?: string;
+  focus_areas?: string[];
+  add_ons?: string[];
+  notes?: string;
+  price?: number;
   status: "pending" | "confirmed" | "cancelled";
   created_at: string;
 };
@@ -44,6 +49,7 @@ export default function PartnerDashboard() {
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
   const [calView, setCalView] = useState<"month" | "week">("month");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [detail, setDetail] = useState<Booking | null>(null); // booking shown in the detail popup
 
   useEffect(() => {
     loadData();
@@ -408,7 +414,7 @@ export default function PartnerDashboard() {
                                 const top = ((h * 60 + m) - startH * 60) / 60 * HOUR_PX;
                                 const height = Math.max(20, ((b.duration || 60) / 60) * HOUR_PX);
                                 return (
-                                  <button key={b.id} onClick={() => setSelectedDate(ds)}
+                                  <button key={b.id} onClick={() => setDetail(b)}
                                     className={`absolute left-0.5 right-0.5 rounded-md px-1 py-0.5 text-left overflow-hidden ${
                                       b.status === "confirmed" ? "bg-green-500/85 text-white" : "bg-primary/85 text-white"
                                     }`}
@@ -441,10 +447,10 @@ export default function PartnerDashboard() {
                       <Card key={b.id} className="bg-card border-border">
                         <CardContent className="p-3">
                           <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
+                            <button onClick={() => setDetail(b)} className="flex-1 min-w-0 text-left">
                               <p className="font-semibold text-sm">{b.booking_time} · {b.client_name}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type}</p>
-                            </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type} <span className="text-primary">· details</span></p>
+                            </button>
                             <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${
                               b.status === "confirmed" ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"
                             }`}>{b.status}</span>
@@ -516,6 +522,81 @@ export default function PartnerDashboard() {
           </Button>
         </div>
       )}
+
+      {/* Booking detail popup */}
+      {detail && (() => {
+        const d = detail;
+        const waDigits = (d.client_phone || "").replace(/\D/g, "");
+        const prettyDate = new Date(d.booking_date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const hasExtras = d.pressure || (d.focus_areas || []).length || (d.add_ons || []).length || d.notes;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setDetail(null)}>
+            <div className="w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-2xl border border-border max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="p-5 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-display text-lg font-bold">{d.client_name}</h3>
+                    <p className="text-sm text-muted-foreground">{d.massage_type}</p>
+                  </div>
+                  <button onClick={() => setDetail(null)} className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">✕</button>
+                </div>
+
+                <div className="space-y-1 text-sm">
+                  <p>📅 {prettyDate}</p>
+                  <p>🕐 {d.booking_time}{d.duration ? ` · ${d.duration} min` : ""}</p>
+                  {d.price ? <p>💶 €{d.price}</p> : null}
+                  <p>Status: <span className={`font-semibold ${d.status === "confirmed" ? "text-green-600" : d.status === "cancelled" ? "text-red-500" : "text-orange-500"}`}>{d.status}</span></p>
+                </div>
+
+                {hasExtras ? (
+                  <div className="space-y-1 text-sm border-t border-border pt-3">
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1">What the client asked for</p>
+                    {d.pressure && <p><span className="text-muted-foreground">Pressure:</span> {d.pressure}</p>}
+                    {(d.focus_areas || []).length > 0 && <p><span className="text-muted-foreground">Focus areas:</span> {d.focus_areas!.join(", ")}</p>}
+                    {(d.add_ons || []).length > 0 && <p><span className="text-muted-foreground">Add-ons:</span> {d.add_ons!.join(", ")}</p>}
+                    {d.notes && <p><span className="text-muted-foreground">Notes:</span> {d.notes}</p>}
+                  </div>
+                ) : null}
+
+                {(d.client_phone || d.client_email) && (
+                  <div className="border-t border-border pt-3 space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Contact</p>
+                    {d.client_phone && <p className="text-sm">📞 {d.client_phone}</p>}
+                    {d.client_email && <p className="text-sm break-all">✉️ {d.client_email}</p>}
+                    <div className="flex gap-2 pt-1">
+                      {waDigits && (
+                        <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer"
+                          className="flex-1 h-10 rounded-xl bg-[#25D366] text-white text-sm font-semibold flex items-center justify-center gap-1.5">
+                          <MessageCircle className="h-4 w-4" /> WhatsApp
+                        </a>
+                      )}
+                      {d.client_email && (
+                        <a href={`mailto:${d.client_email}?subject=${encodeURIComponent(`Your booking at ${partner?.business_name ?? "our studio"}`)}`}
+                          className="flex-1 h-10 rounded-xl bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-1.5">
+                          ✉️ Email
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {d.status === "pending" && (
+                  <div className="flex gap-2 border-t border-border pt-3">
+                    <button onClick={() => { updateStatus(d.id, "confirmed"); setDetail(null); }}
+                      className="flex-1 h-10 rounded-xl bg-green-500 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
+                      <CheckCircle className="h-4 w-4" /> Confirm
+                    </button>
+                    <button onClick={() => { updateStatus(d.id, "cancelled"); setDetail(null); }}
+                      className="flex-1 h-10 rounded-xl bg-red-500 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
+                      <XCircle className="h-4 w-4" /> Decline
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
