@@ -49,12 +49,21 @@ export default function PartnerConnectCalendar() {
 
   const handleConnect = () => {
     if (!partner) return;
+
+    // 👇 PASTE YOUR GOOGLE OAUTH CLIENT ID between the quotes (ends in .apps.googleusercontent.com)
+    const clientId =
+      (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
+      "PASTE_YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+
+    if (clientId.startsWith("PASTE_")) {
+      toast.error("Google isn't set up yet — add your Google Client ID first.");
+      return;
+    }
     setConnecting(true);
 
-    // Build Google OAuth URL
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
-    const redirectUri = `${window.location.origin}/partner/connect-calendar`;
-    const state = partner.id;
+    // Google must redirect to the Supabase function (it exchanges the code for tokens).
+    const redirectUri = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/google-calendar-oauth";
+    const state = partner.id; // so the function knows which studio to save tokens for
 
     const scopes = [
       "https://www.googleapis.com/auth/calendar.readonly",
