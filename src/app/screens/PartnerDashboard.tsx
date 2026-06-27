@@ -558,6 +558,8 @@ export default function PartnerDashboard() {
                     {(d.focus_areas || []).length > 0 && <p><span className="text-muted-foreground">Focus areas:</span> {d.focus_areas!.join(", ")}</p>}
                     {(d.add_ons || []).length > 0 && <p><span className="text-muted-foreground">Add-ons:</span> {d.add_ons!.join(", ")}</p>}
                     {d.notes && <p><span className="text-muted-foreground">Notes:</span> {d.notes}</p>}
+                    {d.allergies && <p><span className="text-muted-foreground">Allergies:</span> {d.allergies}</p>}
+                    {d.health_notes && <p><span className="text-muted-foreground">Health notes:</span> {d.health_notes}</p>}
                   </div>
                 ) : null}
 
