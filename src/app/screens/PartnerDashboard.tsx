@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -36,6 +36,11 @@ export default function PartnerDashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  // Month-calendar state
+  const now0 = new Date();
+  const [calYear, setCalYear] = useState(now0.getFullYear());
+  const [calMonth, setCalMonth] = useState(now0.getMonth()); // 0-11
+  const [selectedDate, setSelectedDate] = useState<string>(todayISO());
 
   useEffect(() => {
     loadData();
@@ -69,10 +74,31 @@ export default function PartnerDashboard() {
   const pendingCount = bookings.filter(b => b.status === "pending").length;
   const todayBookings = bookings.filter(b => b.booking_date === new Date().toISOString().split("T")[0]);
 
-  // Future (today onward), not cancelled, soonest first — what the studio needs to prepare for.
-  const upcoming = bookings
-    .filter(b => b.status !== "cancelled" && b.booking_date >= todayISO())
-    .sort((a, b) => `${a.booking_date} ${a.booking_time}`.localeCompare(`${b.booking_date} ${b.booking_time}`));
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+
+  // Group bookings by date (skip cancelled) — powers the calendar dots + day view.
+  const byDate: Record<string, Booking[]> = {};
+  for (const b of bookings) {
+    if (b.status === "cancelled") continue;
+    (byDate[b.booking_date] ||= []).push(b);
+  }
+
+  // Build the month grid (Monday-first, like European calendars).
+  const firstWeekday = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Mon=0 … Sun=6
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(`${calYear}-${pad2(calMonth + 1)}-${pad2(d)}`);
+
+  const monthLabel = new Date(calYear, calMonth, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  const selectedBookings = (byDate[selectedDate] || []).sort((a, b) => a.booking_time.localeCompare(b.booking_time));
+  const selectedPretty = new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
+  const shiftMonth = (delta: number) => {
+    const d = new Date(calYear, calMonth + delta, 1);
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+  };
   const confirmedThisMonth = bookings.filter(b => {
     const d = new Date(b.booking_date);
     const now = new Date();
@@ -264,58 +290,100 @@ export default function PartnerDashboard() {
             </div>
           )}
 
-          {/* Upcoming bookings — what's coming, with one-tap contact */}
+          {/* Month calendar — days with bookings are dotted; tap a day to see them */}
           <div>
-            <h2 className="font-display text-base font-bold mb-3">
-              Upcoming bookings {upcoming.length > 0 && <span className="text-muted-foreground font-normal">({upcoming.length})</span>}
-            </h2>
-            {upcoming.length === 0 ? (
-              <Card className="bg-card border-border">
-                <CardContent className="p-6 text-center">
-                  <Calendar className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Nothing booked yet. Share your link to get your first booking.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {upcoming.map(b => {
-                  const waDigits = (b.client_phone || "").replace(/\D/g, "");
-                  const prettyDate = new Date(b.booking_date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-                  return (
-                    <Card key={b.id} className="bg-card border-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm">{b.client_name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type}</p>
-                            <p className="text-xs text-primary font-semibold mt-1">📅 {prettyDate} at {b.booking_time}</p>
-                          </div>
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${
-                            b.status === "confirmed" ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"
-                          }`}>{b.status}</span>
-                        </div>
-                        {(waDigits || b.client_email) && (
-                          <div className="flex gap-2 mt-3">
-                            {waDigits && (
-                              <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer"
-                                className="flex-1 h-9 rounded-xl bg-[#25D366] text-white text-xs font-semibold flex items-center justify-center gap-1.5">
-                                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-                              </a>
-                            )}
-                            {b.client_email && (
-                              <a href={`mailto:${b.client_email}?subject=${encodeURIComponent(`Your booking at ${partner?.business_name ?? "our studio"}`)}`}
-                                className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center gap-1.5">
-                                ✉️ Email
-                              </a>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-base font-bold">Calendar</h2>
+              <div className="flex items-center gap-1">
+                <button onClick={() => shiftMonth(-1)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-semibold w-32 text-center">{monthLabel}</span>
+                <button onClick={() => shiftMonth(1)} className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-            )}
+            </div>
+
+            <Card className="bg-card border-border">
+              <CardContent className="p-3">
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
+                    <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {cells.map((dateStr, i) => {
+                    if (!dateStr) return <div key={`e${i}`} />;
+                    const count = byDate[dateStr]?.length || 0;
+                    const isToday = dateStr === todayISO();
+                    const isSelected = dateStr === selectedDate;
+                    const dayNum = Number(dateStr.split("-")[2]);
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => setSelectedDate(dateStr)}
+                        className={`relative aspect-square rounded-lg flex items-center justify-center text-sm transition ${
+                          isSelected ? "bg-primary text-primary-foreground font-bold"
+                            : isToday ? "bg-primary/10 text-primary font-semibold"
+                              : "hover:bg-secondary text-foreground"
+                        }`}
+                      >
+                        {dayNum}
+                        {count > 0 && (
+                          <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-white" : "bg-primary"}`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Selected day's appointments */}
+            <div className="mt-3">
+              <p className="text-sm font-semibold mb-2">{selectedPretty}</p>
+              {selectedBookings.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-1">No appointments this day.</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedBookings.map(b => {
+                    const waDigits = (b.client_phone || "").replace(/\D/g, "");
+                    return (
+                      <Card key={b.id} className="bg-card border-border">
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm">{b.booking_time} · {b.client_name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type}</p>
+                            </div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${
+                              b.status === "confirmed" ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"
+                            }`}>{b.status}</span>
+                          </div>
+                          {(waDigits || b.client_email) && (
+                            <div className="flex gap-2 mt-3">
+                              {waDigits && (
+                                <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer"
+                                  className="flex-1 h-9 rounded-xl bg-[#25D366] text-white text-xs font-semibold flex items-center justify-center gap-1.5">
+                                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                                </a>
+                              )}
+                              {b.client_email && (
+                                <a href={`mailto:${b.client_email}?subject=${encodeURIComponent(`Your booking at ${partner?.business_name ?? "our studio"}`)}`}
+                                  className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center gap-1.5">
+                                  ✉️ Email
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Recent bookings */}
