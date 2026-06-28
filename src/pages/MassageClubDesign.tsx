@@ -277,7 +277,7 @@ const INITIAL_BOOKINGS: Booking[] = [
   }
 ];
 
-export default function App() {
+export default function MassageClubDesign() {
   // Navigation & Core States
   const [currentScreen, setCurrentScreen] = useState<string>("landing");
   const [selectedStudio, setSelectedStudio] = useState<Studio>(STUDIOS_DATA[0]);
