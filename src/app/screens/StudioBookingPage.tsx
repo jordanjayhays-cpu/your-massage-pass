@@ -282,9 +282,9 @@ export default function StudioBookingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf6ee]">
+    <div className="min-h-screen bg-[#F7F4F0]">
       {/* Hero */}
-      <div className="relative h-44 bg-gradient-to-br from-[#A21228] to-[#5b0a16]">
+      <div className="relative h-44 bg-gradient-to-br from-[#C4622D] to-[#5b0a16]">
         {partner.cover_url && (
           <img src={partner.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
         )}
@@ -338,7 +338,7 @@ export default function StudioBookingPage() {
             {profile.services.map(s => (
               <button key={s.id} onClick={() => setServiceId(s.id)}
                 className={`w-full text-left p-4 rounded-2xl border-2 transition ${
-                  serviceId === s.id ? "border-[#A21228] bg-[#A21228]/5" : "border-gray-200 bg-white"
+                  serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                 }`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -347,7 +347,7 @@ export default function StudioBookingPage() {
                     <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {s.duration} min</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-[#A21228] flex items-center gap-0.5"><Euro size={13} />{s.price}</p>
+                    <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{s.price}</p>
                   </div>
                 </div>
               </button>
@@ -368,7 +368,7 @@ export default function StudioBookingPage() {
                   return (
                     <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
                       className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
-                        active ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
+                        active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                       }`}>
                       <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
                       <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
@@ -394,7 +394,7 @@ export default function StudioBookingPage() {
                   return (
                     <button key={t} onClick={() => setTime(t)}
                       className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
-                        time === t ? "border-[#A21228] bg-[#A21228] text-white" : "border-gray-200 bg-white text-gray-700"
+                        time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                       }`}>
                       {t}
                       {lowStock && (
@@ -418,7 +418,7 @@ export default function StudioBookingPage() {
               {PRESSURE_LEVELS.map(p => (
                 <button key={p} onClick={() => setPressure(p)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    pressure === p ? "bg-[#A21228] text-white border-[#A21228]" : "bg-white text-gray-600 border-gray-200"
+                    pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                   }`}>{p}</button>
               ))}
             </div>
@@ -428,7 +428,7 @@ export default function StudioBookingPage() {
               {FOCUS_AREAS.map(f => (
                 <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    focusAreas.includes(f) ? "bg-[#A21228] text-white border-[#A21228]" : "bg-white text-gray-600 border-gray-200"
+                    focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                   }`}>{f}</button>
               ))}
             </div>
@@ -442,13 +442,13 @@ export default function StudioBookingPage() {
                     return (
                       <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
                         className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
-                          on ? "border-[#A21228] bg-[#A21228]/5" : "border-gray-200 bg-white"
+                          on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                         }`}>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{a.name}</p>
                           <p className="text-xs text-gray-400">+€{a.price}</p>
                         </div>
-                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#A21228] bg-[#A21228]" : "border-gray-300"}`}>
+                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
                           {on && <Check size={12} className="text-white" />}
                         </div>
                       </button>
@@ -461,7 +461,7 @@ export default function StudioBookingPage() {
             <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist</p>
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Anything we should know? Injuries, allergies, preferences…"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228] resize-none h-24" />
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
           </Section>
         )}
 
@@ -470,11 +470,11 @@ export default function StudioBookingPage() {
           <Section step="5" title="Your details">
             <div className="space-y-2">
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#A21228]" />
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <p className="text-xs text-gray-400">Add at least one way to reach you — email or phone.</p>
             </div>
           </Section>
@@ -483,10 +483,10 @@ export default function StudioBookingPage() {
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
         {/* Sticky CTA — always reachable while scrolling */}
-        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#faf6ee] via-[#faf6ee] to-transparent">
+        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#F7F4F0] via-[#F7F4F0] to-transparent">
           <button onClick={handleBook} disabled={!canBook || submitting}
             className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
-              canBook ? "bg-[#A21228] text-white shadow-lg" : "bg-gray-200 text-gray-400"
+              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-gray-200 text-gray-400"
             }`}>
             {submitting ? <><Loader2 size={18} className="animate-spin" /> Booking…</>
               : service && date && time
@@ -522,7 +522,7 @@ function Section({ step, title, children }: { step: string; title: string; child
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <div className="h-6 w-6 rounded-full bg-[#A21228] text-white flex items-center justify-center text-xs font-bold">{step}</div>
+        <div className="h-6 w-6 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs font-bold">{step}</div>
         <h2 className="font-semibold text-gray-900">{title}</h2>
       </div>
       {children}

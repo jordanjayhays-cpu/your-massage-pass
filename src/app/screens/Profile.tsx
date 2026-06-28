@@ -155,23 +155,23 @@ export default function Profile() {
   const chip = (active: boolean) =>
     `px-3 py-2 rounded-full text-sm font-medium border transition ${
       active
-        ? "bg-[#A21228] text-white border-[#A21228]"
+        ? "bg-[#C4622D] text-white border-[#C4622D]"
         : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
     }`;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf6ee]">
-        <Loader2 className="h-7 w-7 animate-spin text-[#A21228]" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F4F0]">
+        <Loader2 className="h-7 w-7 animate-spin text-[#C4622D]" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#faf6ee] text-center px-6">
-        <div className="h-16 w-16 rounded-full bg-[#A21228]/10 flex items-center justify-center mb-4">
-          <UserCircle className="h-8 w-8 text-[#A21228]" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F4F0] text-center px-6">
+        <div className="h-16 w-16 rounded-full bg-[#C4622D]/10 flex items-center justify-center mb-4">
+          <UserCircle className="h-8 w-8 text-[#C4622D]" />
         </div>
         <h1 className="text-xl font-bold text-gray-900">Sign in to set up your profile</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
@@ -179,7 +179,7 @@ export default function Profile() {
         </p>
         <button
           onClick={() => navigate("/")}
-          className="mt-6 h-12 px-6 rounded-full bg-[#A21228] text-white font-semibold shadow-lg"
+          className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
         >
           Sign in
         </button>
@@ -190,7 +190,7 @@ export default function Profile() {
   const avatarLetter = (firstName || user.user_metadata?.full_name || user.email || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#faf6ee] pb-32">
+    <div className="min-h-screen bg-[#F7F4F0] pb-32">
       <div className="max-w-lg mx-auto px-5 pt-6">
         <button
           onClick={() => navigate("/app/bookings")}
@@ -218,7 +218,7 @@ export default function Profile() {
                 className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
               />
             ) : (
-              <div className="h-24 w-24 rounded-full bg-[#A21228] text-white flex items-center justify-center text-3xl font-bold border-2 border-[#A21228]">
+              <div className="h-24 w-24 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-3xl font-bold border-2 border-[#C4622D]">
                 {avatarLetter}
               </div>
             )}
@@ -237,7 +237,7 @@ export default function Profile() {
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="mt-3 flex items-center gap-1.5 text-sm font-medium text-[#A21228] bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50"
+            className="mt-3 flex items-center gap-1.5 text-sm font-medium text-[#C4622D] bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50"
           >
             <Camera size={16} /> Change photo
           </button>
@@ -470,7 +470,7 @@ export default function Profile() {
               type="checkbox"
               checked={isFirstMassage}
               onChange={e => setIsFirstMassage(e.target.checked)}
-              className="h-5 w-5 rounded border-gray-300 text-[#A21228] focus:ring-[#A21228]"
+              className="h-5 w-5 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
             />
             <label htmlFor="firstMassage" className="text-sm text-gray-700">Is this your first professional massage?</label>
           </div>
@@ -481,7 +481,7 @@ export default function Profile() {
               type="checkbox"
               checked={consentAccepted}
               onChange={e => setConsentAccepted(e.target.checked)}
-              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-[#A21228] focus:ring-[#A21228]"
+              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
             />
             <label htmlFor="consent" className="text-sm text-gray-700 leading-relaxed">
               I confirm the above is accurate and consent to treatment.
@@ -491,12 +491,12 @@ export default function Profile() {
       </div>
 
       {/* Sticky Save */}
-      <div className="fixed bottom-0 inset-x-0 bg-[#faf6ee]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
+      <div className="fixed bottom-0 inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
           <button
             onClick={save}
             disabled={saving}
-            className="w-full h-12 rounded-full bg-[#A21228] text-white font-semibold shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Save

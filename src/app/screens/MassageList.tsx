@@ -115,7 +115,7 @@ export default function MassageList() {
       const iconSvg = (emoji: string) => ({
         url: `data:image/svg+xml,${encodeURIComponent(
           `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="20" fill="#7a3000" stroke="white" stroke-width="3"/>
+            <circle cx="22" cy="22" r="20" fill="#C4622D" stroke="white" stroke-width="3"/>
             <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="22">${emoji}</text>
           </svg>`
         )}`,
@@ -171,7 +171,7 @@ export default function MassageList() {
         return {
           url: `data:image/svg+xml,${encodeURIComponent(
             `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#d4a155" : "#7a3000"}" stroke="white" stroke-width="3"/>
+              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
               <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 28 : 22}">${emoji}</text>
             </svg>`
           )}`,

@@ -76,8 +76,8 @@ export default function Login() {
     <div
       className="flex flex-col h-full overflow-y-auto"
       style={{
-        background: "linear-gradient(180deg,#faf6ee 0%,#f3ebdc 100%)",
-        color: "#2a221c",
+        background: "linear-gradient(180deg,#F7F4F0 0%,#EFE7DD 100%)",
+        color: "#211C1A",
         fontFamily: "'Work Sans', system-ui, sans-serif",
       }}
     >
@@ -94,32 +94,32 @@ export default function Login() {
         <div className="flex-1 flex flex-col p-7 pt-10">
           <button
             onClick={() => setStep("choice")}
-            className="self-start h-9 w-9 rounded-full border border-[#d8c7ad] bg-white/60 flex items-center justify-center text-[#7a5a36]"
+            className="self-start h-9 w-9 rounded-full border border-[#E5DDD3] bg-white/60 flex items-center justify-center text-[#7A7068]"
           >←</button>
           <div className="flex-1 flex flex-col justify-center">
-            <p className="text-[11px] tracking-[0.25em] uppercase text-[#a07c4a] mb-3">Step 2 of 2</p>
+            <p className="text-[11px] tracking-[0.25em] uppercase text-[#7A7068] mb-3">Step 2 of 2</p>
             <h2 style={serif} className="text-5xl leading-[1.05] mb-3">Almost there.</h2>
-            <p className="text-[#6b5b48] mb-8">Just your name — so the studio knows who's coming.</p>
+            <p className="text-[#7A7068] mb-8">Just your name — so the studio knows who's coming.</p>
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] tracking-[0.2em] uppercase text-[#a07c4a] mb-2 block">Your name</label>
+                <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Your name</label>
                 <input
                   type="text" value={name} onChange={(e) => setName(e.target.value)}
                   placeholder="Alex Martinez"
-                  className="w-full h-12 rounded-xl bg-white border border-[#e2d3b8] px-4 text-[#2a221c] placeholder:text-[#bca987]"
+                  className="w-full h-12 rounded-xl bg-white border border-[#E5DDD3] px-4 text-[#211C1A] placeholder:text-[#9E9387]"
                 />
               </div>
               <div>
-                <label className="text-[11px] tracking-[0.2em] uppercase text-[#a07c4a] mb-2 block">Phone (optional)</label>
+                <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Phone (optional)</label>
                 <input
                   type="tel" placeholder="+34 600 000 000"
-                  className="w-full h-12 rounded-xl bg-white border border-[#e2d3b8] px-4 text-[#2a221c] placeholder:text-[#bca987]"
+                  className="w-full h-12 rounded-xl bg-white border border-[#E5DDD3] px-4 text-[#211C1A] placeholder:text-[#9E9387]"
                 />
               </div>
               <Button
                 onClick={handleFinalContinue} disabled={loading}
                 className="w-full h-13 mt-2 rounded-full text-base font-medium"
-                style={{ background: "#7a3000", color: "#faf6ee" }}
+                style={{ background: "#C4622D", color: "#F7F4F0" }}
               >
                 {loading ? "Setting up…" : "Start booking"} <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
@@ -136,21 +136,21 @@ export default function Login() {
         <div className="flex-1 flex flex-col p-7 pt-10">
           <button
             onClick={() => setStep("choice")}
-            className="self-start h-9 w-9 rounded-full border border-[#d8c7ad] bg-white/60 flex items-center justify-center text-[#7a5a36]"
+            className="self-start h-9 w-9 rounded-full border border-[#E5DDD3] bg-white/60 flex items-center justify-center text-[#7A7068]"
           >←</button>
           <div className="flex-1 flex flex-col justify-center">
-            <p className="text-[11px] tracking-[0.25em] uppercase text-[#a07c4a] mb-3">Step 1 of 2</p>
+            <p className="text-[11px] tracking-[0.25em] uppercase text-[#7A7068] mb-3">Step 1 of 2</p>
             <h2 style={serif} className="text-5xl leading-[1.05] mb-3">Your email.</h2>
-            <p className="text-[#6b5b48] mb-8">For booking confirmations & receipts.</p>
+            <p className="text-[#7A7068] mb-8">For booking confirmations & receipts.</p>
             <input
               type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full h-12 rounded-xl bg-white border border-[#e2d3b8] px-4 text-[#2a221c] placeholder:text-[#bca987] mb-3"
+              className="w-full h-12 rounded-xl bg-white border border-[#E5DDD3] px-4 text-[#211C1A] placeholder:text-[#9E9387] mb-3"
             />
             <Button
               onClick={handleEmailContinue}
               className="w-full h-13 rounded-full text-base font-medium"
-              style={{ background: "#7a3000", color: "#faf6ee" }}
+              style={{ background: "#C4622D", color: "#F7F4F0" }}
             >
               Continue <ChevronRight className="h-5 w-5" />
             </Button>
@@ -166,12 +166,12 @@ export default function Login() {
       <div className="flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2">
           <span className="h-7 w-7 rounded-full flex items-center justify-center text-[11px]"
-                style={{ background: "#7a3000", color: "#faf6ee", ...serif, fontSize: 14 }}>M</span>
-          <span className="text-[13px] font-medium tracking-tight text-[#3a2d22]">Massage Club</span>
+                style={{ background: "#C4622D", color: "#F7F4F0", ...serif, fontSize: 14 }}>M</span>
+          <span className="text-[13px] font-medium tracking-tight text-[#211C1A]">Massage Club</span>
         </div>
         <button
           onClick={() => navigate("/partner/login")}
-          className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#7a5a36] hover:text-[#7a3000]"
+          className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#7A7068] hover:text-[#C4622D]"
         >
           For studios →
         </button>
@@ -179,10 +179,10 @@ export default function Login() {
 
       {/* Hero — editorial split */}
       <div className="px-6 pt-8">
-        <p className="text-[11px] tracking-[0.3em] uppercase text-[#a07c4a] mb-4">Madrid · Est. 2026</p>
-        <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#2a221c]">
+        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-4">Madrid · Est. 2026</p>
+        <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#211C1A]">
           The city's best<br/>
-          <em className="text-[#7a3000]">massages,</em><br/>
+          <em className="text-[#C4622D]">massages,</em><br/>
           on demand.
         </h1>
 
@@ -192,7 +192,7 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
             <div className="flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-[#e0a458] text-[#e0a458]" /> 4.8</span>
+              <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-[#E0A458] text-[#E0A458]" /> 4.8</span>
               <span className="opacity-50">·</span>
               <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> 12+ studios</span>
             </div>
@@ -200,7 +200,7 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-[15px] text-[#6b5b48] mt-5 leading-relaxed">
+        <p className="text-[15px] text-[#7A7068] mt-5 leading-relaxed">
           Browse top-rated studios near you. No account needed to look — pay at the studio.
         </p>
       </div>
@@ -210,14 +210,14 @@ export default function Login() {
         <Button
           onClick={() => navigate("/app/massages")}
           className="w-full h-14 rounded-full text-base font-medium shadow-[0_10px_30px_-10px_rgba(122,48,0,0.5)]"
-          style={{ background: "#7a3000", color: "#faf6ee" }}
+          style={{ background: "#C4622D", color: "#F7F4F0" }}
         >
           <Search className="h-5 w-5 mr-1" /> Browse studios
         </Button>
         <Button
           onClick={handleGoogle}
           variant="outline"
-          className="w-full h-14 rounded-full text-base font-medium bg-white border-[#e2d3b8] text-[#2a221c] hover:bg-[#faf6ee]"
+          className="w-full h-14 rounded-full text-base font-medium bg-white border-[#E5DDD3] text-[#211C1A] hover:bg-[#F7F4F0]"
         >
           <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -231,21 +231,21 @@ export default function Login() {
 
       {/* How it works — editorial three column */}
       <div className="px-6 mt-10">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-[#a07c4a] mb-5">How it works</p>
+        <p className="text-[11px] uppercase tracking-[0.3em] text-[#7A7068] mb-5">How it works</p>
         <div className="space-y-5">
           {[
             { n: "01", icon: Search, title: "Find a studio", sub: "Browse top-rated spots near you." },
             { n: "02", icon: CalendarCheck, title: "Pick a time", sub: "Book instantly — pressure, focus, add-ons." },
             { n: "03", icon: Sparkles, title: "Show up & relax", sub: "Get a confirmation. That's it." },
           ].map(({ n, icon: Icon, title, sub }) => (
-            <div key={n} className="flex items-start gap-4 pb-4 border-b border-[#ebdcbe] last:border-0">
-              <div style={serif} className="text-[32px] leading-none text-[#d4a155] w-10">{n}</div>
+            <div key={n} className="flex items-start gap-4 pb-4 border-b border-[#E5DDD3] last:border-0">
+              <div style={serif} className="text-[32px] leading-none text-[#E0A458] w-10">{n}</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon className="h-4 w-4 text-[#7a3000]" />
-                  <p style={serif} className="text-xl text-[#2a221c]">{title}</p>
+                  <Icon className="h-4 w-4 text-[#C4622D]" />
+                  <p style={serif} className="text-xl text-[#211C1A]">{title}</p>
                 </div>
-                <p className="text-sm text-[#6b5b48]">{sub}</p>
+                <p className="text-sm text-[#7A7068]">{sub}</p>
               </div>
             </div>
           ))}
@@ -256,15 +256,15 @@ export default function Login() {
       <div className="px-6 mt-10">
         <div
           className="rounded-[24px] p-6 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg,#2a221c 0%,#4a3a2a 100%)", color: "#faf6ee" }}
+          style={{ background: "linear-gradient(135deg,#211C1A 0%,#211C1A 100%)", color: "#F7F4F0" }}
         >
           <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full" style={{ background: "rgba(212,161,85,0.18)", filter: "blur(20px)" }} />
-          <p className="text-[10px] uppercase tracking-[0.3em] text-[#d4a155] mb-2">For studios</p>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[#E0A458] mb-2">For studios</p>
           <h3 style={serif} className="text-[28px] leading-tight mb-2">List your studio in minutes.</h3>
-          <p className="text-sm text-[#faf6ee]/70 mb-4">Calendar sync, branded link, no setup fees.</p>
+          <p className="text-sm text-[#F7F4F0]/70 mb-4">Calendar sync, branded link, no setup fees.</p>
           <button
             onClick={() => navigate("/partner/onboarding")}
-            className="inline-flex items-center gap-2 bg-[#faf6ee] text-[#2a221c] px-5 h-11 rounded-full text-sm font-medium hover:bg-white"
+            className="inline-flex items-center gap-2 bg-[#F7F4F0] text-[#211C1A] px-5 h-11 rounded-full text-sm font-medium hover:bg-white"
           >
             Become a partner <ArrowRight className="h-4 w-4" />
           </button>
@@ -272,17 +272,17 @@ export default function Login() {
       </div>
 
       {/* Save details — quiet */}
-      <div className="px-6 mt-8 pt-6 border-t border-[#ebdcbe]">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-[#a07c4a] mb-3 text-center">Save details for faster booking</p>
+      <div className="px-6 mt-8 pt-6 border-t border-[#E5DDD3]">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068] mb-3 text-center">Save details for faster booking</p>
         <div className="flex gap-2">
           <input
             type="email" value={email} onChange={(e) => setEmail(e.target.value)}
             placeholder="your@email.com"
-            className="flex-1 h-11 rounded-full bg-white border border-[#e2d3b8] px-4 text-sm text-[#2a221c] placeholder:text-[#bca987]"
+            className="flex-1 h-11 rounded-full bg-white border border-[#E5DDD3] px-4 text-sm text-[#211C1A] placeholder:text-[#9E9387]"
           />
           <button
             onClick={handleEmailContinue}
-            className="h-11 px-5 rounded-full bg-[#2a221c] text-[#faf6ee] text-sm font-medium hover:bg-[#3a2d22]"
+            className="h-11 px-5 rounded-full bg-[#211C1A] text-[#F7F4F0] text-sm font-medium hover:bg-[#211C1A]"
           >
             Save
           </button>
@@ -292,7 +292,7 @@ export default function Login() {
       {/* Feedback */}
       <button
         onClick={() => navigate("/survey")}
-        className="w-full flex items-center justify-center gap-2 mt-4 mb-6 py-2 text-[11px] text-[#a07c4a] hover:text-[#7a3000]"
+        className="w-full flex items-center justify-center gap-2 mt-4 mb-6 py-2 text-[11px] text-[#7A7068] hover:text-[#C4622D]"
       >
         <MessageCircle className="h-3 w-3" />
         Share feedback — help us build this
