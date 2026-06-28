@@ -138,9 +138,18 @@ export default function StudioPortal() {
       <div className="px-6 py-5 border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-xl mx-auto">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Studio Portal</p>
-              <h1 className="font-display text-xl font-bold">{partner?.business_name}</h1>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate("/")}
+                aria-label="Back to site"
+                className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div>
+                <p className="text-xs text-muted-foreground">Studio Portal</p>
+                <h1 className="font-display text-xl font-bold">{partner?.business_name}</h1>
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={() => supabase.auth.signOut().then(() => navigate("/partner"))} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
