@@ -39,10 +39,8 @@ export default function MassageList() {
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const fullMapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const fullMarkersRef = useRef<any[]>([]);
 
   useEffect(() => {
     fetchShops().then((shops) => {
