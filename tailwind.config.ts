@@ -64,10 +64,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        display: ["EB Garamond", "Georgia", "serif"],
-        serif: ["Fraunces", "Georgia", "serif"],
-        sans: ["Outfit", "Inter", "system-ui", "sans-serif"],
-        body: ["Outfit", "Inter", "system-ui", "sans-serif"],
+        display: ["Playfair Display", "Georgia", "serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

@@ -32,7 +32,6 @@ import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
-import MassageClubDesign from "./pages/MassageClubDesign";
 
 const queryClient = new QueryClient();
 
@@ -43,8 +42,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<MassageClubDesign />} />
-          <Route path="/old" element={<AppLayout />}>
+          <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
             <Route path="massages" element={<MassageList />} />
             <Route path="massages/:id" element={<ShopDetail />} />
