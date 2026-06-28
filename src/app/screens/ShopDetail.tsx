@@ -44,6 +44,79 @@ export default function ShopDetail() {
     });
   }, [id]);
 
+  // Initialize Google Map in the Location card once studio data is loaded
+  useEffect(() => {
+    if (!massage || !mapRef.current) return;
+    const studioId = (massage as any).id as string;
+    if (mapInitedFor.current === studioId) return;
+    let cancelled = false;
+
+    const m: any = massage;
+    const addr: string | undefined = m.address ?? m.location;
+    const hasCoords = typeof m.lat === "number" && typeof m.lng === "number";
+
+    const mapStyles: google.maps.MapTypeStyle[] = [
+      { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#5b4636" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#f6efe1" }] },
+      { featureType: "poi", stylers: [{ visibility: "off" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
+    ];
+
+    const pinIcon = {
+      url: `data:image/svg+xml,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="#C4622D" stroke="white" stroke-width="3"/></svg>`
+      )}`,
+      scaledSize: undefined as any,
+      anchor: undefined as any,
+    };
+
+    loadGoogleMaps().then((g) => {
+      if (cancelled || !g || !mapRef.current) return;
+      pinIcon.scaledSize = new google.maps.Size(36, 36);
+      pinIcon.anchor = new google.maps.Point(18, 18);
+
+      const createMap = (center: google.maps.LatLngLiteral, zoom: number) =>
+        new google.maps.Map(mapRef.current!, {
+          center,
+          zoom,
+          disableDefaultUI: true,
+          zoomControl: true,
+          gestureHandling: "cooperative",
+          styles: mapStyles,
+        });
+
+      if (hasCoords) {
+        const center = { lat: m.lat, lng: m.lng };
+        const map = createMap(center, 15);
+        new google.maps.Marker({ position: center, map, icon: pinIcon, title: m.studio });
+        mapInitedFor.current = studioId;
+      } else if (addr) {
+        new google.maps.Geocoder().geocode({ address: addr }, (results, status) => {
+          if (cancelled || !mapRef.current) return;
+          if (status === "OK" && results && results[0]) {
+            const loc = results[0].geometry.location;
+            const center = { lat: loc.lat(), lng: loc.lng() };
+            const map = createMap(center, 14);
+            new google.maps.Marker({ position: center, map, icon: pinIcon, title: m.studio });
+          } else {
+            createMap(MADRID_CENTER, 12);
+          }
+          mapInitedFor.current = studioId;
+        });
+      } else {
+        createMap(MADRID_CENTER, 12);
+        mapInitedFor.current = studioId;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [massage]);
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-background">
