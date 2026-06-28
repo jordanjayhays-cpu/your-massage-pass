@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,11 +17,12 @@ const ADDON_MAP: Record<string, string> = {
   extra_time: "extended",
 };
 
-const CONVERSATION_OPTIONS: { label: string; value: string }[] = [
-  { label: "🤫 Silence please", value: "silence" },
-  { label: "A little chat", value: "minimal" },
-  { label: "Happy to chat", value: "chatty" },
+const CONVERSATION_KEYS: { labelKey: string; value: string }[] = [
+  { labelKey: "app.customize.talkSilence", value: "silence" },
+  { labelKey: "app.customize.talkMinimal", value: "minimal" },
+  { labelKey: "app.customize.talkChatty", value: "chatty" },
 ];
+
 
 export default function Customize() {
   const navigate = useNavigate();
