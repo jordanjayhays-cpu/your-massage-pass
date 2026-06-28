@@ -202,7 +202,7 @@ function StudioSetupInner() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background">
       <div className="max-w-xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-4">
@@ -217,14 +217,14 @@ function StudioSetupInner() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-medium text-muted-foreground">Step {step} of {TOTAL_STEPS}</span>
-            <span className="text-xs font-medium text-blue-600">{Math.round(progress)}% complete</span>
+            <span className="text-xs font-medium text-primary">{Math.round(progress)}% complete</span>
           </div>
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 bg-border rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between mt-2">
             {["Account", "Profile", "Services", "Hours", "Done"].map((label, i) => (
-              <span key={label} className={`text-xs ${i + 1 === step ? "text-blue-600 font-semibold" : "text-muted-foreground"}`}>{label}</span>
+              <span key={label} className={`text-xs ${i + 1 === step ? "text-primary font-semibold" : "text-muted-foreground"}`}>{label}</span>
             ))}
           </div>
         </div>
@@ -234,7 +234,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">1</div>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">1</div>
                 <h2 className="font-semibold text-foreground">Create your account</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-4">Email is pre-filled from your invite.</p>
@@ -255,7 +255,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">2</div>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">2</div>
                 <h2 className="font-semibold text-foreground">Studio details</h2>
               </div>
               <div>
@@ -285,7 +285,7 @@ function StudioSetupInner() {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
-                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-blue-400 resize-none" />
+                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-primary resize-none" />
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
@@ -302,7 +302,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">3</div>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">3</div>
                 <h2 className="font-semibold text-foreground">Your services</h2>
               </div>
               <div className="space-y-3">
@@ -313,7 +313,7 @@ function StudioSetupInner() {
                       {services.length > 1 && <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400" />
+                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
                       <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none">
                         {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                       </select>
@@ -329,7 +329,7 @@ function StudioSetupInner() {
                 ))}
               </div>
               {services.length < 5 && (
-                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
                   <Plus size={14} /> Add service
                 </button>
               )}
@@ -346,7 +346,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">4</div>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">4</div>
                 <h2 className="font-semibold text-foreground">Availability</h2>
               </div>
               <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
@@ -362,7 +362,7 @@ function StudioSetupInner() {
                     {availability[day.num].length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pl-1">
                         {DEFAULT_SLOTS.map(slot => (
-                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-blue-300" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
                             {slot}
                           </button>
                         ))}

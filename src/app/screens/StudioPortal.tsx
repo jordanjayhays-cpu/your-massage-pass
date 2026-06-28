@@ -175,7 +175,7 @@ export default function StudioPortal() {
               {[
                 { label: "Pending", value: pendingCount, color: "text-orange-500" },
                 { label: "Today", value: todayBookings.length, color: "text-primary" },
-                { label: "This Week", value: upcomingBookings.length, color: "text-blue-500" },
+                { label: "This Week", value: upcomingBookings.length, color: "text-primary" },
               ].map(({ label, value, color }) => (
                 <Card key={label} className="bg-card border-border">
                   <CardContent className="p-4 text-center">
@@ -252,7 +252,7 @@ export default function StudioPortal() {
                     <div className="flex flex-wrap gap-1.5 pl-1">
                       {DEFAULT_SLOTS.map(slot => (
                         <button key={slot} onClick={() => toggleSlot(day.num, slot)}
-                          className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-blue-300" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                          className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
                           {slot}
                         </button>
                       ))}
@@ -366,7 +366,7 @@ function BookingCard({ booking, actionLoading, onAction }: { booking: Booking; a
             {booking.status === "pending" ? (
               <>
                 <button onClick={() => onAction(booking.id, "confirmed")} disabled={actionLoading === booking.id}
-                  className="h-8 w-8 rounded-lg bg-green-500 text-white flex items-center justify-center hover:bg-green-600 disabled:opacity-50">
+                  className="h-8 w-8 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-green-600 disabled:opacity-50">
                   {actionLoading === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 </button>
                 <button onClick={() => onAction(booking.id, "cancelled")} disabled={actionLoading === booking.id}
@@ -376,7 +376,7 @@ function BookingCard({ booking, actionLoading, onAction }: { booking: Booking; a
               </>
             ) : (
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                booking.status === "confirmed" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"
+                booking.status === "confirmed" ? "bg-primary/10 text-green-600" : "bg-red-500/10 text-red-500"
               }`}>{booking.status}</span>
             )}
           </div>

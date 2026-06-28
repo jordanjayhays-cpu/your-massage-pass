@@ -326,10 +326,10 @@ export default function PartnerOnboarding() {
   const chip = (active: boolean) =>
     `px-3 py-1.5 rounded-full text-xs font-medium border transition ${active ? "bg-primary text-white border-primary" : "bg-white text-muted-foreground border-border hover:border-primary/40"}`;
 
-  const field = "w-full text-sm px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:border-blue-400";
+  const field = "w-full text-sm px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:border-primary";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background">
       <div className="max-w-xl mx-auto px-4 py-8">
 
         {/* Header */}
@@ -345,9 +345,9 @@ export default function PartnerOnboarding() {
         <div className="flex justify-center gap-2 mb-8 flex-wrap">
           {steps.map((step, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className={`w-2.5 h-2.5 rounded-full transition ${step.done ? "bg-green-500" : "bg-gray-300"}`} />
+              <div className={`w-2.5 h-2.5 rounded-full transition ${step.done ? "bg-primary" : "bg-border"}`} />
               <span className="text-xs text-muted-foreground hidden sm:block">{step.label}</span>
-              {i < steps.length - 1 && <div className="w-3 h-px bg-gray-200 mx-1" />}
+              {i < steps.length - 1 && <div className="w-3 h-px bg-border mx-1" />}
             </div>
           ))}
         </div>
@@ -393,7 +393,7 @@ export default function PartnerOnboarding() {
               {/* Pin location — required for the map */}
               <button onClick={pinLocation}
                 className={`w-full h-11 rounded-lg border text-sm font-medium flex items-center justify-center gap-1.5 transition ${
-                  geoStatus === "ok" ? "border-green-300 bg-green-50 text-green-700" : "border-blue-300 text-blue-600 hover:bg-secondary"
+                  geoStatus === "ok" ? "border-primary/30 bg-secondary text-primary" : "border-primary/40 text-primary hover:bg-secondary"
                 }`}>
                 {geoStatus === "loading"
                   ? <><Loader2 size={15} className="animate-spin" /> Finding your address…</>
@@ -467,7 +467,7 @@ export default function PartnerOnboarding() {
                         <TimeInput value={h.open} onChange={v => updateHours(d.num, { open: v })} />
                         <span className="text-muted-foreground">–</span>
                         <TimeInput value={h.close} onChange={v => updateHours(d.num, { close: v })} />
-                        <span className="text-gray-300 mx-1 text-xs">break</span>
+                        <span className="text-muted-foreground/60 mx-1 text-xs">break</span>
                         <TimeInput value={h.breakStart} onChange={v => updateHours(d.num, { breakStart: v })} />
                         <TimeInput value={h.breakEnd} onChange={v => updateHours(d.num, { breakEnd: v })} />
                       </div>
@@ -492,8 +492,8 @@ export default function PartnerOnboarding() {
                     {therapists.length > 1 && <button onClick={() => removeTherapist(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400" />
-                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400">
+                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {GENDERS.map(g => <option key={g}>{g}</option>)}
                     </select>
                   </div>
@@ -512,7 +512,7 @@ export default function PartnerOnboarding() {
                 </div>
               ))}
             </div>
-            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add therapist
             </button>
           </CardContent>
@@ -530,28 +530,28 @@ export default function PartnerOnboarding() {
                     {services.length > 1 && <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400" />
-                    <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400">
+                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                    <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {SERVICE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                     </select>
-                    <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400">
+                    <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>
                     <div className="flex items-center gap-1 border border-border rounded-lg px-2">
                       <Euro size={13} className="text-muted-foreground" />
                       <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                     </div>
-                    <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400">
+                    <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
                     </select>
-                    <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400 col-span-2">
+                    <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary col-span-2">
                       {[0, 10, 15, 20, 30].map(b => <option key={b} value={b}>{b} min cleanup after</option>)}
                     </select>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add service
             </button>
 
@@ -561,7 +561,7 @@ export default function PartnerOnboarding() {
               <p className="text-xs text-muted-foreground mb-2">Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.</p>
               {addons.map((a, i) => (
                 <div key={i} className="flex items-center gap-2 mb-2">
-                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder="Add-on name" className="flex-1 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400" />
+                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder="Add-on name" className="flex-1 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
                   <div className="flex items-center gap-1 border border-border rounded-lg px-2 w-24">
                     <Euro size={13} className="text-muted-foreground" />
                     <input value={a.price} onChange={e => updateAddon(i, { price: Number(e.target.value) })} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
@@ -569,7 +569,7 @@ export default function PartnerOnboarding() {
                   <button onClick={() => removeAddon(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>
                 </div>
               ))}
-              <button onClick={addAddon} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"><Plus size={12} /> Add an add-on</button>
+              <button onClick={addAddon} className="text-xs text-primary font-medium hover:underline flex items-center gap-1"><Plus size={12} /> Add an add-on</button>
             </div>
           </CardContent>
         </Card>
@@ -580,20 +580,20 @@ export default function PartnerOnboarding() {
             <SectionTitle n="5" done title="Booking policy" icon={<Shield size={15} />} />
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-700">Free cancellation up to</span>
-              <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400">
+              <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                 {[0, 2, 4, 12, 24, 48].map(h => <option key={h} value={h}>{h === 0 ? "No free cancellation" : `${h}h before`}</option>)}
               </select>
             </div>
             <div className="flex items-center justify-between py-2 border-t border-gray-100">
               <span className="text-sm text-gray-700">Require a deposit</span>
-              <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-primary" : "bg-gray-300"}`}>
+              <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-primary" : "bg-border"}`}>
                 <span className={`absolute top-0.5 h-5 w-5 bg-white rounded-full transition ${depositRequired ? "left-6" : "left-0.5"}`} />
               </button>
             </div>
             {depositRequired && (
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-700">Deposit amount</span>
-                <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400">
+                <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                   {[10, 20, 30, 50, 100].map(p => <option key={p} value={p}>{p}% of price</option>)}
                 </select>
               </div>
@@ -624,7 +624,7 @@ export default function PartnerOnboarding() {
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <button onClick={() => navigate("/partner/login")} className="text-blue-600 font-medium hover:underline">Sign in</button>
+          <button onClick={() => navigate("/partner/login")} className="text-primary font-medium hover:underline">Sign in</button>
         </p>
       </div>
     </div>
@@ -635,7 +635,7 @@ export default function PartnerOnboarding() {
 function SectionTitle({ n, done, title, icon }: { n: string; done?: boolean; title: string; icon?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
+      <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">
         {done ? <Check size={16} /> : n}
       </div>
       <h2 className="font-semibold text-foreground flex items-center gap-1.5">{icon}{title}</h2>
@@ -646,6 +646,6 @@ function SectionTitle({ n, done, title, icon }: { n: string; done?: boolean; tit
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <input type="time" value={value} onChange={e => onChange(e.target.value)}
-      className="w-[84px] text-sm px-2 py-1.5 border border-border rounded-lg focus:outline-none focus:border-blue-400" />
+      className="w-[84px] text-sm px-2 py-1.5 border border-border rounded-lg focus:outline-none focus:border-primary" />
   );
 }
