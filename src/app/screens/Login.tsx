@@ -1,12 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, Star, MapPin } from "lucide-react";
+import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, Star, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
 
-
-// Store user info in localStorage for booking flow
 const USER_KEY = "mm-user";
 
 export function getStoredUser() {
@@ -16,6 +14,12 @@ export function getStoredUser() {
   } catch { return null; }
 }
 
+const HERO_IMG =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDxeaNyLnXkeBT2dbpMX2zYNIXLilfjVHy2-ZYdxxt-Qz96RWXVq8ByRIFbypkRZAFsvCYxOUnaj7G0ehW0VPaxP8RE0nks98I9JHL5vxlzFO8kSNuYBqf7wSkzD54uJ3PIN5137TDMdzYAkcbmQPLOi3N4Mlkt8VMgYCPUThkf5Um1vQ4HcYfR17UMpgGa0FTsHTlyXvD5STZOzFyet02k1u8FhrOLN2JiHK8_1dsZNOF_D_oZXuxWZj7hXSJr2j8I4jsAuy49e3mK";
+
+// Editorial spa aesthetic: warm sand palette + Instrument Serif display
+const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&display=swap";
+
 export default function Login() {
   const navigate = useNavigate();
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
@@ -23,8 +27,6 @@ export default function Login() {
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
   const [loading, setLoading] = useState(false);
 
-  // If the user is already signed in (or completes Google OAuth and lands back here),
-  // route them straight to the studios map.
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -39,7 +41,6 @@ export default function Login() {
     };
   }, [navigate]);
 
-
   const handleEmailContinue = async () => {
     if (!email.includes("@")) {
       toast.error("Please enter a valid email");
@@ -53,7 +54,6 @@ export default function Login() {
       provider: "google",
       options: { redirectTo: `${window.location.origin}/app/massages` },
     });
-    // If the Google provider isn't enabled in Supabase yet, fail gracefully.
     if (error) toast.error("Google sign-in isn't switched on yet — browse as guest for now.");
   };
 
@@ -63,227 +63,240 @@ export default function Login() {
       return;
     }
     setLoading(true);
-
-    // Save to localStorage for booking flow
     const user = { name: name.trim(), email: email.trim() };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
-
-    // Also save to Supabase leads
     await saveLead(email, name, "app_login");
-
     setLoading(false);
     toast.success(`Welcome, ${name}!`);
     navigate("/app/massages");
   };
 
+  // Shared shell with fonts + warm sand base
+  const Shell = ({ children }: { children: React.ReactNode }) => (
+    <div
+      className="flex flex-col h-full overflow-y-auto"
+      style={{
+        background: "linear-gradient(180deg,#faf6ee 0%,#f3ebdc 100%)",
+        color: "#2a221c",
+        fontFamily: "'Work Sans', system-ui, sans-serif",
+      }}
+    >
+      <link href={FONT_CSS} rel="stylesheet" />
+      {children}
+    </div>
+  );
+
+  const serif = { fontFamily: "'Instrument Serif', serif", fontWeight: 400 };
+
   if (step === "name") {
     return (
-      <div className="flex flex-col h-full bg-gradient-hero text-primary-foreground p-8">
-        <div className="flex-1 flex flex-col justify-center">
+      <Shell>
+        <div className="flex-1 flex flex-col p-7 pt-10">
           <button
             onClick={() => setStep("choice")}
-            className="absolute top-6 left-6 h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center"
-          >
-            ←
-          </button>
-          <div className="mb-8">
-            <div className="h-16 w-16 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-6">
-              <User className="h-8 w-8 text-foreground" />
+            className="self-start h-9 w-9 rounded-full border border-[#d8c7ad] bg-white/60 flex items-center justify-center text-[#7a5a36]"
+          >←</button>
+          <div className="flex-1 flex flex-col justify-center">
+            <p className="text-[11px] tracking-[0.25em] uppercase text-[#a07c4a] mb-3">Step 2 of 2</p>
+            <h2 style={serif} className="text-5xl leading-[1.05] mb-3">Almost there.</h2>
+            <p className="text-[#6b5b48] mb-8">Just your name — so the studio knows who's coming.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] tracking-[0.2em] uppercase text-[#a07c4a] mb-2 block">Your name</label>
+                <input
+                  type="text" value={name} onChange={(e) => setName(e.target.value)}
+                  placeholder="Alex Martinez"
+                  className="w-full h-12 rounded-xl bg-white border border-[#e2d3b8] px-4 text-[#2a221c] placeholder:text-[#bca987]"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] tracking-[0.2em] uppercase text-[#a07c4a] mb-2 block">Phone (optional)</label>
+                <input
+                  type="tel" placeholder="+34 600 000 000"
+                  className="w-full h-12 rounded-xl bg-white border border-[#e2d3b8] px-4 text-[#2a221c] placeholder:text-[#bca987]"
+                />
+              </div>
+              <Button
+                onClick={handleFinalContinue} disabled={loading}
+                className="w-full h-13 mt-2 rounded-full text-base font-medium"
+                style={{ background: "#7a3000", color: "#faf6ee" }}
+              >
+                {loading ? "Setting up…" : "Start booking"} <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
-            <h2 className="font-display text-3xl font-bold mb-2">Almost there!</h2>
-            <p className="text-primary-foreground/80">Just need your name.</p>
           </div>
         </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs uppercase tracking-wider text-primary-foreground/60 mb-2 block">
-              Your name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Alex Martinez"
-              className="w-full h-12 rounded-xl bg-primary-foreground/10 border border-primary-foreground/30 px-4 text-primary-foreground placeholder:text-primary-foreground/50 text-base"
-            />
-          </div>
-          <div>
-            <label className="text-xs uppercase tracking-wider text-primary-foreground/60 mb-2 block">
-              Phone (for SMS confirmations)
-            </label>
-            <input
-              type="tel"
-              placeholder="+34 600 000 000"
-              className="w-full h-12 rounded-xl bg-primary-foreground/10 border border-primary-foreground/30 px-4 text-primary-foreground placeholder:text-primary-foreground/50 text-base"
-            />
-          </div>
-          <Button
-            onClick={handleFinalContinue}
-            disabled={loading}
-            className="w-full h-12 bg-foreground text-primary-foreground hover:bg-foreground/90"
-          >
-            {loading ? "Setting up…" : "Start booking →"}
-          </Button>
-        </div>
-      </div>
+      </Shell>
     );
   }
 
   if (step === "email") {
     return (
-      <div className="flex flex-col h-full bg-gradient-hero text-primary-foreground p-8">
-        <div className="flex-1 flex flex-col justify-center">
+      <Shell>
+        <div className="flex-1 flex flex-col p-7 pt-10">
           <button
             onClick={() => setStep("choice")}
-            className="absolute top-6 left-6 h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center"
-          >
-            ←
-          </button>
-          <div className="mb-8">
-            <div className="h-16 w-16 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-6">
-              <Mail className="h-8 w-8 text-foreground" />
-            </div>
-            <h2 className="font-display text-3xl font-bold mb-2">Your email</h2>
-            <p className="text-primary-foreground/80">For booking confirmations and receipts.</p>
+            className="self-start h-9 w-9 rounded-full border border-[#d8c7ad] bg-white/60 flex items-center justify-center text-[#7a5a36]"
+          >←</button>
+          <div className="flex-1 flex flex-col justify-center">
+            <p className="text-[11px] tracking-[0.25em] uppercase text-[#a07c4a] mb-3">Step 1 of 2</p>
+            <h2 style={serif} className="text-5xl leading-[1.05] mb-3">Your email.</h2>
+            <p className="text-[#6b5b48] mb-8">For booking confirmations & receipts.</p>
+            <input
+              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full h-12 rounded-xl bg-white border border-[#e2d3b8] px-4 text-[#2a221c] placeholder:text-[#bca987] mb-3"
+            />
+            <Button
+              onClick={handleEmailContinue}
+              className="w-full h-13 rounded-full text-base font-medium"
+              style={{ background: "#7a3000", color: "#faf6ee" }}
+            >
+              Continue <ChevronRight className="h-5 w-5" />
+            </Button>
           </div>
         </div>
-
-        <div className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="w-full h-12 rounded-xl bg-primary-foreground/10 border border-primary-foreground/30 px-4 text-primary-foreground placeholder:text-primary-foreground/50 text-base"
-          />
-          <Button
-            onClick={handleEmailContinue}
-            className="w-full h-12 bg-foreground text-primary-foreground hover:bg-foreground/90"
-          >
-            Continue <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
+      </Shell>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-gradient-hero text-primary-foreground">
-      <div className="px-7 pt-12 pb-8 min-h-full flex flex-col">
-        {/* Top bar — studio access */}
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={() => navigate("/partner/login")}
-            className="text-xs font-semibold text-primary-foreground/90 hover:text-primary-foreground bg-primary-foreground/10 border border-primary-foreground/30 rounded-full px-3.5 py-2"
-          >
-            For studios →
-          </button>
+    <Shell>
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 pt-6">
+        <div className="flex items-center gap-2">
+          <span className="h-7 w-7 rounded-full flex items-center justify-center text-[11px]"
+                style={{ background: "#7a3000", color: "#faf6ee", ...serif, fontSize: 14 }}>M</span>
+          <span className="text-[13px] font-medium tracking-tight text-[#3a2d22]">Massage Club</span>
         </div>
-
-        {/* Brand */}
-        <div className="flex flex-col items-center text-center">
-          <div className="h-16 w-16 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-5">
-            <span className="font-display font-bold text-foreground text-2xl">M</span>
-          </div>
-          <h1 className="font-display text-4xl font-bold leading-tight">
-            Madrid's best massages,<br />booked in seconds.
-          </h1>
-          <p className="text-primary-foreground/80 max-w-xs mt-3">
-            Discover top studios near you and book instantly. Free to browse — no account needed to look around.
-          </p>
-
-          {/* Social proof */}
-          <div className="flex items-center gap-3 mt-5 text-sm text-primary-foreground/80">
-            <span className="flex items-center gap-1"><Star className="h-4 w-4 fill-accent text-accent" /> 4.8</span>
-            <span className="opacity-40">·</span>
-            <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> 12+ studios</span>
-            <span className="opacity-40">·</span>
-            <span>Madrid</span>
-          </div>
-        </div>
-
-        {/* CTAs — Google or guest */}
-        <div className="mt-8 space-y-3">
-          <Button
-            onClick={handleGoogle}
-            className="w-full h-14 bg-white text-gray-800 hover:bg-white/90 text-base font-semibold rounded-2xl"
-          >
-            <svg className="h-5 w-5 mr-1" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
-            </svg>
-            Continue with Google
-          </Button>
-          <Button
-            onClick={() => navigate("/app/massages")}
-            variant="outline"
-            className="w-full h-14 bg-transparent border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground text-base font-semibold rounded-2xl"
-          >
-            <Search className="h-5 w-5" /> Browse as guest — no account
-          </Button>
-        </div>
-
-        {/* Own a studio */}
         <button
-          onClick={() => navigate("/partner/onboarding")}
-          className="mt-4 w-full text-center text-sm font-semibold text-primary-foreground/90 underline underline-offset-4 hover:text-primary-foreground"
+          onClick={() => navigate("/partner/login")}
+          className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#7a5a36] hover:text-[#7a3000]"
         >
-          Own a massage studio? List it free →
+          For studios →
         </button>
+      </div>
 
-        {/* How it works */}
-        <div className="mt-8 space-y-4">
-          <p className="text-xs uppercase tracking-widest text-primary-foreground/50 text-center">How it works</p>
+      {/* Hero — editorial split */}
+      <div className="px-6 pt-8">
+        <p className="text-[11px] tracking-[0.3em] uppercase text-[#a07c4a] mb-4">Madrid · Est. 2026</p>
+        <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#2a221c]">
+          The city's best<br/>
+          <em className="text-[#7a3000]">massages,</em><br/>
+          on demand.
+        </h1>
+
+        {/* Hero image card */}
+        <div className="mt-6 relative rounded-[28px] overflow-hidden shadow-[0_20px_50px_-20px_rgba(122,48,0,0.35)]">
+          <img src={HERO_IMG} alt="Calm Madrid massage studio" className="w-full h-52 object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-[#e0a458] text-[#e0a458]" /> 4.8</span>
+              <span className="opacity-50">·</span>
+              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> 12+ studios</span>
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.2em] bg-white/15 backdrop-blur px-2 py-1 rounded-full">Pay at studio</span>
+          </div>
+        </div>
+
+        <p className="text-[15px] text-[#6b5b48] mt-5 leading-relaxed">
+          Browse top-rated studios near you. No account needed to look — pay at the studio.
+        </p>
+      </div>
+
+      {/* CTAs */}
+      <div className="px-6 mt-6 space-y-3">
+        <Button
+          onClick={() => navigate("/app/massages")}
+          className="w-full h-14 rounded-full text-base font-medium shadow-[0_10px_30px_-10px_rgba(122,48,0,0.5)]"
+          style={{ background: "#7a3000", color: "#faf6ee" }}
+        >
+          <Search className="h-5 w-5 mr-1" /> Browse studios
+        </Button>
+        <Button
+          onClick={handleGoogle}
+          variant="outline"
+          className="w-full h-14 rounded-full text-base font-medium bg-white border-[#e2d3b8] text-[#2a221c] hover:bg-[#faf6ee]"
+        >
+          <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
+          </svg>
+          Continue with Google
+        </Button>
+      </div>
+
+      {/* How it works — editorial three column */}
+      <div className="px-6 mt-10">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-[#a07c4a] mb-5">How it works</p>
+        <div className="space-y-5">
           {[
-            { icon: Search, title: "Find a studio", sub: "Browse top-rated spots near you." },
-            { icon: CalendarCheck, title: "Pick a time", sub: "Book instantly — pressure, focus, add-ons." },
-            { icon: Sparkles, title: "Show up & relax", sub: "Get a confirmation. That's it." },
-          ].map(({ icon: Icon, title, sub }, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <div className="h-11 w-11 rounded-2xl bg-primary-foreground/15 flex items-center justify-center flex-shrink-0">
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold">{title}</p>
-                <p className="text-sm text-primary-foreground/70">{sub}</p>
+            { n: "01", icon: Search, title: "Find a studio", sub: "Browse top-rated spots near you." },
+            { n: "02", icon: CalendarCheck, title: "Pick a time", sub: "Book instantly — pressure, focus, add-ons." },
+            { n: "03", icon: Sparkles, title: "Show up & relax", sub: "Get a confirmation. That's it." },
+          ].map(({ n, icon: Icon, title, sub }) => (
+            <div key={n} className="flex items-start gap-4 pb-4 border-b border-[#ebdcbe] last:border-0">
+              <div style={serif} className="text-[32px] leading-none text-[#d4a155] w-10">{n}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className="h-4 w-4 text-[#7a3000]" />
+                  <p style={serif} className="text-xl text-[#2a221c]">{title}</p>
+                </div>
+                <p className="text-sm text-[#6b5b48]">{sub}</p>
               </div>
             </div>
           ))}
         </div>
-
-        <div className="flex-1" />
-
-        {/* Optional: save details (light, not a wall) */}
-        <div className="mt-8 pt-5 border-t border-primary-foreground/20">
-          <p className="text-xs text-primary-foreground/60 text-center mb-3">Save your details for faster booking (optional)</p>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="w-full h-12 rounded-xl bg-primary-foreground/10 border border-primary-foreground/30 px-4 text-primary-foreground placeholder:text-primary-foreground/50 text-base mb-3"
-          />
-          <Button
-            onClick={handleEmailContinue}
-            variant="outline"
-            className="w-full h-12 bg-transparent border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-          >
-            Save & continue <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Feedback link — for early users */}
-        <button
-          onClick={() => navigate("/survey")}
-          className="w-full flex items-center justify-center gap-2 mt-4 py-2 text-xs text-primary-foreground/50 hover:text-primary-foreground/80 transition"
-        >
-          <MessageCircle className="h-3 w-3" />
-          Share feedback — help us build this
-        </button>
       </div>
-    </div>
+
+      {/* Studio CTA — refined card */}
+      <div className="px-6 mt-10">
+        <div
+          className="rounded-[24px] p-6 relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg,#2a221c 0%,#4a3a2a 100%)", color: "#faf6ee" }}
+        >
+          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full" style={{ background: "rgba(212,161,85,0.18)", filter: "blur(20px)" }} />
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[#d4a155] mb-2">For studios</p>
+          <h3 style={serif} className="text-[28px] leading-tight mb-2">List your studio in minutes.</h3>
+          <p className="text-sm text-[#faf6ee]/70 mb-4">Calendar sync, branded link, no setup fees.</p>
+          <button
+            onClick={() => navigate("/partner/onboarding")}
+            className="inline-flex items-center gap-2 bg-[#faf6ee] text-[#2a221c] px-5 h-11 rounded-full text-sm font-medium hover:bg-white"
+          >
+            Become a partner <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Save details — quiet */}
+      <div className="px-6 mt-8 pt-6 border-t border-[#ebdcbe]">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-[#a07c4a] mb-3 text-center">Save details for faster booking</p>
+        <div className="flex gap-2">
+          <input
+            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="flex-1 h-11 rounded-full bg-white border border-[#e2d3b8] px-4 text-sm text-[#2a221c] placeholder:text-[#bca987]"
+          />
+          <button
+            onClick={handleEmailContinue}
+            className="h-11 px-5 rounded-full bg-[#2a221c] text-[#faf6ee] text-sm font-medium hover:bg-[#3a2d22]"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+
+      {/* Feedback */}
+      <button
+        onClick={() => navigate("/survey")}
+        className="w-full flex items-center justify-center gap-2 mt-4 mb-6 py-2 text-[11px] text-[#a07c4a] hover:text-[#7a3000]"
+      >
+        <MessageCircle className="h-3 w-3" />
+        Share feedback — help us build this
+      </button>
+    </Shell>
   );
 }
