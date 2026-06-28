@@ -679,7 +679,7 @@ export default function Profile() {
       </div>
 
       {/* Sticky Save */}
-      <div className="fixed bottom-[72px] inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
+      <div className="sticky bottom-0 inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
           <button
             onClick={save}
