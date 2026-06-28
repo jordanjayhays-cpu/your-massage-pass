@@ -278,8 +278,10 @@ export default function MassageList() {
 
                       <p className="text-xs text-foreground/80 mt-2 truncate">
                         <span className="font-medium">{m.name}</span>
-                        <span className="text-muted-foreground"> · {m.duration} min · </span>
-                        <span className="font-semibold text-primary">€{m.price}</span>
+                        <span className="text-muted-foreground"> · {m.duration} min</span>
+                        {"price" in m && (m as any).price != null && (
+                          <span className="font-semibold text-primary"> · €{(m as any).price}</span>
+                        )}
                       </p>
 
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
