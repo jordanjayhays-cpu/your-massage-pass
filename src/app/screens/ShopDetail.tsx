@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,9 +14,11 @@ import {
   Compass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MASSAGES } from "../data";
+import { MASSAGES, MADRID_CENTER } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+import { loadGoogleMaps } from "../lib/googleMaps";
+
 
 export default function ShopDetail() {
   const navigate = useNavigate();
@@ -24,6 +26,9 @@ export default function ShopDetail() {
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
   const [fav, setFav] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInitedFor = useRef<string | null>(null);
+
 
   useEffect(() => {
     if (!id) return;
@@ -38,6 +43,79 @@ export default function ShopDetail() {
       setLoading(false);
     });
   }, [id]);
+
+  // Initialize Google Map in the Location card once studio data is loaded
+  useEffect(() => {
+    if (!massage || !mapRef.current) return;
+    const studioId = (massage as any).id as string;
+    if (mapInitedFor.current === studioId) return;
+    let cancelled = false;
+
+    const m: any = massage;
+    const addr: string | undefined = m.address ?? m.location;
+    const hasCoords = typeof m.lat === "number" && typeof m.lng === "number";
+
+    const mapStyles: google.maps.MapTypeStyle[] = [
+      { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
+      { elementType: "labels.text.fill", stylers: [{ color: "#5b4636" }] },
+      { elementType: "labels.text.stroke", stylers: [{ color: "#f6efe1" }] },
+      { featureType: "poi", stylers: [{ visibility: "off" }] },
+      { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+      { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
+    ];
+
+    const pinIcon = {
+      url: `data:image/svg+xml,${encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="#C4622D" stroke="white" stroke-width="3"/></svg>`
+      )}`,
+      scaledSize: undefined as any,
+      anchor: undefined as any,
+    };
+
+    loadGoogleMaps().then((g) => {
+      if (cancelled || !g || !mapRef.current) return;
+      pinIcon.scaledSize = new google.maps.Size(36, 36);
+      pinIcon.anchor = new google.maps.Point(18, 18);
+
+      const createMap = (center: google.maps.LatLngLiteral, zoom: number) =>
+        new google.maps.Map(mapRef.current!, {
+          center,
+          zoom,
+          disableDefaultUI: true,
+          zoomControl: true,
+          gestureHandling: "cooperative",
+          styles: mapStyles,
+        });
+
+      if (hasCoords) {
+        const center = { lat: m.lat, lng: m.lng };
+        const map = createMap(center, 15);
+        new google.maps.Marker({ position: center, map, icon: pinIcon, title: m.studio });
+        mapInitedFor.current = studioId;
+      } else if (addr) {
+        new google.maps.Geocoder().geocode({ address: addr }, (results, status) => {
+          if (cancelled || !mapRef.current) return;
+          if (status === "OK" && results && results[0]) {
+            const loc = results[0].geometry.location;
+            const center = { lat: loc.lat(), lng: loc.lng() };
+            const map = createMap(center, 14);
+            new google.maps.Marker({ position: center, map, icon: pinIcon, title: m.studio });
+          } else {
+            createMap(MADRID_CENTER, 12);
+          }
+          mapInitedFor.current = studioId;
+        });
+      } else {
+        createMap(MADRID_CENTER, 12);
+        mapInitedFor.current = studioId;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [massage]);
+
 
   if (loading) {
     return (
@@ -212,17 +290,8 @@ export default function ShopDetail() {
             </div>
 
             <div className="rounded-2xl bg-secondary/70 border border-border/60 p-5 shadow-soft">
-              <div className="relative h-32 rounded-xl bg-[radial-gradient(ellipse_at_center,_hsl(var(--background))_0%,_hsl(var(--secondary))_100%)] flex items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 opacity-40"
-                  style={{
-                    backgroundImage:
-                      "repeating-linear-gradient(45deg, transparent 0 14px, hsl(var(--border)/0.4) 14px 15px), repeating-linear-gradient(-45deg, transparent 0 14px, hsl(var(--border)/0.4) 14px 15px)",
-                  }}
-                />
-                <div className="relative h-12 w-12 rounded-full bg-card border border-border shadow-elegant flex items-center justify-center">
-                  <MapPin className="h-5 w-5 text-primary" />
-                </div>
-              </div>
+              <div ref={mapRef} className="relative h-40 rounded-xl overflow-hidden bg-secondary" />
+
 
               <div className="flex items-center justify-between gap-3 mt-4">
                 <div className="min-w-0">
