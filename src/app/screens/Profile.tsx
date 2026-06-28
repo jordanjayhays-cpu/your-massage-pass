@@ -177,6 +177,13 @@ export default function Profile() {
         setUsualAddons(data?.usual_addons || []);
         setMassageFrequency(data?.massage_frequency || "");
         setMassageGoals(data?.massage_goals || []);
+
+        setConversationPref(data?.conversation_pref || "");
+        setMusicPref(data?.music_pref || "");
+        setTemperaturePref(data?.temperature_pref || "");
+        setScentPref(data?.scent_pref || "");
+        setLightingPref(data?.lighting_pref || "");
+        setComfortNotes(data?.comfort_notes || "");
       }
       setLoading(false);
     })();
