@@ -218,14 +218,23 @@ export default function MassageList() {
       <div className="px-5 pt-5">
         <div className="relative rounded-3xl overflow-hidden shadow-soft border border-border/60 h-[220px]">
           <div ref={mapRef} className="absolute inset-0" />
-          <div className="absolute top-4 left-4 pointer-events-none">
-            <div className="flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-2 shadow-soft">
+          <button
+            onClick={() => setMapOpen(true)}
+            className="absolute top-4 left-4 group"
+            aria-label="Open full Madrid map"
+          >
+            <div className="flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-2 shadow-soft border border-border/60 group-hover:border-primary/60 transition">
               <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
                 <Compass className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="text-[11px] font-bold tracking-[0.14em] text-foreground uppercase">Madrid map view</span>
             </div>
-          </div>
+          </button>
+          <button
+            onClick={() => setMapOpen(true)}
+            aria-label="Expand map"
+            className="absolute inset-0"
+          />
         </div>
       </div>
 
