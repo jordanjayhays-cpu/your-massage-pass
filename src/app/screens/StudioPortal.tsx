@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Calendar, Clock, DollarSign, Star, Settings, ChevronRight,
   CheckCircle, XCircle, Loader2, Link2, Unlink, Users, LogOut,
-  MapPin, Phone, Globe, ChevronLeft
+  MapPin, Phone, Globe, ChevronLeft, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
