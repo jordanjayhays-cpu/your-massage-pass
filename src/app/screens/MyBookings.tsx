@@ -185,7 +185,7 @@ export default function MyBookings() {
               No past bookings yet.
             </p>
           ) : (
-            <div className="space-y-3">{past.map(renderCard)}</div>
+            <div className="space-y-3">{past.map((b) => renderCard(b, true))}</div>
           )}
         </section>
       </div>
