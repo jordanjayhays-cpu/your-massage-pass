@@ -11,6 +11,7 @@ type BookingState = {
   focusAreas: string[];
   addOns: string[];
   notes: string;
+  conversation: string;
 };
 
 type Ctx = BookingState & {
@@ -29,6 +30,7 @@ const initial: BookingState = {
   focusAreas: [],
   addOns: [],
   notes: "",
+  conversation: "",
 };
 
 const BookingCtx = createContext<Ctx | null>(null);
