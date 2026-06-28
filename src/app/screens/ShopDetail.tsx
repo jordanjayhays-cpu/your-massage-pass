@@ -18,6 +18,7 @@ import { MASSAGES, MADRID_CENTER } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
+import { googleReviewUrl } from "../lib/googleReview";
 
 
 export default function ShopDetail() {
