@@ -34,13 +34,28 @@ export default function MassageList() {
   const [shopsLoading, setShopsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const userMarkerRef = useRef<any>(null);
+
+  const requestUserLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  };
+
+  useEffect(() => {
+    requestUserLocation();
+  }, []);
 
   useEffect(() => {
     fetchShops().then((shops) => {
@@ -66,6 +81,8 @@ export default function MassageList() {
 
   const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
 
+  const origin = userLoc ?? MADRID_CENTER;
+
   const filtered = allShops
     .filter((m) => {
       if (!m || !m.name || !m.studio) return false;
@@ -79,7 +96,9 @@ export default function MassageList() {
     })
     .map((m) => ({
       ...m,
-      km: "km" in m ? m.km : distanceKm(MADRID_CENTER, m as typeof MASSAGES[0]),
+      km: typeof (m as any).lat === "number" && typeof (m as any).lng === "number"
+        ? distanceKm(origin, m as any)
+        : (m as any).km ?? Number.POSITIVE_INFINITY,
     }))
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
@@ -96,8 +115,8 @@ export default function MassageList() {
       if (cancelled || !mapRef.current) return;
 
       const map = new google.maps.Map(mapRef.current, {
-        center: MADRID_CENTER,
-        zoom: 13,
+        center: userLoc ?? MADRID_CENTER,
+        zoom: userLoc ? 14 : 13,
         disableDefaultUI: true,
         zoomControl: true,
         styles: [
@@ -145,10 +164,31 @@ export default function MassageList() {
         });
         markersRef.current.push(marker);
       });
+
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setMap(null);
+        userMarkerRef.current = null;
+      }
+      if (userLoc) {
+        userMarkerRef.current = new google.maps.Marker({
+          position: userLoc,
+          map,
+          title: "You are here",
+          zIndex: 9999,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 3,
+          },
+        });
+      }
     });
 
     return () => { cancelled = true; };
-  }, [realShops]);
+  }, [realShops, userLoc]);
 
 
 
@@ -227,12 +267,17 @@ export default function MassageList() {
       <div className="px-5 pt-5">
         <div className="relative rounded-3xl overflow-hidden shadow-soft border border-border/60 h-[230px]">
           <div ref={mapRef} className="absolute inset-0" />
-          <div className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60">
+          <button
+            onClick={() => { if (!userLoc) requestUserLocation(); }}
+            className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60 hover:bg-card transition"
+          >
             <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
               <Compass className="h-3 w-3 text-primary" />
             </div>
-            <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">Madrid</span>
-          </div>
+            <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
+              {userLoc ? "Your location" : "Near Madrid · tap to locate"}
+            </span>
+          </button>
         </div>
       </div>
 
