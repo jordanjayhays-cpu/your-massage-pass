@@ -63,17 +63,17 @@ export default function MyBookings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf6ee]">
-        <Loader2 className="h-7 w-7 animate-spin text-[#A21228]" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F4F0]">
+        <Loader2 className="h-7 w-7 animate-spin text-[#C4622D]" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#faf6ee] text-center px-6">
-        <div className="h-16 w-16 rounded-full bg-[#A21228]/10 flex items-center justify-center mb-4">
-          <CalendarDays className="h-8 w-8 text-[#A21228]" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F4F0] text-center px-6">
+        <div className="h-16 w-16 rounded-full bg-[#C4622D]/10 flex items-center justify-center mb-4">
+          <CalendarDays className="h-8 w-8 text-[#C4622D]" />
         </div>
         <h1 className="text-xl font-bold text-gray-900">Sign in to see your bookings</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
@@ -81,7 +81,7 @@ export default function MyBookings() {
         </p>
         <button
           onClick={() => navigate("/")}
-          className="mt-6 h-12 px-6 rounded-full bg-[#A21228] text-white font-semibold shadow-lg"
+          className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
         >
           Sign in
         </button>
@@ -117,7 +117,7 @@ export default function MyBookings() {
       </p>
       <button
         onClick={() => navigate(`/s/${b.partner_id}`)}
-        className="mt-3 w-full h-10 rounded-xl bg-[#A21228]/5 text-[#A21228] text-sm font-semibold border border-[#A21228]/20"
+        className="mt-3 w-full h-10 rounded-xl bg-[#C4622D]/5 text-[#C4622D] text-sm font-semibold border border-[#C4622D]/20"
       >
         Rebook
       </button>
@@ -125,7 +125,7 @@ export default function MyBookings() {
   );
 
   return (
-    <div className="min-h-screen bg-[#faf6ee] pb-12">
+    <div className="min-h-screen bg-[#F7F4F0] pb-12">
       <div className="max-w-lg mx-auto px-5 pt-6">
         <button
           onClick={() => navigate("/app/massages")}

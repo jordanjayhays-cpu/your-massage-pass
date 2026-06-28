@@ -79,7 +79,7 @@ export default function Web() {
             <Link to="/" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
             <Link
               to="/app/massages"
-              className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#7a3000] transition"
+              className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#C4622D] transition"
             >
               Browse studios
             </Link>
@@ -106,7 +106,7 @@ export default function Web() {
             <div className="flex flex-wrap gap-3 mb-10">
               <Link
                 to="/app/massages"
-                className="bg-[#99420d] text-white px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#7a3000] shadow-[0_8px_24px_rgba(153,66,13,0.25)] transition"
+                className="bg-[#99420d] text-white px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#C4622D] shadow-[0_8px_24px_rgba(153,66,13,0.25)] transition"
               >
                 Browse studios — no account needed
               </Link>
@@ -184,7 +184,7 @@ export default function Web() {
                   <span className="text-base font-medium text-[#99420d]">{s.price}</span>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#f1e6e2] flex items-center justify-between">
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#ffdbcc] text-[#7a3000] font-medium">
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#ffdbcc] text-[#C4622D] font-medium">
                     {s.badge}
                   </span>
                   <Link to="/app/massages" className="text-sm font-medium text-[#99420d] hover:underline">

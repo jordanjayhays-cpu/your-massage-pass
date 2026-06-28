@@ -407,10 +407,10 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
 // ---- Helpers ----
 
 function makeMarkerIcon(active: boolean): google.maps.Icon | google.maps.Symbol {
-  // Crimson primary (354, 78%, 36%) → #A21228 ; Gold accent → #E8B130
+  // Crimson primary (354, 78%, 36%) → #C4622D ; Gold accent → #E8B130
   return {
     path: "M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z",
-    fillColor: active ? "#E8B130" : "#A21228",
+    fillColor: active ? "#E8B130" : "#C4622D",
     fillOpacity: 1,
     strokeColor: "#fff",
     strokeWeight: 2,
@@ -424,7 +424,7 @@ function buildInfoContent(m: Massage) {
     <div style="font-family: system-ui, sans-serif; max-width: 220px;">
       <img src="${m.image}" alt="" style="width:100%; height:90px; object-fit:cover; border-radius:8px; margin-bottom:8px;" />
       <div style="font-weight:700; font-size:14px; color:#1a0709;">${m.studio}</div>
-      <div style="font-size:12px; color:#A21228; font-weight:600;">${m.name}</div>
+      <div style="font-size:12px; color:#C4622D; font-weight:600;">${m.name}</div>
       <div style="font-size:11px; color:#666; margin-top:4px;">${m.district} · ${m.duration} min · ★ ${m.rating}</div>
     </div>
   `;
