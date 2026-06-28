@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { MASSAGE_GUIDE, MASSAGES } from "../data";
 import GoogleMap from "../components/GoogleMap";
 import { useBooking } from "../BookingContext";
@@ -7,6 +8,8 @@ import { useBooking } from "../BookingContext";
 export default function Discovery() {
   const navigate = useNavigate();
   const { set } = useBooking();
+  const { t } = useTranslation();
+
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
