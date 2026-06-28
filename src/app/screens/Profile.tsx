@@ -323,7 +323,7 @@ export default function Profile() {
         >
           <ArrowLeft size={14} /> Back
         </button>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">My profile</h1>
           <button
             onClick={signOut}
@@ -331,6 +331,15 @@ export default function Profile() {
           >
             <LogOut size={14} /> Sign out
           </button>
+        </div>
+
+        {/* Language picker — prominent in profile */}
+        <div className="mt-4 rounded-2xl border border-[#E5DDD3] bg-white p-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068]">Idioma · Language</p>
+            <p className="text-xs text-[#9E9387] mt-0.5">Pick your language / Elige tu idioma</p>
+          </div>
+          <LanguageFlagToggle />
         </div>
 
         {/* Photo header */}
