@@ -74,6 +74,16 @@ export default function Profile() {
       focus_areas: focusAreas,
       allergies,
       health_notes: healthNotes,
+      reason_for_visit: reasonForVisit,
+      medical_conditions: medicalConditions,
+      medications,
+      past_surgeries: pastSurgeries,
+      avoid_areas: avoidAreas,
+      emergency_contact_name: emergencyName,
+      emergency_contact_phone: emergencyPhone,
+      is_first_massage: isFirstMassage,
+      consent_accepted: consentAccepted,
+      consent_at: consentAccepted ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
