@@ -121,15 +121,15 @@ export default function PartnerProfile() {
     } catch { /* use basic result */ }
 
     const addressParts = fullPlace.formatted_address?.split(",") ?? [];
-    setForm({
+    setForm((f) => ({
+      ...f,
       business_name: fullPlace.name ?? "",
       address: fullPlace.formatted_address ?? "",
       phone: fullPlace.formatted_phone_number ?? "",
       website: fullPlace.website ?? "",
-      description: "",
       city: addressParts.find(p => /Madrid/i.test(p)) ? "Madrid" : addressParts[1]?.trim() ?? "Madrid",
       country: "Spain",
-    });
+    }));
     toast.success(`${fullPlace.name} loaded! Fill in the rest and save.`);
   };
 
