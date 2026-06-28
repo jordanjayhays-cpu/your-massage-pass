@@ -152,6 +152,25 @@ export default function Payment() {
             Leave a Google review ⭐
           </a>
         </div>
+
+        {/* Add to calendar */}
+        {booking.date && booking.time && (
+          <a
+            href={googleCalendarUrl({
+              title: `${massage.name} at ${massage.studio}`,
+              date: booking.date,
+              time: booking.time,
+              durationMin: massage.duration,
+              details: `Booking ref ${bookingRef}. ${addOnNames.length ? "Add-ons: " + addOnNames.join(", ") + ". " : ""}Pressure: ${booking.pressure}.`,
+              location: (massage as any).address ?? `${massage.studio}, ${massage.district}, Madrid`,
+            })}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center justify-center w-full h-11 rounded-full bg-card border border-border text-foreground font-semibold hover:bg-secondary transition"
+          >
+            📅 Add to calendar
+          </a>
+        )}
         <div className="mt-10 w-full space-y-3">
           <Button
             onClick={() => {
