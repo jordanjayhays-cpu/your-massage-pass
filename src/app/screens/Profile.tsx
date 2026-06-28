@@ -6,6 +6,7 @@ import { Loader2, LogOut, ArrowLeft, UserCircle2 } from "lucide-react";
 
 const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
+const MEDICALS = ["High blood pressure", "Heart condition", "Diabetes", "Blood clots / DVT", "Pregnant", "Recent surgery", "Cancer", "Epilepsy", "Skin condition"];
 
 export default function Profile() {
   const navigate = useNavigate();
