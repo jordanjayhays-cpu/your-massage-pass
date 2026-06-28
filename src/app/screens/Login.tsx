@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 const USER_KEY = "mm-user";
 
