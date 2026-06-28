@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock, X, Navigation } from "lucide-react";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock, X, Navigation, Sparkles, List as ListIcon, Map as MapIcon } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
