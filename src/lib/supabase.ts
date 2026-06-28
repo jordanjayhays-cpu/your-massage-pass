@@ -25,6 +25,7 @@ export interface Booking {
   add_ons?: string[];
   notes?: string;
   status: "pending" | "confirmed" | "cancelled";
+  client_preferences?: any;
   created_at?: string;
 }
 
