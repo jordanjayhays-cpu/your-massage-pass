@@ -258,6 +258,12 @@ export default function Profile() {
       usual_addons: usualAddons.length ? usualAddons : null,
       massage_frequency: massageFrequency || null,
       massage_goals: massageGoals.length ? massageGoals : null,
+      conversation_pref: conversationPref || null,
+      music_pref: musicPref || null,
+      temperature_pref: temperaturePref || null,
+      scent_pref: scentPref || null,
+      lighting_pref: lightingPref || null,
+      comfort_notes: comfortNotes || null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
