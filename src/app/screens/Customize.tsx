@@ -25,7 +25,7 @@ const CONVERSATION_OPTIONS: { label: string; value: string }[] = [
 export default function Customize() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { pressure, focusAreas, addOns, notes, set, toggleFocus, toggleAddOn, shop } = useBooking();
+  const { pressure, focusAreas, addOns, notes, conversation, set, toggleFocus, toggleAddOn, shop } = useBooking();
   const massage = shop || MASSAGES.find((m) => m.id === id);
   const [profile, setProfile] = useState<any>(null);
 
@@ -35,19 +35,30 @@ export default function Customize() {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("preferred_pressure, focus_areas, usual_addons, preferred_massage_types, preferred_duration")
+        .select("preferred_pressure, focus_areas, usual_addons, preferred_massage_types, preferred_duration, conversation_pref")
         .eq("id", user.id)
         .maybeSingle();
-      if (data) setProfile(data);
+      if (data) {
+        setProfile(data);
+        // Pre-select conversation from profile if booking value not already set
+        if (!conversation && data.conversation_pref) {
+          set({ conversation: data.conversation_pref });
+        }
+      }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Default session value to "minimal" if nothing is set
+  const conversationValue = conversation || "minimal";
 
   const hasPrefs = profile && (
     profile.preferred_pressure ||
     (profile.focus_areas?.length ?? 0) > 0 ||
     (profile.usual_addons?.length ?? 0) > 0 ||
     (profile.preferred_massage_types?.length ?? 0) > 0 ||
-    profile.preferred_duration
+    profile.preferred_duration ||
+    profile.conversation_pref
   );
 
   const applyPrefs = () => {
