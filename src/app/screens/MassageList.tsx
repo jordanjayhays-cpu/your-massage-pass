@@ -95,7 +95,9 @@ export default function MassageList() {
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
   // Map markers: real shops + demo shops together
-  const mapShops = [...realShops, ...MASSAGES];
+  const mapShops = [...realShops, ...MASSAGES].filter(
+    (m: any) => m && typeof m.lat === "number" && typeof m.lng === "number"
+  );
 
   // Initialize map
   useEffect(() => {
