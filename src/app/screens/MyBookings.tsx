@@ -102,7 +102,7 @@ export default function MyBookings() {
 
   const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
 
-  const renderCard = (b: Booking) => (
+  const renderCard = (b: Booking, isPast = false) => (
     <div key={b.id} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -116,12 +116,24 @@ export default function MyBookings() {
       <p className="text-sm text-gray-600 mt-2">
         📅 {formatDate(b.booking_date)} at {b.booking_time}
       </p>
-      <button
-        onClick={() => navigate(`/s/${b.partner_id}`)}
-        className="mt-3 w-full h-10 rounded-xl bg-[#C4622D]/5 text-[#C4622D] text-sm font-semibold border border-[#C4622D]/20"
-      >
-        Rebook
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={() => navigate(`/s/${b.partner_id}`)}
+          className="flex-1 h-10 rounded-xl bg-[#C4622D]/5 text-[#C4622D] text-sm font-semibold border border-[#C4622D]/20"
+        >
+          Rebook
+        </button>
+        {isPast && (
+          <a
+            href={googleReviewUrl(b.spa_name, (b as any).address)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-1 px-4 h-10 rounded-xl border border-[#C4622D]/30 text-[#C4622D] text-sm font-semibold hover:bg-[#C4622D]/5"
+          >
+            <Star size={14} className="fill-[#E0A458] text-[#E0A458]" /> Review
+          </a>
+        )}
+      </div>
     </div>
   );
 
