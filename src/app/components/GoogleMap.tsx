@@ -324,7 +324,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
       <div
         className={cn(
           "relative overflow-hidden bg-secondary",
-          compact ? "h-72 rounded-2xl border border-border" : "flex-1",
+          compact ? "h-72 rounded-3xl border border-border shadow-soft" : "flex-1",
         )}
       >
         {mapsError && (
