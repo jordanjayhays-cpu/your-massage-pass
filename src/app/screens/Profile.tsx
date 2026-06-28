@@ -8,7 +8,55 @@ const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
 const MEDICALS = ["High blood pressure", "Heart condition", "Diabetes", "Blood clots / DVT", "Pregnant", "Recent surgery", "Cancer", "Epilepsy", "Skin condition"];
 const GENDERS = ["Female", "Male", "Other", "Prefer not to say"];
-const THERAPIST_GENDERS = ["No preference", "Female", "Male"];
+const THERAPIST_GENDERS: { label: string; value: string }[] = [
+  { label: "No preference", value: "any" },
+  { label: "Female", value: "female" },
+  { label: "Male", value: "male" },
+];
+const MASSAGE_TYPES: { label: string; value: string }[] = [
+  { label: "Swedish", value: "swedish" },
+  { label: "Deep Tissue", value: "deep" },
+  { label: "Thai", value: "thai" },
+  { label: "Sports", value: "sports" },
+  { label: "Hot Stone", value: "stone" },
+  { label: "Aromatherapy", value: "aromatherapy" },
+  { label: "Reflexology", value: "reflexology" },
+  { label: "Shiatsu", value: "shiatsu" },
+  { label: "Balinese", value: "balinese" },
+  { label: "Lymphatic", value: "lymphatic" },
+  { label: "Prenatal", value: "prenatal" },
+];
+const DURATIONS = [30, 60, 90, 120];
+const BUDGETS: { label: string; value: string }[] = [
+  { label: "Under €40", value: "under_40" },
+  { label: "€40–60", value: "40_60" },
+  { label: "€60–90", value: "60_90" },
+  { label: "€90+", value: "90_plus" },
+];
+const ADDONS: { label: string; value: string }[] = [
+  { label: "Aromatherapy", value: "aromatherapy" },
+  { label: "Hot stones", value: "hot_stones" },
+  { label: "Scalp massage", value: "scalp" },
+  { label: "Foot scrub", value: "foot_scrub" },
+  { label: "CBD oil", value: "cbd" },
+  { label: "Cupping", value: "cupping" },
+  { label: "Extra 15 min", value: "extra_time" },
+];
+const FREQUENCIES: { label: string; value: string }[] = [
+  { label: "Weekly", value: "weekly" },
+  { label: "Monthly", value: "monthly" },
+  { label: "A few times a year", value: "few_times_year" },
+  { label: "Rarely / first time", value: "rarely" },
+];
+const GOALS: { label: string; value: string }[] = [
+  { label: "Relaxation", value: "relaxation" },
+  { label: "Pain & tension relief", value: "pain_relief" },
+  { label: "Sports recovery", value: "sports_recovery" },
+  { label: "Better sleep", value: "sleep" },
+  { label: "Stress & anxiety", value: "stress" },
+  { label: "Injury rehab", value: "injury_rehab" },
+  { label: "Pampering", value: "pampering" },
+];
 
 export default function Profile() {
   const navigate = useNavigate();
