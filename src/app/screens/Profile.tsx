@@ -60,6 +60,9 @@ export default function Profile() {
   const toggleFocus = (v: string) =>
     setFocusAreas(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
 
+  const toggleMedical = (v: string) =>
+    setMedicalConditions(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+
   const save = async () => {
     if (!user) return;
     setSaving(true);
