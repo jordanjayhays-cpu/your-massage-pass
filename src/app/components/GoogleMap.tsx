@@ -76,7 +76,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
       zoom: 14,
       disableDefaultUI: true,
       zoomControl: true,
-      gestureHandling: "greedy",
+      gestureHandling: "cooperative",
       styles: madridMapStyle,
     });
     infoWindowRef.current = new google.maps.InfoWindow();
