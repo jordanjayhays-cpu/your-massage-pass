@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Loader2, Copy, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,8 +47,37 @@ export default function PartnerCalendar() {
     }
     return h;
   });
+  const [capacity, setCapacity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Load existing opening_hours + capacity
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("partners")
+        .select("opening_hours, capacity")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data?.capacity) setCapacity(Math.max(1, Number(data.capacity)));
+      const oh = data?.opening_hours;
+      if (oh && typeof oh === "object") {
+        const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+        setHours(prev => {
+          const next = { ...prev };
+          for (let i = 0; i < 7; i++) {
+            const v = oh[KEYS[i]];
+            if (!v) continue;
+            if (v.closed) next[i] = { ...next[i], closed: true };
+            else if (v.open && v.close) next[i] = { closed: false, open: v.open, close: v.close };
+          }
+          return next;
+        });
+      }
+    })();
+  }, []);
 
   const update = (day: number, patch: Partial<DayHours>) =>
     setHours(prev => ({ ...prev, [day]: { ...prev[day], ...patch } }));
@@ -92,6 +121,20 @@ export default function PartnerCalendar() {
     }));
     if (hourRows.length > 0) await supabase.from("business_hours").insert(hourRows);
 
+    // Save opening_hours JSONB + capacity on partners (for real-time availability)
+    const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    const opening_hours: Record<string, any> = {};
+    for (const d of DAYS) {
+      const h = hours[d.num];
+      opening_hours[DAY_KEYS[d.num]] = h.closed
+        ? { closed: true }
+        : { open: h.open, close: h.close };
+    }
+    await supabase
+      .from("partners")
+      .update({ opening_hours, capacity: Math.max(1, capacity) })
+      .eq("id", user.id);
+
     setLoading(false);
     setSaved(true);
     toast.success("Availability saved! Your listing is live.");
@@ -116,6 +159,23 @@ export default function PartnerCalendar() {
         <p className="text-sm text-muted-foreground">
           Set when you're open each day — we'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.
         </p>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Capacity per time slot</p>
+              <p className="text-xs text-muted-foreground">How many simultaneous bookings you can take (e.g. number of therapists / rooms).</p>
+            </div>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={capacity}
+              onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))}
+              className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
+            />
+          </CardContent>
+        </Card>
 
         {DAYS.map(d => {
           const h = hours[d.num];
