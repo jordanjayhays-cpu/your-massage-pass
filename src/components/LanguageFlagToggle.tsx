@@ -82,7 +82,9 @@ export function LanguageFlagToggle({
   variant?: "compact" | "large";
 }) {
   const { i18n } = useTranslation();
-  const current: Lang = i18n.resolvedLanguage === "es" ? "es" : "en";
+  const resolved = (i18n.resolvedLanguage || "en") as Lang;
+  const current: Lang = (["en","es","zh","fr","de","pt","it","ar"] as const).includes(resolved as any) ? resolved : "en";
+
   const [selected, setSelected] = useState<Option>(() => pickInitialOption(current));
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
