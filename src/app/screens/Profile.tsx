@@ -453,6 +453,114 @@ export default function Profile() {
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
           </div>
+
+          <div className="pt-2 border-t border-gray-100">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred massage types</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MASSAGE_TYPES.map(t => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() =>
+                    setPreferredMassageTypes(prev =>
+                      prev.includes(t.value) ? prev.filter(x => x !== t.value) : [...prev, t.value]
+                    )
+                  }
+                  className={chip(preferredMassageTypes.includes(t.value))}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typical session length</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DURATIONS.map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setPreferredDuration(preferredDuration === d ? null : d)}
+                  className={chip(preferredDuration === d)}
+                >
+                  {d} min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typical budget</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {BUDGETS.map(b => (
+                <button
+                  key={b.value}
+                  type="button"
+                  onClick={() => setTypicalBudget(typicalBudget === b.value ? "" : b.value)}
+                  className={chip(typicalBudget === b.value)}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Usual add-ons</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {ADDONS.map(a => (
+                <button
+                  key={a.value}
+                  type="button"
+                  onClick={() =>
+                    setUsualAddons(prev =>
+                      prev.includes(a.value) ? prev.filter(x => x !== a.value) : [...prev, a.value]
+                    )
+                  }
+                  className={chip(usualAddons.includes(a.value))}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">How often you get a massage</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {FREQUENCIES.map(f => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setMassageFrequency(massageFrequency === f.value ? "" : f.value)}
+                  className={chip(massageFrequency === f.value)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Main goals</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GOALS.map(g => (
+                <button
+                  key={g.value}
+                  type="button"
+                  onClick={() =>
+                    setMassageGoals(prev =>
+                      prev.includes(g.value) ? prev.filter(x => x !== g.value) : [...prev, g.value]
+                    )
+                  }
+                  className={chip(massageGoals.includes(g.value))}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Health & safety card */}
