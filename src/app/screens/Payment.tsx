@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, CreditCard, Check } from "lucide-react";
+import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, CreditCard, Check, Star } from "lucide-react";
+import { googleReviewUrl } from "../lib/googleReview";
 import { Button } from "@/components/ui/button";
 import { ADD_ONS, MASSAGES, MASSAGE_TYPES } from "../data";
 import { useBooking } from "../BookingContext";
