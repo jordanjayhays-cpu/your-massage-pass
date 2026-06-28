@@ -89,7 +89,7 @@ export default function Payment() {
           focus_areas: booking.focusAreas,
           add_ons: addOnNames,
           preferred_therapist_gender: profile?.preferred_therapist_gender,
-          conversation: profile?.conversation_pref,
+          conversation: booking.conversation || profile?.conversation_pref,
           music: profile?.music_pref,
           temperature: profile?.temperature_pref,
           scent: profile?.scent_pref,

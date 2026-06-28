@@ -16,10 +16,16 @@ const ADDON_MAP: Record<string, string> = {
   extra_time: "extended",
 };
 
+const CONVERSATION_OPTIONS: { label: string; value: string }[] = [
+  { label: "🤫 Silence please", value: "silence" },
+  { label: "A little chat", value: "minimal" },
+  { label: "Happy to chat", value: "chatty" },
+];
+
 export default function Customize() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { pressure, focusAreas, addOns, notes, set, toggleFocus, toggleAddOn, shop } = useBooking();
+  const { pressure, focusAreas, addOns, notes, conversation, set, toggleFocus, toggleAddOn, shop } = useBooking();
   const massage = shop || MASSAGES.find((m) => m.id === id);
   const [profile, setProfile] = useState<any>(null);
 
@@ -29,19 +35,30 @@ export default function Customize() {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("preferred_pressure, focus_areas, usual_addons, preferred_massage_types, preferred_duration")
+        .select("preferred_pressure, focus_areas, usual_addons, preferred_massage_types, preferred_duration, conversation_pref")
         .eq("id", user.id)
         .maybeSingle();
-      if (data) setProfile(data);
+      if (data) {
+        setProfile(data);
+        // Pre-select conversation from profile if booking value not already set
+        if (!conversation && data.conversation_pref) {
+          set({ conversation: data.conversation_pref });
+        }
+      }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Default session value to "minimal" if nothing is set
+  const conversationValue = conversation || "minimal";
 
   const hasPrefs = profile && (
     profile.preferred_pressure ||
     (profile.focus_areas?.length ?? 0) > 0 ||
     (profile.usual_addons?.length ?? 0) > 0 ||
     (profile.preferred_massage_types?.length ?? 0) > 0 ||
-    profile.preferred_duration
+    profile.preferred_duration ||
+    profile.conversation_pref
   );
 
   const applyPrefs = () => {
@@ -58,6 +75,9 @@ export default function Customize() {
       patch.addOns = profile.usual_addons
         .map((u: string) => ADDON_MAP[u])
         .filter((id: string | undefined): id is string => !!id && validIds.has(id));
+    }
+    if (profile.conversation_pref) {
+      patch.conversation = profile.conversation_pref;
     }
     set(patch);
     toast.success("Loaded your preferences ✨");
@@ -85,6 +105,27 @@ export default function Customize() {
             Use my preferences
           </button>
         )}
+
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Talking during this session?</h3>
+          <div className="flex flex-wrap gap-2">
+            {CONVERSATION_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => set({ conversation: o.value })}
+                className={cn(
+                  "h-10 px-4 rounded-full border text-sm font-medium transition-all",
+                  conversationValue === o.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-foreground",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
 
         <div>
           <h3 className="text-sm font-semibold text-foreground mb-3">Pressure</h3>

@@ -57,6 +57,29 @@ const GOALS: { label: string; value: string }[] = [
   { label: "Injury rehab", value: "injury_rehab" },
   { label: "Pampering", value: "pampering" },
 ];
+const CONVERSATION: { label: string; value: string }[] = [
+  { label: "🤫 Silence please", value: "silence" },
+  { label: "A little chat", value: "minimal" },
+  { label: "Happy to chat", value: "chatty" },
+];
+const MUSIC: { label: string; value: string }[] = [
+  { label: "Spa music", value: "spa" },
+  { label: "No music", value: "none" },
+  { label: "Whatever's on", value: "any" },
+];
+const TEMPERATURE: { label: string; value: string }[] = [
+  { label: "Warmer", value: "warmer" },
+  { label: "Neutral", value: "neutral" },
+  { label: "Cooler", value: "cooler" },
+];
+const SCENT: { label: string; value: string }[] = [
+  { label: "Aromatherapy", value: "aroma" },
+  { label: "Unscented", value: "unscented" },
+];
+const LIGHTING: { label: string; value: string }[] = [
+  { label: "Dim", value: "dim" },
+  { label: "Normal", value: "normal" },
+];
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -85,6 +108,14 @@ export default function Profile() {
   const [usualAddons, setUsualAddons] = useState<string[]>([]);
   const [massageFrequency, setMassageFrequency] = useState("");
   const [massageGoals, setMassageGoals] = useState<string[]>([]);
+
+  // Comfort & experience
+  const [conversationPref, setConversationPref] = useState("");
+  const [musicPref, setMusicPref] = useState("");
+  const [temperaturePref, setTemperaturePref] = useState("");
+  const [scentPref, setScentPref] = useState("");
+  const [lightingPref, setLightingPref] = useState("");
+  const [comfortNotes, setComfortNotes] = useState("");
 
   // Massage preferences
   const [pressure, setPressure] = useState("");
@@ -146,6 +177,13 @@ export default function Profile() {
         setUsualAddons(data?.usual_addons || []);
         setMassageFrequency(data?.massage_frequency || "");
         setMassageGoals(data?.massage_goals || []);
+
+        setConversationPref(data?.conversation_pref || "");
+        setMusicPref(data?.music_pref || "");
+        setTemperaturePref(data?.temperature_pref || "");
+        setScentPref(data?.scent_pref || "");
+        setLightingPref(data?.lighting_pref || "");
+        setComfortNotes(data?.comfort_notes || "");
       }
       setLoading(false);
     })();
@@ -220,6 +258,12 @@ export default function Profile() {
       usual_addons: usualAddons.length ? usualAddons : null,
       massage_frequency: massageFrequency || null,
       massage_goals: massageGoals.length ? massageGoals : null,
+      conversation_pref: conversationPref || null,
+      music_pref: musicPref || null,
+      temperature_pref: temperaturePref || null,
+      scent_pref: scentPref || null,
+      lighting_pref: lightingPref || null,
+      comfort_notes: comfortNotes || null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
@@ -571,6 +615,105 @@ export default function Profile() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Comfort & experience card */}
+        <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Comfort &amp; experience</h2>
+            <p className="text-xs text-gray-500">Small things that make a big difference</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-900">Do you like talking during your massage?</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {CONVERSATION.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setConversationPref(conversationPref === o.value ? "" : o.value)}
+                  className={chip(conversationPref === o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Music</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MUSIC.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setMusicPref(musicPref === o.value ? "" : o.value)}
+                  className={chip(musicPref === o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room temperature</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {TEMPERATURE.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setTemperaturePref(temperaturePref === o.value ? "" : o.value)}
+                  className={chip(temperaturePref === o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Scent</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SCENT.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setScentPref(scentPref === o.value ? "" : o.value)}
+                  className={chip(scentPref === o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lighting</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {LIGHTING.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setLightingPref(lightingPref === o.value ? "" : o.value)}
+                  className={chip(lightingPref === o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Comfort notes</label>
+            <textarea
+              value={comfortNotes}
+              onChange={e => setComfortNotes(e.target.value)}
+              rows={3}
+              placeholder="e.g. I get cold easily, ticklish feet"
+              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
+            />
           </div>
         </div>
 
