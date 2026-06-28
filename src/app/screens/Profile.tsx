@@ -78,6 +78,14 @@ export default function Profile() {
   const [city, setCity] = useState("");
   const [preferredLanguage, setPreferredLanguage] = useState("");
 
+  // New preferences
+  const [preferredMassageTypes, setPreferredMassageTypes] = useState<string[]>([]);
+  const [preferredDuration, setPreferredDuration] = useState<number | null>(null);
+  const [typicalBudget, setTypicalBudget] = useState("");
+  const [usualAddons, setUsualAddons] = useState<string[]>([]);
+  const [massageFrequency, setMassageFrequency] = useState("");
+  const [massageGoals, setMassageGoals] = useState<string[]>([]);
+
   // Massage preferences
   const [pressure, setPressure] = useState("");
   const [preferredTherapistGender, setPreferredTherapistGender] = useState("");
