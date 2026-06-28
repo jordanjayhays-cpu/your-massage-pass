@@ -174,7 +174,7 @@ export default function MyBookings() {
               No upcoming bookings.
             </p>
           ) : (
-            <div className="space-y-3">{upcoming.map(renderCard)}</div>
+            <div className="space-y-3">{upcoming.map((b) => renderCard(b, false))}</div>
           )}
         </section>
 
