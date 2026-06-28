@@ -160,6 +160,23 @@ export default function PartnerCalendar() {
           Set when you're open each day — we'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.
         </p>
 
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Capacity per time slot</p>
+              <p className="text-xs text-muted-foreground">How many simultaneous bookings you can take (e.g. number of therapists / rooms).</p>
+            </div>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={capacity}
+              onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))}
+              className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
+            />
+          </CardContent>
+        </Card>
+
         {DAYS.map(d => {
           const h = hours[d.num];
           return (
