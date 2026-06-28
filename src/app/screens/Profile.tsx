@@ -8,7 +8,55 @@ const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
 const MEDICALS = ["High blood pressure", "Heart condition", "Diabetes", "Blood clots / DVT", "Pregnant", "Recent surgery", "Cancer", "Epilepsy", "Skin condition"];
 const GENDERS = ["Female", "Male", "Other", "Prefer not to say"];
-const THERAPIST_GENDERS = ["No preference", "Female", "Male"];
+const THERAPIST_GENDERS: { label: string; value: string }[] = [
+  { label: "No preference", value: "any" },
+  { label: "Female", value: "female" },
+  { label: "Male", value: "male" },
+];
+const MASSAGE_TYPES: { label: string; value: string }[] = [
+  { label: "Swedish", value: "swedish" },
+  { label: "Deep Tissue", value: "deep" },
+  { label: "Thai", value: "thai" },
+  { label: "Sports", value: "sports" },
+  { label: "Hot Stone", value: "stone" },
+  { label: "Aromatherapy", value: "aromatherapy" },
+  { label: "Reflexology", value: "reflexology" },
+  { label: "Shiatsu", value: "shiatsu" },
+  { label: "Balinese", value: "balinese" },
+  { label: "Lymphatic", value: "lymphatic" },
+  { label: "Prenatal", value: "prenatal" },
+];
+const DURATIONS = [30, 60, 90, 120];
+const BUDGETS: { label: string; value: string }[] = [
+  { label: "Under €40", value: "under_40" },
+  { label: "€40–60", value: "40_60" },
+  { label: "€60–90", value: "60_90" },
+  { label: "€90+", value: "90_plus" },
+];
+const ADDONS: { label: string; value: string }[] = [
+  { label: "Aromatherapy", value: "aromatherapy" },
+  { label: "Hot stones", value: "hot_stones" },
+  { label: "Scalp massage", value: "scalp" },
+  { label: "Foot scrub", value: "foot_scrub" },
+  { label: "CBD oil", value: "cbd" },
+  { label: "Cupping", value: "cupping" },
+  { label: "Extra 15 min", value: "extra_time" },
+];
+const FREQUENCIES: { label: string; value: string }[] = [
+  { label: "Weekly", value: "weekly" },
+  { label: "Monthly", value: "monthly" },
+  { label: "A few times a year", value: "few_times_year" },
+  { label: "Rarely / first time", value: "rarely" },
+];
+const GOALS: { label: string; value: string }[] = [
+  { label: "Relaxation", value: "relaxation" },
+  { label: "Pain & tension relief", value: "pain_relief" },
+  { label: "Sports recovery", value: "sports_recovery" },
+  { label: "Better sleep", value: "sleep" },
+  { label: "Stress & anxiety", value: "stress" },
+  { label: "Injury rehab", value: "injury_rehab" },
+  { label: "Pampering", value: "pampering" },
+];
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -29,6 +77,14 @@ export default function Profile() {
   const [gender, setGender] = useState("");
   const [city, setCity] = useState("");
   const [preferredLanguage, setPreferredLanguage] = useState("");
+
+  // New preferences
+  const [preferredMassageTypes, setPreferredMassageTypes] = useState<string[]>([]);
+  const [preferredDuration, setPreferredDuration] = useState<number | null>(null);
+  const [typicalBudget, setTypicalBudget] = useState("");
+  const [usualAddons, setUsualAddons] = useState<string[]>([]);
+  const [massageFrequency, setMassageFrequency] = useState("");
+  const [massageGoals, setMassageGoals] = useState<string[]>([]);
 
   // Massage preferences
   const [pressure, setPressure] = useState("");
@@ -83,6 +139,13 @@ export default function Profile() {
         setEmergencyPhone(data?.emergency_contact_phone || "");
         setIsFirstMassage(!!data?.is_first_massage);
         setConsentAccepted(!!data?.consent_accepted);
+
+        setPreferredMassageTypes(data?.preferred_massage_types || []);
+        setPreferredDuration(typeof data?.preferred_duration === "number" ? data.preferred_duration : null);
+        setTypicalBudget(data?.typical_budget || "");
+        setUsualAddons(data?.usual_addons || []);
+        setMassageFrequency(data?.massage_frequency || "");
+        setMassageGoals(data?.massage_goals || []);
       }
       setLoading(false);
     })();
@@ -140,6 +203,12 @@ export default function Profile() {
       is_first_massage: isFirstMassage,
       consent_accepted: consentAccepted,
       consent_at: consentAccepted ? new Date().toISOString() : null,
+      preferred_massage_types: preferredMassageTypes.length ? preferredMassageTypes : null,
+      preferred_duration: preferredDuration ?? null,
+      typical_budget: typicalBudget || null,
+      usual_addons: usualAddons.length ? usualAddons : null,
+      massage_frequency: massageFrequency || null,
+      massage_goals: massageGoals.length ? massageGoals : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
@@ -346,8 +415,8 @@ export default function Profile() {
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred therapist</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {THERAPIST_GENDERS.map(t => (
-                <button key={t} type="button" onClick={() => setPreferredTherapistGender(t)} className={chip(preferredTherapistGender === t)}>
-                  {t}
+                <button key={t.value} type="button" onClick={() => setPreferredTherapistGender(t.value)} className={chip(preferredTherapistGender === t.value)}>
+                  {t.label}
                 </button>
               ))}
             </div>
@@ -383,6 +452,114 @@ export default function Profile() {
               placeholder="Injuries, pregnancy, areas to avoid…"
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
+          </div>
+
+          <div className="pt-2 border-t border-gray-100">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred massage types</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MASSAGE_TYPES.map(t => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() =>
+                    setPreferredMassageTypes(prev =>
+                      prev.includes(t.value) ? prev.filter(x => x !== t.value) : [...prev, t.value]
+                    )
+                  }
+                  className={chip(preferredMassageTypes.includes(t.value))}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typical session length</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DURATIONS.map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setPreferredDuration(preferredDuration === d ? null : d)}
+                  className={chip(preferredDuration === d)}
+                >
+                  {d} min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typical budget</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {BUDGETS.map(b => (
+                <button
+                  key={b.value}
+                  type="button"
+                  onClick={() => setTypicalBudget(typicalBudget === b.value ? "" : b.value)}
+                  className={chip(typicalBudget === b.value)}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Usual add-ons</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {ADDONS.map(a => (
+                <button
+                  key={a.value}
+                  type="button"
+                  onClick={() =>
+                    setUsualAddons(prev =>
+                      prev.includes(a.value) ? prev.filter(x => x !== a.value) : [...prev, a.value]
+                    )
+                  }
+                  className={chip(usualAddons.includes(a.value))}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">How often you get a massage</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {FREQUENCIES.map(f => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setMassageFrequency(massageFrequency === f.value ? "" : f.value)}
+                  className={chip(massageFrequency === f.value)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Main goals</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GOALS.map(g => (
+                <button
+                  key={g.value}
+                  type="button"
+                  onClick={() =>
+                    setMassageGoals(prev =>
+                      prev.includes(g.value) ? prev.filter(x => x !== g.value) : [...prev, g.value]
+                    )
+                  }
+                  className={chip(massageGoals.includes(g.value))}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
