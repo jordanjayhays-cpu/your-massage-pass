@@ -25,6 +25,7 @@ export function shouldShowBottomNav(pathname: string): boolean {
 export default function BottomNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { t } = useTranslation();
   if (!shouldShowBottomNav(pathname)) return null;
 
   return (
@@ -33,13 +34,13 @@ export default function BottomNav() {
       aria-label="Primary"
     >
       <ul className="flex items-stretch justify-around">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = t.match.some((m) => pathname === m || pathname.startsWith(m + "/"));
+        {TAB_DEFS.map((tab) => {
+          const Icon = tab.icon;
+          const active = tab.match.some((m) => pathname === m || pathname.startsWith(m + "/"));
           return (
-            <li key={t.to} className="flex-1">
+            <li key={tab.to} className="flex-1">
               <button
-                onClick={() => navigate(t.to)}
+                onClick={() => navigate(tab.to)}
                 className={cn(
                   "w-full flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-colors",
                   active ? "text-[#C4622D]" : "text-[#7A7068] hover:text-foreground"
@@ -47,7 +48,7 @@ export default function BottomNav() {
                 aria-current={active ? "page" : undefined}
               >
                 <Icon className={cn("h-5 w-5", active && "stroke-[2.4]")} />
-                <span className="text-[10px] font-semibold tracking-wide">{t.label}</span>
+                <span className="text-[10px] font-semibold tracking-wide">{t(`app.bottomNav.${tab.key}`)}</span>
               </button>
             </li>
           );
@@ -56,3 +57,4 @@ export default function BottomNav() {
     </nav>
   );
 }
+
