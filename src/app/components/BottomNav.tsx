@@ -1,13 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Flower2, Sparkles, CalendarDays, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
-const TABS = [
-  { label: "Massages", to: "/app/massages", icon: Flower2, match: ["/app/massages", "/massages"] },
-  { label: "Discovery", to: "/app/discovery", icon: Sparkles, match: ["/app/discovery", "/discovery"] },
-  { label: "Bookings", to: "/app/bookings", icon: CalendarDays, match: ["/app/bookings", "/bookings"] },
-  { label: "Profile", to: "/app/profile", icon: User, match: ["/app/profile", "/profile"] },
-];
+const TAB_DEFS = [
+  { key: "massages", to: "/app/massages", icon: Flower2, match: ["/app/massages", "/massages"] },
+  { key: "discovery", to: "/app/discovery", icon: Sparkles, match: ["/app/discovery", "/discovery"] },
+  { key: "bookings", to: "/app/bookings", icon: CalendarDays, match: ["/app/bookings", "/bookings"] },
+  { key: "profile", to: "/app/profile", icon: User, match: ["/app/profile", "/profile"] },
+] as const;
+
 
 // Hide nav on these path prefixes/exacts
 const HIDDEN_EXACT = new Set(["/", "/app", "/app/", "/landing", "/web", "/survey"]);
