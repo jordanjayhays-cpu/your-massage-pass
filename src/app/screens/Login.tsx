@@ -227,6 +227,12 @@ export default function Login() {
           </svg>
           Continue with Google
         </Button>
+        <button
+          onClick={() => navigate("/partner/onboarding")}
+          className="w-full text-center text-[13px] text-[#7A7068] hover:text-[#C4622D] pt-1"
+        >
+          Own a massage studio? <span className="text-[#C4622D] font-medium">List it free →</span>
+        </button>
       </div>
 
       {/* How it works — editorial three column */}
