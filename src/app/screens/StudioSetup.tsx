@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
   Loader2, Check, MapPin, Phone, Globe, Plus, Trash2,
-  Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2
+  Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2, ArrowLeft
 } from "lucide-react";
 
 const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
