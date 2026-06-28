@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import SoapNoteSection from "../components/SoapNoteSection";
 
 type Booking = {
   id: string;
@@ -593,6 +594,12 @@ export default function PartnerDashboard() {
                     </div>
                   </div>
                 )}
+
+                <SoapNoteSection
+                  bookingId={(d.id as unknown as number) ?? null}
+                  clientEmail={d.client_email ?? null}
+                  clientName={d.client_name ?? null}
+                />
 
                 {d.status === "pending" && (
                   <div className="flex gap-2 border-t border-border pt-3">
