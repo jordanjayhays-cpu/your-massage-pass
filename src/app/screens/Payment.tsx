@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, CreditCard, Check, Star } from "lucide-react";
+import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, Check, Star } from "lucide-react";
 import { googleReviewUrl } from "../lib/googleReview";
 import { Button } from "@/components/ui/button";
 import { ADD_ONS, MASSAGES, MASSAGE_TYPES } from "../data";
@@ -205,20 +205,7 @@ export default function Payment() {
           <div className="flex justify-between"><span className="text-muted-foreground">Add-ons</span><span className="font-semibold text-right max-w-[60%]">{addOnNames.length ? addOnNames.join(", ") : "None"}</span></div>
         </div>
 
-        {/* Payment method */}
-        <div>
-          <h3 className="text-sm font-semibold mb-3">Payment</h3>
-          <div className="rounded-2xl border-2 border-primary bg-primary/5 p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-gold flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-foreground" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">Massage Club Membership</p>
-              <p className="text-xs text-muted-foreground">€79/month · Unlimited bookings</p>
-            </div>
-            <span className="text-xs font-semibold text-primary">Active</span>
-          </div>
-        </div>
+
 
         {/* Totals */}
         <div className="rounded-2xl bg-secondary p-4 space-y-2 text-sm">
