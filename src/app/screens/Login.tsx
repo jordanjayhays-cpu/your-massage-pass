@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 const USER_KEY = "mm-user";
 
@@ -175,6 +176,14 @@ export default function Login() {
         >
           For studios →
         </button>
+      </div>
+
+      {/* Language picker — large, obvious, no English required to find */}
+      <div className="px-6 mt-5">
+        <p className="text-[10px] uppercase tracking-[0.25em] text-[#7A7068] mb-2 text-center">
+          Idioma · Language
+        </p>
+        <LanguageFlagToggle variant="large" />
       </div>
 
       {/* Hero — editorial split */}
