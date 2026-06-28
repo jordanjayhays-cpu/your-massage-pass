@@ -169,7 +169,18 @@ export default function Profile() {
       return;
     }
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-    setAvatarUrl(urlData?.publicUrl || "");
+    const publicUrl = urlData?.publicUrl || "";
+    setAvatarUrl(publicUrl);
+    const { error: dbError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      avatar_url: publicUrl || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (dbError) {
+      toast.error("Photo saved, but profile update failed: " + dbError.message);
+    } else {
+      toast.success("Photo updated");
+    }
     setUploadingPhoto(false);
   };
 
