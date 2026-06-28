@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -14,9 +14,11 @@ import {
   Compass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MASSAGES } from "../data";
+import { MASSAGES, MADRID_CENTER } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+import { loadGoogleMaps } from "../lib/googleMaps";
+
 
 export default function ShopDetail() {
   const navigate = useNavigate();
