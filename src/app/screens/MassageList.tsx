@@ -440,8 +440,8 @@ export default function MassageList() {
   );
 }
 
-// Initialize the full-screen map when opened
-function useFullMap() {}
+
+
 
 
 function FilterChip({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
