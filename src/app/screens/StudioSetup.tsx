@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
   Loader2, Check, MapPin, Phone, Globe, Plus, Trash2,
-  Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2
+  Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2, ArrowLeft
 } from "lucide-react";
 
 const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
@@ -204,6 +204,13 @@ function StudioSetupInner() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background">
       <div className="max-w-xl mx-auto px-4 py-8">
+        {/* Back */}
+        <button
+          onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
+          className="inline-flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
         {/* Header */}
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">

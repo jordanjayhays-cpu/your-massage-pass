@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { Building2, Mail, Send, Loader2, CheckCircle, Link2 } from "lucide-react";
+import { Building2, Mail, Send, Loader2, CheckCircle, Link2, ArrowLeft } from "lucide-react";
 
 const APP_URL = "https://your-massage-pass-o5fo.vercel.app";
 
 export default function AdminInviteStudio() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [studioName, setStudioName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -119,6 +121,12 @@ export default function AdminInviteStudio() {
   return (
     <div className="min-h-screen bg-gradient-warm flex items-center justify-center p-6">
       <div className="w-full max-w-md">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
         <div className="text-center mb-8">
           <div className="h-16 w-16 rounded-2xl bg-gradient-royal flex items-center justify-center mx-auto mb-4 shadow-elegant">
             <Building2 className="h-8 w-8 text-primary-foreground" />
