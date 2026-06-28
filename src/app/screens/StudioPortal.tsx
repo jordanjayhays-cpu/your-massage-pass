@@ -158,7 +158,7 @@ export default function StudioPortal() {
               <button key={key} onClick={() => setSection(key as any)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition flex-shrink-0 ${section === key ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
                 <Icon className="h-3.5 w-3.5" /> {label}
-                {badge ? <span className="bg-orange-500 text-white text-[10px] rounded-full px-1.5 py-0.5">{badge}</span> : null}
+                {badge ? <span className="bg-primary text-white text-[10px] rounded-full px-1.5 py-0.5">{badge}</span> : null}
               </button>
             ))}
           </div>
@@ -233,7 +233,7 @@ export default function StudioPortal() {
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-display text-base font-bold">Availability</h2>
-              <Button size="sm" onClick={saveAvailability} disabled={savingAvail} className="bg-blue-600 hover:bg-blue-700">
+              <Button size="sm" onClick={saveAvailability} disabled={savingAvail} className="bg-primary hover:bg-blue-700">
                 {savingAvail ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</> : "Save Changes"}
               </Button>
             </div>
@@ -243,7 +243,7 @@ export default function StudioPortal() {
                 <div key={day.num}>
                   <div className="flex items-center justify-between mb-1.5">
                     <button onClick={() => toggleDay(day.num)}
-                      className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+                      className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
                       {day.label}
                     </button>
                     <span className="text-xs text-muted-foreground">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
@@ -252,7 +252,7 @@ export default function StudioPortal() {
                     <div className="flex flex-wrap gap-1.5 pl-1">
                       {DEFAULT_SLOTS.map(slot => (
                         <button key={slot} onClick={() => toggleSlot(day.num, slot)}
-                          className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-50 text-gray-400 border border-gray-200"}`}>
+                          className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-blue-300" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
                           {slot}
                         </button>
                       ))}
@@ -277,7 +277,7 @@ export default function StudioPortal() {
                   ) : (
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => { setEditingProfile(false); setProfileForm({ business_name: partner?.business_name || "", address: partner?.address || "", phone: partner?.phone || "", website: partner?.website || "", description: partner?.description || "" }); }}><ChevronLeft className="h-3 w-3" /> Cancel</Button>
-                      <Button size="sm" onClick={saveProfile} className="bg-blue-600 hover:bg-blue-700">Save</Button>
+                      <Button size="sm" onClick={saveProfile} className="bg-primary hover:bg-blue-700">Save</Button>
                     </div>
                   )}
                 </div>
@@ -337,7 +337,7 @@ export default function StudioPortal() {
                 <h2 className="font-display text-base font-bold">Change Password</h2>
                 <form onSubmit={changePassword} className="space-y-3">
                   <Input name="newPw" type="password" placeholder="New password (min 8 chars)" className="h-11" />
-                  <Button type="submit" size="sm" disabled={passwordLoading} className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" size="sm" disabled={passwordLoading} className="bg-primary hover:bg-blue-700">
                     {passwordLoading ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Updating…</> : "Update Password"}
                   </Button>
                 </form>

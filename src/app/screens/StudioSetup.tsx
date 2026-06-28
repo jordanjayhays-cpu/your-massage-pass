@@ -206,25 +206,25 @@ function StudioSetupInner() {
       <div className="max-w-xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-4">
-          <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
             <Sparkles size={14} /> Studio Setup
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome, {inviteData?.studio_name}</h1>
-          <p className="text-gray-500 text-sm mt-1">Complete all steps to go live on Massage Club</p>
+          <h1 className="text-2xl font-bold text-foreground">Welcome, {inviteData?.studio_name}</h1>
+          <p className="text-muted-foreground text-sm mt-1">Complete all steps to go live on Massage Club</p>
         </div>
 
         {/* Progress */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-medium text-gray-500">Step {step} of {TOTAL_STEPS}</span>
+            <span className="text-xs font-medium text-muted-foreground">Step {step} of {TOTAL_STEPS}</span>
             <span className="text-xs font-medium text-blue-600">{Math.round(progress)}% complete</span>
           </div>
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between mt-2">
             {["Account", "Profile", "Services", "Hours", "Done"].map((label, i) => (
-              <span key={label} className={`text-xs ${i + 1 === step ? "text-blue-600 font-semibold" : "text-gray-400"}`}>{label}</span>
+              <span key={label} className={`text-xs ${i + 1 === step ? "text-blue-600 font-semibold" : "text-muted-foreground"}`}>{label}</span>
             ))}
           </div>
         </div>
@@ -235,15 +235,15 @@ function StudioSetupInner() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">1</div>
-                <h2 className="font-semibold text-gray-900">Create your account</h2>
+                <h2 className="font-semibold text-foreground">Create your account</h2>
               </div>
-              <p className="text-sm text-gray-500 mb-4">Email is pre-filled from your invite.</p>
+              <p className="text-sm text-muted-foreground mb-4">Email is pre-filled from your invite.</p>
               <div className="space-y-3">
-                <Input type="email" value={email} disabled className="bg-gray-50" />
+                <Input type="email" value={email} disabled className="bg-secondary/60" />
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (min 8 chars)" className="h-11" />
                 <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="h-11" />
               </div>
-              <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-primary hover:bg-blue-700">
                 {accountLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating account…</> : <>Continue <ChevronRight className="h-4 w-4 ml-2" /></>}
               </Button>
             </CardContent>
@@ -256,40 +256,40 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">2</div>
-                <h2 className="font-semibold text-gray-900">Studio details</h2>
+                <h2 className="font-semibold text-foreground">Studio details</h2>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Studio Name</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Studio Name</label>
                 <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))} className="h-11" />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Address</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Address</label>
                 <div className="relative">
-                  <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.address} onChange={e => setStudio(p => ({ ...p, address: e.target.value }))} placeholder="Calle Gran Vía 15, Madrid" className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Phone</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
                 <div className="relative">
-                  <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Website (optional)</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Website (optional)</label>
                 <div className="relative">
-                  <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder="https://yourstudio.com" className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Description</label>
-                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 resize-none" />
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
+                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-blue-400 resize-none" />
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-primary hover:bg-blue-700">
                   {profileLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
                 </Button>
               </div>
@@ -303,25 +303,25 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="font-semibold text-gray-900">Your services</h2>
+                <h2 className="font-semibold text-foreground">Your services</h2>
               </div>
               <div className="space-y-3">
                 {services.map((svc, i) => (
-                  <div key={i} className="p-3 border border-gray-200 rounded-xl bg-white">
+                  <div key={i} className="p-3 border border-border rounded-xl bg-white">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-medium text-gray-500">Service {i + 1}</span>
-                      {services.length > 1 && <button onClick={() => removeService(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>}
+                      <span className="text-xs font-medium text-muted-foreground">Service {i + 1}</span>
+                      {services.length > 1 && <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                      <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none">
+                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-blue-400" />
+                      <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none">
                         {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                       </select>
-                      <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2">
-                        <Euro size={13} className="text-gray-400" />
+                      <div className="flex items-center gap-1 border border-border rounded-lg px-2">
+                        <Euro size={13} className="text-muted-foreground" />
                         <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                       </div>
-                      <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none col-span-2">
+                      <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none col-span-2">
                         {[30,45,60,75,90,120].map(d => <option key={d} value={d}>{d} min</option>)}
                       </select>
                     </div>
@@ -329,13 +329,13 @@ function StudioSetupInner() {
                 ))}
               </div>
               {services.length < 5 && (
-                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
                   <Plus size={14} /> Add service
                 </button>
               )}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveServices} className="flex-1 h-11 bg-blue-600 hover:bg-blue-700">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button onClick={handleSaveServices} className="flex-1 h-11 bg-primary hover:bg-blue-700">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -347,22 +347,22 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">4</div>
-                <h2 className="font-semibold text-gray-900">Availability</h2>
+                <h2 className="font-semibold text-foreground">Availability</h2>
               </div>
-              <p className="text-sm text-gray-500">Tap a day to toggle on/off. Tap times to adjust.</p>
+              <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
               <div className="space-y-3">
                 {DAYS.map(day => (
                   <div key={day.num}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500"}`}>
+                      <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
                         {day.label}
                       </button>
-                      <span className="text-xs text-gray-400">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
+                      <span className="text-xs text-muted-foreground">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
                     </div>
                     {availability[day.num].length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pl-1">
                         {DEFAULT_SLOTS.map(slot => (
-                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-50 text-gray-400 border border-gray-200"}`}>
+                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-blue-300" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
                             {slot}
                           </button>
                         ))}
@@ -373,7 +373,7 @@ function StudioSetupInner() {
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-blue-600 hover:bg-blue-700">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-primary hover:bg-blue-700">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -381,14 +381,14 @@ function StudioSetupInner() {
 
         {/* ═══════════════ STEP 5: DONE ═══════════════ */}
         {step === 5 && (
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-600 to-blue-700">
+          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary to-[#9E4D22]">
             <CardContent className="p-8 text-center text-white">
               <div className="h-16 w-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
               <h2 className="font-display text-2xl font-bold mb-2">You're live on Massage Club! 🎉</h2>
               <p className="text-blue-100 text-sm mb-6">Your studio is now visible to thousands of members in Madrid.</p>
-              <Button onClick={() => navigate("/studio-portal")} className="w-full h-12 bg-white text-blue-700 hover:bg-blue-50 font-semibold text-base rounded-xl">
+              <Button onClick={() => navigate("/studio-portal")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
                 Go to your portal →
               </Button>
             </CardContent>
