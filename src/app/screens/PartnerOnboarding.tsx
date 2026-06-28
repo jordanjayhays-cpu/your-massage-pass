@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import {
   MapPin, Euro, Check, Loader2, Plus, Trash2, Sparkles, Zap,
-  Users, Clock, Shield, Instagram, Globe, Phone, Building2
+  Users, Clock, Shield, Instagram, Globe, Phone, Building2, ArrowLeft
 } from "lucide-react";
 
 // ─── Defaults ───
