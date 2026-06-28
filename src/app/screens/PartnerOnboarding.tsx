@@ -332,6 +332,14 @@ export default function PartnerOnboarding() {
     <div className="min-h-screen bg-gradient-to-b from-background to-background">
       <div className="max-w-xl mx-auto px-4 py-8">
 
+        {/* Back */}
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to home
+        </button>
+
         {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
@@ -340,6 +348,7 @@ export default function PartnerOnboarding() {
           <h1 className="text-2xl font-bold text-foreground">List your studio</h1>
           <p className="text-muted-foreground text-sm mt-1">Set up your profile, team and services in a few minutes</p>
         </div>
+
 
         {/* Progress */}
         <div className="flex justify-center gap-2 mb-8 flex-wrap">
