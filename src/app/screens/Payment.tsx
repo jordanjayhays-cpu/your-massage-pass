@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, Check, Star } from "lucide-react";
+import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, Check, Star, Wallet } from "lucide-react";
 import { googleReviewUrl } from "../lib/googleReview";
+import { googleCalendarUrl } from "../lib/calendarLink";
 import { Button } from "@/components/ui/button";
 import { ADD_ONS, MASSAGES, MASSAGE_TYPES } from "../data";
 import { useBooking } from "../BookingContext";
@@ -151,6 +152,25 @@ export default function Payment() {
             Leave a Google review ⭐
           </a>
         </div>
+
+        {/* Add to calendar */}
+        {booking.date && booking.time && (
+          <a
+            href={googleCalendarUrl({
+              title: `${massage.name} at ${massage.studio}`,
+              date: booking.date,
+              time: booking.time,
+              durationMin: massage.duration,
+              details: `Booking ref ${bookingRef}. ${addOnNames.length ? "Add-ons: " + addOnNames.join(", ") + ". " : ""}Pressure: ${booking.pressure}.`,
+              location: (massage as any).address ?? `${massage.studio}, ${massage.district}, Madrid`,
+            })}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center justify-center w-full h-11 rounded-full bg-card border border-border text-foreground font-semibold hover:bg-secondary transition"
+          >
+            📅 Add to calendar
+          </a>
+        )}
         <div className="mt-10 w-full space-y-3">
           <Button
             onClick={() => {
@@ -207,25 +227,27 @@ export default function Payment() {
 
 
 
+        {/* Pay at studio */}
+        <div className="rounded-2xl border border-border bg-card p-4 flex items-start gap-3">
+          <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+            <Wallet className="h-4 w-4 text-primary" />
+          </div>
+          <div className="text-sm">
+            <p className="font-semibold text-foreground">Pay at the studio</p>
+            <p className="text-muted-foreground">No payment needed now — pay when you arrive.</p>
+          </div>
+        </div>
+
         {/* Totals */}
         <div className="rounded-2xl bg-secondary p-4 space-y-2 text-sm">
-          <div className="flex justify-between"><span>Massage</span><span className="font-semibold">Included</span></div>
           {addOnPrice > 0 && (
             <div className="flex justify-between"><span>Add-ons</span><span className="font-semibold">€{addOnPrice}</span></div>
           )}
-          <div className="border-t border-border pt-2 flex justify-between text-base">
-            <span className="font-semibold">Total today</span>
+          <div className="flex justify-between text-base">
+            <span className="font-semibold">Due today</span>
             <span className="font-display font-bold text-primary text-xl">€{addOnPrice}</span>
           </div>
-          <div className="bg-green-500/10 rounded-xl p-3 flex items-center gap-2">
-            <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-              <Check className="h-3 w-3 text-white" />
-            </div>
-            <div className="text-xs">
-              <span className="font-semibold text-green-600">10% commission applies</span>
-              <span className="text-muted-foreground ml-1">→ Partner receives booking notification</span>
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground pt-1">Massage paid directly to the studio on arrival.</p>
         </div>
       </div>
 
