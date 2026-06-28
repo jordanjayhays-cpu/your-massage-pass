@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { Building2, Mail, Send, Loader2, CheckCircle, Link2 } from "lucide-react";
+import { Building2, Mail, Send, Loader2, CheckCircle, Link2, ArrowLeft } from "lucide-react";
 
 const APP_URL = "https://your-massage-pass-o5fo.vercel.app";
 
