@@ -10,6 +10,7 @@ import { Building2, Mail, Send, Loader2, CheckCircle, Link2, ArrowLeft } from "l
 const APP_URL = "https://your-massage-pass-o5fo.vercel.app";
 
 export default function AdminInviteStudio() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [studioName, setStudioName] = useState("");
   const [loading, setLoading] = useState(false);
