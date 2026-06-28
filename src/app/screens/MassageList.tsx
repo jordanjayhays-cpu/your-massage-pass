@@ -1,16 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Clock, List, Map as MapIcon, Sparkles, Play, Navigation, LocateFixed, UserCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
-
-
-type Tab = "list" | "map";
 
 const STUDIO_ICONS: Record<string, string> = {
   "Casa Cibeles": "🧖‍♀️",
@@ -32,30 +28,24 @@ export default function MassageList() {
   const navigate = useNavigate();
   const { set } = useBooking();
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState<Tab>("map"); // default to map
   const [typeFilter, setTypeFilter] = useState<MassageType | "all">("all");
-  const [selectedStudio, setSelectedStudio] = useState<Shop | null>(null);
-  const [geoReady, setGeoReady] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [realShops, setRealShops] = useState<Shop[]>([]);
   const [shopsLoading, setShopsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const userMarkerRef = useRef<any>(null);
-  const infoWindowRef = useRef<any>(null);
 
-  // Load real shops from Supabase — falls back to MASSAGES if DB is empty
   useEffect(() => {
-    fetchShops().then(shops => {
+    fetchShops().then((shops) => {
       setRealShops(shops);
       setShopsLoading(false);
     });
   }, []);
 
-  // Load signed-in user's avatar for the header profile button
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -71,14 +61,10 @@ export default function MassageList() {
     return () => { cancelled = true; };
   }, []);
 
-
-  // Combined shop list: onboarded studios from the DB + the curated demo
-  // studios, so real listings add to (rather than replace) the existing ones.
   const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
 
   const filtered = allShops
     .filter((m) => {
-      // Skip any malformed shop so a missing field can never crash the list.
       if (!m || !m.name || !m.studio) return false;
       const query = q.toLowerCase();
       const matchesQ =
@@ -94,14 +80,13 @@ export default function MassageList() {
     }))
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
-  // Map markers: real shops + demo shops together
   const mapShops = [...realShops, ...MASSAGES].filter(
     (m: any) => m && typeof m.lat === "number" && typeof m.lng === "number"
   );
 
   // Initialize map
   useEffect(() => {
-    if (tab !== "map" || !mapRef.current) return;
+    if (!mapRef.current) return;
     let cancelled = false;
 
     loadGoogleMaps().then((g) => {
@@ -121,90 +106,40 @@ export default function MassageList() {
           { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
         ],
       });
-
       mapInstanceRef.current = map;
-      infoWindowRef.current = new google.maps.InfoWindow();
 
-      // User location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            setGeoReady(true);
-            if (userMarkerRef.current) userMarkerRef.current.setPosition(loc);
-            if (!userMarkerRef.current) {
-              userMarkerRef.current = new google.maps.Marker({
-                position: loc,
-                map,
-                icon: {
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: "#4285F4",
-                  fillOpacity: 1,
-                  strokeColor: "#fff",
-                  strokeWeight: 3,
-                },
-                zIndex: 999,
-              });
-            }
-            map.panTo(loc);
-          },
-          () => setGeoReady(true)
-        );
-      } else {
-        setGeoReady(true);
-      }
+      const iconSvg = (emoji: string) => ({
+        url: `data:image/svg+xml,${encodeURIComponent(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+            <circle cx="22" cy="22" r="20" fill="#7a3000" stroke="white" stroke-width="3"/>
+            <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="22">${emoji}</text>
+          </svg>`
+        )}`,
+        scaledSize: new google.maps.Size(44, 44),
+        anchor: new google.maps.Point(22, 22),
+      });
 
-      // Studio markers
-      const iconSvg = (emoji: string, active: boolean) => {
-        const size = active ? 56 : 44;
-        return {
-          url: `data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#E8B130" : "#A21228"}" stroke="white" stroke-width="3"/>
-              <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 28 : 22}">${emoji}</text>
-            </svg>`
-          )}`,
-          scaledSize: new google.maps.Size(size, size),
-          anchor: new google.maps.Point(size / 2, size / 2),
-        };
-      };
-
-      // Clear old markers
-      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
 
       mapShops.forEach((m) => {
         const marker = new google.maps.Marker({
-          position: { lat: m.lat, lng: m.lng },
+          position: { lat: (m as any).lat, lng: (m as any).lng },
           map,
           title: m.studio,
-          icon: iconSvg(getStudioIcon(m.studio), false),
-          animation: google.maps.Animation.DROP,
+          icon: iconSvg(getStudioIcon(m.studio)),
         });
-
         marker.addListener("click", () => {
-          markersRef.current.forEach((mr: any) => {
-            mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false));
-          });
-          marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
-          setSelectedStudio(m as Shop);
-          map.panTo({ lat: m.lat, lng: m.lng });
-          infoWindowRef.current.setContent(buildInfoContent(m, navigate));
-          infoWindowRef.current.open({ map, anchor: marker });
+          handleBook(m as Shop);
         });
-
         markersRef.current.push(marker);
       });
     });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [tab, realShops]);
+    return () => { cancelled = true; };
+  }, [realShops]);
 
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
-    // Real (onboarded) studios open their full studio page; demo studios use the old flow.
     if ("partner_id" in m && (m as Shop).partner_id) {
       navigate(`/s/${(m as Shop).partner_id}`);
       return;
@@ -213,185 +148,156 @@ export default function MassageList() {
     navigate(`/massages/${m.id}`);
   };
 
+  const toggleFav = (id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-6 pt-8 pb-4 bg-card border-b border-border">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-primary font-semibold">Madrid</p>
-            <h1 className="font-display text-2xl font-bold text-foreground mt-1">Find your escape</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("/app/profile")}
-              aria-label="Profile"
-              className="h-9 w-9 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
-              ) : (
-                <UserCircle className="h-5 w-5 text-muted-foreground" />
-              )}
-            </button>
-
-            <button
-              onClick={() => navigate("/app/bookings")}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-card border border-border text-foreground text-xs font-semibold hover:border-primary/50 transition"
-            >
-              <Clock className="h-3.5 w-3.5" />
-              My bookings
-            </button>
-            <button
-              onClick={() => navigate("/discovery")}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-gradient-gold text-foreground text-xs font-semibold shadow-gold hover:opacity-90 transition"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Discover
-            </button>
-          </div>
-        </div>
-
-        {/* Quiz CTA */}
+    <div className="flex flex-col h-full overflow-y-auto bg-background">
+      {/* Top utility bar */}
+      <div className="px-5 pt-5 flex items-center justify-between gap-3">
         <button
-          onClick={() => navigate("/discovery/quiz")}
-          className="mt-4 w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-royal text-primary-foreground hover:opacity-90 transition group"
+          onClick={() => navigate("/app/profile")}
+          aria-label="Profile"
+          className="h-10 w-10 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition shadow-soft"
         >
-          <div className="h-12 w-12 rounded-xl bg-primary-foreground/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-bold">Not sure which massage you need?</p>
-            <p className="text-xs text-primary-foreground/80 mt-0.5">Take the 30-second quiz →</p>
-          </div>
-          <Play className="h-5 w-5 group-hover:translate-x-0.5 transition" />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+          ) : (
+            <UserCircle className="h-5 w-5 text-muted-foreground" />
+          )}
         </button>
+        <button
+          onClick={() => navigate("/partner/dashboard")}
+          className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
+        >
+          Switch to Partner Dashboard →
+        </button>
+      </div>
 
-        <div className="relative mt-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+      {/* Search */}
+      <div className="px-5 pt-5">
+        <div className="flex items-center gap-2 bg-card rounded-full shadow-soft border border-border/60 pl-5 pr-2 h-14">
+          <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search studios, neighborhoods…"
-            className="pl-9 h-11 bg-background"
+            placeholder="Search studios or area…"
+            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
+          <button
+            onClick={() => setShowFilters((s) => !s)}
+            aria-label="Filters"
+            className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-secondary/80 transition"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Type filter chips */}
-        <div className="flex gap-2 overflow-x-auto pt-3 -mx-6 px-6 pb-1">
-          <FilterChip active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>All</FilterChip>
-          {MASSAGE_TYPES.map((t) => (
-            <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => setTypeFilter(t.id)}>
-              {t.name}
-            </FilterChip>
-          ))}
-        </div>
+        {showFilters && (
+          <div className="flex gap-2 overflow-x-auto pt-3 pb-1 -mx-5 px-5">
+            <FilterChip active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>All</FilterChip>
+            {MASSAGE_TYPES.map((t) => (
+              <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => setTypeFilter(t.id)}>
+                {t.name}
+              </FilterChip>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Tabs */}
-        <div className="mt-3 grid grid-cols-2 bg-secondary rounded-full p-1">
-          <button
-            onClick={() => setTab("list")}
-            className={cn("flex items-center justify-center gap-1.5 h-8 rounded-full text-xs font-semibold transition", tab === "list" ? "bg-background text-foreground shadow-soft" : "text-muted-foreground")}
-          >
-            <List className="h-3.5 w-3.5" /> List
-          </button>
-          <button
-            onClick={() => setTab("map")}
-            className={cn("flex items-center justify-center gap-1.5 h-8 rounded-full text-xs font-semibold transition", tab === "map" ? "bg-background text-foreground shadow-soft" : "text-muted-foreground")}
-          >
-            <MapIcon className="h-3.5 w-3.5" /> Map
-          </button>
+      {/* Map card */}
+      <div className="px-5 pt-5">
+        <div className="relative rounded-3xl overflow-hidden shadow-soft border border-border/60 h-[220px]">
+          <div ref={mapRef} className="absolute inset-0" />
+          <div className="absolute top-4 left-4 pointer-events-none">
+            <div className="flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-2 shadow-soft">
+              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                <Compass className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="text-[11px] font-bold tracking-[0.14em] text-foreground uppercase">Madrid map view</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Body */}
-      {tab === "list" ? (
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      {/* Studios list */}
+      <div className="px-5 pt-7 pb-8">
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="font-display text-2xl text-foreground">Studios near you</h2>
+          <span className="text-xs font-bold tracking-[0.12em] text-primary uppercase">{filtered.length} found</span>
+        </div>
+
+        <div className="space-y-4">
           {shopsLoading ? (
             <p className="text-center text-muted-foreground py-12 text-sm">Loading studios…</p>
           ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground py-12 text-sm">No matches. Try another search.</p>
           ) : (
-            filtered.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => handleBook(m)}
-                className="w-full text-left rounded-2xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-elegant transition-all"
-              >
-                <div className="relative h-40">
-                  <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
-                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-background/95 rounded-full px-2 py-1 text-xs font-semibold">
-                    <Star className="h-3 w-3 fill-accent text-accent" /> {m.rating}
-                  </div>
-                  <div className="absolute bottom-3 left-3">
-                    <h3 className="font-display text-xl font-bold text-primary-foreground">{m.name}</h3>
-                    <p className="text-sm text-primary-foreground/90">{m.studio}</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {"district" in m ? m.district : ""}</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {m.duration} min</span>
-                  <span>{m.reviews} reviews</span>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      ) : (
-        <div className="flex-1 relative flex flex-col">
-          {/* Map */}
-          <div ref={mapRef} className="flex-1" />
-
-          {/* Selected studio bottom sheet */}
-          {selectedStudio && (
-            <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-3xl shadow-2xl p-5 animate-slide-up">
-              <div className="flex gap-3">
-                <img src={selectedStudio.image} alt={selectedStudio.studio} className="h-20 w-20 rounded-xl object-cover flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-display text-base font-bold text-foreground">{selectedStudio.studio}</p>
-                      <p className="text-xs text-primary font-semibold">{selectedStudio.name}</p>
+            filtered.map((m) => {
+              const isFav = favorites.has(m.id);
+              return (
+                <div
+                  key={m.id}
+                  className="w-full bg-card border border-border/60 rounded-3xl p-3 shadow-soft hover:shadow-elegant transition-all cursor-pointer"
+                  onClick={() => handleBook(m)}
+                >
+                  <div className="flex gap-3">
+                    <div className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary">
+                      {m.image && (
+                        <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFav(m.id); }}
+                        aria-label="Favorite"
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
+                      >
+                        <Heart className={cn("h-3.5 w-3.5", isFav ? "fill-primary text-primary" : "text-foreground")} />
+                      </button>
                     </div>
-                    <button onClick={() => setSelectedStudio(null)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm">×</button>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                    <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selectedStudio.rating} ({selectedStudio.reviews})</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}m</span>
-                    <span className="flex items-center gap-1 font-semibold text-primary"><Navigation className="h-3 w-3" /> {selectedStudio.km?.toFixed(1)} km</span>
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={() => handleBook(selectedStudio)}
-                      className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold"
-                    >
-                      Book now →
-                    </button>
-                    <button
-                      onClick={() => {
-                        const s = selectedStudio as Shop;
-                        if (s.partner_id) navigate(`/s/${s.partner_id}`);
-                        else navigate(`/massages/${selectedStudio.id}`);
-                      }}
-                      className="h-9 px-4 rounded-xl bg-secondary text-foreground text-xs font-semibold"
-                    >
-                      More info
-                    </button>
+
+                    <div className="flex-1 min-w-0 py-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
+                          {m.studio}
+                        </h3>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Star className="h-4 w-4 fill-accent text-accent" />
+                          <span className="text-sm font-semibold text-foreground">{m.rating}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <MapPin className="h-3 w-3" />
+                        <span className="truncate">{"district" in m && m.district ? m.district : "Madrid"}</span>
+                      </div>
+
+                      <p className="text-xs text-foreground/80 mt-2 truncate">
+                        <span className="font-medium">{m.name}</span>
+                        <span className="text-muted-foreground"> · {m.duration} min · </span>
+                        <span className="font-semibold text-primary">€{m.price}</span>
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
+                          Pay at studio
+                        </span>
+                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                          Available today
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })
           )}
-
-          {/* Legend */}
-          <div className="absolute top-3 right-3 bg-card/95 rounded-xl px-3 py-2 shadow-soft">
-            <p className="text-xs text-muted-foreground font-semibold">
-              {filtered.length} studio{filtered.length !== 1 ? "s" : ""}
-            </p>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -400,20 +306,12 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
   return (
     <button
       onClick={onClick}
-      className={cn("flex-shrink-0 h-8 px-3 rounded-full text-xs font-semibold border transition", active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/50")}
+      className={cn(
+        "flex-shrink-0 h-8 px-3 rounded-full text-xs font-semibold border transition",
+        active ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/50"
+      )}
     >
       {children}
     </button>
   );
-}
-
-function buildInfoContent(m: Shop | typeof MASSAGES[0], navigate: any) {
-  return `
-    <div style="font-family: system-ui; max-width: 220px; padding: 4px;">
-      <img src="${m.image}" alt="" style="width:100%; height:80px; object-fit:cover; border-radius:10px; margin-bottom:8px;" />
-      <div style="font-weight:700; font-size:13px; color:#1a0709;">${m.studio}</div>
-      <div style="font-size:11px; color:#A21228; font-weight:600; margin-bottom:4px;">${m.name}</div>
-      <div style="font-size:11px; color:#666;">📍 ${"district" in m ? m.district : ""} · ${m.duration} min · ★ ${m.rating}</div>
-    </div>
-  `;
 }
