@@ -57,6 +57,29 @@ const GOALS: { label: string; value: string }[] = [
   { label: "Injury rehab", value: "injury_rehab" },
   { label: "Pampering", value: "pampering" },
 ];
+const CONVERSATION: { label: string; value: string }[] = [
+  { label: "🤫 Silence please", value: "silence" },
+  { label: "A little chat", value: "minimal" },
+  { label: "Happy to chat", value: "chatty" },
+];
+const MUSIC: { label: string; value: string }[] = [
+  { label: "Spa music", value: "spa" },
+  { label: "No music", value: "none" },
+  { label: "Whatever's on", value: "any" },
+];
+const TEMPERATURE: { label: string; value: string }[] = [
+  { label: "Warmer", value: "warmer" },
+  { label: "Neutral", value: "neutral" },
+  { label: "Cooler", value: "cooler" },
+];
+const SCENT: { label: string; value: string }[] = [
+  { label: "Aromatherapy", value: "aroma" },
+  { label: "Unscented", value: "unscented" },
+];
+const LIGHTING: { label: string; value: string }[] = [
+  { label: "Dim", value: "dim" },
+  { label: "Normal", value: "normal" },
+];
 
 export default function Profile() {
   const navigate = useNavigate();
