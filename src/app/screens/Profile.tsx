@@ -415,8 +415,8 @@ export default function Profile() {
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred therapist</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {THERAPIST_GENDERS.map(t => (
-                <button key={t} type="button" onClick={() => setPreferredTherapistGender(t)} className={chip(preferredTherapistGender === t)}>
-                  {t}
+                <button key={t.value} type="button" onClick={() => setPreferredTherapistGender(t.value)} className={chip(preferredTherapistGender === t.value)}>
+                  {t.label}
                 </button>
               ))}
             </div>
