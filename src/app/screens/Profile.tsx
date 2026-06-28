@@ -270,8 +270,8 @@ export default function Profile() {
   const avatarLetter = (firstName || user.user_metadata?.full_name || user.email || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#F7F4F0] pb-48">
-      <div className="max-w-lg mx-auto px-5 pt-6">
+    <div className="h-full overflow-y-auto bg-[#F7F4F0]">
+      <div className="max-w-lg mx-auto px-5 pt-6 pb-8">
         <button
           onClick={() => navigate("/app/bookings")}
           className="flex items-center gap-1 text-sm text-gray-500 mb-3"
