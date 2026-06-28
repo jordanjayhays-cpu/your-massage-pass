@@ -21,12 +21,27 @@ export default function Payment() {
   const [loading, setLoading] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
   const [profile, setProfile] = useState<any>(null);
+  const [accessInstructions, setAccessInstructions] = useState<string | null>(null);
   const stored = getStoredUser();
   const [contact, setContact] = useState({
     name: stored?.name ?? "Guest",
     email: stored?.email ?? "guest@massageclub.io",
     phone: "",
   });
+
+  // Fetch studio access instructions when we have a partner_id
+  useEffect(() => {
+    const partnerId = (massage as any)?.partner_id;
+    if (!partnerId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("partners")
+        .select("access_instructions")
+        .eq("id", partnerId)
+        .maybeSingle();
+      if (data?.access_instructions) setAccessInstructions(data.access_instructions);
+    })();
+  }, [(massage as any)?.partner_id]);
 
   useEffect(() => {
     (async () => {
@@ -134,8 +149,19 @@ export default function Payment() {
           {user?.email ? `Confirmation sent to ${user.email}` : "Confirmation sent to your email."}
         </p>
 
+        {/* Getting there */}
+        {accessInstructions && (
+          <div className="mt-6 w-full rounded-2xl bg-[#C4622D]/5 border border-[#C4622D]/20 p-5 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin className="h-4 w-4 text-[#C4622D]" />
+              <h3 className="font-display text-base font-semibold text-foreground">Getting there</h3>
+            </div>
+            <p className="text-sm text-foreground/80 whitespace-pre-wrap">{accessInstructions}</p>
+          </div>
+        )}
+
         {/* Google review prompt */}
-        <div className="mt-8 w-full rounded-2xl bg-secondary/70 border border-border p-5 text-left">
+        <div className="mt-6 w-full rounded-2xl bg-secondary/70 border border-border p-5 text-left">
           <div className="flex items-center gap-2 mb-1">
             <Star className="h-4 w-4 fill-accent text-accent" />
             <h3 className="font-display text-base font-semibold text-foreground">Enjoyed Massage Club?</h3>

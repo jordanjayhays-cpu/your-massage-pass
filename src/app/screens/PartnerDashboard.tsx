@@ -596,6 +596,23 @@ export default function PartnerDashboard() {
                   </div>
                 )}
 
+                <div className="border-t border-border pt-3">
+                  <button
+                    onClick={async () => {
+                      const t = toast.loading("Sending reminder…");
+                      const { error } = await supabase.functions.invoke("send-booking-reminder", {
+                        body: { booking_id: d.id },
+                      });
+                      toast.dismiss(t);
+                      if (error) toast.error("Could not send reminder");
+                      else toast.success("Reminder sent");
+                    }}
+                    className="w-full h-10 rounded-xl bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-primary/15"
+                  >
+                    ⏰ Send reminder to client
+                  </button>
+                </div>
+
                 <SoapNoteSection
                   bookingId={(d.id as unknown as number) ?? null}
                   clientEmail={d.client_email ?? null}
