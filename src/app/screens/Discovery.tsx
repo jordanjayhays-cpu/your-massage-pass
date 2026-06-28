@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
-import { MASSAGE_TYPES, MASSAGES } from "../data";
+import { MASSAGE_GUIDE, MASSAGES } from "../data";
 import GoogleMap from "../components/GoogleMap";
 import { useBooking } from "../BookingContext";
 
@@ -24,7 +24,7 @@ export default function Discovery() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 pb-28">
         {/* Quiz CTA */}
         <button
           onClick={() => navigate("/discovery/quiz")}
@@ -45,7 +45,7 @@ export default function Discovery() {
           </div>
         </button>
 
-        {/* Nearby map (real geolocation) */}
+        {/* Nearby map */}
         <div>
           <h3 className="font-display text-lg font-semibold text-foreground mb-3">Studios near you</h3>
           <GoogleMap
@@ -59,22 +59,31 @@ export default function Discovery() {
         </div>
 
         <div>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-3">Massage types</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {MASSAGE_TYPES.map((t) => (
+          <h3 className="font-display text-2xl text-foreground">Explore massage styles</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Learn what each style does — then book the right one.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            {MASSAGE_GUIDE.map((g) => (
               <button
-                key={t.id}
-                onClick={() => navigate(`/discovery/${t.id}`)}
+                key={g.id}
+                onClick={() => navigate(`/discovery/${g.id}`)}
                 className="text-left rounded-2xl overflow-hidden bg-card border border-border shadow-soft hover:shadow-elegant hover:-translate-y-0.5 transition-all"
               >
                 <div className="relative h-28">
-                  <img src={t.image} alt={t.name} className="absolute inset-0 h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
+                  <img src={g.image} alt={g.name} className="absolute inset-0 h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
+                  {g.bookable && (
+                    <span className="absolute top-2 right-2 text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-accent/95 text-foreground shadow-soft">
+                      In Madrid
+                    </span>
+                  )}
                   <div className="absolute bottom-2 left-3 right-3">
-                    <h4 className="font-display text-base font-bold text-primary-foreground">{t.name}</h4>
+                    <h4 className="font-display text-base font-bold text-primary-foreground leading-tight">{g.name}</h4>
                   </div>
                 </div>
-                <p className="px-3 py-2.5 text-xs text-muted-foreground leading-snug">{t.short}</p>
+                <p className="px-3 py-2.5 text-xs text-muted-foreground leading-snug line-clamp-2">{g.tagline}</p>
               </button>
             ))}
           </div>
