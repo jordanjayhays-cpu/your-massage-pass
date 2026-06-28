@@ -178,6 +178,14 @@ export default function Login() {
         </button>
       </div>
 
+      {/* Language picker — large, obvious, no English required to find */}
+      <div className="px-6 mt-5">
+        <p className="text-[10px] uppercase tracking-[0.25em] text-[#7A7068] mb-2 text-center">
+          Idioma · Language
+        </p>
+        <LanguageFlagToggle variant="large" />
+      </div>
+
       {/* Hero — editorial split */}
       <div className="px-6 pt-8">
         <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-4">Madrid · Est. 2026</p>
