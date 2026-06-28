@@ -267,12 +267,17 @@ export default function MassageList() {
       <div className="px-5 pt-5">
         <div className="relative rounded-3xl overflow-hidden shadow-soft border border-border/60 h-[230px]">
           <div ref={mapRef} className="absolute inset-0" />
-          <div className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60">
+          <button
+            onClick={() => { if (!userLoc) requestUserLocation(); }}
+            className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60 hover:bg-card transition"
+          >
             <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
               <Compass className="h-3 w-3 text-primary" />
             </div>
-            <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">Madrid</span>
-          </div>
+            <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
+              {userLoc ? "Your location" : "Near Madrid · tap to locate"}
+            </span>
+          </button>
         </div>
       </div>
 
