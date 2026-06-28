@@ -69,6 +69,7 @@ const App = () => (
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/landing" element={<Index />} />
+          <Route path="/web" element={<Web />} />
           {/* Partner Portal Routes */}
           <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
