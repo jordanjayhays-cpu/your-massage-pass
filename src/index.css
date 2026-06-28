@@ -42,10 +42,10 @@
 
     --radius: 1rem;
 
-    --gradient-royal: linear-gradient(135deg, hsl(18 14% 11%), hsl(20 30% 22%));
+    --gradient-royal: linear-gradient(135deg, hsl(20 64% 47%), hsl(20 64% 38%)); /* terracotta */
     --gradient-gold: linear-gradient(135deg, hsl(34 66% 70%), hsl(20 64% 47%));
     --gradient-warm: linear-gradient(180deg, hsl(33 33% 95%), hsl(30 38% 90%));
-    --gradient-hero: linear-gradient(135deg, hsl(18 14% 11%) 0%, hsl(20 40% 22%) 60%, hsl(20 64% 47%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(33 33% 95%) 0%, hsl(30 38% 90%) 100%);
 
     --shadow-elegant: 0 24px 60px -24px hsl(20 40% 18% / 0.25);
     --shadow-gold: 0 10px 40px -10px hsl(34 66% 63% / 0.40);

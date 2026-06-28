@@ -324,30 +324,30 @@ export default function PartnerOnboarding() {
   ];
 
   const chip = (active: boolean) =>
-    `px-3 py-1.5 rounded-full text-xs font-medium border transition ${active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"}`;
+    `px-3 py-1.5 rounded-full text-xs font-medium border transition ${active ? "bg-primary text-white border-primary" : "bg-white text-muted-foreground border-border hover:border-primary/40"}`;
 
-  const field = "w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400";
+  const field = "w-full text-sm px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:border-primary";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background">
       <div className="max-w-xl mx-auto px-4 py-8">
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
             <Zap size={14} /> Partner Portal
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">List your studio</h1>
-          <p className="text-gray-500 text-sm mt-1">Set up your profile, team and services in a few minutes</p>
+          <h1 className="text-2xl font-bold text-foreground">List your studio</h1>
+          <p className="text-muted-foreground text-sm mt-1">Set up your profile, team and services in a few minutes</p>
         </div>
 
         {/* Progress */}
         <div className="flex justify-center gap-2 mb-8 flex-wrap">
           {steps.map((step, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className={`w-2.5 h-2.5 rounded-full transition ${step.done ? "bg-green-500" : "bg-gray-300"}`} />
-              <span className="text-xs text-gray-400 hidden sm:block">{step.label}</span>
-              {i < steps.length - 1 && <div className="w-3 h-px bg-gray-200 mx-1" />}
+              <div className={`w-2.5 h-2.5 rounded-full transition ${step.done ? "bg-primary" : "bg-border"}`} />
+              <span className="text-xs text-muted-foreground hidden sm:block">{step.label}</span>
+              {i < steps.length - 1 && <div className="w-3 h-px bg-border mx-1" />}
             </div>
           ))}
         </div>
@@ -359,13 +359,13 @@ export default function PartnerOnboarding() {
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">Studio / business name *</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Studio / business name *</label>
                 <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))}
                   placeholder="e.g. Casa Delfines Spa" className="h-11" />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">Street address *</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Street address *</label>
                 <Input value={studio.address}
                   onChange={e => { setStudio(p => ({ ...p, address: e.target.value })); setGeoStatus("idle"); }}
                   placeholder="e.g. Calle de Alcalá 20" className="h-11" />
@@ -373,19 +373,19 @@ export default function PartnerOnboarding() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Postal code</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Postal code</label>
                   <Input value={studio.postal_code} onChange={e => { setStudio(p => ({ ...p, postal_code: e.target.value })); setGeoStatus("idle"); }}
                     placeholder="28014" className="h-11" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">City</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">City</label>
                   <Input value={studio.city} onChange={e => { setStudio(p => ({ ...p, city: e.target.value })); setGeoStatus("idle"); }}
                     placeholder="Madrid" className="h-11" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">Country</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Country</label>
                 <Input value={studio.country} onChange={e => { setStudio(p => ({ ...p, country: e.target.value })); setGeoStatus("idle"); }}
                   placeholder="Spain" className="h-11" />
               </div>
@@ -393,7 +393,7 @@ export default function PartnerOnboarding() {
               {/* Pin location — required for the map */}
               <button onClick={pinLocation}
                 className={`w-full h-11 rounded-lg border text-sm font-medium flex items-center justify-center gap-1.5 transition ${
-                  geoStatus === "ok" ? "border-green-300 bg-green-50 text-green-700" : "border-blue-300 text-blue-600 hover:bg-blue-50"
+                  geoStatus === "ok" ? "border-primary/30 bg-secondary text-primary" : "border-primary/40 text-primary hover:bg-secondary"
                 }`}>
                 {geoStatus === "loading"
                   ? <><Loader2 size={15} className="animate-spin" /> Finding your address…</>
@@ -411,15 +411,15 @@ export default function PartnerOnboarding() {
               {/* Contact */}
               <div className="grid grid-cols-1 gap-3 pt-1">
                 <div className="relative">
-                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="Phone" className="pl-9 h-11" />
                 </div>
                 <div className="relative">
-                  <Globe size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Globe size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder="Website (optional)" className="pl-9 h-11" />
                 </div>
                 <div className="relative">
-                  <Instagram size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Instagram size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.instagram} onChange={e => setStudio(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram (optional)" className="pl-9 h-11" />
                 </div>
               </div>
@@ -429,7 +429,7 @@ export default function PartnerOnboarding() {
             </div>
 
             {/* Where do you work? */}
-            <p className="text-xs font-semibold text-gray-500 mt-4 mb-2">Where do you work?</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">Where do you work?</p>
             <div className="flex flex-wrap gap-2">
               {([["in_studio", "At my studio"], ["mobile", "I travel to clients"], ["both", "Both"]] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setServiceLocation(val)} className={chip(serviceLocation === val)}>{label}</button>
@@ -437,13 +437,13 @@ export default function PartnerOnboarding() {
             </div>
 
             {/* Amenities */}
-            <p className="text-xs font-semibold text-gray-500 mt-4 mb-2">Amenities</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">Amenities</p>
             <div className="flex flex-wrap gap-2">
               {AMENITIES.map(a => <button key={a} onClick={() => toggleArr(amenities, a, setAmenities)} className={chip(amenities.includes(a))}>{a}</button>)}
             </div>
 
             {/* Languages */}
-            <p className="text-xs font-semibold text-gray-500 mt-4 mb-2">Languages spoken</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">Languages spoken</p>
             <div className="flex flex-wrap gap-2">
               {LANGUAGES.map(l => <button key={l} onClick={() => toggleArr(languages, l, setLanguages)} className={chip(languages.includes(l))}>{l}</button>)}
             </div>
@@ -454,20 +454,20 @@ export default function PartnerOnboarding() {
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
             <SectionTitle n="2" done={openDays.length > 0} title="Opening hours" icon={<Clock size={15} />} />
-            <p className="text-sm text-gray-500 mb-3">Set when you're open. Add a lunch break if you close midday.</p>
+            <p className="text-sm text-muted-foreground mb-3">Set when you're open. Add a lunch break if you close midday.</p>
             <div className="space-y-2">
               {DAYS.map(d => {
                 const h = hours[d.num];
                 return (
                   <div key={d.num} className="flex items-center gap-2 flex-wrap">
                     <button onClick={() => updateHours(d.num, { closed: !h.closed })}
-                      className={`w-16 py-1.5 rounded-lg text-sm font-medium transition ${h.closed ? "bg-gray-100 text-gray-400" : "bg-blue-600 text-white"}`}>{d.label}</button>
-                    {h.closed ? <span className="text-xs text-gray-400">Closed</span> : (
+                      className={`w-16 py-1.5 rounded-lg text-sm font-medium transition ${h.closed ? "bg-secondary text-muted-foreground" : "bg-primary text-white"}`}>{d.label}</button>
+                    {h.closed ? <span className="text-xs text-muted-foreground">Closed</span> : (
                       <div className="flex items-center gap-1 text-sm">
                         <TimeInput value={h.open} onChange={v => updateHours(d.num, { open: v })} />
-                        <span className="text-gray-400">–</span>
+                        <span className="text-muted-foreground">–</span>
                         <TimeInput value={h.close} onChange={v => updateHours(d.num, { close: v })} />
-                        <span className="text-gray-300 mx-1 text-xs">break</span>
+                        <span className="text-muted-foreground/60 mx-1 text-xs">break</span>
                         <TimeInput value={h.breakStart} onChange={v => updateHours(d.num, { breakStart: v })} />
                         <TimeInput value={h.breakEnd} onChange={v => updateHours(d.num, { breakEnd: v })} />
                       </div>
@@ -483,27 +483,27 @@ export default function PartnerOnboarding() {
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
             <SectionTitle n="3" done={therapists.some(t => t.name.trim())} title="Your team" icon={<Users size={15} />} />
-            <p className="text-sm text-gray-500 mb-3">Add the therapists who give massages. Customers book with a specific person.</p>
+            <p className="text-sm text-muted-foreground mb-3">Add the therapists who give massages. Customers book with a specific person.</p>
             <div className="space-y-3">
               {therapists.map((t, i) => (
-                <div key={i} className="p-3 border border-gray-200 rounded-xl bg-white">
+                <div key={i} className="p-3 border border-border rounded-xl bg-white">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-gray-500">Therapist {i + 1}</span>
-                    {therapists.length > 1 && <button onClick={() => removeTherapist(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>}
+                    <span className="text-xs font-medium text-muted-foreground">Therapist {i + 1}</span>
+                    {therapists.length > 1 && <button onClick={() => removeTherapist(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name" className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {GENDERS.map(g => <option key={g}>{g}</option>)}
                     </select>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2 mb-1">Specialties</p>
+                  <p className="text-xs text-muted-foreground mt-2 mb-1">Specialties</p>
                   <div className="flex flex-wrap gap-1.5">
                     {MASSAGE_TYPES.map(m => (
                       <button key={m} onClick={() => updateTherapist(i, { specialties: t.specialties.includes(m) ? t.specialties.filter(x => x !== m) : [...t.specialties, m] })} className={chip(t.specialties.includes(m))}>{m}</button>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-400 mt-2 mb-1">Working days</p>
+                  <p className="text-xs text-muted-foreground mt-2 mb-1">Working days</p>
                   <div className="flex flex-wrap gap-1.5">
                     {DAYS.map(d => (
                       <button key={d.num} onClick={() => updateTherapist(i, { workingDays: t.workingDays.includes(d.num) ? t.workingDays.filter(x => x !== d.num) : [...t.workingDays, d.num] })} className={chip(t.workingDays.includes(d.num))}>{d.label}</button>
@@ -512,7 +512,7 @@ export default function PartnerOnboarding() {
                 </div>
               ))}
             </div>
-            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add therapist
             </button>
           </CardContent>
@@ -524,52 +524,52 @@ export default function PartnerOnboarding() {
             <SectionTitle n="4" done={services.some(s => s.name.trim())} title="Your services" />
             <div className="space-y-3">
               {services.map((svc, i) => (
-                <div key={i} className="p-3 border border-gray-200 rounded-xl bg-white">
+                <div key={i} className="p-3 border border-border rounded-xl bg-white">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-gray-500">Service {i + 1}</span>
-                    {services.length > 1 && <button onClick={() => removeService(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>}
+                    <span className="text-xs font-medium text-muted-foreground">Service {i + 1}</span>
+                    {services.length > 1 && <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                    <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                    <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {SERVICE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                     </select>
-                    <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                     </select>
-                    <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2">
-                      <Euro size={13} className="text-gray-400" />
+                    <div className="flex items-center gap-1 border border-border rounded-lg px-2">
+                      <Euro size={13} className="text-muted-foreground" />
                       <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                     </div>
-                    <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                    <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
                     </select>
-                    <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 col-span-2">
+                    <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary col-span-2">
                       {[0, 10, 15, 20, 30].map(b => <option key={b} value={b}>{b} min cleanup after</option>)}
                     </select>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1">
+            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add service
             </button>
 
             {/* Add-ons */}
-            <div className="mt-5 pt-4 border-t border-gray-100">
-              <p className="text-sm font-semibold text-gray-700">Add-ons <span className="font-normal text-gray-400">(optional)</span></p>
-              <p className="text-xs text-gray-400 mb-2">Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.</p>
+            <div className="mt-5 pt-4 border-t border-border">
+              <p className="text-sm font-semibold text-foreground">Add-ons <span className="font-normal text-muted-foreground">(optional)</span></p>
+              <p className="text-xs text-muted-foreground mb-2">Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.</p>
               {addons.map((a, i) => (
                 <div key={i} className="flex items-center gap-2 mb-2">
-                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder="Add-on name" className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 w-24">
-                    <Euro size={13} className="text-gray-400" />
+                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder="Add-on name" className="flex-1 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                  <div className="flex items-center gap-1 border border-border rounded-lg px-2 w-24">
+                    <Euro size={13} className="text-muted-foreground" />
                     <input value={a.price} onChange={e => updateAddon(i, { price: Number(e.target.value) })} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                   </div>
-                  <button onClick={() => removeAddon(i)} className="text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
+                  <button onClick={() => removeAddon(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>
                 </div>
               ))}
-              <button onClick={addAddon} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"><Plus size={12} /> Add an add-on</button>
+              <button onClick={addAddon} className="text-xs text-primary font-medium hover:underline flex items-center gap-1"><Plus size={12} /> Add an add-on</button>
             </div>
           </CardContent>
         </Card>
@@ -579,21 +579,21 @@ export default function PartnerOnboarding() {
           <CardContent className="p-5">
             <SectionTitle n="5" done title="Booking policy" icon={<Shield size={15} />} />
             <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-700">Free cancellation up to</span>
-              <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+              <span className="text-sm text-foreground">Free cancellation up to</span>
+              <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                 {[0, 2, 4, 12, 24, 48].map(h => <option key={h} value={h}>{h === 0 ? "No free cancellation" : `${h}h before`}</option>)}
               </select>
             </div>
-            <div className="flex items-center justify-between py-2 border-t border-gray-100">
-              <span className="text-sm text-gray-700">Require a deposit</span>
-              <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-blue-600" : "bg-gray-300"}`}>
+            <div className="flex items-center justify-between py-2 border-t border-border">
+              <span className="text-sm text-foreground">Require a deposit</span>
+              <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-primary" : "bg-border"}`}>
                 <span className={`absolute top-0.5 h-5 w-5 bg-white rounded-full transition ${depositRequired ? "left-6" : "left-0.5"}`} />
               </button>
             </div>
             {depositRequired && (
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700">Deposit amount</span>
-                <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400">
+                <span className="text-sm text-foreground">Deposit amount</span>
+                <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                   {[10, 20, 30, 50, 100].map(p => <option key={p} value={p}>{p}% of price</option>)}
                 </select>
               </div>
@@ -602,29 +602,29 @@ export default function PartnerOnboarding() {
         </Card>
 
         {/* ─── STEP 6: ACCOUNT ─── */}
-        <Card className="mb-6 border-0 shadow-sm bg-gradient-to-br from-blue-600 to-blue-700">
+        <Card className="mb-6 border-0 shadow-sm bg-gradient-to-br from-primary to-[#9E4D22]">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-sm font-bold">6</div>
               <h2 className="font-semibold text-white">Create your account</h2>
             </div>
             <div className="space-y-3">
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400" />
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (6+ characters)" className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400" />
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" className="h-11 bg-white/90 border-0 text-foreground placeholder:text-muted-foreground" />
+              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (6+ characters)" className="h-11 bg-white/90 border-0 text-foreground placeholder:text-muted-foreground" />
             </div>
-            {error && <p className="text-red-200 text-sm mt-2">{error}</p>}
+            {error && <p className="text-red-100 text-sm mt-2">{error}</p>}
             <div className="mt-4 space-y-2">
-              <Button onClick={handleGoLive} disabled={loading} className="w-full h-12 bg-white text-blue-700 hover:bg-blue-50 font-semibold text-base rounded-xl flex items-center justify-center gap-2">
+              <Button onClick={handleGoLive} disabled={loading} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl flex items-center justify-center gap-2">
                 {loading ? <><Loader2 size={16} className="animate-spin" /> Publishing…</> : <><Sparkles size={16} /> Publish my listing</>}
               </Button>
-              <p className="text-center text-blue-200 text-xs">Commission-only · No upfront cost · Cancel anytime</p>
+              <p className="text-center text-primary-foreground/70 text-xs">Commission-only · No upfront cost · Cancel anytime</p>
             </div>
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <button onClick={() => navigate("/partner/login")} className="text-blue-600 font-medium hover:underline">Sign in</button>
+          <button onClick={() => navigate("/partner/login")} className="text-primary font-medium hover:underline">Sign in</button>
         </p>
       </div>
     </div>
@@ -635,10 +635,10 @@ export default function PartnerOnboarding() {
 function SectionTitle({ n, done, title, icon }: { n: string; done?: boolean; title: string; icon?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
+      <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">
         {done ? <Check size={16} /> : n}
       </div>
-      <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">{icon}{title}</h2>
+      <h2 className="font-semibold text-foreground flex items-center gap-1.5">{icon}{title}</h2>
     </div>
   );
 }
@@ -646,6 +646,6 @@ function SectionTitle({ n, done, title, icon }: { n: string; done?: boolean; tit
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <input type="time" value={value} onChange={e => onChange(e.target.value)}
-      className="w-[84px] text-sm px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400" />
+      className="w-[84px] text-sm px-2 py-1.5 border border-border rounded-lg focus:outline-none focus:border-primary" />
   );
 }
