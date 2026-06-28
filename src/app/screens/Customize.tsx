@@ -27,9 +27,11 @@ const CONVERSATION_KEYS: { labelKey: string; value: string }[] = [
 export default function Customize() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { t } = useTranslation();
   const { pressure, focusAreas, addOns, notes, conversation, set, toggleFocus, toggleAddOn, shop } = useBooking();
   const massage = shop || MASSAGES.find((m) => m.id === id);
   const [profile, setProfile] = useState<any>(null);
+
 
   useEffect(() => {
     (async () => {
