@@ -21,6 +21,16 @@ export default function Profile() {
   const [allergies, setAllergies] = useState("");
   const [healthNotes, setHealthNotes] = useState("");
 
+  const [reasonForVisit, setReasonForVisit] = useState("");
+  const [medicalConditions, setMedicalConditions] = useState<string[]>([]);
+  const [medications, setMedications] = useState("");
+  const [pastSurgeries, setPastSurgeries] = useState("");
+  const [avoidAreas, setAvoidAreas] = useState("");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [isFirstMassage, setIsFirstMassage] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
