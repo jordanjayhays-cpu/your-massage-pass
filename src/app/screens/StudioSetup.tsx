@@ -234,7 +234,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">1</div>
+                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">1</div>
                 <h2 className="font-semibold text-foreground">Create your account</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-4">Email is pre-filled from your invite.</p>
@@ -243,7 +243,7 @@ function StudioSetupInner() {
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (min 8 chars)" className="h-11" />
                 <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="h-11" />
               </div>
-              <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-primary hover:bg-blue-700">
+              <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-primary hover:bg-[#9E4D22]">
                 {accountLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating account…</> : <>Continue <ChevronRight className="h-4 w-4 ml-2" /></>}
               </Button>
             </CardContent>
@@ -255,7 +255,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">2</div>
+                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">2</div>
                 <h2 className="font-semibold text-foreground">Studio details</h2>
               </div>
               <div>
@@ -289,7 +289,7 @@ function StudioSetupInner() {
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-primary hover:bg-blue-700">
+                <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">
                   {profileLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
                 </Button>
               </div>
@@ -302,7 +302,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">3</div>
+                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">3</div>
                 <h2 className="font-semibold text-foreground">Your services</h2>
               </div>
               <div className="space-y-3">
@@ -329,13 +329,13 @@ function StudioSetupInner() {
                 ))}
               </div>
               {services.length < 5 && (
-                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
+                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
                   <Plus size={14} /> Add service
                 </button>
               )}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveServices} className="flex-1 h-11 bg-primary hover:bg-blue-700">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button onClick={handleSaveServices} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -346,7 +346,7 @@ function StudioSetupInner() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">4</div>
+                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">4</div>
                 <h2 className="font-semibold text-foreground">Availability</h2>
               </div>
               <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
@@ -362,7 +362,7 @@ function StudioSetupInner() {
                     {availability[day.num].length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pl-1">
                         {DEFAULT_SLOTS.map(slot => (
-                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-secondary text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
                             {slot}
                           </button>
                         ))}
@@ -373,7 +373,7 @@ function StudioSetupInner() {
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-primary hover:bg-blue-700">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -387,7 +387,7 @@ function StudioSetupInner() {
                 <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
               <h2 className="font-display text-2xl font-bold mb-2">You're live on Massage Club! 🎉</h2>
-              <p className="text-blue-100 text-sm mb-6">Your studio is now visible to thousands of members in Madrid.</p>
+              <p className="text-primary-foreground/80 text-sm mb-6">Your studio is now visible to thousands of members in Madrid.</p>
               <Button onClick={() => navigate("/studio-portal")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
                 Go to your portal →
               </Button>

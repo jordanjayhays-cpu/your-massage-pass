@@ -233,7 +233,7 @@ export default function StudioPortal() {
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-display text-base font-bold">Availability</h2>
-              <Button size="sm" onClick={saveAvailability} disabled={savingAvail} className="bg-primary hover:bg-blue-700">
+              <Button size="sm" onClick={saveAvailability} disabled={savingAvail} className="bg-primary hover:bg-[#9E4D22]">
                 {savingAvail ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving…</> : "Save Changes"}
               </Button>
             </div>
@@ -252,7 +252,7 @@ export default function StudioPortal() {
                     <div className="flex flex-wrap gap-1.5 pl-1">
                       {DEFAULT_SLOTS.map(slot => (
                         <button key={slot} onClick={() => toggleSlot(day.num, slot)}
-                          className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-blue-100 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                          className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-secondary text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
                           {slot}
                         </button>
                       ))}
@@ -277,7 +277,7 @@ export default function StudioPortal() {
                   ) : (
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => { setEditingProfile(false); setProfileForm({ business_name: partner?.business_name || "", address: partner?.address || "", phone: partner?.phone || "", website: partner?.website || "", description: partner?.description || "" }); }}><ChevronLeft className="h-3 w-3" /> Cancel</Button>
-                      <Button size="sm" onClick={saveProfile} className="bg-primary hover:bg-blue-700">Save</Button>
+                      <Button size="sm" onClick={saveProfile} className="bg-primary hover:bg-[#9E4D22]">Save</Button>
                     </div>
                   )}
                 </div>
@@ -337,7 +337,7 @@ export default function StudioPortal() {
                 <h2 className="font-display text-base font-bold">Change Password</h2>
                 <form onSubmit={changePassword} className="space-y-3">
                   <Input name="newPw" type="password" placeholder="New password (min 8 chars)" className="h-11" />
-                  <Button type="submit" size="sm" disabled={passwordLoading} className="bg-primary hover:bg-blue-700">
+                  <Button type="submit" size="sm" disabled={passwordLoading} className="bg-primary hover:bg-[#9E4D22]">
                     {passwordLoading ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Updating…</> : "Update Password"}
                   </Button>
                 </form>

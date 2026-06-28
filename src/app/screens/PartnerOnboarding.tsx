@@ -512,7 +512,7 @@ export default function PartnerOnboarding() {
                 </div>
               ))}
             </div>
-            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
+            <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add therapist
             </button>
           </CardContent>
@@ -551,13 +551,13 @@ export default function PartnerOnboarding() {
                 </div>
               ))}
             </div>
-            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
+            <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
               <Plus size={14} /> Add service
             </button>
 
             {/* Add-ons */}
-            <div className="mt-5 pt-4 border-t border-gray-100">
-              <p className="text-sm font-semibold text-gray-700">Add-ons <span className="font-normal text-muted-foreground">(optional)</span></p>
+            <div className="mt-5 pt-4 border-t border-border">
+              <p className="text-sm font-semibold text-foreground">Add-ons <span className="font-normal text-muted-foreground">(optional)</span></p>
               <p className="text-xs text-muted-foreground mb-2">Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.</p>
               {addons.map((a, i) => (
                 <div key={i} className="flex items-center gap-2 mb-2">
@@ -579,20 +579,20 @@ export default function PartnerOnboarding() {
           <CardContent className="p-5">
             <SectionTitle n="5" done title="Booking policy" icon={<Shield size={15} />} />
             <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-700">Free cancellation up to</span>
+              <span className="text-sm text-foreground">Free cancellation up to</span>
               <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                 {[0, 2, 4, 12, 24, 48].map(h => <option key={h} value={h}>{h === 0 ? "No free cancellation" : `${h}h before`}</option>)}
               </select>
             </div>
-            <div className="flex items-center justify-between py-2 border-t border-gray-100">
-              <span className="text-sm text-gray-700">Require a deposit</span>
+            <div className="flex items-center justify-between py-2 border-t border-border">
+              <span className="text-sm text-foreground">Require a deposit</span>
               <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-primary" : "bg-border"}`}>
                 <span className={`absolute top-0.5 h-5 w-5 bg-white rounded-full transition ${depositRequired ? "left-6" : "left-0.5"}`} />
               </button>
             </div>
             {depositRequired && (
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700">Deposit amount</span>
+                <span className="text-sm text-foreground">Deposit amount</span>
                 <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                   {[10, 20, 30, 50, 100].map(p => <option key={p} value={p}>{p}% of price</option>)}
                 </select>
@@ -635,7 +635,7 @@ export default function PartnerOnboarding() {
 function SectionTitle({ n, done, title, icon }: { n: string; done?: boolean; title: string; icon?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <div className="w-8 h-8 rounded-full bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">
+      <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">
         {done ? <Check size={16} /> : n}
       </div>
       <h2 className="font-semibold text-foreground flex items-center gap-1.5">{icon}{title}</h2>
