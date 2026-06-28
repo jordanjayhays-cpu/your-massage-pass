@@ -406,16 +406,33 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
 
 // ---- Helpers ----
 
-function makeMarkerIcon(active: boolean): google.maps.Icon | google.maps.Symbol {
-  // Crimson primary (354, 78%, 36%) → #C4622D ; Gold accent → #E8B130
+const STUDIO_ICONS: Record<string, string> = {
+  "Casa Cibeles": "🧖‍♀️",
+  "El Retiro Wellness": "💆",
+  "Salamanca Spa Real": "🔥",
+  "Chamberí Manos": "🏃",
+  "Malasaña Holístico": "🪷",
+  "La Latina Termas": "🌊",
+};
+
+function getStudioIcon(studio: string): string {
+  for (const [key, icon] of Object.entries(STUDIO_ICONS)) {
+    if (studio.includes(key.split(" ")[0])) return icon;
+  }
+  return "💆";
+}
+
+function makeMarkerIcon(active: boolean, emoji: string = "💆"): google.maps.Icon {
+  const size = active ? 52 : 42;
   return {
-    path: "M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z",
-    fillColor: active ? "#E8B130" : "#C4622D",
-    fillOpacity: 1,
-    strokeColor: "#fff",
-    strokeWeight: 2,
-    scale: active ? 1.4 : 1.1,
-    anchor: new google.maps.Point(12, 36),
+    url: `data:image/svg+xml,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 26 : 20}">${emoji}</text>
+      </svg>`,
+    )}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size / 2),
   };
 }
 
