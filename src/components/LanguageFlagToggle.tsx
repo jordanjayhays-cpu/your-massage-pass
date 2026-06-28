@@ -1,12 +1,60 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronDown, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Lang = "es" | "en";
 
-const LANGS: { code: Lang; flag: string; native: string }[] = [
-  { code: "es", flag: "🇪🇸", native: "Español" },
-  { code: "en", flag: "🇬🇧", native: "English" },
+type Option = {
+  id: string;            // unique id (country+lang)
+  lang: Lang;            // i18n language to apply
+  countryCode: string;   // ISO-3166-1 alpha-2 (lowercase) for flagcdn
+  countryLabel: string;  // shown next to flag
+  nativeLanguage: string; // language written in its own language
+};
+
+// Default English = 🇺🇸. Users can pick other country/language combos.
+const OPTIONS: Option[] = [
+  { id: "en-US", lang: "en", countryCode: "us", countryLabel: "United States", nativeLanguage: "English" },
+  { id: "es-ES", lang: "es", countryCode: "es", countryLabel: "España",        nativeLanguage: "Español" },
+  { id: "es-MX", lang: "es", countryCode: "mx", countryLabel: "México",        nativeLanguage: "Español" },
+  { id: "en-GB", lang: "en", countryCode: "gb", countryLabel: "United Kingdom", nativeLanguage: "English" },
 ];
+
+const STORAGE_KEY = "mm-country";
+
+// Use SVG flags from flagcdn — emoji flags don't render on Windows/Chrome.
+function flagUrl(code: string, size: 40 | 80 | 160 = 80) {
+  return `https://flagcdn.com/w${size}/${code}.png`;
+}
+function flagSrcSet(code: string) {
+  return `${flagUrl(code, 40)} 1x, ${flagUrl(code, 80)} 2x, ${flagUrl(code, 160)} 3x`;
+}
+
+function Flag({ code, className = "" }: { code: string; className?: string }) {
+  return (
+    <img
+      src={flagUrl(code, 80)}
+      srcSet={flagSrcSet(code)}
+      alt=""
+      aria-hidden
+      className={`inline-block rounded-[3px] object-cover shadow-[0_0_0_1px_rgba(0,0,0,0.08)] ${className}`}
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
+function pickInitialOption(currentLang: Lang): Option {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const found = OPTIONS.find((o) => o.id === saved);
+      if (found) return found;
+    }
+  } catch { /* ignore */ }
+  return OPTIONS.find((o) => o.lang === currentLang) ?? OPTIONS[0];
+}
 
 async function persistPreferredLanguage(lang: Lang) {
   try {
@@ -14,14 +62,10 @@ async function persistPreferredLanguage(lang: Lang) {
     if (!user) return;
     await supabase.from("profiles").update({ preferred_language: lang }).eq("id", user.id);
   } catch {
-    // non-fatal — localStorage already saved via i18next
+    /* non-fatal */
   }
 }
 
-/**
- * Compact pill toggle — for app headers / always-visible placements.
- * Shows both flags side by side; active one is highlighted.
- */
 export function LanguageFlagToggle({
   className = "",
   variant = "compact",
@@ -31,33 +75,64 @@ export function LanguageFlagToggle({
 }) {
   const { i18n } = useTranslation();
   const current: Lang = i18n.resolvedLanguage === "es" ? "es" : "en";
+  const [selected, setSelected] = useState<Option>(() => pickInitialOption(current));
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  const set = (lang: Lang) => {
-    if (lang === current) return;
-    i18n.changeLanguage(lang);
-    void persistPreferredLanguage(lang);
+  // Keep selected option in sync if language changes elsewhere.
+  useEffect(() => {
+    if (selected.lang !== current) {
+      const fallback = OPTIONS.find((o) => o.lang === current);
+      if (fallback) setSelected(fallback);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const choose = (opt: Option) => {
+    setSelected(opt);
+    setOpen(false);
+    try { localStorage.setItem(STORAGE_KEY, opt.id); } catch { /* ignore */ }
+    if (opt.lang !== current) {
+      i18n.changeLanguage(opt.lang);
+      void persistPreferredLanguage(opt.lang);
+    }
   };
 
   if (variant === "large") {
     return (
-      <div className={`flex gap-3 ${className}`}>
-        {LANGS.map((l) => {
-          const active = current === l.code;
+      <div className={`space-y-2 ${className}`}>
+        {OPTIONS.map((o) => {
+          const active = selected.id === o.id;
           return (
             <button
-              key={l.code}
+              key={o.id}
               type="button"
-              onClick={() => set(l.code)}
+              onClick={() => choose(o)}
               aria-pressed={active}
-              aria-label={l.native}
-              className={`flex-1 flex items-center justify-center gap-2 h-12 rounded-full border transition-all ${
+              className={`w-full flex items-center gap-3 h-14 px-4 rounded-2xl border transition-all ${
                 active
                   ? "bg-[#211C1A] text-[#F7F4F0] border-[#211C1A] shadow-[0_8px_20px_-10px_rgba(33,28,26,0.5)]"
-                  : "bg-white text-[#211C1A] border-[#E5DDD3] hover:border-[#C4622D]/50"
+                  : "bg-white text-[#211C1A] border-[#E5DDD3] hover:border-[#C4622D]/60"
               }`}
             >
-              <span className="text-xl leading-none" aria-hidden>{l.flag}</span>
-              <span className="text-sm font-medium">{l.native}</span>
+              <Flag code={o.countryCode} className="h-6 w-9" />
+              <div className="flex-1 text-left">
+                <div className="text-sm font-semibold leading-tight">{o.nativeLanguage}</div>
+                <div className={`text-[11px] ${active ? "text-[#F7F4F0]/70" : "text-[#7A7068]"}`}>
+                  {o.countryLabel}
+                </div>
+              </div>
+              {active && <Check className="h-4 w-4" />}
             </button>
           );
         })}
@@ -65,32 +140,55 @@ export function LanguageFlagToggle({
     );
   }
 
-  // compact pill — for headers
+  // Compact: single flag pill, opens dropdown
   return (
-    <div
-      className={`inline-flex items-center gap-0.5 rounded-full border border-[#E5DDD3] bg-white/90 backdrop-blur p-0.5 shadow-sm ${className}`}
-      role="group"
-      aria-label="Language / Idioma"
-    >
-      {LANGS.map((l) => {
-        const active = current === l.code;
-        return (
-          <button
-            key={l.code}
-            type="button"
-            onClick={() => set(l.code)}
-            aria-pressed={active}
-            aria-label={l.native}
-            title={l.native}
-            className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-xs font-medium transition-colors ${
-              active ? "bg-[#211C1A] text-[#F7F4F0]" : "text-[#7A7068] hover:text-[#211C1A]"
-            }`}
-          >
-            <span className="text-base leading-none" aria-hidden>{l.flag}</span>
-            <span className="hidden sm:inline">{l.native}</span>
-          </button>
-        );
-      })}
+    <div ref={wrapRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`${selected.nativeLanguage} · ${selected.countryLabel}`}
+        className="inline-flex items-center gap-1.5 h-9 pl-1.5 pr-2 rounded-full border border-[#E5DDD3] bg-white/95 backdrop-blur shadow-sm hover:border-[#C4622D]/50"
+      >
+        <Flag code={selected.countryCode} className="h-5 w-7" />
+        <span className="text-[11px] font-semibold text-[#211C1A] hidden sm:inline">
+          {selected.lang.toUpperCase()}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-[#7A7068]" />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute right-0 mt-1.5 w-56 rounded-2xl border border-[#E5DDD3] bg-white shadow-[0_20px_50px_-20px_rgba(33,28,26,0.4)] overflow-hidden z-50"
+        >
+          {OPTIONS.map((o) => {
+            const active = selected.id === o.id;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => choose(o)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                  active ? "bg-[#F7F4F0]" : "hover:bg-[#F7F4F0]/70"
+                }`}
+              >
+                <Flag code={o.countryCode} className="h-5 w-7" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-[#211C1A] leading-tight">
+                    {o.nativeLanguage}
+                  </div>
+                  <div className="text-[11px] text-[#7A7068] truncate">{o.countryLabel}</div>
+                </div>
+                {active && <Check className="h-4 w-4 text-[#C4622D]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
