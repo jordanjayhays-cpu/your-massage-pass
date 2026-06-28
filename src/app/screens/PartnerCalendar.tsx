@@ -93,6 +93,20 @@ export default function PartnerCalendar() {
     }));
     if (hourRows.length > 0) await supabase.from("business_hours").insert(hourRows);
 
+    // Save opening_hours JSONB + capacity on partners (for real-time availability)
+    const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    const opening_hours: Record<string, any> = {};
+    for (const d of DAYS) {
+      const h = hours[d.num];
+      opening_hours[DAY_KEYS[d.num]] = h.closed
+        ? { closed: true }
+        : { open: h.open, close: h.close };
+    }
+    await supabase
+      .from("partners")
+      .update({ opening_hours, capacity: Math.max(1, capacity) })
+      .eq("id", user.id);
+
     setLoading(false);
     setSaved(true);
     toast.success("Availability saved! Your listing is live.");
