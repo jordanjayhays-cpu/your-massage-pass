@@ -87,13 +87,13 @@ export default function MassageList() {
     (m: any) => m && typeof m.lat === "number" && typeof m.lng === "number"
   );
 
-  // Initialize inline map (only when map view is active)
+  // Initialize inline map (always rendered as header banner)
   useEffect(() => {
-    if (view !== "map" || !mapRef.current) return;
+    if (!mapRef.current) return;
     let cancelled = false;
 
     loadGoogleMaps().then((g) => {
-      if (cancelled || !g || !mapRef.current) return;
+      if (cancelled || !mapRef.current) return;
 
       const map = new google.maps.Map(mapRef.current, {
         center: MADRID_CENTER,
@@ -148,7 +148,8 @@ export default function MassageList() {
     });
 
     return () => { cancelled = true; };
-  }, [view, realShops]);
+  }, [realShops]);
+
 
 
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
