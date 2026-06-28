@@ -32,6 +32,7 @@ import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
+import MassageClubDesign from "./pages/MassageClubDesign";
 
 const queryClient = new QueryClient();
 
