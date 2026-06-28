@@ -109,6 +109,14 @@ export default function Profile() {
   const [massageFrequency, setMassageFrequency] = useState("");
   const [massageGoals, setMassageGoals] = useState<string[]>([]);
 
+  // Comfort & experience
+  const [conversationPref, setConversationPref] = useState("");
+  const [musicPref, setMusicPref] = useState("");
+  const [temperaturePref, setTemperaturePref] = useState("");
+  const [scentPref, setScentPref] = useState("");
+  const [lightingPref, setLightingPref] = useState("");
+  const [comfortNotes, setComfortNotes] = useState("");
+
   // Massage preferences
   const [pressure, setPressure] = useState("");
   const [preferredTherapistGender, setPreferredTherapistGender] = useState("");
