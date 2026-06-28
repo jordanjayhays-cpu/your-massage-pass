@@ -183,7 +183,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
         position: { lat: m.lat, lng: m.lng },
         map,
         title: m.studio,
-        icon: makeMarkerIcon(isActive),
+        icon: makeMarkerIcon(isActive, getStudioIcon(m.studio)),
       });
       marker.addListener("click", () => {
         setActive(m.id);
