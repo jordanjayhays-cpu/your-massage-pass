@@ -34,7 +34,7 @@ export default function MassageList() {
   const [shopsLoading, setShopsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [mapOpen, setMapOpen] = useState(false);
+  
   const [view, setView] = useState<"list" | "map">("list");
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
