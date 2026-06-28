@@ -51,6 +51,34 @@ export default function PartnerCalendar() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Load existing opening_hours + capacity
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("partners")
+        .select("opening_hours, capacity")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data?.capacity) setCapacity(Math.max(1, Number(data.capacity)));
+      const oh = data?.opening_hours;
+      if (oh && typeof oh === "object") {
+        const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+        setHours(prev => {
+          const next = { ...prev };
+          for (let i = 0; i < 7; i++) {
+            const v = oh[KEYS[i]];
+            if (!v) continue;
+            if (v.closed) next[i] = { ...next[i], closed: true };
+            else if (v.open && v.close) next[i] = { closed: false, open: v.open, close: v.close };
+          }
+          return next;
+        });
+      }
+    })();
+  }, []);
+
   const update = (day: number, patch: Partial<DayHours>) =>
     setHours(prev => ({ ...prev, [day]: { ...prev[day], ...patch } }));
 
