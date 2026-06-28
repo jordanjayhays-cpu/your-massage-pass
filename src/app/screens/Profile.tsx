@@ -198,8 +198,110 @@ export default function Profile() {
                   {f}
                 </button>
               ))}
+        </div>
+
+        <div className="mt-6 space-y-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Health &amp; safety</h2>
+            <p className="text-xs text-gray-500">Private — only shared with your therapist</p>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Reason for visit / goals</label>
+            <textarea
+              value={reasonForVisit}
+              onChange={e => setReasonForVisit(e.target.value)}
+              rows={3}
+              placeholder="e.g. lower back pain from desk work"
+              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medical conditions</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MEDICALS.map(m => (
+                <button key={m} type="button" onClick={() => toggleMedical(m)} className={chip(medicalConditions.includes(m))}>
+                  {m}
+                </button>
+              ))}
             </div>
           </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medications</label>
+            <input
+              value={medications}
+              onChange={e => setMedications(e.target.value)}
+              placeholder="e.g. blood thinners"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Past surgeries / injuries</label>
+            <textarea
+              value={pastSurgeries}
+              onChange={e => setPastSurgeries(e.target.value)}
+              rows={3}
+              placeholder="e.g. shoulder surgery 2022"
+              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Areas to avoid</label>
+            <input
+              value={avoidAreas}
+              onChange={e => setAvoidAreas(e.target.value)}
+              placeholder="e.g. left knee"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Emergency contact</label>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <input
+                value={emergencyName}
+                onChange={e => setEmergencyName(e.target.value)}
+                placeholder="Name"
+                className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+              <input
+                value={emergencyPhone}
+                onChange={e => setEmergencyPhone(e.target.value)}
+                placeholder="Phone"
+                className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              id="firstMassage"
+              type="checkbox"
+              checked={isFirstMassage}
+              onChange={e => setIsFirstMassage(e.target.checked)}
+              className="h-5 w-5 rounded border-gray-300 text-[#A21228] focus:ring-[#A21228]"
+            />
+            <label htmlFor="firstMassage" className="text-sm text-gray-700">Is this your first professional massage?</label>
+          </div>
+
+          <div className="flex items-start gap-3 pt-2">
+            <input
+              id="consent"
+              type="checkbox"
+              checked={consentAccepted}
+              onChange={e => setConsentAccepted(e.target.checked)}
+              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-[#A21228] focus:ring-[#A21228]"
+            />
+            <label htmlFor="consent" className="text-sm text-gray-700 leading-relaxed">
+              I confirm the above is accurate and consent to treatment.
+            </label>
+          </div>
+        </div>
+      </div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Allergies</label>
