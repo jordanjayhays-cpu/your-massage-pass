@@ -203,6 +203,12 @@ export default function Profile() {
       is_first_massage: isFirstMassage,
       consent_accepted: consentAccepted,
       consent_at: consentAccepted ? new Date().toISOString() : null,
+      preferred_massage_types: preferredMassageTypes.length ? preferredMassageTypes : null,
+      preferred_duration: preferredDuration ?? null,
+      typical_budget: typicalBudget || null,
+      usual_addons: usualAddons.length ? usualAddons : null,
+      massage_frequency: massageFrequency || null,
+      massage_goals: massageGoals.length ? massageGoals : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
