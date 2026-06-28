@@ -9,64 +9,64 @@
 
 @layer base {
   :root {
-    /* Madrid palette */
-    --background: 40 38% 96%;          /* warm cream */
-    --foreground: 0 45% 14%;           /* deep oxblood */
+    /* Editorial spa palette — warm sand, clay terracotta, soft gold */
+    --background: 38 45% 95%;           /* warm sand #faf6ee */
+    --foreground: 28 35% 14%;           /* deep espresso #2a221c */
 
-    --card: 40 50% 98%;
-    --card-foreground: 0 45% 14%;
+    --card: 40 50% 98%;                 /* near-white card */
+    --card-foreground: 28 35% 14%;
 
     --popover: 40 50% 98%;
-    --popover-foreground: 0 45% 14%;
+    --popover-foreground: 28 35% 14%;
 
-    --primary: 354 78% 36%;            /* Madrid crimson */
-    --primary-foreground: 40 50% 98%;
-    --primary-glow: 354 82% 48%;
+    --primary: 20 100% 24%;             /* terracotta clay #7a3000 */
+    --primary-foreground: 38 50% 97%;
+    --primary-glow: 20 85% 38%;
 
-    --secondary: 40 40% 90%;
-    --secondary-foreground: 0 45% 14%;
+    --secondary: 36 50% 90%;            /* sand cream #f3ebdc */
+    --secondary-foreground: 28 35% 14%;
 
-    --muted: 40 25% 88%;
-    --muted-foreground: 0 15% 35%;
+    --muted: 36 35% 88%;
+    --muted-foreground: 28 18% 38%;
 
-    --accent: 42 78% 52%;              /* Madrid gold */
-    --accent-foreground: 0 45% 14%;
-    --accent-deep: 38 70% 42%;
+    --accent: 38 55% 58%;               /* soft gold #d4a155 */
+    --accent-foreground: 28 35% 14%;
+    --accent-deep: 32 50% 42%;
 
-    --destructive: 0 84% 50%;
-    --destructive-foreground: 40 50% 98%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 38 50% 97%;
 
-    --border: 40 30% 82%;
-    --input: 40 30% 82%;
-    --ring: 354 78% 36%;
+    --border: 36 30% 82%;
+    --input: 36 30% 82%;
+    --ring: 20 100% 24%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Gradients */
-    --gradient-royal: linear-gradient(135deg, hsl(354 78% 36%), hsl(354 65% 22%));
-    --gradient-gold: linear-gradient(135deg, hsl(42 85% 58%), hsl(38 70% 42%));
-    --gradient-warm: linear-gradient(180deg, hsl(40 38% 96%), hsl(40 30% 90%));
-    --gradient-hero: linear-gradient(135deg, hsl(0 45% 14%) 0%, hsl(354 65% 22%) 60%, hsl(354 78% 36%) 100%);
+    --gradient-royal: linear-gradient(135deg, hsl(28 35% 14%), hsl(20 60% 22%));
+    --gradient-gold: linear-gradient(135deg, hsl(38 65% 65%), hsl(32 55% 45%));
+    --gradient-warm: linear-gradient(180deg, hsl(38 45% 95%), hsl(36 40% 90%));
+    --gradient-hero: linear-gradient(135deg, hsl(28 35% 14%) 0%, hsl(20 50% 22%) 60%, hsl(20 100% 24%) 100%);
 
     /* Shadows */
-    --shadow-elegant: 0 20px 60px -20px hsl(354 78% 36% / 0.35);
-    --shadow-gold: 0 10px 40px -10px hsl(42 78% 52% / 0.45);
-    --shadow-soft: 0 4px 20px -4px hsl(0 45% 14% / 0.1);
+    --shadow-elegant: 0 24px 60px -24px hsl(20 60% 18% / 0.30);
+    --shadow-gold: 0 10px 40px -10px hsl(38 55% 58% / 0.40);
+    --shadow-soft: 0 4px 20px -6px hsl(28 35% 14% / 0.10);
 
-    /* Typography */
-    --font-display: 'Playfair Display', Georgia, serif;
-    --font-body: 'Inter', system-ui, sans-serif;
+    /* Typography — editorial spa */
+    --font-display: 'Instrument Serif', 'Playfair Display', Georgia, serif;
+    --font-body: 'Work Sans', 'Inter', system-ui, sans-serif;
 
     --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 40 38% 96%;
-    --sidebar-foreground: 0 45% 14%;
-    --sidebar-primary: 354 78% 36%;
-    --sidebar-primary-foreground: 40 50% 98%;
-    --sidebar-accent: 40 40% 90%;
-    --sidebar-accent-foreground: 0 45% 14%;
-    --sidebar-border: 40 30% 82%;
-    --sidebar-ring: 354 78% 36%;
+    --sidebar-background: 38 45% 95%;
+    --sidebar-foreground: 28 35% 14%;
+    --sidebar-primary: 20 100% 24%;
+    --sidebar-primary-foreground: 38 50% 97%;
+    --sidebar-accent: 36 50% 90%;
+    --sidebar-accent-foreground: 28 35% 14%;
+    --sidebar-border: 36 30% 82%;
+    --sidebar-ring: 20 100% 24%;
   }
 
   .dark {
