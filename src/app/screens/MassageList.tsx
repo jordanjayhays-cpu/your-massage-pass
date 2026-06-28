@@ -404,62 +404,36 @@ export default function MassageList() {
         </div>
       )}
 
-      {/* Full Madrid map modal */}
-      {mapOpen && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in fade-in duration-200">
-          <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-3 border-b border-border/60 bg-card">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Compass className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-display text-lg text-foreground leading-none">Madrid</p>
-                <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground mt-0.5">Map view</p>
-              </div>
-            </div>
-            <button
-              onClick={() => { setMapOpen(false); setSelectedStudio(null); }}
-              aria-label="Close map"
-              className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
 
-          <div className="flex-1 relative">
-            <div ref={fullMapRef} className="absolute inset-0" />
-
-            {selectedStudio && (
-              <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-3xl shadow-2xl p-5">
-                <div className="flex gap-3">
-                  {selectedStudio.image && (
-                    <img src={selectedStudio.image} alt={selectedStudio.studio} className="h-20 w-20 rounded-2xl object-cover flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-display text-lg font-semibold text-foreground leading-tight">{selectedStudio.studio}</p>
-                        <p className="text-xs text-primary font-semibold mt-0.5">{selectedStudio.name}</p>
-                      </div>
-                      <button onClick={() => setSelectedStudio(null)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm">×</button>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                      <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selectedStudio.rating}</span>
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}m</span>
-                      {"district" in selectedStudio && selectedStudio.district && (
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedStudio.district}</span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => { setMapOpen(false); handleBook(selectedStudio); }}
-                      className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
-                    >
-                      Book now →
-                    </button>
-                  </div>
-                </div>
-              </div>
+      {/* Selected studio bottom sheet (inline map view) */}
+      {view === "map" && selectedStudio && (
+        <div className="sticky bottom-0 left-0 right-0 mx-5 mb-5 bg-card border border-border rounded-3xl shadow-elegant p-4 z-10">
+          <div className="flex gap-3">
+            {selectedStudio.image && (
+              <img src={selectedStudio.image} alt={selectedStudio.studio} className="h-20 w-20 rounded-2xl object-cover flex-shrink-0" />
             )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-display text-lg font-semibold text-foreground leading-tight">{selectedStudio.studio}</p>
+                  <p className="text-xs text-primary font-semibold mt-0.5">{selectedStudio.name}</p>
+                </div>
+                <button onClick={() => setSelectedStudio(null)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm">×</button>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selectedStudio.rating}</span>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}m</span>
+                {"district" in selectedStudio && selectedStudio.district && (
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedStudio.district}</span>
+                )}
+              </div>
+              <button
+                onClick={() => handleBook(selectedStudio)}
+                className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
+              >
+                Book now →
+              </button>
+            </div>
           </div>
         </div>
       )}
