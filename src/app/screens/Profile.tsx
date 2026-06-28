@@ -6,6 +6,7 @@ import { Loader2, LogOut, ArrowLeft, UserCircle2 } from "lucide-react";
 
 const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
+const MEDICALS = ["High blood pressure", "Heart condition", "Diabetes", "Blood clots / DVT", "Pregnant", "Recent surgery", "Cancer", "Epilepsy", "Skin condition"];
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -20,6 +21,16 @@ export default function Profile() {
   const [allergies, setAllergies] = useState("");
   const [healthNotes, setHealthNotes] = useState("");
 
+  const [reasonForVisit, setReasonForVisit] = useState("");
+  const [medicalConditions, setMedicalConditions] = useState<string[]>([]);
+  const [medications, setMedications] = useState("");
+  const [pastSurgeries, setPastSurgeries] = useState("");
+  const [avoidAreas, setAvoidAreas] = useState("");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [isFirstMassage, setIsFirstMassage] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -32,6 +43,15 @@ export default function Profile() {
         setFocusAreas(data?.focus_areas || []);
         setAllergies(data?.allergies || "");
         setHealthNotes(data?.health_notes || "");
+        setReasonForVisit(data?.reason_for_visit || "");
+        setMedicalConditions(data?.medical_conditions || []);
+        setMedications(data?.medications || "");
+        setPastSurgeries(data?.past_surgeries || "");
+        setAvoidAreas(data?.avoid_areas || "");
+        setEmergencyName(data?.emergency_contact_name || "");
+        setEmergencyPhone(data?.emergency_contact_phone || "");
+        setIsFirstMassage(!!data?.is_first_massage);
+        setConsentAccepted(!!data?.consent_accepted);
       }
       setLoading(false);
     })();
@@ -39,6 +59,9 @@ export default function Profile() {
 
   const toggleFocus = (v: string) =>
     setFocusAreas(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+
+  const toggleMedical = (v: string) =>
+    setMedicalConditions(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
 
   const save = async () => {
     if (!user) return;
@@ -51,6 +74,16 @@ export default function Profile() {
       focus_areas: focusAreas,
       allergies,
       health_notes: healthNotes,
+      reason_for_visit: reasonForVisit,
+      medical_conditions: medicalConditions,
+      medications,
+      past_surgeries: pastSurgeries,
+      avoid_areas: avoidAreas,
+      emergency_contact_name: emergencyName,
+      emergency_contact_phone: emergencyPhone,
+      is_first_massage: isFirstMassage,
+      consent_accepted: consentAccepted,
+      consent_at: consentAccepted ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
@@ -187,6 +220,108 @@ export default function Profile() {
               placeholder="Injuries, pregnancy, areas to avoid…"
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Health &amp; safety</h2>
+            <p className="text-xs text-gray-500">Private — only shared with your therapist</p>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Reason for visit / goals</label>
+            <textarea
+              value={reasonForVisit}
+              onChange={e => setReasonForVisit(e.target.value)}
+              rows={3}
+              placeholder="e.g. lower back pain from desk work"
+              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medical conditions</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MEDICALS.map(m => (
+                <button key={m} type="button" onClick={() => toggleMedical(m)} className={chip(medicalConditions.includes(m))}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medications</label>
+            <input
+              value={medications}
+              onChange={e => setMedications(e.target.value)}
+              placeholder="e.g. blood thinners"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Past surgeries / injuries</label>
+            <textarea
+              value={pastSurgeries}
+              onChange={e => setPastSurgeries(e.target.value)}
+              rows={3}
+              placeholder="e.g. shoulder surgery 2022"
+              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Areas to avoid</label>
+            <input
+              value={avoidAreas}
+              onChange={e => setAvoidAreas(e.target.value)}
+              placeholder="e.g. left knee"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Emergency contact</label>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <input
+                value={emergencyName}
+                onChange={e => setEmergencyName(e.target.value)}
+                placeholder="Name"
+                className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+              <input
+                value={emergencyPhone}
+                onChange={e => setEmergencyPhone(e.target.value)}
+                placeholder="Phone"
+                className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              id="firstMassage"
+              type="checkbox"
+              checked={isFirstMassage}
+              onChange={e => setIsFirstMassage(e.target.checked)}
+              className="h-5 w-5 rounded border-gray-300 text-[#A21228] focus:ring-[#A21228]"
+            />
+            <label htmlFor="firstMassage" className="text-sm text-gray-700">Is this your first professional massage?</label>
+          </div>
+
+          <div className="flex items-start gap-3 pt-2">
+            <input
+              id="consent"
+              type="checkbox"
+              checked={consentAccepted}
+              onChange={e => setConsentAccepted(e.target.checked)}
+              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-[#A21228] focus:ring-[#A21228]"
+            />
+            <label htmlFor="consent" className="text-sm text-gray-700 leading-relaxed">
+              I confirm the above is accurate and consent to treatment.
+            </label>
           </div>
         </div>
       </div>
