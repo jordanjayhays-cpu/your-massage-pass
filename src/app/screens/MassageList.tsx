@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock } from "lucide-react";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock, X, Navigation } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
@@ -34,10 +34,14 @@ export default function MassageList() {
   const [shopsLoading, setShopsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [mapOpen, setMapOpen] = useState(false);
+  const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
   const mapRef = useRef<HTMLDivElement>(null);
+  const fullMapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const fullMarkersRef = useRef<any[]>([]);
 
   useEffect(() => {
     fetchShops().then((shops) => {
@@ -139,6 +143,69 @@ export default function MassageList() {
     return () => { cancelled = true; };
   }, [realShops]);
 
+  // Initialize the FULL Madrid map inside the modal when opened
+  useEffect(() => {
+    if (!mapOpen || !fullMapRef.current) return;
+    let cancelled = false;
+
+    loadGoogleMaps().then((g) => {
+      if (cancelled || !g || !fullMapRef.current) return;
+
+      const map = new google.maps.Map(fullMapRef.current, {
+        center: MADRID_CENTER,
+        zoom: 13,
+        disableDefaultUI: true,
+        zoomControl: true,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#5b4636" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#f6efe1" }] },
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
+        ],
+      });
+
+      const iconSvg = (emoji: string, active: boolean) => {
+        const size = active ? 56 : 44;
+        return {
+          url: `data:image/svg+xml,${encodeURIComponent(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#d4a155" : "#7a3000"}" stroke="white" stroke-width="3"/>
+              <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 28 : 22}">${emoji}</text>
+            </svg>`
+          )}`,
+          scaledSize: new google.maps.Size(size, size),
+          anchor: new google.maps.Point(size / 2, size / 2),
+        };
+      };
+
+      fullMarkersRef.current.forEach((m) => m.setMap(null));
+      fullMarkersRef.current = [];
+
+      mapShops.forEach((m) => {
+        const marker = new google.maps.Marker({
+          position: { lat: (m as any).lat, lng: (m as any).lng },
+          map,
+          title: m.studio,
+          icon: iconSvg(getStudioIcon(m.studio), false),
+          animation: google.maps.Animation.DROP,
+        });
+        marker.addListener("click", () => {
+          fullMarkersRef.current.forEach((mr: any) => {
+            mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false));
+          });
+          marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
+          setSelectedStudio(m);
+          map.panTo({ lat: (m as any).lat, lng: (m as any).lng });
+        });
+        fullMarkersRef.current.push(marker);
+      });
+    });
+
+    return () => { cancelled = true; };
+  }, [mapOpen, realShops]);
+
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
     if ("partner_id" in m && (m as Shop).partner_id) {
       navigate(`/s/${(m as Shop).partner_id}`);
@@ -214,14 +281,23 @@ export default function MassageList() {
       <div className="px-5 pt-5">
         <div className="relative rounded-3xl overflow-hidden shadow-soft border border-border/60 h-[220px]">
           <div ref={mapRef} className="absolute inset-0" />
-          <div className="absolute top-4 left-4 pointer-events-none">
-            <div className="flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-2 shadow-soft">
+          <button
+            onClick={() => setMapOpen(true)}
+            className="absolute top-4 left-4 group"
+            aria-label="Open full Madrid map"
+          >
+            <div className="flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-2 shadow-soft border border-border/60 group-hover:border-primary/60 transition">
               <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
                 <Compass className="h-3.5 w-3.5 text-primary" />
               </div>
               <span className="text-[11px] font-bold tracking-[0.14em] text-foreground uppercase">Madrid map view</span>
             </div>
-          </div>
+          </button>
+          <button
+            onClick={() => setMapOpen(true)}
+            aria-label="Expand map"
+            className="absolute inset-0"
+          />
         </div>
       </div>
 
@@ -300,9 +376,73 @@ export default function MassageList() {
           )}
         </div>
       </div>
+
+      {/* Full Madrid map modal */}
+      {mapOpen && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col animate-in fade-in duration-200">
+          <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-3 border-b border-border/60 bg-card">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Compass className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-display text-lg text-foreground leading-none">Madrid</p>
+                <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground mt-0.5">Map view</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setMapOpen(false); setSelectedStudio(null); }}
+              aria-label="Close map"
+              className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 relative">
+            <div ref={fullMapRef} className="absolute inset-0" />
+
+            {selectedStudio && (
+              <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border rounded-t-3xl shadow-2xl p-5">
+                <div className="flex gap-3">
+                  {selectedStudio.image && (
+                    <img src={selectedStudio.image} alt={selectedStudio.studio} className="h-20 w-20 rounded-2xl object-cover flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-display text-lg font-semibold text-foreground leading-tight">{selectedStudio.studio}</p>
+                        <p className="text-xs text-primary font-semibold mt-0.5">{selectedStudio.name}</p>
+                      </div>
+                      <button onClick={() => setSelectedStudio(null)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm">×</button>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                      <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selectedStudio.rating}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}m</span>
+                      {"district" in selectedStudio && selectedStudio.district && (
+                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedStudio.district}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => { setMapOpen(false); handleBook(selectedStudio); }}
+                      className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
+                    >
+                      Book now →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
+
+
 
 function FilterChip({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
