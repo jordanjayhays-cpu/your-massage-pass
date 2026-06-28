@@ -27,9 +27,18 @@
   "how": {
     "kicker": "How it works",
     "title": "Three steps. Zero excuses.",
-    "step1": { "title": "Subscribe", "desc": "€79/month. No contracts, no surprises. Cancel anytime." },
-    "step2": { "title": "Pick a studio", "desc": "Book at any partner studio in Madrid from the app." },
-    "step3": { "title": "Enjoy without limits", "desc": "Come back as often as you want. Your body will thank you." }
+    "step1": {
+      "title": "Subscribe",
+      "desc": "€79/month. No contracts, no surprises. Cancel anytime."
+    },
+    "step2": {
+      "title": "Pick a studio",
+      "desc": "Book at any partner studio in Madrid from the app."
+    },
+    "step3": {
+      "title": "Enjoy without limits",
+      "desc": "Come back as often as you want. Your body will thank you."
+    }
   },
   "studios": {
     "kicker": "Our studios",
@@ -77,5 +86,53 @@
     "invalid": "Please enter a valid email",
     "success": "Welcome! We'll let you know when spots open."
   },
-  "lang": { "en": "EN", "es": "ES" }
+  "lang": {
+    "en": "EN",
+    "es": "ES"
+  },
+  "app": {
+    "common": {
+      "back": "Back",
+      "save": "Save",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "confirm": "Confirm",
+      "loading": "Loading…",
+      "free": "Free"
+    },
+    "bottomNav": {
+      "massages": "Massages",
+      "discovery": "Discovery",
+      "bookings": "Bookings",
+      "profile": "Profile"
+    },
+    "discovery": {
+      "kicker": "Massage discovery",
+      "title": "Learn about each style",
+      "quizBadge": "Find your match",
+      "quizTitle": "Not sure which to try?",
+      "quizDesc": "Answer 4 quick questions and we'll suggest the perfect massage for you.",
+      "takeQuiz": "Take the quiz",
+      "nearbyTitle": "Studios near you",
+      "exploreTitle": "Explore massage styles",
+      "exploreSub": "Learn what each style does — then book the right one.",
+      "inMadrid": "In Madrid"
+    },
+    "customize": {
+      "kicker": "Customize your session",
+      "usePrefs": "Use my preferences",
+      "loadedPrefs": "Loaded your preferences ✨",
+      "talking": "Talking during this session?",
+      "talkSilence": "🤫 Silence please",
+      "talkMinimal": "A little chat",
+      "talkChatty": "Happy to chat",
+      "pressure": "Pressure",
+      "focus": "Focus areas",
+      "addons": "Add-ons",
+      "freeWithMembership": "Free with membership",
+      "notes": "Notes for your therapist",
+      "notesPlaceholder": "Anything we should know? Injuries, allergies, preferences…",
+      "review": "Review & confirm"
+    }
+  }
 }

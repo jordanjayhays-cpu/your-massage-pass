@@ -27,9 +27,18 @@
   "how": {
     "kicker": "Cómo funciona",
     "title": "Tres pasos. Cero excusas.",
-    "step1": { "title": "Suscríbete", "desc": "€79 al mes. Sin contratos, sin sorpresas. Cancela cuando quieras." },
-    "step2": { "title": "Elige estudio", "desc": "Reserva en cualquier estudio asociado de Madrid desde la app." },
-    "step3": { "title": "Disfruta sin límite", "desc": "Vuelve tantas veces como quieras. Tu cuerpo lo agradecerá." }
+    "step1": {
+      "title": "Suscríbete",
+      "desc": "€79 al mes. Sin contratos, sin sorpresas. Cancela cuando quieras."
+    },
+    "step2": {
+      "title": "Elige estudio",
+      "desc": "Reserva en cualquier estudio asociado de Madrid desde la app."
+    },
+    "step3": {
+      "title": "Disfruta sin límite",
+      "desc": "Vuelve tantas veces como quieras. Tu cuerpo lo agradecerá."
+    }
   },
   "studios": {
     "kicker": "Nuestros estudios",
@@ -77,5 +86,53 @@
     "invalid": "Introduce un email válido",
     "success": "¡Bienvenido! Te avisamos cuando abramos plazas."
   },
-  "lang": { "en": "EN", "es": "ES" }
+  "lang": {
+    "en": "EN",
+    "es": "ES"
+  },
+  "app": {
+    "common": {
+      "back": "Atrás",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "continue": "Continuar",
+      "confirm": "Confirmar",
+      "loading": "Cargando…",
+      "free": "Gratis"
+    },
+    "bottomNav": {
+      "massages": "Masajes",
+      "discovery": "Descubrir",
+      "bookings": "Reservas",
+      "profile": "Perfil"
+    },
+    "discovery": {
+      "kicker": "Descubrir masajes",
+      "title": "Aprende sobre cada estilo",
+      "quizBadge": "Encuentra tu match",
+      "quizTitle": "¿No sabes cuál probar?",
+      "quizDesc": "Responde 4 preguntas rápidas y te sugerimos el masaje perfecto para ti.",
+      "takeQuiz": "Hacer el quiz",
+      "nearbyTitle": "Estudios cerca de ti",
+      "exploreTitle": "Explora estilos de masaje",
+      "exploreSub": "Descubre qué hace cada estilo — y reserva el adecuado.",
+      "inMadrid": "En Madrid"
+    },
+    "customize": {
+      "kicker": "Personaliza tu sesión",
+      "usePrefs": "Usar mis preferencias",
+      "loadedPrefs": "Preferencias cargadas ✨",
+      "talking": "¿Hablar durante la sesión?",
+      "talkSilence": "🤫 Silencio por favor",
+      "talkMinimal": "Un poco de charla",
+      "talkChatty": "Me gusta hablar",
+      "pressure": "Presión",
+      "focus": "Zonas a tratar",
+      "addons": "Extras",
+      "freeWithMembership": "Gratis con membresía",
+      "notes": "Notas para tu terapeuta",
+      "notesPlaceholder": "¿Algo que debamos saber? Lesiones, alergias, preferencias…",
+      "review": "Revisar y confirmar"
+    }
+  }
 }
