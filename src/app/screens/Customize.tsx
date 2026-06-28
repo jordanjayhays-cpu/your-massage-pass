@@ -16,6 +16,12 @@ const ADDON_MAP: Record<string, string> = {
   extra_time: "extended",
 };
 
+const CONVERSATION_OPTIONS: { label: string; value: string }[] = [
+  { label: "🤫 Silence please", value: "silence" },
+  { label: "A little chat", value: "minimal" },
+  { label: "Happy to chat", value: "chatty" },
+];
+
 export default function Customize() {
   const navigate = useNavigate();
   const { id } = useParams();
