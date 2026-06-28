@@ -152,68 +152,6 @@ export default function MassageList() {
     return () => { cancelled = true; };
   }, [view, realShops]);
 
-  // Initialize the FULL Madrid map inside the modal when opened
-  useEffect(() => {
-    if (!mapOpen || !fullMapRef.current) return;
-    let cancelled = false;
-
-    loadGoogleMaps().then((g) => {
-      if (cancelled || !g || !fullMapRef.current) return;
-
-      const map = new google.maps.Map(fullMapRef.current, {
-        center: MADRID_CENTER,
-        zoom: 13,
-        disableDefaultUI: true,
-        zoomControl: true,
-        styles: [
-          { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#5b4636" }] },
-          { elementType: "labels.text.stroke", stylers: [{ color: "#f6efe1" }] },
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-          { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
-        ],
-      });
-
-      const iconSvg = (emoji: string, active: boolean) => {
-        const size = active ? 56 : 44;
-        return {
-          url: `data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
-              <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 28 : 22}">${emoji}</text>
-            </svg>`
-          )}`,
-          scaledSize: new google.maps.Size(size, size),
-          anchor: new google.maps.Point(size / 2, size / 2),
-        };
-      };
-
-      fullMarkersRef.current.forEach((m) => m.setMap(null));
-      fullMarkersRef.current = [];
-
-      mapShops.forEach((m) => {
-        const marker = new google.maps.Marker({
-          position: { lat: (m as any).lat, lng: (m as any).lng },
-          map,
-          title: m.studio,
-          icon: iconSvg(getStudioIcon(m.studio), false),
-          animation: google.maps.Animation.DROP,
-        });
-        marker.addListener("click", () => {
-          fullMarkersRef.current.forEach((mr: any) => {
-            mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false));
-          });
-          marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
-          setSelectedStudio(m);
-          map.panTo({ lat: (m as any).lat, lng: (m as any).lng });
-        });
-        fullMarkersRef.current.push(marker);
-      });
-    });
-
-    return () => { cancelled = true; };
-  }, [mapOpen, realShops]);
 
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
     if ("partner_id" in m && (m as Shop).partner_id) {
