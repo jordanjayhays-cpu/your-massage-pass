@@ -76,6 +76,9 @@ export default function Customize() {
         .map((u: string) => ADDON_MAP[u])
         .filter((id: string | undefined): id is string => !!id && validIds.has(id));
     }
+    if (profile.conversation_pref) {
+      patch.conversation = profile.conversation_pref;
+    }
     set(patch);
     toast.success("Loaded your preferences ✨");
   };
