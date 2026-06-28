@@ -43,6 +43,15 @@ export default function Profile() {
         setFocusAreas(data?.focus_areas || []);
         setAllergies(data?.allergies || "");
         setHealthNotes(data?.health_notes || "");
+        setReasonForVisit(data?.reason_for_visit || "");
+        setMedicalConditions(data?.medical_conditions || []);
+        setMedications(data?.medications || "");
+        setPastSurgeries(data?.past_surgeries || "");
+        setAvoidAreas(data?.avoid_areas || "");
+        setEmergencyName(data?.emergency_contact_name || "");
+        setEmergencyPhone(data?.emergency_contact_phone || "");
+        setIsFirstMassage(!!data?.is_first_massage);
+        setConsentAccepted(!!data?.consent_accepted);
       }
       setLoading(false);
     })();
