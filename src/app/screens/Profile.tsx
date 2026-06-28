@@ -1,26 +1,43 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, LogOut, ArrowLeft, UserCircle2 } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera, UserCircle } from "lucide-react";
 
 const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
 const MEDICALS = ["High blood pressure", "Heart condition", "Diabetes", "Blood clots / DVT", "Pregnant", "Recent surgery", "Cancer", "Epilepsy", "Skin condition"];
+const GENDERS = ["Female", "Male", "Other", "Prefer not to say"];
+const THERAPIST_GENDERS = ["No preference", "Female", "Male"];
 
 export default function Profile() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const [fullName, setFullName] = useState("");
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState("");
+
+  // Personal details
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [pressure, setPressure] = useState("Medium");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("");
+  const [city, setCity] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState("");
+
+  // Massage preferences
+  const [pressure, setPressure] = useState("");
+  const [preferredTherapistGender, setPreferredTherapistGender] = useState("");
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [allergies, setAllergies] = useState("");
   const [healthNotes, setHealthNotes] = useState("");
 
+  // Health & safety
   const [reasonForVisit, setReasonForVisit] = useState("");
   const [medicalConditions, setMedicalConditions] = useState<string[]>([]);
   const [medications, setMedications] = useState("");
@@ -37,12 +54,26 @@ export default function Profile() {
       setUser(user);
       if (user) {
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-        setFullName(data?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || "");
+
+        const metaFull = user.user_metadata?.full_name || user.user_metadata?.name || "";
+        const derivedFirst = metaFull.split(" ")[0] || "";
+        const derivedLast = metaFull.split(" ").slice(1).join(" ") || "";
+
+        setFirstName(data?.first_name || derivedFirst);
+        setLastName(data?.last_name || derivedLast);
+        setAvatarUrl(data?.avatar_url || "");
         setPhone(data?.phone || "");
-        setPressure(data?.preferred_pressure || "Medium");
+        setDateOfBirth(data?.date_of_birth || "");
+        setGender(data?.gender || "");
+        setCity(data?.city || "");
+        setPreferredLanguage(data?.preferred_language || "");
+
+        setPressure(data?.preferred_pressure || "");
+        setPreferredTherapistGender(data?.preferred_therapist_gender || "");
         setFocusAreas(data?.focus_areas || []);
         setAllergies(data?.allergies || "");
         setHealthNotes(data?.health_notes || "");
+
         setReasonForVisit(data?.reason_for_visit || "");
         setMedicalConditions(data?.medical_conditions || []);
         setMedications(data?.medications || "");
@@ -63,24 +94,49 @@ export default function Profile() {
   const toggleMedical = (v: string) =>
     setMedicalConditions(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
 
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingPhoto(true);
+    const path = `${user.id}/${Date.now()}-${file.name}`;
+    const { error: upError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (upError) {
+      toast.error("Photo upload failed: " + upError.message);
+      setUploadingPhoto(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    setAvatarUrl(urlData?.publicUrl || "");
+    setUploadingPhoto(false);
+  };
+
   const save = async () => {
     if (!user) return;
     setSaving(true);
+    const full_name = `${firstName} ${lastName}`.trim();
     const { error } = await supabase.from("profiles").upsert({
       id: user.id,
-      full_name: fullName,
-      phone,
-      preferred_pressure: pressure,
-      focus_areas: focusAreas,
-      allergies,
-      health_notes: healthNotes,
-      reason_for_visit: reasonForVisit,
-      medical_conditions: medicalConditions,
-      medications,
-      past_surgeries: pastSurgeries,
-      avoid_areas: avoidAreas,
-      emergency_contact_name: emergencyName,
-      emergency_contact_phone: emergencyPhone,
+      first_name: firstName || null,
+      last_name: lastName || null,
+      full_name: full_name || null,
+      avatar_url: avatarUrl || null,
+      phone: phone || null,
+      date_of_birth: dateOfBirth || null,
+      gender: gender || null,
+      city: city || null,
+      preferred_language: preferredLanguage || null,
+      preferred_pressure: pressure || null,
+      preferred_therapist_gender: preferredTherapistGender || null,
+      focus_areas: focusAreas.length ? focusAreas : null,
+      allergies: allergies || null,
+      health_notes: healthNotes || null,
+      reason_for_visit: reasonForVisit || null,
+      medical_conditions: medicalConditions.length ? medicalConditions : null,
+      medications: medications || null,
+      past_surgeries: pastSurgeries || null,
+      avoid_areas: avoidAreas || null,
+      emergency_contact_name: emergencyName || null,
+      emergency_contact_phone: emergencyPhone || null,
       is_first_massage: isFirstMassage,
       consent_accepted: consentAccepted,
       consent_at: consentAccepted ? new Date().toISOString() : null,
@@ -96,6 +152,13 @@ export default function Profile() {
     navigate("/");
   };
 
+  const chip = (active: boolean) =>
+    `px-3 py-2 rounded-full text-sm font-medium border transition ${
+      active
+        ? "bg-[#A21228] text-white border-[#A21228]"
+        : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+    }`;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#faf6ee]">
@@ -108,7 +171,7 @@ export default function Profile() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#faf6ee] text-center px-6">
         <div className="h-16 w-16 rounded-full bg-[#A21228]/10 flex items-center justify-center mb-4">
-          <UserCircle2 className="h-8 w-8 text-[#A21228]" />
+          <UserCircle className="h-8 w-8 text-[#A21228]" />
         </div>
         <h1 className="text-xl font-bold text-gray-900">Sign in to set up your profile</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
@@ -124,12 +187,7 @@ export default function Profile() {
     );
   }
 
-  const chip = (active: boolean) =>
-    `px-3 py-2 rounded-full text-sm font-medium border transition ${
-      active
-        ? "bg-[#A21228] text-white border-[#A21228]"
-        : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-    }`;
+  const avatarLetter = (firstName || user.user_metadata?.full_name || user.email || "?").charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-[#faf6ee] pb-32">
@@ -150,14 +208,62 @@ export default function Profile() {
           </button>
         </div>
 
-        <div className="mt-6 space-y-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Full name</label>
-            <input
-              value={fullName}
-              onChange={e => setFullName(e.target.value)}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
+        {/* Photo header */}
+        <div className="mt-6 flex flex-col items-center">
+          <div className="relative">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="avatar"
+                className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
+              />
+            ) : (
+              <div className="h-24 w-24 rounded-full bg-[#A21228] text-white flex items-center justify-center text-3xl font-bold border-2 border-[#A21228]">
+                {avatarLetter}
+              </div>
+            )}
+            {uploadingPhoto && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30">
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
+              </div>
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoSelect}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="mt-3 flex items-center gap-1.5 text-sm font-medium text-[#A21228] bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50"
+          >
+            <Camera size={16} /> Change photo
+          </button>
+        </div>
+
+        {/* Personal details card */}
+        <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+          <h2 className="text-lg font-bold text-gray-900">Personal details</h2>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">First name</label>
+              <input
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Last name</label>
+              <input
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
           </div>
 
           <div>
@@ -180,11 +286,68 @@ export default function Profile() {
           </div>
 
           <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date of birth</label>
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={e => setDateOfBirth(e.target.value)}
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Gender</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GENDERS.map(g => (
+                <button key={g} type="button" onClick={() => setGender(g)} className={chip(gender === g)}>
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">City</label>
+            <input
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              placeholder="e.g. Madrid"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred language</label>
+            <input
+              value={preferredLanguage}
+              onChange={e => setPreferredLanguage(e.target.value)}
+              placeholder="e.g. English, Spanish"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+        </div>
+
+        {/* Massage preferences card */}
+        <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+          <h2 className="text-lg font-bold text-gray-900">Massage preferences</h2>
+
+          <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred pressure</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {PRESSURES.map(p => (
                 <button key={p} type="button" onClick={() => setPressure(p)} className={chip(pressure === p)}>
                   {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred therapist</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {THERAPIST_GENDERS.map(t => (
+                <button key={t} type="button" onClick={() => setPreferredTherapistGender(t)} className={chip(preferredTherapistGender === t)}>
+                  {t}
                 </button>
               ))}
             </div>
@@ -223,7 +386,8 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="mt-6 space-y-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        {/* Health & safety card */}
+        <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Health &amp; safety</h2>
             <p className="text-xs text-gray-500">Private — only shared with your therapist</p>
@@ -326,6 +490,7 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Sticky Save */}
       <div className="fixed bottom-0 inset-x-0 bg-[#faf6ee]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
           <button
