@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Compass, CalendarDays, User } from "lucide-react";
+import { Flower2, Sparkles, CalendarDays, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { label: "Browse", to: "/app/massages", icon: Compass, match: ["/app/massages", "/massages", "/app/discovery", "/discovery"] },
+  { label: "Massages", to: "/app/massages", icon: Flower2, match: ["/app/massages", "/massages"] },
+  { label: "Discovery", to: "/app/discovery", icon: Sparkles, match: ["/app/discovery", "/discovery"] },
   { label: "Bookings", to: "/app/bookings", icon: CalendarDays, match: ["/app/bookings", "/bookings"] },
   { label: "Profile", to: "/app/profile", icon: User, match: ["/app/profile", "/profile"] },
 ];
@@ -11,6 +12,7 @@ const TABS = [
 // Hide nav on these path prefixes/exacts
 const HIDDEN_EXACT = new Set(["/", "/app", "/app/", "/landing", "/web", "/survey"]);
 const HIDDEN_PREFIXES = ["/partner", "/studio-setup", "/studio-portal", "/admin", "/s/", "/book/"];
+
 
 export function shouldShowBottomNav(pathname: string): boolean {
   if (HIDDEN_EXACT.has(pathname)) return false;
