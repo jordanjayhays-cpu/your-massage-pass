@@ -169,7 +169,18 @@ export default function Profile() {
       return;
     }
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-    setAvatarUrl(urlData?.publicUrl || "");
+    const publicUrl = urlData?.publicUrl || "";
+    setAvatarUrl(publicUrl);
+    const { error: dbError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      avatar_url: publicUrl || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (dbError) {
+      toast.error("Photo saved, but profile update failed: " + dbError.message);
+    } else {
+      toast.success("Photo updated");
+    }
     setUploadingPhoto(false);
   };
 
@@ -259,7 +270,7 @@ export default function Profile() {
   const avatarLetter = (firstName || user.user_metadata?.full_name || user.email || "?").charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#F7F4F0] pb-32">
+    <div className="min-h-screen bg-[#F7F4F0] pb-48">
       <div className="max-w-lg mx-auto px-5 pt-6">
         <button
           onClick={() => navigate("/app/bookings")}
@@ -668,7 +679,7 @@ export default function Profile() {
       </div>
 
       {/* Sticky Save */}
-      <div className="fixed bottom-0 inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
+      <div className="fixed bottom-[72px] inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
           <button
             onClick={save}
