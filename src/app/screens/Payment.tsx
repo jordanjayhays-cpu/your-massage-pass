@@ -4,9 +4,9 @@ import { googleReviewUrl } from "../lib/googleReview";
 import { Button } from "@/components/ui/button";
 import { ADD_ONS, MASSAGES, MASSAGE_TYPES } from "../data";
 import { useBooking } from "../BookingContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { saveBooking } from "@/lib/supabase";
+import { saveBooking, supabase } from "@/lib/supabase";
 import { getStoredUser } from "./Login";
 
 const COMMISSION_RATE = 0.10; // 10% commission
@@ -19,14 +19,49 @@ export default function Payment() {
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
+  const [profile, setProfile] = useState<any>(null);
+  const stored = getStoredUser();
+  const [contact, setContact] = useState({
+    name: stored?.name ?? "Guest",
+    email: stored?.email ?? "guest@massageclub.io",
+    phone: "",
+  });
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      setProfile(p);
+      const meta: any = user.user_metadata ?? {};
+      const fullName =
+        p?.full_name ||
+        [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim() ||
+        meta.full_name ||
+        meta.name ||
+        stored?.name ||
+        "Guest";
+      setContact({
+        name: fullName,
+        email: user.email || stored?.email || "guest@massageclub.io",
+        phone: p?.phone ?? "",
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!massage) return null;
 
-  const user = getStoredUser();
+  const user = stored;
 
   const addOnPrice = booking.addOns.reduce((sum, a) => sum + (ADD_ONS.find((x) => x.id === a)?.price ?? 0), 0);
   const addOnNames = booking.addOns.map((a) => ADD_ONS.find((x) => x.id === a)?.name).filter(Boolean);
   const commission = Math.round((massage.basePrice ?? 50) * COMMISSION_RATE * 100) / 100;
+
 
   const dateLabel = booking.date
     ? new Date(booking.date).toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })
