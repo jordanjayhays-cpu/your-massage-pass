@@ -47,6 +47,7 @@ export default function PartnerCalendar() {
     }
     return h;
   });
+  const [capacity, setCapacity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
