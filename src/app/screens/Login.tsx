@@ -178,12 +178,9 @@ export default function Login() {
         </button>
       </div>
 
-      {/* Language picker — large, obvious, no English required to find */}
-      <div className="px-6 mt-5">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-[#7A7068] mb-2 text-center">
-          Idioma · Language
-        </p>
-        <LanguageFlagToggle variant="large" />
+      {/* Language picker — single flag, tap to choose */}
+      <div className="px-6 mt-5 flex justify-center">
+        <LanguageFlagToggle variant="compact" />
       </div>
 
       {/* Hero — editorial split */}
