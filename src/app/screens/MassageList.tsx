@@ -115,8 +115,8 @@ export default function MassageList() {
       if (cancelled || !mapRef.current) return;
 
       const map = new google.maps.Map(mapRef.current, {
-        center: MADRID_CENTER,
-        zoom: 13,
+        center: userLoc ?? MADRID_CENTER,
+        zoom: userLoc ? 14 : 13,
         disableDefaultUI: true,
         zoomControl: true,
         styles: [
@@ -164,10 +164,31 @@ export default function MassageList() {
         });
         markersRef.current.push(marker);
       });
+
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setMap(null);
+        userMarkerRef.current = null;
+      }
+      if (userLoc) {
+        userMarkerRef.current = new google.maps.Marker({
+          position: userLoc,
+          map,
+          title: "You are here",
+          zIndex: 9999,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 3,
+          },
+        });
+      }
     });
 
     return () => { cancelled = true; };
-  }, [realShops]);
+  }, [realShops, userLoc]);
 
 
 
