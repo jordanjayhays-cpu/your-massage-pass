@@ -18,6 +18,7 @@ import { MASSAGES, MADRID_CENTER } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
+import { googleReviewUrl } from "../lib/googleReview";
 
 
 export default function ShopDetail() {
@@ -205,6 +206,14 @@ export default function ShopDetail() {
               {m.reviews != null && (
                 <p className="text-[11px] text-muted-foreground mt-0.5">({m.reviews} reviews)</p>
               )}
+              <a
+                href={googleReviewUrl(m.studio, address)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-primary font-medium mt-1 inline-block hover:underline"
+              >
+                Read reviews on Google →
+              </a>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, CreditCard, Check } from "lucide-react";
+import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, CreditCard, Check, Star } from "lucide-react";
+import { googleReviewUrl } from "../lib/googleReview";
 import { Button } from "@/components/ui/button";
 import { ADD_ONS, MASSAGES, MASSAGE_TYPES } from "../data";
 import { useBooking } from "../BookingContext";
@@ -83,6 +84,25 @@ export default function Payment() {
         <p className="text-sm text-muted-foreground mt-3">
           {user?.email ? `Confirmation sent to ${user.email}` : "Confirmation sent to your email."}
         </p>
+
+        {/* Google review prompt */}
+        <div className="mt-8 w-full rounded-2xl bg-secondary/70 border border-border p-5 text-left">
+          <div className="flex items-center gap-2 mb-1">
+            <Star className="h-4 w-4 fill-accent text-accent" />
+            <h3 className="font-display text-base font-semibold text-foreground">Enjoyed Massage Club?</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            After your visit, leave {massage.studio} a review on Google — it helps the studio and other clients.
+          </p>
+          <a
+            href={googleReviewUrl(massage.studio, (massage as any).address ?? (massage as any).location)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center justify-center w-full h-11 rounded-full border-2 border-primary text-primary font-semibold hover:bg-primary/5 transition"
+          >
+            Leave a Google review ⭐
+          </a>
+        </div>
         <div className="mt-10 w-full space-y-3">
           <Button
             onClick={() => {
