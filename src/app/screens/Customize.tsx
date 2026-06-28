@@ -107,6 +107,27 @@ export default function Customize() {
         )}
 
         <div>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Talking during this session?</h3>
+          <div className="flex flex-wrap gap-2">
+            {CONVERSATION_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => set({ conversation: o.value })}
+                className={cn(
+                  "h-10 px-4 rounded-full border text-sm font-medium transition-all",
+                  conversationValue === o.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-foreground",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+
+        <div>
           <h3 className="text-sm font-semibold text-foreground mb-3">Pressure</h3>
           <div className="grid grid-cols-4 gap-2">
             {PRESSURE_LEVELS.map((p) => (
