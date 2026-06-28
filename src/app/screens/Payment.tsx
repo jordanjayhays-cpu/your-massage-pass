@@ -71,9 +71,9 @@ export default function Payment() {
     setLoading(true);
     try {
       const result = await saveBooking({
-        client_name: user?.name ?? "Guest",
-        client_email: user?.email ?? "guest@massageclub.io",
-        client_phone: "", // TODO: collect from login
+        client_name: contact.name,
+        client_email: contact.email,
+        client_phone: contact.phone,
         spa_name: massage.studio,
         massage_type: massage.name,
         booking_date: booking.date ?? "",
@@ -84,7 +84,20 @@ export default function Payment() {
         add_ons: addOnNames as string[],
         notes: booking.notes,
         status: "confirmed",
+        client_preferences: {
+          pressure: booking.pressure,
+          focus_areas: booking.focusAreas,
+          add_ons: addOnNames,
+          preferred_therapist_gender: profile?.preferred_therapist_gender,
+          conversation: profile?.conversation_pref,
+          music: profile?.music_pref,
+          temperature: profile?.temperature_pref,
+          scent: profile?.scent_pref,
+          lighting: profile?.lighting_pref,
+          comfort_notes: profile?.comfort_notes,
+        },
       });
+
 
       if (result.success) {
         setBookingRef(result.ref ?? "MR-2026-0001");
