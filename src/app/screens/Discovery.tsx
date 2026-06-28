@@ -92,8 +92,7 @@ export default function Discovery() {
           </div>
         </div>
       </div>
-
-      </div>
     </div>
   );
 }
+
