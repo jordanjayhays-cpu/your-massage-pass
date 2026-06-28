@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { Loader2, LogOut, CalendarDays, ArrowLeft, UserCircle2 } from "lucide-react";
+import { Loader2, LogOut, CalendarDays, ArrowLeft, UserCircle2, Star } from "lucide-react";
+import { googleReviewUrl } from "../lib/googleReview";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
