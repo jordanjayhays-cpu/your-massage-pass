@@ -171,6 +171,16 @@ export default function Login() {
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-gradient-hero text-primary-foreground">
       <div className="px-7 pt-12 pb-8 min-h-full flex flex-col">
+        {/* Top bar — studio access */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => navigate("/partner/login")}
+            className="text-xs font-semibold text-primary-foreground/90 hover:text-primary-foreground bg-primary-foreground/10 border border-primary-foreground/30 rounded-full px-3.5 py-2"
+          >
+            For studios →
+          </button>
+        </div>
+
         {/* Brand */}
         <div className="flex flex-col items-center text-center">
           <div className="h-16 w-16 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-5">
@@ -215,6 +225,14 @@ export default function Login() {
             <Search className="h-5 w-5" /> Browse as guest — no account
           </Button>
         </div>
+
+        {/* Own a studio */}
+        <button
+          onClick={() => navigate("/partner/onboarding")}
+          className="mt-4 w-full text-center text-sm font-semibold text-primary-foreground/90 underline underline-offset-4 hover:text-primary-foreground"
+        >
+          Own a massage studio? List it free →
+        </button>
 
         {/* How it works */}
         <div className="mt-8 space-y-4">
