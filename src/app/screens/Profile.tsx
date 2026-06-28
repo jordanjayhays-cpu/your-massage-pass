@@ -198,6 +198,29 @@ export default function Profile() {
                   {f}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Allergies</label>
+            <input
+              value={allergies}
+              onChange={e => setAllergies(e.target.value)}
+              placeholder="e.g. nut oils"
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Health notes</label>
+            <textarea
+              value={healthNotes}
+              onChange={e => setHealthNotes(e.target.value)}
+              rows={4}
+              placeholder="Injuries, pregnancy, areas to avoid…"
+              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
         </div>
 
         <div className="mt-6 space-y-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
@@ -299,29 +322,6 @@ export default function Profile() {
             <label htmlFor="consent" className="text-sm text-gray-700 leading-relaxed">
               I confirm the above is accurate and consent to treatment.
             </label>
-          </div>
-        </div>
-      </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Allergies</label>
-            <input
-              value={allergies}
-              onChange={e => setAllergies(e.target.value)}
-              placeholder="e.g. nut oils"
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Health notes</label>
-            <textarea
-              value={healthNotes}
-              onChange={e => setHealthNotes(e.target.value)}
-              rows={4}
-              placeholder="Injuries, pregnancy, areas to avoid…"
-              className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
-            />
           </div>
         </div>
       </div>
