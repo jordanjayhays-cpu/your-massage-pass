@@ -89,9 +89,9 @@ export default function MassageList() {
     (m: any) => m && typeof m.lat === "number" && typeof m.lng === "number"
   );
 
-  // Initialize map
+  // Initialize inline map (only when map view is active)
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (view !== "map" || !mapRef.current) return;
     let cancelled = false;
 
     loadGoogleMaps().then((g) => {
@@ -113,16 +113,19 @@ export default function MassageList() {
       });
       mapInstanceRef.current = map;
 
-      const iconSvg = (emoji: string) => ({
-        url: `data:image/svg+xml,${encodeURIComponent(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="20" fill="#C4622D" stroke="white" stroke-width="3"/>
-            <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="22">${emoji}</text>
-          </svg>`
-        )}`,
-        scaledSize: new google.maps.Size(44, 44),
-        anchor: new google.maps.Point(22, 22),
-      });
+      const iconSvg = (emoji: string, active: boolean) => {
+        const size = active ? 52 : 42;
+        return {
+          url: `data:image/svg+xml,${encodeURIComponent(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
+              <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 26 : 20}">${emoji}</text>
+            </svg>`
+          )}`,
+          scaledSize: new google.maps.Size(size, size),
+          anchor: new google.maps.Point(size / 2, size / 2),
+        };
+      };
 
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
@@ -132,17 +135,22 @@ export default function MassageList() {
           position: { lat: (m as any).lat, lng: (m as any).lng },
           map,
           title: m.studio,
-          icon: iconSvg(getStudioIcon(m.studio)),
+          icon: iconSvg(getStudioIcon(m.studio), false),
         });
         marker.addListener("click", () => {
-          handleBook(m as Shop);
+          markersRef.current.forEach((mr: any) => {
+            mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false));
+          });
+          marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
+          setSelectedStudio(m as any);
+          map.panTo({ lat: (m as any).lat, lng: (m as any).lng });
         });
         markersRef.current.push(marker);
       });
     });
 
     return () => { cancelled = true; };
-  }, [realShops]);
+  }, [view, realShops]);
 
   // Initialize the FULL Madrid map inside the modal when opened
   useEffect(() => {
