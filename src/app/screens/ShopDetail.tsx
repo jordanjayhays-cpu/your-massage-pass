@@ -290,17 +290,8 @@ export default function ShopDetail() {
             </div>
 
             <div className="rounded-2xl bg-secondary/70 border border-border/60 p-5 shadow-soft">
-              <div className="relative h-32 rounded-xl bg-[radial-gradient(ellipse_at_center,_hsl(var(--background))_0%,_hsl(var(--secondary))_100%)] flex items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 opacity-40"
-                  style={{
-                    backgroundImage:
-                      "repeating-linear-gradient(45deg, transparent 0 14px, hsl(var(--border)/0.4) 14px 15px), repeating-linear-gradient(-45deg, transparent 0 14px, hsl(var(--border)/0.4) 14px 15px)",
-                  }}
-                />
-                <div className="relative h-12 w-12 rounded-full bg-card border border-border shadow-elegant flex items-center justify-center">
-                  <MapPin className="h-5 w-5 text-primary" />
-                </div>
-              </div>
+              <div ref={mapRef} className="relative h-40 rounded-xl overflow-hidden bg-secondary" />
+
 
               <div className="flex items-center justify-between gap-3 mt-4">
                 <div className="min-w-0">
