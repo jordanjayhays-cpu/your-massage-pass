@@ -50,11 +50,11 @@ export default function AdminInviteStudio() {
           subject: `You're invited to join Massage Club, ${studioName}`,
           html: `
             <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-              <h2 style="color: #1a1a2e;">You're invited! 🎉</h2>
+              <h2 style="color: #211C1A;">You're invited! 🎉</h2>
               <p>Hi team at <strong>${studioName}</strong>,</p>
               <p>You've been invited to join <strong>Massage Club</strong> — the €79/month unlimited massage subscription for Madrid.</p>
               <p>Click below to set up your studio profile and start receiving bookings:</p>
-              <a href="${link}" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Set Up My Studio →</a>
+              <a href="${link}" style="display: inline-block; background: #C4622D; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Set Up My Studio →</a>
               <p style="font-size: 12px; color: #666; margin-top: 24px;">This link expires in 30 days. If you didn't expect this email, ignore it.</p>
             </div>
           `,
