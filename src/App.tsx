@@ -31,6 +31,7 @@ import PartnerPhotos from "./app/screens/PartnerPhotos";
 import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
+import Web from "./pages/Web";
 
 const queryClient = new QueryClient();
 
