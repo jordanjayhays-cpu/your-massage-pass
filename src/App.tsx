@@ -31,6 +31,7 @@ import PartnerPhotos from "./app/screens/PartnerPhotos";
 import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
+import Web from "./pages/Web";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/landing" element={<Index />} />
+          <Route path="/web" element={<Web />} />
           {/* Partner Portal Routes */}
           <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
