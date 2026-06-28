@@ -139,6 +139,13 @@ export default function Profile() {
         setEmergencyPhone(data?.emergency_contact_phone || "");
         setIsFirstMassage(!!data?.is_first_massage);
         setConsentAccepted(!!data?.consent_accepted);
+
+        setPreferredMassageTypes(data?.preferred_massage_types || []);
+        setPreferredDuration(typeof data?.preferred_duration === "number" ? data.preferred_duration : null);
+        setTypicalBudget(data?.typical_budget || "");
+        setUsualAddons(data?.usual_addons || []);
+        setMassageFrequency(data?.massage_frequency || "");
+        setMassageGoals(data?.massage_goals || []);
       }
       setLoading(false);
     })();
