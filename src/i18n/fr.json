@@ -1,0 +1,46 @@
+{
+  "nav": { "studios": "Studios", "how": "Comment ça marche", "faq": "FAQ", "join": "Rejoindre" },
+  "hero": {
+    "badge": "Madrid uniquement · Places limitées",
+    "title1": "Madrid se détend",
+    "title2": "sans limites.",
+    "subtitle": "Un abonnement. Massages illimités dans les meilleurs studios de la capitale. De Salamanca à Malasaña, votre corps mérite mieux.",
+    "emailPlaceholder": "vous@email.com",
+    "cta": "Réservez votre place",
+    "perks": { "noCommitment": "Sans engagement", "cancel": "Annulez quand vous voulez", "launch": "Prix de lancement" }
+  },
+  "stats": { "studios": "Studios à Madrid", "price": "Par mois, tout compris", "massages": "Massages par mois", "districts": "Quartiers couverts" },
+  "how": {
+    "kicker": "Comment ça marche", "title": "Trois étapes. Zéro excuse.",
+    "step1": { "title": "Abonnez-vous", "desc": "79 €/mois. Sans contrat, sans surprises. Annulez à tout moment." },
+    "step2": { "title": "Choisissez un studio", "desc": "Réservez dans n'importe quel studio partenaire à Madrid depuis l'app." },
+    "step3": { "title": "Profitez sans limite", "desc": "Revenez aussi souvent que vous voulez. Votre corps vous remerciera." }
+  },
+  "studios": {
+    "kicker": "Nos studios",
+    "title": "Les meilleures mains de Madrid, sur un seul pass.",
+    "subtitle": "Studios soigneusement sélectionnés dans les quartiers les plus vivants de la capitale.",
+    "specialties": {
+      "swedish": "Suédois & Aromathérapie", "deep": "Tissus profonds", "stone": "Pierres chaudes", "sports": "Récupération sportive",
+      "thai": "Thaï & Shiatsu", "lomi": "Lomi Lomi", "reflex": "Réflexologie", "cranio": "Crânio-sacré"
+    }
+  },
+  "pricing": {
+    "kicker": "Prix de lancement", "title": "Un tarif. Toute la ville.", "perMonth": "/mois", "founder": "Tarif fondateur · Bientôt en hausse",
+    "features": {
+      "f1": "Massages illimités dans tous les studios", "f2": "Réservez à tout moment depuis l'app", "f3": "Accès à tous les types de massage",
+      "f4": "Sans contrat, annulez à tout moment", "f5": "Support personnel quand vous en avez besoin"
+    },
+    "cta": "Réservez votre place de fondateur"
+  },
+  "faq": {
+    "kicker": "Questions fréquentes", "title": "Tout ce qu'il faut savoir.",
+    "q1": "Comment fonctionne l'abonnement ?", "a1": "Vous payez 79 €/mois et réservez des massages illimités dans nos studios partenaires à Madrid. Aucun frais par visite.",
+    "q2": "Puis-je annuler à tout moment ?", "a2": "Oui. Sans contrat, sans minimum. Annulez depuis l'app en un clic.",
+    "q3": "Quels types de massage sont inclus ?", "a3": "Tous : suédois, tissus profonds, sportif, thaï, pierres chaudes, réflexologie et plus — selon le studio.",
+    "q4": "Puis-je y aller tous les jours ?", "a4": "Oui. Réservations illimitées, selon la disponibilité de chaque studio."
+  },
+  "footer": "Fait calmement à Madrid",
+  "toast": { "invalid": "Veuillez entrer un email valide", "success": "Bienvenue ! Nous vous préviendrons à l'ouverture des places." },
+  "lang": { "en": "EN", "es": "ES" }
+}
