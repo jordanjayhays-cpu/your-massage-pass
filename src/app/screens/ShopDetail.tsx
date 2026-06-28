@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, MapPin, Clock, Check, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Star,
+  MapPin,
+  Clock,
+  Loader2,
+  Share2,
+  Heart,
+  Flower2,
+  Phone,
+  MessageSquare,
+  Compass,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MASSAGES } from "../data";
 import { fetchShopById } from "@/lib/supabase";
@@ -11,18 +23,17 @@ export default function ShopDetail() {
   const { id } = useParams();
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fav, setFav] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    // Try real shop first
-    fetchShopById(id).then(real => {
+    fetchShopById(id).then((real) => {
       if (real) {
         setMassage(real);
         setLoading(false);
         return;
       }
-      // Fall back to hardcoded MASSAGES
-      const fallback = MASSAGES.find(m => m.id === id) ?? null;
+      const fallback = MASSAGES.find((m) => m.id === id) ?? null;
       setMassage(fallback);
       setLoading(false);
     });
@@ -30,7 +41,7 @@ export default function ShopDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -38,69 +49,219 @@ export default function ShopDetail() {
 
   if (!massage) {
     return (
-      <div className="p-8 text-center">
-        <p>Not found.</p>
+      <div className="p-8 text-center bg-background h-full">
+        <p className="text-foreground">Not found.</p>
         <Button onClick={() => navigate("/app/massages")} className="mt-4">Back</Button>
       </div>
     );
   }
 
+  const m: any = massage;
+  const district = m.district ?? "";
+  const address = m.address ?? m.location ?? "Madrid, Spain";
+  const phone = m.phone as string | undefined;
+  const firstSentence =
+    (m.description as string | undefined)?.split(/[.!?](\s|$)/)[0]?.trim() ||
+    "Intensive pressure to relieve chronic tension.";
+  const services: Array<{ id: string; name: string; duration: number; price?: number; description?: string }> =
+    Array.isArray(m.services) && m.services.length
+      ? m.services
+      : [{ id: m.id, name: m.name, duration: m.duration, price: m.price, description: m.description }];
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: m.studio, url: window.location.href });
+      } else {
+        await navigator.clipboard?.writeText(window.location.href);
+      }
+    } catch {
+      /* user cancelled */
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Image header */}
-      <div className="relative h-64 flex-shrink-0">
-        <img src={massage.image} alt={massage.name} className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+    <div className="flex flex-col h-full overflow-y-auto bg-background">
+      {/* Hero */}
+      <div className="relative h-72 flex-shrink-0">
+        <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-background/40" />
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 h-10 w-10 rounded-full bg-background/95 flex items-center justify-center shadow-soft"
           aria-label="Back"
+          className="absolute top-4 left-4 h-11 w-11 rounded-full bg-card/95 backdrop-blur flex items-center justify-center shadow-soft border border-border/60 hover:bg-card transition"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            aria-label="Share"
+            className="h-11 w-11 rounded-full bg-card/95 backdrop-blur flex items-center justify-center shadow-soft border border-border/60 hover:bg-card transition"
+          >
+            <Share2 className="h-4 w-4 text-foreground" />
+          </button>
+          <button
+            onClick={() => setFav((v) => !v)}
+            aria-label="Favorite"
+            className="h-11 w-11 rounded-full bg-card/95 backdrop-blur flex items-center justify-center shadow-soft border border-border/60 hover:bg-card transition"
+          >
+            <Heart className={`h-4 w-4 ${fav ? "fill-primary text-primary" : "text-foreground"}`} />
+          </button>
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 -mt-6 relative">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 bg-accent/20 text-accent-foreground rounded-full px-2 py-1 font-semibold">
-            <Star className="h-3 w-3 fill-accent text-accent" /> {massage.rating} · {massage.reviews}
-          </span>
-          <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock className="h-3 w-3" /> {massage.duration} min</span>
+      {/* Content card */}
+      <div className="flex-1 -mt-8 rounded-t-[2rem] bg-background relative pb-12">
+        <div className="px-6 pt-7">
+          {/* District + rating row */}
+          <div className="flex items-start justify-between gap-4">
+            <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-primary mt-1">
+              {district ? `${district} District` : "Madrid"}
+            </span>
+            <div className="text-right">
+              <div className="flex items-center gap-1 justify-end">
+                <Star className="h-4 w-4 fill-accent text-accent" />
+                <span className="font-display text-base font-semibold text-foreground">{m.rating}</span>
+              </div>
+              {m.reviews != null && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">({m.reviews} reviews)</p>
+              )}
+            </div>
+          </div>
+
+          {/* Studio name */}
+          <h1 className="font-display text-[2rem] leading-tight font-semibold text-foreground mt-2">
+            {m.studio}
+          </h1>
+
+          {/* Tag chips */}
+          {Array.isArray(m.tags) && m.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {m.tags.map((t: string) => (
+                <span
+                  key={t}
+                  className="text-xs font-medium bg-secondary text-foreground rounded-full px-3 py-1.5"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Description */}
+          {m.description && (
+            <p className="text-[15px] text-muted-foreground leading-relaxed mt-5">{m.description}</p>
+          )}
+
+          {/* Treatments */}
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Flower2 className="h-5 w-5 text-primary" />
+              <h2 className="font-display text-2xl text-foreground">Treatments</h2>
+            </div>
+
+            <div className="space-y-3">
+              {services.map((s) => (
+                <div
+                  key={s.id}
+                  className="bg-card border border-border/60 rounded-2xl p-4 shadow-soft"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display text-lg font-semibold text-foreground leading-snug">
+                        {s.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                        {s.description?.split(/[.!?](\s|$)/)[0]?.trim() || firstSentence}.
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {s.price != null && (
+                        <p className="font-display text-2xl font-semibold text-foreground">
+                          €{s.price}
+                        </p>
+                      )}
+                      <span className="inline-block mt-1 text-[10px] font-bold tracking-[0.12em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                        Pay at studio
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/60">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> {s.duration} min
+                    </span>
+                    <button
+                      onClick={() => navigate(`/app/booking/${m.id}/calendar`)}
+                      className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
+                    >
+                      Book →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="h-5 w-5 text-primary" />
+              <h2 className="font-display text-2xl text-foreground">Location</h2>
+            </div>
+
+            <div className="rounded-2xl bg-secondary/70 border border-border/60 p-5 shadow-soft">
+              <div className="relative h-32 rounded-xl bg-[radial-gradient(ellipse_at_center,_hsl(var(--background))_0%,_hsl(var(--secondary))_100%)] flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 opacity-40"
+                  style={{
+                    backgroundImage:
+                      "repeating-linear-gradient(45deg, transparent 0 14px, hsl(var(--border)/0.4) 14px 15px), repeating-linear-gradient(-45deg, transparent 0 14px, hsl(var(--border)/0.4) 14px 15px)",
+                  }}
+                />
+                <div className="relative h-12 w-12 rounded-full bg-card border border-border shadow-elegant flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 mt-4">
+                <div className="min-w-0">
+                  <p className="font-display text-base font-semibold text-foreground truncate">
+                    {m.studio}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{address}</p>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    `${m.studio} ${address}`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Directions"
+                  className="h-10 w-10 rounded-full bg-card border border-border flex items-center justify-center shadow-soft hover:border-primary/50 transition flex-shrink-0"
+                >
+                  <Compass className="h-4 w-4 text-primary" />
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <a
+                href={phone ? `tel:${phone}` : undefined}
+                onClick={(e) => { if (!phone) e.preventDefault(); }}
+                className="h-12 rounded-full border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/50 transition shadow-soft"
+              >
+                <Phone className="h-4 w-4 text-primary" /> Call
+              </a>
+              <button
+                onClick={() => navigate(`/app/booking/${m.id}/calendar`)}
+                className="h-12 rounded-full border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/50 transition shadow-soft"
+              >
+                <MessageSquare className="h-4 w-4 text-primary" /> Chat
+              </button>
+            </div>
+          </div>
         </div>
-
-        <h1 className="font-display text-3xl font-bold text-foreground mt-2">{massage.name}</h1>
-        <p className="text-primary font-semibold mt-1">{massage.studio}</p>
-        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-          <MapPin className="h-3 w-3" /> {"district" in massage ? massage.district : ""}, Madrid
-        </p>
-
-        <p className="text-foreground/80 leading-relaxed mt-4">{massage.description}</p>
-
-        <div className="flex flex-wrap gap-2 mt-4">
-          {massage.tags.map((t) => (
-            <span key={t} className="text-xs bg-secondary text-secondary-foreground rounded-full px-3 py-1">{t}</span>
-          ))}
-        </div>
-
-        <h3 className="font-display text-lg font-semibold text-foreground mt-6 mb-3">What's included</h3>
-        <ul className="space-y-2 mb-6">
-          {["Welcome tea", "Premium oils", "Heated bed", "Quiet room"].map((i) => (
-            <li key={i} className="flex items-center gap-2 text-sm">
-              <Check className="h-4 w-4 text-primary" /> {i}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* CTA */}
-      <div className="px-6 py-4 border-t border-border bg-card">
-        <Button
-          onClick={() => navigate(`/app/booking/${massage.id}/calendar`)}
-          className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant"
-        >
-          Book this massage
-        </Button>
       </div>
     </div>
   );
