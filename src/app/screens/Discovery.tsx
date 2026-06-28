@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { MASSAGE_GUIDE, MASSAGES } from "../data";
 import GoogleMap from "../components/GoogleMap";
 import { useBooking } from "../BookingContext";
@@ -7,20 +8,22 @@ import { useBooking } from "../BookingContext";
 export default function Discovery() {
   const navigate = useNavigate();
   const { set } = useBooking();
+  const { t } = useTranslation();
+
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
-          aria-label="Back"
+          aria-label={t("app.common.back")}
           className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <p className="text-xs text-muted-foreground">Massage discovery</p>
-          <h1 className="font-display text-lg font-bold">Learn about each style</h1>
+          <p className="text-xs text-muted-foreground">{t("app.discovery.kicker")}</p>
+          <h1 className="font-display text-lg font-bold">{t("app.discovery.title")}</h1>
         </div>
       </div>
 
@@ -33,21 +36,21 @@ export default function Discovery() {
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/20 blur-2xl" />
           <div className="relative">
             <div className="inline-flex items-center gap-1.5 bg-accent/20 text-accent rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-              <Sparkles className="h-3 w-3" /> Find your match
+              <Sparkles className="h-3 w-3" /> {t("app.discovery.quizBadge")}
             </div>
-            <h2 className="font-display text-2xl font-bold mt-3">Not sure which to try?</h2>
+            <h2 className="font-display text-2xl font-bold mt-3">{t("app.discovery.quizTitle")}</h2>
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Answer 4 quick questions and we'll suggest the perfect massage for you.
+              {t("app.discovery.quizDesc")}
             </p>
             <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent">
-              Take the quiz <ChevronRight className="h-4 w-4" />
+              {t("app.discovery.takeQuiz")} <ChevronRight className="h-4 w-4" />
             </div>
           </div>
         </button>
 
         {/* Nearby map */}
         <div>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-3">Studios near you</h3>
+          <h3 className="font-display text-lg font-semibold text-foreground mb-3">{t("app.discovery.nearbyTitle")}</h3>
           <GoogleMap
             massages={MASSAGES}
             compact
@@ -59,9 +62,9 @@ export default function Discovery() {
         </div>
 
         <div>
-          <h3 className="font-display text-2xl text-foreground">Explore massage styles</h3>
+          <h3 className="font-display text-2xl text-foreground">{t("app.discovery.exploreTitle")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Learn what each style does — then book the right one.
+            {t("app.discovery.exploreSub")}
           </p>
 
           <div className="grid grid-cols-2 gap-3 mt-4">
@@ -76,7 +79,7 @@ export default function Discovery() {
                   <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
                   {g.bookable && (
                     <span className="absolute top-2 right-2 text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-accent/95 text-foreground shadow-soft">
-                      In Madrid
+                      {t("app.discovery.inMadrid")}
                     </span>
                   )}
                   <div className="absolute bottom-2 left-3 right-3">
@@ -92,3 +95,4 @@ export default function Discovery() {
     </div>
   );
 }
+

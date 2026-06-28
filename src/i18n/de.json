@@ -1,5 +1,10 @@
 {
-  "nav": { "studios": "Studios", "how": "So funktioniert's", "faq": "FAQ", "join": "Beitreten" },
+  "nav": {
+    "studios": "Studios",
+    "how": "So funktioniert's",
+    "faq": "FAQ",
+    "join": "Beitreten"
+  },
   "hero": {
     "badge": "Nur in Madrid · Begrenzte Plätze",
     "title1": "Madrid entspannt sich",
@@ -7,40 +12,127 @@
     "subtitle": "Ein Abo. Unbegrenzte Massagen in den besten Studios der Hauptstadt. Von Salamanca bis Malasaña — Ihr Körper verdient mehr.",
     "emailPlaceholder": "sie@email.com",
     "cta": "Platz reservieren",
-    "perks": { "noCommitment": "Keine Bindung", "cancel": "Jederzeit kündbar", "launch": "Einführungspreis" }
+    "perks": {
+      "noCommitment": "Keine Bindung",
+      "cancel": "Jederzeit kündbar",
+      "launch": "Einführungspreis"
+    }
   },
-  "stats": { "studios": "Studios in Madrid", "price": "Pro Monat, alles inklusive", "massages": "Massagen pro Monat", "districts": "Abgedeckte Bezirke" },
+  "stats": {
+    "studios": "Studios in Madrid",
+    "price": "Pro Monat, alles inklusive",
+    "massages": "Massagen pro Monat",
+    "districts": "Abgedeckte Bezirke"
+  },
   "how": {
-    "kicker": "So funktioniert's", "title": "Drei Schritte. Keine Ausreden.",
-    "step1": { "title": "Abonnieren", "desc": "79 €/Monat. Keine Verträge, keine Überraschungen. Jederzeit kündbar." },
-    "step2": { "title": "Studio wählen", "desc": "In jedem Partner-Studio in Madrid über die App buchen." },
-    "step3": { "title": "Grenzenlos genießen", "desc": "Kommen Sie so oft Sie wollen. Ihr Körper wird es Ihnen danken." }
+    "kicker": "So funktioniert's",
+    "title": "Drei Schritte. Keine Ausreden.",
+    "step1": {
+      "title": "Abonnieren",
+      "desc": "79 €/Monat. Keine Verträge, keine Überraschungen. Jederzeit kündbar."
+    },
+    "step2": {
+      "title": "Studio wählen",
+      "desc": "In jedem Partner-Studio in Madrid über die App buchen."
+    },
+    "step3": {
+      "title": "Grenzenlos genießen",
+      "desc": "Kommen Sie so oft Sie wollen. Ihr Körper wird es Ihnen danken."
+    }
   },
   "studios": {
     "kicker": "Unsere Studios",
     "title": "Die besten Hände Madrids, mit einem Pass.",
     "subtitle": "Sorgfältig ausgewählte Studios in den lebendigsten Vierteln der Stadt.",
     "specialties": {
-      "swedish": "Schwedisch & Aromatherapie", "deep": "Tiefengewebe", "stone": "Heiße Steine", "sports": "Sportregeneration",
-      "thai": "Thai & Shiatsu", "lomi": "Lomi Lomi", "reflex": "Reflexzonen", "cranio": "Craniosacral"
+      "swedish": "Schwedisch & Aromatherapie",
+      "deep": "Tiefengewebe",
+      "stone": "Heiße Steine",
+      "sports": "Sportregeneration",
+      "thai": "Thai & Shiatsu",
+      "lomi": "Lomi Lomi",
+      "reflex": "Reflexzonen",
+      "cranio": "Craniosacral"
     }
   },
   "pricing": {
-    "kicker": "Einführungspreis", "title": "Ein Preis. Die ganze Stadt.", "perMonth": "/Monat", "founder": "Gründerpreis · Bald höher",
+    "kicker": "Einführungspreis",
+    "title": "Ein Preis. Die ganze Stadt.",
+    "perMonth": "/Monat",
+    "founder": "Gründerpreis · Bald höher",
     "features": {
-      "f1": "Unbegrenzte Massagen in allen Studios", "f2": "Jederzeit per App buchen", "f3": "Zugang zu allen Massagearten",
-      "f4": "Kein Vertrag, jederzeit kündbar", "f5": "Persönlicher Support, wann immer Sie ihn brauchen"
+      "f1": "Unbegrenzte Massagen in allen Studios",
+      "f2": "Jederzeit per App buchen",
+      "f3": "Zugang zu allen Massagearten",
+      "f4": "Kein Vertrag, jederzeit kündbar",
+      "f5": "Persönlicher Support, wann immer Sie ihn brauchen"
     },
     "cta": "Gründerplatz sichern"
   },
   "faq": {
-    "kicker": "Häufige Fragen", "title": "Alles, was Sie wissen müssen.",
-    "q1": "Wie funktioniert das Abo?", "a1": "Sie zahlen 79 €/Monat und buchen unbegrenzt Massagen in unseren Partner-Studios in Madrid. Keine Kosten pro Besuch.",
-    "q2": "Kann ich jederzeit kündigen?", "a2": "Ja. Keine Verträge, keine Mindestlaufzeit. In der App mit einem Klick kündbar.",
-    "q3": "Welche Massagearten sind enthalten?", "a3": "Alle: Schwedisch, Tiefengewebe, Sport, Thai, Heiße Steine, Reflexzonen und mehr — je nach Studio.",
-    "q4": "Kann ich jeden Tag gehen?", "a4": "Ja. Unbegrenzte Buchungen, abhängig von der Verfügbarkeit des Studios."
+    "kicker": "Häufige Fragen",
+    "title": "Alles, was Sie wissen müssen.",
+    "q1": "Wie funktioniert das Abo?",
+    "a1": "Sie zahlen 79 €/Monat und buchen unbegrenzt Massagen in unseren Partner-Studios in Madrid. Keine Kosten pro Besuch.",
+    "q2": "Kann ich jederzeit kündigen?",
+    "a2": "Ja. Keine Verträge, keine Mindestlaufzeit. In der App mit einem Klick kündbar.",
+    "q3": "Welche Massagearten sind enthalten?",
+    "a3": "Alle: Schwedisch, Tiefengewebe, Sport, Thai, Heiße Steine, Reflexzonen und mehr — je nach Studio.",
+    "q4": "Kann ich jeden Tag gehen?",
+    "a4": "Ja. Unbegrenzte Buchungen, abhängig von der Verfügbarkeit des Studios."
   },
   "footer": "Mit Ruhe in Madrid gemacht",
-  "toast": { "invalid": "Bitte gültige E-Mail eingeben", "success": "Willkommen! Wir melden uns, sobald Plätze frei sind." },
-  "lang": { "en": "EN", "es": "ES" }
+  "toast": {
+    "invalid": "Bitte gültige E-Mail eingeben",
+    "success": "Willkommen! Wir melden uns, sobald Plätze frei sind."
+  },
+  "lang": {
+    "en": "EN",
+    "es": "ES"
+  },
+  "app": {
+    "common": {
+      "back": "Zurück",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "continue": "Weiter",
+      "confirm": "Bestätigen",
+      "loading": "Laden…",
+      "free": "Gratis"
+    },
+    "bottomNav": {
+      "massages": "Massagen",
+      "discovery": "Entdecken",
+      "bookings": "Buchungen",
+      "profile": "Profil"
+    },
+    "discovery": {
+      "kicker": "Massagen entdecken",
+      "title": "Lerne jeden Stil kennen",
+      "quizBadge": "Finde dein Match",
+      "quizTitle": "Nicht sicher, welche?",
+      "quizDesc": "Beantworte 4 kurze Fragen und wir empfehlen dir die perfekte Massage.",
+      "takeQuiz": "Quiz starten",
+      "nearbyTitle": "Studios in deiner Nähe",
+      "exploreTitle": "Massagearten erkunden",
+      "exploreSub": "Erfahre, was jeder Stil bewirkt — und buche den richtigen.",
+      "inMadrid": "In Madrid"
+    },
+    "customize": {
+      "kicker": "Sitzung anpassen",
+      "usePrefs": "Meine Präferenzen verwenden",
+      "loadedPrefs": "Präferenzen geladen ✨",
+      "talking": "Während der Sitzung reden?",
+      "talkSilence": "🤫 Bitte Ruhe",
+      "talkMinimal": "Etwas plaudern",
+      "talkChatty": "Gerne plaudern",
+      "pressure": "Druck",
+      "focus": "Fokusbereiche",
+      "addons": "Extras",
+      "freeWithMembership": "Mit Mitgliedschaft kostenlos",
+      "notes": "Notizen für deinen Therapeuten",
+      "notesPlaceholder": "Was sollten wir wissen? Verletzungen, Allergien, Vorlieben…",
+      "review": "Prüfen und bestätigen"
+    }
+  }
 }

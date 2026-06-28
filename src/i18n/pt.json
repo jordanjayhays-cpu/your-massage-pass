@@ -1,5 +1,10 @@
 {
-  "nav": { "studios": "Estúdios", "how": "Como funciona", "faq": "FAQ", "join": "Inscrever-se" },
+  "nav": {
+    "studios": "Estúdios",
+    "how": "Como funciona",
+    "faq": "FAQ",
+    "join": "Inscrever-se"
+  },
   "hero": {
     "badge": "Só em Madrid · Vagas limitadas",
     "title1": "Madrid relaxa",
@@ -7,40 +12,127 @@
     "subtitle": "Uma assinatura. Massagens ilimitadas nos melhores estúdios da capital. De Salamanca a Malasaña, seu corpo merece mais.",
     "emailPlaceholder": "voce@email.com",
     "cta": "Reserve sua vaga",
-    "perks": { "noCommitment": "Sem compromisso", "cancel": "Cancele quando quiser", "launch": "Preço de lançamento" }
+    "perks": {
+      "noCommitment": "Sem compromisso",
+      "cancel": "Cancele quando quiser",
+      "launch": "Preço de lançamento"
+    }
   },
-  "stats": { "studios": "Estúdios em Madrid", "price": "Por mês, tudo incluso", "massages": "Massagens por mês", "districts": "Bairros cobertos" },
+  "stats": {
+    "studios": "Estúdios em Madrid",
+    "price": "Por mês, tudo incluso",
+    "massages": "Massagens por mês",
+    "districts": "Bairros cobertos"
+  },
   "how": {
-    "kicker": "Como funciona", "title": "Três passos. Zero desculpas.",
-    "step1": { "title": "Assine", "desc": "€79/mês. Sem contratos, sem surpresas. Cancele a qualquer momento." },
-    "step2": { "title": "Escolha um estúdio", "desc": "Reserve em qualquer estúdio parceiro de Madrid pelo app." },
-    "step3": { "title": "Aproveite sem limites", "desc": "Volte quantas vezes quiser. Seu corpo vai agradecer." }
+    "kicker": "Como funciona",
+    "title": "Três passos. Zero desculpas.",
+    "step1": {
+      "title": "Assine",
+      "desc": "€79/mês. Sem contratos, sem surpresas. Cancele a qualquer momento."
+    },
+    "step2": {
+      "title": "Escolha um estúdio",
+      "desc": "Reserve em qualquer estúdio parceiro de Madrid pelo app."
+    },
+    "step3": {
+      "title": "Aproveite sem limites",
+      "desc": "Volte quantas vezes quiser. Seu corpo vai agradecer."
+    }
   },
   "studios": {
     "kicker": "Nossos estúdios",
     "title": "As melhores mãos de Madrid, num único passe.",
     "subtitle": "Estúdios cuidadosamente selecionados nos bairros mais vibrantes da cidade.",
     "specialties": {
-      "swedish": "Sueca & Aromaterapia", "deep": "Tecido Profundo", "stone": "Pedras Quentes", "sports": "Recuperação Esportiva",
-      "thai": "Tailandesa & Shiatsu", "lomi": "Lomi Lomi", "reflex": "Reflexologia", "cranio": "Craniossacral"
+      "swedish": "Sueca & Aromaterapia",
+      "deep": "Tecido Profundo",
+      "stone": "Pedras Quentes",
+      "sports": "Recuperação Esportiva",
+      "thai": "Tailandesa & Shiatsu",
+      "lomi": "Lomi Lomi",
+      "reflex": "Reflexologia",
+      "cranio": "Craniossacral"
     }
   },
   "pricing": {
-    "kicker": "Preço de lançamento", "title": "Uma tarifa. A cidade inteira.", "perMonth": "/mês", "founder": "Preço de fundador · Vai subir em breve",
+    "kicker": "Preço de lançamento",
+    "title": "Uma tarifa. A cidade inteira.",
+    "perMonth": "/mês",
+    "founder": "Preço de fundador · Vai subir em breve",
     "features": {
-      "f1": "Massagens ilimitadas em todos os estúdios", "f2": "Reserve quando quiser pelo app", "f3": "Acesso a todos os tipos de massagem",
-      "f4": "Sem contrato, cancele quando quiser", "f5": "Suporte pessoal sempre que precisar"
+      "f1": "Massagens ilimitadas em todos os estúdios",
+      "f2": "Reserve quando quiser pelo app",
+      "f3": "Acesso a todos os tipos de massagem",
+      "f4": "Sem contrato, cancele quando quiser",
+      "f5": "Suporte pessoal sempre que precisar"
     },
     "cta": "Garanta sua vaga de fundador"
   },
   "faq": {
-    "kicker": "Perguntas frequentes", "title": "Tudo o que você precisa saber.",
-    "q1": "Como funciona a assinatura?", "a1": "Você paga €79/mês e reserva massagens ilimitadas em qualquer estúdio parceiro em Madrid. Sem cobranças por visita.",
-    "q2": "Posso cancelar quando quiser?", "a2": "Sim. Sem contratos, sem mínimo. Cancele pelo app em um clique.",
-    "q3": "Quais tipos de massagem estão incluídos?", "a3": "Todos: sueca, tecido profundo, esportiva, tailandesa, pedras quentes, reflexologia e mais — conforme o estúdio.",
-    "q4": "Posso ir todos os dias?", "a4": "Sim. Reservas ilimitadas, sujeito à disponibilidade de cada estúdio."
+    "kicker": "Perguntas frequentes",
+    "title": "Tudo o que você precisa saber.",
+    "q1": "Como funciona a assinatura?",
+    "a1": "Você paga €79/mês e reserva massagens ilimitadas em qualquer estúdio parceiro em Madrid. Sem cobranças por visita.",
+    "q2": "Posso cancelar quando quiser?",
+    "a2": "Sim. Sem contratos, sem mínimo. Cancele pelo app em um clique.",
+    "q3": "Quais tipos de massagem estão incluídos?",
+    "a3": "Todos: sueca, tecido profundo, esportiva, tailandesa, pedras quentes, reflexologia e mais — conforme o estúdio.",
+    "q4": "Posso ir todos os dias?",
+    "a4": "Sim. Reservas ilimitadas, sujeito à disponibilidade de cada estúdio."
   },
   "footer": "Feito com calma em Madrid",
-  "toast": { "invalid": "Digite um e-mail válido", "success": "Bem-vindo! Avisaremos quando abrirem vagas." },
-  "lang": { "en": "EN", "es": "ES" }
+  "toast": {
+    "invalid": "Digite um e-mail válido",
+    "success": "Bem-vindo! Avisaremos quando abrirem vagas."
+  },
+  "lang": {
+    "en": "EN",
+    "es": "ES"
+  },
+  "app": {
+    "common": {
+      "back": "Voltar",
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "continue": "Continuar",
+      "confirm": "Confirmar",
+      "loading": "Carregando…",
+      "free": "Grátis"
+    },
+    "bottomNav": {
+      "massages": "Massagens",
+      "discovery": "Descobrir",
+      "bookings": "Reservas",
+      "profile": "Perfil"
+    },
+    "discovery": {
+      "kicker": "Descobrir massagens",
+      "title": "Aprenda sobre cada estilo",
+      "quizBadge": "Encontre seu match",
+      "quizTitle": "Não sabe qual experimentar?",
+      "quizDesc": "Responda 4 perguntas rápidas e sugerimos a massagem perfeita para você.",
+      "takeQuiz": "Fazer o quiz",
+      "nearbyTitle": "Estúdios perto de você",
+      "exploreTitle": "Explore estilos de massagem",
+      "exploreSub": "Saiba o que cada estilo faz — depois reserve o certo.",
+      "inMadrid": "Em Madrid"
+    },
+    "customize": {
+      "kicker": "Personalize sua sessão",
+      "usePrefs": "Usar minhas preferências",
+      "loadedPrefs": "Preferências carregadas ✨",
+      "talking": "Conversar durante a sessão?",
+      "talkSilence": "🤫 Silêncio, por favor",
+      "talkMinimal": "Um pouco de conversa",
+      "talkChatty": "Gosto de conversar",
+      "pressure": "Pressão",
+      "focus": "Áreas de foco",
+      "addons": "Adicionais",
+      "freeWithMembership": "Grátis com assinatura",
+      "notes": "Notas para seu terapeuta",
+      "notesPlaceholder": "Algo que devamos saber? Lesões, alergias, preferências…",
+      "review": "Revisar e confirmar"
+    }
+  }
 }

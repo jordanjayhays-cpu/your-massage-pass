@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,18 +17,21 @@ const ADDON_MAP: Record<string, string> = {
   extra_time: "extended",
 };
 
-const CONVERSATION_OPTIONS: { label: string; value: string }[] = [
-  { label: "🤫 Silence please", value: "silence" },
-  { label: "A little chat", value: "minimal" },
-  { label: "Happy to chat", value: "chatty" },
+const CONVERSATION_KEYS: { labelKey: string; value: string }[] = [
+  { labelKey: "app.customize.talkSilence", value: "silence" },
+  { labelKey: "app.customize.talkMinimal", value: "minimal" },
+  { labelKey: "app.customize.talkChatty", value: "chatty" },
 ];
+
 
 export default function Customize() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { t } = useTranslation();
   const { pressure, focusAreas, addOns, notes, conversation, set, toggleFocus, toggleAddOn, shop } = useBooking();
   const massage = shop || MASSAGES.find((m) => m.id === id);
   const [profile, setProfile] = useState<any>(null);
+
 
   useEffect(() => {
     (async () => {
@@ -80,17 +84,17 @@ export default function Customize() {
       patch.conversation = profile.conversation_pref;
     }
     set(patch);
-    toast.success("Loaded your preferences ✨");
+    toast.success(t("app.customize.loadedPrefs"));
   };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3">
-        <button onClick={() => navigate(-1)} aria-label="Back" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
+        <button onClick={() => navigate(-1)} aria-label={t("app.common.back")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <p className="text-xs text-muted-foreground">Customize your session</p>
+          <p className="text-xs text-muted-foreground">{t("app.customize.kicker")}</p>
           <h1 className="font-display text-lg font-bold">{massage?.name}</h1>
         </div>
       </div>
@@ -102,14 +106,14 @@ export default function Customize() {
             className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90 transition flex items-center justify-center gap-2"
           >
             <Sparkles className="h-4 w-4" />
-            Use my preferences
+            {t("app.customize.usePrefs")}
           </button>
         )}
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Talking during this session?</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.customize.talking")}</h3>
           <div className="flex flex-wrap gap-2">
-            {CONVERSATION_OPTIONS.map((o) => (
+            {CONVERSATION_KEYS.map((o) => (
               <button
                 key={o.value}
                 onClick={() => set({ conversation: o.value })}
@@ -120,7 +124,7 @@ export default function Customize() {
                     : "bg-card border-border text-foreground",
                 )}
               >
-                {o.label}
+                {t(o.labelKey)}
               </button>
             ))}
           </div>
@@ -128,7 +132,7 @@ export default function Customize() {
 
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Pressure</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.customize.pressure")}</h3>
           <div className="grid grid-cols-4 gap-2">
             {PRESSURE_LEVELS.map((p) => (
               <button
@@ -146,7 +150,7 @@ export default function Customize() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Focus areas</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.customize.focus")}</h3>
           <div className="flex flex-wrap gap-2">
             {FOCUS_AREAS.map((f) => (
               <button
@@ -166,7 +170,7 @@ export default function Customize() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Add-ons</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.customize.addons")}</h3>
           <div className="space-y-2">
             {ADD_ONS.map((a) => {
               const checked = addOns.includes(a.id);
@@ -181,7 +185,7 @@ export default function Customize() {
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">{a.name}</p>
-                    <p className="text-xs text-muted-foreground">{a.price === 0 ? "Free with membership" : `+€${a.price}`}</p>
+                    <p className="text-xs text-muted-foreground">{a.price === 0 ? t("app.customize.freeWithMembership") : `+€${a.price}`}</p>
                   </div>
                   <div className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center", checked ? "border-primary bg-primary" : "border-border")}>
                     {checked && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
@@ -193,11 +197,11 @@ export default function Customize() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">Notes for your therapist</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.customize.notes")}</h3>
           <Textarea
             value={notes}
             onChange={(e) => set({ notes: e.target.value })}
-            placeholder="Anything we should know? Injuries, allergies, preferences…"
+            placeholder={t("app.customize.notesPlaceholder")}
             className="min-h-[88px]"
           />
         </div>
@@ -208,9 +212,10 @@ export default function Customize() {
           onClick={() => navigate(`/app/booking/${id}/payment`)}
           className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant"
         >
-          Review & confirm
+          {t("app.customize.review")}
         </Button>
       </div>
+
     </div>
   );
 }
