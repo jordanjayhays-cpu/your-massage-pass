@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Massage Club · Client Survey</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #faf9f7; color: #1a1a1a; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; }
+    .container { background: white; border-radius: 24px; padding: 36px 28px; max-width: 520px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+    .logo { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c9a84c; margin-bottom: 20px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+    .subtitle { color: #666; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
+    .question { margin-bottom: 18px; }
+    .question-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #333; }
+    .option { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1.5px solid #e5e5e5; border-radius: 12px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s; }
+    .option:hover { border-color: #c9a84c; background: #fdf9f0; }
+    .option input[type="radio"], .option input[type="checkbox"] { width: 16px; height: 16px; accent-color: #c9a84c; flex-shrink: 0; }
+    .option-text { font-size: 13px; line-height: 1.4; }
+    .btn { display: block; width: 100%; padding: 13px; background: #1a1a1a; color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 20px; transition: background 0.15s; }
+    .btn:hover { background: #333; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-ghost { background: transparent; color: #666; border: 1.5px solid #e5e5e5; margin-top: 6px; }
+    .btn-ghost:hover { background: #f5f5f5; }
+    .progress { height: 3px; background: #e5e5e5; border-radius: 2px; margin-bottom: 28px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #c9a84c; transition: width 0.3s; }
+    .tagline { font-size: 11px; color: #bbb; text-align: center; margin-top: 14px; }
+    .result { text-align: center; padding: 16px 0; }
+    .result-icon { font-size: 44px; margin-bottom: 14px; }
+    .email-input { width: 100%; padding: 11px 14px; border: 1.5px solid #e5e5e5; border-radius: 12px; font-size: 13px; margin-top: 8px; }
+    .email-input:focus { outline: none; border-color: #c9a84c; }
+    input[type="text"] { width: 100%; padding: 11px 14px; border: 1.5px solid #e5e5e5; border-radius: 12px; font-size: 13px; margin-top: 8px; }
+    input[type="text"]:focus { outline: none; border-color: #c9a84c; }
+    .small { font-size: 11px; color: #999; margin-top: 5px; }
+    .section-tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #c9a84c; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">Massage Club · Client Survey</div>
+  <div class="progress"><div class="progress-fill" id="progress" style="width:11%"></div></div>
+
+  <!-- STEP 1: Frequency -->
+  <div class="step active" id="step1">
+    <div class="section-tag">Section 1 — Your Habits</div>
+    <h1>How often do you get a professional massage?</h1>
+    <div class="question">
+      <div class="option" onclick="select('c1q1','weekly'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q1" value="weekly"><label class="option-text">Weekly or more</label>
+      </div>
+      <div class="option" onclick="select('c1q1','biweekly'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q1" value="biweekly"><label class="option-text">Every 2–4 weeks</label>
+      </div>
+      <div class="option" onclick="select('c1q1','monthly'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q1" value="monthly"><label class="option-text">Monthly</label>
+      </div>
+      <div class="option" onclick="select('c1q1','few_months'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q1" value="few_months"><label class="option-text">Every few months</label>
+      </div>
+      <div class="option" onclick="select('c1q1','rarely'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q1" value="rarely"><label class="option-text">A few times a year</label>
+      </div>
+      <div class="option" onclick="select('c1q1','never'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q1" value="never"><label class="option-text">Once a year or less / never</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc1q1" disabled onclick="go(2)">Continue</button>
+  </div>
+
+  <!-- STEP 2: Barriers -->
+  <div class="step" id="step2">
+    <div class="section-tag">Section 1 — Your Habits</div>
+    <h1>What stops you from getting massages more often? (Pick all that apply)</h1>
+    <div class="question">
+      <div class="option" onclick="toggleBarrier(this, 'expensive')">
+        <input type="checkbox" value="expensive"><label class="option-text">Too expensive</label>
+      </div>
+      <div class="option" onclick="toggleBarrier(this, 'trust')">
+        <input type="checkbox" value="trust"><label class="option-text">Can't find a trusted, consistent therapist</label>
+      </div>
+      <div class="option" onclick="toggleBarrier(this, 'booking')">
+        <input type="checkbox" value="booking"><label class="option-text">Hard to book when I want one</label>
+      </div>
+      <div class="option" onclick="toggleBarrier(this, 'commitment')">
+        <input type="checkbox" value="commitment"><label class="option-text">Don't want to commit to a membership</label>
+      </div>
+      <div class="option" onclick="toggleBarrier(this, 'forget')">
+        <input type="checkbox" value="forget"><label class="option-text">Forgot to book / life gets in the way</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc1q2" disabled onclick="go(3)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(1)">Back</button>
+  </div>
+
+  <!-- STEP 3: Where go -->
+  <div class="step" id="step3">
+    <div class="section-tag">Section 1 — Your Habits</div>
+    <h1>Where do you usually go for massages?</h1>
+    <div class="question">
+      <div class="option" onclick="select('c1q3','chain'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q3" value="chain"><label class="option-text">Chain (Massage Envy, Elements, Hand & Stone, etc.)</label>
+      </div>
+      <div class="option" onclick="select('c1q3','independent'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q3" value="independent"><label class="option-text">Independent local studio</label>
+      </div>
+      <div class="option" onclick="select('c1q3','home'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q3" value="home"><label class="option-text">Home massage service (outcall)</label>
+      </div>
+      <div class="option" onclick="select('c1q3','hotel'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q3" value="hotel"><label class="option-text">Hotel spa</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc1q3" disabled onclick="go(4)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(2)">Back</button>
+  </div>
+
+  <!-- STEP 4: Membership history -->
+  <div class="step" id="step4">
+    <div class="section-tag">Section 1 — Your Habits</div>
+    <h1>Have you ever had a massage membership or subscription?</h1>
+    <div class="question">
+      <div class="option" onclick="select('c1q4','currently'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q4" value="currently"><label class="option-text">Yes — I currently have one</label>
+      </div>
+      <div class="option" onclick="select('c1q4','had'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q4" value="had"><label class="option-text">Yes — I had one in the past</label>
+      </div>
+      <div class="option" onclick="select('c1q4','consider'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q4" value="consider"><label class="option-text">No — but I'd consider it</label>
+      </div>
+      <div class="option" onclick="select('c1q4','never'); this.querySelector('input').checked=true">
+        <input type="radio" name="c1q4" value="never"><label class="option-text">No — and I'd never want one</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc1q4" disabled onclick="go(5)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(3)">Back</button>
+  </div>
+
+  <!-- STEP 5: Subscription value proposition -->
+  <div class="step" id="step5">
+    <div class="section-tag">Section 2 — Subscription Ideas</div>
+    <h1>Imagine a monthly subscription at your local studio:</h1>
+    <p class="subtitle" style="margin-top:4px;">Guaranteed booking slot · Same trusted therapist every time</p>
+    <div class="question" style="margin-top: 18px;">
+      <h1 style="font-size:17px;">What makes this worth it vs. booking ad-hoc? (Pick all that apply)</h1>
+      <div class="option" onclick="toggleSubVal(this, 'price')" style="margin-top:12px">
+        <input type="checkbox" value="price"><label class="option-text">Lower per-session price vs. my current rate</label>
+      </div>
+      <div class="option" onclick="toggleSubVal(this, 'slot')">
+        <input type="checkbox" value="slot"><label class="option-text">Knowing my slot is reserved — I won't have to book last-minute</label>
+      </div>
+      <div class="option" onclick="toggleSubVal(this, 'relationship')">
+        <input type="checkbox" value="relationship"><label class="option-text">Building a relationship with one therapist</label>
+      </div>
+      <div class="option" onclick="toggleSubVal(this, 'convenience')">
+        <input type="checkbox" value="convenience"><label class="option-text">Convenience of a monthly charge vs. per-visit</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc2q1" disabled onclick="go(6)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(4)">Back</button>
+  </div>
+
+  <!-- STEP 6: Price sensitivity -->
+  <div class="step" id="step6">
+    <div class="section-tag">Section 2 — Subscription Ideas</div>
+    <h1>What's the MOST you'd pay/month for unlimited or high-frequency access at a trusted local studio?</h1>
+    <div class="question">
+      <div class="option" onclick="select('c2q2','under100'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q2" value="under100"><label class="option-text">Under €100/month</label>
+      </div>
+      <div class="option" onclick="select('c2q2','100_150'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q2" value="100_150"><label class="option-text">€100–€150/month</label>
+      </div>
+      <div class="option" onclick="select('c2q2','150_200'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q2" value="150_200"><label class="option-text">€150–€200/month</label>
+      </div>
+      <div class="option" onclick="select('c2q2','200_300'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q2" value="200_300"><label class="option-text">€200–€300/month</label>
+      </div>
+      <div class="option" onclick="select('c2q2','same_rate'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q2" value="same_rate"><label class="option-text">I'd need it close to my current per-session rate</label>
+      </div>
+      <div class="option" onclick="select('c2q2','never'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q2" value="never"><label class="option-text">I'd never do a subscription</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc2q2" disabled onclick="go(7)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(5)">Back</button>
+  </div>
+
+  <!-- STEP 7: Churn reasons -->
+  <div class="step" id="step7">
+    <div class="section-tag">Section 2 — Subscription Ideas</div>
+    <h1>What would make you cancel a massage subscription? (Pick up to 2)</h1>
+    <div class="question">
+      <div class="option" onclick="toggleChurn(this, 'moved')">
+        <input type="checkbox" value="moved"><label class="option-text">I moved or changed locations</label>
+      </div>
+      <div class="option" onclick="toggleChurn(this, 'unused')">
+        <input type="checkbox" value="unused"><label class="option-text">Didn't use it enough — felt like wasting money</label>
+      </div>
+      <div class="option" onclick="toggleChurn(this, 'availability')">
+        <input type="checkbox" value="availability"><label class="option-text">Therapist wasn't available when I wanted</label>
+      </div>
+      <div class="option" onclick="toggleChurn(this, 'financial')">
+        <input type="checkbox" value="financial"><label class="option-text">Had to cut costs financially</label>
+      </div>
+      <div class="option" onclick="toggleChurn(this, 'closed')">
+        <input type="checkbox" value="closed"><label class="option-text">Studio closed or therapist left</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc2q3" disabled onclick="go(8)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(6)">Back</button>
+  </div>
+
+  <!-- STEP 8: Therapist continuity -->
+  <div class="step" id="step8">
+    <div class="section-tag">Section 2 — Subscription Ideas</div>
+    <h1>How important is it that you see the SAME therapist every time?</h1>
+    <div class="question">
+      <div class="option" onclick="select('c2q4','essential'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q4" value="essential"><label class="option-text">Essential — I won't subscribe without continuity</label>
+      </div>
+      <div class="option" onclick="select('c2q4','very'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q4" value="very"><label class="option-text">Very important — a big part of the value</label>
+      </div>
+      <div class="option" onclick="select('c2q4','somewhat'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q4" value="somewhat"><label class="option-text">Somewhat important — I'd prefer it</label>
+      </div>
+      <div class="option" onclick="select('c2q4','not_important'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q4" value="not_important"><label class="option-text">Not important — I'm fine with whoever is available</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc2q4" disabled onclick="go(9)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(7)">Back</button>
+  </div>
+
+  <!-- STEP 9: Would you subscribe -->
+  <div class="step" id="step9">
+    <div class="section-tag">Section 2 — Subscription Ideas</div>
+    <h1>If a trusted local studio offered priority booking, same therapist, and a discounted rate — would you subscribe?</h1>
+    <div class="question">
+      <div class="option" onclick="select('c2q5','yes'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q5" value="yes"><label class="option-text">Yes — definitely</label>
+      </div>
+      <div class="option" onclick="select('c2q5','maybe'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q5" value="maybe"><label class="option-text">Maybe — depends on the price</label>
+      </div>
+      <div class="option" onclick="select('c2q5','probably_not'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q5" value="probably_not"><label class="option-text">Probably not — I like flexibility too much</label>
+      </div>
+      <div class="option" onclick="select('c2q5','no'); this.querySelector('input').checked=true">
+        <input type="radio" name="c2q5" value="no"><label class="option-text">No</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc2q5" disabled onclick="go(10)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(8)">Back</button>
+  </div>
+
+  <!-- STEP 10: About you -->
+  <div class="step" id="step10">
+    <div class="section-tag">Last Step</div>
+    <h1>Where do you live, and a bit about you?</h1>
+    <div class="question">
+      <input type="text" id="c3q1_location" placeholder="City / Country" style="margin-bottom: 10px;">
+    </div>
+    <div class="question">
+      <div class="option" onclick="select('c3q1','under25'); this.querySelector('input').checked=true">
+        <input type="radio" name="c3q1" value="under25"><label class="option-text">Under 25</label>
+      </div>
+      <div class="option" onclick="select('c3q1','25_34'); this.querySelector('input').checked=true">
+        <input type="radio" name="c3q1" value="25_34"><label class="option-text">25–34</label>
+      </div>
+      <div class="option" onclick="select('c3q1','35_44'); this.querySelector('input').checked=true">
+        <input type="radio" name="c3q1" value="35_44"><label class="option-text">35–44</label>
+      </div>
+      <div class="option" onclick="select('c3q1','45_54'); this.querySelector('input').checked=true">
+        <input type="radio" name="c3q1" value="45_54"><label class="option-text">45–54</label>
+      </div>
+      <div class="option" onclick="select('c3q1','55plus'); this.querySelector('input').checked=true">
+        <input type="radio" name="c3q1" value="55plus"><label class="option-text">55+</label>
+      </div>
+    </div>
+    <button class="btn" id="btnc3q1" disabled onclick="go(11)">Continue</button>
+    <button class="btn btn-ghost" onclick="go(9)">Back</button>
+  </div>
+
+  <!-- STEP 11: Email -->
+  <div class="step" id="step11">
+    <div class="section-tag">Last Step</div>
+    <h1>Last question — where should we notify you at launch?</h1>
+    <p class="subtitle">We'll send you a direct link before anyone else.</p>
+    <div class="question">
+      <input type="text" id="c_final_email" placeholder="you@email.com" class="email-input">
+    </div>
+    <button class="btn" onclick="submitB2C()">Submit</button>
+    <button class="btn btn-ghost" onclick="submitB2CNoEmail()">Skip</button>
+  </div>
+
+  <!-- STEP 12: Done -->
+  <div class="step" id="step12">
+    <div class="result">
+      <div class="result-icon">✓</div>
+      <h1>You're in.</h1>
+      <p class="subtitle">We'll let you know the moment Massage Club goes live.</p>
+    </div>
+  </div>
+
+  <p class="tagline">Massage Club · Madrid 2026</p>
+</div>
+
+<script>
+  const answers = {};
+  const barriers = new Set();
+  const subVals = new Set();
+  const churns = new Set();
+  let current = 1;
+  const total = 11;
+
+  function select(q, val) {
+    answers[q] = val;
+    const btnId = 'btn' + q;
+    const btn = document.getElementById(btnId);
+    if (btn) btn.disabled = false;
+  }
+
+  function toggleBarrier(el, val) {
+    const input = el.querySelector('input');
+    input.checked = !input.checked;
+    if (input.checked) barriers.add(val);
+    else barriers.delete(val);
+    answers['c1q2'] = Array.from(barriers).join(',');
+    document.getElementById('btnc1q2').disabled = barriers.size === 0;
+  }
+
+  function toggleSubVal(el, val) {
+    const input = el.querySelector('input');
+    input.checked = !input.checked;
+    if (input.checked) subVals.add(val);
+    else subVals.delete(val);
+    answers['c2q1'] = Array.from(subVals).join(',');
+    document.getElementById('btnc2q1').disabled = subVals.size === 0;
+  }
+
+  function toggleChurn(el, val) {
+    const input = el.querySelector('input');
+    input.checked = !input.checked;
+    if (input.checked) {
+      if (churns.size < 2) churns.add(val);
+      else { input.checked = false; alert('Pick up to 2'); }
+    } else {
+      churns.delete(val);
+    }
+    answers['c2q3'] = Array.from(churns).join(',');
+    document.getElementById('btnc2q3').disabled = churns.size === 0;
+  }
+
+  function go(n) {
+    document.getElementById('step' + current).classList.remove('active');
+    document.getElementById('step' + n).classList.add('active');
+    current = n;
+    document.getElementById('progress').style.width = ((current-1)/total*100) + '%';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function submitB2C() {
+    const email = document.getElementById('c_final_email').value.trim();
+    answers['email'] = email;
+    answers['submitted_at'] = new Date().toISOString();
+    answers['source'] = 'survey_b2c_client';
+    answers['c3q1_location'] = document.getElementById('c3q1_location').value.trim();
+
+    try {
+      await fetch('https://jglftdstrowwckwqmpue.supabase.co/rest/v1/survey_b2c_client_responses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbGZ0ZHN0cm93d2NrcXdwdWUiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0ODQyMTk0NX0.NLJqPVZNRgfcr2t_2qVS5LHKKq0test',
+          'prefer': 'return=minimal'
+        },
+        body: JSON.stringify(answers)
+      });
+    } catch(e) {
+      // Silent fail
+    }
+    go(12);
+  }
+
+  async function submitB2CNoEmail() {
+    answers['email'] = '';
+    answers['submitted_at'] = new Date().toISOString();
+    answers['source'] = 'survey_b2c_client';
+    answers['c3q1_location'] = '';
+    try {
+      await fetch('https://jglftdstrowwckwqmpue.supabase.co/rest/v1/survey_b2c_client_responses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnbGZ0ZHN0cm93d2NrcXdwdWUiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0ODQyMTk0NX0.NLJqPVZNRgfcr2t_2qVS5LHKKq0test',
+          'prefer': 'return=minimal'
+        },
+        body: JSON.stringify(answers)
+      });
+    } catch(e) {}
+    go(12);
+  }
+</script>
+</body>
+</html>
