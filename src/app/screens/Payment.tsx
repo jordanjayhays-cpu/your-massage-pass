@@ -102,9 +102,16 @@ export default function Payment() {
     ? new Date(booking.date).toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })
     : "—";
 
+  const creditToApply = applyCredit && availableCreditCents >= 500 ? 5 : 0;
+  const dueToday = Math.max(0, addOnPrice - creditToApply);
+
   const handleConfirm = async () => {
     setLoading(true);
     try {
+      const noteParts: string[] = [];
+      if (booking.notes) noteParts.push(booking.notes);
+      if (creditToApply > 0) noteParts.push(`€${creditToApply} referral credit — deduct from bill at studio.`);
+
       const result = await saveBooking({
         client_name: contact.name,
         client_email: contact.email,
@@ -117,7 +124,7 @@ export default function Payment() {
         pressure: booking.pressure,
         focus_areas: booking.focusAreas,
         add_ons: addOnNames as string[],
-        notes: booking.notes,
+        notes: noteParts.join(" "),
         status: "confirmed",
         client_preferences: {
           pressure: booking.pressure,
@@ -130,6 +137,7 @@ export default function Payment() {
           scent: profile?.scent_pref,
           lighting: profile?.lighting_pref,
           comfort_notes: profile?.comfort_notes,
+          referral_credit_applied_eur: creditToApply || undefined,
         },
       });
 
@@ -137,6 +145,13 @@ export default function Payment() {
       if (result.success) {
         setBookingRef(result.ref ?? "MR-2026-0001");
         toast.success("Booking confirmed! Check your email.");
+        // Redeem credit + reward referrer (best-effort, non-blocking on error)
+        if (userId && result.id) {
+          if (creditToApply > 0) {
+            await redeemOneCredit(userId, result.id);
+          }
+          await recordReferralOnBooking(userId, contact.email, result.id);
+        }
       } else {
         setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
         toast.success("Booking confirmed!");
@@ -149,6 +164,7 @@ export default function Payment() {
       setConfirmed(true);
     }
   };
+
 
   if (confirmed) {
     return (
