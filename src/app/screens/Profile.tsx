@@ -2,8 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, LogOut, ArrowLeft, Camera, UserCircle } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2 } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import {
+  REFERRAL_REWARD_EUR,
+  getOrCreateReferralCode,
+  getUnusedCredits,
+} from "@/lib/referral";
+
 
 const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
@@ -136,12 +142,24 @@ export default function Profile() {
   const [isFirstMassage, setIsFirstMassage] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
 
+  // Referral
+  const [referralCode, setReferralCode] = useState("");
+  const [creditBalanceCents, setCreditBalanceCents] = useState(0);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        // Referral code + credit balance (best-effort — tables may not exist yet)
+        try {
+          const code = await getOrCreateReferralCode(user.id);
+          setReferralCode(code);
+          const credits = await getUnusedCredits(user.id);
+          setCreditBalanceCents(credits.reduce((s, c) => s + (c.amount_cents ?? 0), 0));
+        } catch { /* referral tables not migrated yet */ }
+
 
         const metaFull = user.user_metadata?.full_name || user.user_metadata?.name || "";
         const derivedFirst = metaFull.split(" ")[0] || "";
@@ -341,6 +359,75 @@ export default function Profile() {
           </div>
           <LanguageFlagToggle />
         </div>
+
+        {/* Refer & Earn card */}
+        {referralCode && (() => {
+          const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
+          const shareText = `I've been booking massages in Madrid through Massage Club — get €${REFERRAL_REWARD_EUR} off your first booking with my link: ${referralUrl}`;
+          const copy = async () => {
+            try {
+              await navigator.clipboard.writeText(referralUrl);
+              toast.success("Link copied");
+            } catch {
+              toast.error("Couldn't copy — long-press to copy");
+            }
+          };
+          const share = async () => {
+            if ((navigator as any).share) {
+              try {
+                await (navigator as any).share({
+                  title: "Massage Club",
+                  text: shareText,
+                  url: referralUrl,
+                });
+                return;
+              } catch { /* user cancelled */ }
+            }
+            copy();
+          };
+          return (
+            <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#C4622D] to-[#8B3E1A] p-5 text-white shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Gift className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold">Give €{REFERRAL_REWARD_EUR}, get €{REFERRAL_REWARD_EUR}</h3>
+                  <p className="text-sm text-white/85 mt-0.5">
+                    Share your link. When a friend books, you get €{REFERRAL_REWARD_EUR} off your next massage.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-white/15 backdrop-blur px-3 py-2.5 flex items-center gap-2">
+                <span className="text-xs text-white/70 uppercase tracking-wider">Your link</span>
+                <span className="text-sm font-mono truncate flex-1">/?ref={referralCode}</span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={copy}
+                  className="h-11 rounded-full bg-white/15 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/25"
+                >
+                  <Copy size={15} /> Copy link
+                </button>
+                <button
+                  onClick={share}
+                  className="h-11 rounded-full bg-white text-[#C4622D] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/90"
+                >
+                  <Share2 size={15} /> Share
+                </button>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-white/70">Your credit balance</span>
+                <span className="text-xl font-bold">€{(creditBalanceCents / 100).toFixed(0)}</span>
+              </div>
+            </div>
+          );
+        })()}
+
+
 
         {/* Photo header */}
         <div className="mt-6 flex flex-col items-center">

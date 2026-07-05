@@ -8,7 +8,14 @@ import { useBooking } from "../BookingContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { saveBooking, supabase } from "@/lib/supabase";
+import {
+  REFERRAL_REWARD_EUR,
+  getUnusedCredits,
+  recordReferralOnBooking,
+  redeemOneCredit,
+} from "@/lib/referral";
 import { getStoredUser } from "./Login";
+
 
 const COMMISSION_RATE = 0.10; // 10% commission
 
@@ -22,12 +29,16 @@ export default function Payment() {
   const [bookingRef, setBookingRef] = useState("");
   const [profile, setProfile] = useState<any>(null);
   const [accessInstructions, setAccessInstructions] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [availableCreditCents, setAvailableCreditCents] = useState(0);
+  const [applyCredit, setApplyCredit] = useState(false);
   const stored = getStoredUser();
   const [contact, setContact] = useState({
     name: stored?.name ?? "Guest",
     email: stored?.email ?? "guest@massageclub.io",
     phone: "",
   });
+
 
   // Fetch studio access instructions when we have a partner_id
   useEffect(() => {
@@ -47,6 +58,7 @@ export default function Payment() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
@@ -66,9 +78,16 @@ export default function Payment() {
         email: user.email || stored?.email || "guest@massageclub.io",
         phone: p?.phone ?? "",
       });
+
+      // Load available referral credit (€5 each)
+      const credits = await getUnusedCredits(user.id);
+      const total = credits.reduce((s, c) => s + (c.amount_cents ?? 0), 0);
+      setAvailableCreditCents(total);
+      if (total > 0) setApplyCredit(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   if (!massage) return null;
 
@@ -83,9 +102,16 @@ export default function Payment() {
     ? new Date(booking.date).toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })
     : "—";
 
+  const creditToApply = applyCredit && availableCreditCents >= 500 ? 5 : 0;
+  const dueToday = Math.max(0, addOnPrice - creditToApply);
+
   const handleConfirm = async () => {
     setLoading(true);
     try {
+      const noteParts: string[] = [];
+      if (booking.notes) noteParts.push(booking.notes);
+      if (creditToApply > 0) noteParts.push(`€${creditToApply} referral credit — deduct from bill at studio.`);
+
       const result = await saveBooking({
         client_name: contact.name,
         client_email: contact.email,
@@ -98,7 +124,7 @@ export default function Payment() {
         pressure: booking.pressure,
         focus_areas: booking.focusAreas,
         add_ons: addOnNames as string[],
-        notes: booking.notes,
+        notes: noteParts.join(" "),
         status: "confirmed",
         client_preferences: {
           pressure: booking.pressure,
@@ -111,6 +137,7 @@ export default function Payment() {
           scent: profile?.scent_pref,
           lighting: profile?.lighting_pref,
           comfort_notes: profile?.comfort_notes,
+          referral_credit_applied_eur: creditToApply || undefined,
         },
       });
 
@@ -118,6 +145,13 @@ export default function Payment() {
       if (result.success) {
         setBookingRef(result.ref ?? "MR-2026-0001");
         toast.success("Booking confirmed! Check your email.");
+        // Redeem credit + reward referrer (best-effort, non-blocking on error)
+        if (userId && result.id) {
+          if (creditToApply > 0) {
+            await redeemOneCredit(userId, result.id);
+          }
+          await recordReferralOnBooking(userId, contact.email, result.id);
+        }
       } else {
         setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
         toast.success("Booking confirmed!");
@@ -130,6 +164,7 @@ export default function Payment() {
       setConfirmed(true);
     }
   };
+
 
   if (confirmed) {
     return (
@@ -264,17 +299,47 @@ export default function Payment() {
           </div>
         </div>
 
+        {/* Referral credit */}
+        {availableCreditCents >= 500 && (
+          <label className="rounded-2xl border border-[#C4622D]/30 bg-[#C4622D]/5 p-4 flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={applyCredit}
+              onChange={(e) => setApplyCredit(e.target.checked)}
+              className="h-5 w-5 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
+            />
+            <div className="text-sm flex-1">
+              <p className="font-semibold text-foreground">
+                Apply €{REFERRAL_REWARD_EUR} referral credit
+              </p>
+              <p className="text-muted-foreground text-xs">
+                You have €{(availableCreditCents / 100).toFixed(0)} in credits. €{REFERRAL_REWARD_EUR} will be deducted from your bill at the studio.
+              </p>
+            </div>
+          </label>
+        )}
+
         {/* Totals */}
         <div className="rounded-2xl bg-secondary p-4 space-y-2 text-sm">
           {addOnPrice > 0 && (
             <div className="flex justify-between"><span>Add-ons</span><span className="font-semibold">€{addOnPrice}</span></div>
           )}
+          {creditToApply > 0 && (
+            <div className="flex justify-between text-[#C4622D]">
+              <span>Referral credit</span>
+              <span className="font-semibold">−€{creditToApply}</span>
+            </div>
+          )}
           <div className="flex justify-between text-base">
             <span className="font-semibold">Due today</span>
-            <span className="font-display font-bold text-primary text-xl">€{addOnPrice}</span>
+            <span className="font-display font-bold text-primary text-xl">€{dueToday}</span>
           </div>
-          <p className="text-xs text-muted-foreground pt-1">Massage paid directly to the studio on arrival.</p>
+          <p className="text-xs text-muted-foreground pt-1">
+            Massage paid directly to the studio on arrival.
+            {creditToApply > 0 && ` Show your confirmation to redeem €${creditToApply} off.`}
+          </p>
         </div>
+
       </div>
 
       <div className="px-6 py-4 border-t border-border bg-card">

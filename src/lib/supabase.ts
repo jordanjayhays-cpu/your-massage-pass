@@ -37,7 +37,7 @@ export interface Lead {
   created_at?: string;
 }
 
-export async function saveBooking(booking: Omit<Booking, "id" | "created_at">): Promise<{ success: boolean; ref?: string }> {
+export async function saveBooking(booking: Omit<Booking, "id" | "created_at">): Promise<{ success: boolean; ref?: string; id?: number }> {
   try {
     const { data, error } = await supabase
       .from("bookings")
@@ -51,12 +51,13 @@ export async function saveBooking(booking: Omit<Booking, "id" | "created_at">): 
     }
 
     const ref = `MR-2026-${String(data.id).padStart(4, "0")}`;
-    return { success: true, ref };
+    return { success: true, ref, id: data.id as number };
   } catch (err) {
     console.error("Booking save error:", err);
     return { success: false };
   }
 }
+
 
 export async function saveLead(email: string, name: string, source: string): Promise<boolean> {
   try {
