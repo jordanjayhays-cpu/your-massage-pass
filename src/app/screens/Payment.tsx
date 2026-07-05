@@ -8,7 +8,14 @@ import { useBooking } from "../BookingContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { saveBooking, supabase } from "@/lib/supabase";
+import {
+  REFERRAL_REWARD_EUR,
+  getUnusedCredits,
+  recordReferralOnBooking,
+  redeemOneCredit,
+} from "@/lib/referral";
 import { getStoredUser } from "./Login";
+
 
 const COMMISSION_RATE = 0.10; // 10% commission
 
