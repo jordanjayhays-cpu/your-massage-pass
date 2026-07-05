@@ -142,12 +142,24 @@ export default function Profile() {
   const [isFirstMassage, setIsFirstMassage] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
 
+  // Referral
+  const [referralCode, setReferralCode] = useState("");
+  const [creditBalanceCents, setCreditBalanceCents] = useState(0);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
         const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        // Referral code + credit balance (best-effort — tables may not exist yet)
+        try {
+          const code = await getOrCreateReferralCode(user.id);
+          setReferralCode(code);
+          const credits = await getUnusedCredits(user.id);
+          setCreditBalanceCents(credits.reduce((s, c) => s + (c.amount_cents ?? 0), 0));
+        } catch { /* referral tables not migrated yet */ }
+
 
         const metaFull = user.user_metadata?.full_name || user.user_metadata?.name || "";
         const derivedFirst = metaFull.split(" ")[0] || "";
