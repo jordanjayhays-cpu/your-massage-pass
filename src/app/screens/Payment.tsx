@@ -29,12 +29,16 @@ export default function Payment() {
   const [bookingRef, setBookingRef] = useState("");
   const [profile, setProfile] = useState<any>(null);
   const [accessInstructions, setAccessInstructions] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [availableCreditCents, setAvailableCreditCents] = useState(0);
+  const [applyCredit, setApplyCredit] = useState(false);
   const stored = getStoredUser();
   const [contact, setContact] = useState({
     name: stored?.name ?? "Guest",
     email: stored?.email ?? "guest@massageclub.io",
     phone: "",
   });
+
 
   // Fetch studio access instructions when we have a partner_id
   useEffect(() => {
