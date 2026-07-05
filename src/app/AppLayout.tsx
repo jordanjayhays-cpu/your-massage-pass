@@ -4,9 +4,16 @@ import { useTranslation } from "react-i18next";
 import { BookingProvider } from "./BookingContext";
 import { MobileFrame } from "./MobileFrame";
 import { supabase } from "@/lib/supabase";
+import { captureReferralFromUrl } from "@/lib/referral";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
+
+  // Capture ?ref=CODE from any inbound link so it survives sign-in + booking.
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
+
 
   // Sync preferred language from the signed-in user's profile (once per session).
   useEffect(() => {
