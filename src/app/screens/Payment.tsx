@@ -299,17 +299,47 @@ export default function Payment() {
           </div>
         </div>
 
+        {/* Referral credit */}
+        {availableCreditCents >= 500 && (
+          <label className="rounded-2xl border border-[#C4622D]/30 bg-[#C4622D]/5 p-4 flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={applyCredit}
+              onChange={(e) => setApplyCredit(e.target.checked)}
+              className="h-5 w-5 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
+            />
+            <div className="text-sm flex-1">
+              <p className="font-semibold text-foreground">
+                Apply €{REFERRAL_REWARD_EUR} referral credit
+              </p>
+              <p className="text-muted-foreground text-xs">
+                You have €{(availableCreditCents / 100).toFixed(0)} in credits. €{REFERRAL_REWARD_EUR} will be deducted from your bill at the studio.
+              </p>
+            </div>
+          </label>
+        )}
+
         {/* Totals */}
         <div className="rounded-2xl bg-secondary p-4 space-y-2 text-sm">
           {addOnPrice > 0 && (
             <div className="flex justify-between"><span>Add-ons</span><span className="font-semibold">€{addOnPrice}</span></div>
           )}
+          {creditToApply > 0 && (
+            <div className="flex justify-between text-[#C4622D]">
+              <span>Referral credit</span>
+              <span className="font-semibold">−€{creditToApply}</span>
+            </div>
+          )}
           <div className="flex justify-between text-base">
             <span className="font-semibold">Due today</span>
-            <span className="font-display font-bold text-primary text-xl">€{addOnPrice}</span>
+            <span className="font-display font-bold text-primary text-xl">€{dueToday}</span>
           </div>
-          <p className="text-xs text-muted-foreground pt-1">Massage paid directly to the studio on arrival.</p>
+          <p className="text-xs text-muted-foreground pt-1">
+            Massage paid directly to the studio on arrival.
+            {creditToApply > 0 && ` Show your confirmation to redeem €${creditToApply} off.`}
+          </p>
         </div>
+
       </div>
 
       <div className="px-6 py-4 border-t border-border bg-card">
