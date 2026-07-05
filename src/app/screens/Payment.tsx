@@ -58,6 +58,7 @@ export default function Payment() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
       const { data: p } = await supabase
         .from("profiles")
         .select("*")
@@ -77,9 +78,16 @@ export default function Payment() {
         email: user.email || stored?.email || "guest@massageclub.io",
         phone: p?.phone ?? "",
       });
+
+      // Load available referral credit (€5 each)
+      const credits = await getUnusedCredits(user.id);
+      const total = credits.reduce((s, c) => s + (c.amount_cents ?? 0), 0);
+      setAvailableCreditCents(total);
+      if (total > 0) setApplyCredit(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   if (!massage) return null;
 
