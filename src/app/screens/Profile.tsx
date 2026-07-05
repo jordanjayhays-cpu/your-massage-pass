@@ -2,8 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, LogOut, ArrowLeft, Camera, UserCircle } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2 } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import {
+  REFERRAL_REWARD_EUR,
+  getOrCreateReferralCode,
+  getUnusedCredits,
+} from "@/lib/referral";
+
 
 const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
