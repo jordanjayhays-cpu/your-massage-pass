@@ -495,11 +495,14 @@ export default function StudioBookingPage() {
 
         {/* Contact footer */}
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
-          {waDigits && (
-            <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
-              <MessageCircle size={14} /> WhatsApp
-            </a>
-          )}
+          {(() => {
+            const contactWa = studioWhatsappUrl((partner as any).whatsapp || partner.phone);
+            return contactWa && (
+              <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
+                <MessageCircle size={14} /> WhatsApp
+              </a>
+            );
+          })()}
           {partner.phone && (
             <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
               <Phone size={14} /> Call
