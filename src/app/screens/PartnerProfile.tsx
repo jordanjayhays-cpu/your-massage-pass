@@ -38,6 +38,7 @@ export default function PartnerProfile() {
     business_name: "",
     address: "",
     phone: "",
+    whatsapp: "",
     website: "",
     description: "",
     access_instructions: "",
