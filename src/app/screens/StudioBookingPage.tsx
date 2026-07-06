@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
+import { studioWhatsappUrl } from "@/app/lib/whatsapp";
 import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
   Phone, Instagram, MessageCircle, CalendarDays
@@ -157,15 +158,12 @@ export default function StudioBookingPage() {
   }
 
   const { partner } = profile;
-  const waDigits = (partner.phone || "").replace(/\D/g, "");
 
   // ─── Confirmation screen ───
   if (done) {
     const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
-    const waMsg = encodeURIComponent(
-      `Hi ${partner.business_name}! I just booked ${service?.name} on ${prettyDate} at ${time}. Name: ${name}. (Ref ${done.ref})`
-    );
-    const waLink = waDigits ? `https://wa.me/${waDigits}?text=${waMsg}` : null;
+    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
+    const waLink = studioWhatsappUrl((partner as any).whatsapp || partner.phone, waMsg);
     // Let the customer drop the appointment into their own calendar.
     const gcal = (() => {
       if (!date || !time || !service) return null;
@@ -497,11 +495,14 @@ export default function StudioBookingPage() {
 
         {/* Contact footer */}
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
-          {waDigits && (
-            <a href={`https://wa.me/${waDigits}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
-              <MessageCircle size={14} /> WhatsApp
-            </a>
-          )}
+          {(() => {
+            const contactWa = studioWhatsappUrl((partner as any).whatsapp || partner.phone);
+            return contactWa && (
+              <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
+                <MessageCircle size={14} /> WhatsApp
+              </a>
+            );
+          })()}
           {partner.phone && (
             <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
               <Phone size={14} /> Call

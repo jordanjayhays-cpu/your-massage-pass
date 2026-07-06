@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, Check, Star, Wallet } from "lucide-react";
+import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, Check, Star, Wallet, MessageCircle } from "lucide-react";
+import { studioWhatsappUrl } from "../lib/whatsapp";
 import { googleReviewUrl } from "../lib/googleReview";
 import { googleCalendarUrl } from "../lib/calendarLink";
 import { Button } from "@/components/ui/button";
@@ -213,6 +214,26 @@ export default function Payment() {
             Leave a Google review ⭐
           </a>
         </div>
+
+        {/* WhatsApp the studio */}
+        {(() => {
+          const waLink = studioWhatsappUrl(
+            (massage as any).whatsapp,
+            `¡Hola ${massage.studio}! Acabo de reservar ${massage.name} para el ${dateLabel} a las ${booking.time} a través de Massage Club. Soy ${contact.name}. ¡Nos vemos! 🙏`
+          );
+          return waLink && (
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex items-center justify-center gap-2 w-full h-12 rounded-full text-white font-semibold shadow-elegant hover:opacity-90 transition"
+              style={{ backgroundColor: "#25D366" }}
+            >
+              <MessageCircle className="h-5 w-5" />
+              💬 Message {massage.studio} on WhatsApp
+            </a>
+          );
+        })()}
 
         {/* Add to calendar */}
         {booking.date && booking.time && (

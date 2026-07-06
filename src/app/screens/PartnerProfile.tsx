@@ -38,6 +38,7 @@ export default function PartnerProfile() {
     business_name: "",
     address: "",
     phone: "",
+    whatsapp: "",
     website: "",
     description: "",
     access_instructions: "",
@@ -52,7 +53,7 @@ export default function PartnerProfile() {
       if (!user) return;
       const { data } = await supabase
         .from("partners")
-        .select("business_name, address, phone, website, description, access_instructions, city, country")
+        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
@@ -61,6 +62,7 @@ export default function PartnerProfile() {
           business_name: data.business_name ?? "",
           address: data.address ?? "",
           phone: data.phone ?? "",
+          whatsapp: (data as any).whatsapp ?? "",
           website: data.website ?? "",
           description: data.description ?? "",
           access_instructions: data.access_instructions ?? "",
@@ -146,6 +148,7 @@ export default function PartnerProfile() {
       business_name: form.business_name,
       address: form.address,
       phone: form.phone,
+      whatsapp: form.whatsapp,
       website: form.website,
       description: form.description,
       access_instructions: form.access_instructions,
@@ -258,6 +261,20 @@ export default function PartnerProfile() {
                 </div>
               </div>
             ))}
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">WhatsApp number (optional)</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#25D366]" />
+                <Input
+                  value={form.whatsapp}
+                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                  placeholder="+34 6XX XXX XXX"
+                  className="pl-10 h-11"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">Leave blank to use your phone number.</p>
+            </div>
 
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Description (for customers)</label>
