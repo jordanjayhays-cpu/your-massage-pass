@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
+import { studioWhatsappUrl } from "@/app/lib/whatsapp";
 import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
   Phone, Instagram, MessageCircle, CalendarDays
