@@ -263,6 +263,20 @@ export default function PartnerProfile() {
             ))}
 
             <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">WhatsApp number (optional)</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#25D366]" />
+                <Input
+                  value={form.whatsapp}
+                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                  placeholder="+34 6XX XXX XXX"
+                  className="pl-10 h-11"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">Leave blank to use your phone number.</p>
+            </div>
+
+            <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Description (for customers)</label>
               <textarea
                 value={form.description}
