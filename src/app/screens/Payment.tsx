@@ -234,7 +234,6 @@ export default function Payment() {
             </a>
           );
         })()}
-        </div>
 
         {/* Add to calendar */}
         {booking.date && booking.time && (
