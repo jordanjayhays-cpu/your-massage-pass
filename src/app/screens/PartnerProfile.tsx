@@ -148,6 +148,7 @@ export default function PartnerProfile() {
       business_name: form.business_name,
       address: form.address,
       phone: form.phone,
+      whatsapp: form.whatsapp,
       website: form.website,
       description: form.description,
       access_instructions: form.access_instructions,
