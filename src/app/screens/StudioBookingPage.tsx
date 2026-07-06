@@ -158,15 +158,12 @@ export default function StudioBookingPage() {
   }
 
   const { partner } = profile;
-  const waDigits = (partner.phone || "").replace(/\D/g, "");
 
   // ─── Confirmation screen ───
   if (done) {
     const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
-    const waMsg = encodeURIComponent(
-      `Hi ${partner.business_name}! I just booked ${service?.name} on ${prettyDate} at ${time}. Name: ${name}. (Ref ${done.ref})`
-    );
-    const waLink = waDigits ? `https://wa.me/${waDigits}?text=${waMsg}` : null;
+    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
+    const waLink = studioWhatsappUrl((partner as any).whatsapp || partner.phone, waMsg);
     // Let the customer drop the appointment into their own calendar.
     const gcal = (() => {
       if (!date || !time || !service) return null;
