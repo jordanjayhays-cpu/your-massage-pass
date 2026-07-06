@@ -53,7 +53,7 @@ export default function PartnerProfile() {
       if (!user) return;
       const { data } = await supabase
         .from("partners")
-        .select("business_name, address, phone, website, description, access_instructions, city, country")
+        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
@@ -62,6 +62,7 @@ export default function PartnerProfile() {
           business_name: data.business_name ?? "",
           address: data.address ?? "",
           phone: data.phone ?? "",
+          whatsapp: (data as any).whatsapp ?? "",
           website: data.website ?? "",
           description: data.description ?? "",
           access_instructions: data.access_instructions ?? "",
