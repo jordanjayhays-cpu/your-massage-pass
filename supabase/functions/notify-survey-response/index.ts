@@ -61,7 +61,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: Deno.env.get("FROM_EMAIL") ?? "Massage Club <support@massageclub.io>",
-        to: "jordanjayhays@gmail.com",
+        to: "jordan.hays@student.ie.edu",
         subject: `New ${kind} survey response`,
         html,
       }),
