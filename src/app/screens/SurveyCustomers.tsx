@@ -186,7 +186,7 @@ export default function SurveyCustomers() {
     );
   }
 
-  const answered = Object.keys(answers).length;
+  const answered = QUESTIONS.filter(isAnswered).length;
   const progress = Math.round((answered / QUESTIONS.length) * 100);
 
   return (
@@ -206,19 +206,25 @@ export default function SurveyCustomers() {
         </div>
 
         <div className="space-y-8">
-          {QUESTIONS.map((q, i) => (
+          {QUESTIONS.map((q, i) => {
+            const isMulti = MULTI_KEYS.has(q.key);
+            return (
             <div key={q.key}>
-              <p style={serif} className="text-xl mb-3">
+              <p style={serif} className="text-xl mb-1">
                 <span className="text-[#E0A458] mr-2">{String(i + 1).padStart(2, "0")}</span>
                 {q.question}
               </p>
+              {isMulti && (
+                <p className="text-xs text-[#7A7068] mb-3">(choose all that apply)</p>
+              )}
+              {!isMulti && <div className="mb-3" />}
               <div className="flex flex-wrap gap-2">
                 {q.options.map((opt) => {
-                  const selected = answers[q.key] === opt.value;
+                  const selected = isSelected(q, opt.value);
                   return (
                     <button
                       key={opt.value}
-                      onClick={() => setAnswers({ ...answers, [q.key]: opt.value })}
+                      onClick={() => toggle(q, opt.value)}
                       className="px-4 py-2 rounded-full text-sm border transition"
                       style={{
                         background: selected ? "#C4622D" : "#FFFFFF",
