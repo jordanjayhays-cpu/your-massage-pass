@@ -143,6 +143,13 @@ export default function SurveyStudios() {
       alert("Algo salió mal. Inténtalo de nuevo.");
       return;
     }
+    try {
+      await supabase.functions.invoke("notify-survey-response", {
+        body: { record: { survey_type: "b2b", answers: payloadAnswers, contact, source } },
+      });
+    } catch (e) {
+      console.error("notify failed", e);
+    }
     setDone(true);
   };
 

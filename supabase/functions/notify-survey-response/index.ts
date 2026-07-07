@@ -60,7 +60,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Massage Club <onboarding@resend.dev>",
+        from: Deno.env.get("FROM_EMAIL") ?? "Massage Club <support@massageclub.io>",
         to: "jordanjayhays@gmail.com",
         subject: `New ${kind} survey response`,
         html,
