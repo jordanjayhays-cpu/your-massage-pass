@@ -14,68 +14,94 @@ const QUESTIONS: Q[] = [
     options: [
       { value: "expat", label: "Expat living in Madrid" },
       { value: "digital_nomad", label: "Digital nomad" },
-      { value: "tourist", label: "Tourist visiting" },
+      { value: "tourist", label: "Tourist visiting Madrid" },
       { value: "local", label: "Local resident" },
+      { value: "student", label: "Student in Madrid" },
+      { value: "other", label: "Other" },
     ],
   },
   {
     key: "last_massage",
-    question: "When did you last get a massage in Madrid?",
+    question: "When did you last get a professional massage in Madrid?",
     options: [
       { value: "never", label: "Never" },
-      { value: "six_months_plus", label: "6+ months ago" },
+      { value: "last_30_days", label: "In the last 30 days" },
       { value: "recent_months", label: "In the last few months" },
-      { value: "monthly_plus", label: "Monthly or more" },
-    ],
-  },
-  {
-    key: "frustration",
-    question: "Biggest frustration when booking a massage here?",
-    options: [
-      { value: "trust", label: "Finding a trustworthy place" },
-      { value: "english", label: "Booking in English" },
-      { value: "prices", label: "Knowing real prices" },
-      { value: "availability", label: "Availability & scheduling" },
-      { value: "none", label: "I have no frustration" },
+      { value: "six_months_plus", label: "6+ months ago" },
+      { value: "monthly_plus", label: "I get massages monthly or more" },
     ],
   },
   {
     key: "channel",
-    question: "How do you find massages now?",
+    question: "How do you currently find or book massages in Madrid?",
     options: [
       { value: "google_maps", label: "Google Maps" },
       { value: "instagram", label: "Instagram" },
-      { value: "treatwell_booksy", label: "Treatwell/Booksy" },
-      { value: "word_of_mouth", label: "Hotel or word of mouth" },
-      { value: "dont", label: "I don't" },
+      { value: "treatwell_booksy", label: "Treatwell / Booksy" },
+      { value: "hotel", label: "Hotel recommendation" },
+      { value: "word_of_mouth", label: "Word of mouth" },
+      { value: "whatsapp_dm", label: "WhatsApp / direct message" },
+      { value: "dont", label: "I don't currently book massages" },
     ],
   },
   {
-    key: "language",
-    question: "Would you rather book in…",
+    key: "frustration",
+    question: "What is your biggest frustration when trying to book a massage here?",
     options: [
-      { value: "english", label: "English" },
-      { value: "spanish", label: "Spanish" },
-      { value: "either", label: "Either" },
+      { value: "trust", label: "Finding a trustworthy place" },
+      { value: "english", label: "Booking in English" },
+      { value: "prices", label: "Knowing the real price before booking" },
+      { value: "availability", label: "Finding availability soon" },
+      { value: "which_type", label: "Not knowing which massage type to choose" },
+      { value: "too_expensive", label: "Prices feel too high" },
+      { value: "none", label: "I have no frustration" },
+    ],
+  },
+  {
+    key: "place",
+    question: "Where would you prefer to get a massage?",
+    options: [
+      { value: "home", label: "At my apartment / home" },
+      { value: "hotel", label: "At my hotel" },
+      { value: "studio", label: "At a massage studio or spa" },
+      { value: "gym", label: "At a gym / wellness center" },
+      { value: "no_preference", label: "No preference" },
+    ],
+  },
+  {
+    key: "priority",
+    question: "What matters most when choosing a massage provider?",
+    options: [
+      { value: "reviews", label: "Top reviews" },
+      { value: "clear_prices", label: "Clear prices" },
+      { value: "english_booking", label: "English-speaking booking" },
+      { value: "same_day", label: "Same-day availability" },
+      { value: "licensed", label: "Licensed or certified therapist" },
+      { value: "proximity", label: "Close to me" },
+      { value: "clean_space", label: "Clean and professional space" },
+      { value: "easy_payment", label: "Easy online payment" },
     ],
   },
   {
     key: "budget",
-    question: "What would you typically pay for a 60-min massage?",
+    question: "What would you typically pay for a 60-minute massage in Madrid?",
     options: [
       { value: "under_40", label: "Under €40" },
       { value: "40_60", label: "€40–60" },
-      { value: "60_90", label: "€60–90" },
-      { value: "90_plus", label: "€90+" },
+      { value: "60_80", label: "€60–80" },
+      { value: "80_100", label: "€80–100" },
+      { value: "100_plus", label: "€100+" },
     ],
   },
   {
     key: "intent",
-    question: "If you could book a top-rated massage near you in under a minute, how likely would you use it?",
+    question: "If you could book a top-rated massage near you in under 60 seconds, how likely would you be to use it?",
     options: [
       { value: "definitely", label: "Definitely" },
       { value: "probably", label: "Probably" },
+      { value: "maybe", label: "Maybe" },
       { value: "probably_not", label: "Probably not" },
+      { value: "no", label: "No" },
     ],
   },
 ];
@@ -145,8 +171,8 @@ export default function SurveyCustomers() {
       <link href={FONT_CSS} rel="stylesheet" />
       <div className="max-w-xl mx-auto px-5 py-10">
         <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">Madrid · Quick survey</p>
-        <h1 style={serif} className="text-4xl leading-[1.05] mb-2">Help shape the best massage app in Madrid.</h1>
-        <p className="text-[#7A7068] mb-6">7 quick questions. Takes 60 seconds.</p>
+        <h1 style={serif} className="text-4xl leading-[1.05] mb-2">Help shape the easiest way to book a massage in Madrid.</h1>
+        <p className="text-[#7A7068] mb-6">8 quick questions. Takes 60 seconds.</p>
 
         {/* progress */}
         <div className="h-1.5 rounded-full bg-[#E5DDD3] mb-8 overflow-hidden">
