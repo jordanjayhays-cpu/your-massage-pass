@@ -93,6 +93,7 @@ export default function SurveyStudios() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [studio, setStudio] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -103,8 +104,12 @@ export default function SurveyStudios() {
     if (!canSubmit) return;
     setSubmitting(true);
     const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" — ") || null;
+    const payloadAnswers: Record<string, string> = { ...answers };
+    if (comments.trim()) {
+      payloadAnswers.comments = comments.trim();
+    }
     const { error } = await supabase.from("validation_responses").insert([
-      { survey_type: "b2b", answers, contact },
+      { survey_type: "b2b", answers: payloadAnswers, contact },
     ]);
     setSubmitting(false);
     if (error) {
@@ -192,6 +197,17 @@ export default function SurveyStudios() {
               )}
             </div>
           ))}
+
+          <div>
+            <p style={serif} className="text-xl mb-3">¿Algo más? (opcional)</p>
+            <textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="Cuéntanos lo que quieras — ideas, dudas, lo que sea."
+              rows={3}
+              className="w-full rounded-xl bg-white border border-[#E5DDD3] p-3 placeholder:text-[#9E9387]"
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div>
