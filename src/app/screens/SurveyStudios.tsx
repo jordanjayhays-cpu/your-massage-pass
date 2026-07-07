@@ -198,6 +198,17 @@ export default function SurveyStudios() {
             </div>
           ))}
 
+          <div>
+            <p style={serif} className="text-xl mb-3">¿Algo más? (opcional)</p>
+            <textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="Cuéntanos lo que quieras — ideas, dudas, lo que sea."
+              rows={3}
+              className="w-full rounded-xl bg-white border border-[#E5DDD3] p-3 placeholder:text-[#9E9387]"
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div>
               <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Nombre del estudio</label>

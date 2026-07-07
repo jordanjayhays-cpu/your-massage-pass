@@ -186,6 +186,17 @@ export default function SurveyCustomers() {
           ))}
 
           <div>
+            <p style={serif} className="text-xl mb-3">Anything else? (optional)</p>
+            <textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="Tell us anything — what would make this amazing for you?"
+              rows={3}
+              className="w-full rounded-xl bg-white border border-[#E5DDD3] p-3 placeholder:text-[#9E9387]"
+            />
+          </div>
+
+          <div>
             <p style={serif} className="text-xl mb-3">Leave your email for early access ✨</p>
             <input
               type="email"
