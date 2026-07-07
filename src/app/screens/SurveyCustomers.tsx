@@ -238,7 +238,8 @@ export default function SurveyCustomers() {
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           <div>
             <p style={serif} className="text-xl mb-3">Anything else? (optional)</p>
