@@ -20,6 +20,7 @@ type ValRow = {
   answers: Record<string, any>;
   email?: string | null;
   contact?: string | null;
+  source?: string | null;
   created_at: string;
 };
 
@@ -87,6 +88,7 @@ export default function FounderDashboard() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [validation, setValidation] = useState<ValRow[]>([]);
   const [expanded, setExpanded] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<string>("__all__");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -181,8 +183,19 @@ export default function FounderDashboard() {
     bookingsByPartner[key] = (bookingsByPartner[key] || 0) + 1;
   }
 
-  const b2c = validation.filter((v) => v.survey_type === "b2c");
-  const b2b = validation.filter((v) => v.survey_type === "b2b");
+  // Source filter
+  const sourceCounts: Record<string, number> = {};
+  for (const v of validation) {
+    const s = (v.source && v.source.trim()) || "direct";
+    sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+  }
+  const sourceOptions = Object.keys(sourceCounts).sort((a, b) => sourceCounts[b] - sourceCounts[a]);
+  const filteredValidation = sourceFilter === "__all__"
+    ? validation
+    : validation.filter((v) => ((v.source && v.source.trim()) || "direct") === sourceFilter);
+
+  const b2c = filteredValidation.filter((v) => v.survey_type === "b2c");
+  const b2b = filteredValidation.filter((v) => v.survey_type === "b2b");
 
   const freq = (rows: ValRow[], key: string) => {
     const map: Record<string, number> = {};
@@ -272,6 +285,30 @@ export default function FounderDashboard() {
               <Stat label="B2B responses" value={b2b.length} />
             </div>
 
+            <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2">Source</p>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {(["__all__", ...sourceOptions]).map((s) => {
+                const selected = sourceFilter === s;
+                const label = s === "__all__" ? "All" : s;
+                const count = s === "__all__" ? validation.length : (sourceCounts[s] || 0);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setSourceFilter(s)}
+                    className="px-3 py-1.5 rounded-full text-xs border transition"
+                    style={{
+                      background: selected ? "#C4622D" : "#FFFFFF",
+                      color: selected ? "#F7F4F0" : "#211C1A",
+                      borderColor: selected ? "#C4622D" : "#E5DDD3",
+                    }}
+                  >
+                    {label} · {count}
+                  </button>
+                );
+              })}
+            </div>
+
+
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-3">B2C — customers</p>
@@ -309,12 +346,12 @@ export default function FounderDashboard() {
               onClick={() => setExpanded((e) => !e)}
               className="mt-4 text-sm text-[#C4622D] font-medium"
             >
-              {expanded ? "Hide" : "Show"} all responses ({validation.length})
+              {expanded ? "Hide" : "Show"} all responses ({filteredValidation.length})
             </button>
 
             {expanded && (
               <div className="mt-4 space-y-3">
-                {validation.map((r) => (
+                {filteredValidation.map((r) => (
                   <div key={r.id} className="rounded-xl border border-[#E5DDD3] bg-[#FBF8F4] p-4 text-sm">
                     <div className="flex items-center gap-2 mb-2">
                       <span
@@ -325,6 +362,9 @@ export default function FounderDashboard() {
                         }}
                       >
                         {r.survey_type}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest bg-[#F0E7DB] text-[#211C1A]">
+                        {(r.source && r.source.trim()) || "direct"}
                       </span>
                       <span className="text-[#7A7068] text-xs">{new Date(r.created_at).toLocaleString()}</span>
                       {r.email && <span className="text-[#C4622D] text-xs ml-auto">{r.email}</span>}

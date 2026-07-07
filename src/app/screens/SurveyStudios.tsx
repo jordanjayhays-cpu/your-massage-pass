@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
@@ -92,6 +93,8 @@ const QUESTIONS: Q[] = [
 const MULTI_KEYS = new Set(["booking_channel", "pain"]);
 
 export default function SurveyStudios() {
+  const [searchParams] = useSearchParams();
+  const source = (searchParams.get("src") || "").trim() || "direct";
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [studio, setStudio] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -132,7 +135,7 @@ export default function SurveyStudios() {
       payloadAnswers.comments = comments.trim();
     }
     const { error } = await supabase.from("validation_responses").insert([
-      { survey_type: "b2b", answers: payloadAnswers, contact },
+      { survey_type: "b2b", answers: payloadAnswers, contact, source },
     ]);
     setSubmitting(false);
     if (error) {
