@@ -89,8 +89,10 @@ const QUESTIONS: Q[] = [
   },
 ];
 
+const MULTI_KEYS = new Set(["booking_channel", "pain"]);
+
 export default function SurveyStudios() {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [studio, setStudio] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [comments, setComments] = useState("");
@@ -98,13 +100,34 @@ export default function SurveyStudios() {
   const [done, setDone] = useState(false);
 
   const choiceQs = QUESTIONS.filter((q) => q.type === "choice") as ChoiceQ[];
-  const canSubmit = choiceQs.every((q) => answers[q.key]);
+  const isAnswered = (q: ChoiceQ) => {
+    const v = answers[q.key];
+    if (Array.isArray(v)) return v.length > 0;
+    return !!v;
+  };
+  const canSubmit = choiceQs.every(isAnswered);
+
+  const toggle = (q: ChoiceQ, value: string) => {
+    if (MULTI_KEYS.has(q.key)) {
+      const cur = (answers[q.key] as string[] | undefined) || [];
+      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+      setAnswers({ ...answers, [q.key]: next });
+    } else {
+      setAnswers({ ...answers, [q.key]: value });
+    }
+  };
+
+  const isSelected = (q: ChoiceQ, value: string) => {
+    const v = answers[q.key];
+    if (Array.isArray(v)) return v.includes(value);
+    return v === value;
+  };
 
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" — ") || null;
-    const payloadAnswers: Record<string, string> = { ...answers };
+    const payloadAnswers: Record<string, string | string[]> = { ...answers };
     if (comments.trim()) {
       payloadAnswers.comments = comments.trim();
     }
@@ -160,20 +183,27 @@ export default function SurveyStudios() {
         </div>
 
         <div className="space-y-8">
-          {QUESTIONS.map((q, i) => (
+          {QUESTIONS.map((q, i) => {
+            const isMulti = q.type === "choice" && MULTI_KEYS.has(q.key);
+            return (
             <div key={q.key}>
-              <p style={serif} className="text-xl mb-3">
+              <p style={serif} className="text-xl mb-1">
                 <span className="text-[#E0A458] mr-2">{String(i + 1).padStart(2, "0")}</span>
                 {q.question}
               </p>
+              {isMulti ? (
+                <p className="text-xs text-[#7A7068] mb-3">(elige todas las que apliquen)</p>
+              ) : (
+                <div className="mb-3" />
+              )}
               {q.type === "choice" ? (
                 <div className="flex flex-wrap gap-2">
                   {q.options.map((opt) => {
-                    const selected = answers[q.key] === opt.value;
+                    const selected = isSelected(q, opt.value);
                     return (
                       <button
                         key={opt.value}
-                        onClick={() => setAnswers({ ...answers, [q.key]: opt.value })}
+                        onClick={() => toggle(q, opt.value)}
                         className="px-4 py-2 rounded-full text-sm border transition"
                         style={{
                           background: selected ? "#C4622D" : "#FFFFFF",
@@ -188,7 +218,7 @@ export default function SurveyStudios() {
                 </div>
               ) : (
                 <textarea
-                  value={answers[q.key] || ""}
+                  value={(answers[q.key] as string) || ""}
                   onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })}
                   placeholder={q.placeholder}
                   rows={3}
@@ -196,7 +226,8 @@ export default function SurveyStudios() {
                 />
               )}
             </div>
-          ))}
+            );
+          })}
 
           <div>
             <p style={serif} className="text-xl mb-3">¿Algo más? (opcional)</p>
