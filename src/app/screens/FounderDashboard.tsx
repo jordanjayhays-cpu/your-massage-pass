@@ -277,7 +277,7 @@ export default function FounderDashboard() {
               </div>
               <div>
                 <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-3">B2B — studios</p>
-                {B2B_CHOICE_KEYS.map((k) => {
+                {collectKeys(b2b).map((k) => {
                   const rows = freq(b2b, k);
                   const total = rows.reduce((s, [, c]) => s + c, 0);
                   return (
