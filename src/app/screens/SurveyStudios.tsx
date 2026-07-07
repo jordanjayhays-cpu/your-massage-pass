@@ -89,8 +89,10 @@ const QUESTIONS: Q[] = [
   },
 ];
 
+const MULTI_KEYS = new Set(["booking_channel", "pain"]);
+
 export default function SurveyStudios() {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [studio, setStudio] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [comments, setComments] = useState("");
@@ -98,13 +100,34 @@ export default function SurveyStudios() {
   const [done, setDone] = useState(false);
 
   const choiceQs = QUESTIONS.filter((q) => q.type === "choice") as ChoiceQ[];
-  const canSubmit = choiceQs.every((q) => answers[q.key]);
+  const isAnswered = (q: ChoiceQ) => {
+    const v = answers[q.key];
+    if (Array.isArray(v)) return v.length > 0;
+    return !!v;
+  };
+  const canSubmit = choiceQs.every(isAnswered);
+
+  const toggle = (q: ChoiceQ, value: string) => {
+    if (MULTI_KEYS.has(q.key)) {
+      const cur = (answers[q.key] as string[] | undefined) || [];
+      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+      setAnswers({ ...answers, [q.key]: next });
+    } else {
+      setAnswers({ ...answers, [q.key]: value });
+    }
+  };
+
+  const isSelected = (q: ChoiceQ, value: string) => {
+    const v = answers[q.key];
+    if (Array.isArray(v)) return v.includes(value);
+    return v === value;
+  };
 
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" — ") || null;
-    const payloadAnswers: Record<string, string> = { ...answers };
+    const payloadAnswers: Record<string, string | string[]> = { ...answers };
     if (comments.trim()) {
       payloadAnswers.comments = comments.trim();
     }
