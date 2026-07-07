@@ -84,6 +84,7 @@ export default function SurveyCustomers() {
   const navigate = useNavigate();
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
+  const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -92,8 +93,12 @@ export default function SurveyCustomers() {
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
+    const payloadAnswers: Record<string, string> = { ...answers };
+    if (comments.trim()) {
+      payloadAnswers.comments = comments.trim();
+    }
     const { error } = await supabase.from("validation_responses").insert([
-      { survey_type: "b2c", answers, email: email.trim() || null },
+      { survey_type: "b2c", answers: payloadAnswers, email: email.trim() || null },
     ]);
     setSubmitting(false);
     if (error) {

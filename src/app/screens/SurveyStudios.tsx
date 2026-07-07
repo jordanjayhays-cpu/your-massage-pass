@@ -93,6 +93,7 @@ export default function SurveyStudios() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [studio, setStudio] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -103,8 +104,12 @@ export default function SurveyStudios() {
     if (!canSubmit) return;
     setSubmitting(true);
     const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" — ") || null;
+    const payloadAnswers: Record<string, string> = { ...answers };
+    if (comments.trim()) {
+      payloadAnswers.comments = comments.trim();
+    }
     const { error } = await supabase.from("validation_responses").insert([
-      { survey_type: "b2b", answers, contact },
+      { survey_type: "b2b", answers: payloadAnswers, contact },
     ]);
     setSubmitting(false);
     if (error) {
