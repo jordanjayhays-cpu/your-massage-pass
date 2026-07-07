@@ -188,10 +188,23 @@ export default function FounderDashboard() {
     const map: Record<string, number> = {};
     for (const r of rows) {
       const v = r.answers?.[key];
-      if (!v || typeof v !== "string") continue;
-      map[v] = (map[v] || 0) + 1;
+      if (v == null) continue;
+      if (Array.isArray(v)) {
+        for (const item of v) {
+          if (typeof item !== "string" || !item) continue;
+          map[item] = (map[item] || 0) + 1;
+        }
+      } else if (typeof v === "string" && v) {
+        map[v] = (map[v] || 0) + 1;
+      }
     }
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  };
+
+  const formatAnswers = (obj: Record<string, any>) => {
+    return Object.entries(obj)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+      .join("\n");
   };
 
   return (
