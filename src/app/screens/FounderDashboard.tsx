@@ -262,7 +262,7 @@ export default function FounderDashboard() {
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-3">B2C — customers</p>
-                {B2C_CHOICE_KEYS.map((k) => {
+                {collectKeys(b2c).map((k) => {
                   const rows = freq(b2c, k);
                   const total = rows.reduce((s, [, c]) => s + c, 0);
                   return (
