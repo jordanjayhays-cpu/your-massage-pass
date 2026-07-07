@@ -363,6 +363,9 @@ export default function FounderDashboard() {
                       >
                         {r.survey_type}
                       </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest bg-[#F0E7DB] text-[#211C1A]">
+                        {(r.source && r.source.trim()) || "direct"}
+                      </span>
                       <span className="text-[#7A7068] text-xs">{new Date(r.created_at).toLocaleString()}</span>
                       {r.email && <span className="text-[#C4622D] text-xs ml-auto">{r.email}</span>}
                       {r.contact && <span className="text-[#C4622D] text-xs ml-auto">{r.contact}</span>}
