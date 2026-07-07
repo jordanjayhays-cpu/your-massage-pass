@@ -20,6 +20,7 @@ type ValRow = {
   answers: Record<string, any>;
   email?: string | null;
   contact?: string | null;
+  source?: string | null;
   created_at: string;
 };
 
@@ -87,6 +88,7 @@ export default function FounderDashboard() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [validation, setValidation] = useState<ValRow[]>([]);
   const [expanded, setExpanded] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<string>("__all__");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -181,8 +183,19 @@ export default function FounderDashboard() {
     bookingsByPartner[key] = (bookingsByPartner[key] || 0) + 1;
   }
 
-  const b2c = validation.filter((v) => v.survey_type === "b2c");
-  const b2b = validation.filter((v) => v.survey_type === "b2b");
+  // Source filter
+  const sourceCounts: Record<string, number> = {};
+  for (const v of validation) {
+    const s = (v.source && v.source.trim()) || "direct";
+    sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+  }
+  const sourceOptions = Object.keys(sourceCounts).sort((a, b) => sourceCounts[b] - sourceCounts[a]);
+  const filteredValidation = sourceFilter === "__all__"
+    ? validation
+    : validation.filter((v) => ((v.source && v.source.trim()) || "direct") === sourceFilter);
+
+  const b2c = filteredValidation.filter((v) => v.survey_type === "b2c");
+  const b2b = filteredValidation.filter((v) => v.survey_type === "b2b");
 
   const freq = (rows: ValRow[], key: string) => {
     const map: Record<string, number> = {};
