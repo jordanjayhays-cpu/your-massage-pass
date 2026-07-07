@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
@@ -110,6 +110,8 @@ const MULTI_KEYS = new Set(["segment", "channel", "frustration", "place", "prior
 
 export default function SurveyCustomers() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const source = (searchParams.get("src") || "").trim() || "direct";
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [email, setEmail] = useState("");
   const [comments, setComments] = useState("");
@@ -147,7 +149,7 @@ export default function SurveyCustomers() {
       payloadAnswers.comments = comments.trim();
     }
     const { error } = await supabase.from("validation_responses").insert([
-      { survey_type: "b2c", answers: payloadAnswers, email: email.trim() || null },
+      { survey_type: "b2c", answers: payloadAnswers, email: email.trim() || null, source },
     ]);
     setSubmitting(false);
     if (error) {
