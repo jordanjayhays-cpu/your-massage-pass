@@ -120,7 +120,7 @@ export default function FounderDashboard() {
   }, []);
 
   const email = session?.user?.email;
-  const isFounder = !!email && email.toLowerCase() === FOUNDER_EMAIL;
+  const isFounder = !!email && FOUNDER_EMAILS.includes(email.toLowerCase());
 
   useEffect(() => {
     if (!isFounder) return;
