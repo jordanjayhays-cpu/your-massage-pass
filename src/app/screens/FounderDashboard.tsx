@@ -36,6 +36,23 @@ function collectKeys(rows: ValRow[]): string[] {
   return Array.from(set);
 }
 
+const ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
+
+const LINK_GROUPS = [
+  { group: "Customer survey (B2C)", path: "/survey/customers", items: [
+    { label: "IE classmates", tag: "ie" },
+    { label: "Expat Facebook", tag: "fbexpat" },
+    { label: "Digital nomads", tag: "nomad" },
+    { label: "Tourists", tag: "tourist" },
+    { label: "Instagram", tag: "ig" },
+    { label: "Plain link (no tag)", tag: "" },
+  ]},
+  { group: "Studio survey (B2B)", path: "/survey/studios", items: [
+    { label: "Studios — in person", tag: "studio" },
+    { label: "Studios — Instagram", tag: "ig" },
+    { label: "Plain link (no tag)", tag: "" },
+  ]},
+];
 
 const serif = { fontFamily: "'Fraunces', serif" };
 const shellStyle: React.CSSProperties = {
@@ -236,6 +253,43 @@ export default function FounderDashboard() {
         </div>
 
         <div className="space-y-6">
+          <Card title="Your links">
+            <p className="text-sm text-[#7A7068] mb-4">Copy a link and share it. The tag on the end records which audience it came from — nobody filling it out sees it.</p>
+            {LINK_GROUPS.map((g) => (
+              <div key={g.group} className="mb-5">
+                <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2">{g.group}</p>
+                <div className="space-y-2">
+                  {g.items.map((it) => {
+                    const url = ORIGIN + g.path + (it.tag ? `?src=${it.tag}` : "");
+                    return (
+                      <div key={it.label} className="flex items-center gap-3 flex-wrap rounded-2xl border border-[#E5DDD3] bg-white px-3 py-2">
+                        <span className="text-sm font-medium min-w-[130px]">{it.label}</span>
+                        <span className="text-xs text-[#7A7068] font-mono truncate flex-1 min-w-[120px]">{url}</span>
+                        <button
+                          onClick={() => { navigator.clipboard?.writeText(url); }}
+                          className="text-xs font-semibold px-3 h-8 rounded-full text-white"
+                          style={{ background: "#C4622D" }}
+                        >Copy</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2">Dashboard</p>
+              <div className="flex items-center gap-3 flex-wrap rounded-2xl border border-[#E5DDD3] bg-white px-3 py-2">
+                <span className="text-sm font-medium min-w-[130px]">Founder dashboard</span>
+                <span className="text-xs text-[#7A7068] font-mono truncate flex-1 min-w-[120px]">{ORIGIN + "/founder"}</span>
+                <button
+                  onClick={() => { navigator.clipboard?.writeText(ORIGIN + "/founder"); }}
+                  className="text-xs font-semibold px-3 h-8 rounded-full text-white"
+                  style={{ background: "#C4622D" }}
+                >Copy</button>
+              </div>
+            </div>
+          </Card>
+
           <Card title="Demand">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-6">
               <Stat label="Profiles" value={profileCount ?? "—"} />
