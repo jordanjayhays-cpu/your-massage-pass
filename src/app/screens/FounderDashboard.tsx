@@ -331,7 +331,7 @@ export default function FounderDashboard() {
                       {r.contact && <span className="text-[#C4622D] text-xs ml-auto">{r.contact}</span>}
                     </div>
                     <pre className="whitespace-pre-wrap text-xs text-[#211C1A] font-mono leading-relaxed">
-{JSON.stringify(r.answers, null, 2)}
+{formatAnswers(r.answers || {})}
                     </pre>
                   </div>
                 ))}
