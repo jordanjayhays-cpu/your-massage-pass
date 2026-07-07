@@ -23,6 +23,9 @@ import PartnerServices from "./app/screens/PartnerServices";
 import PartnerCalendar from "./app/screens/PartnerCalendar";
 import PartnerConnectCalendar from "./app/screens/PartnerConnectCalendar";
 import Survey from "./app/screens/Survey";
+import SurveyCustomers from "./app/screens/SurveyCustomers";
+import SurveyStudios from "./app/screens/SurveyStudios";
+import FounderDashboard from "./app/screens/FounderDashboard";
 import AdminInviteStudio from "./app/screens/AdminInviteStudio";
 import StudioSetup from "./app/screens/StudioSetup";
 import StudioPortal from "./app/screens/StudioPortal";
@@ -82,6 +85,9 @@ const App = () => (
           <Route path="/partner/photos" element={<PartnerPhotos />} />
           <Route path="/partner/clients" element={<PartnerClients />} />
           <Route path="/survey" element={<Survey />} />
+          <Route path="/survey/customers" element={<SurveyCustomers />} />
+          <Route path="/survey/studios" element={<SurveyStudios />} />
+          <Route path="/founder" element={<FounderDashboard />} />
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
           <Route path="/s/:studioId" element={<StudioBookingPage />} />
           <Route path="/book/:studioId" element={<StudioBookingPage />} />
