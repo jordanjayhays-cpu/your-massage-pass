@@ -157,6 +157,13 @@ export default function SurveyCustomers() {
       alert("Something went wrong. Please try again.");
       return;
     }
+    try {
+      await supabase.functions.invoke("notify-survey-response", {
+        body: { record: { survey_type: "b2c", answers: payloadAnswers, email: email.trim() || null, source } },
+      });
+    } catch (e) {
+      console.error("notify failed", e);
+    }
     setDone(true);
   };
 
