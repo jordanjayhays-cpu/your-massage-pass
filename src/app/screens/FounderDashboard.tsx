@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
-const FOUNDER_EMAIL = "jordan.hays@student.ie.edu";
+const FOUNDER_EMAILS = [
+  "jordan.hays@student.ie.edu",
+  "jordanjayhays@gmail.com",
+];
 
 type Booking = {
   id: number | string;
@@ -117,7 +120,7 @@ export default function FounderDashboard() {
   }, []);
 
   const email = session?.user?.email;
-  const isFounder = !!email && email.toLowerCase() === FOUNDER_EMAIL;
+  const isFounder = !!email && FOUNDER_EMAILS.includes(email.toLowerCase());
 
   useEffect(() => {
     if (!isFounder) return;
