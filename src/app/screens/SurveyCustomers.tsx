@@ -106,20 +106,43 @@ const QUESTIONS: Q[] = [
   },
 ];
 
+const MULTI_KEYS = new Set(["segment", "channel", "frustration", "place", "priority"]);
+
 export default function SurveyCustomers() {
   const navigate = useNavigate();
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [email, setEmail] = useState("");
   const [comments, setComments] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const canSubmit = QUESTIONS.every((q) => answers[q.key]);
+  const isAnswered = (q: Q) => {
+    const v = answers[q.key];
+    if (Array.isArray(v)) return v.length > 0;
+    return !!v;
+  };
+  const canSubmit = QUESTIONS.every(isAnswered);
+
+  const toggle = (q: Q, value: string) => {
+    if (MULTI_KEYS.has(q.key)) {
+      const cur = (answers[q.key] as string[] | undefined) || [];
+      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+      setAnswers({ ...answers, [q.key]: next });
+    } else {
+      setAnswers({ ...answers, [q.key]: value });
+    }
+  };
+
+  const isSelected = (q: Q, value: string) => {
+    const v = answers[q.key];
+    if (Array.isArray(v)) return v.includes(value);
+    return v === value;
+  };
 
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    const payloadAnswers: Record<string, string> = { ...answers };
+    const payloadAnswers: Record<string, string | string[]> = { ...answers };
     if (comments.trim()) {
       payloadAnswers.comments = comments.trim();
     }
