@@ -23,8 +23,18 @@ type ValRow = {
   created_at: string;
 };
 
-const B2C_CHOICE_KEYS = ["segment", "last_massage", "frustration", "channel", "language", "budget", "intent"];
-const B2B_CHOICE_KEYS = ["role", "booking_channel", "pain", "foreign_pct", "noshows_week", "would_list"];
+function collectKeys(rows: ValRow[]): string[] {
+  const set = new Set<string>();
+  for (const r of rows) {
+    if (!r.answers || typeof r.answers !== "object") continue;
+    for (const k of Object.keys(r.answers)) {
+      if (k === "comments") continue;
+      set.add(k);
+    }
+  }
+  return Array.from(set);
+}
+
 
 const serif = { fontFamily: "'Fraunces', serif" };
 const shellStyle: React.CSSProperties = {
