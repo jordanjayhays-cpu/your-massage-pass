@@ -285,6 +285,30 @@ export default function FounderDashboard() {
               <Stat label="B2B responses" value={b2b.length} />
             </div>
 
+            <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2">Source</p>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {(["__all__", ...sourceOptions]).map((s) => {
+                const selected = sourceFilter === s;
+                const label = s === "__all__" ? "All" : s;
+                const count = s === "__all__" ? validation.length : (sourceCounts[s] || 0);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setSourceFilter(s)}
+                    className="px-3 py-1.5 rounded-full text-xs border transition"
+                    style={{
+                      background: selected ? "#C4622D" : "#FFFFFF",
+                      color: selected ? "#F7F4F0" : "#211C1A",
+                      borderColor: selected ? "#C4622D" : "#E5DDD3",
+                    }}
+                  >
+                    {label} · {count}
+                  </button>
+                );
+              })}
+            </div>
+
+
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-3">B2C — customers</p>
@@ -322,12 +346,12 @@ export default function FounderDashboard() {
               onClick={() => setExpanded((e) => !e)}
               className="mt-4 text-sm text-[#C4622D] font-medium"
             >
-              {expanded ? "Hide" : "Show"} all responses ({validation.length})
+              {expanded ? "Hide" : "Show"} all responses ({filteredValidation.length})
             </button>
 
             {expanded && (
               <div className="mt-4 space-y-3">
-                {validation.map((r) => (
+                {filteredValidation.map((r) => (
                   <div key={r.id} className="rounded-xl border border-[#E5DDD3] bg-[#FBF8F4] p-4 text-sm">
                     <div className="flex items-center gap-2 mb-2">
                       <span
