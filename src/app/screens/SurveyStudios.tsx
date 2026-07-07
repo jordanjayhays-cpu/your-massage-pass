@@ -183,20 +183,27 @@ export default function SurveyStudios() {
         </div>
 
         <div className="space-y-8">
-          {QUESTIONS.map((q, i) => (
+          {QUESTIONS.map((q, i) => {
+            const isMulti = q.type === "choice" && MULTI_KEYS.has(q.key);
+            return (
             <div key={q.key}>
-              <p style={serif} className="text-xl mb-3">
+              <p style={serif} className="text-xl mb-1">
                 <span className="text-[#E0A458] mr-2">{String(i + 1).padStart(2, "0")}</span>
                 {q.question}
               </p>
+              {isMulti ? (
+                <p className="text-xs text-[#7A7068] mb-3">(elige todas las que apliquen)</p>
+              ) : (
+                <div className="mb-3" />
+              )}
               {q.type === "choice" ? (
                 <div className="flex flex-wrap gap-2">
                   {q.options.map((opt) => {
-                    const selected = answers[q.key] === opt.value;
+                    const selected = isSelected(q, opt.value);
                     return (
                       <button
                         key={opt.value}
-                        onClick={() => setAnswers({ ...answers, [q.key]: opt.value })}
+                        onClick={() => toggle(q, opt.value)}
                         className="px-4 py-2 rounded-full text-sm border transition"
                         style={{
                           background: selected ? "#C4622D" : "#FFFFFF",
@@ -211,7 +218,7 @@ export default function SurveyStudios() {
                 </div>
               ) : (
                 <textarea
-                  value={answers[q.key] || ""}
+                  value={(answers[q.key] as string) || ""}
                   onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })}
                   placeholder={q.placeholder}
                   rows={3}
@@ -219,7 +226,8 @@ export default function SurveyStudios() {
                 />
               )}
             </div>
-          ))}
+            );
+          })}
 
           <div>
             <p style={serif} className="text-xl mb-3">¿Algo más? (opcional)</p>
