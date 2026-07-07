@@ -82,18 +82,41 @@ serve(async (req) => {
     await sendEmail(FOUNDER_EMAIL, `New ${kind} survey response`, founderHtml);
 
     // ---------- 2. Email the respondent their next round (if requested) ----------
-    if (followup && followup.email && followup.respondent_id && followup.next_wave) {
+    if (followup && followup.respondent_id && followup.next_wave) {
+      // Round 1 hands us the email directly. Later rounds don't (the person
+      // arrived via their emailed link), so look it up by respondent_id.
+      let recipient: string | null = followup.email ?? null;
+      if (!recipient) {
+        try {
+          const lookup = await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/rest/v1/validation_responses?respondent_id=eq.${followup.respondent_id}&email=not.is.null&select=email&limit=1`,
+            {
+              headers: {
+                apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+              },
+            },
+          );
+          const found = await lookup.json();
+          if (Array.isArray(found) && found[0]?.email) recipient = found[0].email;
+        } catch (e) {
+          console.error("email lookup failed", e);
+        }
+      }
+
+      if (recipient) {
       const link = `${SITE_URL}/survey/customers?rid=${encodeURIComponent(followup.respondent_id)}&wave=${followup.next_wave}`;
       const followupHtml = `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F7F4F0;padding:24px;">
           <div style="max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:16px;padding:28px;text-align:center;">
             <h1 style="font-family:Georgia,serif;color:#211C1A;font-size:24px;margin:0 0 10px;">Thanks — one more quick round? 🙏</h1>
-            <p style="color:#7A7068;font-size:15px;line-height:1.5;margin:0 0 22px;">You finished round 1 of our Madrid massage survey. The next round takes under a minute and really helps us build something you'll love.</p>
+            <p style="color:#7A7068;font-size:15px;line-height:1.5;margin:0 0 22px;">Here's round ${followup.next_wave} of your Madrid massage survey. It takes under a minute and really helps us build something you'll love.</p>
             <a href="${link}" style="display:inline-block;background:#C4622D;color:#F7F4F0;padding:14px 28px;border-radius:999px;text-decoration:none;font-size:16px;font-weight:600;">Continue the survey →</a>
             <p style="color:#9E9387;font-size:12px;margin:22px 0 0;">Massage Club · Madrid</p>
           </div>
         </div>`;
-      await sendEmail(followup.email, "Quick favour — round 2 of your massage survey", followupHtml);
+      await sendEmail(recipient, `Quick favour — round ${followup.next_wave} of your massage survey`, followupHtml);
+      }
     }
 
     return new Response("ok", { status: 200, headers: corsHeaders });
