@@ -3,15 +3,14 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
-  Loader2, Check, MapPin, Phone, Globe, Plus, Trash2,
-  Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2, ArrowLeft
+  Loader2, MapPin, Phone, Globe, Plus, Trash2,
+  Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2, ArrowLeft,
+  Calendar as CalendarIcon, Check,
 } from "lucide-react";
 
-const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
 const MASSAGE_TYPES = ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Aromatherapy", "Thai", "Shiatsu", "Couples", "Facial", "Other"];
 const DAYS = [
   { num: 1, label: "Mon" }, { num: 2, label: "Tue" }, { num: 3, label: "Wed" },
@@ -21,18 +20,32 @@ const DEFAULT_SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","
 
 type Service = { name: string; type: string; duration: number; price: number; description: string };
 
+const emptyService = (): Service => ({ name: "", type: "Swedish", duration: 60, price: 45, description: "" });
+
+function normalizeService(raw: any): Service {
+  return {
+    name: raw?.name ?? raw?.title ?? "",
+    type: raw?.type ?? "Swedish",
+    duration: Number(raw?.duration ?? raw?.duration_minutes ?? 60),
+    price: Number(raw?.price ?? raw?.price_eur ?? 45),
+    description: raw?.description ?? "",
+  };
+}
+
 function StudioSetupInner() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const draftToken = searchParams.get("draft");
+  const mode: "invite" | "draft" = draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 5;
 
-  // Invite data
-  const [inviteData, setInviteData] = useState<any>(null);
-  const [inviteError, setInviteError] = useState("");
-  const [validatingToken, setValidatingToken] = useState(true);
+  // Source data (invite or draft)
+  const [sourceData, setSourceData] = useState<any>(null);
+  const [sourceError, setSourceError] = useState("");
+  const [validatingSource, setValidatingSource] = useState(true);
 
   // Step 1: Account
   const [email, setEmail] = useState("");
@@ -46,18 +59,49 @@ function StudioSetupInner() {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Step 3: Services
-  const [services, setServices] = useState<Service[]>([
-    { name: "", type: "Swedish", duration: 60, price: 45, description: "" }
-  ]);
+  const [services, setServices] = useState<Service[]>([emptyService()]);
+  const [servicesLoading, setServicesLoading] = useState(false);
 
-  // Step 4: Availability
+  // Step 4: Availability (invite mode only)
   const [availability, setAvailability] = useState<Record<number, string[]>>({
     1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
   });
 
-  // Validate token on mount
+  // Step 4: Calendar (draft mode only)
+  const [calendarConnected, setCalendarConnected] = useState(false);
+
+  // Validate token/draft on mount
   useEffect(() => {
-    if (!token) { setInviteError("No token provided"); setValidatingToken(false); return; }
+    if (mode === "draft") {
+      if (!draftToken) { setSourceError("No draft token provided"); setValidatingSource(false); return; }
+      supabase
+        .from("studio_drafts")
+        .select("*")
+        .eq("claim_token", draftToken)
+        .neq("status", "claimed")
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error || !data) { setSourceError("This claim link is invalid or already used."); }
+          else {
+            setSourceData(data);
+            setEmail(data.email || "");
+            setStudio({
+              business_name: data.business_name || "",
+              address: data.address || "",
+              phone: data.phone || "",
+              website: data.website || "",
+              description: data.description || "",
+              city: data.neighborhood || "Madrid",
+            });
+            const svcs = Array.isArray(data.services) ? data.services : [];
+            setServices(svcs.length ? svcs.map(normalizeService) : [emptyService()]);
+          }
+          setValidatingSource(false);
+        });
+      return;
+    }
+
+    if (!token) { setSourceError("No token provided"); setValidatingSource(false); return; }
     supabase
       .from("invites")
       .select("*")
@@ -65,34 +109,48 @@ function StudioSetupInner() {
       .eq("used", false)
       .single()
       .then(({ data, error }) => {
-        if (error || !data) { setInviteError("Invalid or expired invite link"); }
+        if (error || !data) { setSourceError("Invalid or expired invite link"); }
         else {
-          setInviteData(data);
+          setSourceData(data);
           setEmail(data.email || "");
           setStudio(prev => ({ ...prev, business_name: data.studio_name || "" }));
         }
-        setValidatingToken(false);
+        setValidatingSource(false);
       });
-  }, [token]);
+  }, [token, draftToken, mode]);
 
-  // Progress
+  // Detect return from Google Calendar OAuth
+  useEffect(() => {
+    if (searchParams.get("connected") === "true") {
+      setCalendarConnected(true);
+      setStep(5);
+      toast.success("Google Calendar connected!");
+    }
+    if (searchParams.get("cal_error")) {
+      toast.error("Calendar connection failed. Please try again.");
+    }
+  }, [searchParams]);
+
   const progress = (step / TOTAL_STEPS) * 100;
+  const headerName = mode === "draft" ? sourceData?.business_name : sourceData?.studio_name;
 
   // Step 1: Create account
   const handleCreateAccount = async () => {
     if (!password || password !== confirmPassword) { toast.error("Passwords don't match"); return; }
     if (password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (!email) { toast.error("Please provide an email"); return; }
     setAccountLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email, password,
-        options: { data: { business_name: inviteData?.studio_name } }
+        options: { data: { business_name: studio.business_name || headerName } }
       });
       if (error) throw error;
       if (!data.user) throw new Error("No user returned");
 
-      // Mark invite as used
-      await supabase.from("invites").update({ used: true }).eq("token", token);
+      if (mode === "invite" && token) {
+        await supabase.from("invites").update({ used: true }).eq("token", token);
+      }
 
       setPartnerId(data.user.id);
       toast.success("Account created!");
@@ -133,20 +191,29 @@ function StudioSetupInner() {
   const handleSaveServices = async () => {
     const validServices = services.filter(s => s.name.trim());
     if (validServices.length === 0) { toast.error("Add at least one service"); return; }
+    setServicesLoading(true);
     try {
       const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
       await supabase.from("partner_services").delete().eq("partner_id", uid);
       await supabase.from("partner_services").insert(
         validServices.map(s => ({ partner_id: uid, name: s.name, type: s.type, duration: s.duration, price: s.price, description: s.description }))
       );
+
+      // In draft mode, mark the draft as claimed now that partner + services exist.
+      if (mode === "draft" && sourceData?.id) {
+        await supabase.from("studio_drafts").update({ status: "claimed" }).eq("id", sourceData.id);
+      }
+
       toast.success("Services saved!");
       setStep(4);
     } catch (err: any) {
       toast.error(err.message || "Failed to save services");
+    } finally {
+      setServicesLoading(false);
     }
   };
 
-  // Step 4: Save availability
+  // Step 4 (invite): Save availability
   const handleSaveAvailability = async () => {
     try {
       const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
@@ -162,7 +229,35 @@ function StudioSetupInner() {
     }
   };
 
-  const addService = () => setServices([...services, { name: "", type: "Swedish", duration: 60, price: 45, description: "" }]);
+  // Step 4 (draft): Connect Google Calendar
+  const handleConnectCalendar = async () => {
+    const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
+    if (!uid) { toast.error("Please complete previous steps"); return; }
+
+    const clientId =
+      (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
+      "918838910411-2kt7po7eop2auo8i6ntecbak7u7ecrb9.apps.googleusercontent.com";
+
+    const redirectUri = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/google-calendar-oauth?apikey=sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
+
+    const scopes = [
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/calendar.events",
+    ].join(" ");
+
+    const oauthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    oauthUrl.searchParams.set("client_id", clientId);
+    oauthUrl.searchParams.set("redirect_uri", redirectUri);
+    oauthUrl.searchParams.set("response_type", "code");
+    oauthUrl.searchParams.set("scope", scopes);
+    oauthUrl.searchParams.set("access_type", "offline");
+    oauthUrl.searchParams.set("prompt", "consent");
+    oauthUrl.searchParams.set("state", uid);
+
+    window.location.href = oauthUrl.toString();
+  };
+
+  const addService = () => setServices([...services, emptyService()]);
   const removeService = (i: number) => setServices(services.filter((_, idx) => idx !== i));
   const updateService = (i: number, field: keyof Service, value: any) => {
     const updated = [...services]; updated[i] = { ...updated[i], [field]: value }; setServices(updated);
@@ -176,8 +271,7 @@ function StudioSetupInner() {
     }));
   };
 
-  // ── Token validation loading ──
-  if (validatingToken) {
+  if (validatingSource) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -185,7 +279,7 @@ function StudioSetupInner() {
     );
   }
 
-  if (inviteError) {
+  if (sourceError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="w-full max-w-md bg-card border-border">
@@ -194,33 +288,46 @@ function StudioSetupInner() {
               <span className="text-3xl">❌</span>
             </div>
             <h2 className="font-display text-xl font-bold mb-2">Invalid Link</h2>
-            <p className="text-muted-foreground text-sm">{inviteError}</p>
+            <p className="text-muted-foreground text-sm">{sourceError}</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  const stepLabels = mode === "draft"
+    ? ["Account", "Review", "Services", "Calendar", "Live"]
+    : ["Account", "Profile", "Services", "Hours", "Done"];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background">
       <div className="max-w-xl mx-auto px-4 py-8">
-        {/* Back */}
         <button
           onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
           className="inline-flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition mb-4"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-        {/* Header */}
+
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
-            <Sparkles size={14} /> Studio Setup
+            <Sparkles size={14} /> {mode === "draft" ? "Claim Your Studio" : "Studio Setup"}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome, {inviteData?.studio_name}</h1>
-          <p className="text-muted-foreground text-sm mt-1">Complete all steps to go live on Massage Club</p>
+          {mode === "draft" ? (
+            <>
+              <h1 className="text-2xl font-bold text-foreground">We built your Massage Club page</h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                Review the details for <span className="font-semibold text-foreground">{headerName}</span>, connect your calendar, and go live.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-foreground">Welcome, {headerName}</h1>
+              <p className="text-muted-foreground text-sm mt-1">Complete all steps to go live on Massage Club</p>
+            </>
+          )}
         </div>
 
-        {/* Progress */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-medium text-muted-foreground">Step {step} of {TOTAL_STEPS}</span>
@@ -230,13 +337,13 @@ function StudioSetupInner() {
             <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between mt-2">
-            {["Account", "Profile", "Services", "Hours", "Done"].map((label, i) => (
+            {stepLabels.map((label, i) => (
               <span key={label} className={`text-xs ${i + 1 === step ? "text-primary font-semibold" : "text-muted-foreground"}`}>{label}</span>
             ))}
           </div>
         </div>
 
-        {/* ═══════════════ STEP 1: ACCOUNT ═══════════════ */}
+        {/* STEP 1: ACCOUNT */}
         {step === 1 && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
@@ -244,9 +351,20 @@ function StudioSetupInner() {
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">1</div>
                 <h2 className="font-semibold text-foreground">Create your account</h2>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">Email is pre-filled from your invite.</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                {mode === "draft" && !sourceData?.email
+                  ? "Enter the email you want to use to manage your studio."
+                  : "Email is pre-filled from your invite."}
+              </p>
               <div className="space-y-3">
-                <Input type="email" value={email} disabled className="bg-secondary/60" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  disabled={mode === "invite" || !!sourceData?.email}
+                  placeholder="you@studio.com"
+                  className={mode === "invite" || !!sourceData?.email ? "bg-secondary/60" : "h-11"}
+                />
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (min 8 chars)" className="h-11" />
                 <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="h-11" />
               </div>
@@ -257,14 +375,17 @@ function StudioSetupInner() {
           </Card>
         )}
 
-        {/* ═══════════════ STEP 2: PROFILE ═══════════════ */}
+        {/* STEP 2: PROFILE */}
         {step === 2 && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">2</div>
-                <h2 className="font-semibold text-foreground">Studio details</h2>
+                <h2 className="font-semibold text-foreground">{mode === "draft" ? "Review studio details" : "Studio details"}</h2>
               </div>
+              {mode === "draft" && (
+                <p className="text-xs text-muted-foreground -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
+              )}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Studio Name</label>
                 <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))} className="h-11" />
@@ -304,14 +425,17 @@ function StudioSetupInner() {
           </Card>
         )}
 
-        {/* ═══════════════ STEP 3: SERVICES ═══════════════ */}
+        {/* STEP 3: SERVICES */}
         {step === 3 && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="font-semibold text-foreground">Your services</h2>
+                <h2 className="font-semibold text-foreground">{mode === "draft" ? "Review your services" : "Your services"}</h2>
               </div>
+              {mode === "draft" && (
+                <p className="text-xs text-muted-foreground -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
+              )}
               <div className="space-y-3">
                 {services.map((svc, i) => (
                   <div key={i} className="p-3 border border-border rounded-xl bg-white">
@@ -335,21 +459,23 @@ function StudioSetupInner() {
                   </div>
                 ))}
               </div>
-              {services.length < 5 && (
+              {services.length < 8 && (
                 <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
                   <Plus size={14} /> Add service
                 </button>
               )}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveServices} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button onClick={handleSaveServices} disabled={servicesLoading} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">
+                  {servicesLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ═══════════════ STEP 4: AVAILABILITY ═══════════════ */}
-        {step === 4 && (
+        {/* STEP 4 (invite): AVAILABILITY */}
+        {step === 4 && mode === "invite" && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
@@ -386,7 +512,50 @@ function StudioSetupInner() {
           </Card>
         )}
 
-        {/* ═══════════════ STEP 5: DONE ═══════════════ */}
+        {/* STEP 4 (draft): CONNECT GOOGLE CALENDAR */}
+        {step === 4 && mode === "draft" && (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">4</div>
+                <h2 className="font-semibold text-foreground">Connect Google Calendar</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This is the one required step. We use your calendar to show real availability and drop bookings straight in — no double-bookings, no manual scheduling.
+              </p>
+
+              <div className="rounded-xl border border-border p-4 space-y-2 bg-secondary/40">
+                {[
+                  "Read-only access to your busy times",
+                  "New bookings appear as events in your calendar",
+                  "Customers only ever see truly free slots",
+                ].map(line => (
+                  <div key={line} className="flex items-start gap-2 text-sm text-foreground">
+                    <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>{line}</span>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                onClick={handleConnectCalendar}
+                className="w-full h-12 bg-primary hover:bg-[#9E4D22] text-white"
+              >
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Connect Google Calendar
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                One click — no password stored.
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* STEP 5: DONE */}
         {step === 5 && (
           <Card className="border-0 shadow-sm bg-gradient-to-br from-primary to-[#9E4D22]">
             <CardContent className="p-8 text-center text-white">
@@ -394,9 +563,13 @@ function StudioSetupInner() {
                 <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
               <h2 className="font-display text-2xl font-bold mb-2">You're live on Massage Club! 🎉</h2>
-              <p className="text-primary-foreground/80 text-sm mb-6">Your studio is now visible to thousands of members in Madrid.</p>
-              <Button onClick={() => navigate("/studio-portal")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
-                Go to your portal →
+              <p className="text-primary-foreground/80 text-sm mb-6">
+                {mode === "draft" && calendarConnected
+                  ? "Your calendar is connected and your studio is now visible to members in Madrid."
+                  : "Your studio is now visible to thousands of members in Madrid."}
+              </p>
+              <Button onClick={() => navigate("/partner/dashboard")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
+                Go to your dashboard →
               </Button>
             </CardContent>
           </Card>
