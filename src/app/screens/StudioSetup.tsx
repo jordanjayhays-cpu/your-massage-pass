@@ -265,6 +265,13 @@ function StudioSetupInner() {
         await supabase.from("studio_drafts").update({ status: "claimed" }).eq("id", sourceData.id);
       }
 
+      // In claim mode, the original scraped partner row lives under a different id.
+      // Delete it so there's no duplicate in the customer app (services under the new uid
+      // were just inserted above; the scraped row's services will cascade with the delete).
+      if (mode === "claim" && sourceData?.id && sourceData.id !== uid) {
+        await supabase.from("partners").delete().eq("id", sourceData.id);
+      }
+
       toast.success("Services saved!");
       setStep(4);
     } catch (err: any) {
