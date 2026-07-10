@@ -177,7 +177,23 @@ function StudioSetupInner() {
   }, [searchParams]);
 
   const progress = (step / TOTAL_STEPS) * 100;
-  const headerName = mode === "draft" ? sourceData?.business_name : sourceData?.studio_name;
+  const headerName = mode === "claim"
+    ? sourceData?.business_name
+    : mode === "draft" ? sourceData?.business_name : sourceData?.studio_name;
+
+  // Step 1 (claim): sign in with Google — comes back to this same claim URL.
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    const redirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) {
+      setGoogleLoading(false);
+      toast.error(error.message || "Google sign-in failed");
+    }
+  };
 
   // Step 1: Create account
   const handleCreateAccount = async () => {
