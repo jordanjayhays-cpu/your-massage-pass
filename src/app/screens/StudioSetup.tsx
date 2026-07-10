@@ -483,7 +483,7 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">2</div>
-                <h2 className="font-semibold text-foreground">{mode === "draft" ? "Review studio details" : "Studio details"}</h2>
+                <h2 className="font-semibold text-foreground">{isReviewMode ? "Review studio details" : "Studio details"}</h2>
               </div>
               {mode === "draft" && (
                 <p className="text-xs text-muted-foreground -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
@@ -533,7 +533,7 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="font-semibold text-foreground">{mode === "draft" ? "Review your services" : "Your services"}</h2>
+                <h2 className="font-semibold text-foreground">{isReviewMode ? "Review your services" : "Your services"}</h2>
               </div>
               {mode === "draft" && (
                 <p className="text-xs text-muted-foreground -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
@@ -615,7 +615,7 @@ function StudioSetupInner() {
         )}
 
         {/* STEP 4 (draft): CONNECT GOOGLE CALENDAR */}
-        {step === 4 && mode === "draft" && (
+        {step === 4 && isReviewMode && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
@@ -666,7 +666,7 @@ function StudioSetupInner() {
               </div>
               <h2 className="font-display text-2xl font-bold mb-2">You're live on Massage Club! 🎉</h2>
               <p className="text-primary-foreground/80 text-sm mb-6">
-                {mode === "draft" && calendarConnected
+                {isReviewMode && calendarConnected
                   ? "Your calendar is connected and your studio is now visible to members in Madrid."
                   : "Your studio is now visible to thousands of members in Madrid."}
               </p>
