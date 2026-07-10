@@ -37,12 +37,13 @@ function StudioSetupInner() {
   const navigate = useNavigate();
   const token = searchParams.get("token");
   const draftToken = searchParams.get("draft");
-  const mode: "invite" | "draft" = draftToken ? "draft" : "invite";
+  const claimToken = searchParams.get("claim");
+  const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 5;
 
-  // Source data (invite or draft)
+  // Source data (invite, draft, or scraped partner)
   const [sourceData, setSourceData] = useState<any>(null);
   const [sourceError, setSourceError] = useState("");
   const [validatingSource, setValidatingSource] = useState(true);
@@ -52,6 +53,7 @@ function StudioSetupInner() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accountLoading, setAccountLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
 
   // Step 2: Profile
@@ -67,11 +69,54 @@ function StudioSetupInner() {
     1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
   });
 
-  // Step 4: Calendar (draft mode only)
+  // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
 
-  // Validate token/draft on mount
+  // Validate token/draft/claim on mount
   useEffect(() => {
+    if (mode === "claim") {
+      if (!claimToken) { setSourceError("No claim token provided"); setValidatingSource(false); return; }
+      (async () => {
+        const { data: partner, error } = await supabase
+          .from("partners")
+          .select("*")
+          .eq("claim_token", claimToken)
+          .eq("status", "pending")
+          .maybeSingle();
+        if (error || !partner) {
+          setSourceError("This claim link is invalid or the studio has already been claimed.");
+          setValidatingSource(false);
+          return;
+        }
+        const { data: svcs } = await supabase
+          .from("partner_services")
+          .select("*")
+          .eq("partner_id", partner.id);
+
+        setSourceData(partner);
+        setEmail(partner.email || "");
+        setStudio({
+          business_name: partner.business_name || "",
+          address: partner.address || "",
+          phone: partner.phone || "",
+          website: partner.website || "",
+          description: partner.description || "",
+          city: partner.city || "Madrid",
+        });
+        setServices((svcs && svcs.length) ? svcs.map(normalizeService) : [emptyService()]);
+
+        // If the studio owner already returned from Google sign-in, skip step 1.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setPartnerId(user.id);
+          setEmail(user.email || partner.email || "");
+          setStep(2);
+        }
+        setValidatingSource(false);
+      })();
+      return;
+    }
+
     if (mode === "draft") {
       if (!draftToken) { setSourceError("No draft token provided"); setValidatingSource(false); return; }
       supabase
@@ -117,7 +162,7 @@ function StudioSetupInner() {
         }
         setValidatingSource(false);
       });
-  }, [token, draftToken, mode]);
+  }, [token, draftToken, claimToken, mode]);
 
   // Detect return from Google Calendar OAuth
   useEffect(() => {
