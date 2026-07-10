@@ -37,12 +37,13 @@ function StudioSetupInner() {
   const navigate = useNavigate();
   const token = searchParams.get("token");
   const draftToken = searchParams.get("draft");
-  const mode: "invite" | "draft" = draftToken ? "draft" : "invite";
+  const claimToken = searchParams.get("claim");
+  const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 5;
 
-  // Source data (invite or draft)
+  // Source data (invite, draft, or scraped partner)
   const [sourceData, setSourceData] = useState<any>(null);
   const [sourceError, setSourceError] = useState("");
   const [validatingSource, setValidatingSource] = useState(true);
@@ -52,6 +53,7 @@ function StudioSetupInner() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accountLoading, setAccountLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
 
   // Step 2: Profile
@@ -67,11 +69,54 @@ function StudioSetupInner() {
     1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
   });
 
-  // Step 4: Calendar (draft mode only)
+  // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
 
-  // Validate token/draft on mount
+  // Validate token/draft/claim on mount
   useEffect(() => {
+    if (mode === "claim") {
+      if (!claimToken) { setSourceError("No claim token provided"); setValidatingSource(false); return; }
+      (async () => {
+        const { data: partner, error } = await supabase
+          .from("partners")
+          .select("*")
+          .eq("claim_token", claimToken)
+          .eq("status", "pending")
+          .maybeSingle();
+        if (error || !partner) {
+          setSourceError("This claim link is invalid or the studio has already been claimed.");
+          setValidatingSource(false);
+          return;
+        }
+        const { data: svcs } = await supabase
+          .from("partner_services")
+          .select("*")
+          .eq("partner_id", partner.id);
+
+        setSourceData(partner);
+        setEmail(partner.email || "");
+        setStudio({
+          business_name: partner.business_name || "",
+          address: partner.address || "",
+          phone: partner.phone || "",
+          website: partner.website || "",
+          description: partner.description || "",
+          city: partner.city || "Madrid",
+        });
+        setServices((svcs && svcs.length) ? svcs.map(normalizeService) : [emptyService()]);
+
+        // If the studio owner already returned from Google sign-in, skip step 1.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setPartnerId(user.id);
+          setEmail(user.email || partner.email || "");
+          setStep(2);
+        }
+        setValidatingSource(false);
+      })();
+      return;
+    }
+
     if (mode === "draft") {
       if (!draftToken) { setSourceError("No draft token provided"); setValidatingSource(false); return; }
       supabase
@@ -117,7 +162,7 @@ function StudioSetupInner() {
         }
         setValidatingSource(false);
       });
-  }, [token, draftToken, mode]);
+  }, [token, draftToken, claimToken, mode]);
 
   // Detect return from Google Calendar OAuth
   useEffect(() => {
@@ -132,7 +177,23 @@ function StudioSetupInner() {
   }, [searchParams]);
 
   const progress = (step / TOTAL_STEPS) * 100;
-  const headerName = mode === "draft" ? sourceData?.business_name : sourceData?.studio_name;
+  const headerName = mode === "claim"
+    ? sourceData?.business_name
+    : mode === "draft" ? sourceData?.business_name : sourceData?.studio_name;
+
+  // Step 1 (claim): sign in with Google — comes back to this same claim URL.
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    const redirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) {
+      setGoogleLoading(false);
+      toast.error(error.message || "Google sign-in failed");
+    }
+  };
 
   // Step 1: Create account
   const handleCreateAccount = async () => {
@@ -202,6 +263,13 @@ function StudioSetupInner() {
       // In draft mode, mark the draft as claimed now that partner + services exist.
       if (mode === "draft" && sourceData?.id) {
         await supabase.from("studio_drafts").update({ status: "claimed" }).eq("id", sourceData.id);
+      }
+
+      // In claim mode, the original scraped partner row lives under a different id.
+      // Delete it so there's no duplicate in the customer app (services under the new uid
+      // were just inserted above; the scraped row's services will cascade with the delete).
+      if (mode === "claim" && sourceData?.id && sourceData.id !== uid) {
+        await supabase.from("partners").delete().eq("id", sourceData.id);
       }
 
       toast.success("Services saved!");
@@ -295,9 +363,11 @@ function StudioSetupInner() {
     );
   }
 
-  const stepLabels = mode === "draft"
-    ? ["Account", "Review", "Services", "Calendar", "Live"]
+  const stepLabels = mode === "draft" || mode === "claim"
+    ? ["Sign in", "Review", "Services", "Calendar", "Live"]
     : ["Account", "Profile", "Services", "Hours", "Done"];
+
+  const isReviewMode = mode === "draft" || mode === "claim";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background">
@@ -311,13 +381,13 @@ function StudioSetupInner() {
 
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
-            <Sparkles size={14} /> {mode === "draft" ? "Claim Your Studio" : "Studio Setup"}
+            <Sparkles size={14} /> {isReviewMode ? "Claim Your Studio" : "Studio Setup"}
           </div>
-          {mode === "draft" ? (
+          {isReviewMode ? (
             <>
               <h1 className="text-2xl font-bold text-foreground">We built your Massage Club page</h1>
               <p className="text-muted-foreground text-sm mt-1">
-                Review the details for <span className="font-semibold text-foreground">{headerName}</span>, connect your calendar, and go live.
+                Review it for <span className="font-semibold text-foreground">{headerName}</span>, then connect your calendar to go live.
               </p>
             </>
           ) : (
@@ -344,7 +414,39 @@ function StudioSetupInner() {
         </div>
 
         {/* STEP 1: ACCOUNT */}
-        {step === 1 && (
+        {step === 1 && mode === "claim" && (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">1</div>
+                <h2 className="font-semibold text-foreground">Sign in with Google</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Sign in with the Google account you want to use to manage <span className="font-semibold text-foreground">{headerName}</span>. This is the same account we'll connect your calendar to.
+              </p>
+              <Button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-12 bg-white text-foreground border border-border hover:bg-secondary">
+                {googleLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continue with Google
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground mt-3">
+                We'll bring you right back here after sign-in.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 1 && mode !== "claim" && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -381,9 +483,9 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">2</div>
-                <h2 className="font-semibold text-foreground">{mode === "draft" ? "Review studio details" : "Studio details"}</h2>
+                <h2 className="font-semibold text-foreground">{isReviewMode ? "Review studio details" : "Studio details"}</h2>
               </div>
-              {mode === "draft" && (
+              {isReviewMode && (
                 <p className="text-xs text-muted-foreground -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
               )}
               <div>
@@ -431,9 +533,9 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="font-semibold text-foreground">{mode === "draft" ? "Review your services" : "Your services"}</h2>
+                <h2 className="font-semibold text-foreground">{isReviewMode ? "Review your services" : "Your services"}</h2>
               </div>
-              {mode === "draft" && (
+              {isReviewMode && (
                 <p className="text-xs text-muted-foreground -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
               )}
               <div className="space-y-3">
@@ -513,7 +615,7 @@ function StudioSetupInner() {
         )}
 
         {/* STEP 4 (draft): CONNECT GOOGLE CALENDAR */}
-        {step === 4 && mode === "draft" && (
+        {step === 4 && isReviewMode && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
@@ -564,7 +666,7 @@ function StudioSetupInner() {
               </div>
               <h2 className="font-display text-2xl font-bold mb-2">You're live on Massage Club! 🎉</h2>
               <p className="text-primary-foreground/80 text-sm mb-6">
-                {mode === "draft" && calendarConnected
+                {isReviewMode && calendarConnected
                   ? "Your calendar is connected and your studio is now visible to members in Madrid."
                   : "Your studio is now visible to thousands of members in Madrid."}
               </p>
