@@ -485,7 +485,7 @@ function StudioSetupInner() {
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">2</div>
                 <h2 className="font-semibold text-foreground">{isReviewMode ? "Review studio details" : "Studio details"}</h2>
               </div>
-              {mode === "draft" && (
+              {isReviewMode && (
                 <p className="text-xs text-muted-foreground -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
               )}
               <div>
@@ -535,7 +535,7 @@ function StudioSetupInner() {
                 <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">3</div>
                 <h2 className="font-semibold text-foreground">{isReviewMode ? "Review your services" : "Your services"}</h2>
               </div>
-              {mode === "draft" && (
+              {isReviewMode && (
                 <p className="text-xs text-muted-foreground -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
               )}
               <div className="space-y-3">
