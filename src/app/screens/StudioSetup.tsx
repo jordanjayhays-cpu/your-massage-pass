@@ -363,9 +363,11 @@ function StudioSetupInner() {
     );
   }
 
-  const stepLabels = mode === "draft"
-    ? ["Account", "Review", "Services", "Calendar", "Live"]
+  const stepLabels = mode === "draft" || mode === "claim"
+    ? ["Sign in", "Review", "Services", "Calendar", "Live"]
     : ["Account", "Profile", "Services", "Hours", "Done"];
+
+  const isReviewMode = mode === "draft" || mode === "claim";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background">
@@ -379,13 +381,13 @@ function StudioSetupInner() {
 
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
-            <Sparkles size={14} /> {mode === "draft" ? "Claim Your Studio" : "Studio Setup"}
+            <Sparkles size={14} /> {isReviewMode ? "Claim Your Studio" : "Studio Setup"}
           </div>
-          {mode === "draft" ? (
+          {isReviewMode ? (
             <>
               <h1 className="text-2xl font-bold text-foreground">We built your Massage Club page</h1>
               <p className="text-muted-foreground text-sm mt-1">
-                Review the details for <span className="font-semibold text-foreground">{headerName}</span>, connect your calendar, and go live.
+                Review it for <span className="font-semibold text-foreground">{headerName}</span>, then connect your calendar to go live.
               </p>
             </>
           ) : (
