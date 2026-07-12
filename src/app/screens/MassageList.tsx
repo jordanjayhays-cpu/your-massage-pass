@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock, Sparkles } from "lucide-react";
@@ -26,6 +27,7 @@ function getStudioIcon(studio: string): string {
 
 export default function MassageList() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { set } = useBooking();
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<MassageType | "all">("all");
@@ -173,7 +175,7 @@ export default function MassageList() {
         userMarkerRef.current = new google.maps.Marker({
           position: userLoc,
           map,
-          title: "You are here",
+          title: t("app.massageList.youAreHere"),
           zIndex: 9999,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
@@ -215,11 +217,11 @@ export default function MassageList() {
       <div className="px-5 pt-5 flex items-center justify-between gap-3">
         <button
           onClick={() => navigate("/app/profile")}
-          aria-label="Profile"
+          aria-label={t("app.massageList.profile")}
           className="h-10 w-10 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition shadow-soft"
         >
           {avatarUrl ? (
-            <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+            <img src={avatarUrl} alt={t("app.massageList.profile")} className="h-full w-full object-cover" />
           ) : (
             <UserCircle className="h-5 w-5 text-muted-foreground" />
           )}
@@ -228,7 +230,7 @@ export default function MassageList() {
           onClick={() => navigate("/partner/dashboard")}
           className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
         >
-          Switch to Partner Dashboard →
+          {t("app.massageList.switchToPartner")}
         </button>
       </div>
 
@@ -239,12 +241,12 @@ export default function MassageList() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search studios or area…"
+            placeholder={t("app.massageList.searchPlaceholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
           <button
             onClick={() => setShowFilters((s) => !s)}
-            aria-label="Filters"
+            aria-label={t("app.massageList.filters")}
             className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-secondary/80 transition"
           >
             <SlidersHorizontal className="h-4 w-4" />
@@ -253,7 +255,7 @@ export default function MassageList() {
 
         {showFilters && (
           <div className="flex gap-2 overflow-x-auto pt-3 pb-1 -mx-5 px-5">
-            <FilterChip active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>All</FilterChip>
+            <FilterChip active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>{t("app.massageList.filterAll")}</FilterChip>
             {MASSAGE_TYPES.map((t) => (
               <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => setTypeFilter(t.id)}>
                 {t.name}
@@ -275,7 +277,7 @@ export default function MassageList() {
               <Compass className="h-3 w-3 text-primary" />
             </div>
             <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
-              {userLoc ? "Your location" : "Near Madrid · tap to locate"}
+              {userLoc ? t("app.massageList.yourLocation") : t("app.massageList.nearMadrid")}
             </span>
           </button>
         </div>
@@ -307,7 +309,7 @@ export default function MassageList() {
                 onClick={() => handleBook(selectedStudio)}
                 className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
               >
-                Book now →
+                {t("app.massageList.bookNow")}
               </button>
             </div>
           </div>
@@ -317,23 +319,23 @@ export default function MassageList() {
       {/* Studios list */}
       <div className="px-5 pt-6 pb-28">
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="font-display text-2xl text-foreground">Studios near you</h2>
+          <h2 className="font-display text-2xl text-foreground">{t("app.massageList.studiosNearYou")}</h2>
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/app/discovery")}
               className="text-[10px] font-bold tracking-[0.12em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1 transition"
             >
-              <Sparkles className="h-3 w-3" /> Discover
+              <Sparkles className="h-3 w-3" /> {t("app.massageList.discover")}
             </button>
-            <span className="text-[10px] font-bold tracking-[0.12em] text-primary uppercase">{filtered.length} found</span>
+            <span className="text-[10px] font-bold tracking-[0.12em] text-primary uppercase">{t("app.massageList.foundCount", { count: filtered.length })}</span>
           </div>
         </div>
 
         <div className="space-y-4">
           {shopsLoading ? (
-            <p className="text-center text-muted-foreground py-12 text-sm">Loading studios…</p>
+            <p className="text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12 text-sm">No matches. Try another search.</p>
+            <p className="text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
           ) : (
             filtered.map((m, idx) => {
               const isFav = favorites.has(m.id);
@@ -354,7 +356,7 @@ export default function MassageList() {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleFav(m.id); }}
-                        aria-label="Favorite"
+                        aria-label={t("app.massageList.favorite")}
                         className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
                       >
                         <Heart className={cn("h-3.5 w-3.5", isFav ? "fill-primary text-primary" : "text-foreground")} />
@@ -374,7 +376,7 @@ export default function MassageList() {
 
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <MapPin className="h-3 w-3" />
-                        <span className="truncate">{"district" in m && m.district ? m.district : "Madrid"}</span>
+                        <span className="truncate">{"district" in m && m.district ? m.district : t("app.massageList.madrid")}</span>
                       </div>
 
                       <p className="text-xs text-foreground/80 mt-2 truncate">
@@ -387,10 +389,10 @@ export default function MassageList() {
 
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
                         <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
-                          Pay at studio
+                          {t("app.massageList.payAtStudio")}
                         </span>
                         <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-                          Available today
+                          {t("app.massageList.availableToday")}
                         </span>
                       </div>
                     </div>
