@@ -300,7 +300,7 @@ export default function MassageList() {
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
                 <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selectedStudio.rating}</span>
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}m</span>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}{t("app.massageList.minutesShort")}</span>
                 {"district" in selectedStudio && selectedStudio.district && (
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedStudio.district}</span>
                 )}
@@ -381,7 +381,7 @@ export default function MassageList() {
 
                       <p className="text-xs text-foreground/80 mt-2 truncate">
                         <span className="font-medium">{m.name}</span>
-                        <span className="text-muted-foreground"> · {m.duration} min</span>
+                        <span className="text-muted-foreground"> · {m.duration} {t("app.massageList.minutes")}</span>
                         {"price" in m && (m as any).price != null && (
                           <span className="font-semibold text-primary"> · €{(m as any).price}</span>
                         )}

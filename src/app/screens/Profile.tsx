@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2 } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import { useTranslation } from "react-i18next";
 import {
   REFERRAL_REWARD_EUR,
   getOrCreateReferralCode,

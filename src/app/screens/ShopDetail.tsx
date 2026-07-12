@@ -198,7 +198,7 @@ export default function ShopDetail() {
           {/* District + rating row */}
           <div className="flex items-start justify-between gap-4">
             <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-primary mt-1">
-              {district ? `${district} District` : "Madrid"}
+              {district ? t("district_label", { district }) : t("madrid")}
             </span>
             <div className="text-right">
               <div className="flex items-center gap-1 justify-end">
