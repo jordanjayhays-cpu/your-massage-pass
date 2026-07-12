@@ -6,45 +6,43 @@
     "join": "Join"
   },
   "hero": {
-    "badge": "Madrid only · Trusted studios",
-    "title1": "Book the best",
-    "title2": "massages in Madrid.",
-    "subtitle": "Discover trusted studios near you and book in seconds — in your language.",
+    "badge": "Madrid only · Limited spots",
+    "title1": "Madrid relaxes",
+    "title2": "without limits.",
+    "subtitle": "One subscription. Unlimited massages at the best studios in the capital. From Salamanca to Malasaña, your body deserves more.",
     "emailPlaceholder": "you@email.com",
-    "cta": "Browse studios",
-    "openApp": "Open the app →",
-    "or": "or",
-    "accountHint": "New here? Enter your email to create your account in seconds.",
+    "cta": "Reserve your spot",
     "perks": {
-      "noCommitment": "No subscription",
-      "cancel": "Cancel for free up to 24h",
-      "launch": "Pay per session"
+      "noCommitment": "No commitment",
+      "cancel": "Cancel anytime",
+      "launch": "Launch price"
     }
   },
   "stats": {
     "studios": "Madrid studios",
-    "booking": "Book in under 60s",
+    "price": "Per month, all in",
+    "massages": "Massages per month",
     "districts": "Districts covered"
   },
   "how": {
     "kicker": "How it works",
     "title": "Three steps. Zero excuses.",
     "step1": {
-      "title": "Find a studio",
-      "desc": "Browse top-rated massage studios in Madrid's best neighborhoods."
+      "title": "Subscribe",
+      "desc": "€79/month. No contracts, no surprises. Cancel anytime."
     },
     "step2": {
-      "title": "Pick a time",
-      "desc": "See real-time availability and choose the slot that fits your day."
+      "title": "Pick a studio",
+      "desc": "Book at any partner studio in Madrid from the app."
     },
     "step3": {
-      "title": "Book & pay per session",
-      "desc": "Pay per massage. No subscription, no commitment — just book and relax."
+      "title": "Enjoy without limits",
+      "desc": "Come back as often as you want. Your body will thank you."
     }
   },
   "studios": {
     "kicker": "Our studios",
-    "title": "The best hands in Madrid, ready to book.",
+    "title": "The best hands in Madrid, on a single pass.",
     "subtitle": "Carefully curated studios in the city's most vibrant neighborhoods.",
     "specialties": {
       "swedish": "Swedish & Aromatherapy",
@@ -74,20 +72,19 @@
   "faq": {
     "kicker": "Frequently asked",
     "title": "Everything you need to know.",
-    "q1": "How does booking work?",
-    "a1": "Browse studios, pick a time, and book a massage. You pay per session directly at the studio or through the app. No subscription required.",
-    "q2": "Can I cancel my booking?",
-    "a2": "Yes. Cancel for free up to 24 hours before your appointment. No questions asked.",
-    "q3": "What types of massage are available?",
-    "a3": "Each studio offers its own menu: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more — book only what you want, when you want.",
-    "q4": "Can I book every day?",
-    "a4": "Yes. Book as often as you like, subject to each studio's availability."
+    "q1": "How does the subscription work?",
+    "a1": "You pay €79/month and book unlimited massages at any of our partner studios in Madrid. No per-visit charges.",
+    "q2": "Can I cancel anytime?",
+    "a2": "Yes. No contracts, no minimum. Cancel from the app in one click.",
+    "q3": "What types of massage are included?",
+    "a3": "All of them: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more — depending on the studio.",
+    "q4": "Can I go every day?",
+    "a4": "Yes. Unlimited bookings, subject to each studio's availability."
   },
   "footer": "Made calmly in Madrid",
   "toast": {
     "invalid": "Please enter a valid email",
-    "success": "Welcome! Let's finish setting up your account.",
-    "error": "Something went wrong. Try again."
+    "success": "Welcome! We'll let you know when spots open."
   },
   "lang": {
     "en": "EN",

@@ -6,45 +6,43 @@
     "join": "Beitreten"
   },
   "hero": {
-    "badge": "Nur in Madrid · Vertrauenswürdige Studios",
-    "title1": "Buche die besten",
-    "title2": "Massagen in Madrid.",
-    "subtitle": "Entdecke vertrauenswürdige Studios in deiner Nähe und buche in Sekunden — auf deiner Sprache.",
+    "badge": "Nur in Madrid · Begrenzte Plätze",
+    "title1": "Madrid entspannt sich",
+    "title2": "ohne Grenzen.",
+    "subtitle": "Ein Abo. Unbegrenzte Massagen in den besten Studios der Hauptstadt. Von Salamanca bis Malasaña — Ihr Körper verdient mehr.",
     "emailPlaceholder": "sie@email.com",
-    "cta": "Studios durchsuchen",
-    "openApp": "App öffnen →",
-    "or": "oder",
-    "accountHint": "Neu hier? Gib deine E-Mail ein, um dein Konto in Sekunden zu erstellen.",
+    "cta": "Platz reservieren",
     "perks": {
-      "noCommitment": "Kein Abo",
-      "cancel": "Bis 24h kostenlos stornieren",
-      "launch": "Pro Sitzung bezahlen"
+      "noCommitment": "Keine Bindung",
+      "cancel": "Jederzeit kündbar",
+      "launch": "Einführungspreis"
     }
   },
   "stats": {
     "studios": "Studios in Madrid",
-    "booking": "In unter 60s buchen",
+    "price": "Pro Monat, alles inklusive",
+    "massages": "Massagen pro Monat",
     "districts": "Abgedeckte Bezirke"
   },
   "how": {
     "kicker": "So funktioniert's",
     "title": "Drei Schritte. Keine Ausreden.",
     "step1": {
-      "title": "Studio finden",
-      "desc": "Entdecke top-bewertete Massage-Studios in den besten Vierteln Madrids."
+      "title": "Abonnieren",
+      "desc": "79 €/Monat. Keine Verträge, keine Überraschungen. Jederzeit kündbar."
     },
     "step2": {
-      "title": "Zeit wählen",
-      "desc": "Sieh Echtzeit-Verfügbarkeit und wähle den Termin, der in deinen Tag passt."
+      "title": "Studio wählen",
+      "desc": "In jedem Partner-Studio in Madrid über die App buchen."
     },
     "step3": {
-      "title": "Buchen & pro Sitzung zahlen",
-      "desc": "Zahle pro Massage. Kein Abo, keine Bindung — einfach buchen und entspannen."
+      "title": "Grenzenlos genießen",
+      "desc": "Kommen Sie so oft Sie wollen. Ihr Körper wird es Ihnen danken."
     }
   },
   "studios": {
     "kicker": "Unsere Studios",
-    "title": "Die besten Hände Madrids, bereit zum Buchen.",
+    "title": "Die besten Hände Madrids, mit einem Pass.",
     "subtitle": "Sorgfältig ausgewählte Studios in den lebendigsten Vierteln der Stadt.",
     "specialties": {
       "swedish": "Schwedisch & Aromatherapie",
@@ -74,20 +72,19 @@
   "faq": {
     "kicker": "Häufige Fragen",
     "title": "Alles, was Sie wissen müssen.",
-    "q1": "Wie funktioniert die Buchung?",
-    "a1": "Durchsuche Studios, wähle eine Zeit und buche deine Massage. Du zahlst pro Sitzung direkt im Studio oder über die App. Kein Abo nötig.",
-    "q2": "Kann ich meine Buchung stornieren?",
-    "a2": "Ja. Storniere bis zu 24 Stunden vor dem Termin kostenlos. Ohne Wenn und Aber.",
-    "q3": "Welche Massagearten gibt es?",
-    "a3": "Jedes Studio hat seine eigene Karte: Schwedisch, Tiefengewebe, Sport, Thai, Heiße Steine, Reflexzonen und mehr. Buche nur, was du willst, wann du willst.",
-    "q4": "Kann ich jeden Tag buchen?",
-    "a4": "Ja. Buche so oft du willst, je nach Verfügbarkeit des Studios."
+    "q1": "Wie funktioniert das Abo?",
+    "a1": "Sie zahlen 79 €/Monat und buchen unbegrenzt Massagen in unseren Partner-Studios in Madrid. Keine Kosten pro Besuch.",
+    "q2": "Kann ich jederzeit kündigen?",
+    "a2": "Ja. Keine Verträge, keine Mindestlaufzeit. In der App mit einem Klick kündbar.",
+    "q3": "Welche Massagearten sind enthalten?",
+    "a3": "Alle: Schwedisch, Tiefengewebe, Sport, Thai, Heiße Steine, Reflexzonen und mehr — je nach Studio.",
+    "q4": "Kann ich jeden Tag gehen?",
+    "a4": "Ja. Unbegrenzte Buchungen, abhängig von der Verfügbarkeit des Studios."
   },
   "footer": "Mit Ruhe in Madrid gemacht",
   "toast": {
     "invalid": "Bitte gültige E-Mail eingeben",
-    "success": "Willkommen! Lass uns dein Konto fertig einrichten.",
-    "error": "Etwas ist schiefgelaufen. Versuche es erneut."
+    "success": "Willkommen! Wir melden uns, sobald Plätze frei sind."
   },
   "lang": {
     "en": "EN",

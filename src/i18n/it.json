@@ -6,45 +6,43 @@
     "join": "Iscriviti"
   },
   "hero": {
-    "badge": "Solo Madrid · Studi affidabili",
-    "title1": "Prenota i migliori",
-    "title2": "massaggi di Madrid.",
-    "subtitle": "Scopri studi affidabili vicino a te e prenota in pochi secondi — nella tua lingua.",
+    "badge": "Solo Madrid · Posti limitati",
+    "title1": "Madrid si rilassa",
+    "title2": "senza limiti.",
+    "subtitle": "Un abbonamento. Massaggi illimitati nei migliori studi della capitale. Da Salamanca a Malasaña, il tuo corpo merita di più.",
     "emailPlaceholder": "tu@email.com",
-    "cta": "Sfoglia studi",
-    "openApp": "Apri l'app →",
-    "or": "oppure",
-    "accountHint": "Nuovo? Inserisci la tua email per creare un account in pochi secondi.",
+    "cta": "Prenota il tuo posto",
     "perks": {
-      "noCommitment": "Nessun abbonamento",
-      "cancel": "Annulla gratis fino a 24h",
-      "launch": "Paga a sessione"
+      "noCommitment": "Nessun vincolo",
+      "cancel": "Cancella quando vuoi",
+      "launch": "Prezzo di lancio"
     }
   },
   "stats": {
     "studios": "Studi a Madrid",
-    "booking": "Prenota in meno di 60s",
+    "price": "Al mese, tutto incluso",
+    "massages": "Massaggi al mese",
     "districts": "Quartieri coperti"
   },
   "how": {
     "kicker": "Come funziona",
     "title": "Tre passi. Zero scuse.",
     "step1": {
-      "title": "Trova uno studio",
-      "desc": "Esplora i migliori studi di massaggio nei quartieri top di Madrid."
+      "title": "Abbonati",
+      "desc": "€79/mese. Senza contratti, senza sorprese. Disdici quando vuoi."
     },
     "step2": {
-      "title": "Scegli l'orario",
-      "desc": "Vedi disponibilità in tempo reale e scegli lo slot che si adatta alla tua giornata."
+      "title": "Scegli uno studio",
+      "desc": "Prenota in qualsiasi studio partner a Madrid dall'app."
     },
     "step3": {
-      "title": "Prenota e paga a sessione",
-      "desc": "Paga per ogni massaggio. Nessun abbonamento, nessun vincolo: prenota e rilassati."
+      "title": "Goditi senza limiti",
+      "desc": "Torna quante volte vuoi. Il tuo corpo ti ringrazierà."
     }
   },
   "studios": {
     "kicker": "I nostri studi",
-    "title": "Le migliori mani di Madrid, pronte per essere prenotate.",
+    "title": "Le migliori mani di Madrid, in un solo pass.",
     "subtitle": "Studi selezionati con cura nei quartieri più vivaci della città.",
     "specialties": {
       "swedish": "Svedese e Aromaterapia",
@@ -74,20 +72,19 @@
   "faq": {
     "kicker": "Domande frequenti",
     "title": "Tutto quello che devi sapere.",
-    "q1": "Come funziona la prenotazione?",
-    "a1": "Sfoglia gli studi, scegli un orario e prenota il tuo massaggio. Paga a sessione direttamente in studio o tramite l'app. Nessun abbonamento richiesto.",
-    "q2": "Posso cancellare la prenotazione?",
-    "a2": "Sì. Annulla gratis fino a 24 ore prima dell'appuntamento. Senza problemi.",
-    "q3": "Quali tipi di massaggio sono disponibili?",
-    "a3": "Ogni studio ha la propria carta: svedese, tessuto profondo, sportivo, thai, pietre calde, riflessologia e altro. Prenota solo ciò che vuoi, quando vuoi.",
+    "q1": "Come funziona l'abbonamento?",
+    "a1": "Paghi €79/mese e prenoti massaggi illimitati in qualsiasi studio partner a Madrid. Nessun costo per visita.",
+    "q2": "Posso cancellare quando voglio?",
+    "a2": "Sì. Senza contratti, senza minimo. Cancella dall'app con un clic.",
+    "q3": "Quali tipi di massaggio sono inclusi?",
+    "a3": "Tutti: svedese, tessuto profondo, sportivo, thai, pietre calde, riflessologia e altro — a seconda dello studio.",
     "q4": "Posso andare ogni giorno?",
-    "a4": "Sì. Prenota quanto vuoi, in base alla disponibilità di ogni studio."
+    "a4": "Sì. Prenotazioni illimitate, soggette alla disponibilità di ogni studio."
   },
   "footer": "Fatto con calma a Madrid",
   "toast": {
     "invalid": "Inserisci un'email valida",
-    "success": "Benvenuto! Terminiamo di configurare il tuo account.",
-    "error": "Qualcosa è andato storto. Riprova."
+    "success": "Benvenuto! Ti avviseremo quando si liberano posti."
   },
   "lang": {
     "en": "EN",

@@ -6,45 +6,43 @@
     "join": "Inscrever-se"
   },
   "hero": {
-    "badge": "Só em Madrid · Estúdios confiáveis",
-    "title1": "Reserve as melhores",
-    "title2": "massagens de Madrid.",
-    "subtitle": "Descubra estúdios confiáveis perto de você e reserve em segundos — no seu idioma.",
+    "badge": "Só em Madrid · Vagas limitadas",
+    "title1": "Madrid relaxa",
+    "title2": "sem limites.",
+    "subtitle": "Uma assinatura. Massagens ilimitadas nos melhores estúdios da capital. De Salamanca a Malasaña, seu corpo merece mais.",
     "emailPlaceholder": "voce@email.com",
-    "cta": "Ver estúdios",
-    "openApp": "Abrir o app →",
-    "or": "ou",
-    "accountHint": "Novo por aqui? Digite seu e-mail para criar sua conta em segundos.",
+    "cta": "Reserve sua vaga",
     "perks": {
-      "noCommitment": "Sem assinatura",
-      "cancel": "Cancele grátis até 24h",
-      "launch": "Pague por sessão"
+      "noCommitment": "Sem compromisso",
+      "cancel": "Cancele quando quiser",
+      "launch": "Preço de lançamento"
     }
   },
   "stats": {
     "studios": "Estúdios em Madrid",
-    "booking": "Reserve em menos de 60s",
+    "price": "Por mês, tudo incluso",
+    "massages": "Massagens por mês",
     "districts": "Bairros cobertos"
   },
   "how": {
     "kicker": "Como funciona",
     "title": "Três passos. Zero desculpas.",
     "step1": {
-      "title": "Encontre um estúdio",
-      "desc": "Navegue pelos melhores estúdios de massagem nos bairros mais incríveis de Madrid."
+      "title": "Assine",
+      "desc": "€79/mês. Sem contratos, sem surpresas. Cancele a qualquer momento."
     },
     "step2": {
-      "title": "Escolha um horário",
-      "desc": "Veja a disponibilidade em tempo real e escolha o horário que combina com seu dia."
+      "title": "Escolha um estúdio",
+      "desc": "Reserve em qualquer estúdio parceiro de Madrid pelo app."
     },
     "step3": {
-      "title": "Reserve e pague por sessão",
-      "desc": "Pague por cada massagem. Sem assinatura, sem compromisso — apenas reserve e relaxe."
+      "title": "Aproveite sem limites",
+      "desc": "Volte quantas vezes quiser. Seu corpo vai agradecer."
     }
   },
   "studios": {
     "kicker": "Nossos estúdios",
-    "title": "As melhores mãos de Madrid, prontas para reservar.",
+    "title": "As melhores mãos de Madrid, num único passe.",
     "subtitle": "Estúdios cuidadosamente selecionados nos bairros mais vibrantes da cidade.",
     "specialties": {
       "swedish": "Sueca & Aromaterapia",
@@ -74,20 +72,19 @@
   "faq": {
     "kicker": "Perguntas frequentes",
     "title": "Tudo o que você precisa saber.",
-    "q1": "Como funciona a reserva?",
-    "a1": "Navegue pelos estúdios, escolha um horário e reserve sua massagem. Pague por sessão diretamente no estúdio ou pelo app. Não precisa de assinatura.",
-    "q2": "Posso cancelar minha reserva?",
-    "a2": "Sim. Cancele grátis até 24 horas antes do seu agendamento. Sem perguntas.",
-    "q3": "Quais tipos de massagem estão disponíveis?",
-    "a3": "Cada estúdio tem seu próprio menu: sueca, tecido profundo, esportiva, tailandesa, pedras quentes, reflexologia e mais. Reserve apenas o que quiser, quando quiser.",
-    "q4": "Posso reservar todos os dias?",
-    "a4": "Sim. Reserve quantas vezes quiser, de acordo com a disponibilidade de cada estúdio."
+    "q1": "Como funciona a assinatura?",
+    "a1": "Você paga €79/mês e reserva massagens ilimitadas em qualquer estúdio parceiro em Madrid. Sem cobranças por visita.",
+    "q2": "Posso cancelar quando quiser?",
+    "a2": "Sim. Sem contratos, sem mínimo. Cancele pelo app em um clique.",
+    "q3": "Quais tipos de massagem estão incluídos?",
+    "a3": "Todos: sueca, tecido profundo, esportiva, tailandesa, pedras quentes, reflexologia e mais — conforme o estúdio.",
+    "q4": "Posso ir todos os dias?",
+    "a4": "Sim. Reservas ilimitadas, sujeito à disponibilidade de cada estúdio."
   },
   "footer": "Feito com calma em Madrid",
   "toast": {
     "invalid": "Digite um e-mail válido",
-    "success": "Bem-vindo! Vamos terminar de configurar sua conta.",
-    "error": "Algo deu errado. Tente novamente."
+    "success": "Bem-vindo! Avisaremos quando abrirem vagas."
   },
   "lang": {
     "en": "EN",

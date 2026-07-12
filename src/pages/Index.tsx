@@ -45,30 +45,31 @@ const Index = () => {
     }
     setLoading(false);
     if (ok) {
-      toast.success(t("toast.success"));
+      toast.success("Let's finish setting up your account.");
       navigate("/app");
     } else {
-      toast.error(t("toast.error"));
+      toast.error("Something went wrong. Try again.");
     }
   };
 
   const stats = [
     { n: "8+", l: t("stats.studios") },
-    { n: "<60s", l: t("stats.booking") },
+    { n: "€79", l: t("stats.price") },
+    { n: "∞", l: t("stats.massages") },
     { n: "9", l: t("stats.districts") },
   ];
 
   const steps = [
-    { icon: MapPin, title: t("how.step1.title"), desc: t("how.step1.desc") },
-    { icon: InfinityIcon, title: t("how.step2.title"), desc: t("how.step2.desc") },
-    { icon: Heart, title: t("how.step3.title"), desc: t("how.step3.desc") },
+    { icon: Heart, title: t("how.step1.title"), desc: t("how.step1.desc") },
+    { icon: MapPin, title: t("how.step2.title"), desc: t("how.step2.desc") },
+    { icon: InfinityIcon, title: t("how.step3.title"), desc: t("how.step3.desc") },
   ];
 
   const features = [
-    "Book at any partner studio",
-    "Pay per session — no subscription",
+    "Unlimited massages per month",
+    "Access all 8+ partner studios",
     "Same-day booking available",
-    "Free cancellation up to 24h",
+    "Cancel anytime — no questions",
     "Your preferences saved everywhere",
     "Automated reminders (SMS + email)",
     "Referral credits (€10 per friend)",
@@ -99,8 +100,8 @@ const Index = () => {
       icon: Gift,
       title: "Referral credits",
       titleEs: "Créditos por referrals",
-      desc: "Share with a friend. They get €10 off their first booking. You get €10 credit. Everyone wins — modeled after Fresha's referral system.",
-      descEs: "Recomienda a un amigo. Ellos reciben €10 de descuento en su primera reserva. Tú recibes €10 de crédito.",
+      desc: "Share with a friend. They get €10 off their first month. You get €10 credit. Everyone wins — modeled after Fresha's referral system.",
+      descEs: "Recomienda a un amigo. Ellos reciben €10 de descuento en su primer mes. Tú recibes €10 de crédito.",
       highlight: "€10 for you, €10 for them"
     },
     {
@@ -192,18 +193,26 @@ const Index = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
-              <Button asChild size="lg" className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
-                <a href="/app/massages">
-                  {t("hero.cta")}
-                </a>
-              </Button>
+              <form onSubmit={handleJoin} className="flex-1 flex gap-2">
+                <Input
+                  type="email"
+                  placeholder={t("hero.emailPlaceholder")}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
+                  aria-label="Email"
+                />
+                <Button type="submit" size="lg" disabled={loading} className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
+                  {loading ? "…" : "Get started"}
+                </Button>
+              </form>
               <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
-                {t("hero.openApp")}
+                Book now →
               </a>
             </div>
 
             <p className="text-xs text-primary-foreground/70 mt-3">
-              {t("hero.accountHint")}
+              New here? Enter your email above to create your account in seconds.
             </p>
 
 
@@ -296,10 +305,10 @@ const Index = () => {
           <div className="max-w-2xl mb-16">
             <p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">What you get</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground text-balance">
-              Everything the best booking platforms offer — in one marketplace
+              Everything the best booking platforms offer — in one membership
             </h2>
             <p className="text-muted-foreground mt-4 text-lg">
-              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into Massage Club — simple booking, no subscription.
+              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into Massage Club — and made it simple.
             </p>
           </div>
 
@@ -321,17 +330,23 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing / How it works */}
+      {/* Pricing */}
       <section id="join" className="py-24 bg-gradient-hero text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 30% 30%, hsl(var(--accent)) 0%, transparent 50%)" }} />
         <div className="container relative">
           <div className="max-w-xl mx-auto text-center">
-            <p className="text-sm uppercase tracking-[0.2em] text-accent font-semibold mb-3">{t("how.kicker")}</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-accent font-semibold mb-3">{t("pricing.kicker")}</p>
             <h2 className="font-display text-4xl md:text-6xl font-bold text-balance mb-6">
-              {t("how.title")}
+              {t("pricing.title")}
             </h2>
 
             <Card className="p-10 bg-card/95 backdrop-blur text-foreground border-accent/30 shadow-elegant mt-12 text-left">
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="font-display text-6xl font-bold text-primary">€79</span>
+                <span className="text-muted-foreground">{t("pricing.perMonth")}</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-8">{t("pricing.founder")}</p>
+
               <ul className="space-y-3 mb-8">
                 {features.map((f) => (
                   <li key={f} className="flex items-start gap-3">
@@ -354,12 +369,12 @@ const Index = () => {
                     aria-label="Email"
                   />
                   <Button type="submit" size="lg" className="h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant font-semibold">
-                    {t("hero.cta")}
+                    {t("pricing.cta")}
                   </Button>
                 </form>
-                <div className="text-center text-sm text-muted-foreground">{t("hero.or")}</div>
+                <div className="text-center text-sm text-muted-foreground">or</div>
                 <a href="/app" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
-                  {t("hero.openApp")}
+                  Open the app →
                 </a>
               </div>
             </Card>
