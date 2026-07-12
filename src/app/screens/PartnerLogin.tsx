@@ -58,6 +58,32 @@ export default function PartnerLogin() {
     setLoading(false);
   };
 
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    setError("");
+    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/partner/dashboard` },
+    });
+    if (oauthErr) {
+      setError(oauthErr.message);
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleMagicLink = async () => {
+    if (!email) { setError("Enter your email first"); return; }
+    setMagicLoading(true);
+    setError("");
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.href },
+    });
+    setMagicLoading(false);
+    if (otpErr) { setError(otpErr.message); return; }
+    setMagicSent(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-warm flex items-center justify-center p-6">
       <div className="w-full max-w-md">
