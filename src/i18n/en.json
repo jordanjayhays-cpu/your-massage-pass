@@ -132,7 +132,520 @@
       "freeWithMembership": "Free with membership",
       "notes": "Notes for your therapist",
       "notesPlaceholder": "Anything we should know? Injuries, allergies, preferences…",
-      "review": "Review & confirm"
+      "review": "Review & confirm",
+      "pressureLabels": {
+        "light": "Light",
+        "medium": "Medium",
+        "firm": "Firm",
+        "deep": "Deep"
+      },
+      "focusLabels": {
+        "neck": "Neck",
+        "shoulders": "Shoulders",
+        "upperback": "Upper Back",
+        "lowerback": "Lower Back",
+        "legs": "Legs",
+        "feet": "Feet",
+        "arms": "Arms",
+        "hands": "Hands"
+      },
+      "addonLabels": {
+        "aromatherapy": "Aromatherapy",
+        "hot-stones": "Hot Stones",
+        "scalp": "Scalp Massage",
+        "extended": "+15 minutes"
+      },
+      "addonPrice": "+€{{price}}"
+    },
+    "massageList": {
+      "profile": "Profile",
+      "switchToPartner": "Switch to Partner Dashboard →",
+      "searchPlaceholder": "Search studios or area…",
+      "filters": "Filters",
+      "filterAll": "All",
+      "yourLocation": "Your location",
+      "nearMadrid": "Near Madrid · tap to locate",
+      "bookNow": "Book now →",
+      "studiosNearYou": "Studios near you",
+      "discover": "Discover",
+      "foundCount": "{{count}} found",
+      "loadingStudios": "Loading studios…",
+      "noMatches": "No matches. Try another search.",
+      "favorite": "Favorite",
+      "payAtStudio": "Pay at studio",
+      "availableToday": "Available today",
+      "madrid": "Madrid",
+      "youAreHere": "You are here",
+      "minutes": "min",
+      "minutesShort": "m"
+    },
+    "shopDetail": {
+      "not_found": "Not found.",
+      "back": "Back",
+      "default_address": "Madrid, Spain",
+      "default_description": "Intensive pressure to relieve chronic tension.",
+      "share": "Share",
+      "favorite": "Favorite",
+      "district_label": "{{district}} District",
+      "madrid": "Madrid",
+      "reviews_count": "({{count}} reviews)",
+      "read_google_reviews": "Read reviews on Google →",
+      "treatments_title": "Treatments",
+      "pay_at_studio": "Pay at studio",
+      "duration_min": "{{count}} min",
+      "book_btn": "Book →",
+      "location_title": "Location",
+      "directions": "Directions",
+      "call": "Call",
+      "chat": "Chat"
+    },
+    "calendar": {
+      "app": {
+        "calendar": {
+          "back": "Back",
+          "selectDateTime": "Select date & time",
+          "chooseDay": "Choose a day",
+          "availableTimes": "Available times",
+          "pickDayFirst": "Pick a day first.",
+          "closedDay": "Closed on this day — please pick another date.",
+          "fullyBooked": "Fully booked",
+          "continue": "Continue",
+          "days": {
+            "sun": "Sun",
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri",
+            "sat": "Sat"
+          }
+        }
+      }
+    },
+    "payment": {
+      "confirmed": {
+        "title": "You're booked.",
+        "summary": "{{name}} at {{studio}} on {{date}} · {{time}}.",
+        "ref": "Ref:",
+        "emailSent": "Confirmation sent to {{email}}.",
+        "emailSentDefault": "Confirmation sent to your email.",
+        "gettingThere": "Getting there",
+        "feedback": {
+          "title": "Enjoyed Massage Club?",
+          "description": "After your visit, leave {{studio}} a review on Google — it helps the studio and other clients.",
+          "button": "Leave a Google review ⭐"
+        },
+        "whatsapp": {
+          "button": "Message {{studio}} on WhatsApp",
+          "message": "Hi {{studio}}! I just booked a {{name}} for {{date}} at {{time}} via Massage Club. I'm {{clientName}}. See you! 🙏"
+        },
+        "calendar": {
+          "button": "Add to calendar",
+          "title": "{{name}} at {{studio}}",
+          "details": "Booking ref {{ref}}. {{addOns}}Pressure: {{pressure}}.",
+          "addOns": "Add-ons: {{list}}. ",
+          "location": "{{studio}}, {{district}}, Madrid"
+        },
+        "actions": {
+          "bookAnother": "Book another",
+          "backHome": "Back to home"
+        },
+        "toast": {
+          "successWithEmail": "Booking confirmed! Check your email.",
+          "success": "Booking confirmed!"
+        },
+        "note": {
+          "referralCredit": "€{{amount}} referral credit — deduct from bill at studio."
+        }
+      },
+      "main": {
+        "header": {
+          "subtitle": "Review & pay",
+          "title": "Confirm booking"
+        },
+        "summary": {
+          "timeDuration": "{{time}} · {{duration}} min",
+          "location": "{{district}}, Madrid"
+        },
+        "details": {
+          "pressure": "Pressure",
+          "focus": "Focus",
+          "therapistChoice": "Therapist's choice",
+          "addOns": "Add-ons",
+          "none": "None"
+        },
+        "payment": {
+          "title": "Pay at the studio",
+          "description": "No payment needed now — pay when you arrive."
+        },
+        "referral": {
+          "apply": "Apply €{{amount}} referral credit",
+          "description": "You have €{{total}} in credits. €{{deduction}} will be deducted from your bill at the studio."
+        },
+        "totals": {
+          "addOns": "Add-ons",
+          "referralCredit": "Referral credit",
+          "dueToday": "Due today",
+          "footer": "Massage paid directly to the studio on arrival.",
+          "footerCredit": " Show your confirmation to redeem €{{amount}} off."
+        },
+        "actions": {
+          "confirming": "Confirming...",
+          "confirm": "Confirm booking"
+        }
+      }
+    },
+    "profile": {
+      "app": {
+        "profile": {
+          "signedOut": {
+            "title": "Sign in to set up your profile",
+            "subtitle": "Save your preferences so every studio knows how you like your massage.",
+            "signInButton": "Sign in"
+          },
+          "header": {
+            "back": "Back",
+            "title": "My profile",
+            "signOut": "Sign out"
+          },
+          "language": {
+            "label": "Idioma · Language",
+            "hint": "Pick your language / Elige tu idioma"
+          },
+          "referral": {
+            "title": "Give €{{amount}}, get €{{amount}}",
+            "subtitle": "Share your link. When a friend books, you get €{{amount}} off your next massage.",
+            "yourLink": "Your link",
+            "copyLink": "Copy link",
+            "share": "Share",
+            "creditBalance": "Your credit balance",
+            "shareTitle": "Massage Club",
+            "shareText": "I've been booking massages in Madrid through Massage Club — get €{{amount}} off your first booking with my link: {{url}}"
+          },
+          "photo": {
+            "changePhoto": "Change photo"
+          },
+          "personal": {
+            "title": "Personal details",
+            "firstName": "First name",
+            "lastName": "Last name",
+            "email": "Email",
+            "phone": "Phone",
+            "phonePlaceholder": "+34 ...",
+            "dateOfBirth": "Date of birth",
+            "gender": "Gender",
+            "city": "City",
+            "cityPlaceholder": "e.g. Madrid",
+            "preferredLanguage": "Preferred language",
+            "preferredLanguagePlaceholder": "e.g. English, Spanish"
+          },
+          "massagePrefs": {
+            "title": "Massage preferences",
+            "preferredPressure": "Preferred pressure",
+            "preferredTherapist": "Preferred therapist",
+            "focusAreas": "Focus areas",
+            "allergies": "Allergies",
+            "allergiesPlaceholder": "e.g. nut oils",
+            "healthNotes": "Health notes",
+            "healthNotesPlaceholder": "Injuries, pregnancy, areas to avoid…",
+            "preferredMassageTypes": "Preferred massage types",
+            "typicalSessionLength": "Typical session length",
+            "minutes": "{{count}} min",
+            "typicalBudget": "Typical budget",
+            "usualAddons": "Usual add-ons",
+            "massageFrequency": "How often you get a massage",
+            "mainGoals": "Main goals"
+          },
+          "comfort": {
+            "title": "Comfort & experience",
+            "subtitle": "Small things that make a big difference",
+            "conversation": "Do you like talking during your massage?",
+            "music": "Music",
+            "temperature": "Room temperature",
+            "scent": "Scent",
+            "lighting": "Lighting",
+            "notes": "Comfort notes",
+            "notesPlaceholder": "e.g. I get cold easily, ticklish feet"
+          },
+          "health": {
+            "title": "Health & safety",
+            "subtitle": "Private — only shared with your therapist",
+            "reasonForVisit": "Reason for visit / goals",
+            "reasonForVisitPlaceholder": "e.g. lower back pain from desk work",
+            "medicalConditions": "Medical conditions",
+            "medications": "Medications",
+            "medicationsPlaceholder": "e.g. blood thinners",
+            "pastSurgeries": "Past surgeries / injuries",
+            "pastSurgeriesPlaceholder": "e.g. shoulder surgery 2022",
+            "avoidAreas": "Areas to avoid",
+            "avoidAreasPlaceholder": "e.g. left knee",
+            "emergencyContact": "Emergency contact",
+            "emergencyNamePlaceholder": "Name",
+            "emergencyPhonePlaceholder": "Phone",
+            "isFirstMassage": "Is this your first professional massage?",
+            "consent": "I confirm the above is accurate and consent to treatment."
+          },
+          "save": "Save",
+          "toasts": {
+            "photoUploadFailed": "Photo upload failed: {{message}}",
+            "photoSavedProfileFailed": "Photo saved, but profile update failed: {{message}}",
+            "photoUpdated": "Photo updated",
+            "profileSaved": "Profile saved",
+            "linkCopied": "Link copied",
+            "copyFailed": "Couldn't copy — long-press to copy"
+          },
+          "options": {
+            "pressures": {
+              "light": "Light",
+              "medium": "Medium",
+              "firm": "Firm",
+              "deep": "Deep"
+            },
+            "focus": {
+              "neck": "Neck",
+              "shoulders": "Shoulders",
+              "upperBack": "Upper Back",
+              "lowerBack": "Lower Back",
+              "legs": "Legs",
+              "feet": "Feet",
+              "arms": "Arms",
+              "hands": "Hands"
+            },
+            "medicals": {
+              "highBloodPressure": "High blood pressure",
+              "heartCondition": "Heart condition",
+              "diabetes": "Diabetes",
+              "bloodClots": "Blood clots / DVT",
+              "pregnant": "Pregnant",
+              "recentSurgery": "Recent surgery",
+              "cancer": "Cancer",
+              "epilepsy": "Epilepsy",
+              "skinCondition": "Skin condition"
+            },
+            "genders": {
+              "female": "Female",
+              "male": "Male",
+              "other": "Other",
+              "preferNotToSay": "Prefer not to say"
+            },
+            "therapistGenders": {
+              "any": "No preference",
+              "female": "Female",
+              "male": "Male"
+            },
+            "massageTypes": {
+              "swedish": "Swedish",
+              "deep": "Deep Tissue",
+              "thai": "Thai",
+              "sports": "Sports",
+              "stone": "Hot Stone",
+              "aromatherapy": "Aromatherapy",
+              "reflexology": "Reflexology",
+              "shiatsu": "Shiatsu",
+              "balinese": "Balinese",
+              "lymphatic": "Lymphatic",
+              "prenatal": "Prenatal"
+            },
+            "budgets": {
+              "under_40": "Under €40",
+              "40_60": "€40–60",
+              "60_90": "€60–90",
+              "90_plus": "€90+"
+            },
+            "addons": {
+              "aromatherapy": "Aromatherapy",
+              "hot_stones": "Hot stones",
+              "scalp": "Scalp massage",
+              "foot_scrub": "Foot scrub",
+              "cbd": "CBD oil",
+              "cupping": "Cupping",
+              "extra_time": "Extra 15 min"
+            },
+            "frequencies": {
+              "weekly": "Weekly",
+              "monthly": "Monthly",
+              "few_times_year": "A few times a year",
+              "rarely": "Rarely / first time"
+            },
+            "goals": {
+              "relaxation": "Relaxation",
+              "pain_relief": "Pain & tension relief",
+              "sports_recovery": "Sports recovery",
+              "sleep": "Better sleep",
+              "stress": "Stress & anxiety",
+              "injury_rehab": "Injury rehab",
+              "pampering": "Pampering"
+            },
+            "conversation": {
+              "silence": "🤫 Silence please",
+              "minimal": "A little chat",
+              "chatty": "Happy to chat"
+            },
+            "music": {
+              "spa": "Spa music",
+              "none": "No music",
+              "any": "Whatever's on"
+            },
+            "temperature": {
+              "warmer": "Warmer",
+              "neutral": "Neutral",
+              "cooler": "Cooler"
+            },
+            "scent": {
+              "aroma": "Aromatherapy",
+              "unscented": "Unscented"
+            },
+            "lighting": {
+              "dim": "Dim",
+              "normal": "Normal"
+            }
+          }
+        }
+      }
+    },
+    "myBookings": {
+      "title": "My bookings",
+      "signedInAs": "Signed in as {{name}}",
+      "back": "Back",
+      "profile": "Profile",
+      "signOut": "Sign out",
+      "sections": {
+        "upcoming": "Upcoming",
+        "past": "Past"
+      },
+      "emptyStates": {
+        "noUpcoming": "No upcoming bookings.",
+        "noPast": "No past bookings yet."
+      },
+      "auth": {
+        "title": "Sign in to see your bookings",
+        "description": "Track upcoming massages and rebook your favourites in one tap.",
+        "signIn": "Sign in",
+        "browse": "Browse studios instead"
+      },
+      "card": {
+        "at": "at",
+        "gettingThere": "Getting there",
+        "reschedule": "Reschedule",
+        "cancel": "Cancel",
+        "rebook": "Rebook",
+        "review": "Review",
+        "status": {
+          "confirmed": "confirmed",
+          "cancelled": "cancelled",
+          "pending": "pending"
+        }
+      },
+      "cancelConfirm": "Cancel your {{type}} on {{date}} at {{time}}?",
+      "messages": {
+        "cancelError": "Could not cancel — {{message}}",
+        "cancelSuccess": "Booking cancelled",
+        "rescheduleError": "Could not reschedule — {{message}}",
+        "rescheduleSuccess": "Booking rescheduled"
+      },
+      "rescheduleModal": {
+        "title": "Reschedule",
+        "chooseDay": "Choose a day",
+        "availableTimes": "Available times",
+        "closed": "Closed on this day — please pick another date.",
+        "full": "Full",
+        "saving": "Saving...",
+        "confirm": "Confirm new time"
+      },
+      "days": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat"
+      },
+      "months": {
+        "jan": "Jan",
+        "feb": "Feb",
+        "mar": "Mar",
+        "apr": "Apr",
+        "may": "May",
+        "jun": "Jun",
+        "jul": "Jul",
+        "aug": "Aug",
+        "sep": "Sep",
+        "oct": "Oct",
+        "nov": "Nov",
+        "dec": "Dec"
+      }
+    },
+    "login": {
+      "toasts": {
+        "invalidEmail": "Please enter a valid email",
+        "googleError": "Google sign-in isn't switched on yet — browse as guest for now.",
+        "missingName": "Please enter your name",
+        "welcome": "Welcome, {{name}}!"
+      },
+      "steps": {
+        "step1": "Step 1 of 2",
+        "step2": "Step 2 of 2"
+      },
+      "nameStep": {
+        "title": "Almost there.",
+        "subtitle": "Just your name — so the studio knows who's coming.",
+        "label": "Your name",
+        "placeholder": "Alex Martinez",
+        "phoneLabel": "Phone (optional)",
+        "phonePlaceholder": "+34 600 000 000",
+        "loading": "Setting up…",
+        "submit": "Start booking"
+      },
+      "emailStep": {
+        "title": "Your email.",
+        "subtitle": "For booking confirmations & receipts.",
+        "placeholder": "your@email.com",
+        "submit": "Continue"
+      },
+      "hero": {
+        "established": "Madrid · Est. 2026",
+        "title1": "The city's best",
+        "title2": "massages,",
+        "title3": "on demand.",
+        "imageAlt": "Calm Madrid massage studio",
+        "studiosCount": "12+ studios",
+        "payAtStudio": "Pay at studio",
+        "description": "Browse top-rated studios near you. No account needed to look — pay at the studio."
+      },
+      "actions": {
+        "forStudios": "For studios",
+        "browse": "Browse studios",
+        "google": "Continue with Google",
+        "ownStudio": "Own a massage studio?",
+        "listFree": "List it free"
+      },
+      "howItWorks": {
+        "title": "How it works",
+        "step1": {
+          "title": "Find a studio",
+          "subtitle": "Browse top-rated spots near you."
+        },
+        "step2": {
+          "title": "Pick a time",
+          "subtitle": "Book instantly — pressure, focus, add-ons."
+        },
+        "step3": {
+          "title": "Show up & relax",
+          "subtitle": "Get a confirmation. That's it."
+        }
+      },
+      "studioCard": {
+        "label": "For studios",
+        "title": "List your studio in minutes.",
+        "subtitle": "Calendar sync, branded link, no setup fees.",
+        "button": "Become a partner"
+      },
+      "saveDetails": {
+        "title": "Save details for faster booking",
+        "button": "Save"
+      },
+      "feedback": "Share feedback — help us build this"
     }
   }
 }
