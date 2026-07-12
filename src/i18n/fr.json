@@ -6,43 +6,44 @@
     "join": "Rejoindre"
   },
   "hero": {
-    "badge": "Madrid uniquement · Places limitées",
-    "title1": "Madrid se détend",
-    "title2": "sans limites.",
-    "subtitle": "Un abonnement. Massages illimités dans les meilleurs studios de la capitale. De Salamanca à Malasaña, votre corps mérite mieux.",
+    "badge": "Madrid uniquement · Studios de confiance",
+    "title1": "Réservez les meilleurs",
+    "title2": "massages de Madrid.",
+    "subtitle": "Découvrez des studios de confiance près de chez vous et réservez en quelques secondes — dans votre langue.",
     "emailPlaceholder": "vous@email.com",
-    "cta": "Réservez votre place",
+    "cta": "Parcourir les studios",
+    "openApp": "Ouvrir l'app →",
+    "accountHint": "Nouveau ? Entrez votre email pour créer votre compte en quelques secondes.",
     "perks": {
-      "noCommitment": "Sans engagement",
-      "cancel": "Annulez quand vous voulez",
-      "launch": "Prix de lancement"
+      "noCommitment": "Sans abonnement",
+      "cancel": "Annulation gratuite jusqu'à 24h",
+      "launch": "Payez par séance"
     }
   },
   "stats": {
     "studios": "Studios à Madrid",
-    "price": "Par mois, tout compris",
-    "massages": "Massages par mois",
+    "booking": "Réservez en moins de 60s",
     "districts": "Quartiers couverts"
   },
   "how": {
     "kicker": "Comment ça marche",
     "title": "Trois étapes. Zéro excuse.",
     "step1": {
-      "title": "Abonnez-vous",
-      "desc": "79 €/mois. Sans contrat, sans surprises. Annulez à tout moment."
+      "title": "Trouvez un studio",
+      "desc": "Explorez les studios de massage les mieux notés dans les meilleurs quartiers de Madrid."
     },
     "step2": {
-      "title": "Choisissez un studio",
-      "desc": "Réservez dans n'importe quel studio partenaire à Madrid depuis l'app."
+      "title": "Choisissez un horaire",
+      "desc": "Consultez les disponibilités en temps réel et choisissez le créneau qui vous convient."
     },
     "step3": {
-      "title": "Profitez sans limite",
-      "desc": "Revenez aussi souvent que vous voulez. Votre corps vous remerciera."
+      "title": "Réservez & payez par séance",
+      "desc": "Payez à chaque massage. Sans abonnement, sans engagement — réservez et détendez-vous."
     }
   },
   "studios": {
     "kicker": "Nos studios",
-    "title": "Les meilleures mains de Madrid, sur un seul pass.",
+    "title": "Les meilleures mains de Madrid, prêtes à être réservées.",
     "subtitle": "Studios soigneusement sélectionnés dans les quartiers les plus vivants de la capitale.",
     "specialties": {
       "swedish": "Suédois & Aromathérapie",
@@ -72,19 +73,20 @@
   "faq": {
     "kicker": "Questions fréquentes",
     "title": "Tout ce qu'il faut savoir.",
-    "q1": "Comment fonctionne l'abonnement ?",
-    "a1": "Vous payez 79 €/mois et réservez des massages illimités dans nos studios partenaires à Madrid. Aucun frais par visite.",
-    "q2": "Puis-je annuler à tout moment ?",
-    "a2": "Oui. Sans contrat, sans minimum. Annulez depuis l'app en un clic.",
-    "q3": "Quels types de massage sont inclus ?",
-    "a3": "Tous : suédois, tissus profonds, sportif, thaï, pierres chaudes, réflexologie et plus — selon le studio.",
-    "q4": "Puis-je y aller tous les jours ?",
-    "a4": "Oui. Réservations illimitées, selon la disponibilité de chaque studio."
+    "q1": "Comment fonctionne la réservation ?",
+    "a1": "Parcourez les studios, choisissez un horaire et réservez votre massage. Vous payez par séance, directement au studio ou via l'app. Aucun abonnement requis.",
+    "q2": "Puis-je annuler ma réservation ?",
+    "a2": "Oui. Annulez gratuitement jusqu'à 24 heures avant votre rendez-vous. Sans aucune question.",
+    "q3": "Quels types de massage sont disponibles ?",
+    "a3": "Chaque studio a sa propre carte : suédois, tissus profonds, sportif, thaï, pierres chaudes, réflexologie et plus. Réservez seulement ce que vous voulez, quand vous voulez.",
+    "q4": "Puis-je réserver tous les jours ?",
+    "a4": "Oui. Réservez aussi souvent que vous le souhaitez, selon la disponibilité de chaque studio."
   },
   "footer": "Fait calmement à Madrid",
   "toast": {
     "invalid": "Veuillez entrer un email valide",
-    "success": "Bienvenue ! Nous vous préviendrons à l'ouverture des places."
+    "success": "Bienvenue ! Terminons la configuration de votre compte.",
+    "error": "Une erreur s'est produite. Veuillez réessayer."
   },
   "lang": {
     "en": "EN",
