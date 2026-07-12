@@ -296,10 +296,10 @@ const Index = () => {
           <div className="max-w-2xl mb-16">
             <p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">What you get</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground text-balance">
-              Everything the best booking platforms offer — in one membership
+              Everything the best booking platforms offer — in one marketplace
             </h2>
             <p className="text-muted-foreground mt-4 text-lg">
-              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into Massage Club — and made it simple.
+              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into Massage Club — simple booking, no subscription.
             </p>
           </div>
 
