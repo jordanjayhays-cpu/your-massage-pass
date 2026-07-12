@@ -99,8 +99,8 @@ const Index = () => {
       icon: Gift,
       title: "Referral credits",
       titleEs: "Créditos por referrals",
-      desc: "Share with a friend. They get €10 off their first month. You get €10 credit. Everyone wins — modeled after Fresha's referral system.",
-      descEs: "Recomienda a un amigo. Ellos reciben €10 de descuento en su primer mes. Tú recibes €10 de crédito.",
+      desc: "Share with a friend. They get €10 off their first booking. You get €10 credit. Everyone wins — modeled after Fresha's referral system.",
+      descEs: "Recomienda a un amigo. Ellos reciben €10 de descuento en su primera reserva. Tú recibes €10 de crédito.",
       highlight: "€10 for you, €10 for them"
     },
     {
