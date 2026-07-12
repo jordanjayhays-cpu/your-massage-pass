@@ -458,9 +458,42 @@ function StudioSetupInner() {
                   </>
                 )}
               </Button>
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="h-px bg-border flex-1" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="h-px bg-border flex-1" />
+              </div>
+
+              {magicSent ? (
+                <div className="rounded-xl border border-border bg-secondary/40 p-4 text-center">
+                  <p className="text-sm font-medium text-foreground">Check your email for a login link.</p>
+                  <p className="text-xs text-muted-foreground mt-1">We sent it to {email}. Open it on this device to continue.</p>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="you@studio.com"
+                    className="h-11 mb-2"
+                  />
+                  <Button
+                    onClick={handleMagicLink}
+                    disabled={magicLoading}
+                    variant="outline"
+                    className="w-full h-11"
+                  >
+                    {magicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue with email"}
+                  </Button>
+                </>
+              )}
+
               <p className="text-xs text-center text-muted-foreground mt-3">
                 We'll bring you right back here after sign-in.
               </p>
+
             </CardContent>
           </Card>
         )}
