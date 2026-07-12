@@ -192,26 +192,18 @@ const Index = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
-              <form onSubmit={handleJoin} className="flex-1 flex gap-2">
-                <Input
-                  type="email"
-                  placeholder={t("hero.emailPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
-                  aria-label="Email"
-                />
-                <Button type="submit" size="lg" disabled={loading} className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
-                  {loading ? "…" : "Get started"}
-                </Button>
-              </form>
+              <Button asChild size="lg" className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
+                <a href="/app/massages">
+                  {t("hero.cta")}
+                </a>
+              </Button>
               <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
-                Book now →
+                {t("hero.openApp")}
               </a>
             </div>
 
             <p className="text-xs text-primary-foreground/70 mt-3">
-              New here? Enter your email above to create your account in seconds.
+              {t("hero.accountHint")}
             </p>
 
 
