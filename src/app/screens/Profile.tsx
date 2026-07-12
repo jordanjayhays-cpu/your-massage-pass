@@ -13,9 +13,13 @@ import {
 
 
 const PRESSURES = ["Light", "Medium", "Firm", "Deep"];
+const PRESSURE_KEYS: Record<string, string> = { Light: "light", Medium: "medium", Firm: "firm", Deep: "deep" };
 const FOCUS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
+const FOCUS_KEYS: Record<string, string> = { Neck: "neck", Shoulders: "shoulders", "Upper Back": "upperBack", "Lower Back": "lowerBack", Legs: "legs", Feet: "feet", Arms: "arms", Hands: "hands" };
 const MEDICALS = ["High blood pressure", "Heart condition", "Diabetes", "Blood clots / DVT", "Pregnant", "Recent surgery", "Cancer", "Epilepsy", "Skin condition"];
+const MEDICAL_KEYS: Record<string, string> = { "High blood pressure": "highBloodPressure", "Heart condition": "heartCondition", Diabetes: "diabetes", "Blood clots / DVT": "bloodClots", Pregnant: "pregnant", "Recent surgery": "recentSurgery", Cancer: "cancer", Epilepsy: "epilepsy", "Skin condition": "skinCondition" };
 const GENDERS = ["Female", "Male", "Other", "Prefer not to say"];
+const GENDER_KEYS: Record<string, string> = { Female: "female", Male: "male", Other: "other", "Prefer not to say": "preferNotToSay" };
 const THERAPIST_GENDERS: { label: string; value: string }[] = [
   { label: "No preference", value: "any" },
   { label: "Female", value: "female" },
