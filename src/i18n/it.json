@@ -6,43 +6,44 @@
     "join": "Iscriviti"
   },
   "hero": {
-    "badge": "Solo Madrid · Posti limitati",
-    "title1": "Madrid si rilassa",
-    "title2": "senza limiti.",
-    "subtitle": "Un abbonamento. Massaggi illimitati nei migliori studi della capitale. Da Salamanca a Malasaña, il tuo corpo merita di più.",
+    "badge": "Solo Madrid · Studi affidabili",
+    "title1": "Prenota i migliori",
+    "title2": "massaggi di Madrid.",
+    "subtitle": "Scopri studi affidabili vicino a te e prenota in pochi secondi — nella tua lingua.",
     "emailPlaceholder": "tu@email.com",
-    "cta": "Prenota il tuo posto",
+    "cta": "Sfoglia studi",
+    "openApp": "Apri l'app →",
+    "accountHint": "Nuovo? Inserisci la tua email per creare un account in pochi secondi.",
     "perks": {
-      "noCommitment": "Nessun vincolo",
-      "cancel": "Cancella quando vuoi",
-      "launch": "Prezzo di lancio"
+      "noCommitment": "Nessun abbonamento",
+      "cancel": "Annulla gratis fino a 24h",
+      "launch": "Paga a sessione"
     }
   },
   "stats": {
     "studios": "Studi a Madrid",
-    "price": "Al mese, tutto incluso",
-    "massages": "Massaggi al mese",
+    "booking": "Prenota in meno di 60s",
     "districts": "Quartieri coperti"
   },
   "how": {
     "kicker": "Come funziona",
     "title": "Tre passi. Zero scuse.",
     "step1": {
-      "title": "Abbonati",
-      "desc": "€79/mese. Senza contratti, senza sorprese. Disdici quando vuoi."
+      "title": "Trova uno studio",
+      "desc": "Esplora i migliori studi di massaggio nei quartieri top di Madrid."
     },
     "step2": {
-      "title": "Scegli uno studio",
-      "desc": "Prenota in qualsiasi studio partner a Madrid dall'app."
+      "title": "Scegli l'orario",
+      "desc": "Vedi disponibilità in tempo reale e scegli lo slot che si adatta alla tua giornata."
     },
     "step3": {
-      "title": "Goditi senza limiti",
-      "desc": "Torna quante volte vuoi. Il tuo corpo ti ringrazierà."
+      "title": "Prenota e paga a sessione",
+      "desc": "Paga per ogni massaggio. Nessun abbonamento, nessun vincolo: prenota e rilassati."
     }
   },
   "studios": {
     "kicker": "I nostri studi",
-    "title": "Le migliori mani di Madrid, in un solo pass.",
+    "title": "Le migliori mani di Madrid, pronte per essere prenotate.",
     "subtitle": "Studi selezionati con cura nei quartieri più vivaci della città.",
     "specialties": {
       "swedish": "Svedese e Aromaterapia",
@@ -72,19 +73,20 @@
   "faq": {
     "kicker": "Domande frequenti",
     "title": "Tutto quello che devi sapere.",
-    "q1": "Come funziona l'abbonamento?",
-    "a1": "Paghi €79/mese e prenoti massaggi illimitati in qualsiasi studio partner a Madrid. Nessun costo per visita.",
-    "q2": "Posso cancellare quando voglio?",
-    "a2": "Sì. Senza contratti, senza minimo. Cancella dall'app con un clic.",
-    "q3": "Quali tipi di massaggio sono inclusi?",
-    "a3": "Tutti: svedese, tessuto profondo, sportivo, thai, pietre calde, riflessologia e altro — a seconda dello studio.",
+    "q1": "Come funziona la prenotazione?",
+    "a1": "Sfoglia gli studi, scegli un orario e prenota il tuo massaggio. Paga a sessione direttamente in studio o tramite l'app. Nessun abbonamento richiesto.",
+    "q2": "Posso cancellare la prenotazione?",
+    "a2": "Sì. Annulla gratis fino a 24 ore prima dell'appuntamento. Senza problemi.",
+    "q3": "Quali tipi di massaggio sono disponibili?",
+    "a3": "Ogni studio ha la propria carta: svedese, tessuto profondo, sportivo, thai, pietre calde, riflessologia e altro. Prenota solo ciò che vuoi, quando vuoi.",
     "q4": "Posso andare ogni giorno?",
-    "a4": "Sì. Prenotazioni illimitate, soggette alla disponibilità di ogni studio."
+    "a4": "Sì. Prenota quanto vuoi, in base alla disponibilità di ogni studio."
   },
   "footer": "Fatto con calma a Madrid",
   "toast": {
     "invalid": "Inserisci un'email valida",
-    "success": "Benvenuto! Ti avviseremo quando si liberano posti."
+    "success": "Benvenuto! Terminiamo di configurare il tuo account.",
+    "error": "Qualcosa è andato storto. Riprova."
   },
   "lang": {
     "en": "EN",
