@@ -556,84 +556,84 @@ export default function Profile() {
 
         {/* Massage preferences card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">Massage preferences</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred pressure</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.preferredPressure")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {PRESSURES.map(p => (
                 <button key={p} type="button" onClick={() => setPressure(p)} className={chip(pressure === p)}>
-                  {p}
+                  {t(`app.profile.options.pressures.${PRESSURE_KEYS[p]}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred therapist</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.preferredTherapist")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
-              {THERAPIST_GENDERS.map(t => (
-                <button key={t.value} type="button" onClick={() => setPreferredTherapistGender(t.value)} className={chip(preferredTherapistGender === t.value)}>
-                  {t.label}
+              {THERAPIST_GENDERS.map(opt => (
+                <button key={opt.value} type="button" onClick={() => setPreferredTherapistGender(opt.value)} className={chip(preferredTherapistGender === opt.value)}>
+                  {t(`app.profile.options.therapistGenders.${opt.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Focus areas</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.focusAreas")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {FOCUS.map(f => (
                 <button key={f} type="button" onClick={() => toggleFocus(f)} className={chip(focusAreas.includes(f))}>
-                  {f}
+                  {t(`app.profile.options.focus.${FOCUS_KEYS[f]}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Allergies</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.allergies")}</label>
             <input
               value={allergies}
               onChange={e => setAllergies(e.target.value)}
-              placeholder="e.g. nut oils"
+              placeholder={t("app.profile.massagePrefs.allergiesPlaceholder")}
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Health notes</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.healthNotes")}</label>
             <textarea
               value={healthNotes}
               onChange={e => setHealthNotes(e.target.value)}
               rows={4}
-              placeholder="Injuries, pregnancy, areas to avoid…"
+              placeholder={t("app.profile.massagePrefs.healthNotesPlaceholder")}
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div className="pt-2 border-t border-gray-100">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred massage types</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.preferredMassageTypes")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
-              {MASSAGE_TYPES.map(t => (
+              {MASSAGE_TYPES.map(opt => (
                 <button
-                  key={t.value}
+                  key={opt.value}
                   type="button"
                   onClick={() =>
                     setPreferredMassageTypes(prev =>
-                      prev.includes(t.value) ? prev.filter(x => x !== t.value) : [...prev, t.value]
+                      prev.includes(opt.value) ? prev.filter(x => x !== opt.value) : [...prev, opt.value]
                     )
                   }
-                  className={chip(preferredMassageTypes.includes(t.value))}
+                  className={chip(preferredMassageTypes.includes(opt.value))}
                 >
-                  {t.label}
+                  {t(`app.profile.options.massageTypes.${opt.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typical session length</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.typicalSessionLength")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {DURATIONS.map(d => (
                 <button
@@ -642,14 +642,14 @@ export default function Profile() {
                   onClick={() => setPreferredDuration(preferredDuration === d ? null : d)}
                   className={chip(preferredDuration === d)}
                 >
-                  {d} min
+                  {t("app.profile.massagePrefs.minutes", { count: d })}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Typical budget</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.typicalBudget")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {BUDGETS.map(b => (
                 <button
@@ -658,14 +658,14 @@ export default function Profile() {
                   onClick={() => setTypicalBudget(typicalBudget === b.value ? "" : b.value)}
                   className={chip(typicalBudget === b.value)}
                 >
-                  {b.label}
+                  {t(`app.profile.options.budgets.${b.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Usual add-ons</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.usualAddons")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {ADDONS.map(a => (
                 <button
@@ -678,14 +678,14 @@ export default function Profile() {
                   }
                   className={chip(usualAddons.includes(a.value))}
                 >
-                  {a.label}
+                  {t(`app.profile.options.addons.${a.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">How often you get a massage</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.massageFrequency")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {FREQUENCIES.map(f => (
                 <button
@@ -694,14 +694,14 @@ export default function Profile() {
                   onClick={() => setMassageFrequency(massageFrequency === f.value ? "" : f.value)}
                   className={chip(massageFrequency === f.value)}
                 >
-                  {f.label}
+                  {t(`app.profile.options.frequencies.${f.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Main goals</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.mainGoals")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {GOALS.map(g => (
                 <button
@@ -714,7 +714,7 @@ export default function Profile() {
                   }
                   className={chip(massageGoals.includes(g.value))}
                 >
-                  {g.label}
+                  {t(`app.profile.options.goals.${g.value}`)}
                 </button>
               ))}
             </div>
@@ -724,12 +724,12 @@ export default function Profile() {
         {/* Comfort & experience card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Comfort &amp; experience</h2>
-            <p className="text-xs text-gray-500">Small things that make a big difference</p>
+            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2>
+            <p className="text-xs text-gray-500">{t("app.profile.comfort.subtitle")}</p>
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-gray-900">Do you like talking during your massage?</label>
+            <label className="text-sm font-semibold text-gray-900">{t("app.profile.comfort.conversation")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {CONVERSATION.map(o => (
                 <button
@@ -738,14 +738,14 @@ export default function Profile() {
                   onClick={() => setConversationPref(conversationPref === o.value ? "" : o.value)}
                   className={chip(conversationPref === o.value)}
                 >
-                  {o.label}
+                  {t(`app.profile.options.conversation.${o.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Music</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.comfort.music")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {MUSIC.map(o => (
                 <button
@@ -754,14 +754,14 @@ export default function Profile() {
                   onClick={() => setMusicPref(musicPref === o.value ? "" : o.value)}
                   className={chip(musicPref === o.value)}
                 >
-                  {o.label}
+                  {t(`app.profile.options.music.${o.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room temperature</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.comfort.temperature")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {TEMPERATURE.map(o => (
                 <button
@@ -770,14 +770,14 @@ export default function Profile() {
                   onClick={() => setTemperaturePref(temperaturePref === o.value ? "" : o.value)}
                   className={chip(temperaturePref === o.value)}
                 >
-                  {o.label}
+                  {t(`app.profile.options.temperature.${o.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Scent</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.comfort.scent")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {SCENT.map(o => (
                 <button
@@ -786,14 +786,14 @@ export default function Profile() {
                   onClick={() => setScentPref(scentPref === o.value ? "" : o.value)}
                   className={chip(scentPref === o.value)}
                 >
-                  {o.label}
+                  {t(`app.profile.options.scent.${o.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lighting</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.comfort.lighting")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {LIGHTING.map(o => (
                 <button
@@ -802,19 +802,19 @@ export default function Profile() {
                   onClick={() => setLightingPref(lightingPref === o.value ? "" : o.value)}
                   className={chip(lightingPref === o.value)}
                 >
-                  {o.label}
+                  {t(`app.profile.options.lighting.${o.value}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Comfort notes</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.comfort.notes")}</label>
             <textarea
               value={comfortNotes}
               onChange={e => setComfortNotes(e.target.value)}
               rows={3}
-              placeholder="e.g. I get cold easily, ticklish feet"
+              placeholder={t("app.profile.comfort.notesPlaceholder")}
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
           </div>
@@ -823,76 +823,76 @@ export default function Profile() {
         {/* Health & safety card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Health &amp; safety</h2>
-            <p className="text-xs text-gray-500">Private — only shared with your therapist</p>
+            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2>
+            <p className="text-xs text-gray-500">{t("app.profile.health.subtitle")}</p>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Reason for visit / goals</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.reasonForVisit")}</label>
             <textarea
               value={reasonForVisit}
               onChange={e => setReasonForVisit(e.target.value)}
               rows={3}
-              placeholder="e.g. lower back pain from desk work"
+              placeholder={t("app.profile.health.reasonForVisitPlaceholder")}
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medical conditions</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.medicalConditions")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {MEDICALS.map(m => (
                 <button key={m} type="button" onClick={() => toggleMedical(m)} className={chip(medicalConditions.includes(m))}>
-                  {m}
+                  {t(`app.profile.options.medicals.${MEDICAL_KEYS[m]}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medications</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.medications")}</label>
             <input
               value={medications}
               onChange={e => setMedications(e.target.value)}
-              placeholder="e.g. blood thinners"
+              placeholder={t("app.profile.health.medicationsPlaceholder")}
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Past surgeries / injuries</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.pastSurgeries")}</label>
             <textarea
               value={pastSurgeries}
               onChange={e => setPastSurgeries(e.target.value)}
               rows={3}
-              placeholder="e.g. shoulder surgery 2022"
+              placeholder={t("app.profile.health.pastSurgeriesPlaceholder")}
               className="mt-1 w-full px-3 py-2 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Areas to avoid</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.avoidAreas")}</label>
             <input
               value={avoidAreas}
               onChange={e => setAvoidAreas(e.target.value)}
-              placeholder="e.g. left knee"
+              placeholder={t("app.profile.health.avoidAreasPlaceholder")}
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Emergency contact</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.emergencyContact")}</label>
             <div className="mt-2 grid grid-cols-2 gap-3">
               <input
                 value={emergencyName}
                 onChange={e => setEmergencyName(e.target.value)}
-                placeholder="Name"
+                placeholder={t("app.profile.health.emergencyNamePlaceholder")}
                 className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
               />
               <input
                 value={emergencyPhone}
                 onChange={e => setEmergencyPhone(e.target.value)}
-                placeholder="Phone"
+                placeholder={t("app.profile.health.emergencyPhonePlaceholder")}
                 className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
               />
             </div>
@@ -906,7 +906,7 @@ export default function Profile() {
               onChange={e => setIsFirstMassage(e.target.checked)}
               className="h-5 w-5 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
             />
-            <label htmlFor="firstMassage" className="text-sm text-gray-700">Is this your first professional massage?</label>
+            <label htmlFor="firstMassage" className="text-sm text-gray-700">{t("app.profile.health.isFirstMassage")}</label>
           </div>
 
           <div className="flex items-start gap-3 pt-2">
@@ -918,7 +918,7 @@ export default function Profile() {
               className="mt-0.5 h-5 w-5 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
             />
             <label htmlFor="consent" className="text-sm text-gray-700 leading-relaxed">
-              I confirm the above is accurate and consent to treatment.
+              {t("app.profile.health.consent")}
             </label>
           </div>
         </div>
@@ -933,7 +933,7 @@ export default function Profile() {
             className="w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save
+            {t("app.profile.save")}
           </button>
         </div>
       </div>
