@@ -13,7 +13,8 @@
     "emailPlaceholder": "tu@email.com",
     "cta": "Sfoglia studi",
     "openApp": "Apri l'app →",
-    "accountHint": "Nuovo? Inserisci la tua email per creare un account in pochi secondi.",
+    "or": "oppure",
+    "accountHint": "Nuovo? Inserisci la tua email per creare un account in pochi secondi."
     "perks": {
       "noCommitment": "Nessun abbonamento",
       "cancel": "Annulla gratis fino a 24h",

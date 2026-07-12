@@ -13,7 +13,8 @@
     "emailPlaceholder": "sie@email.com",
     "cta": "Studios durchsuchen",
     "openApp": "App öffnen →",
-    "accountHint": "Neu hier? Gib deine E-Mail ein, um dein Konto in Sekunden zu erstellen.",
+    "or": "oder",
+    "accountHint": "Neu hier? Gib deine E-Mail ein, um dein Konto in Sekunden zu erstellen."
     "perks": {
       "noCommitment": "Kein Abo",
       "cancel": "Bis 24h kostenlos stornieren",

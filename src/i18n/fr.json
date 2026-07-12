@@ -13,7 +13,8 @@
     "emailPlaceholder": "vous@email.com",
     "cta": "Parcourir les studios",
     "openApp": "Ouvrir l'app →",
-    "accountHint": "Nouveau ? Entrez votre email pour créer votre compte en quelques secondes.",
+    "or": "ou",
+    "accountHint": "Nouveau ? Entrez votre email pour créer votre compte en quelques secondes."
     "perks": {
       "noCommitment": "Sans abonnement",
       "cancel": "Annulation gratuite jusqu'à 24h",

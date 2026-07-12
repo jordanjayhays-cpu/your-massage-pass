@@ -13,7 +13,8 @@
     "emailPlaceholder": "voce@email.com",
     "cta": "Ver estúdios",
     "openApp": "Abrir o app →",
-    "accountHint": "Novo por aqui? Digite seu e-mail para criar sua conta em segundos.",
+    "or": "ou",
+    "accountHint": "Novo por aqui? Digite seu e-mail para criar sua conta em segundos."
     "perks": {
       "noCommitment": "Sem assinatura",
       "cancel": "Cancele grátis até 24h",
