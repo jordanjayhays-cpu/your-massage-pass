@@ -321,23 +321,17 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing / How it works */}
       <section id="join" className="py-24 bg-gradient-hero text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 30% 30%, hsl(var(--accent)) 0%, transparent 50%)" }} />
         <div className="container relative">
           <div className="max-w-xl mx-auto text-center">
-            <p className="text-sm uppercase tracking-[0.2em] text-accent font-semibold mb-3">{t("pricing.kicker")}</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-accent font-semibold mb-3">{t("how.kicker")}</p>
             <h2 className="font-display text-4xl md:text-6xl font-bold text-balance mb-6">
-              {t("pricing.title")}
+              {t("how.title")}
             </h2>
 
             <Card className="p-10 bg-card/95 backdrop-blur text-foreground border-accent/30 shadow-elegant mt-12 text-left">
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="font-display text-6xl font-bold text-primary">€79</span>
-                <span className="text-muted-foreground">{t("pricing.perMonth")}</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-8">{t("pricing.founder")}</p>
-
               <ul className="space-y-3 mb-8">
                 {features.map((f) => (
                   <li key={f} className="flex items-start gap-3">
@@ -360,12 +354,12 @@ const Index = () => {
                     aria-label="Email"
                   />
                   <Button type="submit" size="lg" className="h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant font-semibold">
-                    {t("pricing.cta")}
+                    {t("hero.cta")}
                   </Button>
                 </form>
                 <div className="text-center text-sm text-muted-foreground">or</div>
                 <a href="/app" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
-                  Open the app →
+                  {t("hero.openApp")}
                 </a>
               </div>
             </Card>
