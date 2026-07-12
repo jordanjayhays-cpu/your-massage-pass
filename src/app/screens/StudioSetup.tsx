@@ -197,7 +197,24 @@ function StudioSetupInner() {
     }
   };
 
-  // Step 1: Create account
+  // Step 1 (claim): send magic-link email — link brings user back to this same claim URL.
+  const handleMagicLink = async () => {
+    if (!email) { toast.error("Enter your email first"); return; }
+    setMagicLoading(true);
+    const emailRedirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo },
+    });
+    setMagicLoading(false);
+    if (error) {
+      toast.error(error.message || "Could not send magic link");
+      return;
+    }
+    setMagicSent(true);
+    toast.success("Check your email for a login link.");
+  };
+
   const handleCreateAccount = async () => {
     if (!password || password !== confirmPassword) { toast.error("Passwords don't match"); return; }
     if (password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
