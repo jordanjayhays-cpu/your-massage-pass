@@ -23,7 +23,7 @@ import { googleReviewUrl } from "../lib/googleReview";
 
 
 export default function ShopDetail() {
-  const { t } = useTranslation("app.shopDetail");
+  const { t } = useTranslation(undefined, { keyPrefix: "app.shopDetail" });
   const navigate = useNavigate();
   const { id } = useParams();
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);

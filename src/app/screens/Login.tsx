@@ -23,7 +23,7 @@ const HERO_IMG =
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&display=swap";
 
 export default function Login() {
-  const { t } = useTranslation("app.login");
+  const { t } = useTranslation(undefined, { keyPrefix: "app.login" });
   const navigate = useNavigate();
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
   const [name, setName] = useState(getStoredUser()?.name ?? "");

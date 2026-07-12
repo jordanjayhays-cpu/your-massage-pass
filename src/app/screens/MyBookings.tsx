@@ -65,7 +65,7 @@ function generateSlots(open: string, close: string): string[] {
 }
 
 export default function MyBookings() {
-  const { t } = useTranslation("app.myBookings");
+  const { t } = useTranslation(undefined, { keyPrefix: "app.myBookings" });
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -259,7 +259,7 @@ function RescheduleModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { t } = useTranslation("app.myBookings");
+  const { t } = useTranslation(undefined, { keyPrefix: "app.myBookings" });
   const [date, setDate] = useState<string>(booking.booking_date);
   const [time, setTime] = useState<string>(booking.booking_time?.slice(0, 5) ?? "");
   const [bookedCounts, setBookedCounts] = useState<Record<string, number>>({});
