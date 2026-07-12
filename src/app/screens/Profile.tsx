@@ -369,20 +369,20 @@ export default function Profile() {
         {/* Refer & Earn card */}
         {referralCode && (() => {
           const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
-          const shareText = `I've been booking massages in Madrid through Massage Club — get €${REFERRAL_REWARD_EUR} off your first booking with my link: ${referralUrl}`;
+          const shareText = t("app.profile.referral.shareText", { amount: REFERRAL_REWARD_EUR, url: referralUrl });
           const copy = async () => {
             try {
               await navigator.clipboard.writeText(referralUrl);
-              toast.success("Link copied");
+              toast.success(t("app.profile.toasts.linkCopied"));
             } catch {
-              toast.error("Couldn't copy — long-press to copy");
+              toast.error(t("app.profile.toasts.copyFailed"));
             }
           };
           const share = async () => {
             if ((navigator as any).share) {
               try {
                 await (navigator as any).share({
-                  title: "Massage Club",
+                  title: t("app.profile.referral.shareTitle"),
                   text: shareText,
                   url: referralUrl,
                 });
@@ -398,15 +398,15 @@ export default function Profile() {
                   <Gift className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold">Give €{REFERRAL_REWARD_EUR}, get €{REFERRAL_REWARD_EUR}</h3>
+                  <h3 className="text-lg font-bold">{t("app.profile.referral.title", { amount: REFERRAL_REWARD_EUR })}</h3>
                   <p className="text-sm text-white/85 mt-0.5">
-                    Share your link. When a friend books, you get €{REFERRAL_REWARD_EUR} off your next massage.
+                    {t("app.profile.referral.subtitle", { amount: REFERRAL_REWARD_EUR })}
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 rounded-xl bg-white/15 backdrop-blur px-3 py-2.5 flex items-center gap-2">
-                <span className="text-xs text-white/70 uppercase tracking-wider">Your link</span>
+                <span className="text-xs text-white/70 uppercase tracking-wider">{t("app.profile.referral.yourLink")}</span>
                 <span className="text-sm font-mono truncate flex-1">/?ref={referralCode}</span>
               </div>
 
@@ -415,18 +415,18 @@ export default function Profile() {
                   onClick={copy}
                   className="h-11 rounded-full bg-white/15 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/25"
                 >
-                  <Copy size={15} /> Copy link
+                  <Copy size={15} /> {t("app.profile.referral.copyLink")}
                 </button>
                 <button
                   onClick={share}
                   className="h-11 rounded-full bg-white text-[#C4622D] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/90"
                 >
-                  <Share2 size={15} /> Share
+                  <Share2 size={15} /> {t("app.profile.referral.share")}
                 </button>
               </div>
 
               <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-white/70">Your credit balance</span>
+                <span className="text-xs uppercase tracking-wider text-white/70">{t("app.profile.referral.creditBalance")}</span>
                 <span className="text-xl font-bold">€{(creditBalanceCents / 100).toFixed(0)}</span>
               </div>
             </div>
