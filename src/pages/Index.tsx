@@ -357,7 +357,7 @@ const Index = () => {
                     {t("hero.cta")}
                   </Button>
                 </form>
-                <div className="text-center text-sm text-muted-foreground">or</div>
+                <div className="text-center text-sm text-muted-foreground">{t("hero.or")}</div>
                 <a href="/app" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
                   {t("hero.openApp")}
                 </a>
