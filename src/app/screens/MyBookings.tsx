@@ -34,15 +34,15 @@ type Booking = {
 
 const todayISO = () => {
   const d = new Date();
-  return \`\${d.getFullYear()}-\${String(d.getMonth() + 1).padStart(2, "0")}-\${String(d.getDate()).padStart(2, "0")}\`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 const formatDate = (iso: string, t: any) => {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  const dayName = t(\`days.\${DAY_KEYS[dt.getDay()]}\`);
-  const monthName = t(\`months.\${MONTH_KEYS[dt.getMonth()]}\`);
-  return \`\${dayName} \${dt.getDate()} \${monthName}\`;
+  const dayName = t(`days.${DAY_KEYS[dt.getDay()]}`);
+  const monthName = t(`months.${MONTH_KEYS[dt.getMonth()]}`);
+  return `${dayName} ${dt.getDate()} ${monthName}`;
 };
 
 const statusStyle = (s: string) => {
@@ -60,7 +60,7 @@ function generateSlots(open: string, close: string): string[] {
   const start = oh * 60 + (om || 0);
   const end = ch * 60 + (cm || 0);
   const out: string[] = [];
-  for (let m = start; m < end; m += 60) out.push(\`\${pad(Math.floor(m / 60))}:\${pad(m % 60)}\`);
+  for (let m = start; m < end; m += 60) out.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
   return out;
 }
 
@@ -78,11 +78,11 @@ export default function MyBookings() {
     if (user?.email) {
       const { data } = await supabase
         .from("bookings")
-        .select(\`
+        .select(`
           id, spa_name, massage_type, booking_date, booking_time, status, partner_id, price,
           partners ( id, address, access_instructions, opening_hours, capacity,
                      partner_availability ( day_of_week, time_slot ) )
-        \`)
+        `)
         .eq("client_email", user.email)
         .order("booking_date", { ascending: false });
       setBookings((data as any as Booking[]) || []);
@@ -147,8 +147,8 @@ export default function MyBookings() {
             <p className="font-semibold text-gray-900 truncate">{b.spa_name}</p>
             <p className="text-sm text-gray-500 truncate">{b.massage_type}</p>
           </div>
-          <span className={\`px-2.5 py-1 rounded-full text-[11px] font-semibold \${statusStyle(b.status)}\`}>
-            {t(\`card.status.\${b.status}\`, { defaultValue: b.status })}
+          <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusStyle(b.status)}`}>
+            {t(`card.status.${b.status}`, { defaultValue: b.status })}
           </span>
         </div>
         <p className="text-sm text-gray-600 mt-2">
@@ -182,7 +182,7 @@ export default function MyBookings() {
             </>
           )}
           <button
-            onClick={() => navigate(\`/s/\${b.partner_id}\`)}
+            onClick={() => navigate(`/s/${b.partner_id}`)}
             className="flex-1 min-w-[100px] h-10 rounded-xl bg-[#C4622D]/5 text-[#C4622D] text-sm font-semibold border border-[#C4622D]/20"
           >
             {t("card.rebook")}
@@ -365,7 +365,7 @@ function RescheduleModal({
                     )}
                   >
                     <span className="text-[10px] uppercase tracking-wider opacity-80">
-                      {t(`days.\${DAY_KEYS[d.date.getDay()]}`)}
+                      {t(`days.${DAY_KEYS[d.date.getDay()]}`)}
                     </span>
                     <span className="font-display text-2xl font-bold mt-1">{d.date.getDate()}</span>
                   </button>
