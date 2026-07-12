@@ -54,6 +54,8 @@ function StudioSetupInner() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [accountLoading, setAccountLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
   const [partnerId, setPartnerId] = useState<string | null>(null);
 
   // Step 2: Profile
