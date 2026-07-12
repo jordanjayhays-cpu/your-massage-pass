@@ -54,22 +54,21 @@ const Index = () => {
 
   const stats = [
     { n: "8+", l: t("stats.studios") },
-    { n: "€79", l: t("stats.price") },
-    { n: "∞", l: t("stats.massages") },
+    { n: "<60s", l: t("stats.booking") },
     { n: "9", l: t("stats.districts") },
   ];
 
   const steps = [
-    { icon: Heart, title: t("how.step1.title"), desc: t("how.step1.desc") },
-    { icon: MapPin, title: t("how.step2.title"), desc: t("how.step2.desc") },
-    { icon: InfinityIcon, title: t("how.step3.title"), desc: t("how.step3.desc") },
+    { icon: MapPin, title: t("how.step1.title"), desc: t("how.step1.desc") },
+    { icon: InfinityIcon, title: t("how.step2.title"), desc: t("how.step2.desc") },
+    { icon: Heart, title: t("how.step3.title"), desc: t("how.step3.desc") },
   ];
 
   const features = [
-    "Unlimited massages per month",
-    "Access all 8+ partner studios",
+    "Book at any partner studio",
+    "Pay per session — no subscription",
     "Same-day booking available",
-    "Cancel anytime — no questions",
+    "Free cancellation up to 24h",
     "Your preferences saved everywhere",
     "Automated reminders (SMS + email)",
     "Referral credits (€10 per friend)",
