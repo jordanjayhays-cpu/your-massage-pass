@@ -94,6 +94,7 @@ const LIGHTING: { label: string; value: string }[] = [
 ];
 
 export default function Profile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -226,7 +227,7 @@ export default function Profile() {
     const path = `${user.id}/${Date.now()}-${file.name}`;
     const { error: upError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (upError) {
-      toast.error("Photo upload failed: " + upError.message);
+      toast.error(t("app.profile.toasts.photoUploadFailed", { message: upError.message }));
       setUploadingPhoto(false);
       return;
     }
@@ -239,9 +240,9 @@ export default function Profile() {
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     if (dbError) {
-      toast.error("Photo saved, but profile update failed: " + dbError.message);
+      toast.error(t("app.profile.toasts.photoSavedProfileFailed", { message: dbError.message }));
     } else {
-      toast.success("Photo updated");
+      toast.success(t("app.profile.toasts.photoUpdated"));
     }
     setUploadingPhoto(false);
   };
@@ -292,7 +293,7 @@ export default function Profile() {
     }, { onConflict: "id" });
     setSaving(false);
     if (error) toast.error(error.message);
-    else toast.success("Profile saved");
+    else toast.success(t("app.profile.toasts.profileSaved"));
   };
 
   const signOut = async () => {
@@ -321,15 +322,15 @@ export default function Profile() {
         <div className="h-16 w-16 rounded-full bg-[#C4622D]/10 flex items-center justify-center mb-4">
           <UserCircle className="h-8 w-8 text-[#C4622D]" />
         </div>
-        <h1 className="text-xl font-bold text-gray-900">Sign in to set up your profile</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t("app.profile.signedOut.title")}</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
-          Save your preferences so every studio knows how you like your massage.
+          {t("app.profile.signedOut.subtitle")}
         </p>
         <button
           onClick={() => navigate("/")}
           className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
         >
-          Sign in
+          {t("app.profile.signedOut.signInButton")}
         </button>
       </div>
     );
@@ -344,23 +345,23 @@ export default function Profile() {
           onClick={() => navigate("/app/bookings")}
           className="flex items-center gap-1 text-sm text-gray-500 mb-3"
         >
-          <ArrowLeft size={14} /> Back
+          <ArrowLeft size={14} /> {t("app.profile.header.back")}
         </button>
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold text-gray-900">My profile</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t("app.profile.header.title")}</h1>
           <button
             onClick={signOut}
             className="flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded-full border border-gray-200 bg-white"
           >
-            <LogOut size={14} /> Sign out
+            <LogOut size={14} /> {t("app.profile.header.signOut")}
           </button>
         </div>
 
         {/* Language picker — prominent in profile */}
         <div className="mt-4 rounded-2xl border border-[#E5DDD3] bg-white p-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068]">Idioma · Language</p>
-            <p className="text-xs text-[#9E9387] mt-0.5">Pick your language / Elige tu idioma</p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068]">{t("app.profile.language.label")}</p>
+            <p className="text-xs text-[#9E9387] mt-0.5">{t("app.profile.language.hint")}</p>
           </div>
           <LanguageFlagToggle />
         </div>

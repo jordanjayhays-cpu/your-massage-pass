@@ -6,6 +6,7 @@ import { getNextDays, TIME_SLOTS, MASSAGES } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { useTranslation } from "react-i18next";
 
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -28,6 +29,7 @@ function generateSlots(open: string, close: string): string[] {
 }
 
 export default function Calendar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const { date, time, set, shop } = useBooking();
@@ -139,21 +141,25 @@ export default function Calendar() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3">
-        <button onClick={() => navigate(-1)} aria-label="Back" className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
+        <button 
+          onClick={() => navigate(-1)} 
+          aria-label={t("app.calendar.back")} 
+          className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center"
+        >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <p className="text-xs text-muted-foreground">Select date & time</p>
+          <p className="text-xs text-muted-foreground">{t("app.calendar.selectDateTime")}</p>
           <h1 className="font-display text-lg font-bold">{massage?.name}</h1>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Choose a day</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.calendar.chooseDay")}</h3>
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6">
           {days.map((d) => {
             const selected = date === d.iso;
-            const day = d.date.toLocaleDateString("en", { weekday: "short" });
+            const day = t("app.calendar.days." + DAY_KEYS[d.date.getDay()]);
             const num = d.date.getDate();
             return (
               <button
@@ -174,22 +180,22 @@ export default function Calendar() {
         </div>
 
         <div className="flex items-center justify-between mt-6 mb-3">
-          <h3 className="text-sm font-semibold text-foreground">Available times</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("app.calendar.availableTimes")}</h3>
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         {!date ? (
-          <p className="text-sm text-muted-foreground">Pick a day first.</p>
+          <p className="text-sm text-muted-foreground">{t("app.calendar.pickDayFirst")}</p>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Closed on this day — please pick another date.</p>
+          <p className="text-sm text-muted-foreground">{t("app.calendar.closedDay")}</p>
         ) : (
           <div className="grid grid-cols-3 gap-2">
-            {slots.map((t) => {
-              const selected = time === t;
-              const full = isFull(t);
+            {slots.map((t_slot) => {
+              const selected = time === t_slot;
+              const full = isFull(t_slot);
               return (
                 <button
-                  key={t}
-                  onClick={() => !full && set({ time: t })}
+                  key={t_slot}
+                  onClick={() => !full && set({ time: t_slot })}
                   disabled={full}
                   className={cn(
                     "h-12 rounded-xl border text-sm font-semibold transition-all flex flex-col items-center justify-center",
@@ -200,8 +206,8 @@ export default function Calendar() {
                       : "bg-card border-border text-foreground hover:border-primary/50",
                   )}
                 >
-                  <span>{t}</span>
-                  {full && <span className="text-[9px] uppercase tracking-wide">Fully booked</span>}
+                  <span>{t_slot}</span>
+                  {full && <span className="text-[9px] uppercase tracking-wide">{t("app.calendar.fullyBooked")}</span>}
                 </button>
               );
             })}
@@ -215,7 +221,7 @@ export default function Calendar() {
           onClick={() => navigate(`/app/booking/${id}/customize`)}
           className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant disabled:opacity-40"
         >
-          Continue
+          {t("app.calendar.continue")}
         </Button>
       </div>
     </div>

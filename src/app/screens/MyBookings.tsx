@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { googleReviewUrl } from "../lib/googleReview";
 import { TIME_SLOTS, getNextDays } from "../data";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
 type Partner = {
   id?: string;
@@ -34,13 +34,15 @@ type Booking = {
 
 const todayISO = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return \`\${d.getFullYear()}-\${String(d.getMonth() + 1).padStart(2, "0")}-\${String(d.getDate()).padStart(2, "0")}\`;
 };
 
-const formatDate = (iso: string) => {
+const formatDate = (iso: string, t: any) => {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  return `${DAYS[dt.getDay()]} ${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  const dayName = t(\`days.\${DAY_KEYS[dt.getDay()]}\`);
+  const monthName = t(\`months.\${MONTH_KEYS[dt.getMonth()]}\`);
+  return \`\${dayName} \${dt.getDate()} \${monthName}\`;
 };
 
 const statusStyle = (s: string) => {
@@ -58,11 +60,12 @@ function generateSlots(open: string, close: string): string[] {
   const start = oh * 60 + (om || 0);
   const end = ch * 60 + (cm || 0);
   const out: string[] = [];
-  for (let m = start; m < end; m += 60) out.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
+  for (let m = start; m < end; m += 60) out.push(\`\${pad(Math.floor(m / 60))}:\${pad(m % 60)}\`);
   return out;
 }
 
 export default function MyBookings() {
+  const { t } = useTranslation("app.myBookings");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -75,11 +78,11 @@ export default function MyBookings() {
     if (user?.email) {
       const { data } = await supabase
         .from("bookings")
-        .select(`
+        .select(\`
           id, spa_name, massage_type, booking_date, booking_time, status, partner_id, price,
           partners ( id, address, access_instructions, opening_hours, capacity,
                      partner_availability ( day_of_week, time_slot ) )
-        `)
+        \`)
         .eq("client_email", user.email)
         .order("booking_date", { ascending: false });
       setBookings((data as any as Booking[]) || []);
@@ -95,10 +98,10 @@ export default function MyBookings() {
   };
 
   const cancelBooking = async (b: Booking) => {
-    if (!confirm(`Cancel your ${b.massage_type} on ${formatDate(b.booking_date)} at ${b.booking_time}?`)) return;
+    if (!confirm(t("cancelConfirm", { type: b.massage_type, date: formatDate(b.booking_date, t), time: b.booking_time }))) return;
     const { error } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", b.id);
-    if (error) { toast.error("Could not cancel — " + error.message); return; }
-    toast.success("Booking cancelled");
+    if (error) { toast.error(t("messages.cancelError", { message: error.message })); return; }
+    toast.success(t("messages.cancelSuccess"));
     load();
   };
 
@@ -116,15 +119,15 @@ export default function MyBookings() {
         <div className="h-16 w-16 rounded-full bg-[#C4622D]/10 flex items-center justify-center mb-4">
           <CalendarDays className="h-8 w-8 text-[#C4622D]" />
         </div>
-        <h1 className="text-xl font-bold text-gray-900">Sign in to see your bookings</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t("auth.title")}</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
-          Track upcoming massages and rebook your favourites in one tap.
+          {t("auth.description")}
         </p>
         <button onClick={() => navigate("/")} className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg">
-          Sign in
+          {t("auth.signIn")}
         </button>
         <button onClick={() => navigate("/app/massages")} className="mt-3 text-sm text-gray-500 underline">
-          Browse studios instead
+          {t("auth.browse")}
         </button>
       </div>
     );
@@ -144,18 +147,18 @@ export default function MyBookings() {
             <p className="font-semibold text-gray-900 truncate">{b.spa_name}</p>
             <p className="text-sm text-gray-500 truncate">{b.massage_type}</p>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusStyle(b.status)}`}>
-            {b.status}
+          <span className={\`px-2.5 py-1 rounded-full text-[11px] font-semibold \${statusStyle(b.status)}\`}>
+            {t(\`card.status.\${b.status}\`, { defaultValue: b.status })}
           </span>
         </div>
         <p className="text-sm text-gray-600 mt-2">
-          📅 {formatDate(b.booking_date)} at {b.booking_time}
+          📅 {formatDate(b.booking_date, t)} {t("card.at")} {b.booking_time}
         </p>
 
         {!isPast && access && (
           <div className="mt-3 p-3 rounded-xl bg-[#C4622D]/5 border border-[#C4622D]/15">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#C4622D] flex items-center gap-1">
-              <MapPin size={12} /> Getting there
+              <MapPin size={12} /> {t("card.gettingThere")}
             </p>
             <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{access}</p>
           </div>
@@ -168,21 +171,21 @@ export default function MyBookings() {
                 onClick={() => setRescheduling(b)}
                 className="flex-1 min-w-[100px] h-10 rounded-xl bg-[#C4622D] text-white text-sm font-semibold"
               >
-                Reschedule
+                {t("card.reschedule")}
               </button>
               <button
                 onClick={() => cancelBooking(b)}
                 className="flex-1 min-w-[100px] h-10 rounded-xl bg-white text-red-600 text-sm font-semibold border border-red-200 hover:bg-red-50"
               >
-                Cancel
+                {t("card.cancel")}
               </button>
             </>
           )}
           <button
-            onClick={() => navigate(`/s/${b.partner_id}`)}
+            onClick={() => navigate(\`/s/\${b.partner_id}\`)}
             className="flex-1 min-w-[100px] h-10 rounded-xl bg-[#C4622D]/5 text-[#C4622D] text-sm font-semibold border border-[#C4622D]/20"
           >
-            Rebook
+            {t("card.rebook")}
           </button>
           {isPast && (
             <a
@@ -190,7 +193,7 @@ export default function MyBookings() {
               target="_blank" rel="noreferrer"
               className="flex items-center justify-center gap-1 px-4 h-10 rounded-xl border border-[#C4622D]/30 text-[#C4622D] text-sm font-semibold hover:bg-[#C4622D]/5"
             >
-              <Star size={14} className="fill-[#E0A458] text-[#E0A458]" /> Review
+              <Star size={14} className="fill-[#E0A458] text-[#E0A458]" /> {t("card.review")}
             </a>
           )}
         </div>
@@ -202,36 +205,36 @@ export default function MyBookings() {
     <div className="min-h-screen bg-[#F7F4F0] pb-12">
       <div className="max-w-lg mx-auto px-5 pt-6">
         <button onClick={() => navigate("/app/massages")} className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-          <ArrowLeft size={14} /> Back
+          <ArrowLeft size={14} /> {t("back")}
         </button>
         <div className="flex items-center justify-between">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900">My bookings</h1>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">Signed in as {name}</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{t("signedInAs", { name })}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => navigate("/app/profile")} className="flex items-center gap-1 text-sm text-gray-700 px-3 py-1.5 rounded-full border border-gray-200 bg-white">
-              <UserCircle2 size={14} /> Profile
+              <UserCircle2 size={14} /> {t("profile")}
             </button>
             <button onClick={signOut} className="flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded-full border border-gray-200 bg-white">
-              <LogOut size={14} /> Sign out
+              <LogOut size={14} /> {t("signOut")}
             </button>
           </div>
         </div>
 
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Upcoming</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("sections.upcoming")}</h2>
           {upcoming.length === 0 ? (
-            <p className="text-sm text-gray-400 bg-white rounded-2xl p-4 border border-gray-200">No upcoming bookings.</p>
+            <p className="text-sm text-gray-400 bg-white rounded-2xl p-4 border border-gray-200">{t("emptyStates.noUpcoming")}</p>
           ) : (
             <div className="space-y-3">{upcoming.map((b) => renderCard(b, false))}</div>
           )}
         </section>
 
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Past</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("sections.past")}</h2>
           {past.length === 0 ? (
-            <p className="text-sm text-gray-400 bg-white rounded-2xl p-4 border border-gray-200">No past bookings yet.</p>
+            <p className="text-sm text-gray-400 bg-white rounded-2xl p-4 border border-gray-200">{t("emptyStates.noPast")}</p>
           ) : (
             <div className="space-y-3">{past.map((b) => renderCard(b, true))}</div>
           )}
@@ -256,6 +259,7 @@ function RescheduleModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation("app.myBookings");
   const [date, setDate] = useState<string>(booking.booking_date);
   const [time, setTime] = useState<string>(booking.booking_time?.slice(0, 5) ?? "");
   const [bookedCounts, setBookedCounts] = useState<Record<string, number>>({});
@@ -325,8 +329,8 @@ function RescheduleModal({
       .update({ booking_date: date, booking_time: time })
       .eq("id", booking.id);
     setSaving(false);
-    if (error) { toast.error("Could not reschedule — " + error.message); return; }
-    toast.success("Booking rescheduled");
+    if (error) { toast.error(t("messages.rescheduleError", { message: error.message })); return; }
+    toast.success(t("messages.rescheduleSuccess"));
     onSaved();
   };
 
@@ -336,7 +340,7 @@ function RescheduleModal({
         <div className="p-5 space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-display text-lg font-bold text-gray-900">Reschedule</h3>
+              <h3 className="font-display text-lg font-bold text-gray-900">{t("rescheduleModal.title")}</h3>
               <p className="text-sm text-gray-500">{booking.spa_name} — {booking.massage_type}</p>
             </div>
             <button onClick={onClose} className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -345,7 +349,7 @@ function RescheduleModal({
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Choose a day</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("rescheduleModal.chooseDay")}</p>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
               {days.map((d) => {
                 const selected = date === d.iso;
@@ -361,7 +365,7 @@ function RescheduleModal({
                     )}
                   >
                     <span className="text-[10px] uppercase tracking-wider opacity-80">
-                      {d.date.toLocaleDateString("en", { weekday: "short" })}
+                      {t(`days.\${DAY_KEYS[d.date.getDay()]}`)}
                     </span>
                     <span className="font-display text-2xl font-bold mt-1">{d.date.getDate()}</span>
                   </button>
@@ -371,18 +375,18 @@ function RescheduleModal({
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Available times</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("rescheduleModal.availableTimes")}</p>
             {slots.length === 0 ? (
-              <p className="text-sm text-gray-500">Closed on this day — please pick another date.</p>
+              <p className="text-sm text-gray-500">{t("rescheduleModal.closed")}</p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
-                {slots.map((t) => {
-                  const selected = time === t;
-                  const full = isFull(t);
+                {slots.map((t_slot) => {
+                  const selected = time === t_slot;
+                  const full = isFull(t_slot);
                   return (
                     <button
-                      key={t}
-                      onClick={() => !full && setTime(t)}
+                      key={t_slot}
+                      onClick={() => !full && setTime(t_slot)}
                       disabled={full}
                       className={cn(
                         "h-11 rounded-xl border text-sm font-semibold flex items-center justify-center",
@@ -391,7 +395,7 @@ function RescheduleModal({
                             : "bg-white border-gray-200 text-gray-800 hover:border-[#C4622D]/50",
                       )}
                     >
-                      {full ? "Full" : t}
+                      {full ? t("rescheduleModal.full") : t_slot}
                     </button>
                   );
                 })}
@@ -404,7 +408,7 @@ function RescheduleModal({
             disabled={!date || !time || saving}
             className="w-full h-12 rounded-xl bg-[#C4622D] text-white font-semibold disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Confirm new time"}
+            {saving ? t("rescheduleModal.saving") : t("rescheduleModal.confirm")}
           </button>
         </div>
       </div>

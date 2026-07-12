@@ -4,7 +4,7 @@ import { studioWhatsappUrl } from "../lib/whatsapp";
 import { googleReviewUrl } from "../lib/googleReview";
 import { googleCalendarUrl } from "../lib/calendarLink";
 import { Button } from "@/components/ui/button";
-import { ADD_ONS, MASSAGES, MASSAGE_TYPES } from "../data";
+import { ADD_ONS, MASSAGES } from "../data";
 import { useBooking } from "../BookingContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -16,11 +16,13 @@ import {
   redeemOneCredit,
 } from "@/lib/referral";
 import { getStoredUser } from "./Login";
+import { useTranslation } from "react-i18next";
 
 
 const COMMISSION_RATE = 0.10; // 10% commission
 
 export default function Payment() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const booking = useBooking();
@@ -96,11 +98,12 @@ export default function Payment() {
 
   const addOnPrice = booking.addOns.reduce((sum, a) => sum + (ADD_ONS.find((x) => x.id === a)?.price ?? 0), 0);
   const addOnNames = booking.addOns.map((a) => ADD_ONS.find((x) => x.id === a)?.name).filter(Boolean);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const commission = Math.round((massage.basePrice ?? 50) * COMMISSION_RATE * 100) / 100;
 
 
   const dateLabel = booking.date
-    ? new Date(booking.date).toLocaleDateString("en", { weekday: "long", month: "long", day: "numeric" })
+    ? new Date(booking.date).toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })
     : "—";
 
   const creditToApply = applyCredit && availableCreditCents >= 500 ? 5 : 0;
@@ -111,7 +114,7 @@ export default function Payment() {
     try {
       const noteParts: string[] = [];
       if (booking.notes) noteParts.push(booking.notes);
-      if (creditToApply > 0) noteParts.push(`€${creditToApply} referral credit — deduct from bill at studio.`);
+      if (creditToApply > 0) noteParts.push(t("app.payment.confirmed.note.referralCredit", { amount: creditToApply }));
 
       const result = await saveBooking({
         client_name: contact.name,
@@ -145,7 +148,7 @@ export default function Payment() {
 
       if (result.success) {
         setBookingRef(result.ref ?? "MR-2026-0001");
-        toast.success("Booking confirmed! Check your email.");
+        toast.success(t("app.payment.confirmed.toast.successWithEmail"));
         // Redeem credit + reward referrer (best-effort, non-blocking on error)
         if (userId && result.id) {
           if (creditToApply > 0) {
@@ -155,11 +158,11 @@ export default function Payment() {
         }
       } else {
         setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
-        toast.success("Booking confirmed!");
+        toast.success(t("app.payment.confirmed.toast.success"));
       }
     } catch {
       setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
-      toast.success("Booking confirmed!");
+      toast.success(t("app.payment.confirmed.toast.success"));
     } finally {
       setLoading(false);
       setConfirmed(true);
@@ -173,16 +176,16 @@ export default function Payment() {
         <div className="h-20 w-20 rounded-full bg-gradient-gold flex items-center justify-center shadow-gold mb-6">
           <Check className="h-10 w-10 text-foreground" />
         </div>
-        <h1 className="font-display text-3xl font-bold text-foreground">You're booked.</h1>
+        <h1 className="font-display text-3xl font-bold text-foreground">{t("app.payment.confirmed.title")}</h1>
         <p className="text-muted-foreground mt-3 max-w-xs">
-          {massage.name} at {massage.studio} on {dateLabel} · {booking.time}.
+          {t("app.payment.confirmed.summary", { name: massage.name, studio: massage.studio, date: dateLabel, time: booking.time })}
         </p>
         <div className="mt-4 inline-flex items-center gap-2 bg-secondary rounded-full px-4 py-2">
-          <span className="text-xs text-muted-foreground">Ref:</span>
+          <span className="text-xs text-muted-foreground">{t("app.payment.confirmed.ref")}</span>
           <span className="text-sm font-bold text-primary">{bookingRef}</span>
         </div>
         <p className="text-sm text-muted-foreground mt-3">
-          {user?.email ? `Confirmation sent to ${user.email}` : "Confirmation sent to your email."}
+          {user?.email ? t("app.payment.confirmed.emailSent", { email: user.email }) : t("app.payment.confirmed.emailSentDefault")}
         </p>
 
         {/* Getting there */}
@@ -190,7 +193,7 @@ export default function Payment() {
           <div className="mt-6 w-full rounded-2xl bg-[#C4622D]/5 border border-[#C4622D]/20 p-5 text-left">
             <div className="flex items-center gap-2 mb-1">
               <MapPin className="h-4 w-4 text-[#C4622D]" />
-              <h3 className="font-display text-base font-semibold text-foreground">Getting there</h3>
+              <h3 className="font-display text-base font-semibold text-foreground">{t("app.payment.confirmed.gettingThere")}</h3>
             </div>
             <p className="text-sm text-foreground/80 whitespace-pre-wrap">{accessInstructions}</p>
           </div>
@@ -200,10 +203,10 @@ export default function Payment() {
         <div className="mt-6 w-full rounded-2xl bg-secondary/70 border border-border p-5 text-left">
           <div className="flex items-center gap-2 mb-1">
             <Star className="h-4 w-4 fill-accent text-accent" />
-            <h3 className="font-display text-base font-semibold text-foreground">Enjoyed Massage Club?</h3>
+            <h3 className="font-display text-base font-semibold text-foreground">{t("app.payment.confirmed.feedback.title")}</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            After your visit, leave {massage.studio} a review on Google — it helps the studio and other clients.
+            {t("app.payment.confirmed.feedback.description", { studio: massage.studio })}
           </p>
           <a
             href={googleReviewUrl(massage.studio, (massage as any).address ?? (massage as any).location)}
@@ -211,7 +214,7 @@ export default function Payment() {
             rel="noreferrer"
             className="mt-3 inline-flex items-center justify-center w-full h-11 rounded-full border-2 border-primary text-primary font-semibold hover:bg-primary/5 transition"
           >
-            Leave a Google review ⭐
+            {t("app.payment.confirmed.feedback.button")}
           </a>
         </div>
 
@@ -219,7 +222,13 @@ export default function Payment() {
         {(() => {
           const waLink = studioWhatsappUrl(
             (massage as any).whatsapp,
-            `¡Hola ${massage.studio}! Acabo de reservar ${massage.name} para el ${dateLabel} a las ${booking.time} a través de Massage Club. Soy ${contact.name}. ¡Nos vemos! 🙏`
+            t("app.payment.confirmed.whatsapp.message", {
+              studio: massage.studio,
+              name: massage.name,
+              date: dateLabel,
+              time: booking.time,
+              clientName: contact.name
+            })
           );
           return waLink && (
             <a
@@ -230,7 +239,7 @@ export default function Payment() {
               style={{ backgroundColor: "#25D366" }}
             >
               <MessageCircle className="h-5 w-5" />
-              💬 Message {massage.studio} on WhatsApp
+              {t("app.payment.confirmed.whatsapp.button", { studio: massage.studio })}
             </a>
           );
         })()}
@@ -239,18 +248,25 @@ export default function Payment() {
         {booking.date && booking.time && (
           <a
             href={googleCalendarUrl({
-              title: `${massage.name} at ${massage.studio}`,
+              title: t("app.payment.confirmed.calendar.title", { name: massage.name, studio: massage.studio }),
               date: booking.date,
               time: booking.time,
               durationMin: massage.duration,
-              details: `Booking ref ${bookingRef}. ${addOnNames.length ? "Add-ons: " + addOnNames.join(", ") + ". " : ""}Pressure: ${booking.pressure}.`,
-              location: (massage as any).address ?? `${massage.studio}, ${massage.district}, Madrid`,
+              details: t("app.payment.confirmed.calendar.details", {
+                ref: bookingRef,
+                addOns: addOnNames.length ? t("app.payment.confirmed.calendar.addOns", { list: addOnNames.join(", ") }) : "",
+                pressure: booking.pressure
+              }),
+              location: t("app.payment.confirmed.calendar.location", {
+                studio: massage.studio,
+                district: massage.district
+              }),
             })}
             target="_blank"
             rel="noreferrer"
             className="mt-4 inline-flex items-center justify-center w-full h-11 rounded-full bg-card border border-border text-foreground font-semibold hover:bg-secondary transition"
           >
-            📅 Add to calendar
+            {t("app.payment.confirmed.calendar.button")}
           </a>
         )}
         <div className="mt-10 w-full space-y-3">
@@ -261,10 +277,10 @@ export default function Payment() {
             }}
             className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90"
           >
-            Book another
+            {t("app.payment.confirmed.actions.bookAnother")}
           </Button>
           <Button onClick={() => navigate("/")} variant="ghost" className="w-full h-12">
-            Back to home
+            {t("app.payment.confirmed.actions.backHome")}
           </Button>
         </div>
       </div>
@@ -278,8 +294,8 @@ export default function Payment() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <p className="text-xs text-muted-foreground">Review & pay</p>
-          <h1 className="font-display text-lg font-bold">Confirm booking</h1>
+          <p className="text-xs text-muted-foreground">{t("app.payment.main.header.subtitle")}</p>
+          <h1 className="font-display text-lg font-bold">{t("app.payment.main.header.title")}</h1>
         </div>
       </div>
 
@@ -294,17 +310,17 @@ export default function Payment() {
             </div>
             <div className="space-y-2 text-sm text-foreground/80">
               <p className="flex items-center gap-2"><CalIcon className="h-4 w-4 text-primary" /> {dateLabel}</p>
-              <p className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> {booking.time} · {massage.duration} min</p>
-              <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {massage.district}, Madrid</p>
+              <p className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> {t("app.payment.main.summary.timeDuration", { time: booking.time, duration: massage.duration })}</p>
+              <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {t("app.payment.main.summary.location", { district: massage.district })}</p>
             </div>
           </div>
         </div>
 
         {/* Preferences */}
         <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Pressure</span><span className="font-semibold">{booking.pressure}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Focus</span><span className="font-semibold text-right max-w-[60%]">{booking.focusAreas.length ? booking.focusAreas.join(", ") : "Therapist's choice"}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Add-ons</span><span className="font-semibold text-right max-w-[60%]">{addOnNames.length ? addOnNames.join(", ") : "None"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t("app.payment.main.details.pressure")}</span><span className="font-semibold">{booking.pressure}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t("app.payment.main.details.focus")}</span><span className="font-semibold text-right max-w-[60%]">{booking.focusAreas.length ? booking.focusAreas.join(", ") : t("app.payment.main.details.therapistChoice")}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t("app.payment.main.details.addOns")}</span><span className="font-semibold text-right max-w-[60%]">{addOnNames.length ? addOnNames.join(", ") : t("app.payment.main.details.none")}</span></div>
         </div>
 
 
@@ -315,8 +331,8 @@ export default function Payment() {
             <Wallet className="h-4 w-4 text-primary" />
           </div>
           <div className="text-sm">
-            <p className="font-semibold text-foreground">Pay at the studio</p>
-            <p className="text-muted-foreground">No payment needed now — pay when you arrive.</p>
+            <p className="font-semibold text-foreground">{t("app.payment.main.payment.title")}</p>
+            <p className="text-muted-foreground">{t("app.payment.main.payment.description")}</p>
           </div>
         </div>
 
@@ -331,10 +347,13 @@ export default function Payment() {
             />
             <div className="text-sm flex-1">
               <p className="font-semibold text-foreground">
-                Apply €{REFERRAL_REWARD_EUR} referral credit
+                {t("app.payment.main.referral.apply", { amount: REFERRAL_REWARD_EUR })}
               </p>
               <p className="text-muted-foreground text-xs">
-                You have €{(availableCreditCents / 100).toFixed(0)} in credits. €{REFERRAL_REWARD_EUR} will be deducted from your bill at the studio.
+                {t("app.payment.main.referral.description", {
+                  total: (availableCreditCents / 100).toFixed(0),
+                  deduction: REFERRAL_REWARD_EUR
+                })}
               </p>
             </div>
           </label>
@@ -343,21 +362,21 @@ export default function Payment() {
         {/* Totals */}
         <div className="rounded-2xl bg-secondary p-4 space-y-2 text-sm">
           {addOnPrice > 0 && (
-            <div className="flex justify-between"><span>Add-ons</span><span className="font-semibold">€{addOnPrice}</span></div>
+            <div className="flex justify-between"><span>{t("app.payment.main.totals.addOns")}</span><span className="font-semibold">€{addOnPrice}</span></div>
           )}
           {creditToApply > 0 && (
             <div className="flex justify-between text-[#C4622D]">
-              <span>Referral credit</span>
+              <span>{t("app.payment.main.totals.referralCredit")}</span>
               <span className="font-semibold">−€{creditToApply}</span>
             </div>
           )}
           <div className="flex justify-between text-base">
-            <span className="font-semibold">Due today</span>
+            <span className="font-semibold">{t("app.payment.main.totals.dueToday")}</span>
             <span className="font-display font-bold text-primary text-xl">€{dueToday}</span>
           </div>
           <p className="text-xs text-muted-foreground pt-1">
-            Massage paid directly to the studio on arrival.
-            {creditToApply > 0 && ` Show your confirmation to redeem €${creditToApply} off.`}
+            {t("app.payment.main.totals.footer")}
+            {creditToApply > 0 && t("app.payment.main.totals.footerCredit", { amount: creditToApply })}
           </p>
         </div>
 
@@ -369,7 +388,7 @@ export default function Payment() {
           disabled={loading}
           className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant"
         >
-          {loading ? "Confirming…" : "Confirm booking"}
+          {loading ? t("app.payment.main.actions.confirming") : t("app.payment.main.actions.confirm")}
         </Button>
       </div>
     </div>

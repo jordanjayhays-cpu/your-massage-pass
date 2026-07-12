@@ -143,7 +143,7 @@ export default function Customize() {
                   pressure === p ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border",
                 )}
               >
-                {p}
+                {t(`app.customize.pressureLabels.${p.toLowerCase()}`)}
               </button>
             ))}
           </div>
@@ -163,7 +163,7 @@ export default function Customize() {
                     : "bg-card border-border text-foreground",
                 )}
               >
-                {f}
+                {t(`app.customize.focusLabels.${f.toLowerCase().replace(/\s+/g, "")}`)}
               </button>
             ))}
           </div>
@@ -184,8 +184,8 @@ export default function Customize() {
                   )}
                 >
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{a.name}</p>
-                    <p className="text-xs text-muted-foreground">{a.price === 0 ? t("app.customize.freeWithMembership") : `+€${a.price}`}</p>
+                    <p className="text-sm font-semibold text-foreground">{t(`app.customize.addonLabels.${a.id}`)}</p>
+                    <p className="text-xs text-muted-foreground">{a.price === 0 ? t("app.customize.freeWithMembership") : t("app.customize.addonPrice", { price: a.price })}</p>
                   </div>
                   <div className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center", checked ? "border-primary bg-primary" : "border-border")}>
                     {checked && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
