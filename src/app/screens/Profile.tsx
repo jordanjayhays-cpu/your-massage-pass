@@ -466,17 +466,17 @@ export default function Profile() {
             onClick={() => fileRef.current?.click()}
             className="mt-3 flex items-center gap-1.5 text-sm font-medium text-[#C4622D] bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50"
           >
-            <Camera size={16} /> Change photo
+            <Camera size={16} /> {t("app.profile.photo.changePhoto")}
           </button>
         </div>
 
         {/* Personal details card */}
         <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">Personal details</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">First name</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.firstName")}</label>
               <input
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
@@ -484,7 +484,7 @@ export default function Profile() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Last name</label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.lastName")}</label>
               <input
                 value={lastName}
                 onChange={e => setLastName(e.target.value)}
@@ -494,7 +494,7 @@ export default function Profile() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.email")}</label>
             <input
               value={user.email || ""}
               readOnly
@@ -503,17 +503,17 @@ export default function Profile() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.phone")}</label>
             <input
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              placeholder="+34 ..."
+              placeholder={t("app.profile.personal.phonePlaceholder")}
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date of birth</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
             <input
               type="date"
               value={dateOfBirth}
@@ -523,32 +523,32 @@ export default function Profile() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Gender</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {GENDERS.map(g => (
                 <button key={g} type="button" onClick={() => setGender(g)} className={chip(gender === g)}>
-                  {g}
+                  {t(`app.profile.options.genders.${GENDER_KEYS[g]}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">City</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.city")}</label>
             <input
               value={city}
               onChange={e => setCity(e.target.value)}
-              placeholder="e.g. Madrid"
+              placeholder={t("app.profile.personal.cityPlaceholder")}
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preferred language</label>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
             <input
               value={preferredLanguage}
               onChange={e => setPreferredLanguage(e.target.value)}
-              placeholder="e.g. English, Spanish"
+              placeholder={t("app.profile.personal.preferredLanguagePlaceholder")}
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
