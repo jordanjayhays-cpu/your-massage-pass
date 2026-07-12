@@ -13,6 +13,9 @@ export default function PartnerLogin() {
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [magicLoading, setMagicLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
