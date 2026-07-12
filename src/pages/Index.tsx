@@ -45,10 +45,10 @@ const Index = () => {
     }
     setLoading(false);
     if (ok) {
-      toast.success("Let's finish setting up your account.");
+      toast.success(t("toast.success"));
       navigate("/app");
     } else {
-      toast.error("Something went wrong. Try again.");
+      toast.error(t("toast.error"));
     }
   };
 
