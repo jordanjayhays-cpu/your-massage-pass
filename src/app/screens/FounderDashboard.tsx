@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import FounderAgentChat from "./FounderAgentChat";
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
 const FOUNDER_EMAILS = [
@@ -435,6 +436,11 @@ export default function FounderDashboard() {
               </div>
             )}
           </Card>
+        </div>
+
+        {/* Agent Team Chat */}
+        <div className="mt-6">
+          <FounderAgentChat />
         </div>
       </div>
     </div>
