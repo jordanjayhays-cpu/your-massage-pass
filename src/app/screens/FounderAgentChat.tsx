@@ -1,7 +1,7 @@
 // FounderAgentChat — Live agent collaboration embedded in the Massage Club FounderDashboard
 // Reads/writes to hermes_entries on the Collab Supabase (dprdnrgjkzgfgtcsguuq)
+import { createClient } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase";
 
 const COLLAB_URL = "https://dprdnrgjkzgfgtcsguuq.supabase.co";
 const COLLAB_ANON_KEY = "sb_publishable_2nHGCg116tDqkVDqyWPhvg_2TG2ZtoA";
