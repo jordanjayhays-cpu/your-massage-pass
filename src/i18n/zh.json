@@ -133,6 +133,210 @@
       "notes": "给治疗师的备注",
       "notesPlaceholder": "有什么我们应该知道的?受伤、过敏、偏好…",
       "review": "查看并确认"
+    },
+    "profile": {
+      "signedOut": {
+        "title": "登录以设置个人资料",
+        "subtitle": "保存您的偏好，让每家工作室都了解您喜欢的按摩方式。",
+        "signInButton": "登录"
+      },
+      "header": {
+        "back": "返回",
+        "title": "我的个人资料",
+        "signOut": "退出登录"
+      },
+      "language": {
+        "label": "语言",
+        "hint": "选择您的首选语言"
+      },
+      "referral": {
+        "title": "赠送 €{{amount}}，获得 €{{amount}}",
+        "subtitle": "分享您的链接。朋友完成预订后，您的下一次按摩可减免 €{{amount}}。",
+        "yourLink": "您的推荐链接",
+        "copyLink": "复制链接",
+        "share": "分享",
+        "creditBalance": "您的抵用金余额",
+        "shareTitle": "Massage Club",
+        "shareText": "我一直通过 Massage Club 在马德里预订按摩。使用我的链接，您的首次预订可减免 €{{amount}}：{{url}}"
+      },
+      "photo": {
+        "changePhoto": "更换照片"
+      },
+      "personal": {
+        "title": "个人信息",
+        "firstName": "名字",
+        "lastName": "姓氏",
+        "email": "电子邮箱",
+        "phone": "电话号码",
+        "phonePlaceholder": "+34 ...",
+        "dateOfBirth": "出生日期",
+        "gender": "性别",
+        "city": "城市",
+        "cityPlaceholder": "例如：马德里",
+        "preferredLanguage": "首选语言",
+        "preferredLanguagePlaceholder": "例如：中文、西班牙语"
+      },
+      "massagePrefs": {
+        "title": "按摩偏好",
+        "preferredPressure": "偏好力度",
+        "preferredTherapist": "偏好的按摩师",
+        "focusAreas": "重点部位",
+        "allergies": "过敏情况",
+        "allergiesPlaceholder": "例如：对坚果油过敏",
+        "healthNotes": "健康备注",
+        "healthNotesPlaceholder": "受伤、怀孕或需要避开的部位…",
+        "preferredMassageTypes": "偏好的按摩类型",
+        "typicalSessionLength": "常用疗程时长",
+        "minutes": "{{count}} 分钟",
+        "typicalBudget": "通常预算",
+        "usualAddons": "常用附加服务",
+        "massageFrequency": "按摩频率",
+        "mainGoals": "主要目标"
+      },
+      "comfort": {
+        "title": "舒适度与体验",
+        "subtitle": "小细节也能带来大不同",
+        "conversation": "按摩时您喜欢交谈吗？",
+        "music": "音乐",
+        "temperature": "室内温度",
+        "scent": "香味",
+        "lighting": "灯光",
+        "notes": "舒适度备注",
+        "notesPlaceholder": "例如：我容易觉得冷、脚怕痒"
+      },
+      "health": {
+        "title": "健康与安全",
+        "subtitle": "隐私信息 — 仅与您的按摩师共享",
+        "reasonForVisit": "本次到访原因或目标",
+        "reasonForVisitPlaceholder": "例如：久坐导致的腰背疼痛",
+        "medicalConditions": "健康状况",
+        "medications": "正在服用的药物",
+        "medicationsPlaceholder": "例如：抗凝血药",
+        "pastSurgeries": "既往手术或受伤",
+        "pastSurgeriesPlaceholder": "例如：2022 年肩部手术",
+        "avoidAreas": "需要避开的部位",
+        "avoidAreasPlaceholder": "例如：左膝",
+        "emergencyContact": "紧急联系人",
+        "emergencyNamePlaceholder": "姓名",
+        "emergencyPhonePlaceholder": "电话号码",
+        "isFirstMassage": "这是您第一次接受专业按摩吗？",
+        "consent": "我确认以上信息准确，并同意接受按摩服务。"
+      },
+      "save": "保存",
+      "toasts": {
+        "photoUploadFailed": "照片上传失败：{{message}}",
+        "photoSavedProfileFailed": "照片已保存，但个人资料更新失败：{{message}}",
+        "photoUpdated": "照片已更新",
+        "profileSaved": "个人资料已保存",
+        "linkCopied": "链接已复制",
+        "copyFailed": "无法复制，请长按链接进行复制"
+      },
+      "options": {
+        "pressures": {
+          "light": "轻柔",
+          "medium": "中等",
+          "firm": "较强",
+          "deep": "深层"
+        },
+        "focus": {
+          "neck": "颈部",
+          "shoulders": "肩部",
+          "upperBack": "上背部",
+          "lowerBack": "下背部",
+          "legs": "腿部",
+          "feet": "足部",
+          "arms": "手臂",
+          "hands": "手部"
+        },
+        "medicals": {
+          "highBloodPressure": "高血压",
+          "heartCondition": "心脏疾病",
+          "diabetes": "糖尿病",
+          "bloodClots": "血栓或深静脉血栓",
+          "pregnant": "怀孕",
+          "recentSurgery": "近期手术",
+          "cancer": "癌症",
+          "epilepsy": "癫痫",
+          "skinCondition": "皮肤问题"
+        },
+        "genders": {
+          "female": "女性",
+          "male": "男性",
+          "other": "其他",
+          "preferNotToSay": "不愿透露"
+        },
+        "therapistGenders": {
+          "any": "无偏好",
+          "female": "女性",
+          "male": "男性"
+        },
+        "massageTypes": {
+          "swedish": "瑞典式按摩",
+          "deep": "深层组织按摩",
+          "thai": "泰式按摩",
+          "sports": "运动按摩",
+          "stone": "热石按摩",
+          "aromatherapy": "芳香疗法",
+          "reflexology": "足底反射疗法",
+          "shiatsu": "指压按摩",
+          "balinese": "巴厘式按摩",
+          "lymphatic": "淋巴引流按摩",
+          "prenatal": "孕期按摩"
+        },
+        "budgets": {
+          "under_40": "€40 以下",
+          "40_60": "€40–60",
+          "60_90": "€60–90",
+          "90_plus": "€90 以上"
+        },
+        "addons": {
+          "aromatherapy": "芳香疗法",
+          "hot_stones": "热石",
+          "scalp": "头皮按摩",
+          "foot_scrub": "足部磨砂",
+          "cbd": "CBD 按摩油",
+          "cupping": "拔罐",
+          "extra_time": "延长 15 分钟"
+        },
+        "frequencies": {
+          "weekly": "每周",
+          "monthly": "每月",
+          "few_times_year": "每年几次",
+          "rarely": "很少或第一次"
+        },
+        "goals": {
+          "relaxation": "放松",
+          "pain_relief": "缓解疼痛与紧张",
+          "sports_recovery": "运动恢复",
+          "sleep": "改善睡眠",
+          "stress": "缓解压力与焦虑",
+          "injury_rehab": "伤后康复",
+          "pampering": "享受与呵护"
+        },
+        "conversation": {
+          "silence": "🤫 请保持安静",
+          "minimal": "少量交谈",
+          "chatty": "乐意交谈"
+        },
+        "music": {
+          "spa": "水疗音乐",
+          "none": "不播放音乐",
+          "any": "均可"
+        },
+        "temperature": {
+          "warmer": "更暖一些",
+          "neutral": "适中",
+          "cooler": "更凉一些"
+        },
+        "scent": {
+          "aroma": "芳香疗法",
+          "unscented": "无香"
+        },
+        "lighting": {
+          "dim": "昏暗",
+          "normal": "正常"
+        }
+      }
     }
   }
 }
