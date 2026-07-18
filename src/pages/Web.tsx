@@ -166,37 +166,36 @@ export default function Web() {
           </Link>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {STUDIOS.map((s) => (
+          {studios.map((s) => (
             <article
-              key={s.name}
+              key={s.slug}
               className="bg-white rounded-3xl overflow-hidden shadow-[0_8px_30px_rgba(31,27,25,0.05)] hover:shadow-[0_20px_50px_rgba(31,27,25,0.1)] transition group"
             >
-              <div className="aspect-[4/3] overflow-hidden">
+              <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#ffdbcc] via-[#f5c5b0] to-[#e8a88a] flex items-center justify-center">
                 <img
-                  src={s.img}
-                  alt={s.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                  src="/brand/mc-avatar-cream.png"
+                  alt=""
+                  className="w-20 h-20 rounded-full object-cover opacity-90 group-hover:scale-110 transition duration-700"
                 />
               </div>
               <div className="p-5">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xl" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-                    {s.name}
+                    {s.business_name}
                   </h3>
-                  <span className="text-sm flex items-center gap-1">
-                    <span className="text-[#E0A458]">★</span> {s.rating}
-                  </span>
                 </div>
-                <p className="text-sm text-[#7A7068] mb-3">{s.area}</p>
+                <p className="text-sm text-[#7A7068] mb-3">{s.address || "Madrid"}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#56433a]">{s.type}</span>
-                  <span className="text-base font-medium text-[#99420d]">{s.price}</span>
+                  <span className="text-sm text-[#56433a]">Massage · Madrid</span>
+                  <span className="text-base font-medium text-[#99420d]">
+                    {s.price_from != null ? `from €${s.price_from}` : "—"}
+                  </span>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#f1e6e2] flex items-center justify-between">
                   <span className="text-xs px-2.5 py-1 rounded-full bg-[#ffdbcc] text-[#C4622D] font-medium">
-                    {s.badge}
+                    Pay at studio
                   </span>
-                  <Link to="/app/massages" className="text-sm font-medium text-[#99420d] hover:underline">
+                  <Link to={`/book/${s.slug}`} className="text-sm font-medium text-[#99420d] hover:underline">
                     Book →
                   </Link>
                 </div>
@@ -205,6 +204,7 @@ export default function Web() {
           ))}
         </div>
       </section>
+
 
       {/* How it works */}
       <section id="how" className="bg-white py-20">
