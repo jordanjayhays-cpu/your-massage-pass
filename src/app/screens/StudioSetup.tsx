@@ -424,7 +424,12 @@ function StudioSetupInner() {
 
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
-            <Sparkles size={14} /> {isReviewMode ? "Claim Your Studio" : "Studio Setup"}
+            {isReviewMode ? (
+              <img src="/brand/mc-avatar-cream.png" alt="Massage Club" className="h-6 w-6 rounded-full object-cover -ml-1" />
+            ) : (
+              <Sparkles size={14} />
+            )}
+            {isReviewMode ? "Claim Your Studio" : "Studio Setup"}
           </div>
           {isReviewMode ? (
             <>
