@@ -68,9 +68,14 @@ export default function Web() {
       {/* Nav */}
       <header className="sticky top-0 z-30 backdrop-blur-md bg-[#F7F4F0]/80 border-b border-[#ebe0dd]">
         <div className="max-w-6xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
-          <Link to="/web" className="flex items-center gap-2 text-[#99420d]">
+          <Link to="/" className="flex items-center gap-2 text-[#99420d]">
+            <img
+              src="/brand/mc-avatar-terracotta.png"
+              alt="Massage Club"
+              className="w-8 h-8 rounded-full object-cover"
+            />
             <span className="text-2xl" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-              ✦ Massage Club
+              Massage Club
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#56433a]">
@@ -79,9 +84,9 @@ export default function Web() {
             <a href="#partners" className="hover:text-[#99420d]">For studios</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
+            <Link to="/app" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
             <Link
-              to="/app/massages"
+              to="/app"
               className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#C4622D] transition"
             >
               Browse studios
@@ -89,6 +94,7 @@ export default function Web() {
           </div>
         </div>
       </header>
+
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 lg:px-10 pt-16 lg:pt-24 pb-20">
