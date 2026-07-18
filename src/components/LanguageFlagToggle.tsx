@@ -76,7 +76,7 @@ export function LanguageFlagToggle({
 }) {
   const { i18n } = useTranslation();
   const resolved = (i18n.resolvedLanguage || "en") as Lang;
-  const current: Lang = (["en","es","zh","fr","de","pt","it","ar"] as const).includes(resolved as any) ? resolved : "en";
+  const current: Lang = (["en","es"] as const).includes(resolved as any) ? (resolved as Lang) : "en";
 
   const [selected, setSelected] = useState<Option>(() => pickInitialOption(current));
   const [open, setOpen] = useState(false);
