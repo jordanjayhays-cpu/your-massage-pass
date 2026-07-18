@@ -52,8 +52,9 @@ const App = () => (
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
             <Route path="/:studioId" element={<StudioBookingPage />} />
           ) : (
-            <Route path="/" element={<Web />} />
+            <Route path="/" element={<Home />} />
           )}
+          <Route path="/web" element={<Web />} />
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
             <Route path="massages" element={<MassageList />} />
