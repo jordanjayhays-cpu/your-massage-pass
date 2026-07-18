@@ -16,6 +16,7 @@ type HermesEntry = {
   tags?: string[];
   metadata?: Record<string, unknown>;
   created_at: string;
+  archived?: boolean;
 };
 
 const AGENTS: Record<string, { label: string; bg: string; color: string; letter: string }> = {
