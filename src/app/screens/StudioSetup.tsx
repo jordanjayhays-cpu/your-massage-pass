@@ -284,11 +284,12 @@ function StudioSetupInner() {
         await supabase.from("studio_drafts").update({ status: "claimed" }).eq("id", sourceData.id);
       }
 
-      // In claim mode, the original scraped partner row lives under a different id.
-      // Delete it so there's no duplicate in the customer app (services under the new uid
-      // were just inserted above; the scraped row's services will cascade with the delete).
-      if (mode === "claim" && sourceData?.id && sourceData.id !== uid) {
-        await supabase.from("partners").delete().eq("id", sourceData.id);
+      // In claim mode, the original pre-built partner row is keyed to the scraped uuid,
+      // not the owner's auth uid, so the studio's own login can't delete it via RLS.
+      // Call the SECURITY DEFINER RPC to remove that still-pending row (and its
+      // services/availability) so the studio doesn't appear twice in the customer app.
+      if (mode === "claim" && claimToken) {
+        await supabase.rpc("claim_release_prebuilt", { p_claim_token: claimToken });
       }
 
       toast.success("Services saved!");
