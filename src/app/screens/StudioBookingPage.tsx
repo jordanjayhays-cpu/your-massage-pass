@@ -44,7 +44,19 @@ export default function StudioBookingPage() {
   useEffect(() => {
     if (!studioId) return;
     (async () => {
-      const p = await fetchStudioProfile(studioId);
+      // The param can be a partner UUID or a friendly slug (book.<domain>/<slug>).
+      let resolvedId = studioId;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studioId);
+      if (!isUuid) {
+        const { data: bySlug } = await supabase
+          .from("partners")
+          .select("id")
+          .eq("slug", studioId)
+          .maybeSingle();
+        if (!bySlug?.id) { setLoading(false); return; }
+        resolvedId = bySlug.id;
+      }
+      const p = await fetchStudioProfile(resolvedId);
       setProfile(p);
       if (p) {
         // Count how many bookings already exist per slot, so a slot only
@@ -53,7 +65,7 @@ export default function StudioBookingPage() {
         const { data } = await supabase
           .from("bookings")
           .select("booking_date,booking_time")
-          .eq("partner_id", studioId)
+          .eq("partner_id", resolvedId)
           .neq("status", "cancelled")
           .gte("booking_date", today);
         const counts = new Map<string, number>();
