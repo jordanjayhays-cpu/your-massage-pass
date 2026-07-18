@@ -168,8 +168,7 @@ export default function Login() {
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2">
-          <span className="h-7 w-7 rounded-full flex items-center justify-center text-[11px]"
-                style={{ background: "#C4622D", color: "#F7F4F0", ...serif, fontSize: 14 }}>M</span>
+          <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" className="h-8 w-8 rounded-full object-cover" />
           <span className="text-[13px] font-medium tracking-tight text-[#211C1A]">Massage Club</span>
         </div>
         <button
@@ -187,6 +186,11 @@ export default function Login() {
 
       {/* Hero — editorial split */}
       <div className="px-6 pt-8">
+        <img
+          src="/brand/mc-avatar-cream.png"
+          alt="Massage Club"
+          className="h-20 w-20 rounded-full object-cover mb-5 shadow-[0_10px_30px_-12px_rgba(122,48,0,0.35)]"
+        />
         <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-4">{t("hero.established")}</p>
         <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#211C1A]">
           {t("hero.title1")}<br/>

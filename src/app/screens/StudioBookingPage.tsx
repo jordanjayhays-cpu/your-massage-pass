@@ -526,6 +526,12 @@ export default function StudioBookingPage() {
             </a>
           )}
         </div>
+
+        {/* Massage Club credit */}
+        <div className="flex items-center justify-center gap-1.5 pb-8 text-gray-400 text-[11px]">
+          <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
+          <span>Powered by Massage Club</span>
+        </div>
       </div>
     </div>
   );
