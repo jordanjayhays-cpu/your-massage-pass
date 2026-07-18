@@ -168,8 +168,7 @@ export default function Login() {
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2">
-          <span className="h-7 w-7 rounded-full flex items-center justify-center text-[11px]"
-                style={{ background: "#C4622D", color: "#F7F4F0", ...serif, fontSize: 14 }}>M</span>
+          <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" className="h-8 w-8 rounded-full object-cover" />
           <span className="text-[13px] font-medium tracking-tight text-[#211C1A]">Massage Club</span>
         </div>
         <button
