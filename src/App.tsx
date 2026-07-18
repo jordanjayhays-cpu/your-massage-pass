@@ -36,6 +36,7 @@ import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
+import Home from "./pages/Home";
 
 const queryClient = new QueryClient();
 
