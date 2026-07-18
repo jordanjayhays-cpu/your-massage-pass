@@ -13,7 +13,7 @@ const TAB_DEFS = [
 
 // Hide nav on these path prefixes/exacts
 const HIDDEN_EXACT = new Set(["/", "/app", "/app/", "/landing", "/web", "/survey"]);
-const HIDDEN_PREFIXES = ["/partner", "/studio-setup", "/studio-portal", "/admin", "/s/", "/book/"];
+const HIDDEN_PREFIXES = ["/partner", "/studio-setup", "/studio-portal", "/admin", "/s/", "/book/", "/claim"];
 
 
 export function shouldShowBottomNav(pathname: string): boolean {
