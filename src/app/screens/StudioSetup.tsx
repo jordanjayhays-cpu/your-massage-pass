@@ -799,7 +799,9 @@ function StudioSetupInner() {
               <p className="text-primary-foreground/80 text-sm mb-6">
                 {isReviewMode && calendarConnected
                   ? "Your calendar is connected and your studio is now visible to members in Madrid."
-                  : "Your studio is now visible to thousands of members in Madrid."}
+                  : isReviewMode
+                    ? "Your studio is now visible to members in Madrid. Puedes conectar Google Calendar cuando quieras desde tu portal de estudio."
+                    : "Your studio is now visible to thousands of members in Madrid."}
               </p>
               <Button onClick={() => navigate("/partner/dashboard")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
                 Go to your dashboard →
