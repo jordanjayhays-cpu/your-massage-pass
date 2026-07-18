@@ -1,38 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 
 const HERO_IMG =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDxeaNyLnXkeBT2dbpMX2zYNIXLilfjVHy2-ZYdxxt-Qz96RWXVq8ByRIFbypkRZAFsvCYxOUnaj7G0ehW0VPaxP8RE0nks98I9JHL5vxlzFO8kSNuYBqf7wSkzD54uJ3PIN5137TDMdzYAkcbmQPLOi3N4Mlkt8VMgYCPUThkf5Um1vQ4HcYfR17UMpgGa0FTsHTlyXvD5STZOzFyet02k1u8FhrOLN2JiHK8_1dsZNOF_D_oZXuxWZj7hXSJr2j8I4jsAuy49e3mK";
 
-const STUDIOS = [
-  {
-    name: "The Fix Room",
-    area: "Chamberí, Madrid",
-    type: "Deep Tissue · 60 min",
-    price: "€50",
-    rating: "4.9",
-    badge: "Pay at studio",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdbOJrAHe1mWNDtdi7tzNU0grCiGSz8V_k3r7MdPiyLmzkRj87iHisWFoWrJdJVaDq5WUzQZfH1V0L2oc5qN5kTyJ0qGdtWeeB9zi74SMTGV96Qq3iytZa1GXksocLfH_qMdehhZ4DsN1MHgx7-aS7fkBKAF0UQM4o6Bmod9MJHvPQltw5LeU2QHNP11xDgmoH5EFqu7JhN7FnuJSdAsPKzuWE74_oBPBvpWxIXzjolC1a9L0YJOsDYaVDMnmcLNv91aBY2B93rzSD",
-  },
-  {
-    name: "Golden Touch",
-    area: "Salamanca, Madrid",
-    type: "Swedish · 90 min",
-    price: "€75",
-    rating: "4.8",
-    badge: "Card only",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAeM3NT1VEOO87rLMyVP3zXLvkwUMcizINCxT4eEdCepbsE3HCLEqixLgtkiuJEUuu6Ql6hBcnZKOuEKtNtjd3vWKCkYrN9JjigqJukCR1UHN5i3WQ2UkiX1tgqhmbY7DWgi05ghGjwskPPwuC_J460tsD5b7UKmHYPQc9k2KhbL2JTxh6E4V_pvHA8F_lM9MEnBOFVYCqLYhgRCR46Nr582ENCC0pABzR9cSn667X-nEa456iyEepKY5rKb8H6LMrIuHQpuQfQSDT1",
-  },
-  {
-    name: "Casa Wellness",
-    area: "Malasaña, Madrid",
-    type: "Sports Recovery · 45 min",
-    price: "€40",
-    rating: "4.7",
-    badge: "Pay at studio",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD1W1JJI53sfPAlqgoHMYP4BXOBySgg-CU9ugPW42tT6qkDChzMTYxpnwEPyJVX-ogHWkuza7JYPtA6WwaQ8c-uGnD9c2VsRwt2_sucoBU4wRaBaVr9B2ChJlaZxw24t29MAY33VF7PLP-xMTYLK5PrOcRBCD4KglFHuaUnZwtuy9PQZIOz9o_61ZX9JHlB_RB_bKWGXAzzaNRYCpCv-SqyZMDqc-umyLIFTUyJCLy43KprnP3VLJYD98EmkThprR4sBmR-qqKyGCu7",
-  },
-];
+const FEATURED_SLUGS = ["art-thai-massage", "templo-del-masaje", "hammam-al-andalus-madrid"];
+
+type FeaturedStudio = {
+  slug: string;
+  business_name: string;
+  address: string | null;
+  price_from: number | null;
+};
+
 
 const STEPS = [
   { n: "01", t: "Browse studios", d: "Explore Madrid's top massage studios. No account needed to look around." },
