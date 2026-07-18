@@ -73,6 +73,8 @@ function StudioSetupInner() {
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
+  const [showManualAvailability, setShowManualAvailability] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
 
   // Validate token/draft/claim on mount
   useEffect(() => {
