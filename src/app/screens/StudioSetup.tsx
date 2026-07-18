@@ -319,6 +319,27 @@ function StudioSetupInner() {
     }
   };
 
+  // Step 4 (draft/claim): Save availability manually (Google Calendar alternative)
+  const handleSaveManualAvailability = async () => {
+    setManualSaving(true);
+    try {
+      const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
+      if (!uid) { toast.error("Please complete previous steps"); return; }
+      await supabase.from("partner_availability").delete().eq("partner_id", uid);
+      const rows = DAYS.flatMap(day =>
+        (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
+      );
+      if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
+      await supabase.from("partners").update({ auto_confirm_bookings: false }).eq("id", uid);
+      toast.success("Availability saved!");
+      setStep(5);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save availability");
+    } finally {
+      setManualSaving(false);
+    }
+  };
+
   // Step 4 (draft): Connect Google Calendar
   const handleConnectCalendar = async () => {
     const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
