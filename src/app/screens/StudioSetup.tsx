@@ -73,6 +73,8 @@ function StudioSetupInner() {
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
+  const [showManualAvailability, setShowManualAvailability] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
 
   // Validate token/draft/claim on mount
   useEffect(() => {
@@ -314,6 +316,27 @@ function StudioSetupInner() {
       setStep(5);
     } catch (err: any) {
       toast.error(err.message || "Failed to save availability");
+    }
+  };
+
+  // Step 4 (draft/claim): Save availability manually (Google Calendar alternative)
+  const handleSaveManualAvailability = async () => {
+    setManualSaving(true);
+    try {
+      const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
+      if (!uid) { toast.error("Please complete previous steps"); return; }
+      await supabase.from("partner_availability").delete().eq("partner_id", uid);
+      const rows = DAYS.flatMap(day =>
+        (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
+      );
+      if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
+      await supabase.from("partners").update({ auto_confirm_bookings: false }).eq("id", uid);
+      toast.success("Availability saved!");
+      setStep(5);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save availability");
+    } finally {
+      setManualSaving(false);
     }
   };
 
@@ -677,7 +700,7 @@ function StudioSetupInner() {
                 <h2 className="font-semibold text-foreground">Connect Google Calendar</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                This is the one required step. We use your calendar to show real availability and drop bookings straight in — no double-bookings, no manual scheduling.
+                Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.
               </p>
 
               <div className="rounded-xl border border-border p-4 space-y-2 bg-secondary/40">
@@ -704,9 +727,63 @@ function StudioSetupInner() {
                 One click — no password stored.
               </p>
 
+              <div className="flex items-center gap-3 py-1">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">o</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {!showManualAvailability ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowManualAvailability(true)}
+                  className="w-full h-11"
+                >
+                  Set availability manually
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
+                  {DAYS.map(day => (
+                    <div key={day.num}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
+                          {day.label}
+                        </button>
+                        <span className="text-xs text-muted-foreground">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
+                      </div>
+                      {availability[day.num].length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pl-1">
+                          {DEFAULT_SLOTS.map(slot => (
+                            <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-secondary text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                              {slot}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    onClick={handleSaveManualAvailability}
+                    disabled={manualSaving}
+                    className="w-full h-11 bg-primary hover:bg-[#9E4D22] text-white"
+                  >
+                    {manualSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & continue"}
+                  </Button>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
               </div>
+
+              <button
+                onClick={() => setStep(5)}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 pt-1"
+              >
+                Saltar por ahora — podrás conectarlo más tarde desde tu portal
+              </button>
+
             </CardContent>
           </Card>
         )}
@@ -722,7 +799,9 @@ function StudioSetupInner() {
               <p className="text-primary-foreground/80 text-sm mb-6">
                 {isReviewMode && calendarConnected
                   ? "Your calendar is connected and your studio is now visible to members in Madrid."
-                  : "Your studio is now visible to thousands of members in Madrid."}
+                  : isReviewMode
+                    ? "Your studio is now visible to members in Madrid. Puedes conectar Google Calendar cuando quieras desde tu portal de estudio."
+                    : "Your studio is now visible to thousands of members in Madrid."}
               </p>
               <Button onClick={() => navigate("/partner/dashboard")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
                 Go to your dashboard →
