@@ -200,26 +200,22 @@
       "chat": "Chat"
     },
     "calendar": {
-      "app": {
-        "calendar": {
-          "back": "Back",
-          "selectDateTime": "Select date & time",
-          "chooseDay": "Choose a day",
-          "availableTimes": "Available times",
-          "pickDayFirst": "Pick a day first.",
-          "closedDay": "Closed on this day — please pick another date.",
-          "fullyBooked": "Fully booked",
-          "continue": "Continue",
-          "days": {
-            "sun": "Sun",
-            "mon": "Mon",
-            "tue": "Tue",
-            "wed": "Wed",
-            "thu": "Thu",
-            "fri": "Fri",
-            "sat": "Sat"
-          }
-        }
+      "back": "Back",
+      "selectDateTime": "Select date & time",
+      "chooseDay": "Choose a day",
+      "availableTimes": "Available times",
+      "pickDayFirst": "Pick a day first.",
+      "closedDay": "Closed on this day — please pick another date.",
+      "fullyBooked": "Fully booked",
+      "continue": "Continue",
+      "days": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat"
       }
     },
     "payment": {
@@ -296,210 +292,206 @@
       }
     },
     "profile": {
-      "app": {
-        "profile": {
-          "signedOut": {
-            "title": "Sign in to set up your profile",
-            "subtitle": "Save your preferences so every studio knows how you like your massage.",
-            "signInButton": "Sign in"
-          },
-          "header": {
-            "back": "Back",
-            "title": "My profile",
-            "signOut": "Sign out"
-          },
-          "language": {
-            "label": "Idioma · Language",
-            "hint": "Pick your language / Elige tu idioma"
-          },
-          "referral": {
-            "title": "Give €{{amount}}, get €{{amount}}",
-            "subtitle": "Share your link. When a friend books, you get €{{amount}} off your next massage.",
-            "yourLink": "Your link",
-            "copyLink": "Copy link",
-            "share": "Share",
-            "creditBalance": "Your credit balance",
-            "shareTitle": "Massage Club",
-            "shareText": "I've been booking massages in Madrid through Massage Club — get €{{amount}} off your first booking with my link: {{url}}"
-          },
-          "photo": {
-            "changePhoto": "Change photo"
-          },
-          "personal": {
-            "title": "Personal details",
-            "firstName": "First name",
-            "lastName": "Last name",
-            "email": "Email",
-            "phone": "Phone",
-            "phonePlaceholder": "+34 ...",
-            "dateOfBirth": "Date of birth",
-            "gender": "Gender",
-            "city": "City",
-            "cityPlaceholder": "e.g. Madrid",
-            "preferredLanguage": "Preferred language",
-            "preferredLanguagePlaceholder": "e.g. English, Spanish"
-          },
-          "massagePrefs": {
-            "title": "Massage preferences",
-            "preferredPressure": "Preferred pressure",
-            "preferredTherapist": "Preferred therapist",
-            "focusAreas": "Focus areas",
-            "allergies": "Allergies",
-            "allergiesPlaceholder": "e.g. nut oils",
-            "healthNotes": "Health notes",
-            "healthNotesPlaceholder": "Injuries, pregnancy, areas to avoid…",
-            "preferredMassageTypes": "Preferred massage types",
-            "typicalSessionLength": "Typical session length",
-            "minutes": "{{count}} min",
-            "typicalBudget": "Typical budget",
-            "usualAddons": "Usual add-ons",
-            "massageFrequency": "How often you get a massage",
-            "mainGoals": "Main goals"
-          },
-          "comfort": {
-            "title": "Comfort & experience",
-            "subtitle": "Small things that make a big difference",
-            "conversation": "Do you like talking during your massage?",
-            "music": "Music",
-            "temperature": "Room temperature",
-            "scent": "Scent",
-            "lighting": "Lighting",
-            "notes": "Comfort notes",
-            "notesPlaceholder": "e.g. I get cold easily, ticklish feet"
-          },
-          "health": {
-            "title": "Health & safety",
-            "subtitle": "Private — only shared with your therapist",
-            "reasonForVisit": "Reason for visit / goals",
-            "reasonForVisitPlaceholder": "e.g. lower back pain from desk work",
-            "medicalConditions": "Medical conditions",
-            "medications": "Medications",
-            "medicationsPlaceholder": "e.g. blood thinners",
-            "pastSurgeries": "Past surgeries / injuries",
-            "pastSurgeriesPlaceholder": "e.g. shoulder surgery 2022",
-            "avoidAreas": "Areas to avoid",
-            "avoidAreasPlaceholder": "e.g. left knee",
-            "emergencyContact": "Emergency contact",
-            "emergencyNamePlaceholder": "Name",
-            "emergencyPhonePlaceholder": "Phone",
-            "isFirstMassage": "Is this your first professional massage?",
-            "consent": "I confirm the above is accurate and consent to treatment."
-          },
-          "save": "Save",
-          "toasts": {
-            "photoUploadFailed": "Photo upload failed: {{message}}",
-            "photoSavedProfileFailed": "Photo saved, but profile update failed: {{message}}",
-            "photoUpdated": "Photo updated",
-            "profileSaved": "Profile saved",
-            "linkCopied": "Link copied",
-            "copyFailed": "Couldn't copy — long-press to copy"
-          },
-          "options": {
-            "pressures": {
-              "light": "Light",
-              "medium": "Medium",
-              "firm": "Firm",
-              "deep": "Deep"
-            },
-            "focus": {
-              "neck": "Neck",
-              "shoulders": "Shoulders",
-              "upperBack": "Upper Back",
-              "lowerBack": "Lower Back",
-              "legs": "Legs",
-              "feet": "Feet",
-              "arms": "Arms",
-              "hands": "Hands"
-            },
-            "medicals": {
-              "highBloodPressure": "High blood pressure",
-              "heartCondition": "Heart condition",
-              "diabetes": "Diabetes",
-              "bloodClots": "Blood clots / DVT",
-              "pregnant": "Pregnant",
-              "recentSurgery": "Recent surgery",
-              "cancer": "Cancer",
-              "epilepsy": "Epilepsy",
-              "skinCondition": "Skin condition"
-            },
-            "genders": {
-              "female": "Female",
-              "male": "Male",
-              "other": "Other",
-              "preferNotToSay": "Prefer not to say"
-            },
-            "therapistGenders": {
-              "any": "No preference",
-              "female": "Female",
-              "male": "Male"
-            },
-            "massageTypes": {
-              "swedish": "Swedish",
-              "deep": "Deep Tissue",
-              "thai": "Thai",
-              "sports": "Sports",
-              "stone": "Hot Stone",
-              "aromatherapy": "Aromatherapy",
-              "reflexology": "Reflexology",
-              "shiatsu": "Shiatsu",
-              "balinese": "Balinese",
-              "lymphatic": "Lymphatic",
-              "prenatal": "Prenatal"
-            },
-            "budgets": {
-              "under_40": "Under €40",
-              "40_60": "€40–60",
-              "60_90": "€60–90",
-              "90_plus": "€90+"
-            },
-            "addons": {
-              "aromatherapy": "Aromatherapy",
-              "hot_stones": "Hot stones",
-              "scalp": "Scalp massage",
-              "foot_scrub": "Foot scrub",
-              "cbd": "CBD oil",
-              "cupping": "Cupping",
-              "extra_time": "Extra 15 min"
-            },
-            "frequencies": {
-              "weekly": "Weekly",
-              "monthly": "Monthly",
-              "few_times_year": "A few times a year",
-              "rarely": "Rarely / first time"
-            },
-            "goals": {
-              "relaxation": "Relaxation",
-              "pain_relief": "Pain & tension relief",
-              "sports_recovery": "Sports recovery",
-              "sleep": "Better sleep",
-              "stress": "Stress & anxiety",
-              "injury_rehab": "Injury rehab",
-              "pampering": "Pampering"
-            },
-            "conversation": {
-              "silence": "🤫 Silence please",
-              "minimal": "A little chat",
-              "chatty": "Happy to chat"
-            },
-            "music": {
-              "spa": "Spa music",
-              "none": "No music",
-              "any": "Whatever's on"
-            },
-            "temperature": {
-              "warmer": "Warmer",
-              "neutral": "Neutral",
-              "cooler": "Cooler"
-            },
-            "scent": {
-              "aroma": "Aromatherapy",
-              "unscented": "Unscented"
-            },
-            "lighting": {
-              "dim": "Dim",
-              "normal": "Normal"
-            }
-          }
+      "signedOut": {
+        "title": "Sign in to set up your profile",
+        "subtitle": "Save your preferences so every studio knows how you like your massage.",
+        "signInButton": "Sign in"
+      },
+      "header": {
+        "back": "Back",
+        "title": "My profile",
+        "signOut": "Sign out"
+      },
+      "language": {
+        "label": "Idioma · Language",
+        "hint": "Pick your language / Elige tu idioma"
+      },
+      "referral": {
+        "title": "Give €{{amount}}, get €{{amount}}",
+        "subtitle": "Share your link. When a friend books, you get €{{amount}} off your next massage.",
+        "yourLink": "Your link",
+        "copyLink": "Copy link",
+        "share": "Share",
+        "creditBalance": "Your credit balance",
+        "shareTitle": "Massage Club",
+        "shareText": "I've been booking massages in Madrid through Massage Club — get €{{amount}} off your first booking with my link: {{url}}"
+      },
+      "photo": {
+        "changePhoto": "Change photo"
+      },
+      "personal": {
+        "title": "Personal details",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Email",
+        "phone": "Phone",
+        "phonePlaceholder": "+34 ...",
+        "dateOfBirth": "Date of birth",
+        "gender": "Gender",
+        "city": "City",
+        "cityPlaceholder": "e.g. Madrid",
+        "preferredLanguage": "Preferred language",
+        "preferredLanguagePlaceholder": "e.g. English, Spanish"
+      },
+      "massagePrefs": {
+        "title": "Massage preferences",
+        "preferredPressure": "Preferred pressure",
+        "preferredTherapist": "Preferred therapist",
+        "focusAreas": "Focus areas",
+        "allergies": "Allergies",
+        "allergiesPlaceholder": "e.g. nut oils",
+        "healthNotes": "Health notes",
+        "healthNotesPlaceholder": "Injuries, pregnancy, areas to avoid…",
+        "preferredMassageTypes": "Preferred massage types",
+        "typicalSessionLength": "Typical session length",
+        "minutes": "{{count}} min",
+        "typicalBudget": "Typical budget",
+        "usualAddons": "Usual add-ons",
+        "massageFrequency": "How often you get a massage",
+        "mainGoals": "Main goals"
+      },
+      "comfort": {
+        "title": "Comfort & experience",
+        "subtitle": "Small things that make a big difference",
+        "conversation": "Do you like talking during your massage?",
+        "music": "Music",
+        "temperature": "Room temperature",
+        "scent": "Scent",
+        "lighting": "Lighting",
+        "notes": "Comfort notes",
+        "notesPlaceholder": "e.g. I get cold easily, ticklish feet"
+      },
+      "health": {
+        "title": "Health & safety",
+        "subtitle": "Private — only shared with your therapist",
+        "reasonForVisit": "Reason for visit / goals",
+        "reasonForVisitPlaceholder": "e.g. lower back pain from desk work",
+        "medicalConditions": "Medical conditions",
+        "medications": "Medications",
+        "medicationsPlaceholder": "e.g. blood thinners",
+        "pastSurgeries": "Past surgeries / injuries",
+        "pastSurgeriesPlaceholder": "e.g. shoulder surgery 2022",
+        "avoidAreas": "Areas to avoid",
+        "avoidAreasPlaceholder": "e.g. left knee",
+        "emergencyContact": "Emergency contact",
+        "emergencyNamePlaceholder": "Name",
+        "emergencyPhonePlaceholder": "Phone",
+        "isFirstMassage": "Is this your first professional massage?",
+        "consent": "I confirm the above is accurate and consent to treatment."
+      },
+      "save": "Save",
+      "toasts": {
+        "photoUploadFailed": "Photo upload failed: {{message}}",
+        "photoSavedProfileFailed": "Photo saved, but profile update failed: {{message}}",
+        "photoUpdated": "Photo updated",
+        "profileSaved": "Profile saved",
+        "linkCopied": "Link copied",
+        "copyFailed": "Couldn't copy — long-press to copy"
+      },
+      "options": {
+        "pressures": {
+          "light": "Light",
+          "medium": "Medium",
+          "firm": "Firm",
+          "deep": "Deep"
+        },
+        "focus": {
+          "neck": "Neck",
+          "shoulders": "Shoulders",
+          "upperBack": "Upper Back",
+          "lowerBack": "Lower Back",
+          "legs": "Legs",
+          "feet": "Feet",
+          "arms": "Arms",
+          "hands": "Hands"
+        },
+        "medicals": {
+          "highBloodPressure": "High blood pressure",
+          "heartCondition": "Heart condition",
+          "diabetes": "Diabetes",
+          "bloodClots": "Blood clots / DVT",
+          "pregnant": "Pregnant",
+          "recentSurgery": "Recent surgery",
+          "cancer": "Cancer",
+          "epilepsy": "Epilepsy",
+          "skinCondition": "Skin condition"
+        },
+        "genders": {
+          "female": "Female",
+          "male": "Male",
+          "other": "Other",
+          "preferNotToSay": "Prefer not to say"
+        },
+        "therapistGenders": {
+          "any": "No preference",
+          "female": "Female",
+          "male": "Male"
+        },
+        "massageTypes": {
+          "swedish": "Swedish",
+          "deep": "Deep Tissue",
+          "thai": "Thai",
+          "sports": "Sports",
+          "stone": "Hot Stone",
+          "aromatherapy": "Aromatherapy",
+          "reflexology": "Reflexology",
+          "shiatsu": "Shiatsu",
+          "balinese": "Balinese",
+          "lymphatic": "Lymphatic",
+          "prenatal": "Prenatal"
+        },
+        "budgets": {
+          "under_40": "Under €40",
+          "40_60": "€40–60",
+          "60_90": "€60–90",
+          "90_plus": "€90+"
+        },
+        "addons": {
+          "aromatherapy": "Aromatherapy",
+          "hot_stones": "Hot stones",
+          "scalp": "Scalp massage",
+          "foot_scrub": "Foot scrub",
+          "cbd": "CBD oil",
+          "cupping": "Cupping",
+          "extra_time": "Extra 15 min"
+        },
+        "frequencies": {
+          "weekly": "Weekly",
+          "monthly": "Monthly",
+          "few_times_year": "A few times a year",
+          "rarely": "Rarely / first time"
+        },
+        "goals": {
+          "relaxation": "Relaxation",
+          "pain_relief": "Pain & tension relief",
+          "sports_recovery": "Sports recovery",
+          "sleep": "Better sleep",
+          "stress": "Stress & anxiety",
+          "injury_rehab": "Injury rehab",
+          "pampering": "Pampering"
+        },
+        "conversation": {
+          "silence": "🤫 Silence please",
+          "minimal": "A little chat",
+          "chatty": "Happy to chat"
+        },
+        "music": {
+          "spa": "Spa music",
+          "none": "No music",
+          "any": "Whatever's on"
+        },
+        "temperature": {
+          "warmer": "Warmer",
+          "neutral": "Neutral",
+          "cooler": "Cooler"
+        },
+        "scent": {
+          "aroma": "Aromatherapy",
+          "unscented": "Unscented"
+        },
+        "lighting": {
+          "dim": "Dim",
+          "normal": "Normal"
         }
       }
     },
