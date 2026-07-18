@@ -11,7 +11,7 @@ import {
   Calendar as CalendarIcon, Check,
 } from "lucide-react";
 
-const MASSAGE_TYPES = ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Aromatherapy", "Thai", "Shiatsu", "Couples", "Facial", "Other"];
+const MASSAGE_TYPES = ["Relax", "Therapeutic", "Swedish", "Deep Tissue", "Sports", "Thai", "Balinese", "Ayurvedic", "Lomi Lomi", "Hot Stone", "Aromatherapy", "Reflexology", "Shiatsu", "Kobido", "Craneo-Facial", "Lymphatic", "Prenatal", "Couples", "4 Hands", "Express", "Ritual", "Hammam", "Body", "Physiotherapy", "Facial", "Spa Day", "Other"];
 const DAYS = [
   { num: 1, label: "Mon" }, { num: 2, label: "Tue" }, { num: 3, label: "Wed" },
   { num: 4, label: "Thu" }, { num: 5, label: "Fri" }, { num: 6, label: "Sat" }, { num: 0, label: "Sun" },
@@ -601,6 +601,7 @@ function StudioSetupInner() {
                     <div className="grid grid-cols-2 gap-2">
                       <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
                       <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none">
+                        {svc.type && !MASSAGE_TYPES.includes(svc.type) && <option value={svc.type}>{svc.type}</option>}
                         {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                       </select>
                       <div className="flex items-center gap-1 border border-border rounded-lg px-2">
