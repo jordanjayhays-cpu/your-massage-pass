@@ -3,30 +3,23 @@ import { useTranslation } from "react-i18next";
 import { ChevronDown, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-type Lang = "en" | "es" | "zh" | "fr" | "de" | "pt" | "it" | "ar";
+type Lang = "en" | "es";
 
 type Option = {
-  id: string;            // unique id (country+lang)
-  lang: Lang;            // i18n language to apply
-  countryCode: string;   // ISO-3166-1 alpha-2 (lowercase) for flagcdn
-  countryLabel: string;  // shown next to flag
-  nativeLanguage: string; // language written in its own language
+  id: string;
+  lang: Lang;
+  countryCode: string;
+  countryLabel: string;
+  nativeLanguage: string;
 };
 
-// Default English = 🇺🇸. Top languages by global speakers + key markets.
 const OPTIONS: Option[] = [
   { id: "en-US", lang: "en", countryCode: "us", countryLabel: "United States",  nativeLanguage: "English" },
   { id: "es-ES", lang: "es", countryCode: "es", countryLabel: "España",         nativeLanguage: "Español" },
   { id: "es-MX", lang: "es", countryCode: "mx", countryLabel: "México",         nativeLanguage: "Español" },
   { id: "en-GB", lang: "en", countryCode: "gb", countryLabel: "United Kingdom", nativeLanguage: "English" },
-  { id: "zh-CN", lang: "zh", countryCode: "cn", countryLabel: "中国",            nativeLanguage: "中文" },
-  { id: "fr-FR", lang: "fr", countryCode: "fr", countryLabel: "France",         nativeLanguage: "Français" },
-  { id: "de-DE", lang: "de", countryCode: "de", countryLabel: "Deutschland",    nativeLanguage: "Deutsch" },
-  { id: "pt-BR", lang: "pt", countryCode: "br", countryLabel: "Brasil",         nativeLanguage: "Português" },
-  { id: "pt-PT", lang: "pt", countryCode: "pt", countryLabel: "Portugal",       nativeLanguage: "Português" },
-  { id: "it-IT", lang: "it", countryCode: "it", countryLabel: "Italia",         nativeLanguage: "Italiano" },
-  { id: "ar-SA", lang: "ar", countryCode: "sa", countryLabel: "المملكة العربية السعودية", nativeLanguage: "العربية" },
 ];
+
 
 
 const STORAGE_KEY = "mm-country";
