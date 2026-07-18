@@ -120,10 +120,10 @@ export default function Web() {
                 Browse studios — no account needed
               </Link>
               <Link
-                to="/"
+                to="/app"
                 className="border border-[#dcc1b5] bg-white/50 backdrop-blur px-7 h-12 rounded-full inline-flex items-center font-medium text-[#1f1b19] hover:bg-white transition"
               >
-                Continue with Google
+                Sign in
               </Link>
             </div>
             <div className="flex items-center gap-6 text-sm text-[#56433a]">
