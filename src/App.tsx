@@ -36,6 +36,7 @@ import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
+import Home from "./pages/Home";
 
 const queryClient = new QueryClient();
 
@@ -51,8 +52,9 @@ const App = () => (
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
             <Route path="/:studioId" element={<StudioBookingPage />} />
           ) : (
-            <Route path="/" element={<Web />} />
+            <Route path="/" element={<Home />} />
           )}
+          <Route path="/web" element={<Web />} />
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
             <Route path="massages" element={<MassageList />} />
@@ -80,7 +82,6 @@ const App = () => (
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="/landing" element={<Index />} />
-          <Route path="/web" element={<Web />} />
           {/* Partner Portal Routes */}
           <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
