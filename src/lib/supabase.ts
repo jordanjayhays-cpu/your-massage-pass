@@ -118,8 +118,8 @@ export async function fetchShops(): Promise<Shop[]> {
   const { data: partners, error } = await supabase
     .from("partners")
     .select("*")
-    .eq("status", "active")
-    .limit(50);
+    .in("status", ["active", "pending"])
+    .limit(200);
 
   if (error) {
     console.error("[fetchShops] could not read partners:", error.message);
@@ -208,7 +208,7 @@ export async function fetchStudioProfile(partnerId: string): Promise<StudioProfi
     .from("partners")
     .select("*")
     .eq("id", partnerId)
-    .eq("status", "active")
+    .in("status", ["active", "pending"])
     .single();
   if (!partner) return null;
 
@@ -241,7 +241,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     .from("partners")
     .select("*")
     .eq("id", partnerId)
-    .eq("status", "active")
+    .in("status", ["active", "pending"])
     .single();
 
   if (!partner) return null;
