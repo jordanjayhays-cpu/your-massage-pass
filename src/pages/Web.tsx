@@ -22,6 +22,8 @@ const STEPS = [
 ];
 
 export default function Web() {
+  const [studios, setStudios] = useState<FeaturedStudio[]>([]);
+
   useEffect(() => {
     document.title = "Massage Club — Madrid's best massages, booked in seconds";
     const meta = document.querySelector('meta[name="description"]') || (() => {
@@ -35,6 +37,26 @@ export default function Web() {
       "Browse Madrid's top-rated massage studios and book in seconds. No account needed. Pay at the studio."
     );
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("partners")
+        .select("slug, business_name, address, price_from")
+        .in("slug", FEATURED_SLUGS);
+      if (cancelled || !data) return;
+      // Preserve the FEATURED_SLUGS order.
+      const ordered = FEATURED_SLUGS
+        .map((s) => data.find((d: any) => d.slug === s))
+        .filter(Boolean) as FeaturedStudio[];
+      setStudios(ordered);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-[#F7F4F0] text-[#1f1b19]" style={{ fontFamily: "Outfit, system-ui, sans-serif" }}>
