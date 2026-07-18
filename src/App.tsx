@@ -28,6 +28,7 @@ import SurveyStudios from "./app/screens/SurveyStudios";
 import FounderDashboard from "./app/screens/FounderDashboard";
 import AdminInviteStudio from "./app/screens/AdminInviteStudio";
 import StudioSetup from "./app/screens/StudioSetup";
+import ClaimShortLink from "./app/screens/ClaimShortLink";
 import StudioPortal from "./app/screens/StudioPortal";
 import StudioBookingPage from "./app/screens/StudioBookingPage";
 import PartnerPhotos from "./app/screens/PartnerPhotos";
@@ -45,6 +46,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* On the booking subdomain (book.<domain>), the root path IS the studio:
+              book.massageclub.io/art-thai-massage → that studio's booking page. */}
+          {typeof window !== "undefined" && window.location.hostname.startsWith("book.") && (
+            <Route path="/:studioId" element={<StudioBookingPage />} />
+          )}
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
             <Route path="massages" element={<MassageList />} />
@@ -94,6 +100,8 @@ const App = () => (
           {/* Studio Invite + Setup */}
           <Route path="/admin/invite-studio" element={<AdminInviteStudio />} />
           <Route path="/studio-setup" element={<StudioSetup />} />
+          {/* Short branded claim link for outreach: /claim/<slug> */}
+          <Route path="/claim/:slug" element={<ClaimShortLink />} />
           <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
