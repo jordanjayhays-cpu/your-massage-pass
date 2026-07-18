@@ -1,38 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 
 const HERO_IMG =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDxeaNyLnXkeBT2dbpMX2zYNIXLilfjVHy2-ZYdxxt-Qz96RWXVq8ByRIFbypkRZAFsvCYxOUnaj7G0ehW0VPaxP8RE0nks98I9JHL5vxlzFO8kSNuYBqf7wSkzD54uJ3PIN5137TDMdzYAkcbmQPLOi3N4Mlkt8VMgYCPUThkf5Um1vQ4HcYfR17UMpgGa0FTsHTlyXvD5STZOzFyet02k1u8FhrOLN2JiHK8_1dsZNOF_D_oZXuxWZj7hXSJr2j8I4jsAuy49e3mK";
 
-const STUDIOS = [
-  {
-    name: "The Fix Room",
-    area: "Chamberí, Madrid",
-    type: "Deep Tissue · 60 min",
-    price: "€50",
-    rating: "4.9",
-    badge: "Pay at studio",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBdbOJrAHe1mWNDtdi7tzNU0grCiGSz8V_k3r7MdPiyLmzkRj87iHisWFoWrJdJVaDq5WUzQZfH1V0L2oc5qN5kTyJ0qGdtWeeB9zi74SMTGV96Qq3iytZa1GXksocLfH_qMdehhZ4DsN1MHgx7-aS7fkBKAF0UQM4o6Bmod9MJHvPQltw5LeU2QHNP11xDgmoH5EFqu7JhN7FnuJSdAsPKzuWE74_oBPBvpWxIXzjolC1a9L0YJOsDYaVDMnmcLNv91aBY2B93rzSD",
-  },
-  {
-    name: "Golden Touch",
-    area: "Salamanca, Madrid",
-    type: "Swedish · 90 min",
-    price: "€75",
-    rating: "4.8",
-    badge: "Card only",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAeM3NT1VEOO87rLMyVP3zXLvkwUMcizINCxT4eEdCepbsE3HCLEqixLgtkiuJEUuu6Ql6hBcnZKOuEKtNtjd3vWKCkYrN9JjigqJukCR1UHN5i3WQ2UkiX1tgqhmbY7DWgi05ghGjwskPPwuC_J460tsD5b7UKmHYPQc9k2KhbL2JTxh6E4V_pvHA8F_lM9MEnBOFVYCqLYhgRCR46Nr582ENCC0pABzR9cSn667X-nEa456iyEepKY5rKb8H6LMrIuHQpuQfQSDT1",
-  },
-  {
-    name: "Casa Wellness",
-    area: "Malasaña, Madrid",
-    type: "Sports Recovery · 45 min",
-    price: "€40",
-    rating: "4.7",
-    badge: "Pay at studio",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD1W1JJI53sfPAlqgoHMYP4BXOBySgg-CU9ugPW42tT6qkDChzMTYxpnwEPyJVX-ogHWkuza7JYPtA6WwaQ8c-uGnD9c2VsRwt2_sucoBU4wRaBaVr9B2ChJlaZxw24t29MAY33VF7PLP-xMTYLK5PrOcRBCD4KglFHuaUnZwtuy9PQZIOz9o_61ZX9JHlB_RB_bKWGXAzzaNRYCpCv-SqyZMDqc-umyLIFTUyJCLy43KprnP3VLJYD98EmkThprR4sBmR-qqKyGCu7",
-  },
-];
+const FEATURED_SLUGS = ["art-thai-massage", "templo-del-masaje", "hammam-al-andalus-madrid"];
+
+type FeaturedStudio = {
+  slug: string;
+  business_name: string;
+  address: string | null;
+  price_from: number | null;
+};
+
 
 const STEPS = [
   { n: "01", t: "Browse studios", d: "Explore Madrid's top massage studios. No account needed to look around." },
@@ -41,6 +22,8 @@ const STEPS = [
 ];
 
 export default function Web() {
+  const [studios, setStudios] = useState<FeaturedStudio[]>([]);
+
   useEffect(() => {
     document.title = "Massage Club — Madrid's best massages, booked in seconds";
     const meta = document.querySelector('meta[name="description"]') || (() => {
@@ -55,6 +38,26 @@ export default function Web() {
     );
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("partners")
+        .select("slug, business_name, address, price_from")
+        .in("slug", FEATURED_SLUGS);
+      if (cancelled || !data) return;
+      // Preserve the FEATURED_SLUGS order.
+      const ordered = FEATURED_SLUGS
+        .map((s) => data.find((d: any) => d.slug === s))
+        .filter(Boolean) as FeaturedStudio[];
+      setStudios(ordered);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
   return (
     <div className="min-h-screen bg-[#F7F4F0] text-[#1f1b19]" style={{ fontFamily: "Outfit, system-ui, sans-serif" }}>
       <link
@@ -65,9 +68,14 @@ export default function Web() {
       {/* Nav */}
       <header className="sticky top-0 z-30 backdrop-blur-md bg-[#F7F4F0]/80 border-b border-[#ebe0dd]">
         <div className="max-w-6xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
-          <Link to="/web" className="flex items-center gap-2 text-[#99420d]">
+          <Link to="/" className="flex items-center gap-2 text-[#99420d]">
+            <img
+              src="/brand/mc-avatar-terracotta.png"
+              alt="Massage Club"
+              className="w-8 h-8 rounded-full object-cover"
+            />
             <span className="text-2xl" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-              ✦ Massage Club
+              Massage Club
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#56433a]">
@@ -76,9 +84,9 @@ export default function Web() {
             <a href="#partners" className="hover:text-[#99420d]">For studios</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
+            <Link to="/app" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
             <Link
-              to="/app/massages"
+              to="/app"
               className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#C4622D] transition"
             >
               Browse studios
@@ -86,6 +94,7 @@ export default function Web() {
           </div>
         </div>
       </header>
+
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 lg:px-10 pt-16 lg:pt-24 pb-20">
@@ -111,10 +120,10 @@ export default function Web() {
                 Browse studios — no account needed
               </Link>
               <Link
-                to="/"
+                to="/app"
                 className="border border-[#dcc1b5] bg-white/50 backdrop-blur px-7 h-12 rounded-full inline-flex items-center font-medium text-[#1f1b19] hover:bg-white transition"
               >
-                Continue with Google
+                Sign in
               </Link>
             </div>
             <div className="flex items-center gap-6 text-sm text-[#56433a]">
@@ -157,37 +166,36 @@ export default function Web() {
           </Link>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {STUDIOS.map((s) => (
+          {studios.map((s) => (
             <article
-              key={s.name}
+              key={s.slug}
               className="bg-white rounded-3xl overflow-hidden shadow-[0_8px_30px_rgba(31,27,25,0.05)] hover:shadow-[0_20px_50px_rgba(31,27,25,0.1)] transition group"
             >
-              <div className="aspect-[4/3] overflow-hidden">
+              <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#ffdbcc] via-[#f5c5b0] to-[#e8a88a] flex items-center justify-center">
                 <img
-                  src={s.img}
-                  alt={s.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                  src="/brand/mc-avatar-cream.png"
+                  alt=""
+                  className="w-20 h-20 rounded-full object-cover opacity-90 group-hover:scale-110 transition duration-700"
                 />
               </div>
               <div className="p-5">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xl" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-                    {s.name}
+                    {s.business_name}
                   </h3>
-                  <span className="text-sm flex items-center gap-1">
-                    <span className="text-[#E0A458]">★</span> {s.rating}
-                  </span>
                 </div>
-                <p className="text-sm text-[#7A7068] mb-3">{s.area}</p>
+                <p className="text-sm text-[#7A7068] mb-3">{s.address || "Madrid"}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#56433a]">{s.type}</span>
-                  <span className="text-base font-medium text-[#99420d]">{s.price}</span>
+                  <span className="text-sm text-[#56433a]">Massage · Madrid</span>
+                  <span className="text-base font-medium text-[#99420d]">
+                    {s.price_from != null ? `from €${s.price_from}` : "—"}
+                  </span>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#f1e6e2] flex items-center justify-between">
                   <span className="text-xs px-2.5 py-1 rounded-full bg-[#ffdbcc] text-[#C4622D] font-medium">
-                    {s.badge}
+                    Pay at studio
                   </span>
-                  <Link to="/app/massages" className="text-sm font-medium text-[#99420d] hover:underline">
+                  <Link to={`/book/${s.slug}`} className="text-sm font-medium text-[#99420d] hover:underline">
                     Book →
                   </Link>
                 </div>
@@ -196,6 +204,7 @@ export default function Web() {
           ))}
         </div>
       </section>
+
 
       {/* How it works */}
       <section id="how" className="bg-white py-20">

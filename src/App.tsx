@@ -48,8 +48,10 @@ const App = () => (
         <Routes>
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}
-          {typeof window !== "undefined" && window.location.hostname.startsWith("book.") && (
+          {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
             <Route path="/:studioId" element={<StudioBookingPage />} />
+          ) : (
+            <Route path="/" element={<Web />} />
           )}
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
