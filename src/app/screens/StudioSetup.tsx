@@ -700,7 +700,7 @@ function StudioSetupInner() {
                 <h2 className="font-semibold text-foreground">Connect Google Calendar</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                This is the one required step. We use your calendar to show real availability and drop bookings straight in — no double-bookings, no manual scheduling.
+                Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.
               </p>
 
               <div className="rounded-xl border border-border p-4 space-y-2 bg-secondary/40">
@@ -727,9 +727,63 @@ function StudioSetupInner() {
                 One click — no password stored.
               </p>
 
+              <div className="flex items-center gap-3 py-1">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">o</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {!showManualAvailability ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowManualAvailability(true)}
+                  className="w-full h-11"
+                >
+                  Set availability manually
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
+                  {DAYS.map(day => (
+                    <div key={day.num}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
+                          {day.label}
+                        </button>
+                        <span className="text-xs text-muted-foreground">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
+                      </div>
+                      {availability[day.num].length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pl-1">
+                          {DEFAULT_SLOTS.map(slot => (
+                            <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-secondary text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                              {slot}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    onClick={handleSaveManualAvailability}
+                    disabled={manualSaving}
+                    className="w-full h-11 bg-primary hover:bg-[#9E4D22] text-white"
+                  >
+                    {manualSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & continue"}
+                  </Button>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
               </div>
+
+              <button
+                onClick={() => setStep(5)}
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 pt-1"
+              >
+                Saltar por ahora — podrás conectarlo más tarde desde tu portal
+              </button>
+
             </CardContent>
           </Card>
         )}
