@@ -206,6 +206,13 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           <span className="truncate">{shop.district || shop.address || "Madrid"}</span>
         </div>
 
+        {shop.rating_count != null && shop.rating_count > 0 && shop.rating_avg != null && (
+          <p className="text-xs font-semibold text-primary mt-1">
+            ★ {shop.rating_avg.toFixed(1)} <span className="text-muted-foreground font-normal">({shop.rating_count})</span>
+          </p>
+        )}
+
+
         {shop.basePrice != null && (
           <p className="text-sm text-primary font-semibold mt-1.5">
             desde €{shop.basePrice}
