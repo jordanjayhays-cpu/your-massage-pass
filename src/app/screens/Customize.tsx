@@ -31,7 +31,26 @@ export default function Customize() {
   const { pressure, focusAreas, addOns, notes, conversation, set, toggleFocus, toggleAddOn, shop } = useBooking();
   const massage = shop || MASSAGES.find((m) => m.id === id);
   const [profile, setProfile] = useState<any>(null);
+  const [prefsApplied, setPrefsApplied] = useState(false);
 
+  const applyProfileToBooking = (data: any) => {
+    if (!data) return;
+    const patch: any = {};
+    if (data.preferred_pressure && (PRESSURE_LEVELS as readonly string[]).includes(data.preferred_pressure)) {
+      patch.pressure = data.preferred_pressure;
+    }
+    if (Array.isArray(data.focus_areas)) {
+      patch.focusAreas = data.focus_areas.filter((f: string) => (FOCUS_AREAS as readonly string[]).includes(f));
+    }
+    if (Array.isArray(data.usual_addons)) {
+      const validIds = new Set(ADD_ONS.map((a) => a.id));
+      patch.addOns = data.usual_addons
+        .map((u: string) => ADDON_MAP[u])
+        .filter((x: string | undefined): x is string => !!x && validIds.has(x));
+    }
+    if (data.conversation_pref) patch.conversation = data.conversation_pref;
+    set(patch);
+  };
 
   useEffect(() => {
     (async () => {
@@ -39,14 +58,19 @@ export default function Customize() {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("preferred_pressure, focus_areas, usual_addons, preferred_massage_types, preferred_duration, conversation_pref")
+        .select("preferred_pressure, focus_areas, usual_addons, preferred_massage_types, preferred_duration, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
         setProfile(data);
-        // Pre-select conversation from profile if booking value not already set
-        if (!conversation && data.conversation_pref) {
-          set({ conversation: data.conversation_pref });
+        const hasAny =
+          data.preferred_pressure ||
+          (data.focus_areas?.length ?? 0) > 0 ||
+          (data.usual_addons?.length ?? 0) > 0 ||
+          data.conversation_pref;
+        if (hasAny) {
+          applyProfileToBooking(data);
+          setPrefsApplied(true);
         }
       }
     })();
