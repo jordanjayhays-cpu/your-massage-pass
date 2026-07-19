@@ -113,6 +113,44 @@ export default function StudioBookingPage() {
     })();
   }, []);
 
+  // Rebook fast-path: prefill service + preferences + contact from a previous booking.
+  useEffect(() => {
+    if (!rebookId || !profile) return;
+    (async () => {
+      const { data: prev, error: err } = await supabase
+        .from("bookings")
+        .select("service_id, massage_type, pressure, focus_areas, add_ons, notes, client_name, client_phone, client_email")
+        .eq("id", rebookId)
+        .maybeSingle();
+      if (err || !prev) return; // silently fall back to normal flow
+
+      // Resolve the service: prefer id, then name, then type match.
+      let match = profile.services.find(s => s.id === (prev as any).service_id) || null;
+      if (!match && prev.massage_type) {
+        match =
+          profile.services.find(s => s.name === prev.massage_type) ||
+          profile.services.find((s: any) => s.type === prev.massage_type) ||
+          null;
+      }
+      if (!match) return; // service no longer offered — exit rebook mode
+
+      setServiceId(match.id);
+      if (prev.pressure) setPressure(prev.pressure);
+      if (Array.isArray(prev.focus_areas)) setFocusAreas(prev.focus_areas);
+      const availableAddons = new Set((profile.addons ?? []).map((a: any) => a.name));
+      if (Array.isArray(prev.add_ons)) {
+        setAddonNames(prev.add_ons.filter((n: string) => availableAddons.has(n)));
+      }
+      if (prev.notes) setNotes(prev.notes);
+      if (prev.client_name) setName(prev.client_name);
+      if (prev.client_phone) setPhone(prev.client_phone);
+      if (prev.client_email) setEmail(prev.client_email);
+      setRebookMode(true);
+    })();
+  }, [rebookId, profile]);
+
+
+
 
   // availability grouped by weekday (0=Sun..6=Sat)
   const slotsByDay = useMemo(() => {
