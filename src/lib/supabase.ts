@@ -27,7 +27,12 @@ export interface Booking {
   status: "pending" | "confirmed" | "cancelled";
   client_preferences?: any;
   created_at?: string;
+  user_id?: string | null;
+  partner_id?: string | null;
+  service_id?: string | null;
+  price?: number | null;
 }
+
 
 export interface Lead {
   id?: number;
