@@ -305,7 +305,12 @@
       "language": {
         "label": "Idioma · Language",
         "hint": "Elige tu idioma / Pick your language"
+      "bookAgain": {
+        "title": "Tu masaje habitual",
+        "subtitle": "{{service}} · último {{date}}",
+        "cta": "Reservar de nuevo"
       },
+
       "referral": {
         "title": "Da {{amount}} €, recibe {{amount}} €",
         "subtitle": "Comparte tu enlace. Cuando un amigo reserve, recibirás {{amount}} € de descuento en tu próximo masaje.",
