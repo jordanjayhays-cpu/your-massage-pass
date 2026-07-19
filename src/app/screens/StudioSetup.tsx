@@ -59,7 +59,7 @@ function StudioSetupInner() {
   const [partnerId, setPartnerId] = useState<string | null>(null);
 
   // Step 2: Profile
-  const [studio, setStudio] = useState({ business_name: "", address: "", phone: "", website: "", description: "", city: "Madrid" });
+  const [studio, setStudio] = useState({ business_name: "", address: "", phone: "", website: "", description: "", city: "Madrid", access_instructions: "" });
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Step 3: Services
@@ -106,6 +106,7 @@ function StudioSetupInner() {
           website: partner.website || "",
           description: partner.description || "",
           city: partner.city || "Madrid",
+          access_instructions: partner.access_instructions || "",
         });
         setServices((svcs && svcs.length) ? svcs.map(normalizeService) : [emptyService()]);
 
@@ -141,6 +142,7 @@ function StudioSetupInner() {
               website: data.website || "",
               description: data.description || "",
               city: data.neighborhood || "Madrid",
+              access_instructions: data.access_instructions || "",
             });
             const svcs = Array.isArray(data.services) ? data.services : [];
             setServices(svcs.length ? svcs.map(normalizeService) : [emptyService()]);
@@ -254,6 +256,7 @@ function StudioSetupInner() {
         business_name: studio.business_name,
         email,
         address: studio.address,
+        access_instructions: studio.access_instructions,
         phone: studio.phone,
         website: studio.website,
         description: studio.description,
@@ -579,6 +582,12 @@ function StudioSetupInner() {
                   <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input value={studio.address} onChange={e => setStudio(p => ({ ...p, address: e.target.value }))} placeholder="Calle Gran Vía 15, Madrid" className="pl-9 h-11" />
                 </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">Shown to customers on their booking confirmation.</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Instrucciones de llegada (opcional)</label>
+                <textarea value={studio.access_instructions} onChange={e => setStudio(p => ({ ...p, access_instructions: e.target.value }))} placeholder="Ej.: 'Portal 1A — pulsa el telefonillo y te abrimos. Primera planta, puerta derecha.'" rows={3} className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-primary resize-none" />
+                <p className="text-[11px] text-muted-foreground mt-1.5">Se incluye en el email de confirmación del cliente.</p>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
