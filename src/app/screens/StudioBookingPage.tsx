@@ -317,6 +317,7 @@ export default function StudioBookingPage() {
               notes: notes.trim() || null,
               allergies: profileAllergies || null,
               health_notes: profileHealthNotes || null,
+              lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
             },
           },
         });
