@@ -125,6 +125,15 @@ export default function Payment() {
       const servicePrice: number | null =
         matchedService?.price != null ? Number(matchedService.price) : (massage.basePrice ?? null);
 
+      const comfortPrefs = {
+        conversation: booking.conversation || profile?.conversation_pref || null,
+        music: profile?.music_pref || null,
+        temperature: profile?.temperature_pref || null,
+        scent: profile?.scent_pref || null,
+        lighting: profile?.lighting_pref || null,
+        notes: profile?.comfort_notes || null,
+      };
+
       const result = await saveBooking({
         client_name: contact.name,
         client_email: contact.email,
@@ -144,17 +153,13 @@ export default function Payment() {
         service_id: serviceId,
         price: servicePrice,
         lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+        comfort_prefs: comfortPrefs,
         client_preferences: {
           pressure: booking.pressure,
           focus_areas: booking.focusAreas,
           add_ons: addOnNames,
           preferred_therapist_gender: profile?.preferred_therapist_gender,
-          conversation: booking.conversation || profile?.conversation_pref,
-          music: profile?.music_pref,
-          temperature: profile?.temperature_pref,
-          scent: profile?.scent_pref,
-          lighting: profile?.lighting_pref,
-          comfort_notes: profile?.comfort_notes,
+          ...comfortPrefs,
           referral_credit_applied_eur: creditToApply || undefined,
         },
       });
@@ -185,6 +190,7 @@ export default function Payment() {
                 add_ons: addOnNames,
                 notes: noteParts.join(" ") || null,
                 lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+                comfort_prefs: comfortPrefs,
               },
             },
           });

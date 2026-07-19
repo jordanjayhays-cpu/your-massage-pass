@@ -37,11 +37,14 @@ export default function StudioBookingPage() {
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [addonNames, setAddonNames] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [conversationPref, setConversationPref] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
   const [error, setError] = useState("");
   const [profileAllergies, setProfileAllergies] = useState<string>("");
   const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
+  const [customerProfile, setCustomerProfile] = useState<any>(null);
+  const [prefsApplied, setPrefsApplied] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
@@ -96,18 +99,32 @@ export default function StudioBookingPage() {
       setName(prev => prev || fullName);
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes")
+        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes")
         .eq("id", user.id)
         .single();
       if (prof) {
+        setCustomerProfile(prof);
         setName(prev => prev || prof.full_name || "");
         setPhone(prev => prev || prof.phone || "");
-        if (prof.preferred_pressure) setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
-        if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
-          setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
-        }
         setProfileAllergies(prof.allergies || "");
         setProfileHealthNotes(prof.health_notes || "");
+        // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
+        if (!rebookId) {
+          let applied = false;
+          if (prof.preferred_pressure) {
+            setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
+            applied = true;
+          }
+          if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
+            setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
+            applied = true;
+          }
+          if (prof.conversation_pref) {
+            setConversationPref(prev => prev || prof.conversation_pref);
+            applied = true;
+          }
+          if (applied) setPrefsApplied(true);
+        }
       }
 
     })();
@@ -269,6 +286,16 @@ export default function StudioBookingPage() {
     if (!canBook) return;
     setSubmitting(true);
     setError("");
+    const comfortPrefs = {
+      conversation: conversationPref || customerProfile?.conversation_pref || null,
+      music: customerProfile?.music_pref || null,
+      temperature: customerProfile?.temperature_pref || null,
+      scent: customerProfile?.scent_pref || null,
+      lighting: customerProfile?.lighting_pref || null,
+      notes: customerProfile?.comfort_notes || null,
+    };
+
+
     try {
       const { data, error } = await supabase.from("bookings").insert({
         client_name: name.trim(),
@@ -291,6 +318,7 @@ export default function StudioBookingPage() {
         status: "pending",
         user_id: userId,
         lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+        comfort_prefs: comfortPrefs,
       }).select("id").single();
 
 
@@ -320,6 +348,7 @@ export default function StudioBookingPage() {
               allergies: profileAllergies || null,
               health_notes: profileHealthNotes || null,
               lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+              comfort_prefs: comfortPrefs,
             },
           },
         });
@@ -510,6 +539,46 @@ export default function StudioBookingPage() {
         {!rebookMode && service && date && time && (
 
           <Section step="4" title="Customize your session">
+            {customerProfile && prefsApplied && (
+              <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-gray-700">✨ Prefilled from your profile</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPressure("Medium");
+                    setFocusAreas([]);
+                    setAddonNames([]);
+                    setConversationPref("");
+                    setPrefsApplied(false);
+                  }}
+                  className="text-xs font-semibold text-[#C4622D] underline"
+                >
+                  Start blank
+                </button>
+              </div>
+            )}
+            <p className="text-xs font-semibold text-gray-500 mb-2">Comfort</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { v: "silence", l: "🤫 Silence" },
+                { v: "minimal", l: "A little chat" },
+                { v: "chatty", l: "Happy to chat" },
+              ].map(o => (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setConversationPref(o.v)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    (conversationPref || "minimal") === o.v
+                      ? "bg-[#C4622D] text-white border-[#C4622D]"
+                      : "bg-white text-gray-600 border-gray-200"
+                  }`}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+
             <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
             <div className="flex flex-wrap gap-2 mb-4">
               {PRESSURE_LEVELS.map(p => (

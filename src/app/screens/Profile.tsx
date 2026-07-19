@@ -152,6 +152,9 @@ export default function Profile() {
   const [referralCode, setReferralCode] = useState("");
   const [creditBalanceCents, setCreditBalanceCents] = useState(0);
 
+  // Last booking (for "Book again" card)
+  const [lastBooking, setLastBooking] = useState<any>(null);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -209,6 +212,22 @@ export default function Profile() {
         setScentPref(data?.scent_pref || "");
         setLightingPref(data?.lighting_pref || "");
         setComfortNotes(data?.comfort_notes || "");
+
+        // Fetch most recent booking for "Book again" card
+        try {
+          const email = user.email || "";
+          const filter = email
+            ? `user_id.eq.${user.id},client_email.eq.${email}`
+            : `user_id.eq.${user.id}`;
+          const { data: lb } = await supabase
+            .from("bookings")
+            .select("id, partner_id, massage_type, booking_date, partners(business_name, slug)")
+            .or(filter)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (lb && lb.partner_id && (lb as any).partners) setLastBooking(lb);
+        } catch { /* ignore */ }
       }
       setLoading(false);
     })();
@@ -365,6 +384,32 @@ export default function Profile() {
           </div>
           <LanguageFlagToggle />
         </div>
+
+        {/* Book again card */}
+        {lastBooking && (lastBooking.partners?.slug || lastBooking.partner_id) && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">{t("app.profile.bookAgain.title")}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {t("app.profile.bookAgain.subtitle", {
+                  service: lastBooking.massage_type || "Massage",
+                  date: lastBooking.booking_date || "",
+                })}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const target = lastBooking.partners?.slug
+                  ? `/book/${lastBooking.partners.slug}?rebook=${lastBooking.id}`
+                  : `/app/booking/${lastBooking.partner_id}`;
+                navigate(target);
+              }}
+              className="shrink-0 h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
+            >
+              {t("app.profile.bookAgain.cta")}
+            </button>
+          </div>
+        )}
 
         {/* Refer & Earn card */}
         {referralCode && (() => {

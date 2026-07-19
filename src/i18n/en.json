@@ -122,6 +122,9 @@
       "kicker": "Customize your session",
       "usePrefs": "Use my preferences",
       "loadedPrefs": "Loaded your preferences ✨",
+      "prefilledFromProfile": "✨ Prefilled from your profile",
+      "startBlank": "Start blank",
+      "comfort": "Comfort",
       "talking": "Talking during this session?",
       "talkSilence": "🤫 Silence please",
       "talkMinimal": "A little chat",
@@ -306,6 +309,12 @@
         "label": "Idioma · Language",
         "hint": "Pick your language / Elige tu idioma"
       },
+      "bookAgain": {
+        "title": "Your usual massage",
+        "subtitle": "{{service}} · last on {{date}}",
+        "cta": "Book again"
+      },
+
       "referral": {
         "title": "Give €{{amount}}, get €{{amount}}",
         "subtitle": "Share your link. When a friend books, you get €{{amount}} off your next massage.",

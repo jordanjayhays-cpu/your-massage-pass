@@ -122,6 +122,9 @@
       "kicker": "Personaliza tu sesión",
       "usePrefs": "Usar mis preferencias",
       "loadedPrefs": "Preferencias cargadas ✨",
+      "prefilledFromProfile": "✨ Rellenado con tus preferencias",
+      "startBlank": "Empezar en blanco",
+      "comfort": "Comodidad",
       "talking": "¿Hablar durante la sesión?",
       "talkSilence": "🤫 Silencio por favor",
       "talkMinimal": "Un poco de charla",
@@ -306,6 +309,12 @@
         "label": "Idioma · Language",
         "hint": "Elige tu idioma / Pick your language"
       },
+      "bookAgain": {
+        "title": "Tu masaje habitual",
+        "subtitle": "{{service}} · último {{date}}",
+        "cta": "Reservar de nuevo"
+      },
+
       "referral": {
         "title": "Da {{amount}} €, recibe {{amount}} €",
         "subtitle": "Comparte tu enlace. Cuando un amigo reserve, recibirás {{amount}} € de descuento en tu próximo masaje.",
