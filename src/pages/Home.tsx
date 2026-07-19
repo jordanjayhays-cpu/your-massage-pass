@@ -5,7 +5,7 @@ import { fetchShops } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 
-type ShopWithSlug = Shop & { slug?: string | null };
+type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
 export default function Home() {
   const [shops, setShops] = useState<ShopWithSlug[]>([]);
