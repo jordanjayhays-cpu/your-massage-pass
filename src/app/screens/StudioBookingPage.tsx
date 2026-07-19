@@ -539,6 +539,46 @@ export default function StudioBookingPage() {
         {!rebookMode && service && date && time && (
 
           <Section step="4" title="Customize your session">
+            {customerProfile && prefsApplied && (
+              <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-gray-700">✨ Prefilled from your profile</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPressure("Medium");
+                    setFocusAreas([]);
+                    setAddonNames([]);
+                    setConversationPref("");
+                    setPrefsApplied(false);
+                  }}
+                  className="text-xs font-semibold text-[#C4622D] underline"
+                >
+                  Start blank
+                </button>
+              </div>
+            )}
+            <p className="text-xs font-semibold text-gray-500 mb-2">Comfort</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { v: "silence", l: "🤫 Silence" },
+                { v: "minimal", l: "A little chat" },
+                { v: "chatty", l: "Happy to chat" },
+              ].map(o => (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setConversationPref(o.v)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    (conversationPref || "minimal") === o.v
+                      ? "bg-[#C4622D] text-white border-[#C4622D]"
+                      : "bg-white text-gray-600 border-gray-200"
+                  }`}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+
             <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
             <div className="flex flex-wrap gap-2 mb-4">
               {PRESSURE_LEVELS.map(p => (
