@@ -5,7 +5,7 @@ import { fetchShops } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 
-type ShopWithSlug = Shop & { slug?: string | null };
+type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
 export default function Home() {
   const [shops, setShops] = useState<ShopWithSlug[]>([]);
@@ -25,7 +25,20 @@ export default function Home() {
           .in("id", ids);
         for (const p of data ?? []) if ((p as any).slug) slugMap[(p as any).id] = (p as any).slug;
       }
-      setShops(list.map((s) => ({ ...s, slug: slugMap[s.partner_id] })));
+      const { data: ratings } = await supabase
+        .from("partner_rating_summary")
+        .select("partner_id, rating_avg, rating_count");
+      const ratingMap: Record<string, { avg: number; count: number }> = {};
+      for (const r of ratings ?? []) {
+        const row = r as any;
+        if (row.rating_count > 0) ratingMap[row.partner_id] = { avg: Number(row.rating_avg), count: Number(row.rating_count) };
+      }
+      setShops(list.map((s) => ({
+        ...s,
+        slug: slugMap[s.partner_id],
+        rating_avg: ratingMap[s.partner_id]?.avg,
+        rating_count: ratingMap[s.partner_id]?.count,
+      })));
       setLoading(false);
     })();
   }, []);
@@ -192,6 +205,13 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           <MapPin className="h-3 w-3" />
           <span className="truncate">{shop.district || shop.address || "Madrid"}</span>
         </div>
+
+        {shop.rating_count != null && shop.rating_count > 0 && shop.rating_avg != null && (
+          <p className="text-xs font-semibold text-primary mt-1">
+            ★ {shop.rating_avg.toFixed(1)} <span className="text-muted-foreground font-normal">({shop.rating_count})</span>
+          </p>
+        )}
+
 
         {shop.basePrice != null && (
           <p className="text-sm text-primary font-semibold mt-1.5">

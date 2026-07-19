@@ -49,6 +49,7 @@ export default function StudioBookingPage() {
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
   const [contactExpanded, setContactExpanded] = useState(false);
+  const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
 
 
 
@@ -80,6 +81,15 @@ export default function StudioBookingPage() {
           counts.set(key, (counts.get(key) || 0) + 1);
         }
         setSlotCounts(counts);
+
+        const { data: rs } = await supabase
+          .from("partner_rating_summary")
+          .select("rating_avg, rating_count")
+          .eq("partner_id", resolvedId)
+          .maybeSingle();
+        if (rs && (rs as any).rating_count > 0) {
+          setRating({ avg: Number((rs as any).rating_avg), count: Number((rs as any).rating_count) });
+        }
       }
 
       setLoading(false);
@@ -388,6 +398,12 @@ export default function StudioBookingPage() {
                 <Sparkles size={12} /> Book your massage
               </div>
               <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
+              {rating && (
+                <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
+                  <span style={{ color: "#E0A458" }}>★</span>
+                  {rating.avg.toFixed(1)} <span className="text-white/70 font-normal">({rating.count})</span>
+                </p>
+              )}
               {partner.address && (
                 <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
                   <MapPin size={12} /> {partner.address}
