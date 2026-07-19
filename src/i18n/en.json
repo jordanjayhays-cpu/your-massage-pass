@@ -305,7 +305,12 @@
       "language": {
         "label": "Idioma · Language",
         "hint": "Pick your language / Elige tu idioma"
+      "bookAgain": {
+        "title": "Your usual massage",
+        "subtitle": "{{service}} · last on {{date}}",
+        "cta": "Book again"
       },
+
       "referral": {
         "title": "Give €{{amount}}, get €{{amount}}",
         "subtitle": "Share your link. When a friend books, you get €{{amount}} off your next massage.",
