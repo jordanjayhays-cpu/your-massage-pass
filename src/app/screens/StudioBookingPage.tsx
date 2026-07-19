@@ -63,20 +63,15 @@ export default function StudioBookingPage() {
       if (p) {
         // Count how many bookings already exist per slot, so a slot only
         // disappears once EVERY therapist is busy at that time (real capacity).
-        const today = isoDate(new Date());
-        const { data } = await supabase
-          .from("bookings")
-          .select("booking_date,booking_time")
-          .eq("partner_id", resolvedId)
-          .neq("status", "cancelled")
-          .gte("booking_date", today);
+        const { data } = await supabase.rpc("booked_slot_counts", { p_partner_id: resolvedId });
         const counts = new Map<string, number>();
-        for (const b of data || []) {
+        for (const b of (data as any[]) || []) {
           const key = `${b.booking_date}__${b.booking_time}`;
           counts.set(key, (counts.get(key) || 0) + 1);
         }
         setSlotCounts(counts);
       }
+
       setLoading(false);
     })();
   }, [studioId]);
