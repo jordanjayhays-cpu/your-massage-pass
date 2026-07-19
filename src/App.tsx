@@ -37,6 +37,7 @@ import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
 import Home from "./pages/Home";
+import BookingResult from "./pages/BookingResult";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/booking-result" element={<BookingResult />} />
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
