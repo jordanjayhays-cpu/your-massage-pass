@@ -90,25 +90,14 @@ export default function Customize() {
   );
 
   const applyPrefs = () => {
-    if (!profile) return;
-    const patch: any = {};
-    if (profile.preferred_pressure && (PRESSURE_LEVELS as readonly string[]).includes(profile.preferred_pressure)) {
-      patch.pressure = profile.preferred_pressure;
-    }
-    if (Array.isArray(profile.focus_areas)) {
-      patch.focusAreas = profile.focus_areas.filter((f: string) => (FOCUS_AREAS as readonly string[]).includes(f));
-    }
-    if (Array.isArray(profile.usual_addons)) {
-      const validIds = new Set(ADD_ONS.map((a) => a.id));
-      patch.addOns = profile.usual_addons
-        .map((u: string) => ADDON_MAP[u])
-        .filter((id: string | undefined): id is string => !!id && validIds.has(id));
-    }
-    if (profile.conversation_pref) {
-      patch.conversation = profile.conversation_pref;
-    }
-    set(patch);
+    applyProfileToBooking(profile);
+    setPrefsApplied(true);
     toast.success(t("app.customize.loadedPrefs"));
+  };
+
+  const startBlank = () => {
+    set({ pressure: "Medium", focusAreas: [], addOns: [], conversation: "" });
+    setPrefsApplied(false);
   };
 
   return (
@@ -124,7 +113,18 @@ export default function Customize() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-        {hasPrefs && (
+        {hasPrefs && prefsApplied && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              {t("app.customize.prefilledFromProfile")}
+            </div>
+            <button onClick={startBlank} className="text-xs font-semibold text-primary underline underline-offset-2">
+              {t("app.customize.startBlank")}
+            </button>
+          </div>
+        )}
+        {hasPrefs && !prefsApplied && (
           <button
             onClick={applyPrefs}
             className="w-full h-12 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft hover:opacity-90 transition flex items-center justify-center gap-2"
@@ -133,6 +133,7 @@ export default function Customize() {
             {t("app.customize.usePrefs")}
           </button>
         )}
+
 
         <div>
           <h3 className="text-sm font-semibold text-foreground mb-3">{t("app.customize.talking")}</h3>
