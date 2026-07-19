@@ -39,6 +39,8 @@ export default function StudioBookingPage() {
   const [error, setError] = useState("");
   const [profileAllergies, setProfileAllergies] = useState<string>("");
   const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
+
 
 
   useEffect(() => {
