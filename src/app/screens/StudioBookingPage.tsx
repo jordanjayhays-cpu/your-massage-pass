@@ -389,7 +389,39 @@ export default function StudioBookingPage() {
           </div>
         )}
 
-        {/* 1. Service */}
+        {/* Rebook summary card — Amazon-style "your usual" fast path */}
+        {rebookMode && service && (
+          <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                <Sparkles size={11} /> Tu reserva habitual
+              </div>
+              <button
+                onClick={() => setRebookMode(false)}
+                className="text-xs font-semibold text-[#C4622D] underline underline-offset-2"
+              >
+                Cambiar
+              </button>
+            </div>
+            <p className="font-semibold text-gray-900">{service.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
+              <span className="inline-flex items-center gap-1"><Clock size={11} /> {service.duration} min</span>
+              <span className="inline-flex items-center gap-0.5"><Euro size={11} />{service.price}</span>
+            </p>
+            {(pressure || focusAreas.length > 0 || addonNames.length > 0) && (
+              <p className="text-xs text-gray-600 mt-2">
+                {[
+                  pressure && `Presión: ${pressure}`,
+                  focusAreas.length > 0 && `Zonas: ${focusAreas.join(", ")}`,
+                  addonNames.length > 0 && `Extras: ${addonNames.join(", ")}`,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
+        {!rebookMode && (
         <Section step="1" title="Choose a service">
           <div className="space-y-2">
             {profile.services.map(s => (
@@ -408,6 +440,7 @@ export default function StudioBookingPage() {
                   </div>
                 </div>
               </button>
+
             ))}
             {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
           </div>
