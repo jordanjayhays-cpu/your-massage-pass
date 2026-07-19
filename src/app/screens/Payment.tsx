@@ -143,6 +143,7 @@ export default function Payment() {
         partner_id: partnerId,
         service_id: serviceId,
         price: servicePrice,
+        lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
         client_preferences: {
           pressure: booking.pressure,
           focus_areas: booking.focusAreas,
@@ -169,6 +170,7 @@ export default function Payment() {
               type: "INSERT",
               table: "bookings",
               record: {
+                id: result.id,
                 partner_id: partnerId,
                 client_name: contact.name,
                 client_phone: contact.phone,

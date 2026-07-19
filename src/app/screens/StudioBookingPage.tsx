@@ -290,6 +290,7 @@ export default function StudioBookingPage() {
         health_notes: profileHealthNotes || null,
         status: "pending",
         user_id: userId,
+        lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
       }).select("id").single();
 
 
@@ -302,6 +303,7 @@ export default function StudioBookingPage() {
             type: "INSERT",
             table: "bookings",
             record: {
+              id: data.id,
               partner_id: partner.id,
               client_name: name.trim(),
               client_phone: phone.trim(),
