@@ -115,17 +115,14 @@ export default function Calendar() {
         return;
       }
       setLoading(true);
-      const { data } = await supabase
-        .from("bookings")
-        .select("booking_time, status")
-        .eq("partner_id", partnerId)
-        .eq("booking_date", date)
-        .neq("status", "cancelled");
+      const { data } = await supabase.rpc("booked_slot_counts", { p_partner_id: partnerId });
       const counts: Record<string, number> = {};
-      for (const b of data ?? []) {
+      for (const b of (data as any[]) ?? []) {
+        if (b.booking_date !== date) continue;
         const t = (b.booking_time || "").slice(0, 5);
         counts[t] = (counts[t] || 0) + 1;
       }
+
       if (!cancelled) {
         setBookedCounts(counts);
         setLoading(false);
