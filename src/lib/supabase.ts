@@ -31,6 +31,7 @@ export interface Booking {
   partner_id?: string | null;
   service_id?: string | null;
   price?: number | null;
+  lang?: string | null;
 }
 
 
