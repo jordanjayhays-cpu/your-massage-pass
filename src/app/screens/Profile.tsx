@@ -152,6 +152,9 @@ export default function Profile() {
   const [referralCode, setReferralCode] = useState("");
   const [creditBalanceCents, setCreditBalanceCents] = useState(0);
 
+  // Last booking (for "Book again" card)
+  const [lastBooking, setLastBooking] = useState<any>(null);
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
