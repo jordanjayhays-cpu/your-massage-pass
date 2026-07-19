@@ -308,6 +308,7 @@
       "language": {
         "label": "Idioma · Language",
         "hint": "Elige tu idioma / Pick your language"
+      },
       "bookAgain": {
         "title": "Tu masaje habitual",
         "subtitle": "{{service}} · último {{date}}",
