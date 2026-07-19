@@ -166,32 +166,25 @@ export default function Login() {
   return (
     <Shell>
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 pt-6">
+      <div className="flex items-center justify-between px-6 pt-5">
         <div className="flex items-center gap-2">
           <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" className="h-8 w-8 rounded-full object-cover" />
           <span className="text-[13px] font-medium tracking-tight text-[#211C1A]">Massage Club</span>
         </div>
-        <button
-          onClick={() => navigate("/partner/login")}
-          className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#7A7068] hover:text-[#C4622D]"
-        >
-          {t("actions.forStudios")} →
-        </button>
-      </div>
-
-      {/* Language picker — single flag, tap to choose */}
-      <div className="px-6 mt-5 flex justify-center">
-        <LanguageFlagToggle variant="compact" />
+        <div className="flex items-center gap-3">
+          <LanguageFlagToggle variant="compact" />
+          <button
+            onClick={() => navigate("/partner/login")}
+            className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#7A7068] hover:text-[#C4622D]"
+          >
+            {t("actions.forStudios")} →
+          </button>
+        </div>
       </div>
 
       {/* Hero — editorial split */}
-      <div className="px-6 pt-8">
-        <img
-          src="/brand/mc-avatar-cream.png"
-          alt="Massage Club"
-          className="h-20 w-20 rounded-full object-cover mb-5 shadow-[0_10px_30px_-12px_rgba(122,48,0,0.35)]"
-        />
-        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-4">{t("hero.established")}</p>
+      <div className="px-6 pt-6">
+        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">{t("hero.established")}</p>
         <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#211C1A]">
           {t("hero.title1")}<br/>
           <em className="text-[#C4622D]">{t("hero.title2")}</em><br/>
