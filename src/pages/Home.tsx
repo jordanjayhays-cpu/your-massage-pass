@@ -104,9 +104,9 @@ export default function Home() {
         </section>
 
         {/* Grid */}
-        <section className="pb-20">
-          <div className="flex items-baseline justify-between mb-5">
-            <h2 className="font-display text-2xl md:text-3xl text-foreground">
+        <section className="pb-12">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-display text-xl md:text-2xl text-foreground">
               Estudios en Madrid
             </h2>
             <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-primary">
