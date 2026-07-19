@@ -37,11 +37,14 @@ export default function StudioBookingPage() {
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [addonNames, setAddonNames] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [conversationPref, setConversationPref] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
   const [error, setError] = useState("");
   const [profileAllergies, setProfileAllergies] = useState<string>("");
   const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
+  const [customerProfile, setCustomerProfile] = useState<any>(null);
+  const [prefsApplied, setPrefsApplied] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
