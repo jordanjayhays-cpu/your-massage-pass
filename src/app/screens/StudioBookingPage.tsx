@@ -261,29 +261,57 @@ export default function StudioBookingPage() {
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
     })();
     return (
-      <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="h-16 w-16 rounded-full bg-emerald-500 flex items-center justify-center mb-4">
-          <Check className="h-8 w-8 text-white" />
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900">You're booked! 🎉</h1>
-        <p className="text-gray-500 mt-1">{service?.name} · {prettyDate} at {time}</p>
-        <div className="mt-4 px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-mono">{done.ref}</div>
-        <p className="text-gray-500 text-sm mt-4 max-w-sm">
-          {partner.business_name} will confirm your appointment shortly.
-        </p>
-        <div className="mt-6 flex flex-col items-center gap-3 w-full max-w-xs">
-          {waLink && (
-            <a href={waLink} target="_blank" rel="noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-[#25D366] text-white font-semibold shadow-lg">
-              <MessageCircle size={18} /> Confirm on WhatsApp
-            </a>
-          )}
-          {gcal && (
-            <a href={gcal} target="_blank" rel="noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-white border border-gray-200 text-gray-700 font-semibold">
-              <CalendarDays size={18} /> Add to my calendar
-            </a>
-          )}
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#FAF6F1" }}>
+        <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
+          <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
+            <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
+            <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
+          </div>
+          <div className="px-6 py-7">
+            <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>TU CITA EN</div>
+            <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
+            <h1 className="font-display text-3xl font-bold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            <p className="text-base font-semibold mb-6" style={{ color: "#3d2b1f" }}>
+              ¡Tu reserva está hecha! 🎉
+              <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
+            </p>
+            <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
+              <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
+                {service?.name} · {service?.duration} min · {total}€
+              </div>
+              <div className="text-base font-bold mb-1" style={{ color: "#B85C38" }}>
+                {prettyDate} · {time}
+              </div>
+              {partner.address && (
+                <div className="text-sm flex items-start gap-1.5" style={{ color: "#5a4736" }}>
+                  <span>📍</span>
+                  <span>{partner.address}</span>
+                </div>
+              )}
+            </div>
+            <div className="inline-flex items-center justify-center px-4 py-2 rounded-full font-mono text-xs mb-5" style={{ background: "#FAF6F1", color: "#5a4736" }}>
+              {done.ref}
+            </div>
+            <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+              El estudio confirmará tu cita en breve.
+              <span className="block text-xs mt-0.5">The studio will confirm your appointment shortly.</span>
+            </p>
+            <div className="flex flex-col items-center gap-3 w-full">
+              {gcal && (
+                <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                  <CalendarDays size={18} /> Add to my calendar
+                </a>
+              )}
+              {waLink && (
+                <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                  <MessageCircle size={18} /> Confirm on WhatsApp
+                </a>
+              )}
+            </div>
+            <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
+              Massage Club · Madrid · book.massageclub.io
+            </div>
+          </div>
         </div>
       </div>
     );
