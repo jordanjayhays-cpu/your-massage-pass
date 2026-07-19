@@ -294,7 +294,8 @@ export default function StudioBookingPage() {
       lighting: customerProfile?.lighting_pref || null,
       notes: customerProfile?.comfort_notes || null,
     };
-    setError("");
+
+
     try {
       const { data, error } = await supabase.from("bookings").insert({
         client_name: name.trim(),
