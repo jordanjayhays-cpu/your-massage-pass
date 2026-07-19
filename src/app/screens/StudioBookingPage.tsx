@@ -49,6 +49,7 @@ export default function StudioBookingPage() {
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
   const [contactExpanded, setContactExpanded] = useState(false);
+  const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
 
 
 
