@@ -76,6 +76,7 @@ export default function StudioBookingPage() {
     })();
   }, [studioId]);
 
+
   // Pre-fill name + email + phone if the customer is signed in.
   useEffect(() => {
     (async () => {
