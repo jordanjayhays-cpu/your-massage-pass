@@ -44,7 +44,6 @@ export default function PartnerProfile() {
     access_instructions: "",
     city: "Madrid",
     country: "Spain",
-    access_instructions: "",
   });
 
   // Load existing partner profile on mount
