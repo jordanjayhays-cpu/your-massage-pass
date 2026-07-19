@@ -59,7 +59,7 @@ function StudioSetupInner() {
   const [partnerId, setPartnerId] = useState<string | null>(null);
 
   // Step 2: Profile
-  const [studio, setStudio] = useState({ business_name: "", address: "", phone: "", website: "", description: "", city: "Madrid" });
+  const [studio, setStudio] = useState({ business_name: "", address: "", phone: "", website: "", description: "", city: "Madrid", access_instructions: "" });
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Step 3: Services
