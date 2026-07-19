@@ -244,7 +244,9 @@ export default function StudioBookingPage() {
         allergies: profileAllergies || null,
         health_notes: profileHealthNotes || null,
         status: "pending",
+        user_id: userId,
       }).select("id").single();
+
 
       if (error) throw new Error(error.message);
 
