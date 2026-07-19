@@ -190,6 +190,7 @@ export default function Payment() {
                 add_ons: addOnNames,
                 notes: noteParts.join(" ") || null,
                 lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+                comfort_prefs: comfortPrefs,
               },
             },
           });
