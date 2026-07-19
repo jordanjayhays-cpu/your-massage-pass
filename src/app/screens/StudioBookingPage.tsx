@@ -348,6 +348,7 @@ export default function StudioBookingPage() {
               allergies: profileAllergies || null,
               health_notes: profileHealthNotes || null,
               lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+              comfort_prefs: comfortPrefs,
             },
           },
         });
