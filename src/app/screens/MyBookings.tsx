@@ -86,7 +86,7 @@ export default function MyBookings() {
       const { data } = await supabase
         .from("bookings")
         .select(`
-          id, spa_name, massage_type, booking_date, booking_time, status, partner_id, price,
+          id, spa_name, massage_type, booking_date, booking_time, status, partner_id, price, action_token, reviewed_at,
           partners ( id, slug, address, access_instructions, opening_hours, capacity,
                      partner_availability ( day_of_week, time_slot ) )
         `)
