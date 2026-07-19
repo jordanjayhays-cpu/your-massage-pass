@@ -134,23 +134,23 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-border/60 bg-secondary/40">
-        <div className="max-w-6xl mx-auto px-5 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <img
               src="/brand/mc-avatar-terracotta.png"
               alt="Massage Club"
-              className="h-7 w-7 rounded-full"
+              className="h-6 w-6 rounded-full"
             />
             <span className="text-sm text-muted-foreground">
               Massage Club · Madrid
             </span>
           </div>
-          <div className="flex items-center gap-6 text-xs font-bold tracking-[0.14em] uppercase">
+          <div className="flex items-center gap-5 text-xs font-bold tracking-[0.14em] uppercase">
             <Link to="/partner" className="text-foreground/80 hover:text-primary transition">
               For studios
             </Link>
             <Link to="/app" className="text-foreground/80 hover:text-primary transition">
-              Open the app
+              Open app
             </Link>
           </div>
         </div>
