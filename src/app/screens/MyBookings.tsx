@@ -208,6 +208,21 @@ export default function MyBookings() {
               <Star size={14} className="fill-[#E0A458] text-[#E0A458]" /> {t("card.review")}
             </a>
           )}
+
+          {isPast && b.status !== "cancelled" && b.action_token && b.booking_date < todayISO() && (
+            b.reviewed_at ? (
+              <span className="flex items-center justify-center gap-1 px-4 h-10 rounded-xl text-gray-500 text-sm font-semibold bg-gray-100">
+                ✓ Valorado
+              </span>
+            ) : (
+              <a
+                href={`/review?token=${encodeURIComponent(b.action_token)}`}
+                className="flex items-center justify-center gap-1 px-4 h-10 rounded-xl border border-[#C4622D] text-[#C4622D] text-sm font-semibold hover:bg-[#C4622D]/5"
+              >
+                ⭐ Valorar
+              </a>
+            )
+          )}
         </div>
       </div>
     );
