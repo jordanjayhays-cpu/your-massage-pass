@@ -318,6 +318,7 @@ export default function StudioBookingPage() {
         status: "pending",
         user_id: userId,
         lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
+        comfort_prefs: comfortPrefs,
       }).select("id").single();
 
 
