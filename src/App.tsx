@@ -38,6 +38,7 @@ import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
 import Home from "./pages/Home";
 import BookingResult from "./pages/BookingResult";
+import Review from "./pages/Review";
 
 const queryClient = new QueryClient();
 
