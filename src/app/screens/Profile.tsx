@@ -212,6 +212,22 @@ export default function Profile() {
         setScentPref(data?.scent_pref || "");
         setLightingPref(data?.lighting_pref || "");
         setComfortNotes(data?.comfort_notes || "");
+
+        // Fetch most recent booking for "Book again" card
+        try {
+          const email = user.email || "";
+          const filter = email
+            ? `user_id.eq.${user.id},client_email.eq.${email}`
+            : `user_id.eq.${user.id}`;
+          const { data: lb } = await supabase
+            .from("bookings")
+            .select("id, partner_id, massage_type, booking_date, partners(business_name, slug)")
+            .or(filter)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (lb && lb.partner_id && (lb as any).partners) setLastBooking(lb);
+        } catch { /* ignore */ }
       }
       setLoading(false);
     })();
