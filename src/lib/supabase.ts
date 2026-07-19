@@ -32,6 +32,7 @@ export interface Booking {
   service_id?: string | null;
   price?: number | null;
   lang?: string | null;
+  comfort_prefs?: Record<string, any> | null;
 }
 
 
