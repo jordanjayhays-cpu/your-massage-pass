@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioWhatsappUrl } from "@/app/lib/whatsapp";
 import {
@@ -17,6 +18,8 @@ const isoDate = (d: Date) =>
 
 export default function StudioBookingPage() {
   const { studioId } = useParams();
+  const [searchParams] = useSearchParams();
+  const rebookId = searchParams.get("rebook");
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
   // How many bookings already exist for each `date__time` slot.
@@ -40,6 +43,10 @@ export default function StudioBookingPage() {
   const [profileAllergies, setProfileAllergies] = useState<string>("");
   const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
   const [userId, setUserId] = useState<string | null>(null);
+  // Rebook fast-path: when true, hide expanded pickers and show a summary card.
+  const [rebookMode, setRebookMode] = useState(false);
+  const [contactExpanded, setContactExpanded] = useState(false);
+
 
 
 
@@ -105,6 +112,44 @@ export default function StudioBookingPage() {
 
     })();
   }, []);
+
+  // Rebook fast-path: prefill service + preferences + contact from a previous booking.
+  useEffect(() => {
+    if (!rebookId || !profile) return;
+    (async () => {
+      const { data: prev, error: err } = await supabase
+        .from("bookings")
+        .select("service_id, massage_type, pressure, focus_areas, add_ons, notes, client_name, client_phone, client_email")
+        .eq("id", rebookId)
+        .maybeSingle();
+      if (err || !prev) return; // silently fall back to normal flow
+
+      // Resolve the service: prefer id, then name, then type match.
+      let match = profile.services.find(s => s.id === (prev as any).service_id) || null;
+      if (!match && prev.massage_type) {
+        match =
+          profile.services.find(s => s.name === prev.massage_type) ||
+          profile.services.find((s: any) => s.type === prev.massage_type) ||
+          null;
+      }
+      if (!match) return; // service no longer offered — exit rebook mode
+
+      setServiceId(match.id);
+      if (prev.pressure) setPressure(prev.pressure);
+      if (Array.isArray(prev.focus_areas)) setFocusAreas(prev.focus_areas);
+      const availableAddons = new Set((profile.addons ?? []).map((a: any) => a.name));
+      if (Array.isArray(prev.add_ons)) {
+        setAddonNames(prev.add_ons.filter((n: string) => availableAddons.has(n)));
+      }
+      if (prev.notes) setNotes(prev.notes);
+      if (prev.client_name) setName(prev.client_name);
+      if (prev.client_phone) setPhone(prev.client_phone);
+      if (prev.client_email) setEmail(prev.client_email);
+      setRebookMode(true);
+    })();
+  }, [rebookId, profile]);
+
+
 
 
   // availability grouped by weekday (0=Sun..6=Sat)
@@ -344,7 +389,39 @@ export default function StudioBookingPage() {
           </div>
         )}
 
-        {/* 1. Service */}
+        {/* Rebook summary card — Amazon-style "your usual" fast path */}
+        {rebookMode && service && (
+          <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                <Sparkles size={11} /> Tu reserva habitual
+              </div>
+              <button
+                onClick={() => setRebookMode(false)}
+                className="text-xs font-semibold text-[#C4622D] underline underline-offset-2"
+              >
+                Cambiar
+              </button>
+            </div>
+            <p className="font-semibold text-gray-900">{service.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
+              <span className="inline-flex items-center gap-1"><Clock size={11} /> {service.duration} min</span>
+              <span className="inline-flex items-center gap-0.5"><Euro size={11} />{service.price}</span>
+            </p>
+            {(pressure || focusAreas.length > 0 || addonNames.length > 0) && (
+              <p className="text-xs text-gray-600 mt-2">
+                {[
+                  pressure && `Presión: ${pressure}`,
+                  focusAreas.length > 0 && `Zonas: ${focusAreas.join(", ")}`,
+                  addonNames.length > 0 && `Extras: ${addonNames.join(", ")}`,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
+        {!rebookMode && (
         <Section step="1" title="Choose a service">
           <div className="space-y-2">
             {profile.services.map(s => (
@@ -363,10 +440,14 @@ export default function StudioBookingPage() {
                   </div>
                 </div>
               </button>
+
             ))}
             {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
           </div>
         </Section>
+        )}
+
+
 
         {/* 2. Date */}
         {service && (
@@ -423,7 +504,8 @@ export default function StudioBookingPage() {
         )}
 
         {/* 4. Customize */}
-        {service && date && time && (
+        {!rebookMode && service && date && time && (
+
           <Section step="4" title="Customize your session">
             <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
             <div className="flex flex-wrap gap-2 mb-4">
@@ -477,8 +559,21 @@ export default function StudioBookingPage() {
           </Section>
         )}
 
-        {/* 5. Your details */}
-        {service && date && time && (
+        {/* 5. Your details — collapsed one-liner in rebook mode when we have contact info */}
+        {service && date && time && rebookMode && !contactExpanded && (name || email || phone) && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-2">
+            <p className="text-sm text-gray-700 truncate">
+              {[name, phone, email].filter(Boolean).join(" · ")}
+            </p>
+            <button
+              onClick={() => setContactExpanded(true)}
+              className="text-xs font-semibold text-[#C4622D] underline underline-offset-2 flex-shrink-0"
+            >
+              editar
+            </button>
+          </div>
+        )}
+        {service && date && time && (!rebookMode || contactExpanded || !(name || email || phone)) && (
           <Section step="5" title="Your details">
             <div className="space-y-2">
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
@@ -491,6 +586,7 @@ export default function StudioBookingPage() {
             </div>
           </Section>
         )}
+
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 

@@ -13,12 +13,14 @@ const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep
 
 type Partner = {
   id?: string;
+  slug?: string | null;
   address?: string | null;
   access_instructions?: string | null;
   opening_hours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
   capacity?: number | null;
   partner_availability?: { day_of_week: number; time_slot: string }[];
 };
+
 
 type Booking = {
   id: string | number;
@@ -83,10 +85,11 @@ export default function MyBookings() {
         .from("bookings")
         .select(`
           id, spa_name, massage_type, booking_date, booking_time, status, partner_id, price,
-          partners ( id, address, access_instructions, opening_hours, capacity,
+          partners ( id, slug, address, access_instructions, opening_hours, capacity,
                      partner_availability ( day_of_week, time_slot ) )
         `)
         .or(filters.join(","))
+
         .order("booking_date", { ascending: false });
       setBookings((data as any as Booking[]) || []);
     }
@@ -185,12 +188,15 @@ export default function MyBookings() {
               </button>
             </>
           )}
-          <button
-            onClick={() => navigate(`/s/${b.partner_id}`)}
-            className="flex-1 min-w-[100px] h-10 rounded-xl bg-[#C4622D]/5 text-[#C4622D] text-sm font-semibold border border-[#C4622D]/20"
-          >
-            {t("card.rebook")}
-          </button>
+          {b.partner_id && (
+            <button
+              onClick={() => navigate(`/book/${b.partners?.slug || b.partner_id}?rebook=${b.id}`)}
+              className="flex-1 min-w-[100px] h-10 rounded-xl bg-[#C4622D] text-white text-sm font-semibold shadow-sm"
+            >
+              {t("card.rebook", { defaultValue: "Book again" })}
+            </button>
+          )}
+
           {isPast && (
             <a
               href={googleReviewUrl(b.spa_name, b.partners?.address ?? undefined)}
