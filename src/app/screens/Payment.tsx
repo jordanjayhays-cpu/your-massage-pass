@@ -182,6 +182,7 @@ export default function Payment() {
                 focus_areas: booking.focusAreas,
                 add_ons: addOnNames,
                 notes: noteParts.join(" ") || null,
+                lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
               },
             },
           });
