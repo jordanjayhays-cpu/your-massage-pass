@@ -567,9 +567,9 @@ export default function StudioBookingPage() {
                 <button
                   key={o.v}
                   type="button"
-                  onClick={() => setConversationPref(o.v)}
+                  onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    (conversationPref || "minimal") === o.v
+                    conversationPref === o.v
                       ? "bg-[#C4622D] text-white border-[#C4622D]"
                       : "bg-white text-gray-600 border-gray-200"
                   }`}
