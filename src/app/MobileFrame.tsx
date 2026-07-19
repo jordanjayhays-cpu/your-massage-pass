@@ -6,7 +6,7 @@ import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 // Hide the floating language toggle on screens that render their own prominently
 // (Login already shows the large flag picker, Profile has it in-header).
 const HIDE_LANG_PREFIXES = ["/partner", "/studio-setup", "/studio-portal", "/admin", "/claim"];
-const HIDE_LANG_EXACT = new Set(["/", "/app", "/app/", "/app/profile"]);
+const HIDE_LANG_EXACT = new Set(["/", "/app", "/app/", "/app/profile", "/app/massages"]);
 function shouldShowLangToggle(pathname: string) {
   if (HIDE_LANG_EXACT.has(pathname)) return false;
   if (HIDE_LANG_PREFIXES.some((p) => pathname.startsWith(p))) return false;

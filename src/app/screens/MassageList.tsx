@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 const STUDIO_ICONS: Record<string, string> = {
   "Casa Cibeles": "🧖‍♀️",
@@ -214,7 +215,7 @@ export default function MassageList() {
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-background">
       {/* Top utility bar */}
-      <div className="px-5 pt-5 flex items-center justify-between gap-3">
+      <div className="px-5 pt-5 flex items-center justify-between gap-4">
         <button
           onClick={() => navigate("/app/profile")}
           aria-label={t("app.massageList.profile")}
@@ -226,12 +227,15 @@ export default function MassageList() {
             <UserCircle className="h-5 w-5 text-muted-foreground" />
           )}
         </button>
-        <button
-          onClick={() => navigate("/partner/dashboard")}
-          className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
-        >
-          {t("app.massageList.switchToPartner")}
-        </button>
+        <div className="flex items-center gap-3">
+          <LanguageFlagToggle variant="compact" />
+          <button
+            onClick={() => navigate("/partner/dashboard")}
+            className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
+          >
+            {t("app.massageList.switchToPartner")}
+          </button>
+        </div>
       </div>
 
       {/* Search */}
