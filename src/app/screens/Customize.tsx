@@ -141,7 +141,7 @@ export default function Customize() {
             {CONVERSATION_KEYS.map((o) => (
               <button
                 key={o.value}
-                onClick={() => set({ conversation: o.value })}
+                onClick={() => set({ conversation: conversation === o.value ? "" : o.value })}
                 className={cn(
                   "h-10 px-4 rounded-full border text-sm font-medium transition-all",
                   conversationValue === o.value
