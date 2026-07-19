@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioWhatsappUrl } from "@/app/lib/whatsapp";
 import {
