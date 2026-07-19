@@ -13,12 +13,14 @@ const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep
 
 type Partner = {
   id?: string;
+  slug?: string | null;
   address?: string | null;
   access_instructions?: string | null;
   opening_hours?: Record<string, { open?: string; close?: string; closed?: boolean }> | null;
   capacity?: number | null;
   partner_availability?: { day_of_week: number; time_slot: string }[];
 };
+
 
 type Booking = {
   id: string | number;
