@@ -142,6 +142,7 @@ function StudioSetupInner() {
               website: data.website || "",
               description: data.description || "",
               city: data.neighborhood || "Madrid",
+              access_instructions: data.access_instructions || "",
             });
             const svcs = Array.isArray(data.services) ? data.services : [];
             setServices(svcs.length ? svcs.map(normalizeService) : [emptyService()]);
