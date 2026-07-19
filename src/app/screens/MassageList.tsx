@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 const STUDIO_ICONS: Record<string, string> = {
   "Casa Cibeles": "🧖‍♀️",
