@@ -47,45 +47,52 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Sticky header */}
       <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60">
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
             <img
               src="/brand/mc-avatar-terracotta.png"
               alt="Massage Club"
-              className="h-9 w-9 rounded-full"
+              className="h-8 w-8 rounded-full"
             />
-            <span className="font-display text-xl tracking-tight text-foreground">
+            <span className="font-display text-lg tracking-tight text-foreground">
               Massage Club
             </span>
           </Link>
-          <Link
-            to="/app"
-            className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-[0.14em] uppercase shadow-soft hover:opacity-90 transition inline-flex items-center gap-1.5"
-          >
-            Open the app <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/partner"
+              className="hidden sm:inline-flex h-9 px-4 rounded-full border border-border/80 text-foreground text-[11px] font-bold tracking-[0.12em] uppercase hover:bg-accent transition items-center"
+            >
+              For studios
+            </Link>
+            <Link
+              to="/app"
+              className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.12em] uppercase shadow-soft hover:opacity-90 transition inline-flex items-center gap-1.5"
+            >
+              Open app <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-5">
+      <main className="max-w-6xl mx-auto px-4">
         {/* Compact hero */}
-        <section className="pt-10 md:pt-14 pb-6 md:pb-8">
+        <section className="pt-6 md:pt-8 pb-5 md:pb-6">
           <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-primary">
             Massage Club · Madrid
           </p>
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-foreground mt-3 text-balance">
+          <h1 className="font-display text-3xl md:text-4xl lg:text-5xl leading-[1.05] text-foreground mt-2 text-balance">
             Los mejores masajes de Madrid,
             <br className="hidden md:block" /> en un solo lugar.
           </h1>
-          <p className="text-base md:text-lg text-muted-foreground mt-4 max-w-2xl">
-            Estudios verificados, precios claros y reserva instantánea. Paga en el
-            estudio.
+          <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-2xl">
+            Estudios verificados, precios claros y reserva instantánea. Paga en el estudio.
           </p>
 
           {/* Search */}
-          <div className="mt-7 max-w-2xl">
-            <div className="flex items-center gap-2 bg-card rounded-full shadow-soft border border-border/60 pl-5 pr-2 h-14">
-              <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <div className="mt-4 max-w-2xl">
+            <div className="flex items-center gap-2 bg-card rounded-full shadow-soft border border-border/60 pl-4 pr-2 h-12">
+              <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -97,9 +104,9 @@ export default function Home() {
         </section>
 
         {/* Grid */}
-        <section className="pb-20">
-          <div className="flex items-baseline justify-between mb-5">
-            <h2 className="font-display text-2xl md:text-3xl text-foreground">
+        <section className="pb-12">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-display text-xl md:text-2xl text-foreground">
               Estudios en Madrid
             </h2>
             <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-primary">
@@ -116,7 +123,7 @@ export default function Home() {
               No encontramos estudios que coincidan.
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((s) => (
                 <StudioCard key={s.id} shop={s} href={bookHref(s)} />
               ))}
@@ -127,23 +134,23 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-border/60 bg-secondary/40">
-        <div className="max-w-6xl mx-auto px-5 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <img
               src="/brand/mc-avatar-terracotta.png"
               alt="Massage Club"
-              className="h-7 w-7 rounded-full"
+              className="h-6 w-6 rounded-full"
             />
             <span className="text-sm text-muted-foreground">
               Massage Club · Madrid
             </span>
           </div>
-          <div className="flex items-center gap-6 text-xs font-bold tracking-[0.14em] uppercase">
+          <div className="flex items-center gap-5 text-xs font-bold tracking-[0.14em] uppercase">
             <Link to="/partner" className="text-foreground/80 hover:text-primary transition">
               For studios
             </Link>
             <Link to="/app" className="text-foreground/80 hover:text-primary transition">
-              Open the app
+              Open app
             </Link>
           </div>
         </div>
@@ -157,7 +164,7 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
   return (
     <Link
       to={href}
-      className="group bg-card border border-border/60 rounded-3xl overflow-hidden shadow-soft hover:shadow-elegant hover:border-primary/50 transition-all flex flex-col"
+      className="group bg-card border border-border/60 rounded-2xl overflow-hidden shadow-soft hover:shadow-elegant hover:border-primary/50 transition-all flex flex-col"
     >
       <div className="relative aspect-[4/3] bg-secondary overflow-hidden">
         {shop.image ? (
@@ -177,23 +184,23 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           </div>
         )}
       </div>
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-display text-xl font-semibold text-foreground leading-tight truncate">
+      <div className="p-3.5 flex-1 flex flex-col">
+        <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
           {shop.studio}
         </h3>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
           <MapPin className="h-3 w-3" />
           <span className="truncate">{shop.district || shop.address || "Madrid"}</span>
         </div>
 
         {shop.basePrice != null && (
-          <p className="text-sm text-primary font-semibold mt-2">
+          <p className="text-sm text-primary font-semibold mt-1.5">
             desde €{shop.basePrice}
           </p>
         )}
 
         {services.length > 0 && (
-          <ul className="mt-3 space-y-1.5 text-xs text-foreground/80">
+          <ul className="mt-2.5 space-y-1 text-xs text-foreground/80">
             {services.map((sv, i) => (
               <li key={i} className="flex items-baseline justify-between gap-3">
                 <span className="truncate">{sv.name}</span>
@@ -206,7 +213,7 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           </ul>
         )}
 
-        <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+        <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">
             Pay at studio
           </span>
