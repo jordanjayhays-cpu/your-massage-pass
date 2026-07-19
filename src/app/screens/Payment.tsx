@@ -116,6 +116,15 @@ export default function Payment() {
       if (booking.notes) noteParts.push(booking.notes);
       if (creditToApply > 0) noteParts.push(t("app.payment.confirmed.note.referralCredit", { amount: creditToApply }));
 
+      const partnerId: string | null = (massage as any)?.partner_id ?? null;
+      const partnerServices: any[] = (massage as any)?.partner_services ?? [];
+      const matchedService = partnerServices.find(
+        (s) => s?.name === massage.name || s?.type === (massage as any)?.type
+      );
+      const serviceId: string | null = matchedService?.id ?? null;
+      const servicePrice: number | null =
+        matchedService?.price != null ? Number(matchedService.price) : (massage.basePrice ?? null);
+
       const result = await saveBooking({
         client_name: contact.name,
         client_email: contact.email,
@@ -129,7 +138,11 @@ export default function Payment() {
         focus_areas: booking.focusAreas,
         add_ons: addOnNames as string[],
         notes: noteParts.join(" "),
-        status: "confirmed",
+        status: "pending",
+        user_id: userId,
+        partner_id: partnerId,
+        service_id: serviceId,
+        price: servicePrice,
         client_preferences: {
           pressure: booking.pressure,
           focus_areas: booking.focusAreas,
@@ -149,6 +162,32 @@ export default function Payment() {
       if (result.success) {
         setBookingRef(result.ref ?? "MR-2026-0001");
         toast.success(t("app.payment.confirmed.toast.successWithEmail"));
+        // Notify the studio (best-effort)
+        try {
+          await supabase.functions.invoke("notify-studio", {
+            body: {
+              type: "INSERT",
+              table: "bookings",
+              record: {
+                partner_id: partnerId,
+                client_name: contact.name,
+                client_phone: contact.phone,
+                client_email: contact.email || null,
+                massage_type: massage.name,
+                booking_date: booking.date ?? "",
+                booking_time: booking.time ?? "",
+                duration: massage.duration,
+                spa_name: massage.studio,
+                pressure: booking.pressure,
+                focus_areas: booking.focusAreas,
+                add_ons: addOnNames,
+                notes: noteParts.join(" ") || null,
+              },
+            },
+          });
+        } catch (notifyErr) {
+          console.error("[booking] notify-studio invoke failed:", notifyErr);
+        }
         // Redeem credit + reward referrer (best-effort, non-blocking on error)
         if (userId && result.id) {
           if (creditToApply > 0) {
@@ -156,18 +195,18 @@ export default function Payment() {
           }
           await recordReferralOnBooking(userId, contact.email, result.id);
         }
+        setConfirmed(true);
       } else {
-        setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
-        toast.success(t("app.payment.confirmed.toast.success"));
+        toast.error(t("app.payment.confirmed.toast.error", { defaultValue: "Couldn't save your booking. Please try again." }));
       }
-    } catch {
-      setBookingRef(`MR-2026-${Math.floor(Math.random() * 9000) + 1000}`);
-      toast.success(t("app.payment.confirmed.toast.success"));
+    } catch (e: any) {
+      console.error("[booking] save failed:", e);
+      toast.error(t("app.payment.confirmed.toast.error", { defaultValue: "Couldn't save your booking. Please try again." }));
     } finally {
       setLoading(false);
-      setConfirmed(true);
     }
   };
+
 
 
   if (confirmed) {
