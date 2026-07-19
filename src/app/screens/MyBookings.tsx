@@ -31,6 +31,8 @@ type Booking = {
   status: string;
   partner_id: string;
   price: number | null;
+  action_token?: string | null;
+  reviewed_at?: string | null;
   partners?: Partner | null;
 };
 
