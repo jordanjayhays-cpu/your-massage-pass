@@ -25,7 +25,20 @@ export default function Home() {
           .in("id", ids);
         for (const p of data ?? []) if ((p as any).slug) slugMap[(p as any).id] = (p as any).slug;
       }
-      setShops(list.map((s) => ({ ...s, slug: slugMap[s.partner_id] })));
+      const { data: ratings } = await supabase
+        .from("partner_rating_summary")
+        .select("partner_id, rating_avg, rating_count");
+      const ratingMap: Record<string, { avg: number; count: number }> = {};
+      for (const r of ratings ?? []) {
+        const row = r as any;
+        if (row.rating_count > 0) ratingMap[row.partner_id] = { avg: Number(row.rating_avg), count: Number(row.rating_count) };
+      }
+      setShops(list.map((s) => ({
+        ...s,
+        slug: slugMap[s.partner_id],
+        rating_avg: ratingMap[s.partner_id]?.avg,
+        rating_count: ratingMap[s.partner_id]?.count,
+      })));
       setLoading(false);
     })();
   }, []);
