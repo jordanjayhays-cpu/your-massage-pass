@@ -184,23 +184,23 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           </div>
         )}
       </div>
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-display text-xl font-semibold text-foreground leading-tight truncate">
+      <div className="p-3.5 flex-1 flex flex-col">
+        <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
           {shop.studio}
         </h3>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
           <MapPin className="h-3 w-3" />
           <span className="truncate">{shop.district || shop.address || "Madrid"}</span>
         </div>
 
         {shop.basePrice != null && (
-          <p className="text-sm text-primary font-semibold mt-2">
+          <p className="text-sm text-primary font-semibold mt-1.5">
             desde €{shop.basePrice}
           </p>
         )}
 
         {services.length > 0 && (
-          <ul className="mt-3 space-y-1.5 text-xs text-foreground/80">
+          <ul className="mt-2.5 space-y-1 text-xs text-foreground/80">
             {services.map((sv, i) => (
               <li key={i} className="flex items-baseline justify-between gap-3">
                 <span className="truncate">{sv.name}</span>
@@ -213,7 +213,7 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           </ul>
         )}
 
-        <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+        <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">
             Pay at studio
           </span>
