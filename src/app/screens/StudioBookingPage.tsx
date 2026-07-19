@@ -504,7 +504,8 @@ export default function StudioBookingPage() {
         )}
 
         {/* 4. Customize */}
-        {service && date && time && (
+        {!rebookMode && service && date && time && (
+
           <Section step="4" title="Customize your session">
             <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
             <div className="flex flex-wrap gap-2 mb-4">
