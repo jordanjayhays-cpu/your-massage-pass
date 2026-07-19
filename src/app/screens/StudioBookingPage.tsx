@@ -18,6 +18,8 @@ const isoDate = (d: Date) =>
 
 export default function StudioBookingPage() {
   const { studioId } = useParams();
+  const [searchParams] = useSearchParams();
+  const rebookId = searchParams.get("rebook");
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
   // How many bookings already exist for each `date__time` slot.
@@ -41,6 +43,10 @@ export default function StudioBookingPage() {
   const [profileAllergies, setProfileAllergies] = useState<string>("");
   const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
   const [userId, setUserId] = useState<string | null>(null);
+  // Rebook fast-path: when true, hide expanded pickers and show a summary card.
+  const [rebookMode, setRebookMode] = useState(false);
+  const [contactExpanded, setContactExpanded] = useState(false);
+
 
 
 
