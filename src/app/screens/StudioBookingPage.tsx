@@ -559,8 +559,21 @@ export default function StudioBookingPage() {
           </Section>
         )}
 
-        {/* 5. Your details */}
-        {service && date && time && (
+        {/* 5. Your details — collapsed one-liner in rebook mode when we have contact info */}
+        {service && date && time && rebookMode && !contactExpanded && (name || email || phone) && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-2">
+            <p className="text-sm text-gray-700 truncate">
+              {[name, phone, email].filter(Boolean).join(" · ")}
+            </p>
+            <button
+              onClick={() => setContactExpanded(true)}
+              className="text-xs font-semibold text-[#C4622D] underline underline-offset-2 flex-shrink-0"
+            >
+              editar
+            </button>
+          </div>
+        )}
+        {service && date && time && (!rebookMode || contactExpanded || !(name || email || phone)) && (
           <Section step="5" title="Your details">
             <div className="space-y-2">
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
@@ -573,6 +586,7 @@ export default function StudioBookingPage() {
             </div>
           </Section>
         )}
+
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
