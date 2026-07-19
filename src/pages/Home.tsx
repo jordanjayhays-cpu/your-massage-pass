@@ -164,7 +164,7 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
   return (
     <Link
       to={href}
-      className="group bg-card border border-border/60 rounded-3xl overflow-hidden shadow-soft hover:shadow-elegant hover:border-primary/50 transition-all flex flex-col"
+      className="group bg-card border border-border/60 rounded-2xl overflow-hidden shadow-soft hover:shadow-elegant hover:border-primary/50 transition-all flex flex-col"
     >
       <div className="relative aspect-[4/3] bg-secondary overflow-hidden">
         {shop.image ? (
