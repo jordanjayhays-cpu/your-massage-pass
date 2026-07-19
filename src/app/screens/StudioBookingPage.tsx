@@ -398,6 +398,12 @@ export default function StudioBookingPage() {
                 <Sparkles size={12} /> Book your massage
               </div>
               <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
+              {rating && (
+                <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
+                  <span style={{ color: "#E0A458" }}>★</span>
+                  {rating.avg.toFixed(1)} <span className="text-white/70 font-normal">({rating.count})</span>
+                </p>
+              )}
               {partner.address && (
                 <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
                   <MapPin size={12} /> {partner.address}
