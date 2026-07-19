@@ -286,6 +286,15 @@ export default function StudioBookingPage() {
     if (!canBook) return;
     setSubmitting(true);
     setError("");
+    const comfortPrefs = {
+      conversation: conversationPref || customerProfile?.conversation_pref || null,
+      music: customerProfile?.music_pref || null,
+      temperature: customerProfile?.temperature_pref || null,
+      scent: customerProfile?.scent_pref || null,
+      lighting: customerProfile?.lighting_pref || null,
+      notes: customerProfile?.comfort_notes || null,
+    };
+    setError("");
     try {
       const { data, error } = await supabase.from("bookings").insert({
         client_name: name.trim(),
