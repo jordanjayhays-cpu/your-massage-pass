@@ -75,7 +75,10 @@ export default function MyBookings() {
   const load = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
-    if (user?.email) {
+    if (user?.id || user?.email) {
+      const filters: string[] = [];
+      if (user?.id) filters.push(`user_id.eq.${user.id}`);
+      if (user?.email) filters.push(`client_email.eq.${user.email}`);
       const { data } = await supabase
         .from("bookings")
         .select(`
@@ -83,12 +86,13 @@ export default function MyBookings() {
           partners ( id, address, access_instructions, opening_hours, capacity,
                      partner_availability ( day_of_week, time_slot ) )
         `)
-        .eq("client_email", user.email)
+        .or(filters.join(","))
         .order("booking_date", { ascending: false });
       setBookings((data as any as Booking[]) || []);
     }
     setLoading(false);
   };
+
 
   useEffect(() => { load(); }, []);
 
