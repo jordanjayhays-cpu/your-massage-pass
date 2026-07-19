@@ -99,18 +99,32 @@ export default function StudioBookingPage() {
       setName(prev => prev || fullName);
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes")
+        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes")
         .eq("id", user.id)
         .single();
       if (prof) {
+        setCustomerProfile(prof);
         setName(prev => prev || prof.full_name || "");
         setPhone(prev => prev || prof.phone || "");
-        if (prof.preferred_pressure) setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
-        if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
-          setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
-        }
         setProfileAllergies(prof.allergies || "");
         setProfileHealthNotes(prof.health_notes || "");
+        // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
+        if (!rebookId) {
+          let applied = false;
+          if (prof.preferred_pressure) {
+            setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
+            applied = true;
+          }
+          if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
+            setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
+            applied = true;
+          }
+          if (prof.conversation_pref) {
+            setConversationPref(prev => prev || prof.conversation_pref);
+            applied = true;
+          }
+          if (applied) setPrefsApplied(true);
+        }
       }
 
     })();
