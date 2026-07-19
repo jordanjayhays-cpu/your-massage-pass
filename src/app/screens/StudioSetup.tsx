@@ -106,6 +106,7 @@ function StudioSetupInner() {
           website: partner.website || "",
           description: partner.description || "",
           city: partner.city || "Madrid",
+          access_instructions: partner.access_instructions || "",
         });
         setServices((svcs && svcs.length) ? svcs.map(normalizeService) : [emptyService()]);
 
