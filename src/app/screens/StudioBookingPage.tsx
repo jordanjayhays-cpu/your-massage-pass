@@ -81,6 +81,15 @@ export default function StudioBookingPage() {
           counts.set(key, (counts.get(key) || 0) + 1);
         }
         setSlotCounts(counts);
+
+        const { data: rs } = await supabase
+          .from("partner_rating_summary")
+          .select("rating_avg, rating_count")
+          .eq("partner_id", resolvedId)
+          .maybeSingle();
+        if (rs && (rs as any).rating_count > 0) {
+          setRating({ avg: Number((rs as any).rating_avg), count: Number((rs as any).rating_count) });
+        }
       }
 
       setLoading(false);
