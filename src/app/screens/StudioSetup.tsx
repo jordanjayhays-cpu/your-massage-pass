@@ -256,6 +256,7 @@ function StudioSetupInner() {
         business_name: studio.business_name,
         email,
         address: studio.address,
+        access_instructions: studio.access_instructions,
         phone: studio.phone,
         website: studio.website,
         description: studio.description,
