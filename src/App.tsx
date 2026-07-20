@@ -39,6 +39,8 @@ import Web from "./pages/Web";
 import Home from "./pages/Home";
 import BookingResult from "./pages/BookingResult";
 import Review from "./pages/Review";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 const queryClient = new QueryClient();
 
