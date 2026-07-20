@@ -146,26 +146,23 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/60 bg-secondary/40">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <img
-              src="/brand/mc-avatar-terracotta.png"
-              alt="Massage Club"
-              className="h-6 w-6 rounded-full"
-            />
-            <span className="text-sm text-muted-foreground">
-              Massage Club · Madrid
-            </span>
-          </div>
-          <div className="flex items-center gap-5 text-xs font-bold tracking-[0.14em] uppercase">
-            <Link to="/partner" className="text-foreground/80 hover:text-primary transition">
-              For studios
+      <footer className="border-t border-border/60 bg-background">
+        <div className="max-w-6xl mx-auto px-4 py-8 text-center">
+          <p className="text-xs text-muted-foreground">
+            Massage Club · Madrid{" "}
+            <span className="mx-1">·</span>{" "}
+            <Link to="/privacy" className="hover:text-primary transition underline-offset-2 hover:underline">
+              Política de Privacidad
             </Link>
-            <Link to="/app" className="text-foreground/80 hover:text-primary transition">
-              Open app
+            <span className="mx-1">·</span>{" "}
+            <Link to="/terms" className="hover:text-primary transition underline-offset-2 hover:underline">
+              Términos
             </Link>
-          </div>
+            <span className="mx-1">·</span>{" "}
+            <a href="mailto:support@massageclub.io" className="hover:text-primary transition underline-offset-2 hover:underline">
+              support@massageclub.io
+            </a>
+          </p>
         </div>
       </footer>
     </div>

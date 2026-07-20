@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioWhatsappUrl } from "@/app/lib/whatsapp";
@@ -742,9 +742,20 @@ export default function StudioBookingPage() {
         </div>
 
         {/* Massage Club credit */}
-        <div className="flex items-center justify-center gap-1.5 pb-8 text-gray-400 text-[11px]">
+        <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
           <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
           <span>Powered by Massage Club</span>
+        </div>
+
+        {/* Legal footer */}
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
+          <span>Massage Club · Madrid</span>
+          <span>·</span>
+          <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
+          <span>·</span>
+          <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>
+          <span>·</span>
+          <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
         </div>
       </div>
     </div>
