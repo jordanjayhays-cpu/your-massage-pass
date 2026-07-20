@@ -95,8 +95,7 @@ export default function Home() {
             Massage Club · Madrid
           </p>
           <h1 className="font-display text-3xl md:text-4xl lg:text-5xl leading-[1.05] text-foreground mt-2 text-balance">
-            Los mejores masajes de Madrid,
-            <br className="hidden md:block" /> en un solo lugar.
+            Massage Club
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-2xl">
             Estudios verificados, precios claros y reserva instantánea. Paga en el estudio.
