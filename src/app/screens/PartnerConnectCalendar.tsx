@@ -54,7 +54,7 @@ export default function PartnerConnectCalendar() {
     // 👇 PASTE YOUR GOOGLE OAUTH CLIENT ID between the quotes (ends in .apps.googleusercontent.com)
     const clientId =
       (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
-      "918838910411-2kt7po7eop2auo8i6ntecbak7u7ecrb9.apps.googleusercontent.com";
+      "550114079110-p1asbhmkpiv3q4l0oa8uvsh4osou4994.apps.googleusercontent.com";
 
     if (clientId.startsWith("PASTE_")) {
       toast.error("Google isn't set up yet — add your Google Client ID first.");

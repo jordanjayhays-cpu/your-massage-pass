@@ -350,7 +350,7 @@ function StudioSetupInner() {
 
     const clientId =
       (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
-      "918838910411-2kt7po7eop2auo8i6ntecbak7u7ecrb9.apps.googleusercontent.com";
+      "550114079110-p1asbhmkpiv3q4l0oa8uvsh4osou4994.apps.googleusercontent.com";
 
     const redirectUri = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/google-calendar-oauth?apikey=sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
 
