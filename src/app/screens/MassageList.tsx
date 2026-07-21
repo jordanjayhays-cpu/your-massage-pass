@@ -82,7 +82,7 @@ export default function MassageList() {
     return () => { cancelled = true; };
   }, []);
 
-  const allShops: (Shop | typeof MASSAGES[0])[] = [...realShops, ...MASSAGES];
+  const allShops: Shop[] = [...realShops];
 
   const origin = userLoc ?? MADRID_CENTER;
 
@@ -105,7 +105,7 @@ export default function MassageList() {
     }))
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
-  const mapShops = [...realShops, ...MASSAGES].filter(
+  const mapShops = [...realShops].filter(
     (m: any) => m && typeof m.lat === "number" && typeof m.lng === "number"
   );
 
