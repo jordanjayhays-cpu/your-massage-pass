@@ -33,6 +33,8 @@ export interface Booking {
   price?: number | null;
   lang?: string | null;
   comfort_prefs?: Record<string, any> | null;
+  marketing_opt_in?: boolean | null;
+  marketing_opt_in_at?: string | null;
 }
 
 
