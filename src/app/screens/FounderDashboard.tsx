@@ -110,6 +110,15 @@ export default function FounderDashboard() {
   const [validation, setValidation] = useState<ValRow[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<string>("__all__");
+  const [marketingContacts, setMarketingContacts] = useState<Array<{
+    email: string | null;
+    name: string | null;
+    phone: string | null;
+    lang: string | null;
+    bookings: number | null;
+    last_booking_at: string | null;
+  }>>([]);
+  const [totalDistinctEmails, setTotalDistinctEmails] = useState<number>(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
