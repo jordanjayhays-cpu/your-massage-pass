@@ -335,7 +335,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false }).eq("id", uid);
+      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
