@@ -358,6 +358,8 @@ export default function StudioBookingPage() {
         user_id: userId,
         lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
         comfort_prefs: comfortPrefs,
+        marketing_opt_in: marketingOptIn,
+        marketing_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
       }).select("id").single();
 
 
