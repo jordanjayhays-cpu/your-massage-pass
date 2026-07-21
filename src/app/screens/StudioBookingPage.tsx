@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
-import { studioWhatsappUrl } from "@/app/lib/whatsapp";
+import { studioWhatsappUrl, isWhatsappCapable } from "@/app/lib/whatsapp";
 import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
   Phone, Instagram, MessageCircle, CalendarDays
@@ -248,7 +248,8 @@ export default function StudioBookingPage() {
   if (done) {
     const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
     const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
-    const waLink = studioWhatsappUrl((partner as any).whatsapp || partner.phone, waMsg);
+    const studioNumber = (partner as any).whatsapp || partner.phone;
+    const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
     // Let the customer drop the appointment into their own calendar.
     const gcal = (() => {
       if (!date || !time || !service) return null;
@@ -303,11 +304,16 @@ export default function StudioBookingPage() {
                   <CalendarDays size={18} /> Add to my calendar
                 </a>
               )}
-              {waLink && (
+              {waLink ? (
                 <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                   <MessageCircle size={18} /> Confirm on WhatsApp
                 </a>
-              )}
+              ) : studioNumber ? (
+                <a href={`tel:${studioNumber}`} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                  <Phone size={18} /> Llamar al estudio
+                  <span className="block text-xs font-normal opacity-80">Call the studio</span>
+                </a>
+              ) : null}
             </div>
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
@@ -752,7 +758,7 @@ export default function StudioBookingPage() {
 
         {/* Contact footer */}
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
-          {(() => {
+          {isWhatsappCapable((partner as any).whatsapp || partner.phone) && (() => {
             const contactWa = studioWhatsappUrl((partner as any).whatsapp || partner.phone);
             return contactWa && (
               <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
