@@ -388,6 +388,21 @@ export default function Payment() {
         </div>
 
         {/* Referral credit */}
+        {/* Marketing opt-in */}
+        <label className="rounded-2xl border border-border p-4 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={marketingOptIn}
+            onChange={(e) => setMarketingOptIn(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
+          />
+          <span className="text-xs text-muted-foreground leading-snug">
+            Quiero recibir novedades y ofertas de Massage Club por email (opcional)
+            <span className="block text-[11px] opacity-70">Send me Massage Club news and offers</span>
+          </span>
+        </label>
+
+        {/* Referral credit */}
         {availableCreditCents >= 500 && (
           <label className="rounded-2xl border border-[#C4622D]/30 bg-[#C4622D]/5 p-4 flex items-center gap-3 cursor-pointer">
             <input
