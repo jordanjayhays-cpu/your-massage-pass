@@ -35,6 +35,7 @@ export default function Payment() {
   const [userId, setUserId] = useState<string | null>(null);
   const [availableCreditCents, setAvailableCreditCents] = useState(0);
   const [applyCredit, setApplyCredit] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const stored = getStoredUser();
   const [contact, setContact] = useState({
     name: stored?.name ?? "Guest",
@@ -154,6 +155,8 @@ export default function Payment() {
         price: servicePrice,
         lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
         comfort_prefs: comfortPrefs,
+        marketing_opt_in: marketingOptIn,
+        marketing_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
         client_preferences: {
           pressure: booking.pressure,
           focus_areas: booking.focusAreas,
@@ -383,6 +386,21 @@ export default function Payment() {
             <p className="text-muted-foreground">{t("app.payment.main.payment.description")}</p>
           </div>
         </div>
+
+        {/* Referral credit */}
+        {/* Marketing opt-in */}
+        <label className="rounded-2xl border border-border p-4 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={marketingOptIn}
+            onChange={(e) => setMarketingOptIn(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-[#C4622D] focus:ring-[#C4622D]"
+          />
+          <span className="text-xs text-muted-foreground leading-snug">
+            Quiero recibir novedades y ofertas de Massage Club por email (opcional)
+            <span className="block text-[11px] opacity-70">Send me Massage Club news and offers</span>
+          </span>
+        </label>
 
         {/* Referral credit */}
         {availableCreditCents >= 500 && (

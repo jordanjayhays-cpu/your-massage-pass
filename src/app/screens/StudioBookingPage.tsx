@@ -49,6 +49,7 @@ export default function StudioBookingPage() {
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
   const [contactExpanded, setContactExpanded] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
 
 
@@ -357,6 +358,8 @@ export default function StudioBookingPage() {
         user_id: userId,
         lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
         comfort_prefs: comfortPrefs,
+        marketing_opt_in: marketingOptIn,
+        marketing_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
       }).select("id").single();
 
 
@@ -715,6 +718,18 @@ export default function StudioBookingPage() {
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <p className="text-xs text-gray-400">Add at least one way to reach you — email or phone.</p>
+              <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={e => setMarketingOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#C4622D]"
+                />
+                <span className="text-xs text-gray-600 leading-snug">
+                  Quiero recibir novedades y ofertas de Massage Club por email (opcional)
+                  <span className="block text-[11px] text-gray-400">Send me Massage Club news and offers</span>
+                </span>
+              </label>
             </div>
           </Section>
         )}
