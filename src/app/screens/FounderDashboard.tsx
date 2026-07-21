@@ -140,16 +140,27 @@ export default function FounderDashboard() {
         { data: bks },
         { data: prs },
         { data: vals },
+        { data: mktRows },
+        { data: allEmailRows },
       ] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(500),
         supabase.from("partners").select("id,business_name"),
         supabase.from("validation_responses").select("*").order("created_at", { ascending: false }),
+        supabase.from("marketing_contacts").select("*").order("last_booking_at", { ascending: false }),
+        supabase.from("bookings").select("client_email").not("client_email", "is", null).limit(10000),
       ]);
       setProfileCount(profCount ?? 0);
       setBookings(bks ?? []);
       setPartners(prs ?? []);
       setValidation((vals as ValRow[]) ?? []);
+      setMarketingContacts((mktRows as any[]) ?? []);
+      const distinct = new Set<string>();
+      for (const r of (allEmailRows as any[]) ?? []) {
+        const e = (r?.client_email || "").toLowerCase().trim();
+        if (e) distinct.add(e);
+      }
+      setTotalDistinctEmails(distinct.size);
     })();
   }, [isFounder, refreshTick]);
 
