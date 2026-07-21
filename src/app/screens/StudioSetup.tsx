@@ -696,6 +696,8 @@ function StudioSetupInner() {
                         ))}
                       </div>
                     )}
+                  </div>
+                ))}
               </div>
               <div className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
                 <div>
@@ -710,8 +712,6 @@ function StudioSetupInner() {
                   onChange={e => setCapacity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
                   className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
                 />
-              </div>
-                ))}
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
