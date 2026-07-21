@@ -247,9 +247,19 @@ export default function StudioBookingPage() {
   // ─── Confirmation screen ───
   if (done) {
     const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
-    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
+    const isClaimed = partner.status === "active";
     const studioNumber = (partner as any).whatsapp || partner.phone;
+    // Claimed: friendly "you're booked" message.
+    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
     const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
+    // Unclaimed: ask the customer to send the booking request to the studio themselves.
+    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${service?.name} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
+    const unclaimedWaLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, unclaimedWaMsg) : null;
+    const websiteUrl = (() => {
+      if (!partner.website) return null;
+      const w = String(partner.website).trim();
+      return /^https?:\/\//i.test(w) ? w : `https://${w}`;
+    })();
     // Let the customer drop the appointment into their own calendar.
     const gcal = (() => {
       if (!date || !time || !service) return null;
@@ -294,27 +304,62 @@ export default function StudioBookingPage() {
             <div className="inline-flex items-center justify-center px-4 py-2 rounded-full font-mono text-xs mb-5" style={{ background: "#FAF6F1", color: "#5a4736" }}>
               {done.ref}
             </div>
-            <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-              El estudio confirmará tu cita en breve.
-              <span className="block text-xs mt-0.5">The studio will confirm your appointment shortly.</span>
-            </p>
-            <div className="flex flex-col items-center gap-3 w-full">
-              {gcal && (
-                <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                  <CalendarDays size={18} /> Add to my calendar
-                </a>
-              )}
-              {waLink ? (
-                <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                  <MessageCircle size={18} /> Confirm on WhatsApp
-                </a>
-              ) : studioNumber ? (
-                <a href={`tel:${studioNumber}`} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                  <Phone size={18} /> Llamar al estudio
-                  <span className="block text-xs font-normal opacity-80">Call the studio</span>
-                </a>
-              ) : null}
-            </div>
+            {isClaimed ? (
+              <>
+                <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+                  El estudio confirmará tu cita en breve.
+                  <span className="block text-xs mt-0.5">The studio will confirm your appointment shortly.</span>
+                </p>
+                <div className="flex flex-col items-center gap-3 w-full">
+                  {gcal && (
+                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                      <CalendarDays size={18} /> Add to my calendar
+                    </a>
+                  )}
+                  {waLink ? (
+                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                      <MessageCircle size={18} /> Confirm on WhatsApp
+                    </a>
+                  ) : studioNumber ? (
+                    <a href={`tel:${studioNumber}`} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                      <Phone size={18} /> Llamar al estudio
+                      <span className="block text-xs font-normal opacity-80">Call the studio</span>
+                    </a>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+                  Casi listo — envía tu reserva al estudio para confirmarla.
+                  <span className="block text-xs mt-0.5">Almost done — send your booking to the studio to confirm it.</span>
+                </p>
+                <div className="flex flex-col items-center gap-3 w-full">
+                  {unclaimedWaLink ? (
+                    <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Enviar reserva por WhatsApp</span>
+                      <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
+                    </a>
+                  ) : studioNumber ? (
+                    <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                      <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
+                      <span className="text-xs font-normal opacity-90">Call the studio</span>
+                    </a>
+                  ) : null}
+                  {websiteUrl && (
+                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                      <span>Reservar en su web</span>
+                      <span className="text-xs font-normal opacity-80">Book on their website</span>
+                    </a>
+                  )}
+                  {gcal && (
+                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                      <CalendarDays size={18} /> Add to my calendar
+                    </a>
+                  )}
+                </div>
+              </>
+            )}
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
             </div>
