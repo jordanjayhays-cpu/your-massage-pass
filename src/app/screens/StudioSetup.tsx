@@ -70,6 +70,7 @@ function StudioSetupInner() {
   const [availability, setAvailability] = useState<Record<number, string[]>>({
     1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
   });
+  const [capacity, setCapacity] = useState<number>(1);
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -315,6 +316,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
+      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
@@ -333,7 +335,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false }).eq("id", uid);
+      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
@@ -697,6 +699,20 @@ function StudioSetupInner() {
                   </div>
                 ))}
               </div>
+              <div className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">¿Cuántas reservas puedes atender a la vez?</p>
+                  <p className="text-xs text-muted-foreground">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={capacity}
+                  onChange={e => setCapacity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                  className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
+                />
+              </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
@@ -777,6 +793,20 @@ function StudioSetupInner() {
                       )}
                     </div>
                   ))}
+                  <div className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">¿Cuántas reservas puedes atender a la vez?</p>
+                      <p className="text-xs text-muted-foreground">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
+                    </div>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={capacity}
+                      onChange={e => setCapacity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                      className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
+                    />
+                  </div>
                   <Button
                     onClick={handleSaveManualAvailability}
                     disabled={manualSaving}

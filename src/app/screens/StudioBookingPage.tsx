@@ -205,7 +205,7 @@ export default function StudioBookingPage() {
   const service = profile?.services.find(s => s.id === serviceId) || null;
 
   // Studio capacity = how many therapists work in parallel (min 1).
-  const therapistCount = Math.max(1, profile?.therapists?.length || 0);
+  const therapistCount = Math.max(1, Number(profile?.partner?.capacity) || 0, profile?.therapists?.length || 0);
 
   // Spots still open for a given slot on the selected date.
   const remainingFor = (t: string) =>
@@ -402,7 +402,23 @@ export default function StudioBookingPage() {
       });
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
-      setError(e?.message || "Something went wrong. Please try again.");
+      const msg = String(e?.message || "");
+      if (/fully booked/i.test(msg)) {
+        // Refresh slot counts from the server so the UI reflects reality.
+        try {
+          const { data } = await supabase.rpc("booked_slot_counts", { p_partner_id: partner.id });
+          const counts = new Map<string, number>();
+          for (const b of (data as any[]) || []) {
+            const key = `${b.booking_date}__${b.booking_time}`;
+            counts.set(key, (counts.get(key) || 0) + 1);
+          }
+          setSlotCounts(counts);
+        } catch {}
+        setTime("");
+        setError("Esa hora se acaba de llenar — elige otra / That time just filled up — pick another");
+      } else {
+        setError(msg || "Something went wrong. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
