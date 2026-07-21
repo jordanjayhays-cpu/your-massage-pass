@@ -70,6 +70,7 @@ function StudioSetupInner() {
   const [availability, setAvailability] = useState<Record<number, string[]>>({
     1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
   });
+  const [capacity, setCapacity] = useState<number>(1);
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
