@@ -35,6 +35,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
   const mapInstance = useRef<google.maps.Map | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const studioMarkersRef = useRef<google.maps.Marker[]>([]);
+  const clustererRef = useRef<MarkerClusterer | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   const [keyConfigured, setKeyConfigured] = useState(hasGoogleMapsKey());
