@@ -357,6 +357,68 @@ export default function FounderDashboard() {
             </div>
           </Card>
 
+          <Card title="Clientes / Customer list">
+            <div className="grid grid-cols-2 gap-6 mb-4">
+              <Stat label={`${marketingContacts.length} clientes con consentimiento de marketing`} value={marketingContacts.length} />
+              <Stat label="Contactos totales (incl. sin opt-in)" value={totalDistinctEmails} />
+            </div>
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={() => {
+                  const header = ["name","email","phone","lang","bookings","last_booking_at"];
+                  const escape = (v: any) => {
+                    const s = v == null ? "" : String(v);
+                    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+                  };
+                  const lines = [header.join(",")];
+                  for (const c of marketingContacts) {
+                    lines.push([c.name, c.email, c.phone, c.lang, c.bookings, c.last_booking_at].map(escape).join(","));
+                  }
+                  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `massage-club-customers-${new Date().toISOString().slice(0,10)}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                className="text-xs font-semibold px-4 h-9 rounded-full text-white"
+                style={{ background: "#C4622D" }}
+              >Exportar CSV</button>
+            </div>
+            <div className="max-h-96 overflow-auto rounded-xl border border-[#E5DDD3]">
+              <table className="w-full text-sm">
+                <thead className="bg-[#FBF8F4] sticky top-0">
+                  <tr className="text-left text-[11px] uppercase tracking-widest text-[#7A7068]">
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2">Phone</th>
+                    <th className="px-3 py-2">Bookings</th>
+                    <th className="px-3 py-2">Last booking</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0E7DB]">
+                  {marketingContacts.map((c, i) => (
+                    <tr key={(c.email || "") + i}>
+                      <td className="px-3 py-2">{c.name || "—"}</td>
+                      <td className="px-3 py-2 text-[#C4622D]">{c.email || "—"}</td>
+                      <td className="px-3 py-2 text-[#7A7068]">{c.phone || "—"}</td>
+                      <td className="px-3 py-2">{c.bookings ?? 0}</td>
+                      <td className="px-3 py-2 text-[#7A7068]">{c.last_booking_at ? new Date(c.last_booking_at).toLocaleDateString() : "—"}</td>
+                    </tr>
+                  ))}
+                  {marketingContacts.length === 0 && (
+                    <tr><td colSpan={5} className="px-3 py-6 text-center text-[#7A7068]">Aún no hay clientes con opt-in.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+
+
           <Card title="Validation">
             <div className="grid grid-cols-2 gap-6 mb-6">
               <Stat label="B2C responses" value={b2c.length} />
