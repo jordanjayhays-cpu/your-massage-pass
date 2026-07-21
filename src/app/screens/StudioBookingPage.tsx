@@ -369,7 +369,90 @@ export default function StudioBookingPage() {
     );
   }
 
+  // ─── Unclaimed studio handoff ───
+  if (partner.status !== "active") {
+    const studioNumber = (partner as any).whatsapp || partner.phone;
+    const waMsg = `¡Hola ${partner.business_name}! Me gustaría reservar un masaje con vosotros. ¿Tenéis disponibilidad? Os encontré en Massage Club 🙏`;
+    const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
+    const websiteUrl = (() => {
+      if (!partner.website) return null;
+      const w = String(partner.website).trim();
+      return /^https?:\/\//i.test(w) ? w : `https://${w}`;
+    })();
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#FAF6F1" }}>
+        <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
+          <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
+            <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
+            <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
+          </div>
+          <div className="px-6 py-7">
+            <h1 className="font-display text-3xl font-bold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            {partner.address && (
+              <p className="text-sm flex items-center justify-center gap-1 mb-2" style={{ color: "#5a4736" }}>
+                <span>📍</span>
+                <span>{partner.address}</span>
+              </p>
+            )}
+            {rating && (
+              <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
+                <span style={{ color: "#E0A458" }}>★</span>
+                {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
+              </p>
+            )}
+            <p className="text-sm mb-1" style={{ color: "#7A7068" }}>
+              Este estudio todavía no está en Massage Club.
+            </p>
+            <p className="text-xs mb-5" style={{ color: "#9E9387" }}>
+              This studio isn't on Massage Club yet.
+            </p>
+            <p className="text-sm mb-5" style={{ color: "#5a4736" }}>
+              Puedes reservar directamente con ellos:
+              <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>You can book directly with them:</span>
+            </p>
+            <div className="flex flex-col items-center gap-3 w-full">
+              {waLink ? (
+                <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                  <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Reservar por WhatsApp</span>
+                  <span className="text-xs font-normal opacity-90">Book via WhatsApp</span>
+                </a>
+              ) : studioNumber ? (
+                <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                  <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
+                  <span className="text-xs font-normal opacity-90">Call the studio</span>
+                </a>
+              ) : null}
+              {websiteUrl && (
+                <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                  <span>Ver su web</span>
+                  <span className="text-xs font-normal opacity-80">Visit their website</span>
+                </a>
+              )}
+            </div>
+            {profile.services.length > 0 && (
+              <div className="mt-6 text-left">
+                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
+                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
+                  {profile.services.map(s => (
+                    <div key={s.id} className="flex items-center justify-between text-sm" style={{ color: "#5a4736" }}>
+                      <span>{s.name} · {s.duration} min</span>
+                      <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{s.price}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
+              Massage Club · Madrid · book.massageclub.io
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Name + at least one way to reach them (phone OR email). Phone is no longer required.
+
   const canBook = service && date && time && name.trim() && (phone.trim() || email.trim());
 
   const handleBook = async () => {
