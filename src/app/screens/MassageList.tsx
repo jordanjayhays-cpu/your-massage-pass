@@ -38,6 +38,7 @@ export default function MassageList() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
