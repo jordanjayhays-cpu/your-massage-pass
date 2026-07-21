@@ -38,6 +38,7 @@ export default function MassageList() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
@@ -244,7 +245,7 @@ export default function MassageList() {
           <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setVisibleCount(8); }}
             placeholder={t("app.massageList.searchPlaceholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
@@ -259,9 +260,9 @@ export default function MassageList() {
 
         {showFilters && (
           <div className="flex gap-2 overflow-x-auto pt-3 pb-1 -mx-5 px-5">
-            <FilterChip active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>{t("app.massageList.filterAll")}</FilterChip>
+            <FilterChip active={typeFilter === "all"} onClick={() => { setTypeFilter("all"); setVisibleCount(8); }}>{t("app.massageList.filterAll")}</FilterChip>
             {MASSAGE_TYPES.map((t) => (
-              <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => setTypeFilter(t.id)}>
+              <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => { setTypeFilter(t.id); setVisibleCount(8); }}>
                 {t.name}
               </FilterChip>
             ))}
@@ -341,69 +342,81 @@ export default function MassageList() {
           ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
           ) : (
-            filtered.map((m, idx) => {
-              const isFav = favorites.has(m.id);
-              const isSelected = selectedStudio?.id === m.id || (!selectedStudio && idx === 0);
-              return (
-                <div
-                  key={m.id}
-                  className={cn(
-                    "w-full bg-card border rounded-3xl p-3 shadow-soft hover:shadow-elegant transition-all cursor-pointer",
-                    isSelected ? "border-primary/60 ring-1 ring-primary/30" : "border-border/60"
-                  )}
-                  onClick={() => handleBook(m)}
-                >
-                  <div className="flex gap-3">
-                    <div className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary">
-                      {m.image && (
-                        <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleFav(m.id); }}
-                        aria-label={t("app.massageList.favorite")}
-                        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
-                      >
-                        <Heart className={cn("h-3.5 w-3.5", isFav ? "fill-primary text-primary" : "text-foreground")} />
-                      </button>
-                    </div>
-
-                    <div className="flex-1 min-w-0 py-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
-                          {m.studio}
-                        </h3>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Star className="h-4 w-4 fill-accent text-accent" />
-                          <span className="text-sm font-semibold text-foreground">{m.rating}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <MapPin className="h-3 w-3" />
-                        <span className="truncate">{"district" in m && m.district ? m.district : t("app.massageList.madrid")}</span>
-                      </div>
-
-                      <p className="text-xs text-foreground/80 mt-2 truncate">
-                        <span className="font-medium">{m.name}</span>
-                        <span className="text-muted-foreground"> · {m.duration} {t("app.massageList.minutes")}</span>
-                        {"price" in m && (m as any).price != null && (
-                          <span className="font-semibold text-primary"> · €{(m as any).price}</span>
+            <>
+              {filtered.slice(0, visibleCount).map((m, idx) => {
+                const isFav = favorites.has(m.id);
+                const isSelected = selectedStudio?.id === m.id || (!selectedStudio && idx === 0);
+                return (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "w-full bg-card border rounded-3xl p-3 shadow-soft hover:shadow-elegant transition-all cursor-pointer",
+                      isSelected ? "border-primary/60 ring-1 ring-primary/30" : "border-border/60"
+                    )}
+                    onClick={() => handleBook(m)}
+                  >
+                    <div className="flex gap-3">
+                      <div className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary">
+                        {m.image && (
+                          <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
                         )}
-                      </p>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleFav(m.id); }}
+                          aria-label={t("app.massageList.favorite")}
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
+                        >
+                          <Heart className={cn("h-3.5 w-3.5", isFav ? "fill-primary text-primary" : "text-foreground")} />
+                        </button>
+                      </div>
 
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
-                          {t("app.massageList.payAtStudio")}
-                        </span>
-                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-                          {t("app.massageList.availableToday")}
-                        </span>
+                      <div className="flex-1 min-w-0 py-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
+                            {m.studio}
+                          </h3>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Star className="h-4 w-4 fill-accent text-accent" />
+                            <span className="text-sm font-semibold text-foreground">{m.rating}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{"district" in m && m.district ? m.district : t("app.massageList.madrid")}</span>
+                        </div>
+
+                        <p className="text-xs text-foreground/80 mt-2 truncate">
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-muted-foreground"> · {m.duration} {t("app.massageList.minutes")}</span>
+                          {"price" in m && (m as any).price != null && (
+                            <span className="font-semibold text-primary"> · €{(m as any).price}</span>
+                          )}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
+                            {t("app.massageList.payAtStudio")}
+                            </span>
+                          <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                            {t("app.massageList.availableToday")}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                );
+              })}
+              {filtered.length > visibleCount && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={() => setVisibleCount((c) => c + 8)}
+                    className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
+                  >
+                    Ver más / Show more
+                  </button>
                 </div>
-              );
-            })
+              )}
+            </>
           )}
         </div>
       </div>
