@@ -390,7 +390,7 @@ function StudioSetupInner() {
   if (validatingSource) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#B85C38]" />
       </div>
     );
   }
@@ -477,7 +477,7 @@ function StudioSetupInner() {
               <p className="text-sm text-[#7A7068] mb-4">
                 Sign in with the Google account you want to use to manage <span className="font-semibold text-[#2b2b2b]">{headerName}</span>. This is the same account we'll connect your calendar to.
               </p>
-              <Button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-12 bg-white text-[#2b2b2b] border border-border hover:bg-secondary">
+              <Button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-12 bg-white text-[#2b2b2b] border border-[#E5DDD3] hover:bg-[#FAF6F1]">
                 {googleLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -551,7 +551,7 @@ function StudioSetupInner() {
                   onChange={e => setEmail(e.target.value)}
                   disabled={mode === "invite" || !!sourceData?.email}
                   placeholder="you@studio.com"
-                  className={mode === "invite" || !!sourceData?.email ? "bg-secondary/60" : "h-11"}
+                  className={mode === "invite" || !!sourceData?.email ? "h-11 bg-[#FAF6F1] border-[#E5DDD3] text-[#2b2b2b]" : "h-11 bg-white border-[#E5DDD3] text-[#2b2b2b] focus:border-[#B85C38]"}
                 />
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (min 8 chars)" className="h-11" />
                 <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="h-11" />
@@ -860,7 +860,7 @@ function StudioSetupInner() {
 
 export default function StudioSetup() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#B85C38]" /></div>}>
       <StudioSetupInner />
     </Suspense>
   );
