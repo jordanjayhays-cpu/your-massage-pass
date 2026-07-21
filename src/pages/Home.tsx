@@ -97,8 +97,11 @@ export default function Home() {
           <h1 className="font-display text-3xl md:text-4xl lg:text-5xl leading-[1.05] text-foreground mt-2 text-balance">
             Massage Club
           </h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-2xl">
-            Estudios verificados, precios claros y reserva instantánea. Paga en el estudio.
+          <p className="text-base md:text-lg text-foreground mt-2 max-w-2xl leading-snug">
+            Descubre y reserva masajes en los mejores estudios de Madrid. Compara menús y precios reales, reserva online en un minuto y paga directamente en el estudio.
+          </p>
+          <p className="text-sm md:text-base text-muted-foreground mt-1.5 max-w-2xl">
+            Discover and book massages at Madrid&apos;s best studios — real menus and prices, online booking in a minute, pay at the studio.
           </p>
 
           {/* Search */}
