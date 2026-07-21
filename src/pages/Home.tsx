@@ -11,6 +11,7 @@ export default function Home() {
   const [shops, setShops] = useState<ShopWithSlug[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [visibleCount, setVisibleCount] = useState(9);
 
   useEffect(() => {
     (async () => {
@@ -110,7 +111,7 @@ export default function Home() {
               <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <input
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => { setQ(e.target.value); setVisibleCount(9); }}
                 placeholder="Buscar por estudio, zona o tipo de masaje…"
                 className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
               />
@@ -138,11 +139,23 @@ export default function Home() {
               No encontramos estudios que coincidan.
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((s) => (
-                <StudioCard key={s.id} shop={s} href={bookHref(s)} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.slice(0, visibleCount).map((s) => (
+                  <StudioCard key={s.id} shop={s} href={bookHref(s)} />
+                ))}
+              </div>
+              {filtered.length > visibleCount && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={() => setVisibleCount((c) => c + 9)}
+                    className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
+                  >
+                    Ver más estudios / Show more
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       </main>
