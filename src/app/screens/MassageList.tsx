@@ -245,7 +245,7 @@ export default function MassageList() {
           <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setVisibleCount(8); }}
             placeholder={t("app.massageList.searchPlaceholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
@@ -260,9 +260,9 @@ export default function MassageList() {
 
         {showFilters && (
           <div className="flex gap-2 overflow-x-auto pt-3 pb-1 -mx-5 px-5">
-            <FilterChip active={typeFilter === "all"} onClick={() => setTypeFilter("all")}>{t("app.massageList.filterAll")}</FilterChip>
+            <FilterChip active={typeFilter === "all"} onClick={() => { setTypeFilter("all"); setVisibleCount(8); }}>{t("app.massageList.filterAll")}</FilterChip>
             {MASSAGE_TYPES.map((t) => (
-              <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => setTypeFilter(t.id)}>
+              <FilterChip key={t.id} active={typeFilter === t.id} onClick={() => { setTypeFilter(t.id); setVisibleCount(8); }}>
                 {t.name}
               </FilterChip>
             ))}
