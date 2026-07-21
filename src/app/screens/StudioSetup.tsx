@@ -390,21 +390,21 @@ function StudioSetupInner() {
   if (validatingSource) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#B85C38]" />
       </div>
     );
   }
 
   if (sourceError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md bg-card border-border">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#FAF6F1]">
+        <Card className="w-full max-w-md bg-white border border-[#E5DDD3] rounded-2xl shadow-sm">
           <CardContent className="p-8 text-center">
             <div className="h-16 w-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">❌</span>
             </div>
             <h2 className="font-display text-xl font-bold mb-2">Invalid Link</h2>
-            <p className="text-muted-foreground text-sm">{sourceError}</p>
+            <p className="text-[#7A7068] text-sm">{sourceError}</p>
           </CardContent>
         </Card>
       </div>
@@ -418,17 +418,17 @@ function StudioSetupInner() {
   const isReviewMode = mode === "draft" || mode === "claim";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background">
+    <div className="min-h-screen bg-[#FAF6F1]">
       <div className="max-w-xl mx-auto px-4 py-8">
         <button
           onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
-          className="inline-flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-[#5a4736] hover:text-[#B85C38] transition mb-4"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
         <div className="text-center mb-4">
-          <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 bg-[#B85C38] text-[#FAF6F1] px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
             {isReviewMode ? (
               <img src="/brand/mc-avatar-cream.png" alt="Massage Club" className="h-6 w-6 rounded-full object-cover -ml-1" />
             ) : (
@@ -438,46 +438,46 @@ function StudioSetupInner() {
           </div>
           {isReviewMode ? (
             <>
-              <h1 className="text-2xl font-bold text-foreground">We built your Massage Club page</h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Review it for <span className="font-semibold text-foreground">{headerName}</span>, then connect your calendar to go live.
+              <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">We built your Massage Club page</h1>
+              <p className="text-[#7A7068] text-sm mt-1">
+                Review it for <span className="font-semibold text-[#2b2b2b]">{headerName}</span>, then connect your calendar to go live.
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-bold text-foreground">Welcome, {headerName}</h1>
-              <p className="text-muted-foreground text-sm mt-1">Complete all steps to go live on Massage Club</p>
+              <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">Welcome, {headerName}</h1>
+              <p className="text-[#7A7068] text-sm mt-1">Complete all steps to go live on Massage Club</p>
             </>
           )}
         </div>
 
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-medium text-muted-foreground">Step {step} of {TOTAL_STEPS}</span>
-            <span className="text-xs font-medium text-primary">{Math.round(progress)}% complete</span>
+            <span className="text-xs font-medium text-[#9E9387]">Step {step} of {TOTAL_STEPS}</span>
+            <span className="text-xs font-medium text-[#B85C38]">{Math.round(progress)}% complete</span>
           </div>
-          <div className="h-2 bg-border rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+          <div className="h-2 bg-[#ECE4D7] rounded-full overflow-hidden">
+            <div className="h-full bg-[#B85C38] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between mt-2">
             {stepLabels.map((label, i) => (
-              <span key={label} className={`text-xs ${i + 1 === step ? "text-primary font-semibold" : "text-muted-foreground"}`}>{label}</span>
+              <span key={label} className={`text-xs ${i + 1 === step ? "text-[#B85C38] font-semibold" : "text-[#9E9387]"}`}>{label}</span>
             ))}
           </div>
         </div>
 
         {/* STEP 1: ACCOUNT */}
         {step === 1 && mode === "claim" && (
-          <Card className="border-0 shadow-sm">
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">1</div>
-                <h2 className="font-semibold text-foreground">Sign in with Google</h2>
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">1</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Sign in with Google</h2>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Sign in with the Google account you want to use to manage <span className="font-semibold text-foreground">{headerName}</span>. This is the same account we'll connect your calendar to.
+              <p className="text-sm text-[#7A7068] mb-4">
+                Sign in with the Google account you want to use to manage <span className="font-semibold text-[#2b2b2b]">{headerName}</span>. This is the same account we'll connect your calendar to.
               </p>
-              <Button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-12 bg-white text-foreground border border-border hover:bg-secondary">
+              <Button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-12 bg-white text-[#2b2b2b] border border-[#E5DDD3] hover:bg-[#FAF6F1]">
                 {googleLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -494,15 +494,15 @@ function StudioSetupInner() {
               </Button>
 
               <div className="flex items-center gap-3 my-4">
-                <div className="h-px bg-border flex-1" />
-                <span className="text-xs text-muted-foreground">or</span>
-                <div className="h-px bg-border flex-1" />
+                <div className="h-px bg-[#E5DDD3] flex-1" />
+                <span className="text-xs text-[#7A7068]">or</span>
+                <div className="h-px bg-[#E5DDD3] flex-1" />
               </div>
 
               {magicSent ? (
-                <div className="rounded-xl border border-border bg-secondary/40 p-4 text-center">
-                  <p className="text-sm font-medium text-foreground">Check your email for a login link.</p>
-                  <p className="text-xs text-muted-foreground mt-1">We sent it to {email}. Open it on this device to continue.</p>
+                <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 text-center">
+                  <p className="text-sm font-medium text-[#2b2b2b]">Check your email for a login link.</p>
+                  <p className="text-xs text-[#7A7068] mt-1">We sent it to {email}. Open it on this device to continue.</p>
                 </div>
               ) : (
                 <>
@@ -524,7 +524,7 @@ function StudioSetupInner() {
                 </>
               )}
 
-              <p className="text-xs text-center text-muted-foreground mt-3">
+              <p className="text-xs text-center text-[#7A7068] mt-3">
                 We'll bring you right back here after sign-in.
               </p>
 
@@ -533,13 +533,13 @@ function StudioSetupInner() {
         )}
 
         {step === 1 && mode !== "claim" && (
-          <Card className="border-0 shadow-sm">
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">1</div>
-                <h2 className="font-semibold text-foreground">Create your account</h2>
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">1</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Create your account</h2>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-[#7A7068] mb-4">
                 {mode === "draft" && !sourceData?.email
                   ? "Enter the email you want to use to manage your studio."
                   : "Email is pre-filled from your invite."}
@@ -551,12 +551,12 @@ function StudioSetupInner() {
                   onChange={e => setEmail(e.target.value)}
                   disabled={mode === "invite" || !!sourceData?.email}
                   placeholder="you@studio.com"
-                  className={mode === "invite" || !!sourceData?.email ? "bg-secondary/60" : "h-11"}
+                  className={mode === "invite" || !!sourceData?.email ? "h-11 bg-[#FAF6F1] border-[#E5DDD3] text-[#2b2b2b]" : "h-11 bg-white border-[#E5DDD3] text-[#2b2b2b] focus:border-[#B85C38]"}
                 />
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (min 8 chars)" className="h-11" />
                 <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="h-11" />
               </div>
-              <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-primary hover:bg-[#9E4D22]">
+              <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">
                 {accountLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating account…</> : <>Continue <ChevronRight className="h-4 w-4 ml-2" /></>}
               </Button>
             </CardContent>
@@ -565,53 +565,53 @@ function StudioSetupInner() {
 
         {/* STEP 2: PROFILE */}
         {step === 2 && (
-          <Card className="border-0 shadow-sm">
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">2</div>
-                <h2 className="font-semibold text-foreground">{isReviewMode ? "Review studio details" : "Studio details"}</h2>
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">2</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{isReviewMode ? "Review studio details" : "Studio details"}</h2>
               </div>
               {isReviewMode && (
-                <p className="text-xs text-muted-foreground -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
+                <p className="text-xs text-[#7A7068] -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
               )}
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Studio Name</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Studio Name</label>
                 <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))} className="h-11" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Address</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Address</label>
                 <div className="relative">
-                  <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7068]" />
                   <Input value={studio.address} onChange={e => setStudio(p => ({ ...p, address: e.target.value }))} placeholder="Calle Gran Vía 15, Madrid" className="pl-9 h-11" />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1.5">Shown to customers on their booking confirmation.</p>
+                <p className="text-[11px] text-[#7A7068] mt-1.5">Shown to customers on their booking confirmation.</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Instrucciones de llegada (opcional)</label>
-                <textarea value={studio.access_instructions} onChange={e => setStudio(p => ({ ...p, access_instructions: e.target.value }))} placeholder="Ej.: 'Portal 1A — pulsa el telefonillo y te abrimos. Primera planta, puerta derecha.'" rows={3} className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-primary resize-none" />
-                <p className="text-[11px] text-muted-foreground mt-1.5">Se incluye en el email de confirmación del cliente.</p>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Instrucciones de llegada (opcional)</label>
+                <textarea value={studio.access_instructions} onChange={e => setStudio(p => ({ ...p, access_instructions: e.target.value }))} placeholder="Ej.: 'Portal 1A — pulsa el telefonillo y te abrimos. Primera planta, puerta derecha.'" rows={3} className="w-full px-3 py-2 text-sm bg-white border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#B85C38] focus:ring-2 focus:ring-[#B85C38]/15 resize-none text-[#2b2b2b]" />
+                <p className="text-[11px] text-[#7A7068] mt-1.5">Se incluye en el email de confirmación del cliente.</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Phone</label>
                 <div className="relative">
-                  <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7068]" />
                   <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Website (optional)</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Website (optional)</label>
                 <div className="relative">
-                  <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7068]" />
                   <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder="https://yourstudio.com" className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
-                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-primary resize-none" />
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Description</label>
+                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm bg-white border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#B85C38] focus:ring-2 focus:ring-[#B85C38]/15 resize-none text-[#2b2b2b]" />
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">
+                <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">
                   {profileLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
                 </Button>
               </div>
@@ -621,33 +621,33 @@ function StudioSetupInner() {
 
         {/* STEP 3: SERVICES */}
         {step === 3 && (
-          <Card className="border-0 shadow-sm">
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="font-semibold text-foreground">{isReviewMode ? "Review your services" : "Your services"}</h2>
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">3</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{isReviewMode ? "Review your services" : "Your services"}</h2>
               </div>
               {isReviewMode && (
-                <p className="text-xs text-muted-foreground -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
+                <p className="text-xs text-[#7A7068] -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
               )}
               <div className="space-y-3">
                 {services.map((svc, i) => (
-                  <div key={i} className="p-3 border border-border rounded-xl bg-white">
+                  <div key={i} className="p-3 border border-[#E5DDD3] rounded-xl bg-[#FAF6F1]">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-medium text-muted-foreground">Service {i + 1}</span>
-                      {services.length > 1 && <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
+                      <span className="text-xs font-medium text-[#7A7068]">Service {i + 1}</span>
+                      {services.length > 1 && <button onClick={() => removeService(i)} className="text-[#7A7068] hover:text-red-500"><Trash2 size={14} /></button>}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
-                      <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none">
+                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none focus:border-[#B85C38] text-[#2b2b2b]" />
+                      <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none text-[#2b2b2b]">
                         {svc.type && !MASSAGE_TYPES.includes(svc.type) && <option value={svc.type}>{svc.type}</option>}
                         {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
                       </select>
-                      <div className="flex items-center gap-1 border border-border rounded-lg px-2">
-                        <Euro size={13} className="text-muted-foreground" />
+                      <div className="flex items-center gap-1 bg-white border border-[#E5DDD3] rounded-lg px-2">
+                        <Euro size={13} className="text-[#7A7068]" />
                         <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                       </div>
-                      <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none col-span-2">
+                      <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none col-span-2 text-[#2b2b2b]">
                         {[30,45,60,75,90,120].map(d => <option key={d} value={d}>{d} min</option>)}
                       </select>
                     </div>
@@ -655,13 +655,13 @@ function StudioSetupInner() {
                 ))}
               </div>
               {services.length < 8 && (
-                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
+                <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-[#E5DDD3] rounded-xl text-sm text-[#7A7068] hover:border-[#B85C38] hover:text-[#B85C38] transition flex items-center justify-center gap-1">
                   <Plus size={14} /> Add service
                 </button>
               )}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveServices} disabled={servicesLoading} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">
+                <Button onClick={handleSaveServices} disabled={servicesLoading} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">
                   {servicesLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
                 </Button>
               </div>
@@ -671,26 +671,26 @@ function StudioSetupInner() {
 
         {/* STEP 4 (invite): AVAILABILITY */}
         {step === 4 && mode === "invite" && (
-          <Card className="border-0 shadow-sm">
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">4</div>
-                <h2 className="font-semibold text-foreground">Availability</h2>
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Availability</h2>
               </div>
-              <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
+              <p className="text-sm text-[#7A7068]">Tap a day to toggle on/off. Tap times to adjust.</p>
               <div className="space-y-3">
                 {DAYS.map(day => (
                   <div key={day.num}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
+                      <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
                         {day.label}
                       </button>
-                      <span className="text-xs text-muted-foreground">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
+                      <span className="text-xs text-[#7A7068]">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
                     </div>
                     {availability[day.num].length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pl-1">
                         {DEFAULT_SLOTS.map(slot => (
-                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-secondary text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-[#FAF6F1] text-[#B85C38] border border-[#B85C38]" : "bg-white text-[#7A7068] border border-[#E5DDD3]"}`}>
                             {slot}
                           </button>
                         ))}
@@ -699,10 +699,10 @@ function StudioSetupInner() {
                   </div>
                 ))}
               </div>
-              <div className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
+              <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-foreground">¿Cuántas reservas puedes atender a la vez?</p>
-                  <p className="text-xs text-muted-foreground">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
+                  <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
+                  <p className="text-xs text-[#7A7068]">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
                 </div>
                 <input
                   type="number"
@@ -710,12 +710,12 @@ function StudioSetupInner() {
                   max={20}
                   value={capacity}
                   onChange={e => setCapacity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                  className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
+                  className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
                 />
               </div>
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-primary hover:bg-[#9E4D22]">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -723,24 +723,24 @@ function StudioSetupInner() {
 
         {/* STEP 4 (draft): CONNECT GOOGLE CALENDAR */}
         {step === 4 && isReviewMode && (
-          <Card className="border-0 shadow-sm">
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-secondary text-primary flex items-center justify-center text-sm font-bold">4</div>
-                <h2 className="font-semibold text-foreground">Connect Google Calendar</h2>
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Connect Google Calendar</h2>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-[#7A7068]">
                 Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.
               </p>
 
-              <div className="rounded-xl border border-border p-4 space-y-2 bg-secondary/40">
+              <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 space-y-2">
                 {[
                   "Read-only access to your busy times",
                   "New bookings appear as events in your calendar",
                   "Customers only ever see truly free slots",
                 ].map(line => (
-                  <div key={line} className="flex items-start gap-2 text-sm text-foreground">
-                    <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div key={line} className="flex items-start gap-2 text-sm text-[#2b2b2b]">
+                    <Check className="h-4 w-4 text-[#B85C38] mt-0.5 flex-shrink-0" />
                     <span>{line}</span>
                   </div>
                 ))}
@@ -748,44 +748,44 @@ function StudioSetupInner() {
 
               <Button
                 onClick={handleConnectCalendar}
-                className="w-full h-12 bg-primary hover:bg-[#9E4D22] text-white"
+                className="w-full h-12 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
               >
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Connect Google Calendar
               </Button>
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs text-center text-[#7A7068]">
                 One click — no password stored.
               </p>
 
               <div className="flex items-center gap-3 py-1">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">o</span>
-                <div className="flex-1 h-px bg-border" />
+                <div className="flex-1 h-px bg-[#E5DDD3]" />
+                <span className="text-xs text-[#7A7068]">o</span>
+                <div className="flex-1 h-px bg-[#E5DDD3]" />
               </div>
 
               {!showManualAvailability ? (
                 <Button
                   variant="outline"
                   onClick={() => setShowManualAvailability(true)}
-                  className="w-full h-11"
+                  className="w-full h-11 border-[#E5DDD3] bg-white text-[#2b2b2b] hover:bg-[#FAF6F1] hover:text-[#B85C38]"
                 >
                   Set availability manually
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">Tap a day to toggle on/off. Tap times to adjust.</p>
+                  <p className="text-sm text-[#7A7068]">Tap a day to toggle on/off. Tap times to adjust.</p>
                   {DAYS.map(day => (
                     <div key={day.num}>
                       <div className="flex items-center justify-between mb-1.5">
-                        <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-primary text-white" : "bg-secondary text-muted-foreground"}`}>
+                        <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
                           {day.label}
                         </button>
-                        <span className="text-xs text-muted-foreground">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
+                        <span className="text-xs text-[#7A7068]">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
                       </div>
                       {availability[day.num].length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pl-1">
                           {DEFAULT_SLOTS.map(slot => (
-                            <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-secondary text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground border border-border"}`}>
+                            <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-[#FAF6F1] text-[#B85C38] border border-[#B85C38]" : "bg-white text-[#7A7068] border border-[#E5DDD3]"}`}>
                               {slot}
                             </button>
                           ))}
@@ -793,10 +793,10 @@ function StudioSetupInner() {
                       )}
                     </div>
                   ))}
-                  <div className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
+                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-foreground">¿Cuántas reservas puedes atender a la vez?</p>
-                      <p className="text-xs text-muted-foreground">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
+                      <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
+                      <p className="text-xs text-[#7A7068]">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
                     </div>
                     <input
                       type="number"
@@ -804,13 +804,13 @@ function StudioSetupInner() {
                       max={20}
                       value={capacity}
                       onChange={e => setCapacity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                      className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
+                      className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
                     />
                   </div>
                   <Button
                     onClick={handleSaveManualAvailability}
                     disabled={manualSaving}
-                    className="w-full h-11 bg-primary hover:bg-[#9E4D22] text-white"
+                    className="w-full h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
                   >
                     {manualSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & continue"}
                   </Button>
@@ -823,7 +823,7 @@ function StudioSetupInner() {
 
               <button
                 onClick={() => setStep(5)}
-                className="w-full text-center text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 pt-1"
+                className="w-full text-center text-xs text-[#7A7068] hover:text-[#B85C38] underline underline-offset-2 pt-1"
               >
                 Saltar por ahora — podrás conectarlo más tarde desde tu portal
               </button>
@@ -834,20 +834,20 @@ function StudioSetupInner() {
 
         {/* STEP 5: DONE */}
         {step === 5 && (
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-primary to-[#9E4D22]">
+          <Card className="border border-[#9E4D22] shadow-[0_10px_30px_rgba(184,92,56,0.25)] rounded-2xl bg-gradient-to-br from-[#B85C38] to-[#9E4D22]">
             <CardContent className="p-8 text-center text-white">
               <div className="h-16 w-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
-              <h2 className="font-display text-2xl font-bold mb-2">You're live on Massage Club! 🎉</h2>
-              <p className="text-primary-foreground/80 text-sm mb-6">
+              <h2 className="font-display text-2xl font-bold mb-2 text-white">You're live on Massage Club! 🎉</h2>
+              <p className="text-[#FAF6F1]/90 text-sm mb-6">
                 {isReviewMode && calendarConnected
                   ? "Your calendar is connected and your studio is now visible to members in Madrid."
                   : isReviewMode
                     ? "Your studio is now visible to members in Madrid. Puedes conectar Google Calendar cuando quieras desde tu portal de estudio."
                     : "Your studio is now visible to thousands of members in Madrid."}
               </p>
-              <Button onClick={() => navigate("/partner/dashboard")} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl">
+              <Button onClick={() => navigate("/partner/dashboard")} className="w-full h-12 bg-white text-[#B85C38] hover:bg-[#FAF6F1] font-semibold text-base rounded-xl">
                 Go to your dashboard →
               </Button>
             </CardContent>
@@ -860,7 +860,7 @@ function StudioSetupInner() {
 
 export default function StudioSetup() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#B85C38]" /></div>}>
       <StudioSetupInner />
     </Suspense>
   );
