@@ -155,6 +155,8 @@ export default function Payment() {
         price: servicePrice,
         lang: (i18n.language || localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
         comfort_prefs: comfortPrefs,
+        marketing_opt_in: marketingOptIn,
+        marketing_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
         client_preferences: {
           pressure: booking.pressure,
           focus_areas: booking.focusAreas,
