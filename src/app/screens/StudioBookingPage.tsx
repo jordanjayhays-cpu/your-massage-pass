@@ -205,7 +205,7 @@ export default function StudioBookingPage() {
   const service = profile?.services.find(s => s.id === serviceId) || null;
 
   // Studio capacity = how many therapists work in parallel (min 1).
-  const therapistCount = Math.max(1, profile?.therapists?.length || 0);
+  const therapistCount = Math.max(1, Number(profile?.partner?.capacity) || 0, profile?.therapists?.length || 0);
 
   // Spots still open for a given slot on the selected date.
   const remainingFor = (t: string) =>
