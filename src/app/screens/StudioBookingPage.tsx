@@ -716,6 +716,18 @@ export default function StudioBookingPage() {
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <p className="text-xs text-gray-400">Add at least one way to reach you — email or phone.</p>
+              <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={e => setMarketingOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#C4622D]"
+                />
+                <span className="text-xs text-gray-600 leading-snug">
+                  Quiero recibir novedades y ofertas de Massage Club por email (opcional)
+                  <span className="block text-[11px] text-gray-400">Send me Massage Club news and offers</span>
+                </span>
+              </label>
             </div>
           </Section>
         )}
