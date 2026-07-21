@@ -35,6 +35,7 @@ export default function Payment() {
   const [userId, setUserId] = useState<string | null>(null);
   const [availableCreditCents, setAvailableCreditCents] = useState(0);
   const [applyCredit, setApplyCredit] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const stored = getStoredUser();
   const [contact, setContact] = useState({
     name: stored?.name ?? "Guest",
