@@ -176,14 +176,18 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
     const map = mapInstance.current;
 
     // Clear existing
+    if (clustererRef.current) {
+      clustererRef.current.clearMarkers();
+      clustererRef.current.setMap(null);
+      clustererRef.current = null;
+    }
     studioMarkersRef.current.forEach((m) => m.setMap(null));
     studioMarkersRef.current = [];
 
-    massages.forEach((m) => {
+    const markers: google.maps.Marker[] = massages.map((m) => {
       const isActive = active === m.id;
       const marker = new google.maps.Marker({
         position: { lat: m.lat, lng: m.lng },
-        map,
         title: m.studio,
         icon: makeMarkerIcon(isActive, getStudioIcon(m.studio)),
       });
@@ -194,7 +198,28 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
           infoWindowRef.current.open({ map, anchor: marker });
         }
       });
-      studioMarkersRef.current.push(marker);
+      return marker;
+    });
+    studioMarkersRef.current = markers;
+
+    clustererRef.current = new MarkerClusterer({
+      map,
+      markers,
+      renderer: {
+        render: ({ count, position }: Cluster) => {
+          const size = 44 + Math.min(count, 20);
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="#B85C38" stroke="white" stroke-width="3"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${size / 2.6}" font-family="system-ui,sans-serif" font-weight="700" fill="white">${count}</text></svg>`;
+          return new google.maps.Marker({
+            position,
+            icon: {
+              url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+              scaledSize: new google.maps.Size(size, size),
+              anchor: new google.maps.Point(size / 2, size / 2),
+            },
+            zIndex: 100 + count,
+          });
+        },
+      },
     });
   }, [mapsReady, massages, active]);
 
