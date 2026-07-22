@@ -599,7 +599,8 @@ export default function StudioBookingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F4F0]">
+    <div className="min-h-screen bg-[#F7F4F0] relative">
+      <div className="absolute top-3 right-3 z-30"><LanguageFlagToggle /></div>
       {/* Hero */}
       <div className="relative h-44 bg-gradient-to-br from-[#C4622D] to-[#5b0a16]">
         {partner.cover_url && (
@@ -616,12 +617,20 @@ export default function StudioBookingPage() {
                 <Sparkles size={12} /> Book your massage
               </div>
               <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
-              {rating && (
+              {rating ? (
                 <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
                   <span style={{ color: "#E0A458" }}>★</span>
                   {rating.avg.toFixed(1)} <span className="text-white/70 font-normal">({rating.count})</span>
                 </p>
-              )}
+              ) : (partner as any).google_rating != null ? (
+                <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
+                  <span style={{ color: "#E0A458" }}>★</span>
+                  {Number((partner as any).google_rating).toFixed(1)}
+                  {(partner as any).google_reviews != null && (
+                    <span className="text-white/70 font-normal">({(partner as any).google_reviews} · Google)</span>
+                  )}
+                </p>
+              ) : null}
               {partner.address && (
                 <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
                   <MapPin size={12} /> {partner.address}
