@@ -96,6 +96,8 @@ const LIGHTING: { label: string; value: string }[] = [
 export default function Profile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const SHOW_REFERRAL = false; // Parked until we process payments — see docs/PARKED_IDEAS.md
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -539,7 +541,7 @@ export default function Profile() {
 
 
         {/* Refer & Earn card */}
-        {referralCode && (() => {
+        {SHOW_REFERRAL && referralCode && (() => {
           const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
           const shareText = t("app.profile.referral.shareText", { amount: REFERRAL_REWARD_EUR, url: referralUrl });
           const copy = async () => {
