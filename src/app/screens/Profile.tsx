@@ -162,6 +162,7 @@ export default function Profile() {
   const [suggestArea, setSuggestArea] = useState("");
   const [suggestReason, setSuggestReason] = useState("");
   const [suggestSubmitting, setSuggestSubmitting] = useState(false);
+  const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [mySuggestions, setMySuggestions] = useState<any[]>([]);
 
 
