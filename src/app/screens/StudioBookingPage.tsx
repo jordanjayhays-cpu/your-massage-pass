@@ -54,6 +54,26 @@ export default function StudioBookingPage() {
 
 
 
+  useEffect(() => {
+    if (!profile?.partner) return;
+    const p = profile.partner as any;
+    const prevTitle = document.title;
+    document.title = `${p.business_name} — Masajes en Madrid | Massage Club`;
+    const desc = `Reserva en ${p.business_name}${p.address ? `, ${p.address}` : ""}. Menú y precios reales${p.price_from ? `, desde ${p.price_from}€` : ""}. Massage Club Madrid.`;
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "description";
+      document.head.appendChild(meta);
+    }
+    const prevDesc = meta.content;
+    meta.content = desc;
+    return () => {
+      document.title = prevTitle;
+      if (meta) meta.content = prevDesc;
+    };
+  }, [profile]);
+
 
   useEffect(() => {
     if (!studioId) return;
