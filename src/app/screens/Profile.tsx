@@ -429,6 +429,104 @@ export default function Profile() {
           </div>
         )}
 
+        {/* Recomienda un estudio */}
+        <div className="mt-4 rounded-2xl border border-[#E5DDD3] bg-white p-4">
+          <p className="text-sm font-semibold text-foreground">{t("app.profile.suggest.title")}</p>
+          <p className="text-xs text-[#7A7068] mt-1">{t("app.profile.suggest.subtitle")}</p>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const name = suggestStudio.trim();
+              if (!name || !user) return;
+              if (name.length > 200) return;
+              setSuggestSubmitting(true);
+              const { data, error } = await supabase
+                .from("studio_suggestions")
+                .insert({
+                  user_id: user.id,
+                  client_email: user.email || null,
+                  studio_name: name,
+                  area: suggestArea.trim() || null,
+                  reason: suggestReason.trim() || null,
+                })
+                .select("id, studio_name, area, reason, status, created_at")
+                .single();
+              setSuggestSubmitting(false);
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
+              toast.success(t("app.profile.suggest.thanks"));
+              setSuggestStudio(""); setSuggestArea(""); setSuggestReason("");
+              if (data) setMySuggestions((prev) => [data, ...prev]);
+            }}
+            className="mt-3 space-y-2"
+          >
+            <input
+              value={suggestStudio}
+              onChange={(e) => setSuggestStudio(e.target.value)}
+              maxLength={200}
+              required
+              placeholder={t("app.profile.suggest.studioName")}
+              className="w-full h-10 px-3 rounded-xl border border-[#E5DDD3] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <input
+              value={suggestArea}
+              onChange={(e) => setSuggestArea(e.target.value)}
+              maxLength={200}
+              placeholder={t("app.profile.suggest.area")}
+              className="w-full h-10 px-3 rounded-xl border border-[#E5DDD3] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <textarea
+              value={suggestReason}
+              onChange={(e) => setSuggestReason(e.target.value)}
+              maxLength={1000}
+              rows={2}
+              placeholder={t("app.profile.suggest.reason")}
+              className="w-full px-3 py-2 rounded-xl border border-[#E5DDD3] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <button
+              type="submit"
+              disabled={suggestSubmitting || !suggestStudio.trim()}
+              className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition disabled:opacity-60"
+            >
+              {t("app.profile.suggest.submit")}
+            </button>
+          </form>
+
+          {mySuggestions.filter((s) => s.status !== "rejected").length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068] mb-2">
+                {t("app.profile.suggest.yours")}
+              </p>
+              <ul className="space-y-1.5">
+                {mySuggestions.filter((s) => s.status !== "rejected").map((s) => (
+                  <li key={s.id} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="truncate text-foreground">
+                      {s.studio_name}
+                      {s.area ? <span className="text-[#9E9387]"> · {s.area}</span> : null}
+                    </span>
+                    <span
+                      className={
+                        "shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold " +
+                        (s.status === "added"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-[#F5EFE7] text-[#7A5A3F]")
+                      }
+                    >
+                      {s.status === "added"
+                        ? t("app.profile.suggest.statusAdded")
+                        : t("app.profile.suggest.statusNew")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+
+
         {/* Refer & Earn card */}
         {referralCode && (() => {
           const referralUrl = `${window.location.origin}/?ref=${referralCode}`;
