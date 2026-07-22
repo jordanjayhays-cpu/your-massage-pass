@@ -14,6 +14,12 @@ export default function Home() {
   const [visibleCount, setVisibleCount] = useState(9);
 
   useEffect(() => {
+    const target = "Massage Club — Book massages in Madrid";
+    if (document.title !== target) document.title = target;
+  }, []);
+
+  useEffect(() => {
+
     (async () => {
       const list = await fetchShops();
       // Pull slugs for the same partner ids (public column, anon-readable).
