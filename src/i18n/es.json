@@ -319,6 +319,7 @@
       "suggest": {
         "title": "Recomienda un estudio 💆",
         "subtitle": "¿Has tenido una gran experiencia en un sitio que no está en Massage Club? Cuéntanoslo y lo añadimos.",
+        "hint": "Añade un sitio que te encantó",
         "studioName": "Nombre del estudio",
         "area": "Zona o dirección (opcional)",
         "reason": "¿Por qué lo recomiendas? (opcional)",

@@ -319,6 +319,7 @@
       "suggest": {
         "title": "Recommend a studio 💆",
         "subtitle": "Had a great experience at a place that's not on Massage Club? Tell us and we'll add it.",
+        "hint": "Add a place you loved",
         "studioName": "Studio name",
         "area": "Area or address (optional)",
         "reason": "Why do you recommend it? (optional)",
