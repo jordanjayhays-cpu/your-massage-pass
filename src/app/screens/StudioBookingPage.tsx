@@ -19,6 +19,7 @@ const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function StudioBookingPage() {
+  const { t } = useTranslation();
   const { studioId } = useParams();
   const [searchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
