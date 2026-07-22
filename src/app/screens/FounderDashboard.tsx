@@ -166,8 +166,15 @@ export default function FounderDashboard() {
         if (e) distinct.add(e);
       }
       setTotalDistinctEmails(distinct.size);
+
+      const { data: sugRows } = await supabase
+        .from("studio_suggestions")
+        .select("id, studio_name, area, reason, client_email, status, created_at")
+        .order("created_at", { ascending: false });
+      setSuggestions((sugRows as any[]) ?? []);
     })();
   }, [isFounder, refreshTick]);
+
 
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
