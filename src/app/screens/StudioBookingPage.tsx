@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioWhatsappUrl, isWhatsappCapable } from "@/app/lib/whatsapp";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
   Phone, Instagram, MessageCircle, CalendarDays
