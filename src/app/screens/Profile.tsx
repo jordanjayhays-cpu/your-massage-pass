@@ -229,7 +229,7 @@ export default function Profile() {
             : `user_id.eq.${user.id}`;
           const { data: lb } = await supabase
             .from("bookings")
-            .select("id, partner_id, massage_type, booking_date, partners(business_name, slug)")
+            .select("id, partner_id, massage_type, booking_date, duration, price, partners(business_name, slug)")
             .or(filter)
             .order("created_at", { ascending: false })
             .limit(1)
@@ -405,14 +405,25 @@ export default function Profile() {
 
         {/* Book again card */}
         {lastBooking && (lastBooking.partners?.slug || lastBooking.partner_id) && (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">{t("app.profile.bookAgain.title")}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {t("app.profile.bookAgain.subtitle", {
-                  service: lastBooking.massage_type || "Massage",
-                  date: lastBooking.booking_date || "",
-                })}
+          <div className="rounded-2xl p-5 bg-[#C4622D] text-white shadow-md">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 mb-2">
+              {t("app.profile.bookAgain.kicker")}
+            </p>
+            <p className="text-xl font-semibold leading-tight">
+              {lastBooking.partners?.business_name || "Massage Club Studio"}
+            </p>
+            <p className="text-sm text-white/90 mt-1">
+              {lastBooking.massage_type || "Massage"}
+              {lastBooking.duration ? ` · ${lastBooking.duration} min` : ""}
+            </p>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              {lastBooking.price != null ? (
+                <p className="text-2xl font-bold">€{lastBooking.price}</p>
+              ) : (
+                <span />
+              )}
+              <p className="text-xs text-white/70">
+                {t("app.profile.bookAgain.lastBooked", { date: lastBooking.booking_date || "" })}
               </p>
             </div>
             <button
@@ -422,7 +433,7 @@ export default function Profile() {
                   : `/app/booking/${lastBooking.partner_id}`;
                 navigate(target);
               }}
-              className="shrink-0 h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
+              className="mt-4 w-full h-12 rounded-xl bg-white text-[#C4622D] text-sm font-semibold hover:opacity-90 transition shadow"
             >
               {t("app.profile.bookAgain.cta")}
             </button>
