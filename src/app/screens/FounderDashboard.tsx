@@ -119,6 +119,11 @@ export default function FounderDashboard() {
     last_booking_at: string | null;
   }>>([]);
   const [totalDistinctEmails, setTotalDistinctEmails] = useState<number>(0);
+  const [suggestions, setSuggestions] = useState<Array<{
+    id: string; studio_name: string; area: string | null; reason: string | null;
+    client_email: string | null; status: string; created_at: string;
+  }>>([]);
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -161,8 +166,15 @@ export default function FounderDashboard() {
         if (e) distinct.add(e);
       }
       setTotalDistinctEmails(distinct.size);
+
+      const { data: sugRows } = await supabase
+        .from("studio_suggestions")
+        .select("id, studio_name, area, reason, client_email, status, created_at")
+        .order("created_at", { ascending: false });
+      setSuggestions((sugRows as any[]) ?? []);
     })();
   }, [isFounder, refreshTick]);
+
 
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
@@ -416,6 +428,41 @@ export default function FounderDashboard() {
               </table>
             </div>
           </Card>
+
+          <Card title="Recomendaciones de estudios">
+            <Stat label="Recomendaciones" value={suggestions.length} />
+            <div className="mt-4 max-h-96 overflow-auto rounded-xl border border-[#E5DDD3]">
+              <table className="w-full text-sm">
+                <thead className="bg-[#FBF8F4] sticky top-0">
+                  <tr className="text-left text-[11px] uppercase tracking-widest text-[#7A7068]">
+                    <th className="px-3 py-2">Studio</th>
+                    <th className="px-3 py-2">Area</th>
+                    <th className="px-3 py-2">Reason</th>
+                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0E7DB]">
+                  {suggestions.map((s) => (
+                    <tr key={s.id}>
+                      <td className="px-3 py-2 font-medium">{s.studio_name}</td>
+                      <td className="px-3 py-2 text-[#7A7068]">{s.area || "—"}</td>
+                      <td className="px-3 py-2 text-[#7A7068] max-w-xs truncate" title={s.reason || ""}>{s.reason || "—"}</td>
+                      <td className="px-3 py-2 text-[#C4622D]">{s.client_email || "—"}</td>
+                      <td className="px-3 py-2">{s.status}</td>
+                      <td className="px-3 py-2 text-[#7A7068]">{new Date(s.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                  {suggestions.length === 0 && (
+                    <tr><td colSpan={6} className="px-3 py-6 text-center text-[#7A7068]">Sin recomendaciones todavía.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+
 
 
 

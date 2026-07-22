@@ -314,6 +314,20 @@
         "subtitle": "{{service}} · last on {{date}}",
         "cta": "Book again"
       },
+      "suggest": {
+        "title": "Recommend a studio 💆",
+        "subtitle": "Had a great experience at a place that's not on Massage Club? Tell us and we'll add it.",
+        "studioName": "Studio name",
+        "area": "Area or address (optional)",
+        "reason": "Why do you recommend it? (optional)",
+        "submit": "Send recommendation",
+        "thanks": "Thanks! We'll review your recommendation 💛",
+        "yours": "Your recommendations",
+        "statusNew": "Under review",
+        "statusAdded": "Added!"
+      },
+
+
 
       "referral": {
         "title": "Give €{{amount}}, get €{{amount}}",
