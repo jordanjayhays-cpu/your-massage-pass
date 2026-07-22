@@ -236,6 +236,16 @@ export default function Profile() {
             .maybeSingle();
           if (lb && lb.partner_id && (lb as any).partners) setLastBooking(lb);
         } catch { /* ignore */ }
+
+        try {
+          const { data: sug } = await supabase
+            .from("studio_suggestions")
+            .select("id, studio_name, area, reason, status, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
+          if (sug) setMySuggestions(sug);
+        } catch { /* ignore */ }
+
       }
       setLoading(false);
     })();
