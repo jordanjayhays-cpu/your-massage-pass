@@ -311,7 +311,9 @@
       },
       "bookAgain": {
         "title": "Tu masaje habitual",
+        "kicker": "TU MASAJE HABITUAL / YOUR USUAL MASSAGE",
         "subtitle": "{{service}} · último {{date}}",
+        "lastBooked": "Última vez: {{date}}",
         "cta": "Reservar de nuevo"
       },
       "suggest": {
