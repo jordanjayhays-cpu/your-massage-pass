@@ -155,6 +155,14 @@ export default function Profile() {
   // Last booking (for "Book again" card)
   const [lastBooking, setLastBooking] = useState<any>(null);
 
+  // Studio suggestions
+  const [suggestStudio, setSuggestStudio] = useState("");
+  const [suggestArea, setSuggestArea] = useState("");
+  const [suggestReason, setSuggestReason] = useState("");
+  const [suggestSubmitting, setSuggestSubmitting] = useState(false);
+  const [mySuggestions, setMySuggestions] = useState<any[]>([]);
+
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
