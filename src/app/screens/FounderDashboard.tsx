@@ -119,6 +119,11 @@ export default function FounderDashboard() {
     last_booking_at: string | null;
   }>>([]);
   const [totalDistinctEmails, setTotalDistinctEmails] = useState<number>(0);
+  const [suggestions, setSuggestions] = useState<Array<{
+    id: string; studio_name: string; area: string | null; reason: string | null;
+    client_email: string | null; status: string; created_at: string;
+  }>>([]);
+
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
