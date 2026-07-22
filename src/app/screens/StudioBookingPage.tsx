@@ -402,8 +402,11 @@ export default function StudioBookingPage() {
       const w = String(partner.website).trim();
       return /^https?:\/\//i.test(w) ? w : `https://${w}`;
     })();
+    const googleRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
+    const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#FAF6F1" }}>
+      <div className="min-h-screen flex items-center justify-center p-4 relative" style={{ background: "#FAF6F1" }}>
+        <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
         <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
             <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
@@ -417,38 +420,49 @@ export default function StudioBookingPage() {
                 <span>{partner.address}</span>
               </p>
             )}
-            {rating && (
+            {rating ? (
               <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
               </p>
-            )}
+            ) : googleRating != null ? (
+              <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
+                <span style={{ color: "#E0A458" }}>★</span>
+                {googleRating.toFixed(1)}
+                {googleReviews != null && (
+                  <span className="font-normal" style={{ color: "#7A7068" }}>({googleReviews} · Google)</span>
+                )}
+              </p>
+            ) : null}
             <p className="text-sm mb-1" style={{ color: "#7A7068" }}>
-              Este estudio todavía no está en Massage Club.
+              {t("app.handoff.notRegistered")}
             </p>
             <p className="text-xs mb-5" style={{ color: "#9E9387" }}>
-              This studio isn't on Massage Club yet.
+              {t("app.handoff.notRegisteredSub")}
             </p>
             <p className="text-sm mb-5" style={{ color: "#5a4736" }}>
-              Puedes reservar directamente con ellos:
-              <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>You can book directly with them:</span>
+              {t("app.handoff.bookDirectly")}
+              <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
             </p>
             <div className="flex flex-col items-center gap-3 w-full">
               {waLink ? (
-                <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                  <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Reservar por WhatsApp</span>
-                  <span className="text-xs font-normal opacity-90">Book via WhatsApp</span>
-                </a>
+                <>
+                  <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
+                    <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
+                  </a>
+                  <p className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                </>
               ) : studioNumber ? (
                 <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                  <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
-                  <span className="text-xs font-normal opacity-90">Call the studio</span>
+                  <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
+                  <span className="text-xs font-normal opacity-90">{t("app.handoff.callStudioSub")}</span>
                 </a>
               ) : null}
               {websiteUrl && (
                 <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                  <span>Ver su web</span>
-                  <span className="text-xs font-normal opacity-80">Visit their website</span>
+                  <span>{t("app.handoff.visitWebsite")}</span>
+                  <span className="text-xs font-normal opacity-80">{t("app.handoff.visitWebsiteSub")}</span>
                 </a>
               )}
             </div>
