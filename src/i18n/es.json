@@ -314,6 +314,20 @@
         "subtitle": "{{service}} · último {{date}}",
         "cta": "Reservar de nuevo"
       },
+      "suggest": {
+        "title": "Recomienda un estudio 💆",
+        "subtitle": "¿Has tenido una gran experiencia en un sitio que no está en Massage Club? Cuéntanoslo y lo añadimos.",
+        "studioName": "Nombre del estudio",
+        "area": "Zona o dirección (opcional)",
+        "reason": "¿Por qué lo recomiendas? (opcional)",
+        "submit": "Enviar recomendación",
+        "thanks": "¡Gracias! Revisaremos tu recomendación 💛",
+        "yours": "Tus recomendaciones",
+        "statusNew": "En revisión",
+        "statusAdded": "¡Añadido!"
+      },
+
+
 
       "referral": {
         "title": "Da {{amount}} €, recibe {{amount}} €",
