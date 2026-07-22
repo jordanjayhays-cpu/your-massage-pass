@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search, MapPin, ArrowRight } from "lucide-react";
 import { fetchShops } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
 export default function Home() {
+  const { i18n } = useTranslation();
+  const isSpanish = (i18n.resolvedLanguage || "en").startsWith("es");
   const [shops, setShops] = useState<ShopWithSlug[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
