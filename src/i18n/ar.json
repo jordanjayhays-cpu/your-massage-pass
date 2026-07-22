@@ -1,0 +1,17 @@
+{
+  "app": {
+    "handoff": {
+      "notRegistered": "هذا الاستوديو ليس على Massage Club بعد.",
+      "notRegisteredSub": "This studio isn't on Massage Club yet.",
+      "bookDirectly": "يمكنك الحجز مباشرة معهم:",
+      "bookDirectlySub": "You can book directly with them:",
+      "bookWhatsapp": "احجز عبر واتساب",
+      "bookWhatsappSub": "Book via WhatsApp",
+      "callStudio": "اتصل بالاستوديو",
+      "callStudioSub": "Call the studio",
+      "visitWebsite": "زيارة موقعهم",
+      "visitWebsiteSub": "Visit their website",
+      "waReassurance": "سنكتب رسالتك بالإسبانية نيابة عنك ✍️"
+    }
+  }
+}

@@ -326,9 +326,6 @@
         "statusNew": "Under review",
         "statusAdded": "Added!"
       },
-
-
-
       "referral": {
         "title": "Give €{{amount}}, get €{{amount}}",
         "subtitle": "Share your link. When a friend books, you get €{{amount}} off your next massage.",
@@ -661,6 +658,19 @@
         "button": "Save"
       },
       "feedback": "Share feedback — help us build this"
+    },
+    "handoff": {
+      "notRegistered": "This studio isn't on Massage Club yet.",
+      "notRegisteredSub": "Este estudio todavía no está en Massage Club.",
+      "bookDirectly": "You can book directly with them:",
+      "bookDirectlySub": "Puedes reservar directamente con ellos:",
+      "bookWhatsapp": "Book via WhatsApp",
+      "bookWhatsappSub": "Reservar por WhatsApp",
+      "callStudio": "Call the studio",
+      "callStudioSub": "Llamar al estudio",
+      "visitWebsite": "Visit their website",
+      "visitWebsiteSub": "Ver su web",
+      "waReassurance": "We'll write your message in Spanish for you ✍️"
     }
   }
 }

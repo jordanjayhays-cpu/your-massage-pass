@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search, MapPin, ArrowRight } from "lucide-react";
 import { fetchShops } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
 export default function Home() {
+  const { i18n } = useTranslation();
+  const isSpanish = (i18n.resolvedLanguage || "en").startsWith("es");
   const [shops, setShops] = useState<ShopWithSlug[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -79,6 +83,7 @@ export default function Home() {
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            <LanguageFlagToggle />
             <Link
               to="/partner"
               className="hidden sm:inline-flex h-9 px-4 rounded-full border border-border/80 text-foreground text-[11px] font-bold tracking-[0.12em] uppercase hover:bg-accent transition items-center"
@@ -105,10 +110,14 @@ export default function Home() {
             Massage Club
           </h1>
           <p className="text-base md:text-lg text-foreground mt-2 max-w-2xl leading-snug">
-            Descubre y reserva masajes en los mejores estudios de Madrid. Compara menús y precios reales, reserva online en un minuto y paga directamente en el estudio.
+            {isSpanish
+              ? "Descubre y reserva masajes en los mejores estudios de Madrid. Compara menús y precios reales, reserva online en un minuto y paga directamente en el estudio."
+              : "Discover and book massages at Madrid's best studios — real menus and prices, online booking in a minute, pay at the studio."}
           </p>
           <p className="text-sm md:text-base text-muted-foreground mt-1.5 max-w-2xl">
-            Discover and book massages at Madrid&apos;s best studios — real menus and prices, online booking in a minute, pay at the studio.
+            {isSpanish
+              ? "Discover and book massages at Madrid's best studios — real menus and prices, online booking in a minute, pay at the studio."
+              : "Descubre y reserva masajes en los mejores estudios de Madrid. Compara menús y precios reales, reserva online en un minuto y paga directamente en el estudio."}
           </p>
 
           {/* Search */}
@@ -224,11 +233,18 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           <span className="truncate">{shop.district || shop.address || "Madrid"}</span>
         </div>
 
-        {shop.rating_count != null && shop.rating_count > 0 && shop.rating_avg != null && (
+        {shop.rating_count != null && shop.rating_count > 0 && shop.rating_avg != null ? (
           <p className="text-xs font-semibold text-primary mt-1">
             ★ {shop.rating_avg.toFixed(1)} <span className="text-muted-foreground font-normal">({shop.rating_count})</span>
           </p>
-        )}
+        ) : shop.google_rating != null ? (
+          <p className="text-xs font-semibold text-primary mt-1">
+            ★ {Number(shop.google_rating).toFixed(1)}
+            {shop.google_reviews != null && (
+              <span className="text-muted-foreground font-normal"> ({shop.google_reviews} · Google)</span>
+            )}
+          </p>
+        ) : null}
 
 
         {shop.basePrice != null && (

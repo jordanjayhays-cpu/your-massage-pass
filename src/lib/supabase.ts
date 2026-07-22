@@ -118,6 +118,8 @@ export interface Shop {
   partner_id: string;
   partner_services: ShopService[];
   partner_availability?: Record<string, string[]>;
+  google_rating?: number | null;
+  google_reviews?: number | null;
 }
 
 /** Fetch all active shops with their services from Supabase.
@@ -196,6 +198,8 @@ export async function fetchShops(): Promise<Shop[]> {
       partner_id: p.id,
       partner_services: svcs,
       partner_availability: availabilityByPartner[p.id],
+      google_rating: p.google_rating ?? null,
+      google_reviews: p.google_reviews ?? null,
     });
   }
 
