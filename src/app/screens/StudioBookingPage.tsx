@@ -133,7 +133,7 @@ export default function StudioBookingPage() {
       setName(prev => prev || fullName);
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes")
+.select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes, medical_conditions, medications, avoid_areas, reason_for_visit, is_first_massage, preferred_therapist_gender, emergency_contact_name, emergency_contact_phone, massage_goals")
         .eq("id", user.id)
         .single();
       if (prof) {
@@ -529,6 +529,14 @@ export default function StudioBookingPage() {
         user_id: userId,
         lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
         comfort_prefs: comfortPrefs,
+        contraindications: Array.isArray(customerProfile?.medical_conditions)
+          ? customerProfile.medical_conditions.join(", ")
+          : (customerProfile?.medical_conditions || null),
+        medications: customerProfile?.medications || null,
+        avoid_areas: customerProfile?.avoid_areas || null,
+        reason_for_visit: customerProfile?.reason_for_visit || null,
+        is_first_visit: customerProfile?.is_first_massage ?? null,
+        client_preferences: clientPreferences,
         marketing_opt_in: marketingOptIn,
         marketing_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
       }).select("id").single();
@@ -561,6 +569,14 @@ export default function StudioBookingPage() {
               health_notes: profileHealthNotes || null,
               lang: (localStorage.getItem("mm-lang") || navigator.language || "es").slice(0, 2),
               comfort_prefs: comfortPrefs,
+              contraindications: Array.isArray(customerProfile?.medical_conditions)
+                ? customerProfile.medical_conditions.join(', ')
+                : (customerProfile?.medical_conditions || null),
+              medications: customerProfile?.medications || null,
+              avoid_areas: customerProfile?.avoid_areas || null,
+              reason_for_visit: customerProfile?.reason_for_visit || null,
+              is_first_visit: customerProfile?.is_first_massage ?? null,
+              client_preferences: clientPreferences,
             },
           },
         });
