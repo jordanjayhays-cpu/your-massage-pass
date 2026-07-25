@@ -14,7 +14,11 @@ export default function Home() {
   const isSpanish = (i18n.resolvedLanguage || "en").startsWith("es");
   const [shops, setShops] = useState<ShopWithSlug[]>([]);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("q") ?? ""
+      : ""
+  );
   const [visibleCount, setVisibleCount] = useState(9);
 
   useEffect(() => {
@@ -150,9 +154,12 @@ export default function Home() {
               Cargando estudios…
             </p>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-16 text-sm">
-              No encontramos estudios que coincidan.
-            </p>
+            <div className="space-y-4">
+              <p className="text-center text-muted-foreground py-8 text-sm">
+                No encontramos estudios que coincidan.
+              </p>
+              <InviteStudioCard defaultName={q.trim()} />
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -170,6 +177,7 @@ export default function Home() {
                   </button>
                 </div>
               )}
+              <div className="mt-10 max-w-xl mx-auto"><InviteStudioCard /></div>
             </>
           )}
         </section>
@@ -198,6 +206,62 @@ export default function Home() {
     </div>
   );
 }
+
+function InviteStudioCard({ defaultName = "" }: { defaultName?: string }) {
+  const [name, setName] = useState(defaultName);
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const studio = name.trim();
+    if (studio.length < 2 || sending) return;
+    setSending(true);
+    const { error } = await supabase.from("studio_requests").insert({
+      studio_name: studio,
+      requester_email: email.trim() || null,
+      source: "book.massageclub.io",
+    });
+    setSending(false);
+    if (!error) setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 text-center">
+        <p className="text-sm font-semibold text-primary">Gracias! Invitation queued.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          We'll reach out to them personally.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="bg-card border border-border/60 rounded-2xl shadow-soft p-5">
+      <p className="font-display text-base font-semibold text-foreground">
+        Faltta tu estudio favorito? / Missing your favorite studio?
+      </p>
+      <p className="text-xs text-muted-foreground mt-1 mb-3">
+        Tell us and we'll invite them to join Massage Club.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120}
+          placeholder="Studio name *" required
+          className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" maxLength={160}
+          placeholder="Your email (optional)"
+          className="flex-1 h-10 px-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary" />
+        <button type="submit" disabled={sending}
+          className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold tracking-[0.1em] uppercase hover:opacity-90 transition disabled:opacity-60">
+          {sending ? "..." : "Invite"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 
 function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
   const services = (shop.partner_services ?? []).slice(0, 3);
