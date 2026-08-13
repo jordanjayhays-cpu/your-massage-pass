@@ -973,19 +973,12 @@ function StudioSetupInner() {
               ) : (
                 <div className="space-y-3">
                   {renderHoursEditor()}
-                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
+                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
                     <div>
                       <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
                       <p className="text-xs text-[#7A7068]">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
                     </div>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={capacity}
-                      onChange={e => setCapacity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-                      className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
-                    />
+                    <CapacityChips value={capacity} onChange={setCapacity} />
                   </div>
                   {renderStaffCount()}
                   <Button
