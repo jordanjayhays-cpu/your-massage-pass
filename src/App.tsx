@@ -42,7 +42,7 @@ import BookingResult from "./pages/BookingResult";
 import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
-import TestChips from "./pages/TestChips";
+
 
 
 const queryClient = new QueryClient();
