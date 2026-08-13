@@ -9,7 +9,9 @@ import { supabase } from "@/lib/supabase";
 
 export default function PartnerLogin() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [resetSent, setResetSent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
