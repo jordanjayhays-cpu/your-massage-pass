@@ -97,6 +97,13 @@ export default function Quiz() {
             )}
 
             <Button
+              onClick={() => { window.location.href = `/?q=${encodeURIComponent(winner.name)}`; }}
+              className="w-full h-11"
+            >
+              Find a {winner.name} studio <ChevronRight className="h-4 w-4" />
+            </Button>
+
+            <Button
               variant="outline"
               onClick={reset}
               className="w-full h-11"

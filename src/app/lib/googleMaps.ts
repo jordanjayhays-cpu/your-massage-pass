@@ -43,13 +43,14 @@ export async function loadGoogleMaps(): Promise<typeof google | null> {
     setOptions({
       key,
       v: "weekly",
-      libraries: ["places", "marker", "geometry"],
+      libraries: ["places", "marker", "geometry", "geocoding"],
     });
     await Promise.all([
       importLibrary("maps"),
       importLibrary("places"),
       importLibrary("marker"),
       importLibrary("geometry"),
+      importLibrary("geocoding"),
     ]);
     return google;
   })();
