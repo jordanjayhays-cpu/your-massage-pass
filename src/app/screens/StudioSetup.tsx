@@ -56,6 +56,98 @@ function normalizeService(raw: any): Service {
   };
 }
 
+function CapacityChips({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation();
+  const isSixPlus = value >= 6;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
+            value === n
+              ? "bg-[#B85C38] border-[#B85C38] text-white"
+              : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
+          }`}
+        >
+          {n}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange(isSixPlus ? 6 : Math.max(6, value))}
+        className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
+          isSixPlus
+            ? "bg-[#B85C38] border-[#B85C38] text-white"
+            : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
+        }`}
+      >
+        {t("app.studioHours.chip6Plus")}
+      </button>
+      {isSixPlus && (
+        <input
+          type="number"
+          min={6}
+          max={99}
+          value={value}
+          onChange={e => onChange(Math.max(6, Math.min(99, Number(e.target.value) || 6)))}
+          className="h-11 w-20 px-2 rounded-xl border-2 border-[#B85C38] bg-white text-center font-semibold text-[#2b2b2b] focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40"
+        />
+      )}
+    </div>
+  );
+}
+
+function StaffChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
+  const num = value.trim() === "" ? null : Number(value);
+  const isSixPlus = num !== null && num >= 6;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {[1, 2, 3, 4, 5].map(n => {
+        const selected = num === n;
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(selected ? "" : String(n))}
+            className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
+              selected
+                ? "bg-[#B85C38] border-[#B85C38] text-white"
+                : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
+            }`}
+          >
+            {n}
+          </button>
+        );
+      })}
+      <button
+        type="button"
+        onClick={() => onChange(isSixPlus ? "" : "6")}
+        className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
+          isSixPlus
+            ? "bg-[#B85C38] border-[#B85C38] text-white"
+            : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
+        }`}
+      >
+        {t("app.studioHours.chip6Plus")}
+      </button>
+      {isSixPlus && (
+        <input
+          type="number"
+          min={6}
+          max={99}
+          value={num}
+          onChange={e => onChange(String(Math.max(6, Math.min(99, Number(e.target.value) || 6))))}
+          className="h-11 w-20 px-2 rounded-xl border-2 border-[#B85C38] bg-white text-center font-semibold text-[#2b2b2b] focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40"
+        />
+      )}
+    </div>
+  );
+}
+
 function StudioSetupInner() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
