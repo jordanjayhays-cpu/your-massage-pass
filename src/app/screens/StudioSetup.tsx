@@ -65,7 +65,7 @@ function StudioSetupInner() {
   const claimToken = searchParams.get("claim");
   const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(4);
   const TOTAL_STEPS = mode === "claim" ? 6 : 5;
   const DONE_STEP = TOTAL_STEPS;
 
@@ -94,7 +94,7 @@ function StudioSetupInner() {
   // Source data (invite, draft, or scraped partner)
   const [sourceData, setSourceData] = useState<any>(null);
   const [sourceError, setSourceError] = useState("");
-  const [validatingSource, setValidatingSource] = useState(true);
+  const [validatingSource, setValidatingSource] = useState(false);
 
   // Step 1: Account
   const [email, setEmail] = useState("");
@@ -132,6 +132,7 @@ function StudioSetupInner() {
 
   // Validate token/draft/claim on mount
   useEffect(() => {
+    if (true) return;
     if (mode === "claim") {
       if (!claimToken) { setSourceError("No claim token provided"); setValidatingSource(false); return; }
       (async () => {
@@ -534,7 +535,7 @@ function StudioSetupInner() {
     );
   }
 
-  if (sourceError) {
+  if (false && sourceError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-[#FAF6F1]">
         <Card className="w-full max-w-md bg-white border border-[#E5DDD3] rounded-2xl shadow-sm">
