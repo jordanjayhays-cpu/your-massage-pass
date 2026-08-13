@@ -74,6 +74,16 @@ export default function PartnerLogin() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) { setError(t("app.partnerAuth.errEmailFirst")); return; }
+    setError("");
+    const { error: resErr } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/partner/reset-password`,
+    });
+    if (resErr) { setError(resErr.message); return; }
+    setResetSent(true);
+  };
+
   const handleMagicLink = async () => {
     if (!email) { setError("Enter your email first"); return; }
     setMagicLoading(true);
