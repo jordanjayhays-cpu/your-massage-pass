@@ -56,7 +56,7 @@ function normalizeService(raw: any): Service {
   };
 }
 
-export function CapacityChips({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function CapacityChips({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const { t } = useTranslation();
   const isSixPlus = value >= 6;
   return (
