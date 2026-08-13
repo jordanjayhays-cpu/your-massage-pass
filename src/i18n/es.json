@@ -162,7 +162,7 @@
     },
     "massageList": {
       "profile": "Perfil",
-      "switchToPartner": "Cambiar a Panel de Socio →",
+      "switchToPartner": "Panel de tu estudio →",
       "searchPlaceholder": "Buscar estudios o zonas…",
       "filters": "Filtros",
       "filterAll": "Todos",
@@ -180,7 +180,8 @@
       "madrid": "Madrid",
       "youAreHere": "Estás aquí",
       "minutes": "min",
-      "minutesShort": "m"
+      "minutesShort": "m",
+      "studioCta": "¿Tienes un estudio de masaje? Aparece gratis en Massage Club →"
     },
     "shopDetail": {
       "not_found": "No encontrado.",
@@ -674,6 +675,30 @@
       "visitWebsite": "Ver su web",
       "visitWebsiteSub": "Visit their website",
       "waReassurance": "Te escribimos el mensaje en español ✍️"
+    },
+    "partnerAuth": {
+      "resetTitle": "Crea una contraseña nueva",
+      "resetHelp": "Elige una contraseña nueva para tu cuenta de estudio. Mínimo 8 caracteres.",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirma la contraseña",
+      "savePassword": "Guardar contraseña",
+      "errShort": "La contraseña debe tener al menos 8 caracteres.",
+      "errMismatch": "Las contraseñas no coinciden.",
+      "errEmailFirst": "Introduce tu email primero.",
+      "linkExpired": "Este enlace ha caducado o ya no es válido. Introduce tu email y te enviamos uno nuevo.",
+      "sendNewLink": "Enviarme un enlace nuevo",
+      "resetSent": "Te hemos enviado un enlace para crear una contraseña nueva.",
+      "backToLogin": "Volver a iniciar sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "magicLinkOption": "Entrar sin contraseña (te enviamos un enlace)",
+      "createPasswordTitle": "Crea tu contraseña",
+      "createPasswordWhy": "Con esta contraseña podrás entrar a tu panel cuando quieras, sin depender de enlaces por email.",
+      "createPasswordCta": "Guardar contraseña y continuar",
+      "loginDetailsTitle": "Tus datos de acceso",
+      "loginDetailsUrl": "URL del panel",
+      "loginDetailsEmail": "Email",
+      "passwordSaved": "Contraseña guardada",
+      "stepPassword": "Contraseña"
     }
   }
 }

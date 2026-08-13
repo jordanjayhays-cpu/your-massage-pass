@@ -162,7 +162,7 @@
     },
     "massageList": {
       "profile": "Profile",
-      "switchToPartner": "Switch to Partner Dashboard →",
+      "switchToPartner": "Your studio dashboard →",
       "searchPlaceholder": "Search studios or area…",
       "filters": "Filters",
       "filterAll": "All",
@@ -180,7 +180,8 @@
       "madrid": "Madrid",
       "youAreHere": "You are here",
       "minutes": "min",
-      "minutesShort": "m"
+      "minutesShort": "m",
+      "studioCta": "Do you run a massage studio? Get listed free on Massage Club →"
     },
     "shopDetail": {
       "not_found": "Not found.",
@@ -674,6 +675,30 @@
       "visitWebsite": "Visit their website",
       "visitWebsiteSub": "Ver su web",
       "waReassurance": "We'll write your message in Spanish for you ✍️"
+    },
+    "partnerAuth": {
+      "resetTitle": "Create a new password",
+      "resetHelp": "Choose a new password for your studio account. Minimum 8 characters.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "savePassword": "Save password",
+      "errShort": "Password must be at least 8 characters.",
+      "errMismatch": "Passwords do not match.",
+      "errEmailFirst": "Enter your email first.",
+      "linkExpired": "This link has expired or is no longer valid. Enter your email and we'll send you a new one.",
+      "sendNewLink": "Send me a new link",
+      "resetSent": "We've sent you a link to create a new password.",
+      "backToLogin": "Back to sign in",
+      "forgotPassword": "Forgot your password?",
+      "magicLinkOption": "Sign in without a password (we'll email you a link)",
+      "createPasswordTitle": "Create your password",
+      "createPasswordWhy": "With this password you can access your dashboard whenever you want, without depending on email links.",
+      "createPasswordCta": "Save password & continue",
+      "loginDetailsTitle": "Your login details",
+      "loginDetailsUrl": "Dashboard URL",
+      "loginDetailsEmail": "Email",
+      "passwordSaved": "Password saved",
+      "stepPassword": "Password"
     }
   }
 }
