@@ -100,7 +100,7 @@ function CapacityChips({ value, onChange }: { value: number; onChange: (v: numbe
   );
 }
 
-export function StaffChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function StaffChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useTranslation();
   const num = value.trim() === "" ? null : Number(value);
   const isSixPlus = num !== null && num >= 6;
