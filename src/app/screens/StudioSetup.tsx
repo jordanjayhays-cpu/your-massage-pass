@@ -1,5 +1,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,29 @@ const DAYS = [
 ];
 const DEFAULT_SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
 
+// Selectable opening times: 07:00 → 23:00, plus 00:00 treated as end-of-day close.
+const HOUR_OPTIONS = Array.from({ length: 17 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
+const FROM_OPTIONS = HOUR_OPTIONS;
+const TO_OPTIONS = [...HOUR_OPTIONS.slice(1), "00:00"];
+
+type DayRange = { open: boolean; from: string; to: string };
+const DEFAULT_RANGE: DayRange = { open: true, from: "10:00", to: "21:00" };
+
+const hourToNum = (t: string) => {
+  const h = Number(t.split(":")[0]);
+  return h === 0 ? 24 : h;
+};
+
+/** Expand an open range into hourly slot strings (close hour excluded). */
+function rangeToSlots(r: DayRange): string[] {
+  if (!r.open) return [];
+  const start = hourToNum(r.from);
+  const end = hourToNum(r.to);
+  const out: string[] = [];
+  for (let h = start; h < end; h++) out.push(`${String(h % 24).padStart(2, "0")}:00`);
+  return out;
+}
+
 type Service = { name: string; type: string; duration: number; price: number; description: string };
 
 const emptyService = (): Service => ({ name: "", type: "Swedish", duration: 60, price: 45, description: "" });
@@ -33,6 +57,7 @@ function normalizeService(raw: any): Service {
 }
 
 function StudioSetupInner() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -90,10 +115,15 @@ function StudioSetupInner() {
   const [servicesLoading, setServicesLoading] = useState(false);
 
   // Step 4: Availability (invite mode only)
-  const [availability, setAvailability] = useState<Record<number, string[]>>({
-    1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
+  const [hours, setHours] = useState<Record<number, DayRange>>({
+    1: { ...DEFAULT_RANGE }, 2: { ...DEFAULT_RANGE }, 3: { ...DEFAULT_RANGE }, 4: { ...DEFAULT_RANGE },
+    5: { ...DEFAULT_RANGE }, 6: { ...DEFAULT_RANGE }, 0: { open: false, from: "10:00", to: "21:00" },
   });
+  const availability: Record<number, string[]> = Object.fromEntries(
+    DAYS.map(d => [d.num, rangeToSlots(hours[d.num])])
+  ) as Record<number, string[]>;
   const [capacity, setCapacity] = useState<number>(1);
+  const [staffCount, setStaffCount] = useState<string>("");
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -339,7 +369,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
+      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
@@ -358,7 +388,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
+      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
@@ -401,13 +431,28 @@ function StudioSetupInner() {
   const updateService = (i: number, field: keyof Service, value: any) => {
     const updated = [...services]; updated[i] = { ...updated[i], [field]: value }; setServices(updated);
   };
-  const toggleDay = (day: number) => {
-    setAvailability(prev => ({ ...prev, [day]: prev[day].length > 0 ? [] : [...DEFAULT_SLOTS] }));
+  const setDayRange = (day: number, patch: Partial<DayRange>) => {
+    setHours(prev => {
+      const next = { ...prev[day], ...patch };
+      if (hourToNum(next.to) <= hourToNum(next.from)) {
+        const idx = TO_OPTIONS.findIndex(t => hourToNum(t) > hourToNum(next.from));
+        next.to = TO_OPTIONS[idx >= 0 ? idx : TO_OPTIONS.length - 1];
+      }
+      return { ...prev, [day]: next };
+    });
   };
-  const toggleSlot = (day: number, slot: string) => {
-    setAvailability(prev => ({
-      ...prev, [day]: prev[day].includes(slot) ? prev[day].filter(s => s !== slot) : [...prev[day], slot].sort(),
-    }));
+  const toggleDay = (day: number) => setDayRange(day, { open: !hours[day].open });
+  const copySchedule = (day: number, weekdaysOnly: boolean) => {
+    const src = hours[day];
+    setHours(prev => {
+      const next = { ...prev };
+      for (const d of DAYS) {
+        if (weekdaysOnly && (d.num === 0 || d.num === 6)) next[d.num] = { ...prev[d.num], open: false };
+        else next[d.num] = { ...src };
+      }
+      return next;
+    });
+    toast.success(t("app.studioHours.copied"));
   };
 
   if (validatingSource) {
