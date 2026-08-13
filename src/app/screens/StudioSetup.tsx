@@ -455,6 +455,77 @@ function StudioSetupInner() {
     toast.success(t("app.studioHours.copied"));
   };
 
+  const renderHoursEditor = () => (
+    <div className="space-y-3">
+      <p className="text-sm text-[#7A7068]">{t("app.studioHours.helper")}</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => copySchedule(1, false)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#FAF6F1] border border-[#B85C38] text-[#B85C38] hover:bg-[#F3E9DF]">
+          {t("app.studioHours.copyAll")}
+        </button>
+        <button type="button" onClick={() => copySchedule(1, true)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-[#E5DDD3] text-[#7A7068] hover:bg-[#FAF6F1]">
+          {t("app.studioHours.copyWeekdays")}
+        </button>
+      </div>
+      {DAYS.map(day => {
+        const r = hours[day.num];
+        const count = availability[day.num].length;
+        return (
+          <div key={day.num} className="rounded-xl border border-[#E5DDD3] bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-[#2b2b2b] w-12">{day.label}</span>
+              <button type="button" onClick={() => toggleDay(day.num)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${r.open ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
+                {r.open ? t("app.studioHours.open") : t("app.studioHours.closed")}
+              </button>
+              {r.open ? (
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <select
+                    aria-label={`${day.label} ${t("app.studioHours.from")}`}
+                    value={r.from}
+                    onChange={e => setDayRange(day.num, { from: e.target.value })}
+                    className="h-9 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
+                  >
+                    {FROM_OPTIONS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <span className="text-xs text-[#7A7068]">–</span>
+                  <select
+                    aria-label={`${day.label} ${t("app.studioHours.to")}`}
+                    value={r.to}
+                    onChange={e => setDayRange(day.num, { to: e.target.value })}
+                    className="h-9 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
+                  >
+                    {TO_OPTIONS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <span className="ml-auto text-xs text-[#7A7068]">{t("app.studioHours.closed")}</span>
+              )}
+            </div>
+            {r.open && (
+              <p className="mt-1.5 text-xs text-[#7A7068]">{r.from}–{r.to} · {t("app.studioHours.slots", { count })}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderStaffCount = () => (
+    <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-[#2b2b2b]">{t("app.studioHours.staffTitle")}</p>
+        <p className="text-xs text-[#7A7068]">{t("app.studioHours.staffHelp")} · {t("app.studioHours.staffOptional")}</p>
+      </div>
+      <input
+        type="number"
+        min={1}
+        max={99}
+        value={staffCount}
+        onChange={e => setStaffCount(e.target.value)}
+        className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
+      />
+    </div>
+  );
+
   if (validatingSource) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -747,28 +818,7 @@ function StudioSetupInner() {
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
                 <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Availability</h2>
               </div>
-              <p className="text-sm text-[#7A7068]">Tap a day to toggle on/off. Tap times to adjust.</p>
-              <div className="space-y-3">
-                {DAYS.map(day => (
-                  <div key={day.num}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
-                        {day.label}
-                      </button>
-                      <span className="text-xs text-[#7A7068]">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
-                    </div>
-                    {availability[day.num].length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pl-1">
-                        {DEFAULT_SLOTS.map(slot => (
-                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-[#FAF6F1] text-[#B85C38] border border-[#B85C38]" : "bg-white text-[#7A7068] border border-[#E5DDD3]"}`}>
-                            {slot}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {renderHoursEditor()}
               <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
@@ -783,6 +833,7 @@ function StudioSetupInner() {
                   className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
                 />
               </div>
+              {renderStaffCount()}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
@@ -843,26 +894,7 @@ function StudioSetupInner() {
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-[#7A7068]">Tap a day to toggle on/off. Tap times to adjust.</p>
-                  {DAYS.map(day => (
-                    <div key={day.num}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
-                          {day.label}
-                        </button>
-                        <span className="text-xs text-[#7A7068]">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
-                      </div>
-                      {availability[day.num].length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pl-1">
-                          {DEFAULT_SLOTS.map(slot => (
-                            <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-[#FAF6F1] text-[#B85C38] border border-[#B85C38]" : "bg-white text-[#7A7068] border border-[#E5DDD3]"}`}>
-                              {slot}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {renderHoursEditor()}
                   <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
@@ -877,6 +909,7 @@ function StudioSetupInner() {
                       className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
                     />
                   </div>
+                  {renderStaffCount()}
                   <Button
                     onClick={handleSaveManualAvailability}
                     disabled={manualSaving}
