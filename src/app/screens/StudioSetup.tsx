@@ -602,19 +602,12 @@ function StudioSetupInner() {
   );
 
   const renderStaffCount = () => (
-    <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
+    <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
       <div>
         <p className="text-sm font-medium text-[#2b2b2b]">{t("app.studioHours.staffTitle")}</p>
         <p className="text-xs text-[#7A7068]">{t("app.studioHours.staffHelp")} · {t("app.studioHours.staffOptional")}</p>
       </div>
-      <input
-        type="number"
-        min={1}
-        max={99}
-        value={staffCount}
-        onChange={e => setStaffCount(e.target.value)}
-        className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
-      />
+      <StaffChips value={staffCount} onChange={setStaffCount} />
     </div>
   );
 
