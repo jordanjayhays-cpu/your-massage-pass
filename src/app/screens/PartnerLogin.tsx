@@ -169,6 +169,19 @@ export default function PartnerLogin() {
                     className="pl-10 h-11"
                   />
                 </div>
+                {mode === "login" && (
+                  resetSent ? (
+                    <p className="text-xs text-muted-foreground mt-2">{t("app.partnerAuth.resetSent")}</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-xs text-primary hover:underline mt-2"
+                    >
+                      {t("app.partnerAuth.forgotPassword")}
+                    </button>
+                  )
+                )}
               </div>
 
               {error && (
