@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import {
   Search, MapPin, Phone, Globe, Clock, Euro,
   ChevronRight, ChevronLeft, Check, Loader2,
-  Plus, Trash2, Sparkles, Zap
+  Plus, Trash2, Sparkles, Zap, Calendar
 } from "lucide-react";
 
 // ─── Google Maps key (same one used in PartnerProfile) ───
@@ -58,6 +58,10 @@ export default function PartnerOnboarding() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ─── Step 5: Google Calendar (optional) ───
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [calendarLoading, setCalendarLoading] = useState(false);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -143,33 +147,43 @@ export default function PartnerOnboarding() {
 
   // ─── Count progress ───
   const steps = [
-    { label: "Your Studio", done: !!studio.business_name },
-    { label: "Services", done: services.filter(s => s.name.trim()).length > 0 },
-    { label: "Availability", done: Object.values(availability).some(a => a.length > 0) },
-    { label: "Go Live", done: false },
+    { label: "Tu Studio", done: !!studio.business_name },
+    { label: "Servicios", done: services.filter(s => s.name.trim()).length > 0 },
+    { label: "Disponibilidad", done: Object.values(availability).some(a => a.length > 0) },
+    { label: "Google Calendar", done: googleConnected },
+    { label: "Activar", done: false },
   ];
   const completedSteps = steps.filter(s => s.done).length;
 
   // ─── Submit everything ───
   const handleGoLive = async () => {
-    if (!studio.business_name.trim()) { toast.error("Search and select your studio first"); return; }
-    if (!services.some(s => s.name.trim())) { toast.error("Add at least one service"); return; }
-    if (Object.values(availability).every(a => a.length === 0)) { toast.error("Set your availability"); return; }
-    if (!email || !password) { toast.error("Enter your email and password to go live"); return; }
+    if (!studio.business_name.trim()) { toast.error("Busca y selecciona tu studio primero"); return; }
+    if (!services.some(s => s.name.trim())) { toast.error("Añade al menos un servicio"); return; }
+    if (Object.values(availability).every(a => a.length === 0)) { toast.error("Define tu disponibilidad"); return; }
+    if (!email) { toast.error("Introduce tu email para continuar"); return; }
 
     setLoading(true);
     setError("");
 
     try {
-      // 1. Sign up
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email, password,
-        options: { data: { business_name: studio.business_name } }
-      });
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error("No user returned");
+      // 1. Sign up (only if password provided, otherwise use anonymous session)
+      let userId: string;
 
-      const userId = authData.user.id;
+      if (password && password.length >= 6) {
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email, password,
+          options: { data: { business_name: studio.business_name } }
+        });
+        if (signUpError) throw signUpError;
+        if (!authData.user) throw new Error("No user returned");
+        userId = authData.user.id;
+      } else {
+        // Passwordless: sign in with OTP first, then create partner
+        await supabase.auth.signInWithOtp({ email });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("No user after OTP");
+        userId = user.id;
+      }
 
       // 2. Save partner record
       await supabase.from("partners").upsert({
@@ -208,14 +222,45 @@ export default function PartnerOnboarding() {
         await supabase.from("partner_availability").insert(availRows);
       }
 
-      toast.success("🎉 Your studio is live on Massage Club!");
+      toast.success("🎉 ¡Tu studio está activo en Massage Club!");
       navigate("/partner/dashboard");
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
-      toast.error(err.message || "Something went wrong");
+      setError(err.message || "Algo salió mal");
+      toast.error(err.message || "Algo salió mal");
     } finally {
       setLoading(false);
     }
+  };
+
+  // ─── Connect Google Calendar ───
+  const handleConnectCalendar = async () => {
+    setCalendarLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Inicia sesión primero");
+        navigate("/partner/login");
+        return;
+      }
+
+      const redirectUri = `${window.location.origin}/partner/onboarding?calendar=connected`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUri,
+          scopes: "https://www.googleapis.com/auth/calendar",
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      toast.error(err.message || "Error conectando Google Calendar");
+      setCalendarLoading(false);
+    }
+  };
+
+  // ─── Skip Google Calendar ───
+  const handleSkipCalendar = () => {
+    setGoogleConnected(false);
   };
 
   return (
@@ -226,10 +271,10 @@ export default function PartnerOnboarding() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
             <Zap size={14} />
-            Partner Portal
+            Portal de Partners
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">List your studio</h1>
-          <p className="text-gray-500 text-sm mt-1">Join 50+ spas already on Massage Club</p>
+          <h1 className="text-2xl font-bold text-gray-900">Da de alta tu studio</h1>
+          <p className="text-gray-500 text-sm mt-1">Únete a 50+ spas ya en Massage Club</p>
         </div>
 
         {/* ─── Progress dots ─── */}
@@ -252,10 +297,10 @@ export default function PartnerOnboarding() {
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
                 {studio.business_name ? <Check size={16} /> : "1"}
               </div>
-              <h2 className="font-semibold text-gray-900">Find your studio</h2>
+              <h2 className="font-semibold text-gray-900">Encuentra tu studio</h2>
             </div>
 
-            <p className="text-sm text-gray-500 mb-3">Search and we'll auto-fill your address, phone and hours.</p>
+            <p className="text-sm text-gray-500 mb-3">Busca y autocompletaremos tu dirección, teléfono y horarios.</p>
 
             {/* Search box */}
             <div className="relative" ref={searchRef}>
@@ -322,7 +367,7 @@ export default function PartnerOnboarding() {
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
                 {services.some(s => s.name.trim()) ? <Check size={16} /> : "2"}
               </div>
-              <h2 className="font-semibold text-gray-900">Your services</h2>
+              <h2 className="font-semibold text-gray-900">Tus servicios</h2>
             </div>
 
             <div className="space-y-3">
@@ -340,7 +385,7 @@ export default function PartnerOnboarding() {
                     <input
                       value={svc.name}
                       onChange={e => updateService(i, "name", e.target.value)}
-                      placeholder="Service name"
+                      placeholder="Nombre del servicio"
                       className="col-span-2 text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400"
                     />
                     <select
@@ -376,7 +421,7 @@ export default function PartnerOnboarding() {
               onClick={addService}
               className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1"
             >
-              <Plus size={14} /> Add service
+              <Plus size={14} /> Añadir servicio
             </button>
           </CardContent>
         </Card>
@@ -390,10 +435,10 @@ export default function PartnerOnboarding() {
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
                 {Object.values(availability).some(a => a.length > 0) ? <Check size={16} /> : "3"}
               </div>
-              <h2 className="font-semibold text-gray-900">Availability</h2>
+              <h2 className="font-semibold text-gray-900">Disponibilidad</h2>
             </div>
 
-            <p className="text-sm text-gray-500 mb-3">Tap a day to toggle it on/off. Tap times to adjust.</p>
+            <p className="text-sm text-gray-500 mb-3">Toca un día para activarlo/desactivarlo. Toca las horas para ajustarlas.</p>
 
             <div className="space-y-3">
               {DAYS.map(day => (
@@ -411,8 +456,8 @@ export default function PartnerOnboarding() {
                     </button>
                     <span className="text-xs text-gray-400">
                       {availability[day.num].length > 0
-                        ? `${availability[day.num].length} slots`
-                        : "Closed"}
+                        ? `${availability[day.num].length} horas`
+                        : "Cerrado"}
                     </span>
                   </div>
                   {availability[day.num].length > 0 && (
@@ -439,34 +484,98 @@ export default function PartnerOnboarding() {
         </Card>
 
         {/* ═══════════════════════════════════
-            STEP 4 — ACCOUNT (at the end)
+            STEP 4 — GOOGLE CALENDAR (opcional)
+        ═══════════════════════════════════ */}
+        <Card className="mb-4 border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
+                {googleConnected ? <Check size={16} /> : "4"}
+              </div>
+              <h2 className="font-semibold text-gray-900">Google Calendar</h2>
+              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Opcional</span>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-4">
+              Conecta tu Google Calendar para sincronizar citas automáticamente. Puedes añadir esto más tarde desde tu panel.
+            </p>
+
+            {googleConnected ? (
+              <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <Check size={20} className="text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-green-800">Google Calendar conectado</p>
+                  <p className="text-sm text-green-600">Tus citas se sincronizarán automáticamente</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Button
+                  onClick={handleConnectCalendar}
+                  disabled={calendarLoading}
+                  variant="outline"
+                  className="w-full h-11"
+                >
+                  {calendarLoading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      Conectar Google Calendar
+                    </>
+                  )}
+                </Button>
+
+                <button
+                  onClick={handleSkipCalendar}
+                  className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 transition flex items-center justify-center gap-1"
+                >
+                  <span>Saltar por ahora</span>
+                </button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ═══════════════════════════════════
+            STEP 5 — ACCOUNT (at the end)
         ═══════════════════════════════════ */}
         <Card className="mb-6 border-0 shadow-sm bg-gradient-to-br from-blue-600 to-blue-700">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-sm font-bold">
-                4
+                5
               </div>
-              <h2 className="font-semibold text-white">Create your account</h2>
+              <h2 className="font-semibold text-white">Activa tu studio</h2>
             </div>
 
-            <p className="text-blue-100 text-sm mb-4">You're almost done! Create an account to publish your listing.</p>
+            <p className="text-blue-100 text-sm mb-4">¡Ya casi estás! Crea una cuenta para publicar tu anuncio.</p>
 
             <div className="space-y-3">
               <Input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Your email"
+                placeholder="Tu email"
                 className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400"
               />
               <Input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Create a password"
+                placeholder="Crea una contraseña (opcional)"
                 className="h-11 bg-white/90 border-0 text-gray-900 placeholder:text-gray-400"
               />
+              <p className="text-blue-200 text-xs text-center">
+                Sin contraseña: te enviaremos un código por email
+              </p>
             </div>
 
             {error && (
@@ -480,13 +589,13 @@ export default function PartnerOnboarding() {
                 className="w-full h-12 bg-white text-blue-700 hover:bg-blue-50 font-semibold text-base rounded-xl flex items-center justify-center gap-2"
               >
                 {loading ? (
-                  <><Loader2 size={16} className="animate-spin" /> Publishing…</>
+                  <><Loader2 size={16} className="animate-spin" /> Publicando…</>
                 ) : (
-                  <><Sparkles size={16} /> Publish my listing</>
+                  <><Sparkles size={16} /> Publicar mi anuncio</>
                 )}
               </Button>
               <p className="text-center text-blue-200 text-xs">
-                Commission-only · No upfront cost · Cancel anytime
+                Solo comisión · Sin coste inicial · Cancela cuando quieras
               </p>
             </div>
           </CardContent>
@@ -494,9 +603,9 @@ export default function PartnerOnboarding() {
 
         {/* Already have account? */}
         <p className="text-center text-sm text-gray-500">
-          Already have an account?{" "}
+          ¿Ya tienes cuenta?{" "}
           <button onClick={() => navigate("/partner/login")} className="text-blue-600 font-medium hover:underline">
-            Sign in
+            Inicia sesión
           </button>
         </p>
 
