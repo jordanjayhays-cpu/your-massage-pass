@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Partner Dashboard — Massage Club</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #fff; min-height: 100vh; }
+    
+    .topbar { background: #111118; border-bottom: 1px solid #1e1e2e; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .topbar .logo { font-size: 14px; font-weight: 600; color: #a5b4fc; }
+    .topbar .status { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: #1a1a2e; }
+    .status.pending { color: #fbbf24; border: 1px solid #92400e; }
+    .status.active { color: #34d399; border: 1px solid #065f46; }
+    .topbar .logout { font-size: 12px; color: #555; cursor: pointer; }
+    .topbar .logout:hover { color: #888; }
+
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 20px; }
+    
+    .studio-header { background: #111118; border: 1px solid #1e1e2e; border-radius: 16px; padding: 20px; margin-bottom: 20px; display: flex; gap: 16px; align-items: center; }
+    .studio-avatar { width: 56px; height: 56px; background: linear-gradient(135deg, #6366f1, #7c3aed); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    .studio-info h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .studio-info p { font-size: 13px; color: #666; }
+    
+    .card { background: #111118; border: 1px solid #1e1e2e; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-header h3 { font-size: 15px; font-weight: 600; }
+    .card-header .count { font-size: 12px; color: #555; }
+
+    label { display: block; font-size: 11px; color: #666; margin-bottom: 5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select, textarea { width: 100%; padding: 10px 12px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 8px; color: #fff; font-size: 14px; transition: border-color 0.2s; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; }
+    input:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { margin-bottom: 12px; }
+    .field:last-child { margin-bottom: 0; }
+
+    /* Service rows */
+    .service-row { background: #0a0a0f; border: 1px solid #1a1a28; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .service-row h4 { font-size: 14px; margin-bottom: 8px; color: #e0e0e0; }
+    .service-row .svc-meta { display: flex; gap: 8px; margin-bottom: 8px; }
+    .service-row .svc-meta input { margin-bottom: 0; }
+    .service-row input.svc-name { font-size: 15px; font-weight: 500; }
+    .remove-btn { color: #ef4444; font-size: 12px; cursor: pointer; }
+    .remove-btn:hover { color: #f87171; }
+    
+    /* Days grid */
+    .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 16px; }
+    .day-btn { padding: 8px 4px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 6px; color: #555; font-size: 11px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .day-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .time-slots { display: flex; flex-wrap: wrap; gap: 5px; }
+    .slot-btn { padding: 5px 10px; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 5px; color: #555; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .slot-btn.active { background: #059669; border-color: #059669; color: #fff; }
+
+    /* Stats row */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat { background: #111118; border: 1px solid #1e1e2e; border-radius: 12px; padding: 16px; text-align: center; }
+    .stat .num { font-size: 24px; font-weight: 700; color: #6366f1; }
+    .stat .label { font-size: 11px; color: #555; margin-top: 4px; }
+
+    /* Buttons */
+    .btn { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, #6366f1, #7c3aed); color: #fff; }
+    .btn-primary:hover { box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: #1a1a28; border: 1px solid #2d2d4a; color: #a5b4fc; }
+    .btn-secondary:hover { background: #22223a; }
+    .btn-add { background: transparent; border: 1px dashed #333; color: #666; font-size: 12px; padding: 8px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 8px; }
+    .btn-add:hover { border-color: #6366f1; color: #a5b4fc; }
+
+    /* Login screen */
+    .login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { background: #111118; border: 1px solid #1e1e2e; border-radius: 20px; padding: 40px; max-width: 400px; width: 100%; text-align: center; }
+    .login-card h1 { font-size: 22px; margin-bottom: 8px; }
+    .login-card p { color: #666; font-size: 14px; margin-bottom: 24px; }
+    .login-card input { text-align: center; margin-bottom: 12px; }
+    .login-card .btn { width: 100%; margin-top: 8px; }
+
+    /* Success */
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #059669; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast.error { background: #dc2626; }
+
+    .hidden { display: none !important; }
+    
+    .section-title { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 10px; }
+  </style>
+</head>
+<body>
+
+<!-- Login screen -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div style="font-size: 40px; margin-bottom: 16px;">🏆</div>
+    <h1>Partner Dashboard</h1>
+    <p>Enter your studio email to access your dashboard</p>
+    <input type="email" id="login-email" placeholder="studio@example.com">
+    <input type="email" id="login-email-confirm" placeholder="Confirm email" style="display:none;">
+    <button class="btn btn-primary" id="login-btn" onclick="login()">Access Dashboard</button>
+    <p style="font-size:11px;color:#444;margin-top:16px;line-height:1.5;">No account yet? Fill out the <a href="/" style="color:#6366f1;">partner onboarding form</a> first.</p>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="hidden">
+  <div class="topbar">
+    <span class="logo">🏆 Massage Club Partners</span>
+    <span class="status" id="status-badge">Pending</span>
+    <span class="logout" onclick="logout()">Switch studio ↩</span>
+  </div>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="num" id="stat-services">—</div><div class="label">Services</div></div>
+      <div class="stat"><div class="num" id="stat-bookings">0</div><div class="label">Bookings</div></div>
+      <div class="stat"><div class="num" id="stat-views">—</div><div class="label">Profile Views</div></div>
+    </div>
+
+    <!-- Studio info -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Studio Info</h3>
+        <button class="btn btn-secondary" onclick="saveStudio()">Save Changes</button>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Studio Name</label>
+          <input type="text" id="s-name" disabled>
+        </div>
+        <div class="field">
+          <label>Contact Name</label>
+          <input type="text" id="s-contact" disabled>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="s-email" disabled>
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" id="s-phone">
+        </div>
+      </div>
+      <div class="field">
+        <label>Address</label>
+        <input type="text" id="s-address">
+      </div>
+      <div class="field">
+        <label>Bio</label>
+        <textarea id="s-desc" rows="2" placeholder="Tell customers what makes your studio special..."></textarea>
+      </div>
+      <div class="field">
+        <label>Calendly URL</label>
+        <input type="url" id="s-calendly" placeholder="https://calendly.com/yourstudio">
+        <p style="font-size:11px;color:#444;margin-top:4px;">Update this when your availability changes — customers will be redirected here to confirm bookings.</p>
+      </div>
+    </div>
+
+    <!-- Services -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Services</h3>
+        <span class="count" id="svc-count">0 services</span>
+      </div>
+      <div id="services-list"></div>
+      <button class="btn-add" onclick="addService()">+ Add service</button>
+    </div>
+
+    <!-- Availability -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Availability</h3>
+        <button class="btn btn-secondary" onclick="saveAvailability()">Save Schedule</button>
+      </div>
+      
+      <label>Days open</label>
+      <div class="days-grid" id="days-grid"></div>
+      
+      <label>Time slots</label>
+      <div id="time-slots-container"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card" style="text-align:center;">
+      <h3 style="margin-bottom:8px;">Preview your listing</h3>
+      <p style="color:#666;font-size:13px;margin-bottom:16px;">See how customers see your studio in the app</p>
+      <a href="/" target="_blank" class="btn btn-secondary" style="text-decoration:none;">Open Customer App ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://jglftdstrowwckwqmpue.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImplbGZ0ZHN0cm93d2Nrd3FtcHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwNzI1MTUsImV4cCI6MjA2MTY0ODUxNX0.demo_key_replace_with_real_anon_key';
+
+let partnerId = null;
+let partnerData = null;
+let selectedDays = [];
+let allSlots = new Set();
+
+function $(id) { return document.getElementById(id); }
+
+function toast(msg, isError=false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '') + ' show';
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+async function login() {
+  const email = $('login-email').value.trim();
+  if (!email) return alert('Enter your studio email');
+  
+  try {
+    // Search for partner by email
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/partners?email=eq.${encodeURIComponent(email)}&select=*`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const data = await res.json();
+    
+    if (!data || data.length === 0) {
+      alert('No studio found with that email. Complete the onboarding form first.');
+      return;
+    }
+    
+    partnerData = data[0];
+    partnerId = partnerData.id;
+    localStorage.setItem('mc_partner_email', email);
+    
+    showDashboard();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+function logout() {
+  localStorage.removeItem('mc_partner_email');
+  partnerId = null;
+  partnerData = null;
+  $('dashboard').classList.add('hidden');
+  $('login-screen').classList.remove('hidden');
+  $('login-email').value = '';
+}
+
+async function showDashboard() {
+  $('login-screen').classList.add('hidden');
+  $('dashboard').classList.remove('hidden');
+  
+  // Status badge
+  const badge = $('status-badge');
+  badge.textContent = partnerData.status === 'active' ? 'Active' : 'Pending Review';
+  badge.className = 'status ' + (partnerData.status === 'active' ? 'active' : 'pending');
+  
+  // Fill studio info
+  $('s-name').value = partnerData.studio_name || '';
+  $('s-contact').value = partnerData.contact_name || '';
+  $('s-email').value = partnerData.email || '';
+  $('s-phone').value = partnerData.phone || '';
+  $('s-address').value = partnerData.address || '';
+  $('s-desc').value = partnerData.description || '';
+  $('s-calendly').value = partnerData.calendly_url || '';
+  
+  await loadServices();
+  await loadAvailability();
+}
+
+async function loadServices() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/partner_services?partner_id=eq.${partnerId}&order=name`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  const services = await res.json();
+  $('stat-services').textContent = services.length;
+  $('svc-count').textContent = services.length + ' services';
+  
+  const container = $('services-list');
+  container.innerHTML = '';
+  
+  if (services.length === 0) {
+    addServiceUI({ name: '', price: '', duration: '', description: '' }, null);
+  } else {
+    services.forEach(svc => addServiceUI(svc, svc.id));
+  }
+}
+
+function addServiceUI(data, id) {
+  const container = $('services-list');
+  const div = document.createElement('div');
+  div.className = 'service-row';
+  div.innerHTML = `
+    <h4>Service</h4>
+    <input type="hidden" class="svc-id" value="${id || ''}">
+    <input type="text" class="svc-name" placeholder="Service name" value="${data.name || ''}" style="margin-bottom:8px;">
+    <div class="svc-meta">
+      <input type="number" class="svc-price" placeholder="Price (€)" value="${data.price || ''}">
+      <input type="number" class="svc-duration" placeholder="Minutes" value="${data.duration || ''}">
+    </div>
+    <input type="text" class="svc-desc" placeholder="Description (optional)" value="${data.description || ''}">
+    ${id ? '<span class="remove-btn" onclick="removeService(this)">Remove</span>' : ''}
+  `;
+  container.appendChild(div);
+}
+
+function addService() {
+  addServiceUI({ name: '', price: '', duration: '', description: '' }, null);
+}
+
+async function removeService(el) {
+  const row = el.closest('.service-row');
+  const id = row.querySelector('.svc-id').value;
+  if (id) {
+    await fetch(`${SUPABASE_URL}/rest/v1/partner_services?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+  }
+  row.remove();
+  const count = document.querySelectorAll('.service-row').length;
+  $('stat-services').textContent = count;
+  $('svc-count').textContent = count + ' services';
+}
+
+async function loadAvailability() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/partner_availability?partner_id=eq.${partnerId}&order=time_slot`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  const slots = await res.json();
+  
+  selectedDays = [...new Set(slots.map(s => s.day_of_week))];
+  allSlots = new Set(slots.map(s => s.time_slot));
+  
+  renderDays();
+  renderTimeSlots();
+}
+
+function renderDays() {
+  const container = $('days-grid');
+  container.innerHTML = '';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((name, i) => {
+    const day = i === 6 ? 0 : i + 1;
+    const btn = document.createElement('div');
+    btn.className = 'day-btn' + (selectedDays.includes(day) ? ' active' : '');
+    btn.textContent = name;
+    btn.dataset.day = day;
+    btn.onclick = () => {
+      btn.classList.toggle('active');
+      const d = parseInt(btn.dataset.day);
+      if (btn.classList.contains('active')) selectedDays.push(d);
+      else selectedDays = selectedDays.filter(x => x !== d);
+    };
+    container.appendChild(btn);
+  });
+}
+
+function renderTimeSlots() {
+  const container = $('time-slots-container');
+  container.innerHTML = '';
+  
+  const groups = [
+    { label: 'Morning', hours: [9,10,11,12] },
+    { label: 'Afternoon', hours: [14,15,16] },
+    { label: 'Evening', hours: [17,18,19] }
+  ];
+  
+  groups.forEach(group => {
+    const groupDiv = document.createElement('div');
+    groupDiv.style.marginBottom = '12px';
+    const title = document.createElement('p');
+    title.style.fontSize = '11px';
+    title.style.color = '#444';
+    title.style.marginBottom = '6px';
+    title.style.textTransform = 'uppercase';
+    title.textContent = group.label;
+    groupDiv.appendChild(title);
+    
+    const slotsDiv = document.createElement('div');
+    slotsDiv.className = 'time-slots';
+    
+    group.hours.forEach(h => {
+      ['00', '30'].forEach(m => {
+        const t = `${h.toString().padStart(2,'0')}:${m}`;
+        const btn = document.createElement('div');
+        btn.className = 'slot-btn' + (allSlots.has(t) ? ' active' : '');
+        btn.textContent = t;
+        btn.dataset.time = t;
+        btn.onclick = () => {
+          btn.classList.toggle('active');
+          if (btn.classList.contains('active')) allSlots.add(t);
+          else allSlots.delete(t);
+        };
+        slotsDiv.appendChild(btn);
+      });
+    });
+    
+    groupDiv.appendChild(slotsDiv);
+    container.appendChild(groupDiv);
+  });
+}
+
+async function saveStudio() {
+  const phone = $('s-phone').value.trim();
+  const address = $('s-address').value.trim();
+  const description = $('s-desc').value.trim();
+  const calendly_url = $('s-calendly').value.trim();
+  
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${partnerId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify({ phone, address, description, calendly_url: calendly_url || null })
+    });
+    
+    if (!res.ok) throw new Error(await res.text());
+    toast('Studio info saved ✓');
+  } catch (e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
+async function saveAvailability() {
+  if (selectedDays.length === 0) { toast('Select at least one day', true); return; }
+  if (allSlots.size === 0) { toast('Select at least one time slot', true); return; }
+  
+  try {
+    // Delete existing
+    await fetch(`${SUPABASE_URL}/rest/v1/partner_availability?partner_id=eq.${partnerId}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    
+    // Insert new
+    const payload = [];
+    for (const day of selectedDays) {
+      for (const slot of Array.from(allSlots)) {
+        payload.push({ partner_id: partnerId, day_of_week: day, time_slot: slot });
+      }
+    }
+    
+    await Promise.all(payload.map(a =>
+      fetch(`${SUPABASE_URL}/rest/v1/partner_availability`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify(a)
+      })
+    ));
+    
+    toast('Availability saved ✓');
+  } catch (e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
+// Auto-login if email saved
+const savedEmail = localStorage.getItem('mc_partner_email');
+if (savedEmail) {
+  $('login-email').value = savedEmail;
+  login();
+}
+</script>
+</body>
+</html>

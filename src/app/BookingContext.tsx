@@ -1,13 +1,17 @@
 import { createContext, useContext, useState, ReactNode } from "react";
+import type { Shop } from "@/lib/supabase";
+import type { Massage } from "./data";
 
 type BookingState = {
   massageId: string | null;
+  shop: Shop | Massage | null; // full shop object for real shops
   date: string | null;
   time: string | null;
   pressure: string;
   focusAreas: string[];
   addOns: string[];
   notes: string;
+  conversation: string;
 };
 
 type Ctx = BookingState & {
@@ -19,12 +23,14 @@ type Ctx = BookingState & {
 
 const initial: BookingState = {
   massageId: null,
+  shop: null,
   date: null,
   time: null,
   pressure: "Medium",
   focusAreas: [],
   addOns: [],
   notes: "",
+  conversation: "",
 };
 
 const BookingCtx = createContext<Ctx | null>(null);

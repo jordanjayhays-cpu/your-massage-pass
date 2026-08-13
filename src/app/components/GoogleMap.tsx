@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { MarkerClusterer, type Cluster } from "@googlemaps/markerclusterer";
 
 type Props = {
   massages: Massage[];
@@ -34,6 +35,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
   const mapInstance = useRef<google.maps.Map | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const studioMarkersRef = useRef<google.maps.Marker[]>([]);
+  const clustererRef = useRef<MarkerClusterer | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   const [keyConfigured, setKeyConfigured] = useState(hasGoogleMapsKey());
@@ -76,7 +78,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
       zoom: 14,
       disableDefaultUI: true,
       zoomControl: true,
-      gestureHandling: "greedy",
+      gestureHandling: "cooperative",
       styles: madridMapStyle,
     });
     infoWindowRef.current = new google.maps.InfoWindow();
@@ -174,16 +176,20 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
     const map = mapInstance.current;
 
     // Clear existing
+    if (clustererRef.current) {
+      clustererRef.current.clearMarkers();
+      clustererRef.current.setMap(null);
+      clustererRef.current = null;
+    }
     studioMarkersRef.current.forEach((m) => m.setMap(null));
     studioMarkersRef.current = [];
 
-    massages.forEach((m) => {
+    const markers: google.maps.Marker[] = massages.map((m) => {
       const isActive = active === m.id;
       const marker = new google.maps.Marker({
         position: { lat: m.lat, lng: m.lng },
-        map,
         title: m.studio,
-        icon: makeMarkerIcon(isActive),
+        icon: makeMarkerIcon(isActive, getStudioIcon(m.studio)),
       });
       marker.addListener("click", () => {
         setActive(m.id);
@@ -192,7 +198,28 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
           infoWindowRef.current.open({ map, anchor: marker });
         }
       });
-      studioMarkersRef.current.push(marker);
+      return marker;
+    });
+    studioMarkersRef.current = markers;
+
+    clustererRef.current = new MarkerClusterer({
+      map,
+      markers,
+      renderer: {
+        render: ({ count, position }: Cluster) => {
+          const size = 44 + Math.min(count, 20);
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="#B85C38" stroke="white" stroke-width="3"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${size / 2.6}" font-family="system-ui,sans-serif" font-weight="700" fill="white">${count}</text></svg>`;
+          return new google.maps.Marker({
+            position,
+            icon: {
+              url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+              scaledSize: new google.maps.Size(size, size),
+              anchor: new google.maps.Point(size / 2, size / 2),
+            },
+            zIndex: 100 + count,
+          });
+        },
+      },
     });
   }, [mapsReady, massages, active]);
 
@@ -324,7 +351,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
       <div
         className={cn(
           "relative overflow-hidden bg-secondary",
-          compact ? "h-72 rounded-2xl border border-border" : "flex-1",
+          compact ? "h-72 rounded-3xl border border-border shadow-soft" : "flex-1",
         )}
       >
         {mapsError && (
@@ -406,16 +433,33 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
 
 // ---- Helpers ----
 
-function makeMarkerIcon(active: boolean): google.maps.Icon | google.maps.Symbol {
-  // Crimson primary (354, 78%, 36%) → #A21228 ; Gold accent → #E8B130
+const STUDIO_ICONS: Record<string, string> = {
+  "Casa Cibeles": "🧖‍♀️",
+  "El Retiro Wellness": "💆",
+  "Salamanca Spa Real": "🔥",
+  "Chamberí Manos": "🏃",
+  "Malasaña Holístico": "🪷",
+  "La Latina Termas": "🌊",
+};
+
+function getStudioIcon(studio: string): string {
+  for (const [key, icon] of Object.entries(STUDIO_ICONS)) {
+    if (studio.includes(key.split(" ")[0])) return icon;
+  }
+  return "💆";
+}
+
+function makeMarkerIcon(active: boolean, emoji: string = "💆"): google.maps.Icon {
+  const size = active ? 52 : 42;
   return {
-    path: "M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z",
-    fillColor: active ? "#E8B130" : "#A21228",
-    fillOpacity: 1,
-    strokeColor: "#fff",
-    strokeWeight: 2,
-    scale: active ? 1.4 : 1.1,
-    anchor: new google.maps.Point(12, 36),
+    url: `data:image/svg+xml,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 26 : 20}">${emoji}</text>
+      </svg>`,
+    )}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size / 2),
   };
 }
 
@@ -424,7 +468,7 @@ function buildInfoContent(m: Massage) {
     <div style="font-family: system-ui, sans-serif; max-width: 220px;">
       <img src="${m.image}" alt="" style="width:100%; height:90px; object-fit:cover; border-radius:8px; margin-bottom:8px;" />
       <div style="font-weight:700; font-size:14px; color:#1a0709;">${m.studio}</div>
-      <div style="font-size:12px; color:#A21228; font-weight:600;">${m.name}</div>
+      <div style="font-size:12px; color:#C4622D; font-weight:600;">${m.name}</div>
       <div style="font-size:11px; color:#666; margin-top:4px;">${m.district} · ${m.duration} min · ★ ${m.rating}</div>
     </div>
   `;

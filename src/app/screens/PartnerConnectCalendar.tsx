@@ -39,22 +39,32 @@ export default function PartnerConnectCalendar() {
 
     const { data } = await supabase
       .from("partners")
-      .select("business_name, google_calendar_connected, google_calendar_id, auto_confirm_bookings")
+      .select("id, business_name, google_calendar_connected, google_calendar_id, auto_confirm_bookings")
       .eq("id", user.id)
       .single();
 
-    setPartner(data);
+    // Make sure we always have the studio id for the OAuth "state" (fixes state=undefined).
+    setPartner(data ? { ...data, id: data.id ?? user.id } : { id: user.id } as any);
     setLoading(false);
   };
 
   const handleConnect = () => {
     if (!partner) return;
+
+    // 👇 PASTE YOUR GOOGLE OAUTH CLIENT ID between the quotes (ends in .apps.googleusercontent.com)
+    const clientId =
+      (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
+      "550114079110-p1asbhmkpiv3q4l0oa8uvsh4osou4994.apps.googleusercontent.com";
+
+    if (clientId.startsWith("PASTE_")) {
+      toast.error("Google isn't set up yet — add your Google Client ID first.");
+      return;
+    }
     setConnecting(true);
 
-    // Build Google OAuth URL
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID";
-    const redirectUri = `${window.location.origin}/partner/connect-calendar`;
-    const state = partner.id;
+    // Google must redirect to the Supabase function (it exchanges the code for tokens).
+    const redirectUri = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/google-calendar-oauth?apikey=sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
+    const state = partner.id; // so the function knows which studio to save tokens for
 
     const scopes = [
       "https://www.googleapis.com/auth/calendar.readonly",

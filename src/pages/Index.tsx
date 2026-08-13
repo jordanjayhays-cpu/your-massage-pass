@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star } from "lucide-react";
+import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star, Store } from "lucide-react";
 import madridHero from "@/assets/madrid-hero.jpg";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { saveLead } from "@/lib/supabase";
@@ -23,6 +24,7 @@ const SHOPS = [
 
 const Index = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -34,10 +36,17 @@ const Index = () => {
     }
     setLoading(true);
     const ok = await saveLead(email, "", "landing_page");
+    // Prefill the in-app signup so they can finish creating an account
+    try {
+      const existing = JSON.parse(localStorage.getItem("mm-user") || "null") || {};
+      localStorage.setItem("mm-user", JSON.stringify({ ...existing, email: email.trim() }));
+    } catch {
+      localStorage.setItem("mm-user", JSON.stringify({ email: email.trim() }));
+    }
     setLoading(false);
     if (ok) {
-      toast.success("You're in! Check your email for next steps.");
-      setEmail("");
+      toast.success("Let's finish setting up your account.");
+      navigate("/app");
     } else {
       toast.error("Something went wrong. Try again.");
     }
@@ -45,7 +54,7 @@ const Index = () => {
 
   const stats = [
     { n: "8+", l: t("stats.studios") },
-    { n: "€79", l: t("stats.price") },
+    { n: "0€", l: t("stats.price") },
     { n: "∞", l: t("stats.massages") },
     { n: "9", l: t("stats.districts") },
   ];
@@ -57,14 +66,14 @@ const Index = () => {
   ];
 
   const features = [
-    "Unlimited massages per month",
-    "Access all 8+ partner studios",
-    "Same-day booking available",
-    "Cancel anytime — no questions",
+    "Real menus and prices per studio",
+    "Browse all 8+ listed studios",
+    "Opening hours and locations",
+    "Free to browse — no account",
     "Your preferences saved everywhere",
-    "Automated reminders (SMS + email)",
-    "Referral credits (€10 per friend)",
-    "Instant booking confirmation",
+    "Save the studios you like",
+    "Share studios with friends",
+    "Direct contact for every studio",
   ];
 
   const faqs = [1, 2, 3, 4].map((i) => ({ q: t(`faq.q${i}`), a: t(`faq.a${i}`) }));
@@ -73,35 +82,35 @@ const Index = () => {
   const platformFeatures = [
     {
       icon: Bell,
-      title: "Automated reminders",
-      titleEs: "Recordatorios automáticos",
-      desc: "Never miss an appointment. We send you SMS + email reminders 24h and 1h before — like Fresha and Jane App do.",
-      descEs: "Nunca pierdas una cita. Te enviamos recordatorios por SMS y email 24h y 1h antes.",
-      highlight: "No more no-shows"
+      title: "Always up to date",
+      titleEs: "Siempre actualizado",
+      desc: "Menus, prices, hours and locations kept current, so you know exactly what to expect before you get in touch with a studio.",
+      descEs: "Menús, precios, horarios y ubicaciones siempre al día, antes de contactar.",
+      highlight: "No surprises"
     },
     {
       icon: User,
       title: "Your personal profile",
       titleEs: "Tu perfil personal",
-      desc: "Your massage history, preferred pressure, allergies, favorite therapists — all saved in one place. Book anywhere and your preferences follow you.",
+      desc: "Your massage notes, preferred pressure, allergies, favorite studios — all saved in one place. Browse anywhere and your preferences follow you.",
       descEs: "Tu historial de masajes, presión preferida, alergias, terapeutas favoritos — todo en un solo lugar.",
       highlight: "Preferences travel with you"
     },
     {
       icon: Gift,
-      title: "Referral credits",
-      titleEs: "Créditos por referrals",
-      desc: "Share with a friend. They get €10 off their first month. You get €10 credit. Everyone wins — modeled after Fresha's referral system.",
-      descEs: "Recomienda a un amigo. Ellos reciben €10 de descuento en su primer mes. Tú recibes €10 de crédito.",
-      highlight: "€10 for you, €10 for them"
+      title: "Share a find",
+      titleEs: "Comparte un hallazgo",
+      desc: "Found a studio you love? Share it in a tap. Your friends see the same menu, prices and contact details you do. Everyone wins.",
+      descEs: "¿Un estudio que te encanta? Compártelo. Verán el mismo menú, precios y contacto que tú.",
+      highlight: "One tap to share"
     },
     {
       icon: Star,
-      title: "Instant booking",
-      titleEs: "Reserva instantánea",
-      desc: "Real-time availability at every partner studio. Book in 2 taps. Get confirmed instantly — no phone calls, no waiting.",
-      descEs: "Disponibilidad en tiempo real en cada estudio parceiro. Reserva en 2 clics. Confirmación instantánea.",
-      highlight: "2 taps. Done."
+      title: "How booking works",
+      titleEs: "Cómo reservar",
+      desc: "Every listing shows how the studio takes bookings. Follow the studio's instructions and book directly with them.",
+      descEs: "Cada ficha muestra cómo reserva cada estudio. Sigue sus indicaciones y reserva directamente con ellos.",
+      highlight: "Straight to the studio"
     },
   ];
 
@@ -126,13 +135,17 @@ const Index = () => {
           </nav>
           <div className="flex items-center gap-2">
             <LanguageToggle />
-            <Button asChild variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
               <a href="/app">Open app</a>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="border-accent/60 bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
+              <a href="/partner/onboarding">For Studios</a>
             </Button>
             <Button asChild variant="secondary" size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-gold">
               <a href="#join">{t("nav.join")}</a>
             </Button>
           </div>
+
         </div>
       </header>
 
@@ -149,7 +162,21 @@ const Index = () => {
 
         <div className="container relative z-10 pt-32 pb-20">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-foreground/30 backdrop-blur-sm px-4 py-1.5 mb-8">
+            <Button
+              asChild
+              size="lg"
+              className="mb-5 h-auto min-h-14 w-full max-w-md justify-start gap-3 bg-accent px-5 py-3 text-left text-accent-foreground shadow-gold hover:bg-accent/90 sm:w-auto"
+            >
+              <a href="/partner/onboarding" aria-label="Open massage studio partner onboarding form">
+                <Store className="h-5 w-5 shrink-0" />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm font-bold">Massage studio?</span>
+                  <span className="text-xs font-medium opacity-90">Open the partner onboarding form →</span>
+                </span>
+              </a>
+            </Button>
+
+            <div className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-foreground/30 backdrop-blur-sm px-4 py-1.5 mb-6">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
               <span className="text-xs font-medium uppercase tracking-widest text-primary-foreground">
                 {t("hero.badge")}
@@ -161,7 +188,7 @@ const Index = () => {
               <span className="block italic font-normal text-accent">{t("hero.title2")}</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-primary-foreground/85 max-w-2xl mb-10 text-balance leading-relaxed">
+            <p className="text-lg md:text-xl text-primary-foreground/85 max-w-2xl mb-6 text-balance leading-relaxed">
               {t("hero.subtitle")}
             </p>
 
@@ -175,22 +202,24 @@ const Index = () => {
                   className="h-12 bg-background/95 border-0 text-foreground placeholder:text-muted-foreground"
                   aria-label="Email"
                 />
-                <Button type="submit" size="lg" className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
-                  {t("hero.cta")}
+                <Button type="submit" size="lg" disabled={loading} className="h-12 bg-gradient-gold text-foreground hover:opacity-90 shadow-gold font-semibold whitespace-nowrap">
+                  {loading ? "…" : "Get started"}
                 </Button>
               </form>
               <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
-                Book now →
+                Browse studios →
               </a>
             </div>
+
+            <p className="text-xs text-primary-foreground/70 mt-3">
+              New here? Enter your email above and we'll keep you posted on new studios.
+            </p>
+
 
             <div className="flex flex-wrap items-center gap-6 mt-8 text-sm text-primary-foreground/80">
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.noCommitment")}</div>
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.cancel")}</div>
               <div className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" /> {t("hero.perks.launch")}</div>
-              <a href="/partner/onboarding" className="flex items-center gap-2 ml-4 text-accent font-semibold hover:text-accent/80 transition-colors">
-                Are you a studio? List here →
-              </a>
             </div>
           </div>
         </div>
@@ -276,10 +305,10 @@ const Index = () => {
           <div className="max-w-2xl mb-16">
             <p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">What you get</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground text-balance">
-              Everything the best booking platforms offer — in one membership
+              Everything you need to choose a studio — in one directory
             </h2>
             <p className="text-muted-foreground mt-4 text-lg">
-              We studied Fresha, Jane App, Booksy and Mindbody. Then we put everything that matters into Massage Club — and made it simple.
+              We looked at how people actually pick a massage in Madrid. Then we put everything that matters into Massage Club — and made it simple.
             </p>
           </div>
 
@@ -313,7 +342,7 @@ const Index = () => {
 
             <Card className="p-10 bg-card/95 backdrop-blur text-foreground border-accent/30 shadow-elegant mt-12 text-left">
               <div className="flex items-baseline gap-2 mb-2">
-                <span className="font-display text-6xl font-bold text-primary">€79</span>
+                <span className="font-display text-6xl font-bold text-primary">Free</span>
                 <span className="text-muted-foreground">{t("pricing.perMonth")}</span>
               </div>
               <p className="text-sm text-muted-foreground mb-8">{t("pricing.founder")}</p>
