@@ -41,7 +41,30 @@ function StudioSetupInner() {
   const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = mode === "claim" ? 6 : 5;
+  const DONE_STEP = TOTAL_STEPS;
+
+  // Password creation (claim mode)
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwDone, setPwDone] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+
+  const handleCreatePassword = async () => {
+    setPwError("");
+    if (newPassword.length < 8) { setPwError("La contraseña debe tener al menos 8 caracteres / Password must be at least 8 characters."); return; }
+    if (newPassword !== newPassword2) { setPwError("Las contraseñas no coinciden / Passwords do not match."); return; }
+    setPwSaving(true);
+    const { error: pwErr } = await supabase.auth.updateUser({ password: newPassword });
+    setPwSaving(false);
+    if (pwErr) { setPwError(pwErr.message); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    setAccountEmail(user?.email ?? "");
+    setPwDone(true);
+    toast.success("Contraseña guardada");
+  };
 
   // Source data (invite, draft, or scraped partner)
   const [sourceData, setSourceData] = useState<any>(null);
@@ -411,9 +434,11 @@ function StudioSetupInner() {
     );
   }
 
-  const stepLabels = mode === "draft" || mode === "claim"
-    ? ["Sign in", "Review", "Services", "Calendar", "Live"]
-    : ["Account", "Profile", "Services", "Hours", "Done"];
+  const stepLabels = mode === "claim"
+    ? ["Sign in", "Review", "Services", "Calendar", "Password", "Live"]
+    : mode === "draft"
+      ? ["Sign in", "Review", "Services", "Calendar", "Live"]
+      : ["Account", "Profile", "Services", "Hours", "Done"];
 
   const isReviewMode = mode === "draft" || mode === "claim";
 
@@ -832,8 +857,72 @@ function StudioSetupInner() {
           </Card>
         )}
 
-        {/* STEP 5: DONE */}
-        {step === 5 && (
+        {/* STEP 5 (claim): CREATE PASSWORD */}
+        {step === 5 && mode === "claim" && (
+          <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">5</div>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Crea tu contraseña / Create your password</h2>
+              </div>
+              <p className="text-sm text-[#7A7068]">
+                Con esta contraseña podrás entrar a tu panel cuando quieras, sin depender de enlaces por email.
+              </p>
+
+              {pwDone ? (
+                <>
+                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 space-y-2">
+                    <p className="text-sm font-semibold text-[#2b2b2b]">Tus datos de acceso / Your login details</p>
+                    <p className="text-sm text-[#2b2b2b]">
+                      <span className="text-[#7A7068]">URL: </span>
+                      <span className="font-semibold">book.massageclub.io/partner/login</span>
+                    </p>
+                    <p className="text-sm text-[#2b2b2b]">
+                      <span className="text-[#7A7068]">Email: </span>
+                      <span className="font-semibold">{accountEmail}</span>
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setStep(DONE_STEP)}
+                    className="w-full h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
+                  >
+                    Continuar <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="Contraseña (mín. 8 caracteres)"
+                    className="h-11 bg-white border-[#E5DDD3]"
+                  />
+                  <Input
+                    type="password"
+                    value={newPassword2}
+                    onChange={e => setNewPassword2(e.target.value)}
+                    placeholder="Repite la contraseña"
+                    className="h-11 bg-white border-[#E5DDD3]"
+                  />
+                  {pwError && (
+                    <p className="text-sm text-red-600 bg-red-500/10 p-3 rounded-xl">{pwError}</p>
+                  )}
+                  <Button
+                    onClick={handleCreatePassword}
+                    disabled={pwSaving}
+                    className="w-full h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
+                  >
+                    {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar contraseña y continuar"}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* FINAL STEP: DONE */}
+        {step === DONE_STEP && (
           <Card className="border border-[#9E4D22] shadow-[0_10px_30px_rgba(184,92,56,0.25)] rounded-2xl bg-gradient-to-br from-[#B85C38] to-[#9E4D22]">
             <CardContent className="p-8 text-center text-white">
               <div className="h-16 w-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">

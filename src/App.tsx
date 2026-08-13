@@ -16,6 +16,7 @@ import Discovery from "./app/screens/Discovery";
 import MassageType from "./app/screens/MassageType";
 import Quiz from "./app/screens/Quiz";
 import PartnerLogin from "./app/screens/PartnerLogin";
+import PartnerResetPassword from "./app/screens/PartnerResetPassword";
 import PartnerOnboarding from "./app/screens/PartnerOnboarding";
 import PartnerDashboard from "./app/screens/PartnerDashboard";
 import PartnerProfile from "./app/screens/PartnerProfile";
@@ -94,6 +95,7 @@ const App = () => (
           <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
           <Route path="/partner/login" element={<PartnerLogin />} />
+          <Route path="/partner/reset-password" element={<PartnerResetPassword />} />
           <Route path="/partner/dashboard" element={<PartnerDashboard />} />
           <Route path="/partner/profile" element={<PartnerProfile />} />
           <Route path="/partner/services" element={<PartnerServices />} />

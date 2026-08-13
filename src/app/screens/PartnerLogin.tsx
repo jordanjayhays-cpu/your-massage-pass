@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +9,9 @@ import { supabase } from "@/lib/supabase";
 
 export default function PartnerLogin() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [resetSent, setResetSent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -69,6 +72,16 @@ export default function PartnerLogin() {
       setError(oauthErr.message);
       setGoogleLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) { setError(t("app.partnerAuth.errEmailFirst")); return; }
+    setError("");
+    const { error: resErr } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/partner/reset-password`,
+    });
+    if (resErr) { setError(resErr.message); return; }
+    setResetSent(true);
   };
 
   const handleMagicLink = async () => {
@@ -166,6 +179,19 @@ export default function PartnerLogin() {
                     className="pl-10 h-11"
                   />
                 </div>
+                {mode === "login" && (
+                  resetSent ? (
+                    <p className="text-xs text-muted-foreground mt-2">{t("app.partnerAuth.resetSent")}</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-xs text-primary hover:underline mt-2"
+                    >
+                      {t("app.partnerAuth.forgotPassword")}
+                    </button>
+                  )
+                )}
               </div>
 
               {error && (
@@ -220,7 +246,7 @@ export default function PartnerLogin() {
                 variant="outline"
                 className="w-full h-11 mt-3"
               >
-                {magicLoading ? "Sending…" : "Continue with email"}
+                {magicLoading ? "Sending…" : t("app.partnerAuth.magicLinkOption")}
               </Button>
             )}
 

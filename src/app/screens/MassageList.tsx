@@ -37,6 +37,7 @@ export default function MassageList() {
   const [realShops, setRealShops] = useState<Shop[]>([]);
   const [shopsLoading, setShopsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isPartner, setIsPartner] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
@@ -80,6 +81,12 @@ export default function MassageList() {
         .eq("id", user.id)
         .maybeSingle();
       if (!cancelled && data?.avatar_url) setAvatarUrl(data.avatar_url);
+      const { data: partnerRow } = await supabase
+        .from("partners")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!cancelled) setIsPartner(!!partnerRow);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -231,12 +238,14 @@ export default function MassageList() {
         </button>
         <div className="flex items-center gap-3">
           <LanguageFlagToggle variant="compact" />
-          <button
-            onClick={() => navigate("/partner/dashboard")}
-            className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
-          >
-            {t("app.massageList.switchToPartner")}
-          </button>
+          {isPartner && (
+            <button
+              onClick={() => navigate("/partner/dashboard")}
+              className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
+            >
+              {t("app.massageList.switchToPartner")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -419,6 +428,15 @@ export default function MassageList() {
               )}
             </>
           )}
+        </div>
+
+        <div className="pt-8 pb-2 text-center">
+          <button
+            onClick={() => navigate("/partner/login")}
+            className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 transition"
+          >
+            {t("app.massageList.studioCta")}
+          </button>
         </div>
       </div>
     </div>
