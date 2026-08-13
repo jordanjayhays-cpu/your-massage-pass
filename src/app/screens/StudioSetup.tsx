@@ -434,9 +434,11 @@ function StudioSetupInner() {
     );
   }
 
-  const stepLabels = mode === "draft" || mode === "claim"
-    ? ["Sign in", "Review", "Services", "Calendar", "Live"]
-    : ["Account", "Profile", "Services", "Hours", "Done"];
+  const stepLabels = mode === "claim"
+    ? ["Sign in", "Review", "Services", "Calendar", "Password", "Live"]
+    : mode === "draft"
+      ? ["Sign in", "Review", "Services", "Calendar", "Live"]
+      : ["Account", "Profile", "Services", "Hours", "Done"];
 
   const isReviewMode = mode === "draft" || mode === "claim";
 
