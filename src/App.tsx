@@ -43,8 +43,6 @@ import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 
-
-
 const queryClient = new QueryClient();
 
 const App = () => (
