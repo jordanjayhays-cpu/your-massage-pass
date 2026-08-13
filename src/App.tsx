@@ -94,6 +94,7 @@ const App = () => (
           <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
           <Route path="/partner/login" element={<PartnerLogin />} />
+          <Route path="/partner/reset-password" element={<PartnerResetPassword />} />
           <Route path="/partner/dashboard" element={<PartnerDashboard />} />
           <Route path="/partner/profile" element={<PartnerProfile />} />
           <Route path="/partner/services" element={<PartnerServices />} />
