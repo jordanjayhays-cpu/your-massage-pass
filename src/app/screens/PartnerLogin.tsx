@@ -246,7 +246,7 @@ export default function PartnerLogin() {
                 variant="outline"
                 className="w-full h-11 mt-3"
               >
-                {magicLoading ? "Sending…" : "Continue with email"}
+                {magicLoading ? "Sending…" : t("app.partnerAuth.magicLinkOption")}
               </Button>
             )}
 
