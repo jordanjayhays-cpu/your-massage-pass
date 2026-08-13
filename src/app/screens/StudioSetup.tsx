@@ -1,5 +1,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,29 @@ const DAYS = [
 ];
 const DEFAULT_SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00"];
 
+// Selectable opening times: 07:00 → 23:00, plus 00:00 treated as end-of-day close.
+const HOUR_OPTIONS = Array.from({ length: 17 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
+const FROM_OPTIONS = HOUR_OPTIONS;
+const TO_OPTIONS = [...HOUR_OPTIONS.slice(1), "00:00"];
+
+type DayRange = { open: boolean; from: string; to: string };
+const DEFAULT_RANGE: DayRange = { open: true, from: "10:00", to: "21:00" };
+
+const hourToNum = (t: string) => {
+  const h = Number(t.split(":")[0]);
+  return h === 0 ? 24 : h;
+};
+
+/** Expand an open range into hourly slot strings (close hour excluded). */
+function rangeToSlots(r: DayRange): string[] {
+  if (!r.open) return [];
+  const start = hourToNum(r.from);
+  const end = hourToNum(r.to);
+  const out: string[] = [];
+  for (let h = start; h < end; h++) out.push(`${String(h % 24).padStart(2, "0")}:00`);
+  return out;
+}
+
 type Service = { name: string; type: string; duration: number; price: number; description: string };
 
 const emptyService = (): Service => ({ name: "", type: "Swedish", duration: 60, price: 45, description: "" });
@@ -33,6 +57,7 @@ function normalizeService(raw: any): Service {
 }
 
 function StudioSetupInner() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -90,10 +115,15 @@ function StudioSetupInner() {
   const [servicesLoading, setServicesLoading] = useState(false);
 
   // Step 4: Availability (invite mode only)
-  const [availability, setAvailability] = useState<Record<number, string[]>>({
-    1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 0: [],
+  const [hours, setHours] = useState<Record<number, DayRange>>({
+    1: { ...DEFAULT_RANGE }, 2: { ...DEFAULT_RANGE }, 3: { ...DEFAULT_RANGE }, 4: { ...DEFAULT_RANGE },
+    5: { ...DEFAULT_RANGE }, 6: { ...DEFAULT_RANGE }, 0: { open: false, from: "10:00", to: "21:00" },
   });
+  const availability: Record<number, string[]> = Object.fromEntries(
+    DAYS.map(d => [d.num, rangeToSlots(hours[d.num])])
+  ) as Record<number, string[]>;
   const [capacity, setCapacity] = useState<number>(1);
+  const [staffCount, setStaffCount] = useState<string>("");
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -339,7 +369,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
+      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
@@ -358,7 +388,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1) }).eq("id", uid);
+      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1) }).eq("id", uid);
       toast.success("Availability saved!");
       setStep(5);
     } catch (err: any) {
@@ -401,14 +431,100 @@ function StudioSetupInner() {
   const updateService = (i: number, field: keyof Service, value: any) => {
     const updated = [...services]; updated[i] = { ...updated[i], [field]: value }; setServices(updated);
   };
-  const toggleDay = (day: number) => {
-    setAvailability(prev => ({ ...prev, [day]: prev[day].length > 0 ? [] : [...DEFAULT_SLOTS] }));
+  const setDayRange = (day: number, patch: Partial<DayRange>) => {
+    setHours(prev => {
+      const next = { ...prev[day], ...patch };
+      if (hourToNum(next.to) <= hourToNum(next.from)) {
+        const idx = TO_OPTIONS.findIndex(t => hourToNum(t) > hourToNum(next.from));
+        next.to = TO_OPTIONS[idx >= 0 ? idx : TO_OPTIONS.length - 1];
+      }
+      return { ...prev, [day]: next };
+    });
   };
-  const toggleSlot = (day: number, slot: string) => {
-    setAvailability(prev => ({
-      ...prev, [day]: prev[day].includes(slot) ? prev[day].filter(s => s !== slot) : [...prev[day], slot].sort(),
-    }));
+  const toggleDay = (day: number) => setDayRange(day, { open: !hours[day].open });
+  const copySchedule = (day: number, weekdaysOnly: boolean) => {
+    const src = hours[day];
+    setHours(prev => {
+      const next = { ...prev };
+      for (const d of DAYS) {
+        if (weekdaysOnly && (d.num === 0 || d.num === 6)) next[d.num] = { ...prev[d.num], open: false };
+        else next[d.num] = { ...src };
+      }
+      return next;
+    });
+    toast.success(t("app.studioHours.copied"));
   };
+
+  const renderHoursEditor = () => (
+    <div className="space-y-3">
+      <p className="text-sm text-[#7A7068]">{t("app.studioHours.helper")}</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => copySchedule(1, false)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#FAF6F1] border border-[#B85C38] text-[#B85C38] hover:bg-[#F3E9DF]">
+          {t("app.studioHours.copyAll")}
+        </button>
+        <button type="button" onClick={() => copySchedule(1, true)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-[#E5DDD3] text-[#7A7068] hover:bg-[#FAF6F1]">
+          {t("app.studioHours.copyWeekdays")}
+        </button>
+      </div>
+      {DAYS.map(day => {
+        const r = hours[day.num];
+        const count = availability[day.num].length;
+        return (
+          <div key={day.num} className="rounded-xl border border-[#E5DDD3] bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-[#2b2b2b] w-12">{day.label}</span>
+              <button type="button" onClick={() => toggleDay(day.num)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${r.open ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
+                {r.open ? t("app.studioHours.open") : t("app.studioHours.closed")}
+              </button>
+              {r.open ? (
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <select
+                    aria-label={`${day.label} ${t("app.studioHours.from")}`}
+                    value={r.from}
+                    onChange={e => setDayRange(day.num, { from: e.target.value })}
+                    className="h-9 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
+                  >
+                    {FROM_OPTIONS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <span className="text-xs text-[#7A7068]">–</span>
+                  <select
+                    aria-label={`${day.label} ${t("app.studioHours.to")}`}
+                    value={r.to}
+                    onChange={e => setDayRange(day.num, { to: e.target.value })}
+                    className="h-9 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
+                  >
+                    {TO_OPTIONS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <span className="ml-auto text-xs text-[#7A7068]">{t("app.studioHours.closed")}</span>
+              )}
+            </div>
+            {r.open && (
+              <p className="mt-1.5 text-xs text-[#7A7068]">{r.from}–{r.to} · {t("app.studioHours.slots", { count })}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderStaffCount = () => (
+    <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-[#2b2b2b]">{t("app.studioHours.staffTitle")}</p>
+        <p className="text-xs text-[#7A7068]">{t("app.studioHours.staffHelp")} · {t("app.studioHours.staffOptional")}</p>
+      </div>
+      <input
+        type="number"
+        min={1}
+        max={99}
+        value={staffCount}
+        onChange={e => setStaffCount(e.target.value)}
+        className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
+      />
+    </div>
+  );
 
   if (validatingSource) {
     return (
@@ -702,28 +818,7 @@ function StudioSetupInner() {
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
                 <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Availability</h2>
               </div>
-              <p className="text-sm text-[#7A7068]">Tap a day to toggle on/off. Tap times to adjust.</p>
-              <div className="space-y-3">
-                {DAYS.map(day => (
-                  <div key={day.num}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
-                        {day.label}
-                      </button>
-                      <span className="text-xs text-[#7A7068]">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
-                    </div>
-                    {availability[day.num].length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pl-1">
-                        {DEFAULT_SLOTS.map(slot => (
-                          <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-[#FAF6F1] text-[#B85C38] border border-[#B85C38]" : "bg-white text-[#7A7068] border border-[#E5DDD3]"}`}>
-                            {slot}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {renderHoursEditor()}
               <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
@@ -738,6 +833,7 @@ function StudioSetupInner() {
                   className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
                 />
               </div>
+              {renderStaffCount()}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
                 <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
@@ -798,26 +894,7 @@ function StudioSetupInner() {
                 </Button>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-[#7A7068]">Tap a day to toggle on/off. Tap times to adjust.</p>
-                  {DAYS.map(day => (
-                    <div key={day.num}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <button onClick={() => toggleDay(day.num)} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${availability[day.num].length > 0 ? "bg-[#B85C38] text-white" : "bg-[#ECE4D7] text-[#7A7068]"}`}>
-                          {day.label}
-                        </button>
-                        <span className="text-xs text-[#7A7068]">{availability[day.num].length > 0 ? `${availability[day.num].length} slots` : "Closed"}</span>
-                      </div>
-                      {availability[day.num].length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pl-1">
-                          {DEFAULT_SLOTS.map(slot => (
-                            <button key={slot} onClick={() => toggleSlot(day.num, slot)} className={`px-2 py-1 rounded-md text-xs font-medium transition ${availability[day.num].includes(slot) ? "bg-[#FAF6F1] text-[#B85C38] border border-[#B85C38]" : "bg-white text-[#7A7068] border border-[#E5DDD3]"}`}>
-                              {slot}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {renderHoursEditor()}
                   <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
@@ -832,6 +909,7 @@ function StudioSetupInner() {
                       className="h-10 w-20 px-2 rounded-lg border border-[#E5DDD3] bg-white text-sm text-center font-semibold text-[#2b2b2b] focus:outline-none focus:border-[#B85C38]"
                     />
                   </div>
+                  {renderStaffCount()}
                   <Button
                     onClick={handleSaveManualAvailability}
                     disabled={manualSaving}

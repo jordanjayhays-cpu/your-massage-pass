@@ -699,6 +699,20 @@
       "loginDetailsEmail": "Email",
       "passwordSaved": "Contraseña guardada",
       "stepPassword": "Contraseña"
+    },
+    "studioHours": {
+      "open": "Abierto",
+      "closed": "Cerrado",
+      "from": "Desde",
+      "to": "Hasta",
+      "slots": "{{count}} huecos",
+      "copyAll": "Copiar este horario a toda la semana",
+      "copyWeekdays": "Solo lunes a viernes",
+      "copied": "Horario copiado",
+      "helper": "Indica la hora de apertura y cierre de cada día. Creamos los huecos por hora automáticamente.",
+      "staffTitle": "¿Cuántas personas trabajáis en el estudio en total?",
+      "staffHelp": "Masajistas, recepción, todo el equipo.",
+      "staffOptional": "Opcional"
     }
   }
 }

@@ -699,6 +699,20 @@
       "loginDetailsEmail": "Email",
       "passwordSaved": "Password saved",
       "stepPassword": "Password"
+    },
+    "studioHours": {
+      "open": "Open",
+      "closed": "Closed",
+      "from": "From",
+      "to": "To",
+      "slots": "{{count}} slots",
+      "copyAll": "Copy this schedule to every day",
+      "copyWeekdays": "Weekdays only (Mon–Fri)",
+      "copied": "Schedule copied",
+      "helper": "Set an open/close time for each day. We turn it into hourly slots automatically.",
+      "staffTitle": "How many people work at the studio in total?",
+      "staffHelp": "Therapists, reception, the whole team.",
+      "staffOptional": "Optional"
     }
   }
 }
