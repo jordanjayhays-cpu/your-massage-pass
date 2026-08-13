@@ -41,7 +41,30 @@ function StudioSetupInner() {
   const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = mode === "claim" ? 6 : 5;
+  const DONE_STEP = TOTAL_STEPS;
+
+  // Password creation (claim mode)
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwDone, setPwDone] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+
+  const handleCreatePassword = async () => {
+    setPwError("");
+    if (newPassword.length < 8) { setPwError("La contraseña debe tener al menos 8 caracteres / Password must be at least 8 characters."); return; }
+    if (newPassword !== newPassword2) { setPwError("Las contraseñas no coinciden / Passwords do not match."); return; }
+    setPwSaving(true);
+    const { error: pwErr } = await supabase.auth.updateUser({ password: newPassword });
+    setPwSaving(false);
+    if (pwErr) { setPwError(pwErr.message); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    setAccountEmail(user?.email ?? "");
+    setPwDone(true);
+    toast.success("Contraseña guardada");
+  };
 
   // Source data (invite, draft, or scraped partner)
   const [sourceData, setSourceData] = useState<any>(null);
