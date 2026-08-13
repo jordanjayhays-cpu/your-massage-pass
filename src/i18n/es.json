@@ -712,7 +712,8 @@
       "helper": "Indica la hora de apertura y cierre de cada día. Creamos los huecos por hora automáticamente.",
       "staffTitle": "¿Cuántas personas trabajáis en el estudio en total?",
       "staffHelp": "Masajistas, recepción, todo el equipo.",
-      "staffOptional": "Opcional"
+      "staffOptional": "Opcional",
+      "chip6Plus": "6+"
     }
   }
 }

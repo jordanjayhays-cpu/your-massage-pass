@@ -712,7 +712,8 @@
       "helper": "Set an open/close time for each day. We turn it into hourly slots automatically.",
       "staffTitle": "How many people work at the studio in total?",
       "staffHelp": "Therapists, reception, the whole team.",
-      "staffOptional": "Optional"
+      "staffOptional": "Optional",
+      "chip6Plus": "6+"
     }
   }
 }
