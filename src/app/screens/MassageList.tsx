@@ -231,12 +231,14 @@ export default function MassageList() {
         </button>
         <div className="flex items-center gap-3">
           <LanguageFlagToggle variant="compact" />
-          <button
-            onClick={() => navigate("/partner/dashboard")}
-            className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
-          >
-            {t("app.massageList.switchToPartner")}
-          </button>
+          {isPartner && (
+            <button
+              onClick={() => navigate("/partner/dashboard")}
+              className="h-10 px-4 rounded-full bg-card border border-border text-foreground text-xs font-semibold tracking-wide hover:border-primary/50 transition shadow-soft"
+            >
+              {t("app.massageList.switchToPartner")}
+            </button>
+          )}
         </div>
       </div>
 
