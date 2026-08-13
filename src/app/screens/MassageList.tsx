@@ -429,6 +429,15 @@ export default function MassageList() {
             </>
           )}
         </div>
+
+        <div className="pt-8 pb-2 text-center">
+          <button
+            onClick={() => navigate("/partner/login")}
+            className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 transition"
+          >
+            {t("app.massageList.studioCta")}
+          </button>
+        </div>
       </div>
     </div>
   );
