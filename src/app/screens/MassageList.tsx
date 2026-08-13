@@ -81,6 +81,12 @@ export default function MassageList() {
         .eq("id", user.id)
         .maybeSingle();
       if (!cancelled && data?.avatar_url) setAvatarUrl(data.avatar_url);
+      const { data: partnerRow } = await supabase
+        .from("partners")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!cancelled) setIsPartner(!!partnerRow);
     })();
     return () => { cancelled = true; };
   }, []);
