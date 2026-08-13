@@ -16,6 +16,7 @@ import Discovery from "./app/screens/Discovery";
 import MassageType from "./app/screens/MassageType";
 import Quiz from "./app/screens/Quiz";
 import PartnerLogin from "./app/screens/PartnerLogin";
+import PartnerResetPassword from "./app/screens/PartnerResetPassword";
 import PartnerOnboarding from "./app/screens/PartnerOnboarding";
 import PartnerDashboard from "./app/screens/PartnerDashboard";
 import PartnerProfile from "./app/screens/PartnerProfile";
