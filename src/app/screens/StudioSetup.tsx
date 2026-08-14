@@ -258,6 +258,11 @@ function StudioSetupInner() {
   ) as Record<number, string[]>;
   const [capacity, setCapacity] = useState<number>(1);
   const [staffCount, setStaffCount] = useState<string>("");
+  // Optional per-day capacity overrides (day_of_week -> capacity)
+  const [showDayCapacity, setShowDayCapacity] = useState(false);
+  const [dayCapacity, setDayCapacity] = useState<Record<number, number>>({});
+  const dayCapFor = (day: number) => dayCapacity[day] ?? capacity;
+
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
