@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,6 +59,7 @@ function slotsFromHours(h: DayHours): string[] {
 
 export default function PartnerOnboarding() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // ─── Studio (plain business details) ───
   const [studio, setStudio] = useState({
@@ -130,16 +132,16 @@ export default function PartnerOnboarding() {
   };
 
   const pinLocation = async () => {
-    if (!studio.address.trim()) { toast.error("Enter your street address first"); return; }
+    if (!studio.address.trim()) { toast.error(t("partner.onboarding.errAddressFirst")); return; }
     setGeoStatus("loading");
     const r = await geocode();
     if (r) {
       setStudio(p => ({ ...p, latitude: r.lat, longitude: r.lng, formatted: r.formatted }));
       setGeoStatus("ok");
-      toast.success("📍 Location confirmed on the map");
+      toast.success(t("partner.onboarding.locationConfirmedToast"));
     } else {
       setGeoStatus("fail");
-      toast.error("Couldn't find that address — check the spelling");
+      toast.error(t("partner.onboarding.errAddressNotFound"));
     }
   };
 
@@ -170,13 +172,13 @@ export default function PartnerOnboarding() {
 
   // ─── Submit everything ───
   const handleGoLive = async () => {
-    if (!businessName) { toast.error("Enter your studio name"); return; }
-    if (!studio.address.trim()) { toast.error("Enter your street address"); return; }
-    if (!services.some(s => s.name.trim())) { toast.error("Add at least one service"); return; }
-    if (openDays.length === 0) { toast.error("Set your opening hours for at least one day"); return; }
-    if (!therapists.some(t => t.name.trim())) { toast.error("Add at least one therapist"); return; }
-    if (!email || !password) { toast.error("Enter your email and password to go live"); return; }
-    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (!businessName) { toast.error(t("partner.onboarding.errStudioName")); return; }
+    if (!studio.address.trim()) { toast.error(t("partner.onboarding.errAddress")); return; }
+    if (!services.some(s => s.name.trim())) { toast.error(t("partner.onboarding.errAtLeastOneService")); return; }
+    if (openDays.length === 0) { toast.error(t("partner.onboarding.errOpeningHours")); return; }
+    if (!therapists.some(t => t.name.trim())) { toast.error(t("partner.onboarding.errAtLeastOneTherapist")); return; }
+    if (!email || !password) { toast.error(t("partner.onboarding.errEmailPassword")); return; }
+    if (password.length < 6) { toast.error(t("partner.onboarding.errPasswordShort")); return; }
 
     // Try to get real coordinates, but never block publishing on it.
     let { latitude, longitude } = studio;
@@ -190,7 +192,7 @@ export default function PartnerOnboarding() {
     if (!latitude || !longitude) {
       // Couldn't geocode — fall back to Madrid center so the studio still appears.
       latitude = 40.4168; longitude = -3.7033;
-      toast("Saved your studio at Madrid center — tap “Find my location” later to fine-tune the pin.");
+      toast(t("partner.onboarding.savedAtMadridCenter"));
     }
 
     setLoading(true);
@@ -212,7 +214,7 @@ export default function PartnerOnboarding() {
         session = si?.session ?? null;
       }
       if (!session) {
-        throw new Error("Account created — confirm your email then sign in. (Tip: disable “Confirm email” in Supabase → Authentication to go live instantly.)");
+        throw new Error(t("partner.onboarding.errConfirmEmail"));
       }
       const userId = session.user.id;
 
@@ -239,7 +241,7 @@ export default function PartnerOnboarding() {
         deposit_pct: depositRequired ? depositPct : 0,
         status: "active",
       });
-      if (pErr) throw new Error(`Could not save your studio: ${pErr.message}`);
+      if (pErr) throw new Error(t("partner.onboarding.errSaveStudio", { message: pErr.message }));
 
       // 2b. Add-ons (optional)
       await supabase.from("partner_addons").delete().eq("partner_id", userId);
@@ -257,7 +259,7 @@ export default function PartnerOnboarding() {
       }));
       if (hourRows.length) {
         const { error } = await supabase.from("business_hours").insert(hourRows);
-        if (error) throw new Error(`Could not save opening hours: ${error.message}`);
+        if (error) throw new Error(t("partner.onboarding.errSaveHours", { message: error.message }));
       }
 
       // 4. Services (return ids so we can link therapists)
@@ -269,7 +271,7 @@ export default function PartnerOnboarding() {
         })),
         { onConflict: "partner_id,name" }
       ).select("id");
-      if (sErr) throw new Error(`Could not save your services: ${sErr.message}`);
+      if (sErr) throw new Error(t("partner.onboarding.errSaveServices", { message: sErr.message }));
       const serviceIds = (savedServices ?? []).map(s => s.id);
 
       // 5. Therapists (replace)
@@ -281,7 +283,7 @@ export default function PartnerOnboarding() {
           specialties: t.specialties, languages, is_active: true,
         }))
       ).select("id");
-      if (tErr) throw new Error(`Could not save therapists: ${tErr.message}`);
+      if (tErr) throw new Error(t("partner.onboarding.errSaveTherapists", { message: tErr.message }));
       const savedT = savedTherapists ?? [];
 
       // 6. Therapist working hours
@@ -303,10 +305,10 @@ export default function PartnerOnboarding() {
       );
       if (slotRows.length) await supabase.from("partner_availability").insert(slotRows);
 
-      toast.success("🎉 Your studio is live on Massage Club!");
+      toast.success(t("partner.onboarding.liveToast"));
       navigate("/partner/dashboard");
     } catch (err: any) {
-      const msg = err?.message || "Something went wrong";
+      const msg = err?.message || t("partner.onboarding.errGeneric");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -316,11 +318,11 @@ export default function PartnerOnboarding() {
 
   // ─── Progress ───
   const steps = [
-    { label: "Studio", done: !!businessName && !!studio.address.trim() },
-    { label: "Hours", done: openDays.length > 0 },
-    { label: "Team", done: therapists.some(t => t.name.trim()) },
-    { label: "Services", done: services.some(s => s.name.trim()) },
-    { label: "Go Live", done: false },
+    { label: t("partner.onboarding.stepStudio"), done: !!businessName && !!studio.address.trim() },
+    { label: t("partner.onboarding.stepHours"), done: openDays.length > 0 },
+    { label: t("partner.onboarding.stepTeam"), done: therapists.some(t => t.name.trim()) },
+    { label: t("partner.onboarding.stepServices"), done: services.some(s => s.name.trim()) },
+    { label: t("partner.onboarding.stepGoLive"), done: false },
   ];
 
   const chip = (active: boolean) =>
@@ -337,16 +339,16 @@ export default function PartnerOnboarding() {
           onClick={() => navigate("/")}
           className="inline-flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition mb-4"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to home
+          <ArrowLeft className="h-4 w-4" /> {t("partner.onboarding.backToHome")}
         </button>
 
         {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
-            <Zap size={14} /> Partner Portal
+            <Zap size={14} /> {t("partner.onboarding.partnerPortalBadge")}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">List your studio</h1>
-          <p className="text-muted-foreground text-sm mt-1">Set up your profile, team and services in a few minutes</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("partner.onboarding.heading")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("partner.onboarding.subheading")}</p>
         </div>
 
 
@@ -364,39 +366,39 @@ export default function PartnerOnboarding() {
         {/* ─── STEP 1: BUSINESS DETAILS ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="1" done={!!businessName && !!studio.address.trim()} title="Business details" icon={<Building2 size={15} />} />
+            <SectionTitle n="1" done={!!businessName && !!studio.address.trim()} title={t("partner.onboarding.businessDetailsTitle")} icon={<Building2 size={15} />} />
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Studio / business name *</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.onboarding.studioNameLabel")}</label>
                 <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))}
-                  placeholder="e.g. Casa Delfines Spa" className="h-11" />
+                  placeholder={t("partner.onboarding.studioNamePlaceholder")} className="h-11" />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Street address *</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.onboarding.streetAddressLabel")}</label>
                 <Input value={studio.address}
                   onChange={e => { setStudio(p => ({ ...p, address: e.target.value })); setGeoStatus("idle"); }}
-                  placeholder="e.g. Calle de Alcalá 20" className="h-11" />
+                  placeholder={t("partner.onboarding.streetAddressPlaceholder")} className="h-11" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Postal code</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.onboarding.postalCodeLabel")}</label>
                   <Input value={studio.postal_code} onChange={e => { setStudio(p => ({ ...p, postal_code: e.target.value })); setGeoStatus("idle"); }}
                     placeholder="28014" className="h-11" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">City</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.onboarding.cityLabel")}</label>
                   <Input value={studio.city} onChange={e => { setStudio(p => ({ ...p, city: e.target.value })); setGeoStatus("idle"); }}
                     placeholder="Madrid" className="h-11" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Country</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.onboarding.countryLabel")}</label>
                 <Input value={studio.country} onChange={e => { setStudio(p => ({ ...p, country: e.target.value })); setGeoStatus("idle"); }}
-                  placeholder="Spain" className="h-11" />
+                  placeholder={t("partner.onboarding.countryPlaceholder")} className="h-11" />
               </div>
 
               {/* Pin location — required for the map */}
@@ -405,54 +407,54 @@ export default function PartnerOnboarding() {
                   geoStatus === "ok" ? "border-primary/30 bg-secondary text-primary" : "border-primary/40 text-primary hover:bg-secondary"
                 }`}>
                 {geoStatus === "loading"
-                  ? <><Loader2 size={15} className="animate-spin" /> Finding your address…</>
+                  ? <><Loader2 size={15} className="animate-spin" /> {t("partner.onboarding.findingAddress")}</>
                   : geoStatus === "ok"
-                  ? <><Check size={15} /> Location confirmed</>
-                  : <><MapPin size={15} /> Find my location on the map</>}
+                  ? <><Check size={15} /> {t("partner.onboarding.locationConfirmed")}</>
+                  : <><MapPin size={15} /> {t("partner.onboarding.findMyLocation")}</>}
               </button>
               {geoStatus === "ok" && studio.formatted && (
-                <p className="text-xs text-green-600 -mt-1">✓ {studio.formatted} — this is where you'll show on the map.</p>
+                <p className="text-xs text-green-600 -mt-1">✓ {studio.formatted} — {t("partner.onboarding.mapPinHint")}</p>
               )}
               {geoStatus === "fail" && (
-                <p className="text-xs text-orange-500 -mt-1">Couldn't find that address. Check the street, postal code and city, then try again.</p>
+                <p className="text-xs text-orange-500 -mt-1">{t("partner.onboarding.addressNotFoundHint")}</p>
               )}
 
               {/* Contact */}
               <div className="grid grid-cols-1 gap-3 pt-1">
                 <div className="relative">
                   <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="Phone" className="pl-9 h-11" />
+                  <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder={t("partner.onboarding.phonePlaceholder")} className="pl-9 h-11" />
                 </div>
                 <div className="relative">
                   <Globe size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder="Website (optional)" className="pl-9 h-11" />
+                  <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder={t("partner.onboarding.websitePlaceholder")} className="pl-9 h-11" />
                 </div>
                 <div className="relative">
                   <Instagram size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={studio.instagram} onChange={e => setStudio(p => ({ ...p, instagram: e.target.value }))} placeholder="@instagram (optional)" className="pl-9 h-11" />
+                  <Input value={studio.instagram} onChange={e => setStudio(p => ({ ...p, instagram: e.target.value }))} placeholder={t("partner.onboarding.instagramPlaceholder")} className="pl-9 h-11" />
                 </div>
               </div>
 
               <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))}
-                placeholder="Short description of your studio (shown to customers)" className={`${field} resize-none h-20`} />
+                placeholder={t("partner.onboarding.descriptionPlaceholder")} className={`${field} resize-none h-20`} />
             </div>
 
             {/* Where do you work? */}
-            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">Where do you work?</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">{t("partner.onboarding.whereDoYouWork")}</p>
             <div className="flex flex-wrap gap-2">
-              {([["in_studio", "At my studio"], ["mobile", "I travel to clients"], ["both", "Both"]] as const).map(([val, label]) => (
+              {([["in_studio", t("partner.onboarding.atMyStudio")], ["mobile", t("partner.onboarding.iTravel")], ["both", t("partner.onboarding.both")]] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setServiceLocation(val)} className={chip(serviceLocation === val)}>{label}</button>
               ))}
             </div>
 
             {/* Amenities */}
-            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">Amenities</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">{t("partner.onboarding.amenities")}</p>
             <div className="flex flex-wrap gap-2">
               {AMENITIES.map(a => <button key={a} onClick={() => toggleArr(amenities, a, setAmenities)} className={chip(amenities.includes(a))}>{a}</button>)}
             </div>
 
             {/* Languages */}
-            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">Languages spoken</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-4 mb-2">{t("partner.onboarding.languagesSpoken")}</p>
             <div className="flex flex-wrap gap-2">
               {LANGUAGES.map(l => <button key={l} onClick={() => toggleArr(languages, l, setLanguages)} className={chip(languages.includes(l))}>{l}</button>)}
             </div>
@@ -462,8 +464,8 @@ export default function PartnerOnboarding() {
         {/* ─── STEP 2: HOURS ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="2" done={openDays.length > 0} title="Opening hours" icon={<Clock size={15} />} />
-            <p className="text-sm text-muted-foreground mb-3">Set when you're open. Add a lunch break if you close midday.</p>
+            <SectionTitle n="2" done={openDays.length > 0} title={t("partner.onboarding.openingHoursTitle")} icon={<Clock size={15} />} />
+            <p className="text-sm text-muted-foreground mb-3">{t("partner.onboarding.openingHoursHelp")}</p>
             <div className="space-y-2">
               {DAYS.map(d => {
                 const h = hours[d.num];
@@ -471,12 +473,12 @@ export default function PartnerOnboarding() {
                   <div key={d.num} className="flex items-center gap-2 flex-wrap">
                     <button onClick={() => updateHours(d.num, { closed: !h.closed })}
                       className={`w-16 py-1.5 rounded-lg text-sm font-medium transition ${h.closed ? "bg-secondary text-muted-foreground" : "bg-primary text-white"}`}>{d.label}</button>
-                    {h.closed ? <span className="text-xs text-muted-foreground">Closed</span> : (
+                    {h.closed ? <span className="text-xs text-muted-foreground">{t("partner.onboarding.closed")}</span> : (
                       <div className="flex items-center gap-1 text-sm">
                         <TimeInput value={h.open} onChange={v => updateHours(d.num, { open: v })} />
                         <span className="text-muted-foreground">–</span>
                         <TimeInput value={h.close} onChange={v => updateHours(d.num, { close: v })} />
-                        <span className="text-muted-foreground/60 mx-1 text-xs">break</span>
+                        <span className="text-muted-foreground/60 mx-1 text-xs">{t("partner.onboarding.breakLabel")}</span>
                         <TimeInput value={h.breakStart} onChange={v => updateHours(d.num, { breakStart: v })} />
                         <TimeInput value={h.breakEnd} onChange={v => updateHours(d.num, { breakEnd: v })} />
                       </div>
@@ -491,38 +493,38 @@ export default function PartnerOnboarding() {
         {/* ─── STEP 3: TEAM ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="3" done={therapists.some(t => t.name.trim())} title="Your team" icon={<Users size={15} />} />
-            <p className="text-sm text-muted-foreground mb-3">Add the therapists who give massages. Customers book with a specific person.</p>
+            <SectionTitle n="3" done={therapists.some(t => t.name.trim())} title={t("partner.onboarding.teamTitle")} icon={<Users size={15} />} />
+            <p className="text-sm text-muted-foreground mb-3">{t("partner.onboarding.teamHelp")}</p>
             <div className="space-y-3">
-              {therapists.map((t, i) => (
+              {therapists.map((th, i) => (
                 <div key={i} className="p-3 border border-border rounded-xl bg-white">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">Therapist {i + 1}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t("partner.onboarding.therapistN", { n: i + 1 })}</span>
                     {therapists.length > 1 && <button onClick={() => removeTherapist(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={t.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder="Name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
-                    <select value={t.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
+                    <input value={th.name} onChange={e => updateTherapist(i, { name: e.target.value })} placeholder={t("partner.onboarding.nameLabel")} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                    <select value={th.gender} onChange={e => updateTherapist(i, { gender: e.target.value })} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {GENDERS.map(g => <option key={g}>{g}</option>)}
                     </select>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 mb-1">Specialties</p>
+                  <p className="text-xs text-muted-foreground mt-2 mb-1">{t("partner.onboarding.specialties")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {MASSAGE_TYPES.map(m => (
-                      <button key={m} onClick={() => updateTherapist(i, { specialties: t.specialties.includes(m) ? t.specialties.filter(x => x !== m) : [...t.specialties, m] })} className={chip(t.specialties.includes(m))}>{m}</button>
+                      <button key={m} onClick={() => updateTherapist(i, { specialties: th.specialties.includes(m) ? th.specialties.filter(x => x !== m) : [...th.specialties, m] })} className={chip(th.specialties.includes(m))}>{m}</button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 mb-1">Working days</p>
+                  <p className="text-xs text-muted-foreground mt-2 mb-1">{t("partner.onboarding.workingDays")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {DAYS.map(d => (
-                      <button key={d.num} onClick={() => updateTherapist(i, { workingDays: t.workingDays.includes(d.num) ? t.workingDays.filter(x => x !== d.num) : [...t.workingDays, d.num] })} className={chip(t.workingDays.includes(d.num))}>{d.label}</button>
+                      <button key={d.num} onClick={() => updateTherapist(i, { workingDays: th.workingDays.includes(d.num) ? th.workingDays.filter(x => x !== d.num) : [...th.workingDays, d.num] })} className={chip(th.workingDays.includes(d.num))}>{d.label}</button>
                     ))}
                   </div>
                 </div>
               ))}
             </div>
             <button onClick={addTherapist} className="mt-3 w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
-              <Plus size={14} /> Add therapist
+              <Plus size={14} /> {t("partner.onboarding.addTherapist")}
             </button>
           </CardContent>
         </Card>
@@ -530,16 +532,16 @@ export default function PartnerOnboarding() {
         {/* ─── STEP 4: SERVICES ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="4" done={services.some(s => s.name.trim())} title="Your services" />
+            <SectionTitle n="4" done={services.some(s => s.name.trim())} title={t("partner.onboarding.servicesTitle")} />
             <div className="space-y-3">
               {services.map((svc, i) => (
                 <div key={i} className="p-3 border border-border rounded-xl bg-white">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">Service {i + 1}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t("partner.onboarding.serviceN", { n: i + 1 })}</span>
                     {services.length > 1 && <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                    <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder={t("partner.onboarding.serviceNamePlaceholder")} className="col-span-2 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
                     <select value={svc.category} onChange={e => updateService(i, "category", e.target.value)} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
                       {SERVICE_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                     </select>
@@ -551,26 +553,26 @@ export default function PartnerOnboarding() {
                       <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                     </div>
                     <select value={svc.duration} onChange={e => updateService(i, "duration", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
-                      {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+                      {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{t("partner.onboarding.minutesOption", { count: d })}</option>)}
                     </select>
                     <select value={svc.buffer_after} onChange={e => updateService(i, "buffer_after", Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary col-span-2">
-                      {[0, 10, 15, 20, 30].map(b => <option key={b} value={b}>{b} min cleanup after</option>)}
+                      {[0, 10, 15, 20, 30].map(b => <option key={b} value={b}>{t("partner.onboarding.cleanupAfterOption", { count: b })}</option>)}
                     </select>
                   </div>
                 </div>
               ))}
             </div>
             <button onClick={addService} className="mt-3 w-full py-2.5 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition flex items-center justify-center gap-1">
-              <Plus size={14} /> Add service
+              <Plus size={14} /> {t("partner.onboarding.addService")}
             </button>
 
             {/* Add-ons */}
             <div className="mt-5 pt-4 border-t border-border">
-              <p className="text-sm font-semibold text-foreground">Add-ons <span className="font-normal text-muted-foreground">(optional)</span></p>
-              <p className="text-xs text-muted-foreground mb-2">Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.</p>
+              <p className="text-sm font-semibold text-foreground">{t("partner.onboarding.addonsTitle")} <span className="font-normal text-muted-foreground">{t("partner.onboarding.optional")}</span></p>
+              <p className="text-xs text-muted-foreground mb-2">{t("partner.onboarding.addonsHelp")}</p>
               {addons.map((a, i) => (
                 <div key={i} className="flex items-center gap-2 mb-2">
-                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder="Add-on name" className="flex-1 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                  <input value={a.name} onChange={e => updateAddon(i, { name: e.target.value })} placeholder={t("partner.onboarding.addonNamePlaceholder")} className="flex-1 text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary" />
                   <div className="flex items-center gap-1 border border-border rounded-lg px-2 w-24">
                     <Euro size={13} className="text-muted-foreground" />
                     <input value={a.price} onChange={e => updateAddon(i, { price: Number(e.target.value) })} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
@@ -578,7 +580,7 @@ export default function PartnerOnboarding() {
                   <button onClick={() => removeAddon(i)} className="text-muted-foreground hover:text-red-500"><Trash2 size={14} /></button>
                 </div>
               ))}
-              <button onClick={addAddon} className="text-xs text-primary font-medium hover:underline flex items-center gap-1"><Plus size={12} /> Add an add-on</button>
+              <button onClick={addAddon} className="text-xs text-primary font-medium hover:underline flex items-center gap-1"><Plus size={12} /> {t("partner.onboarding.addAddon")}</button>
             </div>
           </CardContent>
         </Card>
@@ -586,24 +588,24 @@ export default function PartnerOnboarding() {
         {/* ─── STEP 5: POLICIES ─── */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <SectionTitle n="5" done title="Booking policy" icon={<Shield size={15} />} />
+            <SectionTitle n="5" done title={t("partner.onboarding.bookingPolicyTitle")} icon={<Shield size={15} />} />
             <div className="flex items-center justify-between py-2">
-              <span className="text-sm text-foreground">Free cancellation up to</span>
+              <span className="text-sm text-foreground">{t("partner.onboarding.freeCancellationLabel")}</span>
               <select value={cancellationHours} onChange={e => setCancellationHours(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
-                {[0, 2, 4, 12, 24, 48].map(h => <option key={h} value={h}>{h === 0 ? "No free cancellation" : `${h}h before`}</option>)}
+                {[0, 2, 4, 12, 24, 48].map(h => <option key={h} value={h}>{h === 0 ? t("partner.onboarding.noFreeCancellation") : t("partner.onboarding.hoursBefore", { count: h })}</option>)}
               </select>
             </div>
             <div className="flex items-center justify-between py-2 border-t border-border">
-              <span className="text-sm text-foreground">Require a deposit</span>
+              <span className="text-sm text-foreground">{t("partner.onboarding.requireDepositLabel")}</span>
               <button onClick={() => setDepositRequired(v => !v)} className={`w-12 h-6 rounded-full transition relative ${depositRequired ? "bg-primary" : "bg-border"}`}>
                 <span className={`absolute top-0.5 h-5 w-5 bg-white rounded-full transition ${depositRequired ? "left-6" : "left-0.5"}`} />
               </button>
             </div>
             {depositRequired && (
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-foreground">Deposit amount</span>
+                <span className="text-sm text-foreground">{t("partner.onboarding.depositAmountLabel")}</span>
                 <select value={depositPct} onChange={e => setDepositPct(Number(e.target.value))} className="text-sm px-3 py-2 border border-border rounded-lg focus:outline-none focus:border-primary">
-                  {[10, 20, 30, 50, 100].map(p => <option key={p} value={p}>{p}% of price</option>)}
+                  {[10, 20, 30, 50, 100].map(p => <option key={p} value={p}>{t("partner.onboarding.percentOfPrice", { count: p })}</option>)}
                 </select>
               </div>
             )}
@@ -615,25 +617,25 @@ export default function PartnerOnboarding() {
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center text-sm font-bold">6</div>
-              <h2 className="font-semibold text-white">Create your account</h2>
+              <h2 className="font-semibold text-white">{t("partner.onboarding.createAccountTitle")}</h2>
             </div>
             <div className="space-y-3">
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" className="h-11 bg-white/90 border-0 text-foreground placeholder:text-muted-foreground" />
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (6+ characters)" className="h-11 bg-white/90 border-0 text-foreground placeholder:text-muted-foreground" />
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("partner.onboarding.yourEmailPlaceholder")} className="h-11 bg-white/90 border-0 text-foreground placeholder:text-muted-foreground" />
+              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("partner.onboarding.createPasswordPlaceholder")} className="h-11 bg-white/90 border-0 text-foreground placeholder:text-muted-foreground" />
             </div>
             {error && <p className="text-red-100 text-sm mt-2">{error}</p>}
             <div className="mt-4 space-y-2">
               <Button onClick={handleGoLive} disabled={loading} className="w-full h-12 bg-white text-primary hover:bg-secondary font-semibold text-base rounded-xl flex items-center justify-center gap-2">
-                {loading ? <><Loader2 size={16} className="animate-spin" /> Publishing…</> : <><Sparkles size={16} /> Publish my listing</>}
+                {loading ? <><Loader2 size={16} className="animate-spin" /> {t("partner.onboarding.publishing")}</> : <><Sparkles size={16} /> {t("partner.onboarding.publishListing")}</>}
               </Button>
-              <p className="text-center text-primary-foreground/70 text-xs">Commission-only · No upfront cost · Cancel anytime</p>
+              <p className="text-center text-primary-foreground/70 text-xs">{t("partner.onboarding.commissionFooter")}</p>
             </div>
           </CardContent>
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <button onClick={() => navigate("/partner/login")} className="text-primary font-medium hover:underline">Sign in</button>
+          {t("partner.onboarding.alreadyHaveAccount")}{" "}
+          <button onClick={() => navigate("/partner/login")} className="text-primary font-medium hover:underline">{t("partner.onboarding.signIn")}</button>
         </p>
       </div>
     </div>

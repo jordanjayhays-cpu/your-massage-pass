@@ -150,7 +150,7 @@ export default function PartnerResetPassword() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="spa@example.com"
+                      placeholder={t("partner.resetPassword.emailPlaceholder")}
                       className="h-11"
                     />
                     {error && (

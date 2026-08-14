@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Search, ChevronDown, MessageCircle, Users, FileText, Plus, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,14 +40,17 @@ type Client = {
   bookings: Booking[];
 };
 
-const SOAP_FIELDS: { key: "subjective" | "objective" | "assessment" | "plan"; letter: string; label: string; hint: string }[] = [
-  { key: "subjective", letter: "S", label: "Subjective", hint: "What the client reports — pain, stress, goals" },
-  { key: "objective", letter: "O", label: "Objective", hint: "What you observe — tension, posture, range of motion" },
-  { key: "assessment", letter: "A", label: "Assessment", hint: "Your interpretation" },
-  { key: "plan", letter: "P", label: "Plan", hint: "What you did + next session" },
-];
+function useSoapFields(t: (k: string) => string) {
+  return [
+    { key: "subjective" as const, letter: "S", label: t("partner.soap.subjective"), hint: t("partner.clients.soapHintSubjective") },
+    { key: "objective" as const, letter: "O", label: t("partner.soap.objective"), hint: t("partner.clients.soapHintObjective") },
+    { key: "assessment" as const, letter: "A", label: t("partner.soap.assessment"), hint: t("partner.clients.soapHintAssessment") },
+    { key: "plan" as const, letter: "P", label: t("partner.soap.plan"), hint: t("partner.clients.soapHintPlan") },
+  ];
+}
 
 export default function PartnerClients() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [partnerId, setPartnerId] = useState<string | null>(null);
@@ -59,6 +63,8 @@ export default function PartnerClients() {
   const [addingFor, setAddingFor] = useState<string | null>(null);
   const [draft, setDraft] = useState({ subjective: "", objective: "", assessment: "", plan: "" });
   const [saving, setSaving] = useState(false);
+
+  const SOAP_FIELDS = useSoapFields(t);
 
   useEffect(() => { load(); }, []);
 
@@ -109,9 +115,9 @@ export default function PartnerClients() {
   };
 
   const saveNote = async (c: Client) => {
-    if (!partnerId) { toast.error("Please sign in again."); return; }
+    if (!partnerId) { toast.error(t("partner.clients.pleaseSignInAgain")); return; }
     if (!draft.subjective && !draft.objective && !draft.assessment && !draft.plan) {
-      toast.error("Write something in at least one field.");
+      toast.error(t("partner.clients.writeSomething"));
       return;
     }
     setSaving(true);
@@ -133,12 +139,12 @@ export default function PartnerClients() {
     setSaving(false);
     if (error) {
       console.error("SOAP save error:", error);
-      toast.error("Couldn't save the note.");
+      toast.error(t("partner.clients.couldNotSave"));
       return;
     }
     setNotes((prev) => [data as SoapNote, ...prev]);
     setAddingFor(null);
-    toast.success("Treatment note saved");
+    toast.success(t("partner.clients.noteSaved"));
   };
 
   const filtered = clients.filter(c => {
@@ -156,8 +162,8 @@ export default function PartnerClients() {
         <div className="max-w-xl mx-auto flex items-center gap-3">
           <button onClick={() => navigate("/partner/dashboard")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">←</button>
           <div>
-            <p className="text-xs text-muted-foreground">Studio</p>
-            <h1 className="font-display text-lg font-bold">Clients &amp; Treatment Notes</h1>
+            <p className="text-xs text-muted-foreground">{t("partner.clients.studio")}</p>
+            <h1 className="font-display text-lg font-bold">{t("partner.clients.title")}</h1>
           </div>
         </div>
       </div>
@@ -172,19 +178,19 @@ export default function PartnerClients() {
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search by name, email or phone"
+              placeholder={t("partner.clients.searchPlaceholder")}
               className="w-full h-11 pl-10 pr-3 rounded-xl border border-border bg-card text-sm focus:outline-none focus:border-primary"
             />
           </div>
 
-          <p className="text-xs text-muted-foreground">{clients.length} client{clients.length === 1 ? "" : "s"} total</p>
+          <p className="text-xs text-muted-foreground">{t("partner.clients.clientsTotal", { count: clients.length })}</p>
 
           {filtered.length === 0 ? (
             <Card className="bg-card border-border">
               <CardContent className="p-8 text-center">
                 <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  {clients.length === 0 ? "No clients yet. They'll appear here after their first booking." : "No clients match that search."}
+                  {clients.length === 0 ? t("partner.clients.noClientsYet") : t("partner.clients.noClientsMatch")}
                 </p>
               </CardContent>
             </Card>
@@ -204,9 +210,9 @@ export default function PartnerClients() {
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm truncate">{c.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {c.visits} visit{c.visits === 1 ? "" : "s"} · last {pretty(c.lastVisit)}
+                            {t("partner.clients.visitsCount", { count: c.visits })} · {t("partner.clients.lastVisit", { date: pretty(c.lastVisit) })}
                             {c.totalSpent > 0 ? ` · €${c.totalSpent}` : ""}
-                            {clientNotes.length > 0 ? ` · ${clientNotes.length} note${clientNotes.length === 1 ? "" : "s"}` : ""}
+                            {clientNotes.length > 0 ? ` · ${t("partner.clients.notesCount", { count: clientNotes.length })}` : ""}
                           </p>
                         </div>
                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -229,7 +235,7 @@ export default function PartnerClients() {
                               )}
                               {c.email && (
                                 <a href={`mailto:${c.email}`} className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center">
-                                  ✉️ Email
+                                  ✉️ {t("partner.clients.email")}
                                 </a>
                               )}
                             </div>
@@ -237,7 +243,7 @@ export default function PartnerClients() {
 
                           {/* Visit history */}
                           <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase mb-1.5">Visit history</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-1.5">{t("partner.clients.visitHistory")}</p>
                             <div className="space-y-1.5">
                               {c.bookings.map(b => (
                                 <div key={b.id} className="flex items-center justify-between text-xs">
@@ -252,14 +258,14 @@ export default function PartnerClients() {
                           <div className="rounded-2xl border border-border bg-secondary/40 p-4">
                             <div className="flex items-center justify-between mb-3">
                               <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                                <FileText className="h-4 w-4 text-primary" /> Treatment notes
+                                <FileText className="h-4 w-4 text-primary" /> {t("partner.clients.treatmentNotes")}
                               </p>
                               {addingFor !== c.key && (
                                 <button
                                   onClick={() => startAdd(c)}
                                   className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center gap-1"
                                 >
-                                  <Plus className="h-3.5 w-3.5" /> New note
+                                  <Plus className="h-3.5 w-3.5" /> {t("partner.clients.newNote")}
                                 </button>
                               )}
                             </div>
@@ -268,7 +274,7 @@ export default function PartnerClients() {
                             {addingFor === c.key && (
                               <div className="space-y-3 mb-4 bg-card rounded-xl border border-border p-3">
                                 <div className="flex items-center justify-between">
-                                  <p className="text-xs font-bold text-muted-foreground uppercase">New SOAP note</p>
+                                  <p className="text-xs font-bold text-muted-foreground uppercase">{t("partner.clients.newSoapNote")}</p>
                                   <button onClick={() => setAddingFor(null)} className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center">
                                     <X className="h-3.5 w-3.5" />
                                   </button>
@@ -293,14 +299,14 @@ export default function PartnerClients() {
                                   disabled={saving}
                                   className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
                                 >
-                                  {saving ? "Saving…" : "Save note"}
+                                  {saving ? t("partner.clients.saving") : t("partner.clients.saveNote")}
                                 </button>
                               </div>
                             )}
 
                             {/* Past notes */}
                             {clientNotes.length === 0 ? (
-                              <p className="text-xs text-muted-foreground">No treatment notes yet. Add one after a session to build this client's history.</p>
+                              <p className="text-xs text-muted-foreground">{t("partner.clients.noNotesYet")}</p>
                             ) : (
                               <div className="space-y-2">
                                 {clientNotes.map((n) => (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, ChevronRight, Clock, DollarSign, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ type Service = {
 const MASSAGE_TYPES = ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Aromatherapy", "Thai", "Shiatsu", "Lomi Lomi", "Couples", "Facial", "Other"];
 
 export default function PartnerServices() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [services, setServices] = useState<Service[]>([
     { name: "", type: "Swedish", duration: 60, price: 50, description: "" }
@@ -43,7 +45,7 @@ export default function PartnerServices() {
   const handleSave = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error("Please sign in first"); setLoading(false); return; }
+    if (!user) { toast.error(t("partner.services.toastSignIn")); setLoading(false); return; }
 
     // Filter out empty rows
     const validServices = services.filter(s => s.name.trim());
@@ -61,9 +63,9 @@ export default function PartnerServices() {
     );
 
     setLoading(false);
-    if (error) { toast.error("Error: " + error.message); return; }
+    if (error) { toast.error(t("partner.services.toastError", { message: error.message })); return; }
     setSaved(true);
-    toast.success(`${validServices.length} service(s) saved! Now set your availability.`);
+    toast.success(t("partner.services.toastSaved", { count: validServices.length }));
     setTimeout(() => navigate("/partner/calendar"), 1200);
   };
 
@@ -74,8 +76,8 @@ export default function PartnerServices() {
           <div className="flex items-center gap-3 mb-4">
             <button onClick={() => navigate("/partner/profile")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">←</button>
             <div>
-              <p className="text-xs text-muted-foreground">Step 2 of 3</p>
-              <h1 className="font-display text-lg font-bold">Your Services</h1>
+              <p className="text-xs text-muted-foreground">{t("partner.services.stepLabel")}</p>
+              <h1 className="font-display text-lg font-bold">{t("partner.services.title")}</h1>
             </div>
           </div>
         </div>
@@ -86,7 +88,7 @@ export default function PartnerServices() {
           <Card key={i} className="bg-card border-border">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-primary uppercase">Service {i + 1}</span>
+                <span className="text-xs font-bold text-primary uppercase">{t("partner.services.serviceLabel", { number: i + 1 })}</span>
                 {services.length > 1 && (
                   <button onClick={() => removeService(i)} className="text-muted-foreground hover:text-red-500">
                     <Trash2 className="h-4 w-4" />
@@ -96,22 +98,22 @@ export default function PartnerServices() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Service Name</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.services.nameLabel")}</label>
                   <Input
                     value={svc.name}
                     onChange={(e) => updateService(i, "name", e.target.value)}
-                    placeholder="e.g. Swedish Massage"
+                    placeholder={t("partner.services.namePlaceholder")}
                     className="h-10"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">Type</label>
+                  <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.services.typeLabel")}</label>
                   <select
                     value={svc.type}
                     onChange={(e) => updateService(i, "type", e.target.value)}
                     className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm"
                   >
-                    {MASSAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    {MASSAGE_TYPES.map(t2 => <option key={t2} value={t2}>{t2}</option>)}
                   </select>
                 </div>
               </div>
@@ -119,19 +121,19 @@ export default function PartnerServices() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> Duration
+                    <Clock className="h-3 w-3" /> {t("partner.services.durationLabel")}
                   </label>
                   <select
                     value={svc.duration}
                     onChange={(e) => updateService(i, "duration", Number(e.target.value))}
                     className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm"
                   >
-                    {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+                    {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{t("partner.services.minutesOption", { minutes: d })}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" /> Price (€)
+                    <DollarSign className="h-3 w-3" /> {t("partner.services.priceLabel")}
                   </label>
                   <Input
                     type="number"
@@ -144,11 +146,11 @@ export default function PartnerServices() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Description</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.services.descriptionLabel")}</label>
                 <Input
                   value={svc.description}
                   onChange={(e) => updateService(i, "description", e.target.value)}
-                  placeholder="Brief description of this service…"
+                  placeholder={t("partner.services.descriptionPlaceholder")}
                   className="h-10"
                 />
               </div>
@@ -161,7 +163,7 @@ export default function PartnerServices() {
           variant="outline"
           className="w-full h-11 border-primary text-primary hover:bg-primary/5"
         >
-          <Plus className="h-4 w-4" /> Add Service
+          <Plus className="h-4 w-4" /> {t("partner.services.addService")}
         </Button>
 
         <Button
@@ -169,7 +171,7 @@ export default function PartnerServices() {
           disabled={loading || services.every(s => !s.name.trim())}
           className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90"
         >
-          {loading ? "Saving…" : saved ? "✓ Saved!" : "Save & Set Availability"}
+          {loading ? t("partner.services.saving") : saved ? t("partner.services.saved") : t("partner.services.saveAndSetAvailability")}
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>

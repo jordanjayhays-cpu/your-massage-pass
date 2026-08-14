@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Building2, MapPin, Phone, Globe, Clock, Star, Image, Search, Loader2, Check, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import PartnerLangPills from "@/app/components/PartnerLangPills";
+import { savePartnerLang, defaultPartnerLang, type PartnerLang } from "@/app/lib/partnerLanguage";
+import i18n from "@/i18n";
 
 // Google Places API key
 const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
@@ -25,6 +29,7 @@ type PlaceResult = {
 };
 
 export default function PartnerProfile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
@@ -32,6 +37,11 @@ export default function PartnerProfile() {
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [lang, setLang] = useState<PartnerLang>(() => {
+    const current = i18n.resolvedLanguage;
+    if (current === "es" || current === "en") return current;
+    return defaultPartnerLang();
+  });
 
   // Form fields (editable after auto-fill)
   const [form, setForm] = useState({
@@ -53,7 +63,7 @@ export default function PartnerProfile() {
       if (!user) return;
       const { data } = await supabase
         .from("partners")
-        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country")
+        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country, preferred_language")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
@@ -69,6 +79,13 @@ export default function PartnerProfile() {
           city: data.city ?? "Madrid",
           country: data.country ?? "Spain",
         }));
+        const preferred = (data as any).preferred_language as PartnerLang | undefined;
+        if (preferred === "es" || preferred === "en") {
+          setLang(preferred);
+        } else {
+          const current = i18n.resolvedLanguage;
+          setLang(current === "es" || current === "en" ? current : defaultPartnerLang());
+        }
       }
     })();
   }, []);
@@ -132,13 +149,13 @@ export default function PartnerProfile() {
       city: addressParts.find(p => /Madrid/i.test(p)) ? "Madrid" : addressParts[1]?.trim() ?? "Madrid",
       country: "Spain",
     }));
-    toast.success(`${fullPlace.name} loaded! Fill in the rest and save.`);
+    toast.success(t("partner.profile.toastLoaded", { name: fullPlace.name }));
   };
 
   const handleSave = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error("Please sign in first"); setLoading(false); return; }
+    if (!user) { toast.error(t("partner.profile.toastSignIn")); setLoading(false); return; }
 
     const lat = selectedPlace?.geometry?.location?.lat;
     const lng = selectedPlace?.geometry?.location?.lng;
@@ -158,12 +175,13 @@ export default function PartnerProfile() {
       longitude: lng,
       google_place_id: selectedPlace?.place_id,
       status: "active",
+      preferred_language: lang,
     });
 
     setLoading(false);
-    if (error) { toast.error("Error saving: " + error.message); return; }
+    if (error) { toast.error(t("partner.profile.toastSaveError", { message: error.message })); return; }
     setSaved(true);
-    toast.success("Profile saved! Now add your services.");
+    toast.success(t("partner.profile.toastSaved"));
     setTimeout(() => navigate("/partner/services"), 1200);
   };
 
@@ -177,8 +195,8 @@ export default function PartnerProfile() {
               ←
             </button>
             <div>
-              <p className="text-xs text-muted-foreground">Step 1 of 3</p>
-              <h1 className="font-display text-lg font-bold">Business Profile</h1>
+              <p className="text-xs text-muted-foreground">{t("partner.profile.stepLabel")}</p>
+              <h1 className="font-display text-lg font-bold">{t("partner.profile.title")}</h1>
             </div>
           </div>
         </div>
@@ -190,13 +208,13 @@ export default function PartnerProfile() {
           <div>
             <label className="text-sm font-semibold text-foreground mb-2 block flex items-center gap-2">
               <Search className="h-4 w-4 text-primary" />
-              Find your business on Google
+              {t("partner.profile.findLabel")}
             </label>
             <div ref={searchRef} className="relative">
               <Input
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search for your spa on Google…"
+                placeholder={t("partner.profile.searchPlaceholder")}
                 className="h-12 pl-10"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -219,7 +237,7 @@ export default function PartnerProfile() {
                       <p className="font-semibold text-sm">{place.name}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{place.formatted_address}</p>
                       {place.rating && (
-                        <p className="text-xs text-accent font-semibold mt-1">★ {place.rating} ({place.user_ratings_total} reviews)</p>
+                        <p className="text-xs text-accent font-semibold mt-1">★ {t("partner.profile.ratingReviews", { rating: place.rating, count: place.user_ratings_total })}</p>
                       )}
                     </div>
                   </button>
@@ -228,7 +246,7 @@ export default function PartnerProfile() {
             )}
 
             {searchQuery.length > 0 && searchResults.length === 0 && !searching && (
-              <p className="text-sm text-muted-foreground mt-3">No results found. Try a different name or enter manually below.</p>
+              <p className="text-sm text-muted-foreground mt-3">{t("partner.profile.noResults")}</p>
             )}
           </div>
         )}
@@ -239,15 +257,15 @@ export default function PartnerProfile() {
             {selectedPlace && (
               <div className="flex items-center gap-2 text-sm text-accent font-semibold mb-2">
                 <Check className="h-4 w-4" />
-                Google data loaded — verify and edit below
+                {t("partner.profile.googleDataLoaded")}
               </div>
             )}
 
             {[
-              { key: "business_name", label: "Business Name", icon: Building2 },
-              { key: "address", label: "Address", icon: MapPin },
-              { key: "phone", label: "Phone", icon: Phone },
-              { key: "website", label: "Website", icon: Globe },
+              { key: "business_name", label: t("partner.profile.businessName"), icon: Building2 },
+              { key: "address", label: t("partner.profile.address"), icon: MapPin },
+              { key: "phone", label: t("partner.profile.phone"), icon: Phone },
+              { key: "website", label: t("partner.profile.website"), icon: Globe },
             ].map(({ key, label, icon: Icon }) => (
               <div key={key}>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{label}</label>
@@ -263,25 +281,25 @@ export default function PartnerProfile() {
             ))}
 
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">WhatsApp number (optional)</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("partner.profile.whatsappLabel")}</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#25D366]" />
                 <Input
                   value={form.whatsapp}
                   onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
-                  placeholder="+34 6XX XXX XXX"
+                  placeholder={t("partner.profile.whatsappPlaceholder")}
                   className="pl-10 h-11"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">Leave blank to use your phone number.</p>
+              <p className="text-[11px] text-muted-foreground mt-1.5">{t("partner.profile.whatsappHint")}</p>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Description (for customers)</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("partner.profile.descriptionLabel")}</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Tell customers what makes your spa special…"
+                placeholder={t("partner.profile.descriptionPlaceholder")}
                 rows={3}
                 className="w-full px-4 py-3 border border-border rounded-xl bg-background text-sm resize-none"
               />
@@ -289,25 +307,33 @@ export default function PartnerProfile() {
 
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1.5 block flex items-center gap-1.5">
-                📍 How to enter the building
+                📍 {t("partner.profile.accessLabel")}
               </label>
               <textarea
                 value={form.access_instructions}
                 onChange={(e) => setForm({ ...form, access_instructions: e.target.value })}
-                placeholder="e.g. Calle X 12, ring buzzer 3B, 2nd floor, door on the left."
+                placeholder={t("partner.profile.accessPlaceholder")}
                 rows={3}
                 className="w-full px-4 py-3 border border-border rounded-xl bg-background text-sm resize-none"
               />
               <p className="text-[11px] text-muted-foreground mt-1.5">
-                Shown to customers on their booking confirmation and reminder email.
+                {t("partner.profile.accessHint")}
               </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("partner.profile.languageLabel")}</label>
+              <PartnerLangPills
+                value={lang}
+                onChange={(l) => { setLang(l); savePartnerLang(l); }}
+              />
             </div>
 
             {selectedPlace?.rating && (
               <div className="flex items-center gap-3 text-sm bg-secondary rounded-xl p-3">
                 <Star className="h-4 w-4 fill-accent text-accent" />
-                <span className="font-semibold">{selectedPlace.rating}/5</span>
-                <span className="text-muted-foreground">({selectedPlace.user_ratings_total} reviews)</span>
+                <span className="font-semibold">{t("partner.profile.ratingOutOf5", { rating: selectedPlace.rating })}</span>
+                <span className="text-muted-foreground">{t("partner.profile.reviewsCount", { count: selectedPlace.user_ratings_total })}</span>
               </div>
             )}
           </CardContent>
@@ -318,7 +344,7 @@ export default function PartnerProfile() {
           disabled={loading || !form.business_name || !form.address}
           className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90"
         >
-          {loading ? "Saving…" : saved ? "✓ Saved!" : "Save & Continue"}
+          {loading ? t("partner.profile.saving") : saved ? t("partner.profile.saved") : t("partner.profile.saveAndContinue")}
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
