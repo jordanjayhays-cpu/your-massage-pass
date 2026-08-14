@@ -101,6 +101,21 @@ export default function BookingResult() {
   const name = getParam(params, "name");
   const rb = safeRebookUrl(getParam(params, "rb"));
 
+  const ph = getParam(params, "ph");
+  const em = getParam(params, "em");
+  const dur = getParam(params, "dur");
+  const pr = getParam(params, "pr");
+  const press = getParam(params, "press");
+  const focus = getParam(params, "focus");
+  const addons = getParam(params, "addons");
+  const conv = getParam(params, "conv");
+  const health = getParam(params, "health");
+  const notes = getParam(params, "notes");
+
+  const hasClientCard =
+    STUDIO_FACING.includes(outcome) &&
+    [ph, em, dur, pr, press, focus, addons, conv, health, notes].some(Boolean);
+
   const summaryFull = [name, service, [date, time].filter(Boolean).join(" ")]
     .filter(Boolean)
     .join(" · ");
