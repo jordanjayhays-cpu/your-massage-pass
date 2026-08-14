@@ -58,49 +58,18 @@ function normalizeService(raw: any): Service {
   };
 }
 
-function CapacityChips({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const { t } = useTranslation();
-  const isSixPlus = value >= 6;
+function Stepper({ value, onChange, min = 1, max = 10, size = "lg" }: { value: number; onChange: (v: number) => void; min?: number; max?: number; size?: "lg" | "sm" }) {
+  const big = size === "lg";
+  const btn = `${big ? "h-12 w-12 text-xl" : "h-9 w-9 text-base"} rounded-xl border-2 border-[#E5DDD3] bg-white font-bold text-[#B85C38] disabled:opacity-40 hover:border-[#B85C38] transition flex items-center justify-center`;
   return (
-    <div className="flex flex-wrap gap-2">
-      {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
-            value === n
-              ? "bg-[#B85C38] border-[#B85C38] text-white"
-              : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
-          }`}
-        >
-          {n}
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange(isSixPlus ? 6 : Math.max(6, value))}
-        className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
-          isSixPlus
-            ? "bg-[#B85C38] border-[#B85C38] text-white"
-            : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
-        }`}
-      >
-        {t("app.studioHours.chip6Plus")}
-      </button>
-      {isSixPlus && (
-        <input
-          type="number"
-          min={6}
-          max={99}
-          value={value}
-          onChange={e => onChange(Math.max(6, Math.min(99, Number(e.target.value) || 6)))}
-          className="h-11 w-20 px-2 rounded-xl border-2 border-[#B85C38] bg-white text-center font-semibold text-[#2b2b2b] focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40"
-        />
-      )}
+    <div className="flex items-center gap-3">
+      <button type="button" aria-label="-" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className={btn}>−</button>
+      <span className={`${big ? "text-2xl w-10" : "text-lg w-8"} text-center font-bold text-[#2b2b2b] tabular-nums`}>{value}</span>
+      <button type="button" aria-label="+" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} className={btn}>+</button>
     </div>
   );
 }
+
 
 function StaffChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useTranslation();
