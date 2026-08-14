@@ -172,13 +172,7 @@ export default function PartnerServices() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">{t("partner.services.typeLabel")}</label>
-                  <select
-                    value={svc.type}
-                    onChange={(e) => updateService(i, "type", e.target.value)}
-                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm"
-                  >
-                    {MASSAGE_TYPES.map(t2 => <option key={t2} value={t2}>{t2}</option>)}
-                  </select>
+                  <ServiceTypeField value={svc.type} onChange={(v) => updateService(i, "type", v)} />
                 </div>
               </div>
 
@@ -187,13 +181,7 @@ export default function PartnerServices() {
                   <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {t("partner.services.durationLabel")}
                   </label>
-                  <select
-                    value={svc.duration}
-                    onChange={(e) => updateService(i, "duration", Number(e.target.value))}
-                    className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm"
-                  >
-                    {[30, 45, 60, 75, 90, 120].map(d => <option key={d} value={d}>{t("partner.services.minutesOption", { minutes: d })}</option>)}
-                  </select>
+                  <ServiceDurationField value={svc.duration} onChange={(v) => updateService(i, "duration", v)} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
