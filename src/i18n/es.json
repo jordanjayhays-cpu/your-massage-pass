@@ -710,7 +710,7 @@
       "copyWeekdays": "Solo lunes a viernes",
       "copied": "Horario copiado",
       "helper": "Indica la hora de apertura y cierre de cada día. Creamos los huecos por hora automáticamente.",
-      "staffTitle": "¿Cuántas personas trabajáis en el estudio en total?",
+      "staffTitle": "¿Cuántas personas trabajan en el estudio en total?",
       "staffHelp": "Masajistas, recepción, todo el equipo.",
       "staffOptional": "Opcional",
       "chip6Plus": "6+"
@@ -1020,8 +1020,8 @@
       "stepLabel": "Disponibilidad",
       "title": "Configura tu horario",
       "intro": "Indica cuándo estás abierto cada día — nosotros crearemos los horarios reservables por ti. Configura un día y luego pulsa “Copiar a todos” para reutilizarlo.",
-      "capacityLabel": "Capacidad por franja horaria",
-      "capacityHint": "Cuántas reservas simultáneas puedes atender (ej. número de terapeutas / salas).",
+      "capacityLabel": "¿Cuántos masajes podéis dar a la vez?",
+      "capacityHint": "Normalmente el número de camillas o terapeutas trabajando a la vez.",
       "days": {
         "monday": "Lunes",
         "tuesday": "Martes",
@@ -1041,7 +1041,8 @@
       "toastAppliedAll": "Aplicado a todos los días abiertos",
       "toastSignIn": "Por favor, inicia sesión primero",
       "toastError": "Error: {{message}}",
-      "toastSaved": "¡Disponibilidad guardada! Tu perfil ya está activo."
+      "toastSaved": "¡Disponibilidad guardada! Tu perfil ya está activo.",
+      "capacityVaryByDay": "¿Varía según el día?"
     },
     "photos": {
       "stepLabel": "Perfil",
@@ -1189,8 +1190,8 @@
       "servicePlaceholder": "Nombre del servicio",
       "addServiceButton": "Añadir servicio",
       "step4AvailabilityTitle": "Disponibilidad",
-      "capacityQuestion": "¿Cuántas reservas puedes atender a la vez?",
-      "capacityHelper": "Nº de masajistas o salas trabajando en paralelo. Ej.: 5",
+      "capacityQuestion": "¿Cuántos masajes podéis dar a la vez?",
+      "capacityHelper": "Normalmente es el número de camillas o terapeutas trabajando a la vez. Usamos este número para no aceptar más reservas de las que podéis atender.",
       "step4CalendarTitle": "Conectar Google Calendar",
       "calendarRecommendedDesc": "Conectar Google Calendar es recomendable — mostraremos tu disponibilidad real y añadiremos las nuevas reservas directamente a tu calendario automáticamente. También puedes configurar tu horario manualmente abajo.",
       "calendarBullet1": "Acceso de solo lectura a tus horas ocupadas",
@@ -1220,7 +1221,8 @@
       "customTypePlaceholder": "Escribe el tipo de masaje",
       "customDurationOption": "Otra duración…",
       "customDurationPlaceholder": "Minutos",
-      "useListAgain": "Volver a la lista"
+      "useListAgain": "Volver a la lista",
+      "capacityVaryByDay": "¿Varía según el día?"
     }
   }
 }

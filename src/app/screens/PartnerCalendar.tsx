@@ -38,7 +38,20 @@ function generateSlots(open: string, close: string): string[] {
   return out;
 }
 
+function Stepper({ value, onChange, min = 1, max = 10, size = "lg" }: { value: number; onChange: (v: number) => void; min?: number; max?: number; size?: "lg" | "sm" }) {
+  const big = size === "lg";
+  const btn = `${big ? "h-12 w-12 text-xl" : "h-9 w-9 text-base"} rounded-xl border border-border bg-background font-bold text-primary disabled:opacity-40 hover:border-primary transition flex items-center justify-center`;
+  return (
+    <div className="flex items-center gap-3">
+      <button type="button" aria-label="-" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className={btn}>−</button>
+      <span className={`${big ? "text-2xl w-10" : "text-lg w-8"} text-center font-bold tabular-nums`}>{value}</span>
+      <button type="button" aria-label="+" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} className={btn}>+</button>
+    </div>
+  );
+}
+
 export default function PartnerCalendar() {
+
   const { t } = useTranslation();
   const navigate = useNavigate();
   const DAYS = DAY_DEFS.map(d => ({ ...d, label: t(`partner.calendar.days.${d.key}`) }));
@@ -51,8 +64,12 @@ export default function PartnerCalendar() {
     return h;
   });
   const [capacity, setCapacity] = useState(1);
+  const [showDayCapacity, setShowDayCapacity] = useState(false);
+  const [dayCapacity, setDayCapacity] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const dayCapFor = (day: number) => dayCapacity[day] ?? capacity;
+
 
   // Load existing opening_hours + capacity
   useEffect(() => {
@@ -79,7 +96,22 @@ export default function PartnerCalendar() {
           return next;
         });
       }
+
+      // Load per-day capacity overrides
+      const { data: av } = await supabase
+        .from("partner_availability")
+        .select("day_of_week, capacity")
+        .eq("partner_id", user.id);
+      const overrides: Record<number, number> = {};
+      for (const row of (av as any[]) || []) {
+        if (row.capacity != null) overrides[Number(row.day_of_week)] = Number(row.capacity);
+      }
+      if (Object.keys(overrides).length > 0) {
+        setDayCapacity(overrides);
+        setShowDayCapacity(true);
+      }
     })();
+
   }, []);
 
   const update = (day: number, patch: Partial<DayHours>) =>
@@ -109,8 +141,10 @@ export default function PartnerCalendar() {
     const rows = openDays.flatMap(d =>
       generateSlots(hours[d.num].open, hours[d.num].close).map(slot => ({
         partner_id: user.id, day_of_week: d.num, time_slot: slot,
+        capacity: dayCapFor(d.num) === capacity ? null : dayCapFor(d.num),
       }))
     );
+
 
     if (rows.length > 0) {
       const { error } = await supabase.from("partner_availability").insert(rows);
@@ -164,21 +198,37 @@ export default function PartnerCalendar() {
         </p>
 
         <Card className="bg-card border-border">
-          <CardContent className="p-4 flex items-center justify-between gap-3">
+          <CardContent className="p-4 space-y-3">
             <div>
               <p className="text-sm font-semibold">{t("partner.calendar.capacityLabel")}</p>
               <p className="text-xs text-muted-foreground">{t("partner.calendar.capacityHint")}</p>
             </div>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={capacity}
-              onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))}
-              className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
-            />
+            <Stepper value={capacity} onChange={setCapacity} min={1} max={10} />
+
+            {openDays.length > 0 && (
+              <div className="pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowDayCapacity(v => !v)}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {showDayCapacity ? "▾ " : "▸ "}{t("partner.calendar.capacityVaryByDay")}
+                </button>
+                {showDayCapacity && (
+                  <div className="mt-3 space-y-2">
+                    {openDays.map(d => (
+                      <div key={d.num} className="flex items-center justify-between gap-3">
+                        <span className="text-sm">{t(`partner.calendar.days.${d.key}`)}</span>
+                        <Stepper size="sm" min={1} max={10} value={dayCapFor(d.num)} onChange={v => setDayCapacity(prev => ({ ...prev, [d.num]: v }))} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
+
 
         {DAYS.map(d => {
           const h = hours[d.num];

@@ -229,17 +229,30 @@ export default function StudioBookingPage() {
 
   const service = profile?.services.find(s => s.id === serviceId) || null;
 
-  // Studio capacity = how many therapists work in parallel (min 1).
+  // Studio capacity = how many massages can run in parallel (min 1).
   const therapistCount = Math.max(1, Number(profile?.partner?.capacity) || 0, profile?.therapists?.length || 0);
+
+  // Per-slot capacity overrides (partner_availability.capacity, NULL = inherit global)
+  const slotCapacity = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const a of (profile?.availability ?? []) as any[]) {
+      if (a.capacity != null) m.set(`${Number(a.day_of_week)}__${a.time_slot}`, Math.max(1, Number(a.capacity)));
+    }
+    return m;
+  }, [profile]);
+
+  const capacityFor = (day: number, slot: string) =>
+    slotCapacity.get(`${day}__${slot}`) ?? therapistCount;
 
   // Spots still open for a given slot on the selected date.
   const remainingFor = (t: string) =>
-    date ? therapistCount - (slotCounts.get(`${isoDate(date)}__${t}`) || 0) : 0;
+    date ? capacityFor(date.getDay(), t) - (slotCounts.get(`${isoDate(date)}__${t}`) || 0) : 0;
 
   // Only show a time while at least one therapist is still free for it.
   const times = date
     ? (slotsByDay[date.getDay()] || []).filter(t => remainingFor(t) > 0)
     : [];
+
 
   const addons = profile?.addons ?? [];
   const addonsTotal = addons
@@ -791,7 +804,9 @@ export default function StudioBookingPage() {
               <div className="flex flex-wrap gap-2">
                 {times.map(t => {
                   const left = remainingFor(t);
-                  const lowStock = therapistCount > 1 && left < therapistCount;
+                  const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
+                  const lowStock = cap > 1 && left < cap;
+
                   return (
                     <button key={t} onClick={() => setTime(t)}
                       className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${

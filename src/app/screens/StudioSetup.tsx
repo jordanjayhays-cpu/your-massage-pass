@@ -58,49 +58,18 @@ function normalizeService(raw: any): Service {
   };
 }
 
-function CapacityChips({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const { t } = useTranslation();
-  const isSixPlus = value >= 6;
+function Stepper({ value, onChange, min = 1, max = 10, size = "lg" }: { value: number; onChange: (v: number) => void; min?: number; max?: number; size?: "lg" | "sm" }) {
+  const big = size === "lg";
+  const btn = `${big ? "h-12 w-12 text-xl" : "h-9 w-9 text-base"} rounded-xl border-2 border-[#E5DDD3] bg-white font-bold text-[#B85C38] disabled:opacity-40 hover:border-[#B85C38] transition flex items-center justify-center`;
   return (
-    <div className="flex flex-wrap gap-2">
-      {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
-            value === n
-              ? "bg-[#B85C38] border-[#B85C38] text-white"
-              : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
-          }`}
-        >
-          {n}
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={() => onChange(isSixPlus ? 6 : Math.max(6, value))}
-        className={`h-11 min-w-[44px] px-4 rounded-xl border-2 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40 ${
-          isSixPlus
-            ? "bg-[#B85C38] border-[#B85C38] text-white"
-            : "bg-white border-[#E5DDD3] text-[#2b2b2b] hover:border-[#B85C38]"
-        }`}
-      >
-        {t("app.studioHours.chip6Plus")}
-      </button>
-      {isSixPlus && (
-        <input
-          type="number"
-          min={6}
-          max={99}
-          value={value}
-          onChange={e => onChange(Math.max(6, Math.min(99, Number(e.target.value) || 6)))}
-          className="h-11 w-20 px-2 rounded-xl border-2 border-[#B85C38] bg-white text-center font-semibold text-[#2b2b2b] focus:outline-none focus:ring-2 focus:ring-[#B85C38]/40"
-        />
-      )}
+    <div className="flex items-center gap-3">
+      <button type="button" aria-label="-" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className={btn}>−</button>
+      <span className={`${big ? "text-2xl w-10" : "text-lg w-8"} text-center font-bold text-[#2b2b2b] tabular-nums`}>{value}</span>
+      <button type="button" aria-label="+" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} className={btn}>+</button>
     </div>
   );
 }
+
 
 function StaffChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { t } = useTranslation();
@@ -289,6 +258,11 @@ function StudioSetupInner() {
   ) as Record<number, string[]>;
   const [capacity, setCapacity] = useState<number>(1);
   const [staffCount, setStaffCount] = useState<string>("");
+  // Optional per-day capacity overrides (day_of_week -> capacity)
+  const [showDayCapacity, setShowDayCapacity] = useState(false);
+  const [dayCapacity, setDayCapacity] = useState<Record<number, number>>({});
+  const dayCapFor = (day: number) => dayCapacity[day] ?? capacity;
+
 
   // Step 4: Calendar (draft/claim mode)
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -532,7 +506,8 @@ function StudioSetupInner() {
       const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
       await supabase.from("partner_availability").delete().eq("partner_id", uid);
       const rows = DAYS.flatMap(day =>
-        (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
+        (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot, capacity: dayCapFor(day.num) === capacity ? null : dayCapFor(day.num) }))
+
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
       await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang }).eq("id", uid);
@@ -551,7 +526,7 @@ function StudioSetupInner() {
       if (!uid) { toast.error(t("partner.studioSetup.completePreviousSteps")); return; }
       await supabase.from("partner_availability").delete().eq("partner_id", uid);
       const rows = DAYS.flatMap(day =>
-        (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
+        (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot, capacity: dayCapFor(day.num) === capacity ? null : dayCapFor(day.num) }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
       await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang }).eq("id", uid);
@@ -675,7 +650,53 @@ function StudioSetupInner() {
     </div>
   );
 
+  const DAY_KEYS: Record<number, string> = {
+    0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday",
+  };
+
+  const renderCapacity = () => {
+    const openDays = DAYS.filter(d => hours[d.num]?.open);
+    return (
+      <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
+          <p className="text-xs text-[#7A7068] mt-0.5">{t("partner.studioSetup.capacityHelper")}</p>
+        </div>
+        <Stepper value={capacity} onChange={setCapacity} min={1} max={10} />
+
+        {openDays.length > 0 && (
+          <div className="pt-1 border-t border-[#E5DDD3]">
+            <button
+              type="button"
+              onClick={() => setShowDayCapacity(v => !v)}
+              className="mt-2 text-sm font-medium text-[#B85C38] hover:underline"
+            >
+              {showDayCapacity ? "▾ " : "▸ "}{t("partner.studioSetup.capacityVaryByDay")}
+            </button>
+            {showDayCapacity && (
+              <div className="mt-3 space-y-2">
+                {openDays.map(d => (
+                  <div key={d.num} className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-[#2b2b2b]">{t(`partner.calendar.days.${DAY_KEYS[d.num]}`)}</span>
+                    <Stepper
+                      size="sm"
+                      min={1}
+                      max={10}
+                      value={dayCapFor(d.num)}
+                      onChange={v => setDayCapacity(prev => ({ ...prev, [d.num]: v }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderStaffCount = () => (
+
     <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
       <div>
         <p className="text-sm font-medium text-[#2b2b2b]">{t("app.studioHours.staffTitle")}</p>
@@ -981,13 +1002,8 @@ function StudioSetupInner() {
                 <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step4AvailabilityTitle")}</h2>
               </div>
               {renderHoursEditor()}
-              <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
-                  <p className="text-xs text-[#7A7068]">{t("partner.studioSetup.capacityHelper")}</p>
-                </div>
-                <CapacityChips value={capacity} onChange={setCapacity} />
-              </div>
+              {renderCapacity()}
+
               {renderStaffCount()}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
@@ -1050,13 +1066,8 @@ function StudioSetupInner() {
               ) : (
                 <div className="space-y-3">
                   {renderHoursEditor()}
-                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
-                      <p className="text-xs text-[#7A7068]">{t("partner.studioSetup.capacityHelper")}</p>
-                    </div>
-                    <CapacityChips value={capacity} onChange={setCapacity} />
-                  </div>
+                  {renderCapacity()}
+
                   {renderStaffCount()}
                   <Button
                     onClick={handleSaveManualAvailability}
