@@ -49,6 +49,43 @@ const KNOWN: Outcome[] = [
   "noshow",
 ];
 
+const STUDIO_FACING: Outcome[] = [
+  "confirmed",
+  "declined",
+  "already-confirmed",
+  "already-declined",
+  "completed",
+  "noshow",
+];
+
+function looksLikePhone(input: string): boolean {
+  return /^[\d\s+]+$/.test(input);
+}
+
+function looksLikeEmail(input: string): boolean {
+  return input.includes("@");
+}
+
+function whatsappUrl(number: string): string | null {
+  const digits = number.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const withCountry = digits.length === 9 ? `34${digits}` : digits;
+  return `https://wa.me/${withCountry}`;
+}
+
+function convLabel(conv: string): string {
+  switch (conv) {
+    case "silence":
+      return "🤫 Prefiere silencio / Prefers silence";
+    case "minimal":
+      return "Un poco de charla / A little chat";
+    case "chatty":
+      return "Le gusta charlar / Happy to chat";
+    default:
+      return conv;
+  }
+}
+
 export default function BookingResult() {
   const params = useMemo(
     () => new URLSearchParams(typeof window !== "undefined" ? window.location.search : ""),
