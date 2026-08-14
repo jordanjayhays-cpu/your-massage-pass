@@ -83,7 +83,22 @@ export default function PartnerCalendar() {
           return next;
         });
       }
+
+      // Load per-day capacity overrides
+      const { data: av } = await supabase
+        .from("partner_availability")
+        .select("day_of_week, capacity")
+        .eq("partner_id", user.id);
+      const overrides: Record<number, number> = {};
+      for (const row of (av as any[]) || []) {
+        if (row.capacity != null) overrides[Number(row.day_of_week)] = Number(row.capacity);
+      }
+      if (Object.keys(overrides).length > 0) {
+        setDayCapacity(overrides);
+        setShowDayCapacity(true);
+      }
     })();
+
   }, []);
 
   const update = (day: number, patch: Partial<DayHours>) =>
