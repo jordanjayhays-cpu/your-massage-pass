@@ -183,21 +183,37 @@ export default function PartnerCalendar() {
         </p>
 
         <Card className="bg-card border-border">
-          <CardContent className="p-4 flex items-center justify-between gap-3">
+          <CardContent className="p-4 space-y-3">
             <div>
               <p className="text-sm font-semibold">{t("partner.calendar.capacityLabel")}</p>
               <p className="text-xs text-muted-foreground">{t("partner.calendar.capacityHint")}</p>
             </div>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={capacity}
-              onChange={e => setCapacity(Math.max(1, Number(e.target.value) || 1))}
-              className="h-10 w-20 px-2 rounded-lg border border-border bg-background text-sm text-center font-semibold"
-            />
+            <Stepper value={capacity} onChange={setCapacity} min={1} max={10} />
+
+            {openDays.length > 0 && (
+              <div className="pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowDayCapacity(v => !v)}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {showDayCapacity ? "▾ " : "▸ "}{t("partner.calendar.capacityVaryByDay")}
+                </button>
+                {showDayCapacity && (
+                  <div className="mt-3 space-y-2">
+                    {openDays.map(d => (
+                      <div key={d.num} className="flex items-center justify-between gap-3">
+                        <span className="text-sm">{t(`partner.calendar.days.${d.key}`)}</span>
+                        <Stepper size="sm" min={1} max={10} value={dayCapFor(d.num)} onChange={v => setDayCapacity(prev => ({ ...prev, [d.num]: v }))} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
+
 
         {DAYS.map(d => {
           const h = hours[d.num];
