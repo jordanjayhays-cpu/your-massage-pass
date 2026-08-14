@@ -955,13 +955,8 @@ function StudioSetupInner() {
                 <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step4AvailabilityTitle")}</h2>
               </div>
               {renderHoursEditor()}
-              <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
-                  <p className="text-xs text-[#7A7068]">{t("partner.studioSetup.capacityHelper")}</p>
-                </div>
-                <CapacityChips value={capacity} onChange={setCapacity} />
-              </div>
+              {renderCapacity()}
+
               {renderStaffCount()}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
