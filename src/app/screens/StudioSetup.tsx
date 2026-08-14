@@ -150,6 +150,73 @@ function StaffChips({ value, onChange }: { value: string; onChange: (v: string) 
   );
 }
 
+const DURATION_OPTIONS = [30, 45, 60, 75, 90, 120];
+const selectCls = "text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none text-[#2b2b2b] w-full";
+
+function ServiceTypeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
+  const [custom, setCustom] = useState(() => !!value && !MASSAGE_TYPES.includes(value));
+  if (custom) {
+    return (
+      <div className="flex items-center gap-1 bg-white border border-[#E5DDD3] rounded-lg px-2">
+        <input
+          autoFocus
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={t("partner.studioSetup.customTypePlaceholder")}
+          className="w-full py-2 text-sm focus:outline-none text-[#2b2b2b] bg-transparent"
+        />
+        <button type="button" title={t("partner.studioSetup.useListAgain")} onClick={() => { setCustom(false); onChange("Swedish"); }} className="text-[#7A7068] hover:text-[#B85C38] px-1">×</button>
+      </div>
+    );
+  }
+  return (
+    <select
+      value={value}
+      onChange={e => { if (e.target.value === "__custom__") { setCustom(true); onChange(""); } else onChange(e.target.value); }}
+      className={selectCls}
+    >
+      {MASSAGE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+      <option value="__custom__">{t("partner.studioSetup.customTypeOption")}</option>
+    </select>
+  );
+}
+
+function ServiceDurationField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation();
+  const [custom, setCustom] = useState(() => !DURATION_OPTIONS.includes(value));
+  if (custom) {
+    return (
+      <div className="flex items-center gap-1 bg-white border border-[#E5DDD3] rounded-lg px-2 col-span-2">
+        <input
+          autoFocus
+          type="number"
+          min={10}
+          max={240}
+          step={5}
+          value={value}
+          onChange={e => onChange(Number(e.target.value))}
+          placeholder={t("partner.studioSetup.customDurationPlaceholder")}
+          className="w-full py-2 text-sm focus:outline-none text-[#2b2b2b] bg-transparent"
+        />
+        <span className="text-xs text-[#7A7068]">min</span>
+        <button type="button" title={t("partner.studioSetup.useListAgain")} onClick={() => { setCustom(false); onChange(60); }} className="text-[#7A7068] hover:text-[#B85C38] px-1">×</button>
+      </div>
+    );
+  }
+  return (
+    <select
+      value={value}
+      onChange={e => { if (e.target.value === "__custom__") { setCustom(true); } else onChange(Number(e.target.value)); }}
+      className={`${selectCls} col-span-2`}
+    >
+      {DURATION_OPTIONS.map(d => <option key={d} value={d}>{d} min</option>)}
+      <option value="__custom__">{t("partner.studioSetup.customDurationOption")}</option>
+    </select>
+  );
+}
+
+
 function StudioSetupInner() {
   const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
