@@ -32,7 +32,9 @@ type Outcome =
   | "already-declined"
   | "was-cancelled"
   | "error"
-  | "invalid";
+  | "invalid"
+  | "completed"
+  | "noshow";
 
 const KNOWN: Outcome[] = [
   "confirmed",
@@ -43,7 +45,46 @@ const KNOWN: Outcome[] = [
   "was-cancelled",
   "error",
   "invalid",
+  "completed",
+  "noshow",
 ];
+
+const STUDIO_FACING: Outcome[] = [
+  "confirmed",
+  "declined",
+  "already-confirmed",
+  "already-declined",
+  "completed",
+  "noshow",
+];
+
+function looksLikePhone(input: string): boolean {
+  return /^[\d\s+]+$/.test(input);
+}
+
+function looksLikeEmail(input: string): boolean {
+  return input.includes("@");
+}
+
+function whatsappUrl(number: string): string | null {
+  const digits = number.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  const withCountry = digits.length === 9 ? `34${digits}` : digits;
+  return `https://wa.me/${withCountry}`;
+}
+
+function convLabel(conv: string): string {
+  switch (conv) {
+    case "silence":
+      return "🤫 Prefiere silencio / Prefers silence";
+    case "minimal":
+      return "Un poco de charla / A little chat";
+    case "chatty":
+      return "Le gusta charlar / Happy to chat";
+    default:
+      return conv;
+  }
+}
 
 export default function BookingResult() {
   const params = useMemo(
@@ -59,6 +100,21 @@ export default function BookingResult() {
   const time = getParam(params, "time");
   const name = getParam(params, "name");
   const rb = safeRebookUrl(getParam(params, "rb"));
+
+  const ph = getParam(params, "ph");
+  const em = getParam(params, "em");
+  const dur = getParam(params, "dur");
+  const pr = getParam(params, "pr");
+  const press = getParam(params, "press");
+  const focus = getParam(params, "focus");
+  const addons = getParam(params, "addons");
+  const conv = getParam(params, "conv");
+  const health = getParam(params, "health");
+  const notes = getParam(params, "notes");
+
+  const hasClientCard =
+    STUDIO_FACING.includes(outcome) &&
+    [ph, em, dur, pr, press, focus, addons, conv, health, notes].some(Boolean);
 
   const summaryFull = [name, service, [date, time].filter(Boolean).join(" ")]
     .filter(Boolean)
@@ -113,6 +169,20 @@ export default function BookingResult() {
       icon = "⚠️";
       titleEs = "Esta reserva fue cancelada";
       titleEn = "This booking was cancelled and can no longer be confirmed";
+      break;
+    case "completed":
+      icon = "🎉";
+      titleEs = "¡Visita completada!";
+      titleEn = "Marked as completed";
+      body = "Gracias — la reserva queda registrada como completada.";
+      summary = summaryFull;
+      break;
+    case "noshow":
+      icon = "🕐";
+      titleEs = "Cliente no asistió";
+      titleEn = "Marked as no-show";
+      body = "Hemos registrado que el cliente no asistió.";
+      summary = summaryFull;
       break;
     case "error":
       icon = "⚠️";
@@ -215,6 +285,135 @@ export default function BookingResult() {
               }}
             >
               {summary}
+            </div>
+          )}
+
+          {hasClientCard && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: "16px",
+                background: "#faf6f1",
+                borderRadius: 12,
+                textAlign: "left",
+                color: "#3d2b1f",
+                fontSize: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#B85C38",
+                  marginBottom: 12,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                📋 Ficha del cliente / Client details
+              </div>
+
+              {(name || ph || em) && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>👤 Cliente / Client:</span>{" "}
+                  {name && <span>{name}</span>}
+                  {ph && looksLikePhone(ph) && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`tel:${ph.replace(/\s/g, "")}`}
+                        style={{ color: "#B85C38", textDecoration: "underline" }}
+                      >
+                        {ph}
+                      </a>
+                      {whatsappUrl(ph) && (
+                        <>
+                          {" · "}
+                          <a
+                            href={whatsappUrl(ph)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#B85C38", textDecoration: "underline" }}
+                          >
+                            WhatsApp
+                          </a>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {em && looksLikeEmail(em) && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`mailto:${em}`}
+                        style={{ color: "#B85C38", textDecoration: "underline" }}
+                      >
+                        {em}
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {(service || dur || pr) && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>
+                    💆 Servicio / Service:
+                  </span>{" "}
+                  {[service, dur && `${dur} min`, pr && `€${pr}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              )}
+
+              {press && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Presión / Pressure:</span>{" "}
+                  {press}
+                </div>
+              )}
+
+              {focus && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Zonas / Focus:</span>{" "}
+                  {focus}
+                </div>
+              )}
+
+              {addons && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Extras:</span> {addons}
+                </div>
+              )}
+
+              {conv && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Conversación:</span>{" "}
+                  {convLabel(conv)}
+                </div>
+              )}
+
+              {health && (
+                <div
+                  style={{
+                    marginBottom: 10,
+                    background: "#fff7ed",
+                    border: "1px solid #fed7aa",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                  }}
+                >
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>⚠️ Salud / Health:</span>{" "}
+                  {health}
+                </div>
+              )}
+
+              {notes && (
+                <div>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>📝 Notas / Notes:</span>{" "}
+                  {notes}
+                </div>
+              )}
             </div>
           )}
 
