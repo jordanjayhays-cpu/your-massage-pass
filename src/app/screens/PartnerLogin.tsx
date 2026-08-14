@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Mail, Lock, ArrowRight, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { loadPartnerLang } from "@/app/lib/partnerLanguage";
 
 export default function PartnerLogin() {
   const navigate = useNavigate();
@@ -52,10 +53,11 @@ export default function PartnerLogin() {
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) {
-        setError("Invalid email or password");
+        setError(t("partner.login.errInvalidCredentials"));
         setLoading(false);
         return;
       }
+      await loadPartnerLang();
       navigate("/partner/dashboard");
     }
     setLoading(false);
@@ -85,7 +87,7 @@ export default function PartnerLogin() {
   };
 
   const handleMagicLink = async () => {
-    if (!email) { setError("Enter your email first"); return; }
+    if (!email) { setError(t("partner.login.errEmailFirst")); return; }
     setMagicLoading(true);
     setError("");
     const { error: otpErr } = await supabase.auth.signInWithOtp({
@@ -105,8 +107,8 @@ export default function PartnerLogin() {
           <div className="h-16 w-16 rounded-2xl bg-gradient-royal flex items-center justify-center mx-auto mb-4 shadow-elegant">
             <Building2 className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Partner Portal</h1>
-          <p className="text-muted-foreground mt-2">List your spa on Massage Pass</p>
+          <h1 className="font-display text-3xl font-bold text-foreground">{t("partner.login.title")}</h1>
+          <p className="text-muted-foreground mt-2">{t("partner.login.subtitle")}</p>
         </div>
 
         <Card className="bg-card border-border shadow-elegant">
@@ -119,7 +121,7 @@ export default function PartnerLogin() {
                   mode === "login" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
                 }`}
               >
-                Sign In
+                {t("partner.login.signInTab")}
               </button>
               <button
                 onClick={() => setMode("register")}
@@ -127,7 +129,7 @@ export default function PartnerLogin() {
                   mode === "register" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
                 }`}
               >
-                List My Spa
+                {t("partner.login.registerTab")}
               </button>
             </div>
 
@@ -135,12 +137,12 @@ export default function PartnerLogin() {
               {mode === "register" && (
                 <div>
                   <label className="text-xs font-semibold text-foreground mb-1.5 block">
-                    Business Name
+                    {t("partner.login.businessNameLabel")}
                   </label>
                   <Input
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="e.g. Wellness Center Madrid"
+                    placeholder={t("partner.login.businessNamePlaceholder")}
                     required
                     className="h-11"
                   />
@@ -149,7 +151,7 @@ export default function PartnerLogin() {
 
               <div>
                 <label className="text-xs font-semibold text-foreground mb-1.5 block">
-                  Email
+                  {t("partner.login.emailLabel")}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -166,7 +168,7 @@ export default function PartnerLogin() {
 
               <div>
                 <label className="text-xs font-semibold text-foreground mb-1.5 block">
-                  Password
+                  {t("partner.login.passwordLabel")}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -203,14 +205,14 @@ export default function PartnerLogin() {
                 disabled={loading}
                 className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90"
               >
-                {loading ? "Please wait…" : mode === "login" ? "Sign In" : "Create Account"}
+                {loading ? t("partner.login.pleaseWait") : mode === "login" ? t("partner.login.signInTab") : t("partner.login.createAccount")}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </form>
 
             <div className="flex items-center gap-3 my-4">
               <div className="h-px bg-border flex-1" />
-              <span className="text-xs text-muted-foreground">or</span>
+              <span className="text-xs text-muted-foreground">{t("partner.login.or")}</span>
               <div className="h-px bg-border flex-1" />
             </div>
 
@@ -228,15 +230,15 @@ export default function PartnerLogin() {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
-                  Continue with Google
+                  {t("partner.login.continueWithGoogle")}
                 </>
               )}
             </Button>
 
             {magicSent ? (
               <div className="mt-3 rounded-xl border border-border bg-secondary/40 p-3 text-center">
-                <p className="text-sm font-medium text-foreground">Check your email for a login link.</p>
-                <p className="text-xs text-muted-foreground mt-1">Sent to {email}.</p>
+                <p className="text-sm font-medium text-foreground">{t("partner.login.magicLinkSentTitle")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("partner.login.magicLinkSentTo", { email })}</p>
               </div>
             ) : (
               <Button
@@ -246,13 +248,13 @@ export default function PartnerLogin() {
                 variant="outline"
                 className="w-full h-11 mt-3"
               >
-                {magicLoading ? "Sending…" : t("app.partnerAuth.magicLinkOption")}
+                {magicLoading ? t("partner.login.sending") : t("app.partnerAuth.magicLinkOption")}
               </Button>
             )}
 
             {mode === "login" && (
               <p className="text-xs text-center text-muted-foreground mt-4">
-                Demo: sign up first, then sign in with that account.
+                {t("partner.login.demoHint")}
               </p>
             )}
           </CardContent>
@@ -261,11 +263,7 @@ export default function PartnerLogin() {
         {/* Benefits for registering */}
         {mode === "register" && (
           <div className="mt-6 space-y-3">
-            {[
-              "Reach 12,000+ digital nomads in Madrid",
-              "Commission-only — no upfront cost",
-              "Get bookings 24/7 automatically",
-            ].map((b) => (
+            {(t("partner.login.benefits", { returnObjects: true }) as string[]).map((b) => (
               <div key={b} className="flex items-center gap-3 text-sm text-foreground/80">
                 <div className="h-6 w-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
                   <span className="text-accent text-sm">✓</span>

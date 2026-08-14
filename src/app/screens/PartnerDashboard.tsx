@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import SoapNoteSection from "../components/SoapNoteSection";
+import { loadPartnerLang } from "@/app/lib/partnerLanguage";
 
 type Booking = {
   id: string;
@@ -38,6 +40,7 @@ type Partner = {
 };
 
 export default function PartnerDashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [partner, setPartner] = useState<Partner | null>(null);
@@ -56,12 +59,13 @@ export default function PartnerDashboard() {
 
   useEffect(() => {
     loadData();
+    loadPartnerLang();
   }, []);
 
   const loadData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error("Please sign in"); navigate("/partner/login"); return; }
+    if (!user) { toast.error(t("partner.dashboard.pleaseSignIn")); navigate("/partner/login"); return; }
     setShareUrl(`https://book.massageclub.io/s/${user.id}`);
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
@@ -78,8 +82,8 @@ export default function PartnerDashboard() {
     setActionLoading(id);
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
     setActionLoading(null);
-    if (error) { toast.error("Error updating: " + error.message); return; }
-    toast.success(`Booking ${status}!`);
+    if (error) { toast.error(t("partner.dashboard.errorUpdating", { message: error.message })); return; }
+    toast.success(status === "confirmed" ? t("partner.dashboard.bookingConfirmed") : t("partner.dashboard.bookingCancelled"));
     loadData();
   };
 
@@ -146,14 +150,14 @@ export default function PartnerDashboard() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate("/")}
-                aria-label="Back to site"
+                aria-label={t("partner.dashboard.backToSite")}
                 className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
               <div>
-                <p className="text-xs text-muted-foreground">Welcome back</p>
-                <h1 className="font-display text-xl font-bold">{partner?.business_name ?? "Partner Dashboard"}</h1>
+                <p className="text-xs text-muted-foreground">{t("partner.dashboard.welcomeBack")}</p>
+                <h1 className="font-display text-xl font-bold">{partner?.business_name ?? t("partner.dashboard.title")}</h1>
               </div>
             </div>
             <div className="flex gap-2">
@@ -174,9 +178,9 @@ export default function PartnerDashboard() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Pending", value: pendingCount, icon: Clock, color: "text-orange-500" },
-              { label: "Today", value: todayBookings.length, icon: Calendar, color: "text-primary" },
-              { label: "This Month", value: confirmedThisMonth, icon: DollarSign, color: "text-green-500" },
+              { label: t("partner.dashboard.statPending"), value: pendingCount, icon: Clock, color: "text-orange-500" },
+              { label: t("partner.dashboard.statToday"), value: todayBookings.length, icon: Calendar, color: "text-primary" },
+              { label: t("partner.dashboard.statThisMonth"), value: confirmedThisMonth, icon: DollarSign, color: "text-green-500" },
             ].map(({ label, value, icon: Icon, color }) => (
               <Card key={label} className="bg-card border-border">
                 <CardContent className="p-4 text-center">
@@ -193,10 +197,10 @@ export default function PartnerDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Link2 className="h-4 w-4 text-primary" />
-                <p className="text-sm font-bold">Your booking link</p>
+                <p className="text-sm font-bold">{t("partner.dashboard.bookingLinkTitle")}</p>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Share this anywhere — your Google listing, Instagram bio, or a WhatsApp message. Customers book right from it.
+                {t("partner.dashboard.bookingLinkDesc")}
               </p>
               <div className="flex items-center gap-2 mb-2">
                 <input
@@ -209,28 +213,28 @@ export default function PartnerDashboard() {
                   onClick={() => {
                     navigator.clipboard?.writeText(shareUrl);
                     setCopied(true);
-                    toast.success("Link copied!");
+                    toast.success(t("partner.dashboard.linkCopied"));
                     setTimeout(() => setCopied(false), 1500);
                   }}
                   className="h-10 px-3 rounded-xl bg-primary text-primary-foreground flex items-center gap-1.5 text-xs font-semibold"
                 >
                   {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t("partner.dashboard.copied") : t("partner.dashboard.copy")}
                 </button>
               </div>
               <div className="flex gap-2">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Book your massage here: ${shareUrl}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(t("partner.dashboard.shareWhatsappText", { url: shareUrl }))}`}
                   target="_blank" rel="noreferrer"
                   className="flex-1 h-9 rounded-xl bg-[#25D366] text-white text-xs font-semibold flex items-center justify-center gap-1.5"
                 >
-                  <MessageCircle className="h-3.5 w-3.5" /> Share on WhatsApp
+                  <MessageCircle className="h-3.5 w-3.5" /> {t("partner.dashboard.shareOnWhatsapp")}
                 </a>
                 <a
                   href={shareUrl} target="_blank" rel="noreferrer"
                   className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center gap-1.5"
                 >
-                  Preview
+                  {t("partner.dashboard.preview")}
                 </a>
               </div>
             </CardContent>
@@ -239,12 +243,12 @@ export default function PartnerDashboard() {
           {/* Quick actions */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Edit Profile", sub: "Name, address", path: "/partner/profile", icon: Settings },
-              { label: "Add Services", sub: "Prices, durations", path: "/partner/services", icon: Star },
-              { label: "Photos", sub: "Cover, logo, gallery", path: "/partner/photos", icon: ImageIcon },
-              { label: "Availability", sub: "Opening hours", path: "/partner/calendar", icon: Clock },
-              { label: "Clients", sub: "History & contacts", path: "/partner/clients", icon: Users },
-              { label: "SOAP Notes", sub: "Treatment history", path: "/partner/clients", icon: FileText },
+              { label: t("partner.dashboard.quickEditProfile"), sub: t("partner.dashboard.quickEditProfileSub"), path: "/partner/profile", icon: Settings },
+              { label: t("partner.dashboard.quickAddServices"), sub: t("partner.dashboard.quickAddServicesSub"), path: "/partner/services", icon: Star },
+              { label: t("partner.dashboard.quickPhotos"), sub: t("partner.dashboard.quickPhotosSub"), path: "/partner/photos", icon: ImageIcon },
+              { label: t("partner.dashboard.quickAvailability"), sub: t("partner.dashboard.quickAvailabilitySub"), path: "/partner/calendar", icon: Clock },
+              { label: t("partner.dashboard.quickClients"), sub: t("partner.dashboard.quickClientsSub"), path: "/partner/clients", icon: Users },
+              { label: t("partner.dashboard.quickSoapNotes"), sub: t("partner.dashboard.quickSoapNotesSub"), path: "/partner/clients", icon: FileText },
             ].map(({ label, sub, path, icon: Icon }) => (
               <button
                 key={path}
@@ -275,17 +279,17 @@ export default function PartnerDashboard() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">Calendar</p>
+                  <p className="text-sm font-semibold">{t("partner.dashboard.calendarLabel")}</p>
                   {partner?.google_calendar_connected ? (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-600">Connected</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-600">{t("partner.dashboard.calendarConnected")}</span>
                   ) : (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">Set up</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">{t("partner.dashboard.calendarSetUp")}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {partner?.google_calendar_connected
-                    ? `${partner.google_calendar_id || "Google Calendar"} · Tap to manage`
-                    : "Connect Google Calendar for real-time availability"
+                    ? t("partner.dashboard.calendarConnectedDesc", { calendar: partner.google_calendar_id || t("partner.dashboard.googleCalendarDefault") })
+                    : t("partner.dashboard.calendarSetupDesc")
                   }
                 </p>
               </div>
@@ -296,7 +300,7 @@ export default function PartnerDashboard() {
           {/* Pending actions */}
           {pendingCount > 0 && (
             <div>
-              <h2 className="font-display text-base font-bold mb-3">Needs your attention</h2>
+              <h2 className="font-display text-base font-bold mb-3">{t("partner.dashboard.needsAttention")}</h2>
               <div className="space-y-3">
                 {bookings.filter(b => b.status === "pending").map(b => (
                   <Card key={b.id} className="bg-card border-orange-200">
@@ -306,7 +310,7 @@ export default function PartnerDashboard() {
                           <p className="font-semibold text-sm">{b.client_name}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type}</p>
                           <p className="text-xs text-primary font-semibold mt-1">
-                            📅 {b.booking_date} at {b.booking_time}
+                            📅 {t("partner.dashboard.bookingDateAt", { date: b.booking_date, time: b.booking_time })}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -337,10 +341,10 @@ export default function PartnerDashboard() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h2 className="font-display text-base font-bold">Calendar</h2>
+                <h2 className="font-display text-base font-bold">{t("partner.dashboard.calendarLabel")}</h2>
                 <div className="flex rounded-lg bg-secondary p-0.5 text-xs font-semibold">
-                  <button onClick={() => setCalView("month")} className={`px-2.5 py-1 rounded-md ${calView === "month" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>Month</button>
-                  <button onClick={() => setCalView("week")} className={`px-2.5 py-1 rounded-md ${calView === "week" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>Week</button>
+                  <button onClick={() => setCalView("month")} className={`px-2.5 py-1 rounded-md ${calView === "month" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{t("partner.dashboard.month")}</button>
+                  <button onClick={() => setCalView("week")} className={`px-2.5 py-1 rounded-md ${calView === "week" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{t("partner.dashboard.week")}</button>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -452,7 +456,7 @@ export default function PartnerDashboard() {
             <div className="mt-3">
               <p className="text-sm font-semibold mb-2">{selectedPretty}</p>
               {selectedBookings.length === 0 ? (
-                <p className="text-sm text-muted-foreground px-1">No appointments this day.</p>
+                <p className="text-sm text-muted-foreground px-1">{t("partner.dashboard.noAppointmentsThisDay")}</p>
               ) : (
                 <div className="space-y-2">
                   {selectedBookings.map(b => {
@@ -463,7 +467,7 @@ export default function PartnerDashboard() {
                           <div className="flex items-start justify-between gap-3">
                             <button onClick={() => setDetail(b)} className="flex-1 min-w-0 text-left">
                               <p className="font-semibold text-sm">{b.booking_time} · {b.client_name}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type} <span className="text-primary">· details</span></p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{b.massage_type} <span className="text-primary">· {t("partner.dashboard.details")}</span></p>
                             </button>
                             <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${
                               b.status === "confirmed" ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"
@@ -478,9 +482,9 @@ export default function PartnerDashboard() {
                                 </a>
                               )}
                               {b.client_email && (
-                                <a href={`mailto:${b.client_email}?subject=${encodeURIComponent(`Your booking at ${partner?.business_name ?? "our studio"}`)}`}
+                                <a href={`mailto:${b.client_email}?subject=${encodeURIComponent(t("partner.dashboard.bookingEmailSubject", { business: partner?.business_name ?? t("partner.dashboard.ourStudio") }))}`}
                                   className="flex-1 h-9 rounded-xl bg-secondary text-foreground text-xs font-semibold flex items-center justify-center gap-1.5">
-                                  ✉️ Email
+                                  ✉️ {t("partner.dashboard.email")}
                                 </a>
                               )}
                             </div>
@@ -496,12 +500,12 @@ export default function PartnerDashboard() {
 
           {/* Recent bookings */}
           <div>
-            <h2 className="font-display text-base font-bold mb-3">Recent bookings</h2>
+            <h2 className="font-display text-base font-bold mb-3">{t("partner.dashboard.recentBookings")}</h2>
             {bookings.length === 0 ? (
               <Card className="bg-card border-border">
                 <CardContent className="p-8 text-center">
                   <Calendar className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No bookings yet. They'll appear here when customers book.</p>
+                  <p className="text-sm text-muted-foreground">{t("partner.dashboard.noBookingsYet")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -532,7 +536,7 @@ export default function PartnerDashboard() {
             variant="outline"
             className="w-full h-11 text-muted-foreground"
           >
-            Sign Out
+            {t("partner.dashboard.signOut")}
           </Button>
         </div>
       )}
@@ -557,26 +561,26 @@ export default function PartnerDashboard() {
 
                 <div className="space-y-1 text-sm">
                   <p>📅 {prettyDate}</p>
-                  <p>🕐 {d.booking_time}{d.duration ? ` · ${d.duration} min` : ""}</p>
+                  <p>🕐 {d.booking_time}{d.duration ? ` · ${t("partner.dashboard.minutesShort", { count: d.duration })}` : ""}</p>
                   {d.price ? <p>💶 €{d.price}</p> : null}
-                  <p>Status: <span className={`font-semibold ${d.status === "confirmed" ? "text-green-600" : d.status === "cancelled" ? "text-red-500" : "text-orange-500"}`}>{d.status}</span></p>
+                  <p>{t("partner.dashboard.status")}: <span className={`font-semibold ${d.status === "confirmed" ? "text-green-600" : d.status === "cancelled" ? "text-red-500" : "text-orange-500"}`}>{d.status}</span></p>
                 </div>
 
                 {hasExtras ? (
                   <div className="space-y-1 text-sm border-t border-border pt-3">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1">What the client asked for</p>
-                    {d.pressure && <p><span className="text-muted-foreground">Pressure:</span> {d.pressure}</p>}
-                    {(d.focus_areas || []).length > 0 && <p><span className="text-muted-foreground">Focus areas:</span> {d.focus_areas!.join(", ")}</p>}
-                    {(d.add_ons || []).length > 0 && <p><span className="text-muted-foreground">Add-ons:</span> {d.add_ons!.join(", ")}</p>}
-                    {d.notes && <p><span className="text-muted-foreground">Notes:</span> {d.notes}</p>}
-                    {d.allergies && <p><span className="text-muted-foreground">Allergies:</span> {d.allergies}</p>}
-                    {d.health_notes && <p><span className="text-muted-foreground">Health notes:</span> {d.health_notes}</p>}
+                    <p className="text-xs font-bold text-muted-foreground uppercase mb-1">{t("partner.dashboard.whatClientAskedFor")}</p>
+                    {d.pressure && <p><span className="text-muted-foreground">{t("partner.dashboard.pressure")}:</span> {d.pressure}</p>}
+                    {(d.focus_areas || []).length > 0 && <p><span className="text-muted-foreground">{t("partner.dashboard.focusAreas")}:</span> {d.focus_areas!.join(", ")}</p>}
+                    {(d.add_ons || []).length > 0 && <p><span className="text-muted-foreground">{t("partner.dashboard.addOns")}:</span> {d.add_ons!.join(", ")}</p>}
+                    {d.notes && <p><span className="text-muted-foreground">{t("partner.dashboard.notes")}:</span> {d.notes}</p>}
+                    {d.allergies && <p><span className="text-muted-foreground">{t("partner.dashboard.allergies")}:</span> {d.allergies}</p>}
+                    {d.health_notes && <p><span className="text-muted-foreground">{t("partner.dashboard.healthNotes")}:</span> {d.health_notes}</p>}
                   </div>
                 ) : null}
 
                 {(d.client_phone || d.client_email) && (
                   <div className="border-t border-border pt-3 space-y-2">
-                    <p className="text-xs font-bold text-muted-foreground uppercase">Contact</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase">{t("partner.dashboard.contact")}</p>
                     {d.client_phone && <p className="text-sm">📞 {d.client_phone}</p>}
                     {d.client_email && <p className="text-sm break-all">✉️ {d.client_email}</p>}
                     <div className="flex gap-2 pt-1">
@@ -587,9 +591,9 @@ export default function PartnerDashboard() {
                         </a>
                       )}
                       {d.client_email && (
-                        <a href={`mailto:${d.client_email}?subject=${encodeURIComponent(`Your booking at ${partner?.business_name ?? "our studio"}`)}`}
+                        <a href={`mailto:${d.client_email}?subject=${encodeURIComponent(t("partner.dashboard.bookingEmailSubject", { business: partner?.business_name ?? t("partner.dashboard.ourStudio") }))}`}
                           className="flex-1 h-10 rounded-xl bg-secondary text-foreground text-sm font-semibold flex items-center justify-center gap-1.5">
-                          ✉️ Email
+                          ✉️ {t("partner.dashboard.email")}
                         </a>
                       )}
                     </div>
@@ -599,17 +603,17 @@ export default function PartnerDashboard() {
                 <div className="border-t border-border pt-3">
                   <button
                     onClick={async () => {
-                      const t = toast.loading("Sending reminder…");
+                      const toastId = toast.loading(t("partner.dashboard.sendingReminder"));
                       const { error } = await supabase.functions.invoke("send-booking-reminder", {
                         body: { booking_id: d.id },
                       });
-                      toast.dismiss(t);
-                      if (error) toast.error("Could not send reminder");
-                      else toast.success("Reminder sent");
+                      toast.dismiss(toastId);
+                      if (error) toast.error(t("partner.dashboard.reminderFailed"));
+                      else toast.success(t("partner.dashboard.reminderSent"));
                     }}
                     className="w-full h-10 rounded-xl bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-primary/15"
                   >
-                    ⏰ Send reminder to client
+                    ⏰ {t("partner.dashboard.sendReminderToClient")}
                   </button>
                 </div>
 
@@ -623,11 +627,11 @@ export default function PartnerDashboard() {
                   <div className="flex gap-2 border-t border-border pt-3">
                     <button onClick={() => { updateStatus(d.id, "confirmed"); setDetail(null); }}
                       className="flex-1 h-10 rounded-xl bg-green-500 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
-                      <CheckCircle className="h-4 w-4" /> Confirm
+                      <CheckCircle className="h-4 w-4" /> {t("partner.dashboard.confirm")}
                     </button>
                     <button onClick={() => { updateStatus(d.id, "cancelled"); setDetail(null); }}
                       className="flex-1 h-10 rounded-xl bg-red-500 text-white text-sm font-semibold flex items-center justify-center gap-1.5">
-                      <XCircle className="h-4 w-4" /> Decline
+                      <XCircle className="h-4 w-4" /> {t("partner.dashboard.decline")}
                     </button>
                   </div>
                 )}

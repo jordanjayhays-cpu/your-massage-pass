@@ -11,6 +11,8 @@ import {
   Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2, ArrowLeft,
   Calendar as CalendarIcon, Check,
 } from "lucide-react";
+import PartnerLangPills from "@/app/components/PartnerLangPills";
+import { defaultPartnerLang, applyPartnerLang, type PartnerLang } from "@/app/lib/partnerLanguage";
 
 const MASSAGE_TYPES = ["Relax", "Therapeutic", "Swedish", "Deep Tissue", "Sports", "Thai", "Balinese", "Ayurvedic", "Lomi Lomi", "Hot Stone", "Aromatherapy", "Reflexology", "Shiatsu", "Kobido", "Craneo-Facial", "Lymphatic", "Prenatal", "Couples", "4 Hands", "Express", "Ritual", "Hammam", "Body", "Physiotherapy", "Facial", "Spa Day", "Other"];
 const DAYS = [
@@ -149,7 +151,7 @@ function StaffChips({ value, onChange }: { value: string; onChange: (v: string) 
 }
 
 function StudioSetupInner() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -158,6 +160,10 @@ function StudioSetupInner() {
   const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
+  const [lang, setLang] = useState<PartnerLang>(() => {
+    const resolved = i18n.resolvedLanguage;
+    return resolved === "es" || resolved === "en" ? resolved : defaultPartnerLang();
+  });
   const TOTAL_STEPS = mode === "claim" ? 6 : 5;
   const DONE_STEP = TOTAL_STEPS;
 
@@ -171,8 +177,8 @@ function StudioSetupInner() {
 
   const handleCreatePassword = async () => {
     setPwError("");
-    if (newPassword.length < 8) { setPwError("La contraseña debe tener al menos 8 caracteres / Password must be at least 8 characters."); return; }
-    if (newPassword !== newPassword2) { setPwError("Las contraseñas no coinciden / Passwords do not match."); return; }
+    if (newPassword.length < 8) { setPwError(t("partner.studioSetup.pwErrorMinLength")); return; }
+    if (newPassword !== newPassword2) { setPwError(t("partner.studioSetup.pwErrorMismatch")); return; }
     setPwSaving(true);
     const { error: pwErr } = await supabase.auth.updateUser({ password: newPassword });
     setPwSaving(false);
@@ -180,7 +186,7 @@ function StudioSetupInner() {
     const { data: { user } } = await supabase.auth.getUser();
     setAccountEmail(user?.email ?? "");
     setPwDone(true);
-    toast.success("Contraseña guardada");
+    toast.success(t("partner.studioSetup.pwSavedToast"));
   };
 
   // Source data (invite, draft, or scraped partner)
@@ -225,7 +231,7 @@ function StudioSetupInner() {
   // Validate token/draft/claim on mount
   useEffect(() => {
     if (mode === "claim") {
-      if (!claimToken) { setSourceError("No claim token provided"); setValidatingSource(false); return; }
+      if (!claimToken) { setSourceError(t("partner.studioSetup.claimNoTokenError")); setValidatingSource(false); return; }
       (async () => {
         const { data: partner, error } = await supabase
           .from("partners")
@@ -234,7 +240,7 @@ function StudioSetupInner() {
           .eq("status", "pending")
           .maybeSingle();
         if (error || !partner) {
-          setSourceError("This claim link is invalid or the studio has already been claimed.");
+          setSourceError(t("partner.studioSetup.claimInvalidError"));
           setValidatingSource(false);
           return;
         }
@@ -269,7 +275,7 @@ function StudioSetupInner() {
     }
 
     if (mode === "draft") {
-      if (!draftToken) { setSourceError("No draft token provided"); setValidatingSource(false); return; }
+      if (!draftToken) { setSourceError(t("partner.studioSetup.draftNoTokenError")); setValidatingSource(false); return; }
       supabase
         .from("studio_drafts")
         .select("*")
@@ -277,7 +283,7 @@ function StudioSetupInner() {
         .neq("status", "claimed")
         .maybeSingle()
         .then(({ data, error }) => {
-          if (error || !data) { setSourceError("This claim link is invalid or already used."); }
+          if (error || !data) { setSourceError(t("partner.studioSetup.draftInvalidError")); }
           else {
             setSourceData(data);
             setEmail(data.email || "");
@@ -298,7 +304,7 @@ function StudioSetupInner() {
       return;
     }
 
-    if (!token) { setSourceError("No token provided"); setValidatingSource(false); return; }
+    if (!token) { setSourceError(t("partner.studioSetup.inviteNoTokenError")); setValidatingSource(false); return; }
     supabase
       .from("invites")
       .select("*")
@@ -306,7 +312,7 @@ function StudioSetupInner() {
       .eq("used", false)
       .single()
       .then(({ data, error }) => {
-        if (error || !data) { setSourceError("Invalid or expired invite link"); }
+        if (error || !data) { setSourceError(t("partner.studioSetup.inviteInvalidError")); }
         else {
           setSourceData(data);
           setEmail(data.email || "");
@@ -321,10 +327,10 @@ function StudioSetupInner() {
     if (searchParams.get("connected") === "true") {
       setCalendarConnected(true);
       setStep(5);
-      toast.success("Google Calendar connected!");
+      toast.success(t("partner.studioSetup.calendarConnectedToast"));
     }
     if (searchParams.get("cal_error")) {
-      toast.error("Calendar connection failed. Please try again.");
+      toast.error(t("partner.studioSetup.calendarErrorToast"));
     }
   }, [searchParams]);
 
@@ -343,13 +349,13 @@ function StudioSetupInner() {
     });
     if (error) {
       setGoogleLoading(false);
-      toast.error(error.message || "Google sign-in failed");
+      toast.error(error.message || t("partner.studioSetup.googleSignInFailed"));
     }
   };
 
   // Step 1 (claim): send magic-link email — link brings user back to this same claim URL.
   const handleMagicLink = async () => {
-    if (!email) { toast.error("Enter your email first"); return; }
+    if (!email) { toast.error(t("partner.studioSetup.enterEmailFirst")); return; }
     setMagicLoading(true);
     const emailRedirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}`;
     const { error } = await supabase.auth.signInWithOtp({
@@ -358,17 +364,17 @@ function StudioSetupInner() {
     });
     setMagicLoading(false);
     if (error) {
-      toast.error(error.message || "Could not send magic link");
+      toast.error(error.message || t("partner.studioSetup.magicLinkFailed"));
       return;
     }
     setMagicSent(true);
-    toast.success("Check your email for a login link.");
+    toast.success(t("partner.studioSetup.magicLinkSentToast"));
   };
 
   const handleCreateAccount = async () => {
-    if (!password || password !== confirmPassword) { toast.error("Passwords don't match"); return; }
-    if (password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-    if (!email) { toast.error("Please provide an email"); return; }
+    if (!password || password !== confirmPassword) { toast.error(t("partner.studioSetup.passwordsDontMatch")); return; }
+    if (password.length < 8) { toast.error(t("partner.studioSetup.passwordMinLength")); return; }
+    if (!email) { toast.error(t("partner.studioSetup.emailRequired")); return; }
     setAccountLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -383,10 +389,10 @@ function StudioSetupInner() {
       }
 
       setPartnerId(data.user.id);
-      toast.success("Account created!");
+      toast.success(t("partner.studioSetup.accountCreatedToast"));
       setStep(2);
     } catch (err: any) {
-      toast.error(err.message || "Failed to create account");
+      toast.error(err.message || t("partner.studioSetup.accountCreateFailed"));
     } finally {
       setAccountLoading(false);
     }
@@ -394,7 +400,7 @@ function StudioSetupInner() {
 
   // Step 2: Save profile
   const handleSaveProfile = async () => {
-    if (!studio.business_name.trim()) { toast.error("Studio name is required"); return; }
+    if (!studio.business_name.trim()) { toast.error(t("partner.studioSetup.studioNameRequired")); return; }
     setProfileLoading(true);
     try {
       await supabase.from("partners").upsert({
@@ -408,11 +414,12 @@ function StudioSetupInner() {
         description: studio.description,
         city: studio.city,
         status: "active",
+        preferred_language: lang,
       });
-      toast.success("Profile saved!");
+      toast.success(t("partner.studioSetup.profileSavedToast"));
       setStep(3);
     } catch (err: any) {
-      toast.error(err.message || "Failed to save profile");
+      toast.error(err.message || t("partner.studioSetup.profileSaveFailed"));
     } finally {
       setProfileLoading(false);
     }
@@ -421,7 +428,7 @@ function StudioSetupInner() {
   // Step 3: Save services
   const handleSaveServices = async () => {
     const validServices = services.filter(s => s.name.trim());
-    if (validServices.length === 0) { toast.error("Add at least one service"); return; }
+    if (validServices.length === 0) { toast.error(t("partner.studioSetup.addAtLeastOneService")); return; }
     setServicesLoading(true);
     try {
       const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
@@ -443,10 +450,10 @@ function StudioSetupInner() {
         await supabase.rpc("claim_release_prebuilt", { p_claim_token: claimToken });
       }
 
-      toast.success("Services saved!");
+      toast.success(t("partner.studioSetup.servicesSavedToast"));
       setStep(4);
     } catch (err: any) {
-      toast.error(err.message || "Failed to save services");
+      toast.error(err.message || t("partner.studioSetup.servicesSaveFailed"));
     } finally {
       setServicesLoading(false);
     }
@@ -461,11 +468,11 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1) }).eq("id", uid);
-      toast.success("Availability saved!");
+      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang }).eq("id", uid);
+      toast.success(t("partner.studioSetup.availabilitySavedToast"));
       setStep(5);
     } catch (err: any) {
-      toast.error(err.message || "Failed to save availability");
+      toast.error(err.message || t("partner.studioSetup.availabilitySaveFailed"));
     }
   };
 
@@ -474,17 +481,17 @@ function StudioSetupInner() {
     setManualSaving(true);
     try {
       const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
-      if (!uid) { toast.error("Please complete previous steps"); return; }
+      if (!uid) { toast.error(t("partner.studioSetup.completePreviousSteps")); return; }
       await supabase.from("partner_availability").delete().eq("partner_id", uid);
       const rows = DAYS.flatMap(day =>
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1) }).eq("id", uid);
-      toast.success("Availability saved!");
+      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang }).eq("id", uid);
+      toast.success(t("partner.studioSetup.availabilitySavedToast"));
       setStep(5);
     } catch (err: any) {
-      toast.error(err.message || "Failed to save availability");
+      toast.error(err.message || t("partner.studioSetup.availabilitySaveFailed"));
     } finally {
       setManualSaving(false);
     }
@@ -493,7 +500,7 @@ function StudioSetupInner() {
   // Step 4 (draft): Connect Google Calendar
   const handleConnectCalendar = async () => {
     const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
-    if (!uid) { toast.error("Please complete previous steps"); return; }
+    if (!uid) { toast.error(t("partner.studioSetup.completePreviousSteps")); return; }
 
     const clientId =
       (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
@@ -627,7 +634,7 @@ function StudioSetupInner() {
             <div className="h-16 w-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">❌</span>
             </div>
-            <h2 className="font-display text-xl font-bold mb-2">Invalid Link</h2>
+            <h2 className="font-display text-xl font-bold mb-2">{t("partner.studioSetup.invalidLinkTitle")}</h2>
             <p className="text-[#7A7068] text-sm">{sourceError}</p>
           </CardContent>
         </Card>
@@ -636,10 +643,10 @@ function StudioSetupInner() {
   }
 
   const stepLabels = mode === "claim"
-    ? ["Sign in", "Review", "Services", "Calendar", "Password", "Live"]
+    ? [t("partner.studioSetup.stepLabelSignIn"), t("partner.studioSetup.stepLabelReview"), t("partner.studioSetup.stepLabelServices"), t("partner.studioSetup.stepLabelCalendar"), t("partner.studioSetup.stepLabelPassword"), t("partner.studioSetup.stepLabelLive")]
     : mode === "draft"
-      ? ["Sign in", "Review", "Services", "Calendar", "Live"]
-      : ["Account", "Profile", "Services", "Hours", "Done"];
+      ? [t("partner.studioSetup.stepLabelSignIn"), t("partner.studioSetup.stepLabelReview"), t("partner.studioSetup.stepLabelServices"), t("partner.studioSetup.stepLabelCalendar"), t("partner.studioSetup.stepLabelLive")]
+      : [t("partner.studioSetup.stepLabelAccount"), t("partner.studioSetup.stepLabelProfile"), t("partner.studioSetup.stepLabelServices"), t("partner.studioSetup.stepLabelHours"), t("partner.studioSetup.stepLabelDone")];
 
   const isReviewMode = mode === "draft" || mode === "claim";
 
@@ -650,7 +657,7 @@ function StudioSetupInner() {
           onClick={() => (step > 1 ? setStep(step - 1) : navigate(-1))}
           className="inline-flex items-center gap-1.5 text-sm text-[#5a4736] hover:text-[#B85C38] transition mb-4"
         >
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t("partner.studioSetup.backButton")}
         </button>
 
         <div className="text-center mb-4">
@@ -660,27 +667,27 @@ function StudioSetupInner() {
             ) : (
               <Sparkles size={14} />
             )}
-            {isReviewMode ? "Claim Your Studio" : "Studio Setup"}
+            {isReviewMode ? t("partner.studioSetup.claimBadgeLabel") : t("partner.studioSetup.setupBadgeLabel")}
           </div>
           {isReviewMode ? (
             <>
-              <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">We built your Massage Club page</h1>
+              <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">{t("partner.studioSetup.claimHeading")}</h1>
               <p className="text-[#7A7068] text-sm mt-1">
-                Review it for <span className="font-semibold text-[#2b2b2b]">{headerName}</span>, then connect your calendar to go live.
+                {t("partner.studioSetup.claimSubheading", { businessName: headerName })}
               </p>
             </>
           ) : (
             <>
-              <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">Welcome, {headerName}</h1>
-              <p className="text-[#7A7068] text-sm mt-1">Complete all steps to go live on Massage Club</p>
+              <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">{t("partner.studioSetup.welcomeHeading", { businessName: headerName })}</h1>
+              <p className="text-[#7A7068] text-sm mt-1">{t("partner.studioSetup.welcomeSubheading")}</p>
             </>
           )}
         </div>
 
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-medium text-[#9E9387]">Step {step} of {TOTAL_STEPS}</span>
-            <span className="text-xs font-medium text-[#B85C38]">{Math.round(progress)}% complete</span>
+            <span className="text-xs font-medium text-[#9E9387]">{t("partner.studioSetup.stepOf", { current: step, total: TOTAL_STEPS })}</span>
+            <span className="text-xs font-medium text-[#B85C38]">{t("partner.studioSetup.percentComplete", { percent: Math.round(progress) })}</span>
           </div>
           <div className="h-2 bg-[#ECE4D7] rounded-full overflow-hidden">
             <div className="h-full bg-[#B85C38] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -692,16 +699,24 @@ function StudioSetupInner() {
           </div>
         </div>
 
+        {/* STEP 1: LANGUAGE CHOOSER */}
+        {step === 1 && (
+          <div className="mb-4 rounded-2xl border border-[#E5DDD3] bg-[#FAF7F2] p-4">
+            <label className="text-xs font-medium text-[#7A7068] mb-2 block">{t("partner.studioSetup.langChooserLabel")}</label>
+            <PartnerLangPills value={lang} onChange={(l) => { setLang(l); applyPartnerLang(l); }} />
+          </div>
+        )}
+
         {/* STEP 1: ACCOUNT */}
         {step === 1 && mode === "claim" && (
           <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">1</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Sign in with Google</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step1ClaimTitle")}</h2>
               </div>
               <p className="text-sm text-[#7A7068] mb-4">
-                Sign in with the Google account you want to use to manage <span className="font-semibold text-[#2b2b2b]">{headerName}</span>. This is the same account we'll connect your calendar to.
+                {t("partner.studioSetup.step1ClaimDesc", { businessName: headerName })}
               </p>
               <Button onClick={handleGoogleSignIn} disabled={googleLoading} className="w-full h-12 bg-white text-[#2b2b2b] border border-[#E5DDD3] hover:bg-[#FAF6F1]">
                 {googleLoading ? (
@@ -714,21 +729,21 @@ function StudioSetupInner() {
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Continue with Google
+                    {t("partner.studioSetup.continueWithGoogle")}
                   </>
                 )}
               </Button>
 
               <div className="flex items-center gap-3 my-4">
                 <div className="h-px bg-[#E5DDD3] flex-1" />
-                <span className="text-xs text-[#7A7068]">or</span>
+                <span className="text-xs text-[#7A7068]">{t("partner.studioSetup.orDivider")}</span>
                 <div className="h-px bg-[#E5DDD3] flex-1" />
               </div>
 
               {magicSent ? (
                 <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 text-center">
-                  <p className="text-sm font-medium text-[#2b2b2b]">Check your email for a login link.</p>
-                  <p className="text-xs text-[#7A7068] mt-1">We sent it to {email}. Open it on this device to continue.</p>
+                  <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.checkEmailTitle")}</p>
+                  <p className="text-xs text-[#7A7068] mt-1">{t("partner.studioSetup.checkEmailDesc", { email })}</p>
                 </div>
               ) : (
                 <>
@@ -736,7 +751,7 @@ function StudioSetupInner() {
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="you@studio.com"
+                    placeholder={t("partner.studioSetup.emailPlaceholder")}
                     className="h-11 mb-2"
                   />
                   <Button
@@ -745,13 +760,13 @@ function StudioSetupInner() {
                     variant="outline"
                     className="w-full h-11"
                   >
-                    {magicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue with email"}
+                    {magicLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("partner.studioSetup.continueWithEmail")}
                   </Button>
                 </>
               )}
 
               <p className="text-xs text-center text-[#7A7068] mt-3">
-                We'll bring you right back here after sign-in.
+                {t("partner.studioSetup.backAfterSignIn")}
               </p>
 
             </CardContent>
@@ -763,12 +778,12 @@ function StudioSetupInner() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">1</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Create your account</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step1CreateAccountTitle")}</h2>
               </div>
               <p className="text-sm text-[#7A7068] mb-4">
                 {mode === "draft" && !sourceData?.email
-                  ? "Enter the email you want to use to manage your studio."
-                  : "Email is pre-filled from your invite."}
+                  ? t("partner.studioSetup.step1DraftEmailDesc")
+                  : t("partner.studioSetup.step1InvitePrefilledDesc")}
               </p>
               <div className="space-y-3">
                 <Input
@@ -776,14 +791,14 @@ function StudioSetupInner() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   disabled={mode === "invite" || !!sourceData?.email}
-                  placeholder="you@studio.com"
+                  placeholder={t("partner.studioSetup.emailPlaceholder")}
                   className={mode === "invite" || !!sourceData?.email ? "h-11 bg-[#FAF6F1] border-[#E5DDD3] text-[#2b2b2b]" : "h-11 bg-white border-[#E5DDD3] text-[#2b2b2b] focus:border-[#B85C38]"}
                 />
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Create a password (min 8 chars)" className="h-11" />
-                <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="h-11" />
+                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t("partner.studioSetup.passwordPlaceholder")} className="h-11" />
+                <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder={t("partner.studioSetup.confirmPasswordPlaceholder")} className="h-11" />
               </div>
               <Button onClick={handleCreateAccount} disabled={accountLoading} className="w-full mt-4 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">
-                {accountLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating account…</> : <>Continue <ChevronRight className="h-4 w-4 ml-2" /></>}
+                {accountLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t("partner.studioSetup.creatingAccount")}</> : <>{t("partner.studioSetup.continueButton")} <ChevronRight className="h-4 w-4 ml-2" /></>}
               </Button>
             </CardContent>
           </Card>
@@ -795,50 +810,50 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">2</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{isReviewMode ? "Review studio details" : "Studio details"}</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{isReviewMode ? t("partner.studioSetup.step2ReviewTitle") : t("partner.studioSetup.step2Title")}</h2>
               </div>
               {isReviewMode && (
-                <p className="text-xs text-[#7A7068] -mt-2">Everything is pre-filled from the page we built for you. Edit anything that's wrong.</p>
+                <p className="text-xs text-[#7A7068] -mt-2">{t("partner.studioSetup.step2ReviewHelper")}</p>
               )}
               <div>
-                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Studio Name</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.studioNameLabel")}</label>
                 <Input value={studio.business_name} onChange={e => setStudio(p => ({ ...p, business_name: e.target.value }))} className="h-11" />
               </div>
               <div>
-                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Address</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.addressLabel")}</label>
                 <div className="relative">
                   <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7068]" />
-                  <Input value={studio.address} onChange={e => setStudio(p => ({ ...p, address: e.target.value }))} placeholder="Calle Gran Vía 15, Madrid" className="pl-9 h-11" />
+                  <Input value={studio.address} onChange={e => setStudio(p => ({ ...p, address: e.target.value }))} placeholder={t("partner.studioSetup.addressPlaceholder")} className="pl-9 h-11" />
                 </div>
-                <p className="text-[11px] text-[#7A7068] mt-1.5">Shown to customers on their booking confirmation.</p>
+                <p className="text-[11px] text-[#7A7068] mt-1.5">{t("partner.studioSetup.addressHelper")}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Instrucciones de llegada (opcional)</label>
-                <textarea value={studio.access_instructions} onChange={e => setStudio(p => ({ ...p, access_instructions: e.target.value }))} placeholder="Ej.: 'Portal 1A — pulsa el telefonillo y te abrimos. Primera planta, puerta derecha.'" rows={3} className="w-full px-3 py-2 text-sm bg-white border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#B85C38] focus:ring-2 focus:ring-[#B85C38]/15 resize-none text-[#2b2b2b]" />
-                <p className="text-[11px] text-[#7A7068] mt-1.5">Se incluye en el email de confirmación del cliente.</p>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.accessInstructionsLabel")}</label>
+                <textarea value={studio.access_instructions} onChange={e => setStudio(p => ({ ...p, access_instructions: e.target.value }))} placeholder={t("partner.studioSetup.accessInstructionsPlaceholder")} rows={3} className="w-full px-3 py-2 text-sm bg-white border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#B85C38] focus:ring-2 focus:ring-[#B85C38]/15 resize-none text-[#2b2b2b]" />
+                <p className="text-[11px] text-[#7A7068] mt-1.5">{t("partner.studioSetup.accessInstructionsHelper")}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Phone</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.phoneLabel")}</label>
                 <div className="relative">
                   <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7068]" />
-                  <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="pl-9 h-11" />
+                  <Input value={studio.phone} onChange={e => setStudio(p => ({ ...p, phone: e.target.value }))} placeholder={t("partner.studioSetup.phonePlaceholder")} className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Website (optional)</label>
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.websiteLabel")}</label>
                 <div className="relative">
                   <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7068]" />
-                  <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder="https://yourstudio.com" className="pl-9 h-11" />
+                  <Input value={studio.website} onChange={e => setStudio(p => ({ ...p, website: e.target.value }))} placeholder={t("partner.studioSetup.websitePlaceholder")} className="pl-9 h-11" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-[#7A7068] mb-1 block">Description</label>
-                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder="Tell members about your studio…" rows={3} className="w-full px-3 py-2 text-sm bg-white border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#B85C38] focus:ring-2 focus:ring-[#B85C38]/15 resize-none text-[#2b2b2b]" />
+                <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.descriptionLabel")}</label>
+                <textarea value={studio.description} onChange={e => setStudio(p => ({ ...p, description: e.target.value }))} placeholder={t("partner.studioSetup.descriptionPlaceholder")} rows={3} className="w-full px-3 py-2 text-sm bg-white border border-[#E5DDD3] rounded-xl focus:outline-none focus:border-[#B85C38] focus:ring-2 focus:ring-[#B85C38]/15 resize-none text-[#2b2b2b]" />
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
                 <Button onClick={handleSaveProfile} disabled={profileLoading} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">
-                  {profileLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
+                  {profileLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t("partner.studioSetup.savingButton")}</> : <>{t("partner.studioSetup.nextButton")} <ChevronRight className="h-4 w-4 ml-1" /></>}
                 </Button>
               </div>
             </CardContent>
@@ -851,20 +866,20 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{isReviewMode ? "Review your services" : "Your services"}</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{isReviewMode ? t("partner.studioSetup.step3ReviewTitle") : t("partner.studioSetup.step3Title")}</h2>
               </div>
               {isReviewMode && (
-                <p className="text-xs text-[#7A7068] -mt-2">We pre-filled the services we found. Adjust names, durations, or prices as needed.</p>
+                <p className="text-xs text-[#7A7068] -mt-2">{t("partner.studioSetup.step3ReviewHelper")}</p>
               )}
               <div className="space-y-3">
                 {services.map((svc, i) => (
                   <div key={i} className="p-3 border border-[#E5DDD3] rounded-xl bg-[#FAF6F1]">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-medium text-[#7A7068]">Service {i + 1}</span>
+                      <span className="text-xs font-medium text-[#7A7068]">{t("partner.studioSetup.serviceLabel", { index: i + 1 })}</span>
                       {services.length > 1 && <button onClick={() => removeService(i)} className="text-[#7A7068] hover:text-red-500"><Trash2 size={14} /></button>}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder="Service name" className="col-span-2 text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none focus:border-[#B85C38] text-[#2b2b2b]" />
+                      <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder={t("partner.studioSetup.servicePlaceholder")} className="col-span-2 text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none focus:border-[#B85C38] text-[#2b2b2b]" />
                       <select value={svc.type} onChange={e => updateService(i, "type", e.target.value)} className="text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none text-[#2b2b2b]">
                         {svc.type && !MASSAGE_TYPES.includes(svc.type) && <option value={svc.type}>{svc.type}</option>}
                         {MASSAGE_TYPES.map(t => <option key={t}>{t}</option>)}
@@ -882,13 +897,13 @@ function StudioSetupInner() {
               </div>
               {services.length < 8 && (
                 <button onClick={addService} className="w-full py-2.5 border-2 border-dashed border-[#E5DDD3] rounded-xl text-sm text-[#7A7068] hover:border-[#B85C38] hover:text-[#B85C38] transition flex items-center justify-center gap-1">
-                  <Plus size={14} /> Add service
+                  <Plus size={14} /> {t("partner.studioSetup.addServiceButton")}
                 </button>
               )}
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
                 <Button onClick={handleSaveServices} disabled={servicesLoading} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">
-                  {servicesLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
+                  {servicesLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t("partner.studioSetup.savingButton")}</> : <>{t("partner.studioSetup.nextButton")} <ChevronRight className="h-4 w-4 ml-1" /></>}
                 </Button>
               </div>
             </CardContent>
@@ -901,20 +916,20 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Availability</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step4AvailabilityTitle")}</h2>
               </div>
               {renderHoursEditor()}
               <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
-                  <p className="text-xs text-[#7A7068]">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
+                  <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
+                  <p className="text-xs text-[#7A7068]">{t("partner.studioSetup.capacityHelper")}</p>
                 </div>
                 <CapacityChips value={capacity} onChange={setCapacity} />
               </div>
               {renderStaffCount()}
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
+                <Button onClick={handleSaveAvailability} className="flex-1 h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white">{t("partner.studioSetup.nextButton")} <ChevronRight className="h-4 w-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>

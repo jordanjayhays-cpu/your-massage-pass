@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, Loader2, Copy, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,14 +8,14 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 // 0=Sun … 6=Sat
-const DAYS = [
-  { num: 1, label: "Monday" },
-  { num: 2, label: "Tuesday" },
-  { num: 3, label: "Wednesday" },
-  { num: 4, label: "Thursday" },
-  { num: 5, label: "Friday" },
-  { num: 6, label: "Saturday" },
-  { num: 0, label: "Sunday" },
+const DAY_DEFS = [
+  { num: 1, key: "monday" },
+  { num: 2, key: "tuesday" },
+  { num: 3, key: "wednesday" },
+  { num: 4, key: "thursday" },
+  { num: 5, key: "friday" },
+  { num: 6, key: "saturday" },
+  { num: 0, key: "sunday" },
 ];
 
 // Time options for the open/close dropdowns (30-min granularity)
@@ -38,10 +39,12 @@ function generateSlots(open: string, close: string): string[] {
 }
 
 export default function PartnerCalendar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const DAYS = DAY_DEFS.map(d => ({ ...d, label: t(`partner.calendar.days.${d.key}`) }));
   const [hours, setHours] = useState<Record<number, DayHours>>(() => {
     const h: Record<number, DayHours> = {} as any;
-    for (const d of DAYS) {
+    for (const d of DAY_DEFS) {
       const weekend = d.num === 0 || d.num === 6;
       h[d.num] = { closed: weekend, open: "10:00", close: "20:00" };
     }
@@ -86,19 +89,19 @@ export default function PartnerCalendar() {
     const src = hours[day];
     setHours(prev => {
       const next: Record<number, DayHours> = { ...prev };
-      for (const d of DAYS) if (!next[d.num].closed) next[d.num] = { ...src };
+      for (const d of DAY_DEFS) if (!next[d.num].closed) next[d.num] = { ...src };
       return next;
     });
-    toast.success("Applied to all open days");
+    toast.success(t("partner.calendar.toastAppliedAll"));
   };
 
-  const openDays = DAYS.filter(d => !hours[d.num].closed);
+  const openDays = DAY_DEFS.filter(d => !hours[d.num].closed);
   const totalSlots = openDays.reduce((n, d) => n + generateSlots(hours[d.num].open, hours[d.num].close).length, 0);
 
   const handleSave = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error("Please sign in first"); setLoading(false); return; }
+    if (!user) { toast.error(t("partner.calendar.toastSignIn")); setLoading(false); return; }
 
     // Replace all availability
     await supabase.from("partner_availability").delete().eq("partner_id", user.id);
@@ -111,7 +114,7 @@ export default function PartnerCalendar() {
 
     if (rows.length > 0) {
       const { error } = await supabase.from("partner_availability").insert(rows);
-      if (error) { toast.error("Error: " + error.message); setLoading(false); return; }
+      if (error) { toast.error(t("partner.calendar.toastError", { message: error.message })); setLoading(false); return; }
     }
 
     // Keep business_hours in sync too (used by the booking page profile)
@@ -124,7 +127,7 @@ export default function PartnerCalendar() {
     // Save opening_hours JSONB + capacity on partners (for real-time availability)
     const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
     const opening_hours: Record<string, any> = {};
-    for (const d of DAYS) {
+    for (const d of DAY_DEFS) {
       const h = hours[d.num];
       opening_hours[DAY_KEYS[d.num]] = h.closed
         ? { closed: true }
@@ -137,7 +140,7 @@ export default function PartnerCalendar() {
 
     setLoading(false);
     setSaved(true);
-    toast.success("Availability saved! Your listing is live.");
+    toast.success(t("partner.calendar.toastSaved"));
     setTimeout(() => navigate("/partner/dashboard"), 1200);
   };
 
@@ -148,8 +151,8 @@ export default function PartnerCalendar() {
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/partner/dashboard")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">←</button>
             <div>
-              <p className="text-xs text-muted-foreground">Availability</p>
-              <h1 className="font-display text-lg font-bold">Set your opening hours</h1>
+              <p className="text-xs text-muted-foreground">{t("partner.calendar.stepLabel")}</p>
+              <h1 className="font-display text-lg font-bold">{t("partner.calendar.title")}</h1>
             </div>
           </div>
         </div>
@@ -157,14 +160,14 @@ export default function PartnerCalendar() {
 
       <div className="max-w-xl mx-auto px-6 py-6 space-y-3">
         <p className="text-sm text-muted-foreground">
-          Set when you're open each day — we'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.
+          {t("partner.calendar.intro")}
         </p>
 
         <Card className="bg-card border-border">
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold">Capacity per time slot</p>
-              <p className="text-xs text-muted-foreground">How many simultaneous bookings you can take (e.g. number of therapists / rooms).</p>
+              <p className="text-sm font-semibold">{t("partner.calendar.capacityLabel")}</p>
+              <p className="text-xs text-muted-foreground">{t("partner.calendar.capacityHint")}</p>
             </div>
             <input
               type="number"
@@ -194,18 +197,18 @@ export default function PartnerCalendar() {
                   </button>
 
                   {h.closed ? (
-                    <span className="text-sm text-muted-foreground flex-1 text-right pr-1">Closed</span>
+                    <span className="text-sm text-muted-foreground flex-1 text-right pr-1">{t("partner.calendar.closed")}</span>
                   ) : (
                     <div className="flex items-center gap-2 flex-1 justify-end">
                       <Clock className="h-4 w-4 text-muted-foreground hidden sm:block" />
                       <select value={h.open} onChange={e => update(d.num, { open: e.target.value })}
                         className="h-10 px-2 rounded-lg border border-border bg-background text-sm">
-                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                        {TIME_OPTIONS.map(t3 => <option key={t3} value={t3}>{t3}</option>)}
                       </select>
                       <span className="text-muted-foreground">–</span>
                       <select value={h.close} onChange={e => update(d.num, { close: e.target.value })}
                         className="h-10 px-2 rounded-lg border border-border bg-background text-sm">
-                        {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                        {TIME_OPTIONS.map(t3 => <option key={t3} value={t3}>{t3}</option>)}
                       </select>
                     </div>
                   )}
@@ -214,10 +217,10 @@ export default function PartnerCalendar() {
                 {!h.closed && (
                   <div className="flex items-center justify-between mt-2 pl-1">
                     <span className="text-xs text-muted-foreground">
-                      {generateSlots(h.open, h.close).length} bookable times
+                      {t("partner.calendar.bookableTimes", { count: generateSlots(h.open, h.close).length })}
                     </span>
                     <button onClick={() => copyToAll(d.num)} className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
-                      <Copy className="h-3 w-3" /> Copy to all days
+                      <Copy className="h-3 w-3" /> {t("partner.calendar.copyToAll")}
                     </button>
                   </div>
                 )}
@@ -230,14 +233,14 @@ export default function PartnerCalendar() {
           <CardContent className="p-4 text-center">
             <p className="text-sm font-semibold">
               {totalSlots === 0
-                ? "No hours set — you won't appear in search yet"
-                : `${openDays.length} day(s) open · ${totalSlots} bookable times`}
+                ? t("partner.calendar.noHoursSet")
+                : t("partner.calendar.summary", { days: openDays.length, slots: totalSlots })}
             </p>
           </CardContent>
         </Card>
 
         <Button onClick={handleSave} disabled={loading} className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? "✓ Done!" : "Go Live"}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? t("partner.calendar.done") : t("partner.calendar.goLive")}
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>

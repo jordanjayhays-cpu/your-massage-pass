@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2, Upload, Trash2, ImagePlus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 const BUCKET = "studio-photos";
 
 export default function PartnerPhotos() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function PartnerPhotos() {
     const path = `${userId}/${kind}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true });
     if (error) {
-      toast.error(`Upload failed: ${error.message}`);
+      toast.error(t("partner.photos.toastUploadFailed", { message: error.message }));
       return null;
     }
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -89,9 +91,9 @@ export default function PartnerPhotos() {
       .update({ logo_url: logoUrl, cover_url: coverUrl, gallery })
       .eq("id", userId);
     setBusy(null);
-    if (error) { toast.error("Couldn't save: " + error.message); return; }
+    if (error) { toast.error(t("partner.photos.toastSaveError", { message: error.message })); return; }
     setSaved(true);
-    toast.success("Photos saved!");
+    toast.success(t("partner.photos.toastSaved"));
     setTimeout(() => setSaved(false), 1500);
   };
 
@@ -105,25 +107,25 @@ export default function PartnerPhotos() {
         <div className="max-w-xl mx-auto flex items-center gap-3">
           <button onClick={() => navigate("/partner/dashboard")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">←</button>
           <div>
-            <p className="text-xs text-muted-foreground">Profile</p>
-            <h1 className="font-display text-lg font-bold">Photos</h1>
+            <p className="text-xs text-muted-foreground">{t("partner.photos.stepLabel")}</p>
+            <h1 className="font-display text-lg font-bold">{t("partner.photos.title")}</h1>
           </div>
         </div>
       </div>
 
       <div className="max-w-xl mx-auto px-6 py-6 space-y-6">
-        <p className="text-sm text-muted-foreground">Add photos so your booking page looks inviting. These show on your public link.</p>
+        <p className="text-sm text-muted-foreground">{t("partner.photos.intro")}</p>
 
         {/* Cover */}
         <div>
-          <p className="text-sm font-semibold mb-2">Cover photo <span className="text-muted-foreground font-normal">(big banner at the top)</span></p>
+          <p className="text-sm font-semibold mb-2">{t("partner.photos.coverLabel")} <span className="text-muted-foreground font-normal">{t("partner.photos.coverHint")}</span></p>
           <div className="relative h-40 rounded-2xl overflow-hidden border border-border bg-secondary flex items-center justify-center">
             {coverUrl
               ? <img src={coverUrl} alt="cover" className="absolute inset-0 h-full w-full object-cover" />
-              : <span className="text-muted-foreground text-sm">No cover yet</span>}
+              : <span className="text-muted-foreground text-sm">{t("partner.photos.noCover")}</span>}
             <label className="absolute bottom-3 right-3 cursor-pointer">
               <span className="inline-flex items-center gap-1.5 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full">
-                {busy === "cover" ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} Upload
+                {busy === "cover" ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} {t("partner.photos.upload")}
               </span>
               <input type="file" accept="image/*" className="hidden" onChange={onPickCover} />
             </label>
@@ -132,14 +134,14 @@ export default function PartnerPhotos() {
 
         {/* Logo */}
         <div>
-          <p className="text-sm font-semibold mb-2">Logo</p>
+          <p className="text-sm font-semibold mb-2">{t("partner.photos.logoLabel")}</p>
           <div className="flex items-center gap-4">
             <div className="h-20 w-20 rounded-2xl overflow-hidden border border-border bg-secondary flex items-center justify-center">
               {logoUrl ? <img src={logoUrl} alt="logo" className="h-full w-full object-cover" /> : <ImagePlus className="text-muted-foreground" />}
             </div>
             <label className="cursor-pointer">
               <span className="inline-flex items-center gap-1.5 bg-secondary text-foreground text-sm px-4 py-2 rounded-xl border border-border">
-                {busy === "logo" ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Upload logo
+                {busy === "logo" ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} {t("partner.photos.uploadLogo")}
               </span>
               <input type="file" accept="image/*" className="hidden" onChange={onPickLogo} />
             </label>
@@ -148,7 +150,7 @@ export default function PartnerPhotos() {
 
         {/* Gallery */}
         <div>
-          <p className="text-sm font-semibold mb-2">Gallery <span className="text-muted-foreground font-normal">(your space, treatments)</span></p>
+          <p className="text-sm font-semibold mb-2">{t("partner.photos.galleryLabel")} <span className="text-muted-foreground font-normal">{t("partner.photos.galleryHint")}</span></p>
           <div className="grid grid-cols-3 gap-2">
             {gallery.map(url => (
               <div key={url} className="relative aspect-square rounded-xl overflow-hidden border border-border">
@@ -166,7 +168,7 @@ export default function PartnerPhotos() {
         </div>
 
         <Button onClick={handleSave} disabled={busy === "save"} className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90">
-          {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <><Check className="h-4 w-4 mr-1" /> Saved!</> : "Save photos"}
+          {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <><Check className="h-4 w-4 mr-1" /> {t("partner.photos.saved")}</> : t("partner.photos.savePhotos")}
         </Button>
       </div>
     </div>

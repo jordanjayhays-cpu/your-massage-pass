@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -32,14 +33,18 @@ type Props = {
   clientName?: string | null;
 };
 
-const FIELDS: { key: keyof SoapNote; letter: string; label: string; hint: string }[] = [
-  { key: "subjective", letter: "S", label: "Subjective", hint: "What the client reports — pain, stress, goals in their words" },
-  { key: "objective", letter: "O", label: "Objective", hint: "What you observe — tension, posture, range of motion" },
-  { key: "assessment", letter: "A", label: "Assessment", hint: "Your interpretation of the findings" },
-  { key: "plan", letter: "P", label: "Plan", hint: "What you did + recommendations / next session" },
-];
+function useSoapFields(t: (k: string) => string) {
+  return [
+    { key: "subjective" as keyof SoapNote, letter: "S", label: t("partner.soap.subjective"), hint: t("partner.soap.hintSubjective") },
+    { key: "objective" as keyof SoapNote, letter: "O", label: t("partner.soap.objective"), hint: t("partner.soap.hintObjective") },
+    { key: "assessment" as keyof SoapNote, letter: "A", label: t("partner.soap.assessment"), hint: t("partner.soap.hintAssessment") },
+    { key: "plan" as keyof SoapNote, letter: "P", label: t("partner.soap.plan"), hint: t("partner.soap.hintPlan") },
+  ];
+}
 
 export default function SoapNoteSection({ bookingId, clientEmail, clientName }: Props) {
+  const { t } = useTranslation();
+  const FIELDS = useSoapFields(t);
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [noteId, setNoteId] = useState<string | null>(null);
   const [s, setS] = useState("");
@@ -97,7 +102,7 @@ export default function SoapNoteSection({ bookingId, clientEmail, clientName }: 
   }, [bookingId, clientEmail]);
 
   const save = async () => {
-    if (!partnerId) { toast.error("Please sign in again."); return; }
+    if (!partnerId) { toast.error(t("partner.soap.pleaseSignInAgain")); return; }
     setSaving(true);
     const row = {
       partner_id: partnerId,
@@ -123,11 +128,11 @@ export default function SoapNoteSection({ bookingId, clientEmail, clientName }: 
     setSaving(false);
     if (error) {
       console.error("SOAP save error:", error);
-      toast.error("Couldn't save the note. Try again.");
+      toast.error(t("partner.soap.couldNotSave"));
       return;
     }
     setUpdatedAt(new Date().toISOString());
-    toast.success("SOAP note saved");
+    toast.success(t("partner.soap.noteSaved"));
   };
 
   const prettyDate = (iso: string) =>
@@ -143,15 +148,15 @@ export default function SoapNoteSection({ bookingId, clientEmail, clientName }: 
         className="w-full flex items-center justify-between"
       >
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-          📋 SOAP note{updatedAt ? " · saved" : ""}
+          📋 {t("partner.soap.soapNoteLabel")}{updatedAt ? ` · ${t("partner.soap.saved")}` : ""}
         </span>
-        <span className="text-xs text-primary font-semibold">{open ? "Hide" : noteId ? "View / edit" : "Add note"}</span>
+        <span className="text-xs text-primary font-semibold">{open ? t("partner.soap.hide") : noteId ? t("partner.soap.viewEdit") : t("partner.soap.addNote")}</span>
       </button>
 
       {open && (
         <div className="mt-3 space-y-3">
           {loading ? (
-            <p className="text-xs text-muted-foreground">Loading…</p>
+            <p className="text-xs text-muted-foreground">{t("partner.soap.loading")}</p>
           ) : (
             <>
               {FIELDS.map((f) => {
@@ -170,7 +175,7 @@ export default function SoapNoteSection({ bookingId, clientEmail, clientName }: 
                       value={val}
                       onChange={(e) => setter(e.target.value)}
                       rows={2}
-                      placeholder={`${f.label}…`}
+                      placeholder={t("partner.soap.fieldPlaceholder", { field: f.label })}
                       className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
                     />
                   </div>
@@ -179,21 +184,21 @@ export default function SoapNoteSection({ bookingId, clientEmail, clientName }: 
 
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] text-muted-foreground">
-                  {updatedAt ? `Last saved ${prettyDate(updatedAt)}` : "Private — only your studio can see this."}
+                  {updatedAt ? t("partner.soap.lastSaved", { date: prettyDate(updatedAt) }) : t("partner.soap.privateNote")}
                 </p>
                 <button
                   onClick={save}
                   disabled={saving}
                   className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"
                 >
-                  {saving ? "Saving…" : noteId ? "Update note" : "Save note"}
+                  {saving ? t("partner.soap.saving") : noteId ? t("partner.soap.updateNote") : t("partner.soap.saveNote")}
                 </button>
               </div>
 
               {pastNotes.length > 0 && (
                 <div className="border-t border-border pt-3 space-y-2">
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                    Previous notes for {clientName || "this client"}
+                    {t("partner.soap.previousNotesFor", { name: clientName || t("partner.soap.thisClient") })}
                   </p>
                   {pastNotes.map((n) => (
                     <div key={n.id} className="rounded-xl bg-secondary/60 border border-border/60 p-3">
@@ -210,7 +215,7 @@ export default function SoapNoteSection({ bookingId, clientEmail, clientName }: 
               )}
 
               <p className="text-[10px] text-muted-foreground/80 leading-snug">
-                Clinical notes for your records. Keep them factual and professional.
+                {t("partner.soap.disclaimer")}
               </p>
             </>
           )}
