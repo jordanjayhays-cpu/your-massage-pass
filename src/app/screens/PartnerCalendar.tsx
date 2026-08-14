@@ -51,8 +51,12 @@ export default function PartnerCalendar() {
     return h;
   });
   const [capacity, setCapacity] = useState(1);
+  const [showDayCapacity, setShowDayCapacity] = useState(false);
+  const [dayCapacity, setDayCapacity] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const dayCapFor = (day: number) => dayCapacity[day] ?? capacity;
+
 
   // Load existing opening_hours + capacity
   useEffect(() => {
