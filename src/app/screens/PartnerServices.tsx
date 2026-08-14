@@ -18,6 +18,70 @@ type Service = {
 };
 
 const MASSAGE_TYPES = ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Aromatherapy", "Thai", "Shiatsu", "Lomi Lomi", "Couples", "Facial", "Other"];
+const DURATION_OPTIONS = [30, 45, 60, 75, 90, 120];
+const fieldCls = "w-full h-10 px-3 rounded-xl border border-border bg-background text-sm";
+
+function ServiceTypeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
+  const [custom, setCustom] = useState(() => !!value && !MASSAGE_TYPES.includes(value));
+  if (custom) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={t("partner.services.customTypePlaceholder")}
+          className="h-10"
+        />
+        <button type="button" title={t("partner.services.useListAgain")} onClick={() => { setCustom(false); onChange("Swedish"); }} className="px-2 text-muted-foreground hover:text-primary">×</button>
+      </div>
+    );
+  }
+  return (
+    <select
+      value={value}
+      onChange={(e) => { if (e.target.value === "__custom__") { setCustom(true); onChange(""); } else onChange(e.target.value); }}
+      className={fieldCls}
+    >
+      {MASSAGE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+      <option value="__custom__">{t("partner.services.customTypeOption")}</option>
+    </select>
+  );
+}
+
+function ServiceDurationField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation();
+  const [custom, setCustom] = useState(() => !DURATION_OPTIONS.includes(value));
+  if (custom) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          autoFocus
+          type="number"
+          min={10}
+          max={240}
+          step={5}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          placeholder={t("partner.services.customDurationPlaceholder")}
+          className="h-10"
+        />
+        <button type="button" title={t("partner.services.useListAgain")} onClick={() => { setCustom(false); onChange(60); }} className="px-2 text-muted-foreground hover:text-primary">×</button>
+      </div>
+    );
+  }
+  return (
+    <select
+      value={value}
+      onChange={(e) => { if (e.target.value === "__custom__") { setCustom(true); } else onChange(Number(e.target.value)); }}
+      className={fieldCls}
+    >
+      {DURATION_OPTIONS.map(d => <option key={d} value={d}>{t("partner.services.minutesOption", { minutes: d })}</option>)}
+      <option value="__custom__">{t("partner.services.customDurationOption")}</option>
+    </select>
+  );
+}
 
 export default function PartnerServices() {
   const { t } = useTranslation();
