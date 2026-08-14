@@ -1027,22 +1027,22 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">5</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Crea tu contraseña / Create your password</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step5Title")}</h2>
               </div>
               <p className="text-sm text-[#7A7068]">
-                Con esta contraseña podrás entrar a tu panel cuando quieras, sin depender de enlaces por email.
+                {t("partner.studioSetup.step5Desc")}
               </p>
 
               {pwDone ? (
                 <>
                   <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 space-y-2">
-                    <p className="text-sm font-semibold text-[#2b2b2b]">Tus datos de acceso / Your login details</p>
+                    <p className="text-sm font-semibold text-[#2b2b2b]">{t("partner.studioSetup.loginDetailsTitle")}</p>
                     <p className="text-sm text-[#2b2b2b]">
-                      <span className="text-[#7A7068]">URL: </span>
+                      <span className="text-[#7A7068]">{t("partner.studioSetup.loginUrlLabel")} </span>
                       <span className="font-semibold">book.massageclub.io/partner/login</span>
                     </p>
                     <p className="text-sm text-[#2b2b2b]">
-                      <span className="text-[#7A7068]">Email: </span>
+                      <span className="text-[#7A7068]">{t("partner.studioSetup.loginEmailLabel")} </span>
                       <span className="font-semibold">{accountEmail}</span>
                     </p>
                   </div>
@@ -1050,7 +1050,7 @@ function StudioSetupInner() {
                     onClick={() => setStep(DONE_STEP)}
                     className="w-full h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
                   >
-                    Continuar <ChevronRight className="h-4 w-4 ml-1" />
+                    {t("partner.studioSetup.continueEs")} <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </>
               ) : (
@@ -1059,14 +1059,14 @@ function StudioSetupInner() {
                     type="password"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Contraseña (mín. 8 caracteres)"
+                    placeholder={t("partner.studioSetup.passwordMinPlaceholder")}
                     className="h-11 bg-white border-[#E5DDD3]"
                   />
                   <Input
                     type="password"
                     value={newPassword2}
                     onChange={e => setNewPassword2(e.target.value)}
-                    placeholder="Repite la contraseña"
+                    placeholder={t("partner.studioSetup.repeatPasswordPlaceholder")}
                     className="h-11 bg-white border-[#E5DDD3]"
                   />
                   {pwError && (
@@ -1077,7 +1077,7 @@ function StudioSetupInner() {
                     disabled={pwSaving}
                     className="w-full h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
                   >
-                    {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar contraseña y continuar"}
+                    {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("partner.studioSetup.savePasswordButton")}
                   </Button>
                 </>
               )}
@@ -1092,16 +1092,16 @@ function StudioSetupInner() {
               <div className="h-16 w-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
-              <h2 className="font-display text-2xl font-bold mb-2 text-white">You're live on Massage Club! 🎉</h2>
+              <h2 className="font-display text-2xl font-bold mb-2 text-white">{t("partner.studioSetup.doneTitle")}</h2>
               <p className="text-[#FAF6F1]/90 text-sm mb-6">
                 {isReviewMode && calendarConnected
-                  ? "Your calendar is connected and your studio is now visible to members in Madrid."
+                  ? t("partner.studioSetup.doneDescCalendarConnected")
                   : isReviewMode
-                    ? "Your studio is now visible to members in Madrid. Puedes conectar Google Calendar cuando quieras desde tu portal de estudio."
-                    : "Your studio is now visible to thousands of members in Madrid."}
+                    ? t("partner.studioSetup.doneDescReviewNoCalendar")
+                    : t("partner.studioSetup.doneDescInvite")}
               </p>
               <Button onClick={() => navigate("/partner/dashboard")} className="w-full h-12 bg-white text-[#B85C38] hover:bg-[#FAF6F1] font-semibold text-base rounded-xl">
-                Go to your dashboard →
+                {t("partner.studioSetup.goToDashboard")}
               </Button>
             </CardContent>
           </Card>
