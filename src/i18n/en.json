@@ -1020,8 +1020,8 @@
       "stepLabel": "Availability",
       "title": "Set your opening hours",
       "intro": "Set when you're open each day — we'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.",
-      "capacityLabel": "Capacity per time slot",
-      "capacityHint": "How many simultaneous bookings you can take (e.g. number of therapists / rooms).",
+      "capacityLabel": "How many massages can you give at the same time?",
+      "capacityHint": "Usually the number of tables or therapists working at once.",
       "days": {
         "monday": "Monday",
         "tuesday": "Tuesday",
@@ -1041,7 +1041,8 @@
       "toastAppliedAll": "Applied to all open days",
       "toastSignIn": "Please sign in first",
       "toastError": "Error: {{message}}",
-      "toastSaved": "Availability saved! Your listing is live."
+      "toastSaved": "Availability saved! Your listing is live.",
+      "capacityVaryByDay": "Does it change by day?"
     },
     "photos": {
       "stepLabel": "Profile",
@@ -1189,8 +1190,8 @@
       "servicePlaceholder": "Service name",
       "addServiceButton": "Add service",
       "step4AvailabilityTitle": "Availability",
-      "capacityQuestion": "How many bookings can you handle at once?",
-      "capacityHelper": "Number of masseurs or rooms working in parallel. E.g.: 5",
+      "capacityQuestion": "How many massages can you give at the same time?",
+      "capacityHelper": "Usually the number of tables or therapists working at once. We use it so you never get more bookings than you can handle.",
       "step4CalendarTitle": "Connect Google Calendar",
       "calendarRecommendedDesc": "Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.",
       "calendarBullet1": "Read-only access to your busy times",
@@ -1220,7 +1221,8 @@
       "customTypePlaceholder": "Type the massage type",
       "customDurationOption": "Custom…",
       "customDurationPlaceholder": "Minutes",
-      "useListAgain": "Back to list"
+      "useListAgain": "Back to list",
+      "capacityVaryByDay": "Does it change by day?"
     }
   }
 }
