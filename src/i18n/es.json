@@ -1009,7 +1009,12 @@
       "saveAndSetAvailability": "Guardar y configurar disponibilidad",
       "toastSignIn": "Por favor, inicia sesión primero",
       "toastError": "Error: {{message}}",
-      "toastSaved": "¡{{count}} servicio(s) guardado(s)! Ahora configura tu disponibilidad."
+      "toastSaved": "¡{{count}} servicio(s) guardado(s)! Ahora configura tu disponibilidad.",
+      "customTypeOption": "Otro…",
+      "customTypePlaceholder": "Escribe el tipo de masaje",
+      "customDurationOption": "Otra duración…",
+      "customDurationPlaceholder": "Minutos",
+      "useListAgain": "Volver a la lista"
     },
     "calendar": {
       "stepLabel": "Disponibilidad",
@@ -1210,7 +1215,12 @@
       "doneDescCalendarConnected": "Tu calendario está conectado y tu estudio ya es visible para los socios en Madrid.",
       "doneDescReviewNoCalendar": "Tu estudio ya es visible para los socios en Madrid. Puedes conectar Google Calendar cuando quieras desde tu portal de estudio.",
       "doneDescInvite": "Tu estudio ya es visible para miles de socios en Madrid.",
-      "goToDashboard": "Ir a tu panel →"
+      "goToDashboard": "Ir a tu panel →",
+      "customTypeOption": "Otro…",
+      "customTypePlaceholder": "Escribe el tipo de masaje",
+      "customDurationOption": "Otra duración…",
+      "customDurationPlaceholder": "Minutos",
+      "useListAgain": "Volver a la lista"
     }
   }
 }

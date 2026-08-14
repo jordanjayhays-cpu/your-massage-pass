@@ -1009,7 +1009,12 @@
       "saveAndSetAvailability": "Save & Set Availability",
       "toastSignIn": "Please sign in first",
       "toastError": "Error: {{message}}",
-      "toastSaved": "{{count}} service(s) saved! Now set your availability."
+      "toastSaved": "{{count}} service(s) saved! Now set your availability.",
+      "customTypeOption": "Other…",
+      "customTypePlaceholder": "Type the massage type",
+      "customDurationOption": "Custom…",
+      "customDurationPlaceholder": "Minutes",
+      "useListAgain": "Back to list"
     },
     "calendar": {
       "stepLabel": "Availability",
@@ -1210,7 +1215,12 @@
       "doneDescCalendarConnected": "Your calendar is connected and your studio is now visible to members in Madrid.",
       "doneDescReviewNoCalendar": "Your studio is now visible to members in Madrid. You can connect Google Calendar whenever you want from your studio portal.",
       "doneDescInvite": "Your studio is now visible to thousands of members in Madrid.",
-      "goToDashboard": "Go to your dashboard →"
+      "goToDashboard": "Go to your dashboard →",
+      "customTypeOption": "Other…",
+      "customTypePlaceholder": "Type the massage type",
+      "customDurationOption": "Custom…",
+      "customDurationPlaceholder": "Minutes",
+      "useListAgain": "Back to list"
     }
   }
 }
