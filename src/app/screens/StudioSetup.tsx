@@ -1024,13 +1024,8 @@ function StudioSetupInner() {
               ) : (
                 <div className="space-y-3">
                   {renderHoursEditor()}
-                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
-                      <p className="text-xs text-[#7A7068]">{t("partner.studioSetup.capacityHelper")}</p>
-                    </div>
-                    <CapacityChips value={capacity} onChange={setCapacity} />
-                  </div>
+                  {renderCapacity()}
+
                   {renderStaffCount()}
                   <Button
                     onClick={handleSaveManualAvailability}
