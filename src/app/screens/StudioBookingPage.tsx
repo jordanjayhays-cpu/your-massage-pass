@@ -804,7 +804,9 @@ export default function StudioBookingPage() {
               <div className="flex flex-wrap gap-2">
                 {times.map(t => {
                   const left = remainingFor(t);
-                  const lowStock = therapistCount > 1 && left < therapistCount;
+                  const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
+                  const lowStock = cap > 1 && left < cap;
+
                   return (
                     <button key={t} onClick={() => setTime(t)}
                       className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
