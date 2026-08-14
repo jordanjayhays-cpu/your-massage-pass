@@ -941,17 +941,17 @@ function StudioSetupInner() {
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
-                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">Connect Google Calendar</h2>
+                <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step4CalendarTitle")}</h2>
               </div>
               <p className="text-sm text-[#7A7068]">
-                Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.
+                {t("partner.studioSetup.calendarRecommendedDesc")}
               </p>
 
               <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 space-y-2">
                 {[
-                  "Read-only access to your busy times",
-                  "New bookings appear as events in your calendar",
-                  "Customers only ever see truly free slots",
+                  t("partner.studioSetup.calendarBullet1"),
+                  t("partner.studioSetup.calendarBullet2"),
+                  t("partner.studioSetup.calendarBullet3"),
                 ].map(line => (
                   <div key={line} className="flex items-start gap-2 text-sm text-[#2b2b2b]">
                     <Check className="h-4 w-4 text-[#B85C38] mt-0.5 flex-shrink-0" />
@@ -965,15 +965,15 @@ function StudioSetupInner() {
                 className="w-full h-12 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
               >
                 <CalendarIcon className="h-4 w-4 mr-2" />
-                Connect Google Calendar
+                {t("partner.studioSetup.connectGoogleCalendar")}
               </Button>
               <p className="text-xs text-center text-[#7A7068]">
-                One click — no password stored.
+                {t("partner.studioSetup.oneClickNote")}
               </p>
 
               <div className="flex items-center gap-3 py-1">
                 <div className="flex-1 h-px bg-[#E5DDD3]" />
-                <span className="text-xs text-[#7A7068]">o</span>
+                <span className="text-xs text-[#7A7068]">{t("partner.studioSetup.orDividerEs")}</span>
                 <div className="flex-1 h-px bg-[#E5DDD3]" />
               </div>
 
@@ -983,15 +983,15 @@ function StudioSetupInner() {
                   onClick={() => setShowManualAvailability(true)}
                   className="w-full h-11 border-[#E5DDD3] bg-white text-[#2b2b2b] hover:bg-[#FAF6F1] hover:text-[#B85C38]"
                 >
-                  Set availability manually
+                  {t("partner.studioSetup.setManuallyButton")}
                 </Button>
               ) : (
                 <div className="space-y-3">
                   {renderHoursEditor()}
                   <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
                     <div>
-                      <p className="text-sm font-medium text-[#2b2b2b]">¿Cuántas reservas puedes atender a la vez?</p>
-                      <p className="text-xs text-[#7A7068]">Nº de masajistas o salas trabajando en paralelo. Ej.: 5</p>
+                      <p className="text-sm font-medium text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
+                      <p className="text-xs text-[#7A7068]">{t("partner.studioSetup.capacityHelper")}</p>
                     </div>
                     <CapacityChips value={capacity} onChange={setCapacity} />
                   </div>
@@ -1001,20 +1001,20 @@ function StudioSetupInner() {
                     disabled={manualSaving}
                     className="w-full h-11 bg-[#B85C38] hover:bg-[#9E4D22] text-white"
                   >
-                    {manualSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & continue"}
+                    {manualSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("partner.studioSetup.saveAndContinue")}
                   </Button>
                 </div>
               )}
 
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
               </div>
 
               <button
                 onClick={() => setStep(5)}
                 className="w-full text-center text-xs text-[#7A7068] hover:text-[#B85C38] underline underline-offset-2 pt-1"
               >
-                Saltar por ahora — podrás conectarlo más tarde desde tu portal
+                {t("partner.studioSetup.skipForNow")}
               </button>
 
             </CardContent>
