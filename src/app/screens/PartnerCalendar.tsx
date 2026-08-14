@@ -38,7 +38,20 @@ function generateSlots(open: string, close: string): string[] {
   return out;
 }
 
+function Stepper({ value, onChange, min = 1, max = 10, size = "lg" }: { value: number; onChange: (v: number) => void; min?: number; max?: number; size?: "lg" | "sm" }) {
+  const big = size === "lg";
+  const btn = `${big ? "h-12 w-12 text-xl" : "h-9 w-9 text-base"} rounded-xl border border-border bg-background font-bold text-primary disabled:opacity-40 hover:border-primary transition flex items-center justify-center`;
+  return (
+    <div className="flex items-center gap-3">
+      <button type="button" aria-label="-" disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className={btn}>−</button>
+      <span className={`${big ? "text-2xl w-10" : "text-lg w-8"} text-center font-bold tabular-nums`}>{value}</span>
+      <button type="button" aria-label="+" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} className={btn}>+</button>
+    </div>
+  );
+}
+
 export default function PartnerCalendar() {
+
   const { t } = useTranslation();
   const navigate = useNavigate();
   const DAYS = DAY_DEFS.map(d => ({ ...d, label: t(`partner.calendar.days.${d.key}`) }));
