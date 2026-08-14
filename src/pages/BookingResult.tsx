@@ -170,6 +170,20 @@ export default function BookingResult() {
       titleEs = "Esta reserva fue cancelada";
       titleEn = "This booking was cancelled and can no longer be confirmed";
       break;
+    case "completed":
+      icon = "🎉";
+      titleEs = "¡Visita completada!";
+      titleEn = "Marked as completed";
+      body = "Gracias — la reserva queda registrada como completada.";
+      summary = summaryFull;
+      break;
+    case "noshow":
+      icon = "🕐";
+      titleEs = "Cliente no asistió";
+      titleEn = "Marked as no-show";
+      body = "Hemos registrado que el cliente no asistió.";
+      summary = summaryFull;
+      break;
     case "error":
       icon = "⚠️";
       titleEs = "No se pudo completar la acción";
