@@ -32,7 +32,9 @@ type Outcome =
   | "already-declined"
   | "was-cancelled"
   | "error"
-  | "invalid";
+  | "invalid"
+  | "completed"
+  | "noshow";
 
 const KNOWN: Outcome[] = [
   "confirmed",
@@ -43,6 +45,8 @@ const KNOWN: Outcome[] = [
   "was-cancelled",
   "error",
   "invalid",
+  "completed",
+  "noshow",
 ];
 
 export default function BookingResult() {
