@@ -288,6 +288,135 @@ export default function BookingResult() {
             </div>
           )}
 
+          {hasClientCard && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: "16px",
+                background: "#faf6f1",
+                borderRadius: 12,
+                textAlign: "left",
+                color: "#3d2b1f",
+                fontSize: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#B85C38",
+                  marginBottom: 12,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                📋 Ficha del cliente / Client details
+              </div>
+
+              {(name || ph || em) && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>👤 Cliente / Client:</span>{" "}
+                  {name && <span>{name}</span>}
+                  {ph && looksLikePhone(ph) && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`tel:${ph.replace(/\s/g, "")}`}
+                        style={{ color: "#B85C38", textDecoration: "underline" }}
+                      >
+                        {ph}
+                      </a>
+                      {whatsappUrl(ph) && (
+                        <>
+                          {" · "}
+                          <a
+                            href={whatsappUrl(ph)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#B85C38", textDecoration: "underline" }}
+                          >
+                            WhatsApp
+                          </a>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {em && looksLikeEmail(em) && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`mailto:${em}`}
+                        style={{ color: "#B85C38", textDecoration: "underline" }}
+                      >
+                        {em}
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {(service || dur || pr) && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>
+                    💆 Servicio / Service:
+                  </span>{" "}
+                  {[service, dur && `${dur} min`, pr && `€${pr}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              )}
+
+              {press && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Presión / Pressure:</span>{" "}
+                  {press}
+                </div>
+              )}
+
+              {focus && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Zonas / Focus:</span>{" "}
+                  {focus}
+                </div>
+              )}
+
+              {addons && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Extras:</span> {addons}
+                </div>
+              )}
+
+              {conv && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>Conversación:</span>{" "}
+                  {convLabel(conv)}
+                </div>
+              )}
+
+              {health && (
+                <div
+                  style={{
+                    marginBottom: 10,
+                    background: "#fff7ed",
+                    border: "1px solid #fed7aa",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                  }}
+                >
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>⚠️ Salud / Health:</span>{" "}
+                  {health}
+                </div>
+              )}
+
+              {notes && (
+                <div>
+                  <span style={{ color: "#B85C38", fontWeight: 600 }}>📝 Notas / Notes:</span>{" "}
+                  {notes}
+                </div>
+              )}
+            </div>
+          )}
+
           {showRebookBtn && rb && (
             <a
               href={rb}
