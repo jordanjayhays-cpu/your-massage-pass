@@ -128,8 +128,10 @@ export default function PartnerCalendar() {
     const rows = openDays.flatMap(d =>
       generateSlots(hours[d.num].open, hours[d.num].close).map(slot => ({
         partner_id: user.id, day_of_week: d.num, time_slot: slot,
+        capacity: dayCapFor(d.num) === capacity ? null : dayCapFor(d.num),
       }))
     );
+
 
     if (rows.length > 0) {
       const { error } = await supabase.from("partner_availability").insert(rows);
