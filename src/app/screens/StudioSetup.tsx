@@ -649,7 +649,53 @@ function StudioSetupInner() {
     </div>
   );
 
+  const DAY_KEYS: Record<number, string> = {
+    0: "sunday", 1: "monday", 2: "tuesday", 3: "wednesday", 4: "thursday", 5: "friday", 6: "saturday",
+  };
+
+  const renderCapacity = () => {
+    const openDays = DAYS.filter(d => hours[d.num]?.open);
+    return (
+      <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4 space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-[#2b2b2b]">{t("partner.studioSetup.capacityQuestion")}</p>
+          <p className="text-xs text-[#7A7068] mt-0.5">{t("partner.studioSetup.capacityHelper")}</p>
+        </div>
+        <Stepper value={capacity} onChange={setCapacity} min={1} max={10} />
+
+        {openDays.length > 0 && (
+          <div className="pt-1 border-t border-[#E5DDD3]">
+            <button
+              type="button"
+              onClick={() => setShowDayCapacity(v => !v)}
+              className="mt-2 text-sm font-medium text-[#B85C38] hover:underline"
+            >
+              {showDayCapacity ? "▾ " : "▸ "}{t("partner.studioSetup.capacityVaryByDay")}
+            </button>
+            {showDayCapacity && (
+              <div className="mt-3 space-y-2">
+                {openDays.map(d => (
+                  <div key={d.num} className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-[#2b2b2b]">{t(`partner.calendar.days.${DAY_KEYS[d.num]}`)}</span>
+                    <Stepper
+                      size="sm"
+                      min={1}
+                      max={10}
+                      value={dayCapFor(d.num)}
+                      onChange={v => setDayCapacity(prev => ({ ...prev, [d.num]: v }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderStaffCount = () => (
+
     <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-3 space-y-3">
       <div>
         <p className="text-sm font-medium text-[#2b2b2b]">{t("app.studioHours.staffTitle")}</p>
