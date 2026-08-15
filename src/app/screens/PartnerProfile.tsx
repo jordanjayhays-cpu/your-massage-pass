@@ -159,11 +159,34 @@ export default function PartnerProfile() {
 
   const handleSave = async () => {
     setLoading(true);
+    setSlugError(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error(t("partner.profile.toastSignIn")); setLoading(false); return; }
 
     const lat = selectedPlace?.geometry?.location?.lat;
     const lng = selectedPlace?.geometry?.location?.lng;
+
+    // Slug: normalize, validate length, check uniqueness before saving.
+    const cleanSlug = normalizeSlug(slug);
+    const slugChanged = cleanSlug !== (originalSlug ?? "");
+    if (cleanSlug && (cleanSlug.length < 3 || cleanSlug.length > 40)) {
+      setSlugError(t("partner.profile.slugInvalid"));
+      setLoading(false);
+      return;
+    }
+    if (cleanSlug && slugChanged) {
+      const { data: taken } = await supabase
+        .from("partners")
+        .select("id")
+        .eq("slug", cleanSlug)
+        .neq("id", user.id)
+        .maybeSingle();
+      if (taken) {
+        setSlugError(t("partner.profile.slugTaken"));
+        setLoading(false);
+        return;
+      }
+    }
 
     const { error } = await supabase.from("partners").upsert({
       id: user.id,
@@ -181,10 +204,16 @@ export default function PartnerProfile() {
       google_place_id: selectedPlace?.place_id,
       status: "active",
       preferred_language: lang,
+      ...(cleanSlug ? { slug: cleanSlug } : {}),
     });
 
     setLoading(false);
     if (error) { toast.error(t("partner.profile.toastSaveError", { message: error.message })); return; }
+    if (cleanSlug && slugChanged) {
+      setSlug(cleanSlug);
+      setOriginalSlug(cleanSlug);
+      toast.warning(t("partner.profile.slugUpdatedWarning"));
+    }
     setSaved(true);
     toast.success(t("partner.profile.toastSaved"));
     setTimeout(() => navigate("/partner/services"), 1200);
