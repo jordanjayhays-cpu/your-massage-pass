@@ -48,6 +48,7 @@ export default function PartnerDashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [tourHidden, setTourHidden] = useState(() => localStorage.getItem("mc-tour-hidden") === "true");
   // Month-calendar state
   const now0 = new Date();
   const [calYear, setCalYear] = useState(now0.getFullYear());
@@ -160,7 +161,14 @@ export default function PartnerDashboard() {
                 <h1 className="font-display text-xl font-bold">{partner?.business_name ?? t("partner.dashboard.title")}</h1>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => window.open("/portal-tour.html", "_blank", "noopener,noreferrer")}
+                className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
+                aria-label={t("partner.dashboard.tour")}
+              >
+                🎬 {t("partner.dashboard.tour")}
+              </button>
               <button onClick={() => navigate("/partner/profile")} className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
                 <Settings className="h-4 w-4" />
               </button>
