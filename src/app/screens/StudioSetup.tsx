@@ -380,6 +380,49 @@ function StudioSetupInner() {
   const [showDayCapacity, setShowDayCapacity] = useState(false);
   const [dayCapacity, setDayCapacity] = useState<Record<number, number>>({});
   const dayCapFor = (day: number) => dayCapacity[day] ?? capacity;
+  const [hoursPrefilled, setHoursPrefilled] = useState(false);
+  const [hoursPrefillDone, setHoursPrefillDone] = useState(false);
+
+  // Pre-fill the availability step from the studio's existing data:
+  // (a) existing partner_availability rows, else (b) partners.opening_hours.
+  useEffect(() => {
+    const pid = partnerId || (mode === "claim" && sourceData?.id ? sourceData.id : null);
+    if (!pid || hoursPrefillDone) return;
+    setHoursPrefillDone(true);
+    (async () => {
+      const { data: rows } = await supabase
+        .from("partner_availability")
+        .select("day_of_week, time_slot")
+        .eq("partner_id", pid);
+
+      if (rows && rows.length > 0) {
+        const next = closedHours();
+        const byDay: Record<number, number[]> = {};
+        for (const r of rows as any[]) {
+          const h = hourToNum(String(r.time_slot).slice(0, 5));
+          (byDay[Number(r.day_of_week)] ||= []).push(h);
+        }
+        for (const [d, hrs] of Object.entries(byDay)) {
+          const from = Math.min(...hrs);
+          const to = Math.max(...hrs) + 1;
+          next[Number(d)] = { open: true, from: clampHour(from, FROM_OPTIONS), to: clampHour(to, TO_OPTIONS) };
+        }
+        setHours(next);
+        setHoursPrefilled(true);
+        return;
+      }
+
+      let oh = sourceData?.opening_hours ?? null;
+      if (!oh) {
+        const { data } = await supabase.from("partners").select("opening_hours").eq("id", pid).maybeSingle();
+        oh = data?.opening_hours ?? null;
+      }
+      const parsed = parseOpeningHours(oh);
+      if (parsed) { setHours(parsed); setHoursPrefilled(true); }
+    })();
+  }, [partnerId, sourceData, mode, hoursPrefillDone]);
+
+
 
 
   // Step 4: Calendar (draft/claim mode)
