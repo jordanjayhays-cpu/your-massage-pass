@@ -369,6 +369,24 @@ export default function PartnerProfile() {
             </div>
 
             <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("partner.profile.slugLabel")}</label>
+              <div className="flex items-stretch rounded-xl border border-border overflow-hidden bg-background">
+                <span className="px-3 flex items-center text-xs text-muted-foreground bg-secondary whitespace-nowrap">book.massageclub.io/</span>
+                <input
+                  value={slug}
+                  onChange={(e) => { setSlug(e.target.value); setSlugError(null); }}
+                  onBlur={() => setSlug((s) => normalizeSlug(s))}
+                  placeholder={t("partner.profile.slugPlaceholder")}
+                  className="flex-1 min-w-0 h-11 px-3 bg-transparent text-sm outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5 break-all">
+                https://book.massageclub.io/{normalizeSlug(slug)}
+              </p>
+              {slugError && <p className="text-[11px] text-destructive mt-1">{slugError}</p>}
+            </div>
+
+            <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("partner.profile.languageLabel")}</label>
               <PartnerLangPills
                 value={lang}
