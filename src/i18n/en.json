@@ -857,6 +857,7 @@
       "tourCardDesc": "A 2-minute walkthrough of bookings, services and schedule.",
       "tourCardCta": "Watch the tour",
       "tourCardClose": "Close",
+      "tourCardFullscreen": "⛶ Fullscreen",
       "tourCardHide": "Hide",
       "pleaseSignIn": "Please sign in",
       "errorUpdating": "Error updating: {{message}}",

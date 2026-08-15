@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText } from "lucide-react";
@@ -58,6 +58,7 @@ export default function PartnerDashboard() {
   const [calView, setCalView] = useState<"month" | "week">("month");
   const [weekOffset, setWeekOffset] = useState(0);
   const [detail, setDetail] = useState<Booking | null>(null); // booking shown in the detail popup
+  const tourFrameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     loadData();
@@ -208,16 +209,34 @@ export default function PartnerDashboard() {
                         {t("partner.dashboard.tourCardHide")}
                       </button>
                     </div>
-                    {tourExpanded && (
-                      <iframe
-                        src="/portal-tour.html"
-                        title={t("partner.dashboard.tour")}
-                        className="w-full aspect-[16/10] rounded-xl border bg-black mt-4"
-                        allowFullScreen
-                      />
-                    )}
                   </div>
                 </div>
+                {tourExpanded && (
+                  <>
+                    <div className="flex justify-end items-center -mx-4 px-4 py-2 bg-black text-white text-xs border-b border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = tourFrameRef.current;
+                          if (!el) return;
+                          if (el.requestFullscreen) el.requestFullscreen();
+                          else if ((el as any).webkitRequestFullscreen) (el as any).webkitRequestFullscreen();
+                        }}
+                        className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                      >
+                        {t("partner.dashboard.tourCardFullscreen")}
+                      </button>
+                    </div>
+                    <iframe
+                      ref={tourFrameRef}
+                      src="/portal-tour.html"
+                      title={t("partner.dashboard.tour")}
+                      className="w-full aspect-[16/10] sm:min-h-[420px] -mx-4 -mb-4 rounded-b-xl overflow-hidden border-0 bg-black"
+                      allowFullScreen
+                      allow="fullscreen"
+                    />
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
