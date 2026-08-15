@@ -183,6 +183,36 @@ export default function PartnerDashboard() {
         </div>
       ) : (
         <div className="max-w-xl mx-auto px-6 py-6 space-y-5">
+          {/* Tour card */}
+          {!tourHidden && (
+            <Card className="bg-[#faf6f1] border-[#e8dfd6]">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-xl" aria-hidden>🎬</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold text-[#3d2b1f]">{t("partner.dashboard.tourCardTitle")}</p>
+                    <p className="text-sm text-[#3d2b1f]/80 mt-0.5">{t("partner.dashboard.tourCardDesc")}</p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <Button
+                        size="sm"
+                        className="bg-[#B85C38] hover:bg-[#B85C38]/90 text-white"
+                        onClick={() => window.open("/portal-tour.html", "_blank", "noopener,noreferrer")}
+                      >
+                        {t("partner.dashboard.tourCardCta")}
+                      </Button>
+                      <button
+                        onClick={() => { localStorage.setItem("mc-tour-hidden", "true"); setTourHidden(true); }}
+                        className="text-xs text-[#3d2b1f]/70 hover:text-[#3d2b1f] underline underline-offset-2"
+                      >
+                        {t("partner.dashboard.tourCardHide")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {[
