@@ -1009,7 +1009,12 @@
       "toastLoaded": "¡{{name}} cargado! Completa el resto y guarda.",
       "toastSignIn": "Por favor, inicia sesión primero",
       "toastSaveError": "Error al guardar: {{message}}",
-      "toastSaved": "¡Perfil guardado! Ahora añade tus servicios."
+      "toastSaved": "¡Perfil guardado! Ahora añade tus servicios.",
+      "slugLabel": "Tu enlace / Your link",
+      "slugPlaceholder": "mi-estudio",
+      "slugTaken": "Ese enlace ya está en uso",
+      "slugInvalid": "El enlace debe tener entre 3 y 40 caracteres",
+      "slugUpdatedWarning": "Enlace actualizado — el enlace anterior dejará de funcionar, actualiza donde lo hayas compartido."
     },
     "services": {
       "stepLabel": "Paso 2 de 3",

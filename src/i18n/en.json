@@ -1009,7 +1009,12 @@
       "toastLoaded": "{{name}} loaded! Fill in the rest and save.",
       "toastSignIn": "Please sign in first",
       "toastSaveError": "Error saving: {{message}}",
-      "toastSaved": "Profile saved! Now add your services."
+      "toastSaved": "Profile saved! Now add your services.",
+      "slugLabel": "Your link",
+      "slugPlaceholder": "my-studio",
+      "slugTaken": "That link is already taken",
+      "slugInvalid": "The link must be between 3 and 40 characters",
+      "slugUpdatedWarning": "Link updated — the previous link will stop working, update it wherever you shared it."
     },
     "services": {
       "stepLabel": "Step 2 of 3",
