@@ -1222,7 +1222,9 @@
       "customDurationOption": "Custom…",
       "customDurationPlaceholder": "Minutes",
       "useListAgain": "Back to list",
-      "capacityVaryByDay": "Does it change by day?"
+      "capacityVaryByDay": "Does it change by day?",
+      "hoursConfirmTitle": "Confirm your hours",
+      "hoursConfirmSubtitle": "We pre-filled them from your public schedule. Adjust anything that's off."
     }
   }
 }
