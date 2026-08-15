@@ -34,7 +34,8 @@ type Outcome =
   | "error"
   | "invalid"
   | "completed"
-  | "noshow";
+  | "noshow"
+  | "hours-confirmed";
 
 const KNOWN: Outcome[] = [
   "confirmed",
@@ -47,6 +48,7 @@ const KNOWN: Outcome[] = [
   "invalid",
   "completed",
   "noshow",
+  "hours-confirmed",
 ];
 
 const STUDIO_FACING: Outcome[] = [
@@ -183,6 +185,13 @@ export default function BookingResult() {
       titleEn = "Marked as no-show";
       body = "Hemos registrado que el cliente no asistió.";
       summary = summaryFull;
+      break;
+    case "hours-confirmed":
+      icon = "🗓️";
+      titleEs = "¡Horario confirmado!";
+      titleEn = "Hours confirmed";
+      body =
+        "Gracias — tus reservas ya siguen tu horario real. Puedes ajustarlo cuando quieras desde tu portal. / Thanks — your bookings now follow your real hours. You can adjust them any time from your portal.";
       break;
     case "error":
       icon = "⚠️";
