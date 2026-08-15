@@ -725,6 +725,7 @@
       "businessNameLabel": "Business Name",
       "businessNamePlaceholder": "e.g. Wellness Center Madrid",
       "emailLabel": "Email",
+      "emailPlaceholder": "spa@example.com",
       "passwordLabel": "Password",
       "pleaseWait": "Please wait…",
       "createAccount": "Create Account",
@@ -740,7 +741,19 @@
         "Reach 12,000+ digital nomads in Madrid",
         "Commission-only — no upfront cost",
         "Get bookings 24/7 automatically"
-      ]
+      ],
+      "recovery": {
+        "title": "Reset your password",
+        "subtitle": "Enter your account email and we'll send you a link to create a new password.",
+        "send": "Send reset link",
+        "back": "Back",
+        "sentTitle": "If an account exists with that email, we've sent you a link.",
+        "sentSubtitle": "Check your spam folder too.",
+        "resend": "Resend",
+        "resendIn": "Resend in {{seconds}}s",
+        "errEmailRequired": "Enter your email address",
+        "errInvalidEmail": "Enter a valid email"
+      }
     },
     "resetPassword": {
       "emailPlaceholder": "spa@example.com"
