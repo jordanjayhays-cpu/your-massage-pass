@@ -14,6 +14,19 @@ import i18n from "@/i18n";
 // Google Places API key
 const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
 
+// Booking link slug: lowercase, accent-free, hyphenated
+const normalizeSlug = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+
 type PlaceResult = {
   place_id: string;
   name: string;
