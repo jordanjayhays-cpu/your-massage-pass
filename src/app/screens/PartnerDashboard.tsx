@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText } from "lucide-react";
@@ -58,6 +58,7 @@ export default function PartnerDashboard() {
   const [calView, setCalView] = useState<"month" | "week">("month");
   const [weekOffset, setWeekOffset] = useState(0);
   const [detail, setDetail] = useState<Booking | null>(null); // booking shown in the detail popup
+  const tourFrameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     loadData();

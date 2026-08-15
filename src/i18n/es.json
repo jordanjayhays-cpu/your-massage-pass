@@ -857,6 +857,7 @@
       "tourCardDesc": "Un recorrido de 2 minutos por reservas, servicios y horario.",
       "tourCardCta": "Ver el recorrido",
       "tourCardClose": "Cerrar",
+      "tourCardFullscreen": "⛶ Pantalla completa",
       "tourCardHide": "Ocultar",
       "pleaseSignIn": "Por favor, inicia sesión",
       "errorUpdating": "Error al actualizar: {{message}}",
