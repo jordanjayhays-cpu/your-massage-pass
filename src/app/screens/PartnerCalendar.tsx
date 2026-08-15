@@ -169,7 +169,7 @@ export default function PartnerCalendar() {
     }
     await supabase
       .from("partners")
-      .update({ opening_hours, capacity: Math.max(1, capacity) })
+      .update({ opening_hours, capacity: Math.max(1, capacity), hours_confirmed_at: new Date().toISOString() })
       .eq("id", user.id);
 
     setLoading(false);
