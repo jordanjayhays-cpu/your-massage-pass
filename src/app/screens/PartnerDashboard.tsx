@@ -49,6 +49,7 @@ export default function PartnerDashboard() {
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [tourHidden, setTourHidden] = useState(() => localStorage.getItem("mc-tour-hidden") === "true");
+  const [tourExpanded, setTourExpanded] = useState(false);
   // Month-calendar state
   const now0 = new Date();
   const [calYear, setCalYear] = useState(now0.getFullYear());
