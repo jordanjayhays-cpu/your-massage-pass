@@ -759,7 +759,14 @@ function StudioSetupInner() {
 
   const renderHoursEditor = () => (
     <div className="space-y-3">
-      <p className="text-sm text-[#7A7068]">{t("app.studioHours.helper")}</p>
+      {hoursPrefilled ? (
+        <div className="rounded-xl border border-[#B85C38]/30 bg-[#FAF6F1] p-3">
+          <p className="text-sm font-semibold text-[#B85C38]">{t("partner.studioSetup.hoursConfirmTitle")}</p>
+          <p className="text-sm text-[#7A7068] mt-1">{t("partner.studioSetup.hoursConfirmSubtitle")}</p>
+        </div>
+      ) : (
+        <p className="text-sm text-[#7A7068]">{t("app.studioHours.helper")}</p>
+      )}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => copySchedule(1, false)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#FAF6F1] border border-[#B85C38] text-[#B85C38] hover:bg-[#F3E9DF]">
           {t("app.studioHours.copyAll")}
