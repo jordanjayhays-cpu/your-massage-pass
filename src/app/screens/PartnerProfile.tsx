@@ -55,6 +55,9 @@ export default function PartnerProfile() {
     city: "Madrid",
     country: "Spain",
   });
+  const [slug, setSlug] = useState("");
+  const [originalSlug, setOriginalSlug] = useState("");
+  const [slugError, setSlugError] = useState<string | null>(null);
 
   // Load existing partner profile on mount
   useEffect(() => {
