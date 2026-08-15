@@ -690,7 +690,7 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot, capacity: dayCapFor(day.num) === capacity ? null : dayCapFor(day.num) }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang }).eq("id", uid);
+      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang, hours_confirmed_at: new Date().toISOString() }).eq("id", uid);
       toast.success(t("partner.studioSetup.availabilitySavedToast"));
       setStep(5);
     } catch (err: any) {
