@@ -44,6 +44,124 @@ function rangeToSlots(r: DayRange): string[] {
   return out;
 }
 
+/** Snap an arbitrary hour to the closest selectable option. */
+const clampHour = (h: number, opts: string[]) => {
+  const nums = opts.map(hourToNum);
+  const min = Math.min(...nums), max = Math.max(...nums);
+  const v = Math.min(max, Math.max(min, h));
+  return opts[nums.indexOf(nums.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)))];
+};
+
+const DAY_TOKENS: Record<string, number> = {
+  sun: 0, sunday: 0, dom: 0, domingo: 0, d: 0,
+  mon: 1, monday: 1, lun: 1, lunes: 1, l: 1,
+  tue: 2, tues: 2, tuesday: 2, mar: 2, martes: 2,
+  wed: 3, weds: 3, wednesday: 3, mie: 3, "mié": 3, miercoles: 3, "miércoles": 3, x: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4, jue: 4, jueves: 4, j: 4,
+  fri: 5, friday: 5, vie: 5, viernes: 5, v: 5,
+  sat: 6, saturday: 6, sab: 6, "sáb": 6, sabado: 6, "sábado": 6, s: 6,
+};
+
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function dayNum(tok: string): number | null {
+  const k = tok.toLowerCase().replace(/\./g, "").trim();
+  return k in DAY_TOKENS ? DAY_TOKENS[k] : null;
+}
+
+function expandDayRange(a: number, b: number): number[] {
+  const ia = WEEK_ORDER.indexOf(a), ib = WEEK_ORDER.indexOf(b);
+  if (ia < 0 || ib < 0) return [a, b];
+  const out: number[] = [];
+  let i = ia;
+  for (let n = 0; n < 7; n++) { out.push(WEEK_ORDER[i]); if (i === ib) break; i = (i + 1) % 7; }
+  return out;
+}
+
+const closedHours = (): Record<number, DayRange> => {
+  const h: Record<number, DayRange> = {} as any;
+  for (const d of DAYS) h[d.num] = { open: false, from: "10:00", to: "21:00" };
+  return h;
+};
+
+/**
+ * Leniently parse a public opening-hours value into per-day ranges.
+ * Accepts a JSONB object ({ mon: { open, close } | { closed: true } }) or free
+ * text like "Mon-Sat 10:00-21:00" / "L-S 10:00-21:00; Dom cerrado".
+ * Returns null when nothing usable could be parsed.
+ */
+export function parseOpeningHours(value: any): Record<number, DayRange> | null {
+  if (!value) return null;
+
+  // JSONB shape used elsewhere in the app
+  if (typeof value === "object") {
+    const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    const out = closedHours();
+    let any = false;
+    for (let i = 0; i < 7; i++) {
+      const v = (value as any)[KEYS[i]];
+      if (!v) continue;
+      if (v.closed) { any = true; continue; }
+      if (v.open && v.close) {
+        out[i] = {
+          open: true,
+          from: clampHour(hourToNum(String(v.open)), FROM_OPTIONS),
+          to: clampHour(hourToNum(String(v.close)), TO_OPTIONS),
+        };
+        any = true;
+      }
+    }
+    return any ? out : null;
+  }
+
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (!text) return null;
+
+  const out = closedHours();
+  let any = false;
+
+  for (const rawSeg of text.split(/[;\n|]+/)) {
+    const seg = rawSeg.trim();
+    if (!seg) continue;
+
+    const timeMatch = seg.match(/(\d{1,2})(?::(\d{2}))?\s*(?:h)?\s*[-–—a]{1,2}\s*(\d{1,2})(?::(\d{2}))?/i);
+    const closed = /cerrad|closed/i.test(seg);
+    if (!timeMatch && !closed) continue;
+
+    const dayPart = timeMatch ? seg.slice(0, timeMatch.index ?? 0) : seg;
+    const days: number[] = [];
+    for (const chunk of dayPart.split(/[,/&y]+|\band\b/i)) {
+      const c = chunk.trim();
+      if (!c) continue;
+      const rangeParts = c.split(/[-–—]/).map(s => s.trim()).filter(Boolean);
+      if (rangeParts.length === 2) {
+        const a = dayNum(rangeParts[0]), b = dayNum(rangeParts[1]);
+        if (a !== null && b !== null) { days.push(...expandDayRange(a, b)); continue; }
+      }
+      for (const word of c.split(/\s+/)) {
+        const d = dayNum(word);
+        if (d !== null) days.push(d);
+      }
+    }
+    const targets = days.length ? Array.from(new Set(days)) : (/daily|todos los d|every day/i.test(seg) ? WEEK_ORDER : []);
+    if (targets.length === 0) continue;
+
+    if (!timeMatch) {
+      for (const d of targets) out[d] = { ...out[d], open: false };
+      any = true;
+      continue;
+    }
+    const from = clampHour(Number(timeMatch[1]), FROM_OPTIONS);
+    const toRaw = Number(timeMatch[3]);
+    const to = clampHour(toRaw === 0 ? 24 : toRaw, TO_OPTIONS);
+    for (const d of targets) out[d] = { open: true, from, to };
+    any = true;
+  }
+
+  return any ? out : null;
+}
+
 type Service = { name: string; type: string; duration: number; price: number; description: string };
 
 const emptyService = (): Service => ({ name: "", type: "Swedish", duration: 60, price: 45, description: "" });
