@@ -671,7 +671,7 @@ function StudioSetupInner() {
 
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang }).eq("id", uid);
+      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang, hours_confirmed_at: new Date().toISOString() }).eq("id", uid);
       toast.success(t("partner.studioSetup.availabilitySavedToast"));
       setStep(5);
     } catch (err: any) {
