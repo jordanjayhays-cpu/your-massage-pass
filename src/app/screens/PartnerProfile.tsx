@@ -14,6 +14,19 @@ import i18n from "@/i18n";
 // Google Places API key
 const MAPS_KEY = "AIzaSyDx4a7iq1lt4LItVg44_kDmzvlpK7Ftldo";
 
+// Booking link slug: lowercase, accent-free, hyphenated
+const normalizeSlug = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+
 type PlaceResult = {
   place_id: string;
   name: string;
@@ -55,6 +68,9 @@ export default function PartnerProfile() {
     city: "Madrid",
     country: "Spain",
   });
+  const [slug, setSlug] = useState("");
+  const [originalSlug, setOriginalSlug] = useState("");
+  const [slugError, setSlugError] = useState<string | null>(null);
 
   // Load existing partner profile on mount
   useEffect(() => {
@@ -63,10 +79,12 @@ export default function PartnerProfile() {
       if (!user) return;
       const { data } = await supabase
         .from("partners")
-        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country, preferred_language")
+        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country, preferred_language, slug")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
+        setSlug((data as any).slug ?? "");
+        setOriginalSlug((data as any).slug ?? "");
         setForm((f) => ({
           ...f,
           business_name: data.business_name ?? "",
@@ -154,11 +172,34 @@ export default function PartnerProfile() {
 
   const handleSave = async () => {
     setLoading(true);
+    setSlugError(null);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error(t("partner.profile.toastSignIn")); setLoading(false); return; }
 
     const lat = selectedPlace?.geometry?.location?.lat;
     const lng = selectedPlace?.geometry?.location?.lng;
+
+    // Slug: normalize, validate length, check uniqueness before saving.
+    const cleanSlug = normalizeSlug(slug);
+    const slugChanged = cleanSlug !== (originalSlug ?? "");
+    if (cleanSlug && (cleanSlug.length < 3 || cleanSlug.length > 40)) {
+      setSlugError(t("partner.profile.slugInvalid"));
+      setLoading(false);
+      return;
+    }
+    if (cleanSlug && slugChanged) {
+      const { data: taken } = await supabase
+        .from("partners")
+        .select("id")
+        .eq("slug", cleanSlug)
+        .neq("id", user.id)
+        .maybeSingle();
+      if (taken) {
+        setSlugError(t("partner.profile.slugTaken"));
+        setLoading(false);
+        return;
+      }
+    }
 
     const { error } = await supabase.from("partners").upsert({
       id: user.id,
@@ -176,10 +217,16 @@ export default function PartnerProfile() {
       google_place_id: selectedPlace?.place_id,
       status: "active",
       preferred_language: lang,
+      ...(cleanSlug ? { slug: cleanSlug } : {}),
     });
 
     setLoading(false);
     if (error) { toast.error(t("partner.profile.toastSaveError", { message: error.message })); return; }
+    if (cleanSlug && slugChanged) {
+      setSlug(cleanSlug);
+      setOriginalSlug(cleanSlug);
+      toast.warning(t("partner.profile.slugUpdatedWarning"));
+    }
     setSaved(true);
     toast.success(t("partner.profile.toastSaved"));
     setTimeout(() => navigate("/partner/services"), 1200);
@@ -319,6 +366,24 @@ export default function PartnerProfile() {
               <p className="text-[11px] text-muted-foreground mt-1.5">
                 {t("partner.profile.accessHint")}
               </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t("partner.profile.slugLabel")}</label>
+              <div className="flex items-stretch rounded-xl border border-border overflow-hidden bg-background">
+                <span className="px-3 flex items-center text-xs text-muted-foreground bg-secondary whitespace-nowrap">book.massageclub.io/</span>
+                <input
+                  value={slug}
+                  onChange={(e) => { setSlug(e.target.value); setSlugError(null); }}
+                  onBlur={() => setSlug((s) => normalizeSlug(s))}
+                  placeholder={t("partner.profile.slugPlaceholder")}
+                  className="flex-1 min-w-0 h-11 px-3 bg-transparent text-sm outline-none"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5 break-all">
+                https://book.massageclub.io/{normalizeSlug(slug)}
+              </p>
+              {slugError && <p className="text-[11px] text-destructive mt-1">{slugError}</p>}
             </div>
 
             <div>
