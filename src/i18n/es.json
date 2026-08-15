@@ -725,6 +725,7 @@
       "businessNameLabel": "Nombre del negocio",
       "businessNamePlaceholder": "p. ej. Centro Wellness Madrid",
       "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "spa@ejemplo.com",
       "passwordLabel": "Contraseña",
       "pleaseWait": "Espera un momento…",
       "createAccount": "Crear cuenta",
@@ -740,7 +741,19 @@
         "Llega a más de 12.000 nómadas digitales en Madrid",
         "Solo comisión — sin coste inicial",
         "Recibe reservas 24/7 automáticamente"
-      ]
+      ],
+      "recovery": {
+        "title": "Recuperar contraseña",
+        "subtitle": "Escribe el email de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.",
+        "send": "Enviar enlace",
+        "back": "Volver",
+        "sentTitle": "Si existe una cuenta con ese email, te hemos enviado un enlace.",
+        "sentSubtitle": "Revisa también la carpeta de spam.",
+        "resend": "Reenviar",
+        "resendIn": "Reenviar en {{seconds}}s",
+        "errEmailRequired": "Introduce tu correo electrónico",
+        "errInvalidEmail": "Introduce un correo válido"
+      }
     },
     "resetPassword": {
       "emailPlaceholder": "spa@ejemplo.com"
