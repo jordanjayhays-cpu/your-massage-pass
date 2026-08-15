@@ -66,10 +66,12 @@ export default function PartnerProfile() {
       if (!user) return;
       const { data } = await supabase
         .from("partners")
-        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country, preferred_language")
+        .select("business_name, address, phone, whatsapp, website, description, access_instructions, city, country, preferred_language, slug")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
+        setSlug((data as any).slug ?? "");
+        setOriginalSlug((data as any).slug ?? "");
         setForm((f) => ({
           ...f,
           business_name: data.business_name ?? "",
