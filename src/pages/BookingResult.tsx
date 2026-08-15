@@ -129,6 +129,7 @@ export default function BookingResult() {
   let titleEs = "Enlace no válido";
   let titleEn = "Invalid link";
   let body = "";
+  let bodyEn = "";
   let summary = "";
   let showRebookBtn = false;
 
@@ -190,8 +191,8 @@ export default function BookingResult() {
       icon = "🗓️";
       titleEs = "¡Horario confirmado!";
       titleEn = "Hours confirmed";
-      body =
-        "Gracias — tus reservas ya siguen tu horario real. Puedes ajustarlo cuando quieras desde tu portal. / Thanks — your bookings now follow your real hours. You can adjust them any time from your portal.";
+      body = "Gracias — tus reservas ya siguen tu horario real. Puedes ajustarlo cuando quieras desde tu portal.";
+      bodyEn = "Thanks — your bookings now follow your real hours. You can adjust them any time from your portal.";
       break;
     case "error":
       icon = "⚠️";
@@ -280,6 +281,10 @@ export default function BookingResult() {
 
           {body && (
             <p style={{ fontSize: 15, color: "#5a4736", margin: "8px 0 12px" }}>{body}</p>
+          )}
+
+          {bodyEn && (
+            <p style={{ fontSize: 14, color: "#8a7460", margin: "-4px 0 12px" }}>{bodyEn}</p>
           )}
 
           {summary && (
