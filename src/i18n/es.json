@@ -856,6 +856,7 @@
       "tourCardTitle": "Aprende a usar tu portal",
       "tourCardDesc": "Un recorrido de 2 minutos por reservas, servicios y horario.",
       "tourCardCta": "Ver el recorrido",
+      "tourCardClose": "Cerrar",
       "tourCardHide": "Ocultar",
       "pleaseSignIn": "Por favor, inicia sesión",
       "errorUpdating": "Error al actualizar: {{message}}",

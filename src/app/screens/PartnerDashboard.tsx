@@ -196,9 +196,9 @@ export default function PartnerDashboard() {
                       <Button
                         size="sm"
                         className="bg-[#B85C38] hover:bg-[#B85C38]/90 text-white"
-                        onClick={() => window.open("/portal-tour.html", "_blank", "noopener,noreferrer")}
+                        onClick={() => setTourExpanded(v => !v)}
                       >
-                        {t("partner.dashboard.tourCardCta")}
+                        {tourExpanded ? t("partner.dashboard.tourCardClose") : t("partner.dashboard.tourCardCta")}
                       </Button>
                       <button
                         onClick={() => { localStorage.setItem("mc-tour-hidden", "true"); setTourHidden(true); }}
@@ -207,6 +207,14 @@ export default function PartnerDashboard() {
                         {t("partner.dashboard.tourCardHide")}
                       </button>
                     </div>
+                    {tourExpanded && (
+                      <iframe
+                        src="/portal-tour.html"
+                        title={t("partner.dashboard.tour")}
+                        className="w-full aspect-[16/10] rounded-xl border bg-black mt-4"
+                        allowFullScreen
+                      />
+                    )}
                   </div>
                 </div>
               </CardContent>
