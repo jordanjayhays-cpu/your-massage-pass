@@ -42,6 +42,7 @@ export const GUIDES: { path: string; label: string }[] = [
   { path: "/guides/massage-prices-madrid", label: "Massage prices in Madrid" },
   { path: "/guides/deep-tissue-massage-madrid", label: "Deep tissue massage Madrid" },
   { path: "/madrid/chamberi", label: "Massage in Chamberí" },
+  { path: "/guides/is-massage-good-for-you", label: "Is massage good for you?" },
 ];
 
 export default function GuideLayout({
