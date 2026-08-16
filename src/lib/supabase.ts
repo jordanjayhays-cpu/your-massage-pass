@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { studioImage } from "./studioImages";
+import { getSource } from "./attribution";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Your Supabase project URL (safe to expose).
@@ -51,7 +52,7 @@ export async function saveBooking(booking: Omit<Booking, "id" | "created_at">): 
   try {
     const { data, error } = await supabase
       .from("bookings")
-      .insert([booking])
+      .insert([{ ...booking, ...getSource() }])
       .select("id")
       .single();
 

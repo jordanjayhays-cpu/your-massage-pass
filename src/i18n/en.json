@@ -920,7 +920,20 @@
       "reminderSent": "Reminder sent",
       "sendReminderToClient": "Send reminder to client",
       "confirm": "Confirm",
-      "decline": "Decline"
+      "decline": "Decline",
+      "visibilityTitle": "Visibility",
+      "visibilityViews30": "page views (30 days)",
+      "visibilityViews7": "last 7 days: {{n}}",
+      "visibilityEmpty": "Your page is live — you'll soon see who's visiting",
+      "visibilitySource": {
+        "google": "Google",
+        "reddit": "Reddit",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "tiktok": "TikTok",
+        "direct": "Direct",
+        "other": "Other"
+      }
     },
     "clients": {
       "title": "Clients & Treatment Notes",

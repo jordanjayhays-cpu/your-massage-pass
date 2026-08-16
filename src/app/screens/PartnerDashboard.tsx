@@ -59,10 +59,22 @@ export default function PartnerDashboard() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [detail, setDetail] = useState<Booking | null>(null); // booking shown in the detail popup
   const tourFrameRef = useRef<HTMLIFrameElement>(null);
+  const [visibility, setVisibility] = useState<{ views_30d: number; views_7d: number; sources: { ref: string; n: number }[] } | null>(null);
 
   useEffect(() => {
     loadData();
     loadPartnerLang();
+    (async () => {
+      try {
+        const { data } = await supabase.rpc("partner_page_stats");
+        const d: any = data;
+        if (d) setVisibility({
+          views_30d: Number(d.views_30d) || 0,
+          views_7d: Number(d.views_7d) || 0,
+          sources: Array.isArray(d.sources) ? d.sources : [],
+        });
+      } catch { /* ignore */ }
+    })();
   }, []);
 
   const loadData = async () => {
@@ -259,6 +271,33 @@ export default function PartnerDashboard() {
               </Card>
             ))}
           </div>
+
+          {/* Visibility — read-only page view stats */}
+          {visibility && (
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <p className="text-sm font-bold mb-2">{t("partner.dashboard.visibilityTitle")}</p>
+                {visibility.views_30d > 0 ? (
+                  <>
+                    <div className="font-display text-3xl font-bold leading-none">{visibility.views_30d}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{t("partner.dashboard.visibilityViews30")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("partner.dashboard.visibilityViews7", { n: visibility.views_7d })}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {visibility.sources.filter(s => Number(s.n) > 0).map(s => (
+                        <span key={s.ref} className="px-2.5 py-1 rounded-full bg-secondary text-xs text-muted-foreground">
+                          {t(`partner.dashboard.visibilitySource.${s.ref}`, { defaultValue: s.ref })} · {s.n}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("partner.dashboard.visibilityEmpty")}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Your booking link — the shareable page */}
           <Card className="bg-gradient-to-br from-primary/10 to-card border-primary/30">
