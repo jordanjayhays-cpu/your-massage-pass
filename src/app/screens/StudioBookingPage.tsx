@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, isWhatsappCapable } from "@/app/lib/whatsapp";
+import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
@@ -572,6 +573,7 @@ export default function StudioBookingPage() {
 
     try {
       const { data, error } = await supabase.from("bookings").insert({
+        ...getSource(),
         client_name: name.trim(),
         client_phone: phone.trim(),
         client_email: email.trim() || null,

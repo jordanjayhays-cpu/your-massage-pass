@@ -5,6 +5,7 @@ import { BookingProvider } from "./BookingContext";
 import { MobileFrame } from "./MobileFrame";
 import { supabase } from "@/lib/supabase";
 import { captureReferralFromUrl } from "@/lib/referral";
+import { captureSource } from "@/lib/attribution";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
@@ -12,6 +13,7 @@ export default function AppLayout() {
   // Capture ?ref=CODE from any inbound link so it survives sign-in + booking.
   useEffect(() => {
     captureReferralFromUrl();
+    captureSource();
   }, []);
 
 
