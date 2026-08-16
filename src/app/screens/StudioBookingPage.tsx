@@ -60,6 +60,10 @@ export default function StudioBookingPage() {
 
 
   useEffect(() => {
+    captureSource();
+  }, []);
+
+  useEffect(() => {
     if (!profile?.partner) return;
     const p = profile.partner as any;
     const prevTitle = document.title;
