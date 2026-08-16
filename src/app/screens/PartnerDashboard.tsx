@@ -282,7 +282,7 @@ export default function PartnerDashboard() {
                     <div className="font-display text-3xl font-bold leading-none">{visibility.views_30d}</div>
                     <p className="text-xs text-muted-foreground mt-1">{t("partner.dashboard.visibilityViews30")}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("partner.dashboard.visibilityViews7", { count: visibility.views_7d })}
+                      {t("partner.dashboard.visibilityViews7", { n: visibility.views_7d })}
                     </p>
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       {visibility.sources.filter(s => Number(s.n) > 0).map(s => (

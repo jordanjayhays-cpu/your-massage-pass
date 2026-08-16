@@ -923,7 +923,7 @@
       "decline": "Rechazar",
       "visibilityTitle": "Visibilidad",
       "visibilityViews30": "visitas a tu página (30 días)",
-      "visibilityViews7": "últimos 7 días: {{count}}",
+      "visibilityViews7": "últimos 7 días: {{n}}",
       "visibilityEmpty": "Tu página está lista — pronto verás aquí quién la visita",
       "visibilitySource": {
         "google": "Google",
