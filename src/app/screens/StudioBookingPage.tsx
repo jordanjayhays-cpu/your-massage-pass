@@ -78,6 +78,49 @@ export default function StudioBookingPage() {
     };
   }, [profile]);
 
+  // LocalBusiness / HealthAndBeautyBusiness structured data for the studio profile.
+  useEffect(() => {
+    if (!profile?.partner) return;
+    const p = profile.partner as any;
+    const rating = p.google_rating != null ? Number(p.google_rating) : null;
+    const reviews = p.google_reviews != null ? Number(p.google_reviews) : null;
+    const data: Record<string, unknown> = {
+      "@context": "https://schema.org",
+      "@type": "HealthAndBeautyBusiness",
+      name: p.business_name,
+      url: `https://book.massageclub.io/${p.slug || p.id}`,
+      ...(p.phone ? { telephone: p.phone } : {}),
+      ...(p.image_url ? { image: p.image_url } : {}),
+      address: {
+        "@type": "PostalAddress",
+        ...(p.address ? { streetAddress: p.address } : {}),
+        addressLocality: "Madrid",
+        addressCountry: "ES",
+      },
+      ...(p.latitude != null && p.longitude != null
+        ? { geo: { "@type": "GeoCoordinates", latitude: Number(p.latitude), longitude: Number(p.longitude) } }
+        : {}),
+      ...(rating != null
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: rating,
+              ...(reviews != null ? { reviewCount: reviews } : {}),
+            },
+          }
+        : {}),
+    };
+    const el = document.createElement("script");
+    el.type = "application/ld+json";
+    el.text = JSON.stringify(data);
+    document.head.appendChild(el);
+    return () => {
+      el.remove();
+    };
+  }, [profile]);
+
+
+
 
   useEffect(() => {
     if (!studioId) return;

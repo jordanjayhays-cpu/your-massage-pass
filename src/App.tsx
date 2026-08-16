@@ -42,6 +42,11 @@ import BookingResult from "./pages/BookingResult";
 import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
+import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
+import DeepTissueMassageMadrid from "./pages/guides/DeepTissueMassageMadrid";
+import MadridChamberi from "./pages/guides/MadridChamberi";
+
 
 const queryClient = new QueryClient();
 
@@ -56,6 +61,14 @@ const App = () => (
           <Route path="/review" element={<Review />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+
+          {/* SEO guide pages (static paths win over the /:studioId dynamic route) */}
+          <Route path="/massage-in-english-madrid" element={<MassageInEnglishMadrid />} />
+          <Route path="/guides/massage-prices-madrid" element={<MassagePricesMadrid />} />
+          <Route path="/guides/deep-tissue-massage-madrid" element={<DeepTissueMassageMadrid />} />
+          <Route path="/madrid/chamberi" element={<MadridChamberi />} />
+
+
           
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}

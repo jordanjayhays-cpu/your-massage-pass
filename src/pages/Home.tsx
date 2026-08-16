@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { studioImageFallback } from "@/lib/studioImages";
+import { GUIDES } from "@/pages/guides/GuideLayout";
+import { useSiteVisit } from "@/lib/siteVisit";
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
@@ -21,6 +23,8 @@ export default function Home() {
       : ""
   );
   const [visibleCount, setVisibleCount] = useState(9);
+
+  useSiteVisit("/");
 
   useEffect(() => {
     const target = "Massage Club — Massage studios in Madrid";
@@ -187,6 +191,17 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-border/60 bg-background">
         <div className="max-w-6xl mx-auto px-4 py-8 text-center">
+          <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-primary mb-2">Guides</p>
+          <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-6">
+            {GUIDES.map((g) => (
+              <li key={g.path}>
+                <Link to={g.path} className="hover:text-primary transition underline-offset-2 hover:underline">
+                  {g.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+
           <p className="text-xs text-muted-foreground">
             Massage Club · Madrid{" "}
             <span className="mx-1">·</span>{" "}
