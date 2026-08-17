@@ -152,7 +152,7 @@ export function CalmaCard({ note }: { note?: string }) {
           "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €45) and relaxing rituals. Book online in English — you pay at the studio."}
       </p>
       <Link
-        to="/calma-madrid-spa"
+        to="/spa-calma"
         className="mt-4 inline-flex h-10 px-5 items-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.12em] uppercase shadow-soft hover:opacity-90 transition"
       >
         View Calma Madrid
@@ -174,7 +174,7 @@ export function GuideLinks({ exclude }: { exclude: string }) {
           </li>
         ))}
         <li>
-          <Link to="/calma-madrid-spa" className="text-foreground hover:text-primary underline-offset-2 hover:underline transition">
+          <Link to="/spa-calma" className="text-foreground hover:text-primary underline-offset-2 hover:underline transition">
             Calma Madrid — book a massage
           </Link>
         </li>
