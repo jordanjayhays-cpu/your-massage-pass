@@ -27,7 +27,7 @@ const FROM_OPTIONS = HOUR_OPTIONS;
 const TO_OPTIONS = [...HOUR_OPTIONS.slice(1), "00:00"];
 
 type DayRange = { open: boolean; from: string; to: string };
-const DEFAULT_RANGE: DayRange = { open: true, from: "10:00", to: "21:00" };
+const DEFAULT_RANGE: DayRange = { open: true, from: "09:00", to: "17:00" };
 
 const hourToNum = (t: string) => {
   const h = Number(t.split(":")[0]);
