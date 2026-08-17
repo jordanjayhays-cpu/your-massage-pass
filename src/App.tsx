@@ -47,6 +47,8 @@ import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
 import DeepTissueMassageMadrid from "./pages/guides/DeepTissueMassageMadrid";
 import MadridChamberi from "./pages/guides/MadridChamberi";
 import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
+import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
+
 
 
 const queryClient = new QueryClient();
