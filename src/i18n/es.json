@@ -341,7 +341,10 @@
         "shareText": "Llevo reservando masajes en Madrid con Massage Club — consigue {{amount}} € de descuento en tu primera reserva con mi enlace: {{url}}"
       },
       "photo": {
-        "changePhoto": "Cambiar foto"
+        "changePhoto": "Cambiar foto",
+        "addPhoto": "Añadir foto",
+        "remove": "Quitar",
+        "hint": "Añade una foto para que el estudio te reconozca al llegar."
       },
       "personal": {
         "title": "Datos personales",
