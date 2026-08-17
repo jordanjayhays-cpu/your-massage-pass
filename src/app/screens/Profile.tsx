@@ -260,19 +260,57 @@ export default function Profile() {
   const toggleMedical = (v: string) =>
     setMedicalConditions(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
 
+  // Resize + compress to a ~512px square JPEG before upload
+  const resizeToSquare = (file: File, size = 512): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("no canvas")); return; }
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        canvas.toBlob(
+          b => (b ? resolve(b) : reject(new Error("no blob"))),
+          "image/jpeg",
+          0.85
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+      img.src = url;
+    });
+
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file || !user) return;
     setUploadingPhoto(true);
-    const path = `${user.id}/${Date.now()}-${file.name}`;
-    const { error: upError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+
+    let body: Blob = file;
+    try {
+      body = await resizeToSquare(file, 512);
+    } catch {
+      body = file; // fall back to the original file
+    }
+
+    const path = `${user.id}/avatar.jpg`;
+    const { error: upError } = await supabase.storage
+      .from("avatars")
+      .upload(path, body, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
     if (upError) {
       toast.error(t("app.profile.toasts.photoUploadFailed", { message: upError.message }));
       setUploadingPhoto(false);
       return;
     }
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-    const publicUrl = urlData?.publicUrl || "";
+    const base = urlData?.publicUrl || "";
+    const publicUrl = base ? `${base}?v=${Date.now()}` : "";
     setAvatarUrl(publicUrl);
     const { error: dbError } = await supabase.from("profiles").upsert({
       id: user.id,
@@ -284,6 +322,20 @@ export default function Profile() {
     } else {
       toast.success(t("app.profile.toasts.photoUpdated"));
     }
+    setUploadingPhoto(false);
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!user) return;
+    setUploadingPhoto(true);
+    await supabase.storage.from("avatars").remove([`${user.id}/avatar.jpg`]);
+    setAvatarUrl("");
+    const { error } = await supabase.from("profiles").upsert({
+      id: user.id,
+      avatar_url: null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (error) toast.error(error.message);
     setUploadingPhoto(false);
   };
 
