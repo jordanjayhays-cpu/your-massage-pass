@@ -341,7 +341,10 @@
         "shareText": "I've been booking massages in Madrid through Massage Club — get €{{amount}} off your first booking with my link: {{url}}"
       },
       "photo": {
-        "changePhoto": "Change photo"
+        "changePhoto": "Change photo",
+        "addPhoto": "Add photo",
+        "remove": "Remove",
+        "hint": "Add a photo so the studio recognises you when you arrive."
       },
       "personal": {
         "title": "Personal details",
