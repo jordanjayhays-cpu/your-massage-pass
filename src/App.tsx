@@ -47,6 +47,8 @@ import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
 import DeepTissueMassageMadrid from "./pages/guides/DeepTissueMassageMadrid";
 import MadridChamberi from "./pages/guides/MadridChamberi";
 import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
+import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
+
 
 
 const queryClient = new QueryClient();
@@ -70,8 +72,10 @@ const App = () => (
           <Route path="/madrid/chamberi" element={<MadridChamberi />} />
           <Route path="/guides/is-massage-good-for-you" element={<IsMassageGoodForYou />} />
 
+          {/* Branded forwarder for the "confirm your opening hours" email link.
+              Preserves query string and hash, then hops to the Supabase edge function. */}
+          <Route path="/confirm-hours" element={<ConfirmHoursRedirect />} />
 
-          
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
@@ -79,6 +83,7 @@ const App = () => (
           ) : (
             <Route path="/" element={<Home />} />
           )}
+
           <Route path="/web" element={<Web />} />
           <Route path="/" element={<AppLayout />}>
             <Route index element={<Login />} />
