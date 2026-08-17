@@ -712,12 +712,27 @@ export default function Profile() {
             className="hidden"
             onChange={handlePhotoSelect}
           />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="mt-3 flex items-center gap-1.5 text-sm font-medium text-[#C4622D] bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50"
-          >
-            <Camera size={16} /> {t("app.profile.photo.changePhoto")}
-          </button>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="flex items-center gap-1.5 text-sm font-medium text-[#C4622D] bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-60"
+            >
+              <Camera size={16} /> {avatarUrl ? t("app.profile.photo.changePhoto") : t("app.profile.photo.addPhoto")}
+            </button>
+            {avatarUrl && (
+              <button
+                onClick={handlePhotoRemove}
+                disabled={uploadingPhoto}
+                className="text-sm font-medium text-gray-500 bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-60"
+              >
+                {t("app.profile.photo.remove")}
+              </button>
+            )}
+          </div>
+          {!avatarUrl && (
+            <p className="mt-2 text-xs text-gray-500 text-center max-w-xs">{t("app.profile.photo.hint")}</p>
+          )}
         </div>
 
         {/* Personal details card */}
