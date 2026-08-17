@@ -6,6 +6,10 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
+      "source": "/confirm-hours",
+      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
