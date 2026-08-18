@@ -18,6 +18,10 @@
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours"
     },
     {
+      "source": "/booking-action",
+      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/booking-action"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

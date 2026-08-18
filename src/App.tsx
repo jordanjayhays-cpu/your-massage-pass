@@ -48,6 +48,7 @@ import DeepTissueMassageMadrid from "./pages/guides/DeepTissueMassageMadrid";
 import MadridChamberi from "./pages/guides/MadridChamberi";
 import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
 import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
+import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
 
 
