@@ -78,6 +78,11 @@ const App = () => (
           <Route path="/guides/massage-prices-madrid" element={<MassagePricesMadrid />} />
           <Route path="/guides/deep-tissue-massage-madrid" element={<DeepTissueMassageMadrid />} />
           <Route path="/madrid/chamberi" element={<MadridChamberi />} />
+          <Route path="/madrid/salamanca" element={<MadridSalamanca />} />
+          <Route path="/madrid/chamartin" element={<MadridChamartin />} />
+          <Route path="/madrid/chueca" element={<MadridChueca />} />
+          <Route path="/madrid/centro" element={<MadridCentro />} />
+          <Route path="/madrid/malasana" element={<MadridMalasana />} />
           <Route path="/guides/is-massage-good-for-you" element={<IsMassageGoodForYou />} />
 
           {/* Branded forwarder for the "confirm your opening hours" email link.
