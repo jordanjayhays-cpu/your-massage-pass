@@ -84,7 +84,7 @@ export default function StudioPipeline({ refreshTick = 0 }: { refreshTick?: numb
         supabase.from("partners").select(sel("id, business_name, slug, status, email, phone, outreach_email_at, outreach_status, hours_confirmed_at, google_calendar_connected")).returns<PartnerRow[]>(),
         supabase.from("partner_services").select(sel("partner_id")).returns<{ partner_id: string }[]>(),
         supabase.from("partner_availability").select(sel("partner_id")).returns<{ partner_id: string }[]>(),
-        supabase.from("bookings").select(sel("partner_id")).not("partner_id", "is", null).returns<{ partner_id: string }[]>(),
+        supabase.from("bookings").select(sel("partner_id")).not("partner_id", "is", null).not("is_test", "is", true).returns<{ partner_id: string }[]>(),
       ]);
       if (cancelled) return;
 
