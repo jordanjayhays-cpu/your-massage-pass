@@ -18,6 +18,7 @@ type Booking = {
   booking_time?: string;
   status?: string;
   created_at?: string;
+  is_test?: boolean | null;
 };
 type Partner = { id: string; business_name?: string };
 type ValRow = {
@@ -86,6 +87,16 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function StatSplit({ label, real, test }: { label: string; real: number; test: number }) {
+  return (
+    <div>
+      <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068]">{label}</p>
+      <p style={serif} className="text-3xl mt-1">{real}</p>
+      <p className="text-[11px] text-[#A79C92] mt-0.5">{real} real · {test} test</p>
+    </div>
+  );
+}
+
 function Bar({ label, count, total }: { label: string; count: number; total: number }) {
   const pct = total ? Math.round((count / total) * 100) : 0;
   return (
@@ -112,6 +123,7 @@ export default function FounderDashboard() {
   const [validation, setValidation] = useState<ValRow[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<string>("__all__");
+  const [showTestBookings, setShowTestBookings] = useState(false);
   const [marketingContacts, setMarketingContacts] = useState<Array<{
     email: string | null;
     name: string | null;
@@ -222,21 +234,30 @@ export default function FounderDashboard() {
     );
   }
 
-  // Aggregate bookings
+  // Aggregate bookings — real (is_test !== true) is the headline, test is muted
   const now = Date.now();
-  const last30 = bookings.filter((b) => b.created_at && now - new Date(b.created_at).getTime() < 30 * 86400000).length;
+  const isTest = (b: Booking) => b.is_test === true;
+  const realBookings = bookings.filter((b) => !isTest(b));
+  const testBookings = bookings.filter(isTest);
+  const within30 = (b: Booking) => !!b.created_at && now - new Date(b.created_at).getTime() < 30 * 86400000;
+  const last30 = realBookings.filter(within30).length;
+  const last30Test = testBookings.filter(within30).length;
   const byStatus = { pending: 0, confirmed: 0, cancelled: 0 } as Record<string, number>;
+  const byStatusTest = { pending: 0, confirmed: 0, cancelled: 0 } as Record<string, number>;
   for (const b of bookings) {
     const s = (b.status || "").toLowerCase();
-    if (s in byStatus) byStatus[s]++;
+    if (!(s in byStatus)) continue;
+    if (isTest(b)) byStatusTest[s]++; else byStatus[s]++;
   }
 
   const bookingsByPartner: Record<string, number> = {};
-  for (const b of bookings) {
+  for (const b of realBookings) {
     const key = (b.spa_name || "").trim();
     if (!key) continue;
     bookingsByPartner[key] = (bookingsByPartner[key] || 0) + 1;
   }
+
+  const recentBookings = (showTestBookings ? bookings : realBookings).slice(0, 10);
 
   // Source filter
   const sourceCounts: Record<string, number> = {};
@@ -331,18 +352,27 @@ export default function FounderDashboard() {
           <Card title="Demand">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-6">
               <Stat label="Profiles" value={profileCount ?? "—"} />
-              <Stat label="Bookings total" value={bookings.length} />
-              <Stat label="Last 30 days" value={last30} />
-              <Stat label="Confirmed" value={byStatus.confirmed} />
-              <Stat label="Pending" value={byStatus.pending} />
+              <StatSplit label="Bookings total" real={realBookings.length} test={testBookings.length} />
+              <StatSplit label="Last 30 days" real={last30} test={last30Test} />
+              <StatSplit label="Confirmed" real={byStatus.confirmed} test={byStatusTest.confirmed} />
+              <StatSplit label="Pending" real={byStatus.pending} test={byStatusTest.pending} />
             </div>
-            <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-3">10 most recent bookings</p>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068]">10 most recent bookings</p>
+              <label className="flex items-center gap-2 text-xs text-[#7A7068] cursor-pointer">
+                <input type="checkbox" checked={showTestBookings} onChange={(e) => setShowTestBookings(e.target.checked)} />
+                Include test
+              </label>
+            </div>
             <div className="divide-y divide-[#F0E7DB]">
-              {bookings.slice(0, 10).map((b) => (
+              {recentBookings.map((b) => (
                 <div key={b.id} className="py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                   <span className="font-medium">{b.client_name || "—"}</span>
                   <span className="text-[#7A7068]">· {b.spa_name || "—"}</span>
                   <span className="text-[#7A7068]">· {b.booking_date} {b.booking_time}</span>
+                  {b.is_test === true && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest text-[#7A7068]" style={{ background: "#F0E7DB" }}>Test</span>
+                  )}
                   <span
                     className="ml-auto text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest"
                     style={{
@@ -354,7 +384,7 @@ export default function FounderDashboard() {
                   </span>
                 </div>
               ))}
-              {bookings.length === 0 && <p className="text-sm text-[#7A7068] py-4">No bookings yet.</p>}
+              {recentBookings.length === 0 && <p className="text-sm text-[#7A7068] py-4">No real bookings yet.</p>}
             </div>
           </Card>
 
