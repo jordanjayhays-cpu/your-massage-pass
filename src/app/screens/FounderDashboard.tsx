@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FounderAgentChat from "./FounderAgentChat";
+import StudioPipeline from "./founder/StudioPipeline";
+
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
 const FOUNDER_EMAILS = [
@@ -356,7 +358,10 @@ export default function FounderDashboard() {
             </div>
           </Card>
 
+          <StudioPipeline refreshTick={refreshTick} />
+
           <Card title="Supply">
+
             <Stat label="Partners" value={partners.length} />
             <div className="mt-6 divide-y divide-[#F0E7DB]">
               {partners.map((p) => (
