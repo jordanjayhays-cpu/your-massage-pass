@@ -48,6 +48,7 @@ import DeepTissueMassageMadrid from "./pages/guides/DeepTissueMassageMadrid";
 import MadridChamberi from "./pages/guides/MadridChamberi";
 import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
 import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
+import RouteTracker from "./lib/RouteTracker";
 
 
 
@@ -59,6 +60,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <RouteTracker />
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
           <Route path="/review" element={<Review />} />

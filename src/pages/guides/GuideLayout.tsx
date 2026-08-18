@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
-import { useSiteVisit } from "@/lib/siteVisit";
 
 /**
  * The static tags in index.html would otherwise sit alongside the per-route
@@ -58,7 +57,6 @@ export default function GuideLayout({
   jsonLd?: Record<string, unknown>;
   children: ReactNode;
 }) {
-  useSiteVisit(path);
   useSuppressStaticHead();
   const url = `${SITE}${path}`;
 
