@@ -356,7 +356,10 @@ export default function FounderDashboard() {
             </div>
           </Card>
 
+          <StudioPipeline refreshTick={refreshTick} />
+
           <Card title="Supply">
+
             <Stat label="Partners" value={partners.length} />
             <div className="mt-6 divide-y divide-[#F0E7DB]">
               {partners.map((p) => (
