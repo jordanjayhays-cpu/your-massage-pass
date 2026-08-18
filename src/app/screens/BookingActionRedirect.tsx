@@ -4,7 +4,7 @@ export default function BookingActionRedirect() {
   useEffect(() => {
     const search = window.location.search;
     const hash = window.location.hash;
-    const target = `https://jglftdstrowwckwqmqpue.supabase.co/functions/v1/booking-action${search}${hash}`;
+    const target = `https://jglftdstrowwckwqmpue.supabase.co/functions/v1/booking-action${search}${hash}`;
     window.location.replace(target);
   }, []);
 
