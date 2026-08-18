@@ -8,7 +8,6 @@ import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
-import { useSiteVisit } from "@/lib/siteVisit";
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
@@ -24,7 +23,6 @@ export default function Home() {
   );
   const [visibleCount, setVisibleCount] = useState(9);
 
-  useSiteVisit("/");
 
   useEffect(() => {
     const target = "Massage Club — Massage studios in Madrid";
