@@ -82,6 +82,10 @@ const App = () => (
           {/* Per-studio pretty hours link: book.massageclub.io/spa-calma/hours?c=ab12cd */}
           <Route path="/:studioId/hours" element={<ConfirmHoursRedirect />} />
 
+          {/* Branded forwarder for one-tap booking action links in emails.
+              Preserves query string and hash, then hops to the Supabase edge function. */}
+          <Route path="/booking-action" element={<BookingActionRedirect />} />
+
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
