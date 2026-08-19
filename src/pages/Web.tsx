@@ -16,16 +16,16 @@ type FeaturedStudio = {
 
 
 const STEPS = [
-  { n: "01", t: "Browse studios", d: "Explore Madrid's top massage studios. No account needed to look around." },
-  { n: "02", t: "Compare menus", d: "See real services and prices. Pick the studio that fits your day." },
-  { n: "03", t: "Get in touch", d: "Contact the studio directly. Pay at the studio. That's it." },
+  { n: "01", t: "Browse by barrio", d: "Chamberí, Chueca, Salamanca, Malasaña. Real services, real prices, in English." },
+  { n: "02", t: "Book online, or let us write the message", d: "Some studios take bookings here directly. The rest use WhatsApp — we'll write your message in Spanish so you don't have to." },
+  { n: "03", t: "Turn up and switch off", d: "You'll get a confirmation with the address and how to get in. Pay at the studio." },
 ];
 
 export default function Web() {
   const [studios, setStudios] = useState<FeaturedStudio[]>([]);
 
   useEffect(() => {
-    document.title = "Massage Club — Madrid's best massage studios, in one place";
+    document.title = "Massage in Madrid, in English — Massage Club";
     const meta = document.querySelector('meta[name="description"]') || (() => {
       const m = document.createElement("meta");
       m.setAttribute("name", "description");
@@ -34,7 +34,7 @@ export default function Web() {
     })();
     meta.setAttribute(
       "content",
-      "Browse Madrid's top-rated massage studios: real menus, prices and contact details. Pay at the studio."
+      "60+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio."
     );
   }, []);
 
@@ -107,17 +107,17 @@ export default function Web() {
               className="text-5xl lg:text-7xl leading-[1.05] text-[#1f1b19] mb-6"
               style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
             >
-              Madrid's best massage studios, in one place.
+              Your first massage in Madrid
             </h1>
             <p className="text-lg text-[#7A7068] max-w-xl mb-8">
-              Browse top-rated studios near you. No account needed to look around — pay at the studio.
+              60+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.
             </p>
-            <div className="flex flex-wrap gap-3 mb-10">
+            <div className="flex flex-wrap gap-3 mb-4">
               <Link
                 to="/app/massages"
                 className="bg-[#99420d] text-white px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#C4622D] shadow-[0_8px_24px_rgba(153,66,13,0.25)] transition"
               >
-                Browse studios — no account needed
+                Find a studio
               </Link>
               <Link
                 to="/app"
@@ -126,13 +126,18 @@ export default function Web() {
                 Sign in
               </Link>
             </div>
+
+            <p className="text-sm text-[#7A7068] mb-10">
+              No account needed to look. No booking fee. You pay the studio directly.
+            </p>
+
             <div className="flex items-center gap-6 text-sm text-[#56433a]">
               <div className="flex items-center gap-1">
                 <span className="text-[#E0A458]">★</span>
                 <span className="font-medium">4.8</span>
               </div>
               <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
-              <span>12+ studios · Madrid</span>
+              <span>60+ studios across Madrid</span>
               <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
               <span>Pay at studio</span>
             </div>
@@ -152,6 +157,24 @@ export default function Web() {
         </div>
       </section>
 
+      {/* New in Madrid */}
+      <section className="max-w-6xl mx-auto px-6 lg:px-10 pb-20">
+        <div className="max-w-2xl">
+          <span className="text-xs tracking-[0.15em] uppercase text-[#99420d] font-semibold mb-4 block">
+            New in Madrid
+          </span>
+          <h2
+            className="text-3xl lg:text-4xl mb-4"
+            style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
+          >
+            You carried your life up four flights of stairs.
+          </h2>
+          <p className="text-lg text-[#7A7068] leading-relaxed">
+            Your shoulders have opinions about it. But every studio website is in Spanish, the reviews are in Spanish, and nobody tells you whether "descontracturante" means relaxing or painful. (It's the deep one.) That's what this is for.
+          </p>
+        </div>
+      </section>
+
       {/* Featured studios */}
       <section id="studios" className="max-w-6xl mx-auto px-6 lg:px-10 py-16">
         <div className="flex items-end justify-between mb-10">
@@ -162,7 +185,7 @@ export default function Web() {
             </h2>
           </div>
           <Link to="/app/massages" className="text-sm text-[#99420d] hover:underline hidden md:inline">
-            See all 12 →
+            See all 60+ →
           </Link>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
@@ -234,6 +257,17 @@ export default function Web() {
         </div>
       </section>
 
+      {/* Trust block */}
+      <section className="bg-white border-t border-[#f1e6e2] py-16">
+        <div className="max-w-6xl mx-auto px-6 lg:px-10">
+          <div className="max-w-3xl space-y-4 text-[#56433a] leading-relaxed">
+            <p>We don't take a cut of your massage. The prices you see are the studio's own.</p>
+            <p>We won't promise your therapist speaks English — some do, some don't. What we promise is that booking the appointment doesn't need Spanish.</p>
+            <p>Every studio here is a real place we found, checked and listed by hand.</p>
+          </div>
+        </div>
+      </section>
+
       {/* Partner CTA */}
       <section id="partners" className="max-w-6xl mx-auto px-6 lg:px-10 py-20">
         <div className="rounded-[40px] bg-gradient-to-br from-[#99420d] to-[#b95925] text-white p-10 lg:p-16 grid lg:grid-cols-2 gap-10 items-center overflow-hidden relative">
@@ -241,18 +275,17 @@ export default function Web() {
           <div className="relative">
             <span className="text-xs tracking-[0.15em] uppercase text-[#ffdbcc] font-semibold">For studios</span>
             <h2 className="text-3xl lg:text-5xl mt-3 mb-4" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-              List your studio in minutes.
+              Own a studio? You're probably already listed.
             </h2>
             <p className="text-white/85 text-lg mb-8 max-w-md">
-              Get discovered by clients looking for a great massage in Madrid. Manage bookings, calendar and clients
-              in one place.
+              We built pages for 60+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/partner/onboarding"
                 className="bg-white text-[#99420d] px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#fff8f6] transition"
               >
-                Become a partner
+                Claim your studio
               </Link>
               <Link
                 to="/partner/login"
