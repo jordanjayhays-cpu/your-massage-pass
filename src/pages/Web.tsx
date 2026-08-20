@@ -84,7 +84,7 @@ export default function Web() {
             <a href="#partners" className="hover:text-[#99420d]">For studios</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/app" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
+            <Link to="/studios" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
             <Link
               to="/studios"
               className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#C4622D] transition"
