@@ -46,7 +46,7 @@ const Index = () => {
     setLoading(false);
     if (ok) {
       toast.success("Let's finish setting up your account.");
-      navigate("/app");
+      navigate("/studios");
     } else {
       toast.error("Something went wrong. Try again.");
     }
@@ -136,7 +136,7 @@ const Index = () => {
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
-              <a href="/app">Book a massage</a>
+              <a href="/studios">Book a massage</a>
             </Button>
             <Button asChild variant="outline" size="sm" className="border-accent/60 bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
               <a href="/partner/onboarding">For Studios</a>
@@ -206,7 +206,7 @@ const Index = () => {
                   {loading ? "…" : "Get started"}
                 </Button>
               </form>
-              <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
+              <a href="/studios" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
                 Browse studios →
               </a>
             </div>
@@ -373,7 +373,7 @@ const Index = () => {
                   </Button>
                 </form>
                 <div className="text-center text-sm text-muted-foreground">or</div>
-                <a href="/app" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
+                <a href="/studios" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
                   Open the app →
                 </a>
               </div>
