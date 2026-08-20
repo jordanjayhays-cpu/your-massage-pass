@@ -24,6 +24,7 @@ export default function Home() {
       : ""
   );
   const [visibleCount, setVisibleCount] = useState(9);
+  const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
 
 
   useEffect(() => {
