@@ -71,6 +71,29 @@ export default function StudioBookingPage() {
   const [hoAltDate, setHoAltDate] = useState("");
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
+  // Languages the visitor speaks — defaults to the site language, never a required field.
+  const siteLang = (i18n.language || "en").slice(0, 2);
+  const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
+  const [spokenLangs, setSpokenLangs] = useState<SpokenLang[]>(() => {
+    const saved = loadSpokenLangs();
+    return saved.length ? saved : defaultSpoken;
+  });
+  const [langPickerOpen, setLangPickerOpen] = useState(false);
+
+  // Persist locally whenever it changes.
+  useEffect(() => { saveSpokenLangs(spokenLangs); }, [spokenLangs]);
+
+  const toggleSpokenLang = (code: SpokenLang) => {
+    setSpokenLangs(prev => {
+      const next = prev.includes(code) ? prev.filter(l => l !== code) : [...prev, code];
+      if (userId) {
+        supabase.from("profiles").update({ spoken_languages: next }).eq("id", userId).then(
+          () => {}, () => {},
+        );
+      }
+      return next;
+    });
+  };
 
 
 
