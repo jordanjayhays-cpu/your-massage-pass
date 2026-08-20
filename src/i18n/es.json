@@ -168,7 +168,7 @@
       "filters": "Filtros",
       "filterAll": "Todos",
       "yourLocation": "Tu ubicación",
-      "quizPrompt": "\u00bfNo sabes qu\u00e9 masaje elegir? Haz el test \u2192",
+      "quizPrompt": "¿No sabes qué masaje elegir? Haz el test →",
       "nearMadrid": "Cerca de Madrid · toca para ubicar",
       "bookNow": "Reservar ahora →",
       "studiosNearYou": "Estudios cerca de ti",
@@ -634,7 +634,7 @@
         "imageAlt": "Estudio de masajes tranquilo en Madrid",
         "studiosCount": "60+ centros en Madrid",
         "payAtStudio": "Paga en el centro",
-        "description": "60+ centros con precios reales, en inglés. Si un centro solo reserva por WhatsApp, escribimos tu mensaje en español por ti.",
+        "description": "Más de 60 centros de Madrid con precios reales y publicados: compara y elige sin llamar. Sin comisión de reserva — pagas en el centro.",
         "ctaNote": "No hace falta cuenta para mirar. Sin comisión de reserva. Pagas directamente al centro."
       },
       "newInMadrid": {
@@ -653,7 +653,7 @@
         "title": "Cómo funciona",
         "step1": {
           "title": "Explora por barrio",
-          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Servicios reales, precios reales, en inglés."
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Servicios reales y precios reales, sin llamar para preguntar."
         },
         "step2": {
           "title": "Reserva online o te escribimos el mensaje",
@@ -666,7 +666,7 @@
       },
       "trust": {
         "line1": "No nos llevamos comisión de tu masaje. Los precios que ves son los del centro.",
-        "line2": "No prometemos que tu terapeuta hable inglés — algunos sí, otros no. Lo que prometemos es que reservar la cita no requiere español.",
+        "line2": "No prometemos que todos los centros tengan hueco hoy — algunos sí, otros no. Lo que prometemos es que el precio que ves es el precio que pagas, sin comisión.",
         "line3": "Cada centro aquí es un sitio real que hemos encontrado, comprobado y listado a mano."
       },
       "studioCard": {

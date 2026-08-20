@@ -634,7 +634,7 @@
         "imageAlt": "Tranquillo centro massaggi a Madrid",
         "studiosCount": "Oltre 60 centri in tutta Madrid",
         "payAtStudio": "Paga in sede",
-        "description": "Oltre 60 centri con prezzi reali, in inglese. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te.",
+        "description": "Oltre 60 centri con prezzi reali, in italiano. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te.",
         "ctaNote": "Nessun account necessario per curiosare. Nessuna commissione di prenotazione. Paghi direttamente in sede."
       },
       "newInMadrid": {
@@ -653,7 +653,7 @@
         "title": "Come funziona",
         "step1": {
           "title": "Esplora per quartiere",
-          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Servizi reali, prezzi reali, in inglese."
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Servizi reali, prezzi reali, in italiano."
         },
         "step2": {
           "title": "Prenota online, o lascia scrivere noi",
@@ -666,7 +666,7 @@
       },
       "trust": {
         "line1": "Non tratteniamo commissioni sul tuo massaggio. I prezzi che vedi sono quelli originali del centro.",
-        "line2": "Non garantiamo che il terapista parli inglese — alcuni lo fanno, altri no. Quello che garantiamo è che per prenotare l'appuntamento non serve conoscere lo spagnolo.",
+        "line2": "Non garantiamo che il terapista parli italiano — alcuni lo fanno, altri no. Quello che garantiamo è che per prenotare l'appuntamento non serve conoscere lo spagnolo.",
         "line3": "Ogni centro presente qui è un luogo reale che abbiamo trovato, verificato e inserito manualmente."
       },
       "studioCard": {
