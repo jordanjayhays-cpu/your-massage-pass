@@ -122,6 +122,7 @@ export interface Shop {
   partner_availability?: Record<string, string[]>;
   google_rating?: number | null;
   google_reviews?: number | null;
+  status?: string;
 }
 
 /** Fetch all active shops with their services from Supabase.
@@ -207,6 +208,7 @@ export async function fetchShops(): Promise<Shop[]> {
       partner_availability: availabilityByPartner[p.id],
       google_rating: p.google_rating ?? null,
       google_reviews: p.google_reviews ?? null,
+      status: p.status ?? "pending",
     });
   }
 
