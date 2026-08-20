@@ -56,6 +56,16 @@ export default function StudioBookingPage() {
   const [contactExpanded, setContactExpanded] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
+  // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
+  const [hoServiceId, setHoServiceId] = useState<string>("");
+  const [hoName, setHoName] = useState("");
+  const [hoDate, setHoDate] = useState("");
+  const [hoTime, setHoTime] = useState("");
+  const [hoAltDate, setHoAltDate] = useState("");
+  const [hoAltTime, setHoAltTime] = useState("");
+  const [waTapped, setWaTapped] = useState(false);
+
+
 
 
 
@@ -457,7 +467,44 @@ export default function StudioBookingPage() {
   // ─── Unclaimed studio handoff ───
   if (partner.status !== "active") {
     const studioNumber = (partner as any).whatsapp || partner.phone;
-    const waMsg = `¡Hola ${partner.business_name}! Me gustaría reservar un masaje con vosotros. ¿Tenéis disponibilidad? Os encontré en Massage Club 🙏`;
+    const hoService = profile.services.find(s => s.id === hoServiceId) || null;
+    const esDate = (v: string) => {
+      if (!v) return "";
+      const [y, mo, d] = v.split("-").map(Number);
+      if (!y || !mo || !d) return "";
+      try {
+        return new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" })
+          .format(new Date(y, mo - 1, d));
+      } catch {
+        return v;
+      }
+    };
+    const genericMsg = `¡Hola ${partner.business_name}! Me gustaría reservar un masaje con vosotros. ¿Tenéis disponibilidad? Os encontré en Massage Club 🙏`;
+    const hasDetails = Boolean(hoService || (hoDate && hoTime) || hoName.trim());
+    const detailedMsg = (() => {
+      const lines: string[] = [`¡Hola ${partner.business_name}! Me gustaría reservar:`];
+      if (hoService) lines.push(`· ${hoService.name} (${hoService.duration} min)`);
+      if (hoDate && hoTime) {
+        const alt = hoAltDate && hoAltTime ? ` — o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
+        lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
+      }
+      if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+      lines.push("");
+      lines.push(`Disculpa, todavía no hablo español. ¿Me puedes confirmar con un "sí", o proponerme otra hora? Os encontré en Massage Club 🙏`);
+      return lines.join("\n");
+    })();
+    const waMsg = hasDetails ? detailedMsg : genericMsg;
+    const trackWhatsappIntent = () => {
+      setWaTapped(true);
+      try {
+        void fetch("https://jglftdstrowwckwqmpue.supabase.co/functions/v1/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: window.location.pathname, ref: "whatsapp-intent" }),
+          keepalive: true,
+        }).then(() => undefined, () => undefined);
+      } catch { /* ignore */ }
+    };
     const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
@@ -506,15 +553,73 @@ export default function StudioBookingPage() {
               {t("app.handoff.bookDirectly")}
               <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
             </p>
+            {waLink && (
+              <div className="text-left rounded-2xl p-4 mb-4" style={{ background: "#FAF6F1" }}>
+                <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
+                  {t("app.handoff.prefTitle")}
+                </p>
+                <div className="space-y-3">
+                  {profile.services.length > 0 && (
+                    <label className="block">
+                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
+                      <select
+                        value={hoServiceId}
+                        onChange={(e) => setHoServiceId(e.target.value)}
+                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm"
+                        style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }}
+                      >
+                        <option value="">—</option>
+                        {profile.services.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} · {s.duration} min</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                      <input type="date" value={hoDate} onChange={(e) => setHoDate(e.target.value)}
+                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                      <input type="time" value={hoTime} onChange={(e) => setHoTime(e.target.value)}
+                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                    </label>
+                  </div>
+                  <div>
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <input type="date" value={hoAltDate} onChange={(e) => setHoAltDate(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                      <input type="time" value={hoAltTime} onChange={(e) => setHoAltTime(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                    </div>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                    <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
+                      className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                  </label>
+                  <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
+                </div>
+              </div>
+            )}
             <div className="flex flex-col items-center gap-3 w-full">
               {waLink ? (
                 <>
-                  <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                  <a href={waLink} target="_blank" rel="noreferrer" onClick={trackWhatsappIntent} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                     <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
                     <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
                   </a>
                   <p className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                  {waTapped && (
+                    <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
+                      {t("app.handoff.afterNote")}
+                    </p>
+                  )}
                 </>
+
               ) : studioNumber ? (
                 <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                   <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
