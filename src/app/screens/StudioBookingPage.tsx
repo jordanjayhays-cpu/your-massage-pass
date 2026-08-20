@@ -56,6 +56,16 @@ export default function StudioBookingPage() {
   const [contactExpanded, setContactExpanded] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
+  // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
+  const [hoServiceId, setHoServiceId] = useState<string>("");
+  const [hoName, setHoName] = useState("");
+  const [hoDate, setHoDate] = useState("");
+  const [hoTime, setHoTime] = useState("");
+  const [hoAltDate, setHoAltDate] = useState("");
+  const [hoAltTime, setHoAltTime] = useState("");
+  const [waTapped, setWaTapped] = useState(false);
+
+
 
 
 
