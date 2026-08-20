@@ -14,11 +14,10 @@ type Option = {
 };
 
 const OPTIONS: Option[] = [
-  { id: "en-US", lang: "en", countryCode: "us", countryLabel: "United States",  nativeLanguage: "English" },
-  { id: "es-ES", lang: "es", countryCode: "es", countryLabel: "España",         nativeLanguage: "Español" },
-  { id: "es-MX", lang: "es", countryCode: "mx", countryLabel: "México",         nativeLanguage: "Español" },
-  { id: "en-GB", lang: "en", countryCode: "gb", countryLabel: "United Kingdom", nativeLanguage: "English" },
+  { id: "en", lang: "en", countryCode: "gb", countryLabel: "English", nativeLanguage: "English" },
+  { id: "es", lang: "es", countryCode: "es", countryLabel: "Español", nativeLanguage: "Español" },
 ];
+
 
 
 
