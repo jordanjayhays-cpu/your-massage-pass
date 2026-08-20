@@ -15,6 +15,8 @@ type Props = {
   compact?: boolean;
   /** Show Places autocomplete search bar */
   showSearch?: boolean;
+  /** Notifies the parent whether we're using real location, still waiting, or the Madrid fallback. */
+  onGeoStateChange?: (state: "pending" | "ready" | "fallback") => void;
 };
 
 type GeoState =
@@ -29,7 +31,7 @@ type StudioWithDistance = Massage & {
   walkingText?: string;
 };
 
-export default function GoogleMap({ massages, onSelect, compact = false, showSearch = true }: Props) {
+export default function GoogleMap({ massages, onSelect, compact = false, showSearch = true, onGeoStateChange }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
@@ -43,6 +45,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
   const [mapsReady, setMapsReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
   const [geo, setGeo] = useState<GeoState>({ status: "idle" });
+  const [fallback, setFallback] = useState(false);
   const [active, setActive] = useState<string | null>(massages[0]?.id ?? null);
   const [studios, setStudios] = useState<StudioWithDistance[]>(
     massages.map((m) => ({ ...m, km: distanceKm(MADRID_CENTER, m) })).sort((a, b) => a.km - b.km),
