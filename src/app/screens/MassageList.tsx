@@ -44,7 +44,6 @@ export default function MassageList() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
   const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
-  const [showQuizCard, setShowQuizCard] = useState(false);
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
@@ -76,24 +75,6 @@ export default function MassageList() {
     });
   }, []);
 
-  // First-time users (no bookings yet) get the "which massage do you need?" quiz card.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled) return;
-      if (!user) { setShowQuizCard(true); return; }
-      const filters: string[] = [];
-      if (user.id) filters.push(`user_id.eq.${user.id}`);
-      if (user.email) filters.push(`client_email.eq.${user.email}`);
-      const { count } = await supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .or(filters.join(","));
-      if (!cancelled) setShowQuizCard((count ?? 0) === 0);
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -305,28 +286,16 @@ export default function MassageList() {
         )}
       </div>
 
-      {/* First-timer quiz entry point */}
-      {showQuizCard && (
-        <div className="px-5 pt-5">
-          <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-soft">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase text-primary">
-              <Sparkles className="h-3 w-3" /> {t("app.discovery.quizBadge")}
-            </span>
-            <h2 className="font-display text-xl text-foreground mt-2 leading-tight">
-              {t("app.massageList.quizHeading")}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              {t("app.massageList.quizSub")}
-            </p>
-            <button
-              onClick={() => navigate("/app/discovery/quiz")}
-              className="mt-4 h-11 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-[0.08em] uppercase shadow-soft hover:opacity-90 transition"
-            >
-              {t("app.massageList.quizCta")}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Quiz entry point */}
+      <div className="px-5 pt-3">
+        <button
+          onClick={() => navigate("/app/discovery/quiz")}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition"
+        >
+          {t("app.massageList.quizPrompt")}
+          <span className="text-primary">→</span>
+        </button>
+      </div>
 
       {/* Map header banner */}
       <div className="px-5 pt-5">
