@@ -695,7 +695,7 @@
       "prefDate": "Preferred day",
       "prefTime": "Time",
       "prefAlt": "Second choice (optional)",
-      "prefOptional": "Optional — skip it and we’ll send a general enquiry.",
+      "prefOptional": "Optional — if you skip these, we’ll ask the studio for their free times.",
       "afterNote": "If they reply with something you don’t understand, forward it to jordan@massageclub.io and we’ll translate."
     },
     "partnerAuth": {
