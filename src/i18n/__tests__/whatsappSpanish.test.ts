@@ -3,7 +3,7 @@ import en from "../en.json";
 import es from "../es.json";
 import fr from "../fr.json";
 import de from "../de.json";
-import it from "../it.json";
+import itIT from "../it.json";
 import pt from "../pt.json";
 import zh from "../zh.json";
 
@@ -14,7 +14,7 @@ const PROTECTED_PATHS = ["app.payment.confirmed.whatsapp.message"];
 const get = (obj: unknown, path: string) =>
   path.split(".").reduce<any>((acc, k) => (acc == null ? acc : acc[k]), obj);
 
-const LOCALES: Record<string, unknown> = { es, fr, de, it, pt, zh };
+const LOCALES: Record<string, unknown> = { es, fr, de, it: itIT, pt, zh };
 
 describe("WhatsApp message bodies stay Spanish", () => {
   for (const path of PROTECTED_PATHS) {
