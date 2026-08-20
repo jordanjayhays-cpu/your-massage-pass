@@ -122,9 +122,15 @@ const App = () => (
             <Route path="bookings" element={<MyBookings />} />
             <Route path="profile" element={<Profile />} />
           </Route>
+          {/* Canonical studio list route */}
+          <Route path="/studios" element={<AppLayout />}>
+            <Route index element={<MassageList />} />
+          </Route>
+
           <Route path="/app" element={<AppLayout />}>
-            <Route index element={<Login />} />
-            <Route path="massages" element={<MassageList />} />
+            {/* /app duplicated the homepage — send it to the single homepage */}
+            <Route index element={<Navigate to="/" replace />} />
+            <Route path="massages" element={<Navigate to="/studios" replace />} />
             <Route path="massages/:id" element={<ShopDetail />} />
             <Route path="booking/:id/calendar" element={<Calendar />} />
             <Route path="booking/:id/customize" element={<Customize />} />

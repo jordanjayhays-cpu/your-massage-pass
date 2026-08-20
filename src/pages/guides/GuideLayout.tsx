@@ -94,7 +94,7 @@ export default function GuideLayout({
               For studios
             </Link>
             <Link
-              to="/app"
+              to="/studios"
               className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.12em] uppercase shadow-soft hover:opacity-90 transition inline-flex items-center gap-1.5"
             >
               Book a massage <ArrowRight className="h-3 w-3" />

@@ -33,10 +33,10 @@ export default function Login() {
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!cancelled && session) navigate("/app/massages", { replace: true });
+      if (!cancelled && session) navigate("/studios", { replace: true });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") navigate("/app/massages", { replace: true });
+      if (event === "SIGNED_IN") navigate("/studios", { replace: true });
     });
     return () => {
       cancelled = true;
@@ -55,7 +55,7 @@ export default function Login() {
   const handleGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/app/massages` },
+      options: { redirectTo: `${window.location.origin}/studios` },
     });
     if (error) toast.error(t("toasts.googleError"));
   };
@@ -71,7 +71,7 @@ export default function Login() {
     await saveLead(email, name, "app_login");
     setLoading(false);
     toast.success(t("toasts.welcome", { name }));
-    navigate("/app/massages");
+    navigate("/studios");
   };
 
   // Shared shell with fonts + warm sand base
@@ -211,7 +211,7 @@ export default function Login() {
       {/* CTAs */}
       <div className="px-6 mt-6 space-y-3">
         <Button
-          onClick={() => navigate("/app/massages")}
+          onClick={() => navigate("/studios")}
           className="w-full h-14 rounded-full text-base font-medium shadow-[0_10px_30px_-10px_rgba(122,48,0,0.5)]"
           style={{ background: "#C4622D", color: "#F7F4F0" }}
         >

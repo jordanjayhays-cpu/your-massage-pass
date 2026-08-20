@@ -84,9 +84,9 @@ export default function Web() {
             <a href="#partners" className="hover:text-[#99420d]">For studios</a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/app" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
+            <Link to="/studios" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
             <Link
-              to="/app"
+              to="/studios"
               className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#C4622D] transition"
             >
               Browse studios
@@ -114,13 +114,13 @@ export default function Web() {
             </p>
             <div className="flex flex-wrap gap-3 mb-4">
               <Link
-                to="/app/massages"
+                to="/studios"
                 className="bg-[#99420d] text-white px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#C4622D] shadow-[0_8px_24px_rgba(153,66,13,0.25)] transition"
               >
                 Book a massage
               </Link>
               <Link
-                to="/app"
+                to="/studios"
                 className="border border-[#dcc1b5] bg-white/50 backdrop-blur px-7 h-12 rounded-full inline-flex items-center font-medium text-[#1f1b19] hover:bg-white transition"
               >
                 Sign in
@@ -184,7 +184,7 @@ export default function Web() {
               Loved by locals
             </h2>
           </div>
-          <Link to="/app/massages" className="text-sm text-[#99420d] hover:underline hidden md:inline">
+          <Link to="/studios" className="text-sm text-[#99420d] hover:underline hidden md:inline">
             See all 60+ →
           </Link>
         </div>
@@ -323,7 +323,7 @@ export default function Web() {
           <div>
             <div className="font-medium text-[#1f1b19] mb-3">Explore</div>
             <ul className="space-y-2">
-              <li><Link to="/app/massages" className="hover:text-[#99420d]">Studios</Link></li>
+              <li><Link to="/studios" className="hover:text-[#99420d]">Studios</Link></li>
               <li><a href="#how" className="hover:text-[#99420d]">How it works</a></li>
               <li><Link to="/app/bookings" className="hover:text-[#99420d]">My bookings</Link></li>
             </ul>

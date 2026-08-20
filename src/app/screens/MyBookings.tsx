@@ -135,7 +135,7 @@ export default function MyBookings() {
         <button onClick={() => navigate("/")} className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg">
           {t("auth.signIn")}
         </button>
-        <button onClick={() => navigate("/app/massages")} className="mt-3 text-sm text-gray-500 underline">
+        <button onClick={() => navigate("/studios")} className="mt-3 text-sm text-gray-500 underline">
           {t("auth.browse")}
         </button>
       </div>
@@ -231,7 +231,7 @@ export default function MyBookings() {
   return (
     <div className="min-h-screen bg-[#F7F4F0] pb-12">
       <div className="max-w-lg mx-auto px-5 pt-6">
-        <button onClick={() => navigate("/app/massages")} className="flex items-center gap-1 text-sm text-gray-500 mb-3">
+        <button onClick={() => navigate("/studios")} className="flex items-center gap-1 text-sm text-gray-500 mb-3">
           <ArrowLeft size={14} /> {t("back")}
         </button>
         <div className="flex items-center justify-between">

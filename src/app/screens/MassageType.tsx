@@ -210,7 +210,7 @@ export default function MassageTypePage() {
               <p className="text-sm text-muted-foreground mb-3">
                 No studios in our directory currently list this style. New partners are joining all the time.
               </p>
-              <Button onClick={() => navigate("/app/massages")} className="rounded-full">
+              <Button onClick={() => navigate("/studios")} className="rounded-full">
                 Browse all studios
               </Button>
             </div>

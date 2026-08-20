@@ -324,7 +324,7 @@ export default function Payment() {
           <Button
             onClick={() => {
               booking.reset();
-              navigate("/app/massages");
+              navigate("/studios");
             }}
             className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90"
           >

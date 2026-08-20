@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, isWhatsappCapable } from "@/app/lib/whatsapp";
+import { sendTrack } from "@/lib/siteVisit";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import {
@@ -539,14 +540,18 @@ export default function StudioBookingPage() {
     })();
     const trackWhatsappIntent = () => {
       setWaTapped(true);
-      try {
-        void fetch("https://jglftdstrowwckwqmpue.supabase.co/functions/v1/track", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: window.location.pathname, ref: "whatsapp-intent" }),
-          keepalive: true,
-        }).then(() => undefined, () => undefined);
-      } catch { /* ignore */ }
+      const hasService = !!hoService;
+      const hasDate = !!hoDate;
+      sendTrack({
+        event: "whatsapp_click",
+        path: window.location.pathname,
+        slug: partner.slug || partner.id,
+        meta: {
+          filled: hasService || hasDate || !!hoTime || !!hoName.trim(),
+          service: hasService,
+          date: hasDate,
+        },
+      });
     };
     const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
     const websiteUrl = (() => {

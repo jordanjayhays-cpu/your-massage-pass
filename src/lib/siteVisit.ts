@@ -1,19 +1,33 @@
 import { useEffect } from "react";
 
 const TRACK_URL = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/track";
+const NT_KEY = "mc_nt";
 
 /**
- * Fire-and-forget pageview beacon.
- * Posts {path, ref} to the public `track` edge function, which computes the day,
- * derives a privacy-safe hashed visitor_key server-side and writes with the
- * service role. Never throws, never blocks rendering.
+ * Reads ?nt=1 / ?nt=0 from the URL and persists the "do not track me" flag.
+ * Returns true when the current visitor is excluded from analytics.
  */
-export function logSiteVisit(path: string) {
+export function isTrackingExcluded(): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    const body = JSON.stringify({
-      path,
-      ref: typeof document !== "undefined" ? document.referrer || null : null,
-    });
+    const nt = new URLSearchParams(window.location.search).get("nt");
+    if (nt === "1") localStorage.setItem(NT_KEY, "1");
+    else if (nt === "0") localStorage.removeItem(NT_KEY);
+    return localStorage.getItem(NT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Fire-and-forget POST to the track endpoint. Never throws, never blocks. */
+export function sendTrack(payload: Record<string, unknown>): void {
+  if (isTrackingExcluded()) return;
+  try {
+    const body = JSON.stringify(payload);
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const ok = navigator.sendBeacon(TRACK_URL, new Blob([body], { type: "application/json" }));
+      if (ok) return;
+    }
     void fetch(TRACK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,6 +40,17 @@ export function logSiteVisit(path: string) {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Fire-and-forget pageview beacon.
+ * Skipped entirely for visitors who opted out via ?nt=1 (localStorage "mc_nt").
+ */
+export function logSiteVisit(path: string) {
+  sendTrack({
+    path,
+    ref: typeof document !== "undefined" ? document.referrer || null : null,
+  });
 }
 
 export function useSiteVisit(path?: string) {

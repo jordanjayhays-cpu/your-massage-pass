@@ -223,7 +223,7 @@ export default function NeighbourhoodPage({
         ) : list.length === 0 ? (
           <p className="text-sm text-muted-foreground mt-3">
             We're still verifying studios in {barrio}. In the meantime, browse{" "}
-            <Link to="/app" className="text-primary underline underline-offset-2">
+            <Link to="/studios" className="text-primary underline underline-offset-2">
               every studio in Madrid
             </Link>
             .

@@ -132,7 +132,7 @@ export default function ShopDetail() {
     return (
       <div className="p-8 text-center bg-background h-full">
         <p className="text-foreground">{t("not_found")}</p>
-        <Button onClick={() => navigate("/app/massages")} className="mt-4">{t("back")}</Button>
+        <Button onClick={() => navigate("/studios")} className="mt-4">{t("back")}</Button>
       </div>
     );
   }
