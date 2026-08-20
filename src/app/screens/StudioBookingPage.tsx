@@ -467,7 +467,44 @@ export default function StudioBookingPage() {
   // ─── Unclaimed studio handoff ───
   if (partner.status !== "active") {
     const studioNumber = (partner as any).whatsapp || partner.phone;
-    const waMsg = `¡Hola ${partner.business_name}! Me gustaría reservar un masaje con vosotros. ¿Tenéis disponibilidad? Os encontré en Massage Club 🙏`;
+    const hoService = profile.services.find(s => s.id === hoServiceId) || null;
+    const esDate = (v: string) => {
+      if (!v) return "";
+      const [y, mo, d] = v.split("-").map(Number);
+      if (!y || !mo || !d) return "";
+      try {
+        return new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" })
+          .format(new Date(y, mo - 1, d));
+      } catch {
+        return v;
+      }
+    };
+    const genericMsg = `¡Hola ${partner.business_name}! Me gustaría reservar un masaje con vosotros. ¿Tenéis disponibilidad? Os encontré en Massage Club 🙏`;
+    const hasDetails = Boolean(hoService || (hoDate && hoTime) || hoName.trim());
+    const detailedMsg = (() => {
+      const lines: string[] = [`¡Hola ${partner.business_name}! Me gustaría reservar:`];
+      if (hoService) lines.push(`· ${hoService.name} (${hoService.duration} min)`);
+      if (hoDate && hoTime) {
+        const alt = hoAltDate && hoAltTime ? ` — o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
+        lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
+      }
+      if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+      lines.push("");
+      lines.push(`Disculpa, todavía no hablo español. ¿Me puedes confirmar con un "sí", o proponerme otra hora? Os encontré en Massage Club 🙏`);
+      return lines.join("\n");
+    })();
+    const waMsg = hasDetails ? detailedMsg : genericMsg;
+    const trackWhatsappIntent = () => {
+      setWaTapped(true);
+      try {
+        void fetch("https://jglftdstrowwckwqmpue.supabase.co/functions/v1/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: window.location.pathname, ref: "whatsapp-intent" }),
+          keepalive: true,
+        }).then(() => undefined, () => undefined);
+      } catch { /* ignore */ }
+    };
     const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
