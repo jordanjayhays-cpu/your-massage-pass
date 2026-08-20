@@ -197,8 +197,6 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
             <div className="flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-[#E0A458] text-[#E0A458]" /> 4.8</span>
-              <span className="opacity-50">·</span>
               <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {t("hero.studiosCount")}</span>
             </div>
             <span className="text-[10px] uppercase tracking-[0.2em] bg-white/15 backdrop-blur px-2 py-1 rounded-full">{t("hero.payAtStudio")}</span>
