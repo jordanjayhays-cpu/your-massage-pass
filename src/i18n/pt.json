@@ -700,7 +700,9 @@
       "prefTime": "Hora",
       "prefAlt": "Segunda escolha (opcional)",
       "prefOptional": "Opcional — se saltar estes campos, perguntaremos ao estúdio pelos horários livres.",
-      "afterNote": "Se eles responderem algo que não entenda, encaminhe para jordan@massageclub.io e nós traduzimos."
+      "afterNote": "Se eles responderem algo que não entenda, encaminhe para jordan@massageclub.io e nós traduzimos.",
+      "prefLanguages": "Idiomas que falas",
+      "prefLanguagesAdd": "adicionar"
     },
     "partnerAuth": {
       "resetTitle": "Criar uma nova palavra-passe",

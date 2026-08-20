@@ -700,7 +700,9 @@
       "prefTime": "Heure",
       "prefAlt": "Second choix (optionnel)",
       "prefOptional": "Optionnel — si vous passez cette étape, nous demanderons au studio leurs disponibilités.",
-      "afterNote": "S'ils vous répondent quelque chose que vous ne comprenez pas, transférez-le à jordan@massageclub.io et nous traduirons pour vous."
+      "afterNote": "S'ils vous répondent quelque chose que vous ne comprenez pas, transférez-le à jordan@massageclub.io et nous traduirons pour vous.",
+      "prefLanguages": "Langues que vous parlez",
+      "prefLanguagesAdd": "ajouter"
     },
     "partnerAuth": {
       "resetTitle": "Créer un nouveau mot de passe",

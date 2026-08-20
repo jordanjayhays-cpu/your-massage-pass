@@ -700,7 +700,9 @@
       "prefTime": "时间",
       "prefAlt": "备选时间（可选）",
       "prefOptional": "可选 —— 如果跳过这些，我们将询问工作室的空档时间。",
-      "afterNote": "如果他们的回复让您费解，请转发至 jordan@massageclub.io，我们将为您翻译。"
+      "afterNote": "如果他们的回复让您费解，请转发至 jordan@massageclub.io，我们将为您翻译。",
+      "prefLanguages": "你会说的语言",
+      "prefLanguagesAdd": "添加"
     },
     "partnerAuth": {
       "resetTitle": "创建新密码",

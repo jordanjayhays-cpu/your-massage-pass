@@ -700,7 +700,9 @@
       "prefTime": "Uhrzeit",
       "prefAlt": "Zweite Wahl (optional)",
       "prefOptional": "Optional — wenn Sie dies überspringen, fragen wir das Studio nach freien Terminen.",
-      "afterNote": "Wenn Sie eine Antwort erhalten, die Sie nicht verstehen, leiten Sie diese an jordan@massageclub.io weiter und wir übersetzen sie für Sie."
+      "afterNote": "Wenn Sie eine Antwort erhalten, die Sie nicht verstehen, leiten Sie diese an jordan@massageclub.io weiter und wir übersetzen sie für Sie.",
+      "prefLanguages": "Sprachen, die du sprichst",
+      "prefLanguagesAdd": "hinzufügen"
     },
     "partnerAuth": {
       "resetTitle": "Neues Passwort erstellen",
