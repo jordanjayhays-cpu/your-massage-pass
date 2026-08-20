@@ -114,6 +114,7 @@
       "quizDesc": "Answer 4 quick questions and we'll suggest the perfect massage for you.",
       "takeQuiz": "Take the quiz",
       "nearbyTitle": "Studios near you",
+      "nearbyTitleMadrid": "Studios in Madrid",
       "exploreTitle": "Explore massage styles",
       "exploreSub": "Learn what each style does — then book the right one.",
       "inMadrid": "In Madrid"
@@ -167,6 +168,9 @@
       "filters": "Filters",
       "filterAll": "All",
       "yourLocation": "Your location",
+      "quizHeading": "Which massage do you actually need?",
+      "quizSub": "Descontracturante? Balin\u00e9s? Answer 4 questions and we'll tell you what to book \u2014 and what to call it in Spanish.",
+      "quizCta": "Take the 60-second quiz \u2192",
       "nearMadrid": "Near Madrid · tap to locate",
       "bookNow": "Book now →",
       "studiosNearYou": "Studios near you",

@@ -15,6 +15,8 @@ type Props = {
   compact?: boolean;
   /** Show Places autocomplete search bar */
   showSearch?: boolean;
+  /** Notifies the parent whether we're using real location, still waiting, or the Madrid fallback. */
+  onGeoStateChange?: (state: "pending" | "ready" | "fallback") => void;
 };
 
 type GeoState =
@@ -29,7 +31,7 @@ type StudioWithDistance = Massage & {
   walkingText?: string;
 };
 
-export default function GoogleMap({ massages, onSelect, compact = false, showSearch = true }: Props) {
+export default function GoogleMap({ massages, onSelect, compact = false, showSearch = true, onGeoStateChange }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
@@ -43,6 +45,7 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
   const [mapsReady, setMapsReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
   const [geo, setGeo] = useState<GeoState>({ status: "idle" });
+  const [fallback, setFallback] = useState(false);
   const [active, setActive] = useState<string | null>(massages[0]?.id ?? null);
   const [studios, setStudios] = useState<StudioWithDistance[]>(
     massages.map((m) => ({ ...m, km: distanceKm(MADRID_CENTER, m) })).sort((a, b) => a.km - b.km),
@@ -88,12 +91,19 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
   const requestLocation = () => {
     if (!("geolocation" in navigator)) {
       setGeo({ status: "error", message: "Geolocation isn't supported." });
+      setFallback(true);
       return;
     }
     setGeo({ status: "loading" });
     navigator.geolocation.getCurrentPosition(
-      (pos) => setGeo({ status: "ready", lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => setGeo({ status: "error", message: err.message || "Couldn't get your location." }),
+      (pos) => {
+        setFallback(false);
+        setGeo({ status: "ready", lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        setGeo({ status: "error", message: err.message || "Couldn't get your location." });
+        setFallback(true);
+      },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     );
   };
@@ -103,6 +113,21 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
     if (keyConfigured && geo.status === "idle") requestLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyConfigured]);
+
+  // Never leave the user staring at a "finding you…" map: after ~3s fall back
+  // to central Madrid and show every studio anyway.
+  useEffect(() => {
+    if (geo.status === "ready") return;
+    const id = window.setTimeout(() => setFallback(true), 3000);
+    return () => window.clearTimeout(id);
+  }, [geo.status]);
+
+  // Tell the parent which state we're in so it can label the section.
+  useEffect(() => {
+    onGeoStateChange?.(geo.status === "ready" ? "ready" : fallback ? "fallback" : "pending");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.status, fallback]);
+
 
   // Update user marker + recenter + recompute distances when location changes
   useEffect(() => {
@@ -326,24 +351,29 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              {geo.status === "loading" ? "Finding you…" : "See studios near you"}
+              {fallback ? "Showing all studios in Madrid" : "Finding you…"}
             </p>
             <p className="text-xs text-muted-foreground truncate">
-              {geo.status === "error"
-                ? geo.message
-                : geo.status === "loading"
-                  ? "Allow location access in your browser."
-                  : "Allow location for distance & walking times."}
+              {fallback
+                ? "Turn on location for distances & walking times."
+                : "Allow location access in your browser."}
             </p>
           </div>
           <Button
             size="sm"
             onClick={requestLocation}
-            disabled={geo.status === "loading"}
+            disabled={geo.status === "loading" && !fallback}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {geo.status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Allow"}
+            {fallback ? (
+              "Use my location"
+            ) : geo.status === "loading" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Allow"
+            )}
           </Button>
+
         </div>
       )}
 
