@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Search, MapPin, ArrowRight } from "lucide-react";
 import { fetchShops } from "@/lib/supabase";
+import StudioStatusBadge from "@/app/components/StudioStatusBadge";
+import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -58,6 +60,8 @@ export default function Home() {
         rating_count: ratingMap[s.partner_id]?.count,
       })));
       setLoading(false);
+      const claimed = list.filter((s) => s.status === "active").map((s) => s.partner_id).filter(Boolean);
+      if (claimed.length) fetchFreeTodayPartnerIds(claimed).then(setFreeTodayIds).catch(() => {});
     })();
   }, []);
 
@@ -167,7 +171,7 @@ export default function Home() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.slice(0, visibleCount).map((s) => (
-                  <StudioCard key={s.id} shop={s} href={bookHref(s)} />
+                  <StudioCard key={s.id} shop={s} href={bookHref(s)} freeTodayIds={freeTodayIds} />
                 ))}
               </div>
               {filtered.length > visibleCount && (
@@ -277,7 +281,7 @@ function InviteStudioCard({ defaultName = "" }: { defaultName?: string }) {
 }
 
 
-function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
+function StudioCard({ shop, href, freeTodayIds }: { shop: ShopWithSlug; href: string; freeTodayIds: Set<string> }) {
   const services = (shop.partner_services ?? []).slice(0, 3);
   return (
     <Link
@@ -346,6 +350,10 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
             ))}
           </ul>
         )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <StudioStatusBadge variant={studioBadgeVariant(shop.status, shop.partner_id, freeTodayIds)} />
+        </div>
 
         <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">
