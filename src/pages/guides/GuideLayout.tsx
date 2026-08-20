@@ -38,7 +38,9 @@ const SITE = "https://book.massageclub.io";
 
 export const GUIDES: { path: string; label: string }[] = [
   { path: "/massage-in-english-madrid", label: "Massage in English, Madrid" },
+  { path: "/guides/massage-prices-madrid-study", label: "What a massage costs in Madrid (study)" },
   { path: "/guides/massage-prices-madrid", label: "Massage prices in Madrid" },
+
   { path: "/guides/deep-tissue-massage-madrid", label: "Deep tissue massage Madrid" },
   { path: "/madrid/chamberi", label: "Massage in Chamberí" },
   { path: "/guides/is-massage-good-for-you", label: "Is massage good for you?" },
