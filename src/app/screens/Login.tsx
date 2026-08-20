@@ -217,6 +217,9 @@ export default function Login() {
         >
           <Search className="h-5 w-5 mr-1" /> {t("actions.browse")}
         </Button>
+        <p className="text-[13px] text-[#7A7068] text-center leading-relaxed">
+          {t("hero.ctaNote")}
+        </p>
         <Button
           onClick={handleGoogle}
           variant="outline"
