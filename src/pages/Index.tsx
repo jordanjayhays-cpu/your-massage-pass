@@ -136,7 +136,7 @@ const Index = () => {
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
-              <a href="/app">Open app</a>
+              <a href="/app">Find a studio</a>
             </Button>
             <Button asChild variant="outline" size="sm" className="border-accent/60 bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
               <a href="/partner/onboarding">For Studios</a>
