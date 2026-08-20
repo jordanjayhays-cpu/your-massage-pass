@@ -117,7 +117,7 @@ export default function Web() {
                 to="/app/massages"
                 className="bg-[#99420d] text-white px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#C4622D] shadow-[0_8px_24px_rgba(153,66,13,0.25)] transition"
               >
-                Find a studio
+                Book a massage
               </Link>
               <Link
                 to="/app"
