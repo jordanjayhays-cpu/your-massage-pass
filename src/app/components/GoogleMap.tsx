@@ -351,24 +351,29 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              {geo.status === "loading" ? "Finding you…" : "See studios near you"}
+              {fallback ? "Showing all studios in Madrid" : "Finding you…"}
             </p>
             <p className="text-xs text-muted-foreground truncate">
-              {geo.status === "error"
-                ? geo.message
-                : geo.status === "loading"
-                  ? "Allow location access in your browser."
-                  : "Allow location for distance & walking times."}
+              {fallback
+                ? "Turn on location for distances & walking times."
+                : "Allow location access in your browser."}
             </p>
           </div>
           <Button
             size="sm"
             onClick={requestLocation}
-            disabled={geo.status === "loading"}
+            disabled={geo.status === "loading" && !fallback}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {geo.status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Allow"}
+            {fallback ? (
+              "Use my location"
+            ) : geo.status === "loading" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Allow"
+            )}
           </Button>
+
         </div>
       )}
 
