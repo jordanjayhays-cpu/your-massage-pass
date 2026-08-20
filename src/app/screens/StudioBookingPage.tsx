@@ -604,6 +604,7 @@ export default function StudioBookingPage() {
           service: hasService,
           date: hasDate,
           price_shown: hasPrice,
+          languages: spokenLangs,
         },
       });
     };
