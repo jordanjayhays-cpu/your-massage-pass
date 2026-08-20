@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ export default function Discovery() {
   const navigate = useNavigate();
   const { set } = useBooking();
   const { t } = useTranslation();
+  const [geoState, setGeoState] = useState<"pending" | "ready" | "fallback">("pending");
 
 
   return (
@@ -50,10 +52,13 @@ export default function Discovery() {
 
         {/* Nearby map */}
         <div>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-3">{t("app.discovery.nearbyTitle")}</h3>
+          <h3 className="font-display text-lg font-semibold text-foreground mb-3">
+            {geoState === "ready" ? t("app.discovery.nearbyTitle") : t("app.discovery.nearbyTitleMadrid")}
+          </h3>
           <GoogleMap
             massages={MASSAGES}
             compact
+            onGeoStateChange={setGeoState}
             onSelect={(m) => {
               set({ massageId: m.id });
               navigate(`/massages/${m.id}`);
