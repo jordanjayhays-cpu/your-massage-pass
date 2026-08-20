@@ -88,12 +88,19 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
   const requestLocation = () => {
     if (!("geolocation" in navigator)) {
       setGeo({ status: "error", message: "Geolocation isn't supported." });
+      setFallback(true);
       return;
     }
     setGeo({ status: "loading" });
     navigator.geolocation.getCurrentPosition(
-      (pos) => setGeo({ status: "ready", lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => setGeo({ status: "error", message: err.message || "Couldn't get your location." }),
+      (pos) => {
+        setFallback(false);
+        setGeo({ status: "ready", lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        setGeo({ status: "error", message: err.message || "Couldn't get your location." });
+        setFallback(true);
+      },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     );
   };
@@ -103,6 +110,21 @@ export default function GoogleMap({ massages, onSelect, compact = false, showSea
     if (keyConfigured && geo.status === "idle") requestLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyConfigured]);
+
+  // Never leave the user staring at a "finding you…" map: after ~3s fall back
+  // to central Madrid and show every studio anyway.
+  useEffect(() => {
+    if (geo.status === "ready") return;
+    const id = window.setTimeout(() => setFallback(true), 3000);
+    return () => window.clearTimeout(id);
+  }, [geo.status]);
+
+  // Tell the parent which state we're in so it can label the section.
+  useEffect(() => {
+    onGeoStateChange?.(geo.status === "ready" ? "ready" : fallback ? "fallback" : "pending");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.status, fallback]);
+
 
   // Update user marker + recenter + recompute distances when location changes
   useEffect(() => {
