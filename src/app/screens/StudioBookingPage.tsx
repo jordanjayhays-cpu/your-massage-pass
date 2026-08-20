@@ -9,6 +9,12 @@ import { sendTrack } from "@/lib/siteVisit";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import {
+  SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
+  loadSpokenLangs, saveSpokenLangs, normalizeSpokenLangs,
+  spanishLanguageOffer, speaksSpanish, isSpokenLang,
+  type SpokenLang,
+} from "@/lib/spokenLanguages";
+import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
   Phone, Instagram, MessageCircle, CalendarDays
 } from "lucide-react";
