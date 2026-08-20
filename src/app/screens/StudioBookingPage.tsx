@@ -520,7 +520,10 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    const noSpanish = "Disculpa, todavía no hablo español.";
+    // If the visitor speaks Spanish, the apology makes no sense — drop it,
+    // along with the "reply to me in X" offer line.
+    const visitorSpeaksSpanish = speaksSpanish(spokenLangs);
+    const noSpanish = visitorSpeaksSpanish ? "" : "Disculpa, todavía no hablo español. ";
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
     const serviceLine = hoService
@@ -530,7 +533,8 @@ export default function StudioBookingPage() {
       : "";
     // Always Spanish — this text is sent to the studio, never translated.
     const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
-    const found = `Os encontré en Massage Club: ${studioUrl}\nSi habláis inglés, decídmelo y sigo en inglés 🙏`;
+    const langOffer = spanishLanguageOffer(spokenLangs);
+    const found = `Os encontré en Massage Club: ${studioUrl}${langOffer ? `\n${langOffer} 🙏` : ""}`;
     const waMsg = (() => {
       const greeting = `¡Hola ${partner.business_name}!`;
 
