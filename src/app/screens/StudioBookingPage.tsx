@@ -546,7 +546,7 @@ export default function StudioBookingPage() {
         lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
+        lines.push(`${noSpanish}¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
         return lines.join("\n");
       }
 
@@ -556,7 +556,7 @@ export default function StudioBookingPage() {
         lines.push(serviceLine);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
         return lines.join("\n");
       }
 
@@ -566,7 +566,7 @@ export default function StudioBookingPage() {
         if (hoAltDate && hoAltTime) lines.push(`También valdría el ${esDate(hoAltDate)} a las ${hoAltTime}.`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
         return lines.join("\n");
       }
 
@@ -575,7 +575,7 @@ export default function StudioBookingPage() {
         const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)}.`];
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
         return lines.join("\n");
       }
 
@@ -584,12 +584,12 @@ export default function StudioBookingPage() {
         const lines: string[] = [`${greeting} Me gustaría reservar un masaje a las ${hoTime}.`];
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
         return lines.join("\n");
       }
 
       // Nothing selected: generic fallback that asks for a list of times.
-      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
+      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
     })();
     const trackWhatsappIntent = () => {
       setWaTapped(true);
