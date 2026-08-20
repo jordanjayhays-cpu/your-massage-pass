@@ -217,6 +217,17 @@ export default function StudioBookingPage() {
       if (!user) return;
       setUserId(user.id);
 
+      // Spoken languages live in their own query so a missing column can never
+      // break the rest of the pre-fill.
+      supabase.from("profiles").select("spoken_languages").eq("id", user.id).single().then(
+        ({ data }) => {
+          const saved = normalizeSpokenLangs((data as any)?.spoken_languages);
+          if (saved.length) setSpokenLangs(saved);
+        },
+        () => {},
+      );
+
+
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
