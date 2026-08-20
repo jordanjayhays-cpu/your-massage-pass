@@ -14,8 +14,8 @@ type Option = {
 };
 
 const OPTIONS: Option[] = [
-  { id: "en", lang: "en", countryCode: "gb", countryLabel: "English", nativeLanguage: "English" },
-  { id: "es", lang: "es", countryCode: "es", countryLabel: "Español", nativeLanguage: "Español" },
+  { id: "en", lang: "en", countryCode: "gb", countryLabel: "", nativeLanguage: "English" },
+  { id: "es", lang: "es", countryCode: "es", countryLabel: "", nativeLanguage: "Español" },
 ];
 
 
@@ -130,9 +130,11 @@ export function LanguageFlagToggle({
               <Flag code={o.countryCode} className="h-6 w-9" />
               <div className="flex-1 text-left">
                 <div className="text-sm font-semibold leading-tight">{o.nativeLanguage}</div>
-                <div className={`text-[11px] ${active ? "text-[#F7F4F0]/70" : "text-[#7A7068]"}`}>
-                  {o.countryLabel}
-                </div>
+                {o.countryLabel && (
+                  <div className={`text-[11px] ${active ? "text-[#F7F4F0]/70" : "text-[#7A7068]"}`}>
+                    {o.countryLabel}
+                  </div>
+                )}
               </div>
               {active && <Check className="h-4 w-4" />}
             </button>
@@ -150,7 +152,7 @@ export function LanguageFlagToggle({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`${selected.nativeLanguage} · ${selected.countryLabel}`}
+        aria-label={selected.nativeLanguage}
         className="inline-flex items-center gap-1.5 h-9 pl-1.5 pr-2 rounded-full border border-[#E5DDD3] bg-white/95 backdrop-blur shadow-sm hover:border-[#C4622D]/50"
       >
         <Flag code={selected.countryCode} className="h-5 w-7" />
@@ -183,7 +185,9 @@ export function LanguageFlagToggle({
                   <div className="text-sm font-medium text-[#211C1A] leading-tight">
                     {o.nativeLanguage}
                   </div>
-                  <div className="text-[11px] text-[#7A7068] truncate">{o.countryLabel}</div>
+                  {o.countryLabel && (
+                    <div className="text-[11px] text-[#7A7068] truncate">{o.countryLabel}</div>
+                  )}
                 </div>
                 {active && <Check className="h-4 w-4 text-[#C4622D]" />}
               </button>
