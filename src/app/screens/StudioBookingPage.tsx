@@ -481,14 +481,22 @@ export default function StudioBookingPage() {
       }
     };
     const noSpanish = "Disculpa, todavía no hablo español.";
-    const found = "Os encontré en Massage Club 🙏";
+    const hoPrice = Number((hoService as any)?.price);
+    const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
+    const serviceLine = hoService
+      ? hasPrice
+        ? `· ${hoService.name} · ${hoService.duration} min · ${hoPrice} €`
+        : `· ${hoService.name} (${hoService.duration} min)`
+      : "";
+    // Always Spanish — this text is sent to the studio, never translated.
+    const found = "Os encontré en Massage Club. Si habláis inglés, decídmelo y sigo en inglés 🙏";
     const waMsg = (() => {
       const greeting = `¡Hola ${partner.business_name}!`;
 
       // Fully specified: service + date/time.
       if (hoService && hoDate && hoTime) {
         const lines: string[] = [`${greeting} Me gustaría reservar:`];
-        lines.push(`· ${hoService.name} (${hoService.duration} min)`);
+        lines.push(serviceLine);
         const alt = hoAltDate && hoAltTime ? ` — o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
         lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
@@ -500,7 +508,7 @@ export default function StudioBookingPage() {
       // Service chosen but no date/time yet.
       if (hoService) {
         const lines: string[] = [`${greeting} Me gustaría reservar:`];
-        lines.push(`· ${hoService.name} (${hoService.duration} min)`);
+        lines.push(serviceLine);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
         lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
@@ -550,6 +558,7 @@ export default function StudioBookingPage() {
           filled: hasService || hasDate || !!hoTime || !!hoName.trim(),
           service: hasService,
           date: hasDate,
+          price_shown: hasPrice,
         },
       });
     };
