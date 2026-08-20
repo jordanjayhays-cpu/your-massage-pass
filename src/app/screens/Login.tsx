@@ -274,6 +274,16 @@ export default function Login() {
         </div>
       </div>
 
+      {/* Trust */}
+      <div className="px-6 mt-8">
+        <div className="space-y-3">
+          {[t("trust.line1"), t("trust.line2"), t("trust.line3")].map((line, i) => (
+            <p key={i} className="text-sm text-[#7A7068] leading-relaxed">{line}</p>
+          ))}
+        </div>
+      </div>
+
+
       {/* Studio CTA — refined card */}
       <div className="px-6 mt-10">
         <div
