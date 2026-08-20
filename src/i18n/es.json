@@ -624,17 +624,23 @@
       },
       "hero": {
         "established": "Madrid · Est. 2026",
-        "title1": "Los mejores",
-        "title2": "masajes",
-        "title3": "de la ciudad, a la carta.",
+        "title1": "Tu primer",
+        "title2": "masaje",
+        "title3": "en Madrid",
         "imageAlt": "Estudio de masajes tranquilo en Madrid",
-        "studiosCount": "12+ centros",
+        "studiosCount": "60+ centros en Madrid",
         "payAtStudio": "Paga en el centro",
-        "description": "Explora los mejores centros cerca de ti. Sin necesidad de cuenta para echar un vistazo — paga en el centro."
+        "description": "60+ centros con precios reales, en inglés. Si un centro solo reserva por WhatsApp, escribimos tu mensaje en español por ti.",
+        "ctaNote": "No hace falta cuenta para mirar. Sin comisión de reserva. Pagas directamente al centro."
+      },
+      "newInMadrid": {
+        "eyebrow": "Nuevo en Madrid",
+        "heading": "Has subido tu vida entera por cuatro pisos de escaleras.",
+        "body": "Tus hombros tienen algo que decir al respecto. Pero cada web de centro está en español, las reseñas están en español y nadie te explica si «descontracturante» es relajante o doloroso. (Es el fuerte.) Para eso está esto."
       },
       "actions": {
         "forStudios": "Para centros",
-        "browse": "Explorar centros",
+        "browse": "Encuentra un centro",
         "google": "Continuar con Google",
         "ownStudio": "¿Tienes un centro de masajes?",
         "listFree": "Anúncialo gratis"
@@ -642,23 +648,28 @@
       "howItWorks": {
         "title": "Cómo funciona",
         "step1": {
-          "title": "Encuentra un centro",
-          "subtitle": "Explora los mejores lugares cerca de ti."
+          "title": "Explora por barrio",
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Servicios reales, precios reales, en inglés."
         },
         "step2": {
-          "title": "Elige una hora",
-          "subtitle": "Reserva al instante — presión, enfoque, extras."
+          "title": "Reserva online o te escribimos el mensaje",
+          "subtitle": "Algunos centros aceptan reservas aquí directamente. El resto usa WhatsApp — escribimos tu mensaje en español para que tú no tengas que hacerlo."
         },
         "step3": {
-          "title": "Ven y relájate",
-          "subtitle": "Recibe una confirmación. Eso es todo."
+          "title": "Llega y desconecta",
+          "subtitle": "Recibirás una confirmación con la dirección y cómo entrar. Pagas en el centro."
         }
+      },
+      "trust": {
+        "line1": "No nos llevamos comisión de tu masaje. Los precios que ves son los del centro.",
+        "line2": "No prometemos que tu terapeuta hable inglés — algunos sí, otros no. Lo que prometemos es que reservar la cita no requiere español.",
+        "line3": "Cada centro aquí es un sitio real que hemos encontrado, comprobado y listado a mano."
       },
       "studioCard": {
         "label": "Para centros",
-        "title": "Anuncia tu centro en minutos.",
-        "subtitle": "Sincronización de calendario, enlace propio, sin cuotas de alta.",
-        "button": "Hazte colaborador"
+        "title": "¿Tienes un centro? Probablemente ya estés listado.",
+        "subtitle": "Hemos creado páginas para más de 60 centros de Madrid. Reclama el tuyo para gestionar fotos, servicios y horarios, y recibir reservas directamente. Gratis, sin exclusividad.",
+        "button": "Reclama tu centro"
       },
       "saveDetails": {
         "title": "Guarda tus datos para reservar más rápido",

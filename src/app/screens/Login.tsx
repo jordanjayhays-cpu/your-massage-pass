@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, Star, MapPin, ArrowRight } from "lucide-react";
+import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -197,8 +197,6 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
             <div className="flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-[#E0A458] text-[#E0A458]" /> 4.8</span>
-              <span className="opacity-50">·</span>
               <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {t("hero.studiosCount")}</span>
             </div>
             <span className="text-[10px] uppercase tracking-[0.2em] bg-white/15 backdrop-blur px-2 py-1 rounded-full">{t("hero.payAtStudio")}</span>
@@ -219,6 +217,9 @@ export default function Login() {
         >
           <Search className="h-5 w-5 mr-1" /> {t("actions.browse")}
         </Button>
+        <p className="text-[13px] text-[#7A7068] text-center leading-relaxed">
+          {t("hero.ctaNote")}
+        </p>
         <Button
           onClick={handleGoogle}
           variant="outline"
@@ -239,6 +240,16 @@ export default function Login() {
           {t("actions.ownStudio")} <span className="text-[#C4622D] font-medium">{t("actions.listFree")} →</span>
         </button>
       </div>
+
+      {/* New in Madrid */}
+      <div className="px-6 mt-10">
+        <div className="rounded-[24px] bg-white border border-[#E5DDD3] p-6">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[#C4622D] mb-2">{t("newInMadrid.eyebrow")}</p>
+          <h2 style={serif} className="text-[26px] leading-tight text-[#211C1A] mb-3">{t("newInMadrid.heading")}</h2>
+          <p className="text-[15px] text-[#7A7068] leading-relaxed">{t("newInMadrid.body")}</p>
+        </div>
+      </div>
+
 
       {/* How it works — editorial three column */}
       <div className="px-6 mt-10">
@@ -262,6 +273,16 @@ export default function Login() {
           ))}
         </div>
       </div>
+
+      {/* Trust */}
+      <div className="px-6 mt-8">
+        <div className="space-y-3">
+          {[t("trust.line1"), t("trust.line2"), t("trust.line3")].map((line, i) => (
+            <p key={i} className="text-sm text-[#7A7068] leading-relaxed">{line}</p>
+          ))}
+        </div>
+      </div>
+
 
       {/* Studio CTA — refined card */}
       <div className="px-6 mt-10">
