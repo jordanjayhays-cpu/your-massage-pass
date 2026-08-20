@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import GuideLayout, { GuideLinks } from "./GuideLayout";
+import StudioStatusBadge from "@/app/components/StudioStatusBadge";
+import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 
 const SITE = "https://book.massageclub.io";
 
@@ -123,11 +125,19 @@ export default function NeighbourhoodPage({
   children?: React.ReactNode;
 }) {
   const [studios, setStudios] = useState<NeighbourhoodStudio[] | null>(null);
+  const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
     fetchNeighbourhoodStudios(neighbourhood).then((rows) => {
-      if (alive) setStudios(rows);
+      if (!alive) return;
+      setStudios(rows);
+      const claimed = rows.filter((r) => r.status === "active").map((r) => r.id);
+      if (claimed.length) {
+        fetchFreeTodayPartnerIds(claimed)
+          .then((ids) => { if (alive) setFreeTodayIds(ids); })
+          .catch(() => {});
+      }
     });
     return () => {
       alive = false;
@@ -263,11 +273,9 @@ export default function NeighbourhoodPage({
                         ★ {s.googleRating}
                       </p>
                     )}
-                    {s.status === "active" && (
-                      <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-primary mt-1">
-                        Bookable
-                      </p>
-                    )}
+                    <div className="mt-1.5 flex justify-end">
+                      <StudioStatusBadge variant={studioBadgeVariant(s.status, s.id, freeTodayIds)} />
+                    </div>
                   </div>
                 </div>
               </li>
