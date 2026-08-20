@@ -53,10 +53,37 @@ export function logSiteVisit(path: string) {
   });
 }
 
+/**
+ * Fire-and-forget campaign attribution beacon.
+ * Fires once per page load when utm_source or gclid is present.
+ * Only whitelisted UTM params are sent; the raw query string is never forwarded.
+ */
+export function logCampaignVisit(path: string) {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const gclid = params.has("gclid");
+  const source = params.get("utm_source");
+  if (!source && !gclid) return;
+
+  sendTrack({
+    event: "campaign_visit",
+    path,
+    meta: {
+      source: source || "gclid",
+      medium: params.get("utm_medium"),
+      campaign: params.get("utm_campaign"),
+      term: params.get("utm_term"),
+      content: params.get("utm_content"),
+      gclid,
+    },
+  });
+}
+
 export function useSiteVisit(path?: string) {
   useEffect(() => {
     const p = path ?? (typeof window !== "undefined" ? window.location.pathname : "/");
     logSiteVisit(p);
+    logCampaignVisit(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
 }
