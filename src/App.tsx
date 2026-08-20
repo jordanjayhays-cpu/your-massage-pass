@@ -78,6 +78,8 @@ const App = () => (
           {/* SEO guide pages (static paths win over the /:studioId dynamic route) */}
           <Route path="/massage-in-english-madrid" element={<MassageInEnglishMadrid />} />
           <Route path="/guides/massage-prices-madrid" element={<MassagePricesMadrid />} />
+          <Route path="/guides/massage-prices-madrid-study" element={<MassagePricesMadridStudy />} />
+
           <Route path="/guides/deep-tissue-massage-madrid" element={<DeepTissueMassageMadrid />} />
           <Route path="/madrid/chamberi" element={<MadridChamberi />} />
           <Route path="/madrid/salamanca" element={<MadridSalamanca />} />
