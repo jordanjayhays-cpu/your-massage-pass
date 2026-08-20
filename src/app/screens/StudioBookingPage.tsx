@@ -489,7 +489,8 @@ export default function StudioBookingPage() {
         : `· ${hoService.name} (${hoService.duration} min)`
       : "";
     // Always Spanish — this text is sent to the studio, never translated.
-    const found = "Os encontré en Massage Club. Si habláis inglés, decídmelo y sigo en inglés 🙏";
+    const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
+    const found = `Os encontré en Massage Club: ${studioUrl}\nSi habláis inglés, decídmelo y sigo en inglés 🙏`;
     const waMsg = (() => {
       const greeting = `¡Hola ${partner.business_name}!`;
 
