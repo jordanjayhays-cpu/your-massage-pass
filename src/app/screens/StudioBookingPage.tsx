@@ -704,6 +704,39 @@ export default function StudioBookingPage() {
                     <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
                       className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                   </label>
+                  <div className="text-left">
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {spokenLangs.map((code) => (
+                        <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                          className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                          style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                          <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                            className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                          {SPOKEN_LANG_NATIVE[code]}
+                          <span aria-hidden style={{ color: "#9E9387" }}>×</span>
+                        </button>
+                      ))}
+                      <button type="button" onClick={() => setLangPickerOpen(o => !o)}
+                        className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                        style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
+                        + {t("app.handoff.prefLanguagesAdd")}
+                      </button>
+                    </div>
+                    {langPickerOpen && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
+                          <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                            style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
+                            <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                              className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                            {SPOKEN_LANG_NATIVE[code]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                 </div>
               </div>
