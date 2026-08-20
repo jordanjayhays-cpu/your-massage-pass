@@ -44,6 +44,8 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
 import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
+import MassagePricesMadridStudy from "./pages/guides/MassagePricesMadridStudy";
+
 import DeepTissueMassageMadrid from "./pages/guides/DeepTissueMassageMadrid";
 import MadridChamberi from "./pages/guides/MadridChamberi";
 import MadridSalamanca from "./pages/guides/MadridSalamanca";
