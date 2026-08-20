@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { toast } from "sonner";
 import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star, Store } from "lucide-react";
 import madridHero from "@/assets/madrid-hero.jpg";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { saveLead } from "@/lib/supabase";
 
 const SHOPS = [
@@ -134,7 +134,7 @@ const Index = () => {
             <a href="/partner/onboarding" className="text-accent hover:text-accent/80 transition-colors font-semibold">List your studio</a>
           </nav>
           <div className="flex items-center gap-2">
-            <LanguageToggle />
+            <LanguageFlagToggle />
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
               <a href="/studios">Book a massage</a>
             </Button>
