@@ -10,6 +10,8 @@ import { loadGoogleMaps } from "../lib/googleMaps";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import StudioStatusBadge from "../components/StudioStatusBadge";
+import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 
 const STUDIO_ICONS: Record<string, string> = {
   "Casa Cibeles": "🧖‍♀️",
@@ -41,6 +43,7 @@ export default function MassageList() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
+  const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
@@ -67,6 +70,8 @@ export default function MassageList() {
     fetchShops().then((shops) => {
       setRealShops(shops);
       setShopsLoading(false);
+      const claimed = shops.filter((s) => s.status === "active").map((s) => s.partner_id);
+      if (claimed.length) fetchFreeTodayPartnerIds(claimed).then(setFreeTodayIds).catch(() => {});
     });
   }, []);
 
@@ -407,9 +412,9 @@ export default function MassageList() {
                           <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
                             {t("app.massageList.payAtStudio")}
                             </span>
-                          <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
-                            {t("app.massageList.availableToday")}
-                          </span>
+                          <StudioStatusBadge
+                            variant={studioBadgeVariant((m as any).status, (m as any).partner_id, freeTodayIds)}
+                          />
                         </div>
                       </div>
                     </div>
