@@ -624,17 +624,23 @@
       },
       "hero": {
         "established": "Madrid · Est. 2026",
-        "title1": "The city's best",
-        "title2": "massages,",
-        "title3": "on demand.",
+        "title1": "Your first",
+        "title2": "massage",
+        "title3": "in Madrid",
         "imageAlt": "Calm Madrid massage studio",
-        "studiosCount": "12+ studios",
+        "studiosCount": "60+ studios across Madrid",
         "payAtStudio": "Pay at studio",
-        "description": "Browse top-rated studios near you. No account needed to look — pay at the studio."
+        "description": "60+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.",
+        "ctaNote": "No account needed to look. No booking fee. You pay the studio directly."
+      },
+      "newInMadrid": {
+        "eyebrow": "New in Madrid",
+        "heading": "You carried your life up four flights of stairs.",
+        "body": "Your shoulders have opinions about it. But every studio website is in Spanish, the reviews are in Spanish, and nobody tells you whether \"descontracturante\" means relaxing or painful. (It's the deep one.) That's what this is for."
       },
       "actions": {
         "forStudios": "For studios",
-        "browse": "Browse studios",
+        "browse": "Find a studio",
         "google": "Continue with Google",
         "ownStudio": "Own a massage studio?",
         "listFree": "List it free"
@@ -642,23 +648,28 @@
       "howItWorks": {
         "title": "How it works",
         "step1": {
-          "title": "Find a studio",
-          "subtitle": "Browse top-rated spots near you."
+          "title": "Browse by barrio",
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Real services, real prices, in English."
         },
         "step2": {
-          "title": "Pick a time",
-          "subtitle": "Book instantly — pressure, focus, add-ons."
+          "title": "Book online, or let us write the message",
+          "subtitle": "Some studios take bookings here directly. The rest use WhatsApp — we'll write your message in Spanish so you don't have to."
         },
         "step3": {
-          "title": "Show up & relax",
-          "subtitle": "Get a confirmation. That's it."
+          "title": "Turn up and switch off",
+          "subtitle": "You'll get a confirmation with the address and how to get in. Pay at the studio."
         }
+      },
+      "trust": {
+        "line1": "We don't take a cut of your massage. The prices you see are the studio's own.",
+        "line2": "We won't promise your therapist speaks English — some do, some don't. What we promise is that booking the appointment doesn't need Spanish.",
+        "line3": "Every studio here is a real place we found, checked and listed by hand."
       },
       "studioCard": {
         "label": "For studios",
-        "title": "List your studio in minutes.",
-        "subtitle": "Calendar sync, branded link, no setup fees.",
-        "button": "Become a partner"
+        "title": "Own a studio? You're probably already listed.",
+        "subtitle": "We built pages for 60+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.",
+        "button": "Claim your studio"
       },
       "saveDetails": {
         "title": "Save details for faster booking",
