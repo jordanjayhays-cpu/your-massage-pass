@@ -159,7 +159,7 @@ export default function Survey() {
           Thanks for being honest. This helps us build something you'll actually want to use.
         </p>
         <Button
-          onClick={() => navigate("/app/massages")}
+          onClick={() => navigate("/studios")}
           className="w-full h-12 mt-8 bg-gradient-royal text-primary-foreground hover:opacity-90"
         >
           Back to studios

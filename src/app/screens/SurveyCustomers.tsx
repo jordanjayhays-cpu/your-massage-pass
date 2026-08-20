@@ -276,7 +276,7 @@ export default function SurveyCustomers() {
           <h1 style={serif} className="text-4xl mb-3">That's everything — thank you!</h1>
           <p className="text-[#7A7068] mb-8">You've helped shape the easiest way to book a massage in Madrid.</p>
           <button
-            onClick={() => navigate("/app/massages")}
+            onClick={() => navigate("/studios")}
             className="w-full h-13 py-3 rounded-full text-base font-medium"
             style={{ background: "#C4622D", color: "#F7F4F0" }}
           >
@@ -307,7 +307,7 @@ export default function SurveyCustomers() {
           >
             Continue to round {waveNumber + 1} →
           </button>
-          <button onClick={() => navigate("/app/massages")} className="text-sm text-[#7A7068] underline">
+          <button onClick={() => navigate("/studios")} className="text-sm text-[#7A7068] underline">
             I'll finish later
           </button>
         </div>

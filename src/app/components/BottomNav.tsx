@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 const TAB_DEFS = [
-  { key: "massages", to: "/studios", icon: Flower2, match: ["/studios", "/app/massages", "/massages"] },
+  { key: "massages", to: "/studios", icon: Flower2, match: ["/studios", "/studios", "/massages"] },
   { key: "discovery", to: "/app/discovery", icon: Sparkles, match: ["/app/discovery", "/discovery"] },
   { key: "bookings", to: "/app/bookings", icon: CalendarDays, match: ["/app/bookings", "/bookings"] },
   { key: "profile", to: "/app/profile", icon: User, match: ["/app/profile", "/profile"] },
