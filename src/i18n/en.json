@@ -168,7 +168,7 @@
       "filters": "Filters",
       "filterAll": "All",
       "yourLocation": "Your location",
-      "quizPrompt": "Not sure which massage? Take the quiz \u2192",
+      "quizPrompt": "Not sure which massage? Take the quiz →",
       "nearMadrid": "Near Madrid · tap to locate",
       "bookNow": "Book now →",
       "studiosNearYou": "Studios near you",
@@ -700,7 +700,9 @@
       "prefTime": "Time",
       "prefAlt": "Second choice (optional)",
       "prefOptional": "Optional — if you skip these, we’ll ask the studio for their free times.",
-      "afterNote": "If they reply with something you don’t understand, forward it to jordan@massageclub.io and we’ll translate."
+      "afterNote": "If they reply with something you don’t understand, forward it to jordan@massageclub.io and we’ll translate.",
+      "prefLanguages": "Languages you speak",
+      "prefLanguagesAdd": "add"
     },
     "partnerAuth": {
       "resetTitle": "Create a new password",

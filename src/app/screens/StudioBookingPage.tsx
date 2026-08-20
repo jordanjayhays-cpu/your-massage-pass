@@ -9,6 +9,12 @@ import { sendTrack } from "@/lib/siteVisit";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import {
+  SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
+  loadSpokenLangs, saveSpokenLangs, normalizeSpokenLangs,
+  spanishLanguageOffer, speaksSpanish, isSpokenLang,
+  type SpokenLang,
+} from "@/lib/spokenLanguages";
+import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
   Phone, Instagram, MessageCircle, CalendarDays
 } from "lucide-react";
@@ -22,7 +28,7 @@ const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function StudioBookingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { studioId } = useParams();
   const [searchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
@@ -65,6 +71,29 @@ export default function StudioBookingPage() {
   const [hoAltDate, setHoAltDate] = useState("");
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
+  // Languages the visitor speaks — defaults to the site language, never a required field.
+  const siteLang = (i18n.language || "en").slice(0, 2);
+  const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
+  const [spokenLangs, setSpokenLangs] = useState<SpokenLang[]>(() => {
+    const saved = loadSpokenLangs();
+    return saved.length ? saved : defaultSpoken;
+  });
+  const [langPickerOpen, setLangPickerOpen] = useState(false);
+
+  // Persist locally whenever it changes.
+  useEffect(() => { saveSpokenLangs(spokenLangs); }, [spokenLangs]);
+
+  const toggleSpokenLang = (code: SpokenLang) => {
+    setSpokenLangs(prev => {
+      const next = prev.includes(code) ? prev.filter(l => l !== code) : [...prev, code];
+      if (userId) {
+        supabase.from("profiles").update({ spoken_languages: next }).eq("id", userId).then(
+          () => {}, () => {},
+        );
+      }
+      return next;
+    });
+  };
 
 
 
@@ -187,6 +216,17 @@ export default function StudioBookingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+
+      // Spoken languages live in their own query so a missing column can never
+      // break the rest of the pre-fill.
+      supabase.from("profiles").select("spoken_languages").eq("id", user.id).single().then(
+        ({ data }) => {
+          const saved = normalizeSpokenLangs((data as any)?.spoken_languages);
+          if (saved.length) setSpokenLangs(saved);
+        },
+        () => {},
+      );
+
 
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
@@ -480,7 +520,10 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    const noSpanish = "Disculpa, todavía no hablo español.";
+    // If the visitor speaks Spanish, the apology makes no sense — drop it,
+    // along with the "reply to me in X" offer line.
+    const visitorSpeaksSpanish = speaksSpanish(spokenLangs);
+    const noSpanish = visitorSpeaksSpanish ? "" : "Disculpa, todavía no hablo español. ";
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
     const serviceLine = hoService
@@ -490,7 +533,8 @@ export default function StudioBookingPage() {
       : "";
     // Always Spanish — this text is sent to the studio, never translated.
     const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
-    const found = `Os encontré en Massage Club: ${studioUrl}\nSi habláis inglés, decídmelo y sigo en inglés 🙏`;
+    const langOffer = spanishLanguageOffer(spokenLangs);
+    const found = `Os encontré en Massage Club: ${studioUrl}${langOffer ? `\n${langOffer} 🙏` : ""}`;
     const waMsg = (() => {
       const greeting = `¡Hola ${partner.business_name}!`;
 
@@ -502,7 +546,7 @@ export default function StudioBookingPage() {
         lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
+        lines.push(`${noSpanish}¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
         return lines.join("\n");
       }
 
@@ -512,7 +556,7 @@ export default function StudioBookingPage() {
         lines.push(serviceLine);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
         return lines.join("\n");
       }
 
@@ -522,7 +566,7 @@ export default function StudioBookingPage() {
         if (hoAltDate && hoAltTime) lines.push(`También valdría el ${esDate(hoAltDate)} a las ${hoAltTime}.`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
         return lines.join("\n");
       }
 
@@ -531,7 +575,7 @@ export default function StudioBookingPage() {
         const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)}.`];
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
         return lines.join("\n");
       }
 
@@ -540,12 +584,12 @@ export default function StudioBookingPage() {
         const lines: string[] = [`${greeting} Me gustaría reservar un masaje a las ${hoTime}.`];
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
-        lines.push(`${noSpanish} ¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
+        lines.push(`${noSpanish}¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
         return lines.join("\n");
       }
 
       // Nothing selected: generic fallback that asks for a list of times.
-      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
+      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
     })();
     const trackWhatsappIntent = () => {
       setWaTapped(true);
@@ -560,6 +604,7 @@ export default function StudioBookingPage() {
           service: hasService,
           date: hasDate,
           price_shown: hasPrice,
+          languages: spokenLangs,
         },
       });
     };
@@ -659,6 +704,39 @@ export default function StudioBookingPage() {
                     <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
                       className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                   </label>
+                  <div className="text-left">
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {spokenLangs.map((code) => (
+                        <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                          className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                          style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                          <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                            className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                          {SPOKEN_LANG_NATIVE[code]}
+                          <span aria-hidden style={{ color: "#9E9387" }}>×</span>
+                        </button>
+                      ))}
+                      <button type="button" onClick={() => setLangPickerOpen(o => !o)}
+                        className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                        style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
+                        + {t("app.handoff.prefLanguagesAdd")}
+                      </button>
+                    </div>
+                    {langPickerOpen && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
+                          <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                            style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
+                            <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                              className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                            {SPOKEN_LANG_NATIVE[code]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                 </div>
               </div>
