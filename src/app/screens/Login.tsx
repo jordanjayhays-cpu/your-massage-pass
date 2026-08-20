@@ -241,6 +241,16 @@ export default function Login() {
         </button>
       </div>
 
+      {/* New in Madrid */}
+      <div className="px-6 mt-10">
+        <div className="rounded-[24px] bg-white border border-[#E5DDD3] p-6">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[#C4622D] mb-2">{t("newInMadrid.eyebrow")}</p>
+          <h2 style={serif} className="text-[26px] leading-tight text-[#211C1A] mb-3">{t("newInMadrid.heading")}</h2>
+          <p className="text-[15px] text-[#7A7068] leading-relaxed">{t("newInMadrid.body")}</p>
+        </div>
+      </div>
+
+
       {/* How it works — editorial three column */}
       <div className="px-6 mt-10">
         <p className="text-[11px] uppercase tracking-[0.3em] text-[#7A7068] mb-5">{t("howItWorks.title")}</p>
