@@ -634,7 +634,7 @@
         "imageAlt": "Studio de massage calme à Madrid",
         "studiosCount": "Plus de 60 studios à travers Madrid",
         "payAtStudio": "Paiement au studio",
-        "description": "Plus de 60 studios avec les prix réels, en anglais. Si un studio n'accepte que WhatsApp, nous écrivons votre message en espagnol pour vous.",
+        "description": "Plus de 60 studios avec les prix réels, en français. Si un studio n'accepte que WhatsApp, nous écrivons votre message en espagnol pour vous.",
         "ctaNote": "Pas de compte nécessaire pour consulter. Pas de frais de réservation. Vous payez directement le studio."
       },
       "newInMadrid": {
@@ -653,7 +653,7 @@
         "title": "Comment ça marche",
         "step1": {
           "title": "Parcourez par quartier (barrio)",
-          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. De vrais services, de vrais prix, en anglais."
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. De vrais services, de vrais prix, en français."
         },
         "step2": {
           "title": "Réservez en ligne, ou laissez-nous écrire le message",
@@ -666,7 +666,7 @@
       },
       "trust": {
         "line1": "Nous ne prenons aucune commission sur votre massage. Les prix affichés sont ceux du studio.",
-        "line2": "Nous ne garantissons pas que votre thérapeute parle anglais — certains le font, d'autres non. Ce que nous promettons, c'est que la prise de rendez-vous ne nécessite pas de parler espagnol.",
+        "line2": "Nous ne garantissons pas que votre thérapeute parle français — certains le font, d'autres non. Ce que nous promettons, c'est que la prise de rendez-vous ne nécessite pas de parler espagnol.",
         "line3": "Chaque studio présent ici est un lieu réel que nous avons trouvé, vérifié et ajouté à la main."
       },
       "studioCard": {

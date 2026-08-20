@@ -634,7 +634,7 @@
         "imageAlt": "Estúdio de massagens tranquilo em Madrid",
         "studiosCount": "Mais de 60 estúdios em Madrid",
         "payAtStudio": "Pagamento no estúdio",
-        "description": "Mais de 60 estúdios com preços reais, em Inglês. Se um estúdio apenas aceitar WhatsApp, escrevemos a sua mensagem em Espanhol por si.",
+        "description": "Mais de 60 estúdios com preços reais, em português. Se um estúdio apenas aceitar WhatsApp, escrevemos a sua mensagem em espanhol por si.",
         "ctaNote": "Não é necessária conta para explorar. Sem taxas de reserva. Paga diretamente ao estúdio."
       },
       "newInMadrid": {
@@ -653,7 +653,7 @@
         "title": "Como funciona",
         "step1": {
           "title": "Pesquise por barrio (bairro)",
-          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Serviços reais, preços reais, em Inglês."
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Serviços reais, preços reais, em português."
         },
         "step2": {
           "title": "Reserve online, ou deixe-nos escrever a mensagem",
@@ -666,7 +666,7 @@
       },
       "trust": {
         "line1": "Não ficamos com uma comissão da sua massagem. Os preços que vê são os praticados pelo estúdio.",
-        "line2": "Não prometemos que o seu terapeuta fale Inglês — alguns falam, outros não. O que prometemos é que reservar a consulta não exige saber Espanhol.",
+        "line2": "Não prometemos que o seu terapeuta fale português — alguns falam, outros não. O que prometemos é que marcar a sessão não exige saber espanhol.",
         "line3": "Cada estúdio no Massage Club é um local real que encontrámos, verificámos e listámos manualmente."
       },
       "studioCard": {
