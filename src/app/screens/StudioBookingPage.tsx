@@ -479,21 +479,64 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    const genericMsg = `¡Hola ${partner.business_name}! Me gustaría reservar un masaje con vosotros. ¿Tenéis disponibilidad? Os encontré en Massage Club 🙏`;
-    const hasDetails = Boolean(hoService || (hoDate && hoTime) || hoName.trim());
-    const detailedMsg = (() => {
-      const lines: string[] = [`¡Hola ${partner.business_name}! Me gustaría reservar:`];
-      if (hoService) lines.push(`· ${hoService.name} (${hoService.duration} min)`);
-      if (hoDate && hoTime) {
+    const noSpanish = "Disculpa, todavía no hablo español.";
+    const found = "Os encontré en Massage Club 🙏";
+    const waMsg = (() => {
+      const greeting = `¡Hola ${partner.business_name}!`;
+
+      // Fully specified: service + date/time.
+      if (hoService && hoDate && hoTime) {
+        const lines: string[] = [`${greeting} Me gustaría reservar:`];
+        lines.push(`· ${hoService.name} (${hoService.duration} min)`);
         const alt = hoAltDate && hoAltTime ? ` — o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
         lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
+        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+        lines.push("");
+        lines.push(`${noSpanish} ¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
+        return lines.join("\n");
       }
-      if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-      lines.push("");
-      lines.push(`Disculpa, todavía no hablo español. ¿Me puedes confirmar con un "sí", o proponerme otra hora? Os encontré en Massage Club 🙏`);
-      return lines.join("\n");
+
+      // Service chosen but no date/time yet.
+      if (hoService) {
+        const lines: string[] = [`${greeting} Me gustaría reservar:`];
+        lines.push(`· ${hoService.name} (${hoService.duration} min)`);
+        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+        lines.push("");
+        lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
+        return lines.join("\n");
+      }
+
+      // Date + time chosen but no service.
+      if (hoDate && hoTime) {
+        const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)} a las ${hoTime}.`];
+        if (hoAltDate && hoAltTime) lines.push(`También valdría el ${esDate(hoAltDate)} a las ${hoAltTime}.`);
+        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+        lines.push("");
+        lines.push(`${noSpanish} ¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
+        return lines.join("\n");
+      }
+
+      // Date only.
+      if (hoDate) {
+        const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)}.`];
+        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+        lines.push("");
+        lines.push(`${noSpanish} ¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
+        return lines.join("\n");
+      }
+
+      // Time only.
+      if (hoTime) {
+        const lines: string[] = [`${greeting} Me gustaría reservar un masaje a las ${hoTime}.`];
+        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
+        lines.push("");
+        lines.push(`${noSpanish} ¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
+        return lines.join("\n");
+      }
+
+      // Nothing selected: generic fallback that asks for a list of times.
+      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish} ¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
     })();
-    const waMsg = hasDetails ? detailedMsg : genericMsg;
     const trackWhatsappIntent = () => {
       setWaTapped(true);
       try {
