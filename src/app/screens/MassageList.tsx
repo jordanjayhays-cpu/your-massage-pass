@@ -1,33 +1,19 @@
 import { studioImageFallback } from "@/lib/studioImages";
 import { useTranslation } from "react-i18next";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock, Sparkles } from "lucide-react";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Sparkles } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
-import { loadGoogleMaps } from "../lib/googleMaps";
+import StudioMap from "../components/StudioMap";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 
-const STUDIO_ICONS: Record<string, string> = {
-  "Casa Cibeles": "🧖‍♀️",
-  "El Retiro Wellness": "💆",
-  "Salamanca Spa Real": "🔥",
-  "Chamberí Manos": "🏃",
-  "Malasaña Holístico": "🪷",
-  "La Latina Termas": "🌊",
-};
 
-function getStudioIcon(studio: string): string {
-  for (const [key, icon] of Object.entries(STUDIO_ICONS)) {
-    if (studio.includes(key.split(" ")[0])) return icon;
-  }
-  return "💆";
-}
 
 export default function MassageList() {
   const navigate = useNavigate();
