@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight } from "lucide-react";
+import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
