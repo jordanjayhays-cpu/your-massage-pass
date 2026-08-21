@@ -2,15 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { MASSAGE_GUIDE, MASSAGES } from "../data";
-import GoogleMap from "../components/GoogleMap";
-import { useBooking } from "../BookingContext";
+import { MASSAGE_GUIDE } from "../data";
+import StudioMap from "../components/StudioMap";
 
 export default function Discovery() {
   const navigate = useNavigate();
-  const { set } = useBooking();
   const { t } = useTranslation();
   const [geoState, setGeoState] = useState<"pending" | "ready" | "fallback">("pending");
+
 
 
   return (
