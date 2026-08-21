@@ -50,20 +50,13 @@ export default function Discovery() {
         </button>
 
         {/* Nearby map */}
-        <div>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-3">
-            {geoState === "ready" ? t("app.discovery.nearbyTitle") : t("app.discovery.nearbyTitleMadrid")}
-          </h3>
-          <GoogleMap
-            massages={MASSAGES}
-            compact
-            onGeoStateChange={setGeoState}
-            onSelect={(m) => {
-              set({ massageId: m.id });
-              navigate(`/massages/${m.id}`);
-            }}
-          />
-        </div>
+        <StudioMap
+          heading={geoState === "ready" ? t("app.discovery.nearbyTitle") : t("app.discovery.nearbyTitleMadrid")}
+          heightClass="h-[260px]"
+          onGeoStateChange={setGeoState}
+          onSelect={(shop) => navigate(`/s/${shop.partner_id}`)}
+        />
+
 
         <div>
           <h3 className="font-display text-2xl text-foreground">{t("app.discovery.exploreTitle")}</h3>
