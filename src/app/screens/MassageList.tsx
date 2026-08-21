@@ -121,15 +121,6 @@ export default function MassageList() {
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
 
-            strokeColor: "#ffffff",
-            strokeWeight: 3,
-          },
-        });
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [realShops, userLoc]);
 
 
 
