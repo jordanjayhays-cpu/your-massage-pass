@@ -1,33 +1,19 @@
 import { studioImageFallback } from "@/lib/studioImages";
 import { useTranslation } from "react-i18next";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Heart, SlidersHorizontal, Compass, UserCircle, Clock, Sparkles } from "lucide-react";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Sparkles } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
-import { loadGoogleMaps } from "../lib/googleMaps";
+import StudioMap from "../components/StudioMap";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 
-const STUDIO_ICONS: Record<string, string> = {
-  "Casa Cibeles": "🧖‍♀️",
-  "El Retiro Wellness": "💆",
-  "Salamanca Spa Real": "🔥",
-  "Chamberí Manos": "🏃",
-  "Malasaña Holístico": "🪷",
-  "La Latina Termas": "🌊",
-};
 
-function getStudioIcon(studio: string): string {
-  for (const [key, icon] of Object.entries(STUDIO_ICONS)) {
-    if (studio.includes(key.split(" ")[0])) return icon;
-  }
-  return "💆";
-}
 
 export default function MassageList() {
   const navigate = useNavigate();
@@ -48,23 +34,6 @@ export default function MassageList() {
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
 
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const userMarkerRef = useRef<any>(null);
-
-  const requestUserLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-    );
-  };
-
-  useEffect(() => {
-    requestUserLocation();
-  }, []);
 
   useEffect(() => {
     fetchShops().then((shops) => {
@@ -120,93 +89,7 @@ export default function MassageList() {
     }))
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
 
-  const mapShops = [...realShops].filter(
-    (m: any) => m && typeof m.lat === "number" && typeof m.lng === "number"
-  );
 
-  // Initialize inline map (always rendered as header banner)
-  useEffect(() => {
-    if (!mapRef.current) return;
-    let cancelled = false;
-
-    loadGoogleMaps().then((g) => {
-      if (cancelled || !mapRef.current) return;
-
-      const map = new google.maps.Map(mapRef.current, {
-        center: userLoc ?? MADRID_CENTER,
-        zoom: userLoc ? 14 : 13,
-        disableDefaultUI: true,
-        zoomControl: true,
-        styles: [
-          { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#5b4636" }] },
-          { elementType: "labels.text.stroke", stylers: [{ color: "#f6efe1" }] },
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-          { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
-        ],
-      });
-      mapInstanceRef.current = map;
-
-      const iconSvg = (emoji: string, active: boolean) => {
-        const size = active ? 52 : 42;
-        return {
-          url: `data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-              <circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
-              <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 26 : 20}">${emoji}</text>
-            </svg>`
-          )}`,
-          scaledSize: new google.maps.Size(size, size),
-          anchor: new google.maps.Point(size / 2, size / 2),
-        };
-      };
-
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
-
-      mapShops.forEach((m) => {
-        const marker = new google.maps.Marker({
-          position: { lat: (m as any).lat, lng: (m as any).lng },
-          map,
-          title: m.studio,
-          icon: iconSvg(getStudioIcon(m.studio), false),
-        });
-        marker.addListener("click", () => {
-          markersRef.current.forEach((mr: any) => {
-            mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false));
-          });
-          marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
-          setSelectedStudio(m as any);
-          map.panTo({ lat: (m as any).lat, lng: (m as any).lng });
-        });
-        markersRef.current.push(marker);
-      });
-
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setMap(null);
-        userMarkerRef.current = null;
-      }
-      if (userLoc) {
-        userMarkerRef.current = new google.maps.Marker({
-          position: userLoc,
-          map,
-          title: t("app.massageList.youAreHere"),
-          zIndex: 9999,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 9,
-            fillColor: "#4285F4",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 3,
-          },
-        });
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [realShops, userLoc]);
 
 
 
@@ -297,56 +180,16 @@ export default function MassageList() {
         </button>
       </div>
 
-      {/* Map header banner */}
+      {/* Map header banner — shared component, also used on /app/discovery */}
       <div className="px-5 pt-5">
-        <div className="relative rounded-3xl overflow-hidden shadow-soft border border-border/60 h-[230px]">
-          <div ref={mapRef} className="absolute inset-0" />
-          <button
-            onClick={() => { if (!userLoc) requestUserLocation(); }}
-            className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60 hover:bg-card transition"
-          >
-            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
-              <Compass className="h-3 w-3 text-primary" />
-            </div>
-            <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
-              {userLoc ? t("app.massageList.yourLocation") : t("app.massageList.nearMadrid")}
-            </span>
-          </button>
-        </div>
+        <StudioMap
+          shops={realShops}
+          heightClass="h-[230px]"
+          onUserLocation={setUserLoc}
+          onSelect={(shop) => handleBook(shop)}
+        />
       </div>
 
-      {/* Selected studio bottom sheet (from map pin tap) */}
-      {selectedStudio && (
-        <div className="mx-5 mt-3 bg-card border border-border rounded-3xl shadow-elegant p-4">
-          <div className="flex gap-3">
-            {selectedStudio.image && (
-              <img src={selectedStudio.image} alt={selectedStudio.studio} className="h-20 w-20 rounded-2xl object-cover flex-shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-display text-lg font-semibold text-foreground leading-tight">{selectedStudio.studio}</p>
-                  <p className="text-xs text-primary font-semibold mt-0.5">{selectedStudio.name}</p>
-                </div>
-                <button onClick={() => setSelectedStudio(null)} className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm">×</button>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selectedStudio.rating}</span>
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selectedStudio.duration}{t("app.massageList.minutesShort")}</span>
-                {"district" in selectedStudio && selectedStudio.district && (
-                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedStudio.district}</span>
-                )}
-              </div>
-              <button
-                onClick={() => handleBook(selectedStudio)}
-                className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
-              >
-                {t("app.massageList.bookNow")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Studios list */}
       <div className="px-5 md:px-8 pt-6 pb-28">
