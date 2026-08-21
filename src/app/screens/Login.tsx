@@ -241,8 +241,14 @@ export default function Login() {
         </button>
       </div>
 
+      {/* Promo video */}
+      <div className="px-6 mt-10">
+        <LiteYouTube id="cYTLBYTVAwY" title="Massage in Madrid" heading="What this actually looks like" />
+      </div>
+
       {/* New in Madrid */}
       <div className="px-6 mt-10">
+
         <div className="rounded-[24px] bg-white border border-[#E5DDD3] p-6">
           <p className="text-[10px] uppercase tracking-[0.3em] text-[#C4622D] mb-2">{t("newInMadrid.eyebrow")}</p>
           <h2 style={serif} className="text-[26px] leading-tight text-[#211C1A] mb-3">{t("newInMadrid.heading")}</h2>
