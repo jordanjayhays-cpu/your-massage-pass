@@ -1,3 +1,4 @@
+import LiteYouTube from "@/components/LiteYouTube";
 import GuideLayout, { CalmaCard, GuideLinks } from "./GuideLayout";
 
 const FAQS: { q: string; a: string }[] = [
@@ -55,6 +56,8 @@ export default function MassageInEnglishMadrid() {
           the hard part. This guide explains why that happens and how to book a massage here in
           English without phone calls, WhatsApp threads or guesswork.
         </p>
+
+        <LiteYouTube id="cYTLBYTVAwY" title="Massage in Madrid" className="mt-6" />
 
         <h2 className="font-display text-2xl text-foreground mt-8">The problem: bookings happen by phone, in Spanish</h2>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
