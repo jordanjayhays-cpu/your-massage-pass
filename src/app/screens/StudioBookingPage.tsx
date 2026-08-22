@@ -1368,7 +1368,7 @@ export default function StudioBookingPage() {
                         </span>
                       </Link>
                       {profile.services.map(s => (
-                        <button key={s.id} onClick={() => setServiceId(s.id)}
+                        <button key={s.id} onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
                           className={`w-full text-left p-4 rounded-2xl border-2 transition ${
                             serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                           }`}>
@@ -1413,7 +1413,7 @@ export default function StudioBookingPage() {
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
-                          <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
+                          <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); scrollIntoViewGently(e.currentTarget); }}
                             className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
@@ -1877,6 +1877,41 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
 export type StepDef = { label: string; labelEs: string };
 
 /** Always visible wizard header. Completed steps are clickable, upcoming ones muted. */
+/** Keeps a freshly selected card comfortably in view without a jarring jump. */
+function scrollIntoViewGently(el: HTMLElement | null) {
+  if (!el) return;
+  try {
+    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+  } catch {
+    /* older browsers: no smooth scrolling, no problem */
+  }
+}
+
+/**
+ * Always reachable Continue bar. Full width on mobile, aligned under the right
+ * summary column on desktop, so picking a service never looks like nothing happened.
+ */
+function StickyContinue({
+  ready, onNext, label, labelEs,
+}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string }) {
+  if (!ready) return null;
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8">
+        <div className="hidden min-[900px]:block" />
+        <button
+          type="button"
+          onClick={onNext}
+          className="w-full h-13 min-h-[52px] rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+        >
+          <span>{label || "Continue"}</span>
+          <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Stepper({
   steps, current, maxReached, onGo,
 }: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
