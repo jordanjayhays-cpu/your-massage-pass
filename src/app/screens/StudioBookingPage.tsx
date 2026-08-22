@@ -54,8 +54,10 @@ const isoDate = (d: Date) =>
 export default function StudioBookingPage() {
   const { t, i18n } = useTranslation();
   const { studioId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
+  // "Book again" deep links ask for the wizard to open on Day and time.
+  const stepParam = searchParams.get("step");
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
   // How many bookings already exist for each `date__time` slot.
