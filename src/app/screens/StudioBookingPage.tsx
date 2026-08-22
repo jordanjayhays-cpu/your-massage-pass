@@ -422,7 +422,7 @@ export default function StudioBookingPage() {
           <div className="px-6 py-7">
             <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>TU CITA EN</div>
             <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
-            <h1 className="font-display text-3xl font-bold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             <p className="text-base font-semibold mb-6" style={{ color: "#3d2b1f" }}>
               ¡Tu reserva está hecha! 🎉
               <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
@@ -638,7 +638,7 @@ export default function StudioBookingPage() {
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
           </div>
           <div className="px-6 py-7">
-            <h1 className="font-display text-3xl font-bold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             {partner.address && (
               <p className="text-sm flex items-center justify-center gap-1 mb-2" style={{ color: "#5a4736" }}>
                 <span>📍</span>
@@ -968,8 +968,33 @@ export default function StudioBookingPage() {
     }
   };
 
+  const bookingWaNumber = resolveWhatsappNumber(partner as any);
+  const esLongDate = (d: Date | null) => {
+    if (!d) return null;
+    try {
+      return new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" }).format(d);
+    } catch {
+      return null;
+    }
+  };
+  const bookingWaHref = bookingWaNumber
+    ? studioWhatsappUrl(
+        bookingWaNumber,
+        whatsappPrefill({
+          studio: partner.business_name,
+          // SPANISH name — the studio reads its own menu.
+          service: service ? serviceNameForStudio(service) : null,
+          duration: (service as any)?.duration ?? null,
+          price: (service as any)?.price ?? null,
+          date: esLongDate(date),
+          time: time || null,
+          name: name || null,
+        }),
+      )
+    : null;
+
   return (
-    <div className="min-h-screen bg-[#F7F4F0] relative">
+    <div className="min-h-screen bg-[#FAF6F1] relative">
       <div className="absolute top-3 right-3 z-30"><LanguageFlagToggle /></div>
       {/* Hero */}
       <div className="relative h-44 bg-gradient-to-br from-[#C4622D] to-[#5b0a16]">
@@ -995,7 +1020,7 @@ export default function StudioBookingPage() {
               <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur text-white px-3 py-1 rounded-full text-xs font-semibold mb-2">
                 <Sparkles size={12} /> Book your massage
               </div>
-              <h1 className="text-2xl font-bold text-white leading-tight">{partner.business_name}</h1>
+              <h1 className="font-display text-3xl font-semibold text-white leading-tight">{partner.business_name}</h1>
               {rating ? (
                 <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
                   <span style={{ color: "#E0A458" }}>★</span>
@@ -1034,6 +1059,28 @@ export default function StudioBookingPage() {
           ))}
         </div>
 
+        {/* Ask on WhatsApp — always reachable, prefilled with whatever is picked */}
+        {bookingWaHref && (
+          <a
+            href={bookingWaHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              clarityEvent("whatsapp_click");
+              sendTrack({
+                event: "whatsapp_click",
+                path: window.location.pathname,
+                slug: partner.slug || partner.id,
+                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
+              });
+            }}
+            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          >
+            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
+            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
+          </a>
+        )}
+
         {/* Gallery */}
         {(partner.gallery || []).length > 0 && (
           <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
@@ -1062,8 +1109,12 @@ export default function StudioBookingPage() {
               <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>
             )}
             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
-              <span className="inline-flex items-center gap-1"><Clock size={11} /> {service.duration} min</span>
-              <span className="inline-flex items-center gap-0.5"><Euro size={11} />{service.price}</span>
+              {Number(service.duration) > 0 && (
+                <span className="inline-flex items-center gap-1"><Clock size={11} /> {Number(service.duration)} min</span>
+              )}
+              {service.price != null && Number(service.price) > 0 && (
+                <span className="inline-flex items-center gap-0.5"><Euro size={11} />{Number(service.price)}</span>
+              )}
             </p>
             {(pressure || focusAreas.length > 0 || addonNames.length > 0) && (
               <p className="text-xs text-gray-600 mt-2">
@@ -1079,7 +1130,7 @@ export default function StudioBookingPage() {
 
         {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
         {!rebookMode && (
-        <Section step="1" title="Choose a service">
+        <Section step="1" title="Choose a service" titleEs="Elige un servicio">
           <div className="space-y-2">
             {profile.services.map(s => (
               <button key={s.id} onClick={() => setServiceId(s.id)}
@@ -1093,10 +1144,14 @@ export default function StudioBookingPage() {
                       <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>
                     )}
                     {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {s.duration} min</p>
+                    {Number(s.duration) > 0 && (
+                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
+                    )}
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{s.price}</p>
+                    {s.price != null && Number(s.price) > 0 && (
+                      <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                    )}
                   </div>
                 </div>
               </button>
@@ -1111,7 +1166,7 @@ export default function StudioBookingPage() {
 
         {/* 2. Date */}
         {service && (
-          <Section step="2" title="Pick a day">
+          <Section step="2" title="Pick a day" titleEs="Elige un día">
             {openDates.length === 0 ? (
               <p className="text-sm text-gray-400">No availability set yet — message the studio directly.</p>
             ) : (
@@ -1136,7 +1191,7 @@ export default function StudioBookingPage() {
 
         {/* 3. Time */}
         {service && date && (
-          <Section step="3" title="Pick a time">
+          <Section step="3" title="Pick a time" titleEs="Elige una hora">
             {times.length === 0 ? (
               <p className="text-sm text-gray-400">Fully booked that day — try another date.</p>
             ) : (
@@ -1148,7 +1203,7 @@ export default function StudioBookingPage() {
 
                   return (
                     <button key={t} onClick={() => setTime(t)}
-                      className={`px-3.5 py-2 rounded-xl border-2 text-sm font-medium transition ${
+                      className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
                         time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                       }`}>
                       {t}
@@ -1168,7 +1223,7 @@ export default function StudioBookingPage() {
         {/* 4. Customize */}
         {!rebookMode && service && date && time && (
 
-          <Section step="4" title="Customize your session">
+          <Section step="4" title="Customize your session" titleEs="Personaliza tu sesión">
             {customerProfile && prefsApplied && (
               <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-gray-700">✨ Prefilled from your profile</span>
@@ -1276,7 +1331,7 @@ export default function StudioBookingPage() {
           </div>
         )}
         {service && date && time && (!rebookMode || contactExpanded || !(name || email || phone)) && (
-          <Section step="5" title="Your details">
+          <Section step="5" title="Your details" titleEs="Tus datos">
             <div className="space-y-2">
               <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
@@ -1305,22 +1360,31 @@ export default function StudioBookingPage() {
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
         {/* Sticky CTA — always reachable while scrolling */}
-        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#F7F4F0] via-[#F7F4F0] to-transparent">
+        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
           <button onClick={handleBook} disabled={!canBook || submitting}
             className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
               canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-gray-200 text-gray-400"
             }`}>
-            {submitting ? <><Loader2 size={18} className="animate-spin" /> Booking…</>
-              : service && date && time
-                ? <><CalendarDays size={18} /> Request booking · €{total}</>
-                : <><CalendarDays size={18} /> Select a service & time</>}
+            {submitting ? (
+              <><Loader2 size={18} className="animate-spin" /> Booking…</>
+            ) : service && date && time ? (
+              <span className="flex flex-col items-center leading-tight">
+                <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
+                <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
+              </span>
+            ) : (
+              <span className="flex flex-col items-center leading-tight">
+                <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Select a service and time</span>
+                <span className="text-xs font-normal opacity-90">Elige un servicio y una hora</span>
+              </span>
+            )}
           </button>
         </div>
 
         {/* Contact footer */}
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
-          {isWhatsappCapable((partner as any).whatsapp || partner.phone) && (() => {
-            const contactWa = studioWhatsappUrl((partner as any).whatsapp || partner.phone);
+          {bookingWaNumber && (() => {
+            const contactWa = studioWhatsappUrl(bookingWaNumber);
             return contactWa && (
               <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
                 <MessageCircle size={14} /> WhatsApp
@@ -1360,12 +1424,15 @@ export default function StudioBookingPage() {
   );
 }
 
-function Section({ step, title, children }: { step: string; title: string; children: React.ReactNode }) {
+function Section({ step, title, titleEs, children }: { step: string; title: string; titleEs?: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <div className="h-6 w-6 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs font-bold">{step}</div>
-        <h2 className="font-semibold text-gray-900">{title}</h2>
+        <div className="h-6 w-6 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">{step}</div>
+        <div>
+          <h2 className="font-display text-lg leading-tight text-gray-900">{title}</h2>
+          {titleEs && <p className="text-xs text-[#8a7460] leading-tight">{titleEs}</p>}
+        </div>
       </div>
       {children}
     </div>
