@@ -1002,8 +1002,8 @@ export default function StudioBookingPage() {
 
                   {/* STEP 4: review and send */}
                   {hoStep === 4 && (
-                    <div className="space-y-3">
-                      <div className="rounded-xl bg-white p-3 space-y-2 border" style={{ borderColor: "#E6DCCF" }}>
+                    <div className="space-y-3 min-[900px]:space-y-4">
+                      <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
                         <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
@@ -1017,19 +1017,19 @@ export default function StudioBookingPage() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={trackWhatsappIntent}
-                        className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
+                        className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                         style={{ background: "#B85C38", color: "#fff" }}
                       >
-                        <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
-                        <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
+                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
+                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
                       </a>
-                      <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                      <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                       {waTapped && (
-                        <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
+                        <p className="text-xs min-[900px]:text-sm rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
                           {t("app.handoff.afterNote")}
                         </p>
                       )}
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
