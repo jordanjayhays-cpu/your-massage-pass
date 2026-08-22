@@ -1401,6 +1401,7 @@ export default function StudioBookingPage() {
         {/* 2. Date */}
 
         {service && (
+          <div ref={dateRef}>
           <Section step="2" title="Pick a day" titleEs="Elige un día">
             {openDates.length === 0 ? (
               <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
@@ -1422,6 +1423,7 @@ export default function StudioBookingPage() {
               </div>
             )}
           </Section>
+          </div>
         )}
 
         {/* 3. Time */}
