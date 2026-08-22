@@ -64,8 +64,12 @@ export default function StudioBookingPage() {
   const [userId, setUserId] = useState<string | null>(null);
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
-  const [contactExpanded, setContactExpanded] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  // "Almost there" details dialog, opened at the moment of booking.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [dialogError, setDialogError] = useState<{ en: string; es: string } | null>(null);
+  // Handoff details dialog (name + languages) for unclaimed studios.
+  const [hoDetailsOpen, setHoDetailsOpen] = useState(false);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
@@ -76,12 +80,10 @@ export default function StudioBookingPage() {
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
-  // Booking CTA guidance: which field is missing, and the hint under the button.
-  const [highlight, setHighlight] = useState<"name" | "contact" | null>(null);
+  // Booking CTA guidance: which choice is missing, and the hint under the button.
   const [ctaHint, setCtaHint] = useState<{ en: string; es: string } | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
-  const detailsRef = useRef<HTMLDivElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
   const dateRef = useRef<HTMLDivElement | null>(null);
   const timeRef = useRef<HTMLDivElement | null>(null);
@@ -829,44 +831,6 @@ export default function StudioBookingPage() {
                       </div>
                     </div>
                   )}
-                  <label className="block">
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                    <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
-                      className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                  </label>
-                  <div className="text-left">
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {spokenLangs.map((code) => (
-                        <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                          className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
-                          style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
-                          <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                            className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
-                          {SPOKEN_LANG_NATIVE[code]}
-                          <span aria-hidden style={{ color: "#9E9387" }}>×</span>
-                        </button>
-                      ))}
-                      <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                        className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
-                        style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
-                        + {t("app.handoff.prefLanguagesAdd")}
-                      </button>
-                    </div>
-                    {langPickerOpen && (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
-                          <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
-                            style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
-                            <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                              className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
-                            {SPOKEN_LANG_NATIVE[code]}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                   <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                 </div>
               </div>
@@ -874,17 +838,77 @@ export default function StudioBookingPage() {
             <div className="flex flex-col items-center gap-3 w-full">
               {waLink ? (
                 <>
-                  <a href={waLink} target="_blank" rel="noreferrer" onClick={trackWhatsappIntent} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                  <button type="button" onClick={() => setHoDetailsOpen(true)} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                     <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
                     <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
-                  </a>
+                  </button>
                   <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                   {waTapped && (
                     <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
                       {t("app.handoff.afterNote")}
                     </p>
                   )}
+                  {hoDetailsOpen && (
+                    <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setHoDetailsOpen(false)}>
+                      <div className="space-y-4 text-left">
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                          <input type="text" value={hoName} autoFocus onChange={(e) => setHoName(e.target.value)}
+                            className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                        </label>
+                        <div>
+                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {spokenLangs.map((code) => (
+                              <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                                className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                                style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                                <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                                  className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                {SPOKEN_LANG_NATIVE[code]}
+                                <span aria-hidden style={{ color: "#9E9387" }}>×</span>
+                              </button>
+                            ))}
+                            <button type="button" onClick={() => setLangPickerOpen(o => !o)}
+                              className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                              style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
+                              + {t("app.handoff.prefLanguagesAdd")}
+                            </button>
+                          </div>
+                          {langPickerOpen && (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
+                                <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                                  style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
+                                  <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                                    className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                  {SPOKEN_LANG_NATIVE[code]}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => { trackWhatsappIntent(); setHoDetailsOpen(false); }}
+                          className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
+                          style={{ background: "#B85C38", color: "#fff" }}
+                        >
+                          <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Confirm request</span>
+                          <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
+                        </a>
+                        <p className="text-[11px] text-center" style={{ color: "#9E9387" }}>
+                          We write it in Spanish. They only need to say yes.
+                          <span className="block">Lo escribimos en español.</span>
+                        </p>
+                      </div>
+                    </BookingDialog>
+                  )}
                 </>
+
 
               ) : studioNumber ? (
                 <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
@@ -911,11 +935,13 @@ export default function StudioBookingPage() {
   }
 
 
-  // Name + at least one way to reach them (phone OR email). Phone is no longer required.
+  // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
 
   const hasContact = !!(phone.trim() || email.trim());
-  const canBook = !!(service && date && time && name.trim() && hasContact);
-  // A signed-in customer with a name and a way to be reached never sees the form again.
+  // The CTA only needs a service, a day and a time. Details are asked in a dialog.
+  const canRequest = !!(service && date && time);
+  const canBook = !!(canRequest && name.trim() && hasContact);
+  // A signed-in customer with a name and a way to be reached skips the dialog.
   const detailsKnown = !!(userId && name.trim() && hasContact);
 
   // What is still missing, in the order the page asks for it.
@@ -923,8 +949,6 @@ export default function StudioBookingPage() {
     !service && { key: "service", en: "a service", es: "un servicio" },
     !date && { key: "date", en: "a day", es: "un día" },
     !time && { key: "time", en: "a time", es: "una hora" },
-    !name.trim() && { key: "name", en: "your name", es: "tu nombre" },
-    !hasContact && { key: "contact", en: "an email or phone", es: "un email o teléfono" },
   ].filter(Boolean) as { key: string; en: string; es: string }[];
   const stepsLeft = missing.length;
   const stepsLeftLabels = {
@@ -937,12 +961,18 @@ export default function StudioBookingPage() {
     if (focus) window.setTimeout(() => focus.focus({ preventScroll: true }), 350);
   };
 
-  // The CTA is always clickable. If something is missing it takes you there.
+  // The CTA is always clickable. Missing choices scroll into view, otherwise
+  // we either submit straight away or open the details dialog.
   const handleCta = () => {
-    if (canBook) {
+    if (canRequest) {
       setCtaHint(null);
-      setHighlight(null);
-      handleBook();
+      if (detailsKnown) {
+        handleBook();
+      } else {
+        setDialogError(null);
+        setDetailsOpen(true);
+        window.setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 80);
+      }
       return;
     }
     const first = missing[0];
@@ -953,20 +983,26 @@ export default function StudioBookingPage() {
     } else if (first.key === "date") {
       setCtaHint({ en: "Pick a day for your massage", es: "Elige un día para tu masaje" });
       scrollTo(dateRef.current);
-    } else if (first.key === "time") {
+    } else {
       setCtaHint({ en: "Pick a time for your massage", es: "Elige una hora para tu masaje" });
       scrollTo(timeRef.current);
-    } else {
-      setContactExpanded(true);
-      setHighlight(first.key === "name" ? "name" : "contact");
-      setCtaHint({
-        en: "Add your name and an email or phone so the studio can reach you",
-        es: "Añade tu nombre y un email o teléfono para que el estudio pueda contactarte",
-      });
-      window.setTimeout(() => {
-        scrollTo(detailsRef.current, first.key === "name" ? nameRef.current : emailRef.current);
-      }, 40);
     }
+  };
+
+  // Confirm button inside the details dialog.
+  const confirmDetails = () => {
+    if (!name.trim()) {
+      setDialogError({ en: "Add your name so the studio knows who is coming", es: "Añade tu nombre para que el estudio sepa quién viene" });
+      nameRef.current?.focus();
+      return;
+    }
+    if (!hasContact) {
+      setDialogError({ en: "Add an email or phone so the studio can reach you", es: "Añade un email o teléfono para que el estudio pueda contactarte" });
+      emailRef.current?.focus();
+      return;
+    }
+    setDialogError(null);
+    handleBook();
   };
 
   const handleBook = async () => {
@@ -1075,6 +1111,7 @@ export default function StudioBookingPage() {
         next.set(key, (next.get(key) || 0) + 1);
         return next;
       });
+      setDetailsOpen(false);
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
       const msg = String(e?.message || "");
@@ -1471,68 +1508,37 @@ export default function StudioBookingPage() {
 
         {/* 4. Customize lives in the left column on desktop */}
 
-        {/* 5. Your details — collapsed one-liner when we already know who they are */}
-        {service && date && time && detailsKnown && !contactExpanded && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-2">
-            <p className="text-sm text-gray-700 truncate">
-              {[name, phone, email].filter(Boolean).join(" · ")}
-            </p>
-            <button
-              onClick={() => setContactExpanded(true)}
-              className="text-xs font-semibold text-[#C4622D] underline underline-offset-2 flex-shrink-0"
-            >
-              editar
-            </button>
-          </div>
-        )}
-        {service && date && time && (!detailsKnown || contactExpanded) && (
-          <div ref={detailsRef}>
-          <Section step="5" title="Your details" titleEs="Tus datos">
-            <div className="space-y-2">
-              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Your name"
-                aria-invalid={highlight === "name"}
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  highlight === "name" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
-                }`} />
-              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Email" type="email"
-                aria-invalid={highlight === "contact"}
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
-                }`} />
-              <input value={phone} onChange={e => { setPhone(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
-                }`} />
-              <p className="text-xs text-gray-400">Add at least one way to reach you: email or phone.</p>
-              <label className="flex items-start gap-2 pt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={marketingOptIn}
-                  onChange={e => setMarketingOptIn(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-[#C4622D]"
-                />
-                <span className="text-xs text-gray-600 leading-snug">
-                  Quiero recibir novedades y ofertas de Massage Club por email (opcional)
-                  <span className="block text-[11px] text-gray-400">Send me Massage Club news and offers</span>
-                </span>
-              </label>
-            </div>
-          </Section>
-          </div>
-        )}
-
+        {/* Live summary: each row fills in as it is chosen */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+          <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
+          <SummaryRow label="Day" labelEs="Día" value={date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null} placeholder="Pick a day" />
+          <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
+          <SummaryRow label="Price" labelEs="Precio" value={service && Number(total) > 0 ? `€${total}` : null} placeholder="Pick a service" />
+        </div>
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
-        {/* Sticky CTA — always clickable, tells you exactly what is missing */}
+        {/* Sticky CTA: active as soon as service, day and time are chosen */}
         <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
+          {detailsKnown && (
+            <p className="mb-2 text-xs text-center text-[#8a7460]">
+              Booking as {name}{email ? `, ${email}` : ""}.{" "}
+              <button
+                type="button"
+                onClick={() => setDetailsOpen(true)}
+                className="font-semibold text-[#C4622D] underline underline-offset-2"
+              >
+                Change
+              </button>
+            </p>
+          )}
           <button onClick={handleCta} disabled={submitting}
             className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
-              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
+              canRequest ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
             }`}>
             {submitting ? (
               <><Loader2 size={18} className="animate-spin" /> Booking…</>
-            ) : service && date && time ? (
+            ) : canRequest ? (
               <span className="flex flex-col items-center leading-tight">
                 <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
                 <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
@@ -1561,6 +1567,64 @@ export default function StudioBookingPage() {
             </p>
           )}
         </div>
+
+        {/* Details dialog, opened at the moment of booking */}
+        {detailsOpen && (
+          <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setDetailsOpen(false)}>
+            <div className="space-y-2">
+              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setDialogError(null); }} placeholder="Your name"
+                aria-invalid={!!dialogError && !name.trim()}
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  dialogError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                }`} />
+              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setDialogError(null); }} placeholder="Email" type="email"
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                }`} />
+              <input value={phone} onChange={e => { setPhone(e.target.value); setDialogError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                }`} />
+              <p className="text-xs text-gray-400">
+                Add at least one way to reach you: email or phone.
+                <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
+              </p>
+              <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={e => setMarketingOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#C4622D]"
+                />
+                <span className="text-xs text-gray-600 leading-snug">
+                  Send me Massage Club news and offers (optional)
+                  <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
+                </span>
+              </label>
+              {dialogError && (
+                <p role="alert" className="text-sm font-medium text-[#B03A2E]">
+                  {dialogError.en}
+                  <span className="block text-xs font-normal text-[#8a7460]">{dialogError.es}</span>
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={confirmDetails}
+                disabled={submitting}
+                className="mt-2 w-full h-14 rounded-2xl bg-[#C4622D] text-white font-semibold flex items-center justify-center"
+              >
+                {submitting ? (
+                  <span className="inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin" /> Booking…</span>
+                ) : (
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>Confirm request · €{total}</span>
+                    <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
+                  </span>
+                )}
+              </button>
+            </div>
+          </BookingDialog>
+        )}
         </div>
 
         <div className="min-[900px]:col-span-2 space-y-5">
@@ -1687,6 +1751,56 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Centered modal on desktop, bottom sheet on mobile. */
+function BookingDialog({
+  title, titleEs, onClose, children,
+}: { title: string; titleEs: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-display text-xl leading-tight text-gray-900">{title}</h2>
+            <p className="text-xs text-[#8a7460]">{titleEs}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-2xl leading-none text-gray-400 px-2">×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** One line of the live booking summary. */
+function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-xs text-gray-400 flex-shrink-0">
+        {label} <span className="text-[10px] text-gray-300">{labelEs}</span>
+      </span>
+      <span className={`text-sm text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
+        {value || placeholder}
+      </span>
     </div>
   );
 }
