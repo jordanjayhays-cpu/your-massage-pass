@@ -40,6 +40,7 @@ export const GUIDES: { path: string; label: string }[] = [
   { path: "/massage-in-english-madrid", label: "Massage in English, Madrid" },
   { path: "/guides/massage-prices-madrid-study", label: "What a massage costs in Madrid (study)" },
   { path: "/guides/massage-prices-madrid", label: "Massage prices in Madrid" },
+  { path: "/guides/your-first-massage-in-madrid", label: "Your first massage in Madrid" },
 
   { path: "/guides/deep-tissue-massage-madrid", label: "Deep tissue massage Madrid" },
   { path: "/madrid/chamberi", label: "Massage in Chamberí" },

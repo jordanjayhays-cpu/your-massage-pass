@@ -54,6 +54,7 @@ import MadridChueca from "./pages/guides/MadridChueca";
 import MadridCentro from "./pages/guides/MadridCentro";
 import MadridMalasana from "./pages/guides/MadridMalasana";
 import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
+import YourFirstMassageInMadrid from "./pages/guides/YourFirstMassageInMadrid";
 import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
 import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
