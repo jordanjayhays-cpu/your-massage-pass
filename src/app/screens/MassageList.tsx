@@ -13,6 +13,7 @@ import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
+import { BookAgainChip } from "../components/BookAgain";
 
 
 
