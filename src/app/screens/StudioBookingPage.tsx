@@ -1335,9 +1335,9 @@ export default function StudioBookingPage() {
           </p>
         </div>
 
-        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8 min-[900px]:items-start">
+        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_360px] min-[900px]:gap-8 min-[900px]:items-start">
           {/* LEFT: one step at a time */}
-          <div className="space-y-5">
+          <div className="space-y-5 min-w-0">
 
             {/* STEP 1: service */}
             {step === 1 && (
@@ -1420,17 +1420,17 @@ export default function StudioBookingPage() {
 
             {/* STEP 2: day and time */}
             {step === 2 && (
-              <div ref={dateRef}>
+              <div ref={dateRef} className="min-w-0">
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
                   {openDates.length === 0 ? (
                     <p className="text-sm min-[900px]:text-base text-gray-400">No availability set yet. Message the studio directly.</p>
                   ) : (
-                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                    <div className="relative flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
                           <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); scrollIntoViewGently(e.currentTarget); }}
-                            className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition ${
+                            className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition snap-start ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
                             <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
@@ -1439,6 +1439,7 @@ export default function StudioBookingPage() {
                           </button>
                         );
                       })}
+                      <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-[#FAF6F1] to-transparent" aria-hidden />
                     </div>
                   )}
                   {date && (
