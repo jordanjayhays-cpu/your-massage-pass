@@ -72,7 +72,7 @@ export default function ConsentBanner() {
     >
       <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-elegant p-4">
         <p className="text-sm text-foreground leading-snug">
-          We use cookies to measure how people find Massage Club. Nothing else.
+          We use cookies to see how people find and use Massage Club, so we can fix what does not work. Nothing is sold or shared.
         </p>
         <div className="mt-3 flex items-center gap-2">
           <button
