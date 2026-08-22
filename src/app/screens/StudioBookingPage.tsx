@@ -1912,16 +1912,15 @@ function StickyContinue({
 }: { ready: boolean; onNext: () => void; label?: string; labelEs?: string }) {
   if (!ready) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8">
-        <div className="hidden min-[900px]:block" />
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:flex min-[900px]:justify-center">
         <button
           type="button"
           onClick={onNext}
-          className="w-full h-13 min-h-[52px] rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          className="w-full min-[900px]:max-w-md min-[900px]:w-auto min-[900px]:px-16 h-13 min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
         >
-          <span>{label || "Continue"}</span>
-          <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+          <span className="min-[900px]:text-lg">{label || "Continue"}</span>
+          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{labelEs || "Continuar"}</span>
         </button>
       </div>
     </div>
