@@ -189,7 +189,10 @@
       "youAreHere": "You are here",
       "minutes": "min",
       "minutesShort": "m",
-      "studioCta": "Do you run a massage studio? Get listed free on Massage Club →"
+      "studioCta": "Do you run a massage studio? Get listed free on Massage Club →",
+      "quizCardTitle": "Not sure which massage to pick?",
+      "quizCardSub": "Answer 4 quick questions and we will tell you what to book, and what it is called in Spanish.",
+      "quizCardCta": "Take the quiz"
     },
     "shopDetail": {
       "not_found": "Not found.",
