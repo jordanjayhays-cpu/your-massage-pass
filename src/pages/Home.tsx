@@ -10,6 +10,7 @@ import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
