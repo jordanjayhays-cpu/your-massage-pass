@@ -102,7 +102,7 @@ export const NEIGHBOURHOODS: { path: string; label: string }[] = [
 ];
 
 function studioHref(s: NeighbourhoodStudio) {
-  return s.slug ? `/${s.slug}` : `/s/${s.id}`;
+  return studioPath(s);
 }
 
 export default function NeighbourhoodPage({
