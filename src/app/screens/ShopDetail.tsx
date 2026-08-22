@@ -23,6 +23,7 @@ import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { clarityEvent } from "@/lib/clarity";
 import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill } from "@/app/lib/whatsapp";
+import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack } from "@/lib/siteVisit";
 
 
