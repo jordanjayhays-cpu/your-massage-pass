@@ -783,9 +783,14 @@ export default function StudioBookingPage() {
                 <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
                   {profile.services.map(s => (
-                    <div key={s.id} className="flex items-center justify-between text-sm" style={{ color: "#5a4736" }}>
-                      <span>{s.name} · {s.duration} min</span>
-                      <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{s.price}</span>
+                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
+                      <span className="min-w-0">
+                        <span className="block">{servicePrimaryName(s)} · {s.duration} min</span>
+                        {serviceSecondaryName(s) && (
+                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                        )}
+                      </span>
+                      <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{s.price}</span>
                     </div>
                   ))}
                 </div>
