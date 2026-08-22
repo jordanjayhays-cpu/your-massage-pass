@@ -9,6 +9,7 @@ import { sendTrack } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import { BookAgainBanner } from "@/app/components/BookAgain";
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
@@ -54,8 +55,10 @@ const isoDate = (d: Date) =>
 export default function StudioBookingPage() {
   const { t, i18n } = useTranslation();
   const { studioId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
+  // "Book again" deep links ask for the wizard to open on Day and time.
+  const stepParam = searchParams.get("step");
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
   // How many bookings already exist for each `date__time` slot.
@@ -357,9 +360,17 @@ export default function StudioBookingPage() {
       if (prev.client_name) setName(prev.client_name);
       if (prev.client_phone) setPhone(prev.client_phone);
       if (prev.client_email) setEmail(prev.client_email);
-      setRebookMode(true);
+      if (stepParam === "2") {
+        // "Book again": everything stays editable, we just skip ahead one step.
+        setRebookMode(false);
+        setStep(2);
+        setMaxStep(m => Math.max(m, 2));
+        window.scrollTo({ top: 0, behavior: "auto" });
+      } else {
+        setRebookMode(true);
+      }
     })();
-  }, [rebookId, profile]);
+  }, [rebookId, stepParam, profile]);
 
 
 
@@ -1259,6 +1270,12 @@ export default function StudioBookingPage() {
                         <img key={i} src={url} alt="" className="h-24 w-36 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
                       ))}
                     </div>
+                  )}
+                  {!rebookId && (
+                    <BookAgainBanner
+                      partnerId={partner.id}
+                      onRebook={(bookingId) => setSearchParams({ rebook: bookingId, step: "2" })}
+                    />
                   )}
                   {rebookMode && service && (
                     <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 mb-3">

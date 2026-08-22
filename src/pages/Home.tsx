@@ -11,6 +11,7 @@ import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import { BookAgainCard } from "@/app/components/BookAgain";
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
@@ -114,8 +115,12 @@ export default function Home() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4">
+        {/* Returning customers: repeat their last booking in one tap */}
+        <BookAgainCard className="mt-4 max-w-md" />
+
         {/* Compact hero */}
         <section className="pt-6 md:pt-8 pb-5 md:pb-6">
+
           <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-primary">
             Massage Club · Madrid
           </p>

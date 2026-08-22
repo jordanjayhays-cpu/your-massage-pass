@@ -13,6 +13,7 @@ import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
+import { BookAgainChip } from "../components/BookAgain";
 
 
 
@@ -198,6 +199,7 @@ export default function MassageList() {
 
       {/* Map header banner — shared component, also used on /app/discovery */}
       <div className="px-5 pt-5">
+        <BookAgainChip className="mb-3" />
         <StudioMap
           shops={realShops}
           heightClass="h-[230px]"
