@@ -1404,8 +1404,11 @@ export default function StudioBookingPage() {
             )}
           </button>
         </div>
+        </div>
 
+        <div className="min-[900px]:col-span-2 space-y-5">
         {/* Contact footer */}
+
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
           {bookingWaNumber && (() => {
             const contactWa = studioWhatsappUrl(bookingWaNumber);
