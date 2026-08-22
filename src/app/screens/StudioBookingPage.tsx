@@ -1657,7 +1657,7 @@ export default function StudioBookingPage() {
             {step === 5 && (
               <div>
                 <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
                     <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
                     <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
                     <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
@@ -1670,11 +1670,11 @@ export default function StudioBookingPage() {
                     <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" />
                     <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
                   </div>
-                  {error && <p className="mt-3 text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+                  {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
                   <button
                     onClick={handleBook}
                     disabled={submitting || !canBook}
-                    className={`mt-4 w-full h-14 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
+                    className={`mt-4 w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
                       canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#9E8B78]"
                     }`}
                   >
@@ -1682,17 +1682,17 @@ export default function StudioBookingPage() {
                       <><Loader2 size={18} className="animate-spin" /> Booking</>
                     ) : (
                       <span className="flex flex-col items-center leading-tight">
-                        <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
-                        <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
+                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><CalendarDays size={18} /> Request booking · €{total}</span>
+                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar reserva</span>
                       </span>
                     )}
                   </button>
-                  <p className="mt-2 text-xs text-center text-[#8a7460]">
+                  <p className="mt-2 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
                     The studio confirms your time. You pay at the studio.
                     <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
                   </p>
                   <div className="pt-3">
-                    <button type="button" onClick={() => goStep(4)} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+                    <button type="button" onClick={() => goStep(4)} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
                       Back <span className="font-normal">/ Atrás</span>
                     </button>
                   </div>
