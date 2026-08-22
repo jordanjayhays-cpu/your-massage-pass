@@ -89,20 +89,31 @@ export default function StudioMap({
     return () => { cancelled = true; };
   }, [shops]);
 
-  const requestUserLocation = () => {
+  const requestUserLocation = (fromTap = false) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
+      if (fromTap) setGeoError(true);
       onGeoStateChange?.("fallback");
       return;
+    }
+    if (fromTap) {
+      setGeoError(false);
+      setLocating(true);
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocating(false);
+        setGeoError(false);
         setUserLoc(loc);
         onUserLocation?.(loc);
         onGeoStateChange?.("ready");
       },
-      () => onGeoStateChange?.("fallback"),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      () => {
+        setLocating(false);
+        if (fromTap) setGeoError(true);
+        onGeoStateChange?.("fallback");
+      },
+      { enableHighAccuracy: true, timeout: fromTap ? 15000 : 8000, maximumAge: fromTap ? 0 : 60000 }
     );
   };
 
