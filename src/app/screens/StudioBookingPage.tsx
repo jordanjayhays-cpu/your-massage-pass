@@ -1375,12 +1375,12 @@ export default function StudioBookingPage() {
                     <div className="space-y-2">
                       <Link
                         to={quizHref}
-                        className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
+                        className="w-full flex items-center gap-2 p-4 min-[900px]:p-5 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
                       >
                         <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
                         <span className="min-w-0 text-left">
-                          <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
-                          <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
+                          <span className="block text-sm min-[900px]:text-base font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
+                          <span className="block text-xs min-[900px]:text-sm text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
                         </span>
                       </Link>
                       {profile.services.map(s => (
