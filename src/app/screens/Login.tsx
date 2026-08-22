@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
+import { useStudioCount } from "@/lib/studioCount";
 
 const USER_KEY = "mm-user";
 
@@ -25,6 +26,7 @@ const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital
 
 export default function Login() {
   const { t } = useTranslation(undefined, { keyPrefix: "app.login" });
+  const studioCount = useStudioCount();
   const navigate = useNavigate();
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
   const [name, setName] = useState(getStoredUser()?.name ?? "");
@@ -198,14 +200,14 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
             <div className="flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {t("hero.studiosCount")}</span>
+              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {t("hero.studiosCount", { studios: studioCount })}</span>
             </div>
             <span className="text-[10px] uppercase tracking-[0.2em] bg-white/15 backdrop-blur px-2 py-1 rounded-full">{t("hero.payAtStudio")}</span>
           </div>
         </div>
 
         <p className="text-[15px] text-[#7A7068] mt-5 leading-relaxed">
-          {t("hero.description")}
+          {t("hero.description", { studios: studioCount })}
         </p>
       </div>
 

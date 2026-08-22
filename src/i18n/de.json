@@ -632,9 +632,9 @@
         "title2": "Massage",
         "title3": "in Madrid",
         "imageAlt": "Ruhiges Massage-Studio in Madrid",
-        "studiosCount": "Über 60 Studios in ganz Madrid",
+        "studiosCount": "Über {{studios}} Studios in ganz Madrid",
         "payAtStudio": "Zahlung vor Ort im Studio",
-        "description": "Über 60 Studios mit echten Preisen, auf Deutsch. Wenn ein Studio nur WhatsApp nutzt, schreiben wir deine Nachricht für dich auf Spanisch.",
+        "description": "Über {{studios}} Studios mit echten Preisen, auf Deutsch. Wenn ein Studio nur WhatsApp nutzt, schreiben wir deine Nachricht für dich auf Spanisch.",
         "ctaNote": "Kein Account zum Stöbern nötig. Keine Buchungsgebühr. Du zahlst direkt im Studio."
       },
       "newInMadrid": {
@@ -672,7 +672,7 @@
       "studioCard": {
         "label": "Für Studios",
         "title": "Besitzen Sie ein Studio? Sie sind wahrscheinlich bereits gelistet.",
-        "subtitle": "Wir haben Seiten für über 60 Studios in Madrid erstellt. Beanspruchen Sie Ihr Profil, um Fotos, Dienstleistungen und Öffnungszeiten zu verwalten und Buchungen direkt entgegenzunehmen. Kostenlos, ohne Exklusivität.",
+        "subtitle": "Wir haben Seiten für über 50 Studios in Madrid erstellt. Beanspruchen Sie Ihr Profil, um Fotos, Dienstleistungen und Öffnungszeiten zu verwalten und Buchungen direkt entgegenzunehmen. Kostenlos, ohne Exklusivität.",
         "button": "Studio beanspruchen"
       },
       "saveDetails": {
