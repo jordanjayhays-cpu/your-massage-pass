@@ -80,12 +80,10 @@ export default function StudioBookingPage() {
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
-  // Booking CTA guidance: which field is missing, and the hint under the button.
-  const [highlight, setHighlight] = useState<"name" | "contact" | null>(null);
+  // Booking CTA guidance: which choice is missing, and the hint under the button.
   const [ctaHint, setCtaHint] = useState<{ en: string; es: string } | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
-  const detailsRef = useRef<HTMLDivElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
   const dateRef = useRef<HTMLDivElement | null>(null);
   const timeRef = useRef<HTMLDivElement | null>(null);
