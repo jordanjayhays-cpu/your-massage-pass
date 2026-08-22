@@ -1198,7 +1198,13 @@ export default function StudioBookingPage() {
         return next;
       });
       
+      // Fire and forget: passwordless account for guests who opted in.
+      if (!userId && createAccount && email.trim()) {
+        requestAccountSignup({ email: email.trim(), name: name.trim().split(" ")[0], lang: siteLang });
+      }
+
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
+
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (/fully booked/i.test(msg)) {
