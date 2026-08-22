@@ -1405,7 +1405,7 @@ export default function StudioBookingPage() {
                           </div>
                         </button>
                       ))}
-                      {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
+                      {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
                     </div>
                   )}
                 </Section>
