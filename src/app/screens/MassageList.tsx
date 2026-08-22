@@ -1,4 +1,5 @@
 import { studioImageFallback } from "@/lib/studioImages";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
