@@ -211,8 +211,18 @@ export default function Quiz() {
               </div>
             )}
 
+            {/* Mini discovery: real map with the visitor and the matching studios */}
             {geoState === "ready" && nearby.length > 0 && (
               <div className="space-y-3">
+                {userLoc && (
+                  <StudioMap
+                    shops={mapShops}
+                    heightClass="h-[200px]"
+                    showSelectedCard={false}
+                    onSelect={(shop) => navigate(`/s/${(shop as any).partner_id || shop.id}`)}
+                  />
+                )}
+
                 <a
                   href={studioHref(nearby[0])}
                   className="block rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 hover:opacity-95 transition"
@@ -262,9 +272,44 @@ export default function Quiz() {
               </div>
             )}
 
+            {/* Location denied or unavailable: real studios, no distances invented */}
+            {geoState === "unavailable" && fallbackList.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-display text-lg font-semibold">Studios offering {winner.name}</h3>
+                {fallbackList.map((s) => (
+                  <a
+                    key={s.id}
+                    href={studioHref(s)}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary transition"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{s.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {servicePrimaryName(s.service)}
+                        {s.service.duration ? ` · ${s.service.duration} min` : ""}
+                        {s.service.price != null ? ` · €${s.service.price}` : ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </a>
+                ))}
+              </div>
+            )}
 
+            {/* Always offer the way back to the studio they came from */}
+            {origin && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/s/${origin.slug}`)}
+                className="w-full h-auto min-h-11 py-2 whitespace-normal"
+              >
+                {originOffers
+                  ? `Back to ${origin.name}, they offer ${winner.name} too`
+                  : `Back to ${origin.name}`}
+              </Button>
+            )}
 
-            {geoState !== "ready" && matchingStudios.length > 0 && (
+            {geoState === "idle" && matchingStudios.length > 0 && (
               <div>
                 <h3 className="font-display text-lg font-semibold mb-3">Try it in Madrid</h3>
                 <div className="space-y-2">
