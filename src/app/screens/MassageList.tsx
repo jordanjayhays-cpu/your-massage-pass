@@ -173,10 +173,11 @@ export default function MassageList() {
       <div className="px-5 pt-3">
         <button
           onClick={() => navigate("/app/discovery/quiz")}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition"
+          aria-label={t("app.discovery.quizCardAria")}
+          className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-full border border-primary/60 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
-          {t("app.massageList.quizPrompt")}
-          <span className="text-primary">→</span>
+          <Sparkles className="h-4 w-4" />
+          {t("app.massageList.quizButton")}
         </button>
       </div>
 
