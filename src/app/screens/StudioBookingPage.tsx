@@ -1484,3 +1484,69 @@ function Section({ step, title, titleEs, children }: { step: string; title: stri
     </div>
   );
 }
+
+/** Horizontal day strip used by the WhatsApp handoff form (ISO value in/out). */
+function DayStrip({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const days: Date[] = [];
+  const today = new Date();
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push(d);
+  }
+  return (
+    <div role="radiogroup" aria-label={label} className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      {days.map(d => {
+        const iso = isoDate(d);
+        const active = value === iso;
+        return (
+          <button
+            key={iso}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(active ? "" : iso)}
+            className="flex-shrink-0 w-16 py-2 rounded-2xl border-2 text-center motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            style={{
+              borderColor: active ? "#C4622D" : "#E6DCCF",
+              background: active ? "#C4622D" : "#ffffff",
+              color: active ? "#ffffff" : "#5a4736",
+            }}
+          >
+            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
+            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Rounded time pills for the handoff form (fixed options, real availability unknown). */
+function TimePills({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+      {HANDOFF_TIMES.map(t => {
+        const active = value === t;
+        return (
+          <button
+            key={t}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(active ? "" : t)}
+            className="px-3.5 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            style={{
+              borderColor: active ? "#C4622D" : "#E6DCCF",
+              background: active ? "#C4622D" : "#ffffff",
+              color: active ? "#ffffff" : "#5a4736",
+            }}
+          >
+            {t}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
