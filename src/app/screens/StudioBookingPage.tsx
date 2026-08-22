@@ -1423,19 +1423,19 @@ export default function StudioBookingPage() {
               <div ref={dateRef}>
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
                   {openDates.length === 0 ? (
-                    <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
+                    <p className="text-sm min-[900px]:text-base text-gray-400">No availability set yet. Message the studio directly.</p>
                   ) : (
                     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
                           <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); scrollIntoViewGently(e.currentTarget); }}
-                            className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
+                            className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
-                            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-                            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-                            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+                            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                            <div className="text-lg min-[900px]:text-2xl font-bold leading-none mt-0.5">{d.getDate()}</div>
+                            <div className="text-[10px] min-[900px]:text-xs opacity-70">{MONTHS[d.getMonth()]}</div>
                           </button>
                         );
                       })}
