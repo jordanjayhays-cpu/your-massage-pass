@@ -33,6 +33,10 @@ export default function ShopDetail() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
 
+  useEffect(() => { clarityEvent("studio_view"); }, [id]);
+
+
+
 
   useEffect(() => {
     if (!id) return;
