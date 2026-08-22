@@ -428,8 +428,11 @@ export default function StudioBookingPage() {
             </p>
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
-                {service?.name} · {service?.duration} min · {total}€
+                {servicePrimaryName(service)} · {service?.duration} min · {total}€
               </div>
+              {serviceSecondaryName(service) && (
+                <div className="text-xs mb-1" style={{ color: "#8a7460" }}>{serviceSecondaryName(service)}</div>
+              )}
               <div className="text-base font-bold mb-1" style={{ color: "#B85C38" }}>
                 {prettyDate} · {time}
               </div>
