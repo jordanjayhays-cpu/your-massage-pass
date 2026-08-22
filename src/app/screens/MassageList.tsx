@@ -259,10 +259,17 @@ export default function MassageList() {
                           <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
                             {m.studio}
                           </h3>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Star className="h-4 w-4 fill-accent text-accent" />
-                            <span className="text-sm font-semibold text-foreground">{m.rating}</span>
-                          </div>
+                          {m.rating != null && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Star className="h-4 w-4 fill-accent text-accent" />
+                              <span className="text-sm font-semibold text-foreground">
+                                {Number(m.rating).toFixed(1)}
+                                {m.reviews != null && (
+                                  <span className="font-normal text-muted-foreground"> ({m.reviews})</span>
+                                )}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
@@ -270,13 +277,26 @@ export default function MassageList() {
                           <span className="truncate">{"district" in m && m.district ? m.district : t("app.massageList.madrid")}</span>
                         </div>
 
-                        <p className="text-xs text-foreground/80 mt-2 truncate">
-                          <span className="font-medium">{m.name}</span>
-                          <span className="text-muted-foreground"> · {m.duration} {t("app.massageList.minutes")}</span>
-                          {"price" in m && (m as any).price != null && (
-                            <span className="font-semibold text-primary"> · €{(m as any).price}</span>
-                          )}
-                        </p>
+                        {(() => {
+                          const svc = (m as any).partner_services?.[0];
+                          const primary = svc ? servicePrimaryName(svc, "") : "";
+                          const secondary = svc ? serviceSecondaryName(svc) : "";
+                          const price = svc?.price ?? (m as any).price;
+                          if (!primary) return null;
+                          return (
+                            <p className="text-xs text-foreground/80 mt-2 truncate">
+                              <span className="font-medium">{primary}</span>
+                              {secondary && <span className="text-muted-foreground"> · {secondary}</span>}
+                              {(svc?.duration ?? m.duration) != null && (
+                                <span className="text-muted-foreground"> · {svc?.duration ?? m.duration} {t("app.massageList.minutes")}</span>
+                              )}
+                              {price != null && (
+                                <span className="font-semibold text-primary"> · €{price}</span>
+                              )}
+                            </p>
+                          );
+                        })()}
+
 
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                           <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
