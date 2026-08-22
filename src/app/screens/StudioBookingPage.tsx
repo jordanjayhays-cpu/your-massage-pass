@@ -1654,6 +1654,21 @@ export default function StudioBookingPage() {
                     slug: partner.slug || partner.id,
                     meta: { filled: !!(service || date || time), service: !!service, date: !!date },
                   });
+                  logWhatsappRequest({
+                    partner_id: partner.id,
+                    slug: partner.slug || null,
+                    studio_name: partner.business_name,
+                    service_name: service ? servicePrimaryName(service) : null,
+                    price: service && total > 0 ? total : null,
+                    day1: prettyDay,
+                    time1: time,
+                    first_name: name.trim() || null,
+                    contact_email: email.trim() || null,
+                    languages: spokenLangs.join(", "),
+                    user_id: userId,
+                    wa_number: bookingWaNumber,
+                    message_text: bookingWaMsg,
+                  });
                 }}
                 className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"
               >
