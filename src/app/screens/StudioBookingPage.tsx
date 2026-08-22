@@ -496,6 +496,25 @@ export default function StudioBookingPage() {
       const loc = encodeURIComponent(partner.address || partner.business_name || "");
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
     })();
+    const logSuccessWa = (message: string) => {
+      logWhatsappRequest({
+        partner_id: partner.id,
+        slug: partner.slug || partner.id,
+        studio_name: partner.business_name,
+        service_name: service ? serviceNameForStudio(service) : null,
+        price: service?.price ?? null,
+        day1: date ? isoDate(date) : null,
+        time1: time || null,
+        day2: null,
+        time2: null,
+        first_name: name.trim() || null,
+        contact_email: email.trim() || null,
+        languages: conversationPref || null,
+        user_id: userId,
+        wa_number: waNumber || null,
+        message_text: message,
+      });
+    };
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#FAF6F1" }}>
         <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
