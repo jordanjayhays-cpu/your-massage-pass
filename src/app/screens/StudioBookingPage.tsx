@@ -1185,10 +1185,34 @@ export default function StudioBookingPage() {
           </div>
         </Section>
         )}
+        </div>
 
-
+        {/* RIGHT COLUMN: booking form + CTA, sticky on desktop */}
+        <div className="space-y-5 min-[900px]:sticky min-[900px]:top-4">
+        {/* Ask on WhatsApp: always reachable, prefilled with whatever is picked */}
+        {bookingWaHref && (
+          <a
+            href={bookingWaHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              clarityEvent("whatsapp_click");
+              sendTrack({
+                event: "whatsapp_click",
+                path: window.location.pathname,
+                slug: partner.slug || partner.id,
+                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
+              });
+            }}
+            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          >
+            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
+            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
+          </a>
+        )}
 
         {/* 2. Date */}
+
         {service && (
           <Section step="2" title="Pick a day" titleEs="Elige un día">
             {openDates.length === 0 ? (
