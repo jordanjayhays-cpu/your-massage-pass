@@ -1203,21 +1203,17 @@ export default function StudioBookingPage() {
       return null;
     }
   };
-  const bookingWaHref = bookingWaNumber
-    ? studioWhatsappUrl(
-        bookingWaNumber,
-        whatsappPrefill({
-          studio: partner.business_name,
-          // SPANISH name — the studio reads its own menu.
-          service: service ? serviceNameForStudio(service) : null,
-          duration: (service as any)?.duration ?? null,
-          price: (service as any)?.price ?? null,
-          date: esLongDate(date),
-          time: time || null,
-          name: name || null,
-        }),
-      )
-    : null;
+  const bookingWaMsg = whatsappPrefill({
+    studio: partner.business_name,
+    // SPANISH name — the studio reads its own menu.
+    service: service ? serviceNameForStudio(service) : null,
+    duration: (service as any)?.duration ?? null,
+    price: (service as any)?.price ?? null,
+    date: esLongDate(date),
+    time: time || null,
+    name: name || null,
+  });
+  const bookingWaHref = bookingWaNumber ? studioWhatsappUrl(bookingWaNumber, bookingWaMsg) : null;
 
   return (
     <div className="min-h-screen bg-[#FAF6F1] relative">
