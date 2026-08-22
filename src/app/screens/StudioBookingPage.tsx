@@ -1549,18 +1549,18 @@ export default function StudioBookingPage() {
 
                   {addons.length > 0 && (
                     <>
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons <span className="font-normal text-gray-400">/ Extras</span></p>
+                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Add-ons <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Extras</span></p>
                       <div className="space-y-2 mb-4">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
                           return (
                             <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition min-[900px]:p-4 ${
                                 on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                               }`}>
                               <div>
-                                <p className="text-sm font-medium text-gray-900">{a.name}</p>
-                                <p className="text-xs text-gray-400">+€{a.price}</p>
+                                <p className="text-sm font-medium text-gray-900 min-[900px]:text-base">{a.name}</p>
+                                <p className="text-xs text-gray-400 min-[900px]:text-sm">+€{a.price}</p>
                               </div>
                               <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
                                 {on && <Check size={12} className="text-white" />}
@@ -1572,10 +1572,10 @@ export default function StudioBookingPage() {
                     </>
                   )}
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist <span className="font-normal text-gray-400">/ Notas</span></p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Notes for your therapist <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Notas</span></p>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)}
                     placeholder="Anything we should know? Injuries, allergies, preferences."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24 min-[900px]:text-base min-[900px]:h-28" />
                 </Section>
                 <WizardNav onBack={() => goStep(2)} onNext={() => goStep(4)} skip={() => goStep(4)} />
               </div>
