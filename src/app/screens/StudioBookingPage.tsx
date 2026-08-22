@@ -1755,41 +1755,104 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
   );
 }
 
-/** Centered modal on desktop, bottom sheet on mobile. */
-function BookingDialog({
-  title, titleEs, onClose, children,
-}: { title: string; titleEs: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
+export type StepDef = { label: string; labelEs: string };
 
+/** Always visible wizard header. Completed steps are clickable, upcoming ones muted. */
+function Stepper({
+  steps, current, maxReached, onGo,
+}: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto"
+    <nav aria-label="Booking steps" className="flex items-start gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+      {steps.map((s, i) => {
+        const n = i + 1;
+        const isCurrent = n === current;
+        const isDone = n < current || (n <= maxReached && n !== current);
+        const reachable = n <= maxReached;
+        return (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => reachable && onGo(n)}
+            disabled={!reachable}
+            aria-current={isCurrent ? "step" : undefined}
+            className={`flex-1 min-w-[86px] text-center px-1.5 py-2 rounded-xl motion-safe:transition ${
+              isCurrent ? "bg-[#C4622D]/10" : ""
+            } ${reachable && !isCurrent ? "hover:bg-[#F1E7DB]" : ""}`}
+          >
+            <span
+              className={`mx-auto mb-1 h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                isCurrent
+                  ? "bg-[#C4622D] text-white"
+                  : isDone
+                    ? "bg-[#C4622D]/15 text-[#C4622D]"
+                    : "bg-[#E7D9CB] text-[#9E8B78]"
+              }`}
+            >
+              {isDone ? <Check size={13} /> : n}
+            </span>
+            <span
+              className={`block text-[11px] font-semibold leading-tight ${
+                isCurrent ? "text-[#C4622D]" : isDone ? "text-gray-700" : "text-[#A6968A]"
+              }`}
+            >
+              {s.label}
+            </span>
+            <span className="block text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Back link plus the primary Continue button used at the bottom of each step. */
+function WizardNav({
+  onBack, onNext, disabled, label, labelEs, hint, hintEs, skip,
+}: {
+  onBack?: () => void;
+  onNext: () => void;
+  disabled?: boolean;
+  label?: string;
+  labelEs?: string;
+  hint?: string;
+  hintEs?: string;
+  skip?: () => void;
+}) {
+  return (
+    <div className="pt-4 space-y-2">
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={disabled}
+        className={`w-full h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+          disabled ? "bg-[#E7D9CB] text-[#9E8B78]" : "bg-[#C4622D] text-white shadow-lg"
+        }`}
       >
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h2 className="font-display text-xl leading-tight text-gray-900">{title}</h2>
-            <p className="text-xs text-[#8a7460]">{titleEs}</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-2xl leading-none text-gray-400 px-2">×</button>
-        </div>
-        {children}
+        <span>{label || "Continue"}</span>
+        <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+      </button>
+      {disabled && hint && (
+        <p className="text-xs text-center text-[#8a7460]">
+          {hint}
+          {hintEs && <span className="block">{hintEs}</span>}
+        </p>
+      )}
+      <div className="flex items-center justify-between">
+        {onBack ? (
+          <button type="button" onClick={onBack} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+            Back <span className="font-normal">/ Atrás</span>
+          </button>
+        ) : <span />}
+        {skip && (
+          <button type="button" onClick={skip} className="text-sm font-semibold text-[#C4622D] underline underline-offset-2">
+            Skip this step <span className="font-normal">/ Saltar</span>
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
 
 /** One line of the live booking summary. */
 function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
