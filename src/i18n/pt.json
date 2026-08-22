@@ -16,9 +16,7 @@
       "noCommitment": "Sem necessidade de conta",
       "cancel": "Exploração gratuita",
       "launch": "Preços reais dos estúdios"
-    },
-    "studiosCount": "Mais de {{studios}} estúdios em Madrid",
-    "description": "Mais de {{studios}} estúdios com preços reais, em português. Se um estúdio apenas aceitar WhatsApp, escrevemos a sua mensagem em espanhol por si."
+    }
   },
   "stats": {
     "studios": "Estúdios em Madrid",

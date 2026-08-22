@@ -16,9 +16,7 @@
       "noCommitment": "Kein Konto erforderlich",
       "cancel": "Kostenlos stöbern",
       "launch": "Echte Studiopreise"
-    },
-    "studiosCount": "Über {{studios}} Studios in ganz Madrid",
-    "description": "Über {{studios}} Studios mit echten Preisen, auf Deutsch. Wenn ein Studio nur WhatsApp nutzt, schreiben wir deine Nachricht für dich auf Spanisch."
+    }
   },
   "stats": {
     "studios": "Studios in Madrid",

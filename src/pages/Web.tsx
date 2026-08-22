@@ -34,7 +34,7 @@ export default function Web() {
     })();
     meta.setAttribute(
       "content",
-      "60+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio."
+      "50+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio."
     );
   }, []);
 
@@ -110,7 +110,7 @@ export default function Web() {
               Your first massage in Madrid
             </h1>
             <p className="text-lg text-[#7A7068] max-w-xl mb-8">
-              60+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.
+              50+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.
             </p>
             <div className="flex flex-wrap gap-3 mb-4">
               <Link
@@ -137,7 +137,7 @@ export default function Web() {
                 <span className="font-medium">4.8</span>
               </div>
               <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
-              <span>60+ studios across Madrid</span>
+              <span>50+ studios across Madrid</span>
               <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
               <span>Pay at studio</span>
             </div>
@@ -185,7 +185,7 @@ export default function Web() {
             </h2>
           </div>
           <Link to="/studios" className="text-sm text-[#99420d] hover:underline hidden md:inline">
-            See all 60+ →
+            See all 50+ →
           </Link>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
@@ -278,7 +278,7 @@ export default function Web() {
               Own a studio? You're probably already listed.
             </h2>
             <p className="text-white/85 text-lg mb-8 max-w-md">
-              We built pages for 60+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.
+              We built pages for 50+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link

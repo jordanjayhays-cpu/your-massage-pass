@@ -16,9 +16,7 @@
       "noCommitment": "Nessun account necessario",
       "cancel": "Consultazione gratuita",
       "launch": "Prezzi reali degli studio"
-    },
-    "studiosCount": "Oltre {{studios}} centri in tutta Madrid",
-    "description": "Oltre {{studios}} centri con prezzi reali, in italiano. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te."
+    }
   },
   "stats": {
     "studios": "Studio a Madrid",

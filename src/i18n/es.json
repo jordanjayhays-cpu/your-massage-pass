@@ -16,9 +16,7 @@
       "noCommitment": "Sin registro",
       "cancel": "Explorar es gratis",
       "launch": "Precios reales"
-    },
-    "studiosCount": "{{studios}}+ centros en Madrid",
-    "description": "Más de {{studios}} centros de Madrid con precios reales y publicados: compara y elige sin llamar. Sin comisión de reserva — pagas en el centro."
+    }
   },
   "stats": {
     "studios": "Estudios en Madrid",

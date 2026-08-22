@@ -16,9 +16,7 @@
       "noCommitment": "No account needed",
       "cancel": "Free to browse",
       "launch": "Real studio prices"
-    },
-    "studiosCount": "{{studios}}+ studios across Madrid",
-    "description": "{{studios}}+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you."
+    }
   },
   "stats": {
     "studios": "Madrid studios",
