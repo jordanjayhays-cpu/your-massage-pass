@@ -98,6 +98,7 @@ const App = () => (
           <Route path="/madrid/centro" element={<MadridCentro />} />
           <Route path="/madrid/malasana" element={<MadridMalasana />} />
           <Route path="/guides/is-massage-good-for-you" element={<IsMassageGoodForYou />} />
+          <Route path="/guides/your-first-massage-in-madrid" element={<YourFirstMassageInMadrid />} />
 
           {/* Branded forwarder for the "confirm your opening hours" email link.
               Preserves query string and hash, then hops to the Supabase edge function. */}
