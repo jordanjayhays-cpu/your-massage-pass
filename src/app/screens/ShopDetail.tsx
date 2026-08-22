@@ -207,12 +207,16 @@ export default function ShopDetail() {
               {district ? t("district_label", { district }) : t("madrid")}
             </span>
             <div className="text-right">
-              <div className="flex items-center gap-1 justify-end">
-                <Star className="h-4 w-4 fill-accent text-accent" />
-                <span className="font-display text-base font-semibold text-foreground">{m.rating}</span>
-              </div>
-              {m.reviews != null && (
-                <p className="text-[11px] text-muted-foreground mt-0.5">{t("reviews_count", { count: m.reviews })}</p>
+              {m.rating != null && (
+                <>
+                  <div className="flex items-center gap-1 justify-end">
+                    <Star className="h-4 w-4 fill-accent text-accent" />
+                    <span className="font-display text-base font-semibold text-foreground">{Number(m.rating).toFixed(1)}</span>
+                  </div>
+                  {m.reviews != null && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("reviews_count", { count: m.reviews })}</p>
+                  )}
+                </>
               )}
               <a
                 href={googleReviewUrl(m.studio, address)}
