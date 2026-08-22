@@ -1336,5 +1336,8 @@
       "hoursConfirmTitle": "确认您的营业时间",
       "hoursConfirmSubtitle": "我们已根据您的公开日程自动填写。请调整任何不准确的内容。"
     }
+  },
+  "thanks_toast": {
+    "message": "Thanks, noted!"
   }
 }

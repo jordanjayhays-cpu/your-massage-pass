@@ -1336,5 +1336,8 @@
       "hoursConfirmTitle": "Confirme o seu horário",
       "hoursConfirmSubtitle": "Preenchemos os dados com base no seu horário público. Ajuste o que for necessário."
     }
+  },
+  "thanks_toast": {
+    "message": "Thanks, noted!"
   }
 }

@@ -1336,5 +1336,8 @@
       "hoursConfirmTitle": "Bestätige deine Öffnungszeiten",
       "hoursConfirmSubtitle": "Wir haben diese anhand deiner öffentlichen Angaben vorausgefüllt. Bitte korrigiere eventuelle Fehler."
     }
+  },
+  "thanks_toast": {
+    "message": "Thanks, noted!"
   }
 }
