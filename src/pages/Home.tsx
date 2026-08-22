@@ -361,7 +361,7 @@ function StudioCard({ shop, href, freeTodayIds }: { shop: ShopWithSlug; href: st
         )}
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <StudioStatusBadge variant={studioBadgeVariant(shop.status, shop.partner_id, freeTodayIds)} />
+          <StudioStatusBadge variant={studioBadgeVariant(shop.status, shop.partner_id, freeTodayIds, shop)} />
         </div>
 
         <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between">

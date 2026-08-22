@@ -304,7 +304,7 @@ export default function MassageList() {
                             {t("app.massageList.payAtStudio")}
                             </span>
                           <StudioStatusBadge
-                            variant={studioBadgeVariant((m as any).status, (m as any).partner_id, freeTodayIds)}
+                            variant={studioBadgeVariant((m as any).status, (m as any).partner_id, freeTodayIds, m as any)}
                           />
                         </div>
                       </div>
