@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, ChevronRight, RefreshCw } from "lucide-react";
+import { ArrowLeft, Sparkles, ChevronRight, RefreshCw, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUIZ, MASSAGE_TYPES, MassageType, MASSAGES } from "../data";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { clarityEvent } from "@/lib/clarity";
+import { findNearestStudios, distanceLabel, type NearbyStudio } from "@/lib/nearestStudios";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 
 export default function Quiz() {
   const navigate = useNavigate();
@@ -18,6 +20,10 @@ export default function Quiz() {
     lomi: 0,
   });
   const [done, setDone] = useState(false);
+  // Nearest-studio recommendation (only after the visitor allows location).
+  const [geoState, setGeoState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
+  const [nearby, setNearby] = useState<NearbyStudio[]>([]);
+
 
   useEffect(() => {
     clarityEvent("quiz_start");
