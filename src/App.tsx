@@ -71,6 +71,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <RouteTracker />
+        <ConsentBanner />
+
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
           <Route path="/review" element={<Review />} />
