@@ -66,3 +66,39 @@ export function BookAgainChip({ className = "" }: { className?: string }) {
     </Link>
   );
 }
+
+/**
+ * Slim banner for the studio page of a studio this customer already booked.
+ * `onRebook` receives the previous booking id so the page can preselect the
+ * same service and jump straight to "Day and time".
+ */
+export function BookAgainBanner({
+  partnerId,
+  onRebook,
+}: {
+  partnerId: string;
+  onRebook: (bookingId: string) => void;
+}) {
+  const { lastBooking } = useLastBooking(partnerId);
+  if (!lastBooking) return null;
+
+  return (
+    <div className="mb-3 rounded-2xl border border-[#C4622D]/40 bg-[#C4622D]/5 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-900">
+          Welcome back{lastBooking.firstName ? `, ${lastBooking.firstName}` : ""}. Book your {lastBooking.serviceName} again?
+        </p>
+        <p className="text-xs text-[#8a7460]">
+          Hola de nuevo{lastBooking.firstName ? `, ${lastBooking.firstName}` : ""}. ¿Reservas otra vez tu {lastBooking.serviceName}?
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onRebook(lastBooking.id)}
+        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#C4622D] text-white text-sm font-semibold shadow-sm motion-safe:transition hover:opacity-90"
+      >
+        <RotateCcw className="h-3.5 w-3.5" /> Book again
+      </button>
+    </div>
+  );
+}
