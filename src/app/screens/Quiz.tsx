@@ -46,12 +46,39 @@ export default function Quiz() {
     setScores({ swedish: 0, deep: 0, stone: 0, sports: 0, thai: 0, lomi: 0 });
     setStep(0);
     setDone(false);
+    setGeoState("idle");
+    setNearby([]);
   };
 
   const winnerType = (Object.entries(scores) as [MassageType, number][])
     .sort((a, b) => b[1] - a[1])[0]?.[0];
   const winner = MASSAGE_TYPES.find((t) => t.id === winnerType);
   const matchingStudios = MASSAGES.filter((m) => m.type === winnerType);
+
+  // Never blocks the result: on denial or error we simply keep the plain list.
+  const askForLocation = () => {
+    if (!winnerType || typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoState("unavailable");
+      return;
+    }
+    setGeoState("loading");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const list = await findNearestStudios(winnerType, pos.coords.latitude, pos.coords.longitude, 3);
+        if (list.length === 0) {
+          setGeoState("unavailable");
+          return;
+        }
+        setNearby(list);
+        setGeoState("ready");
+      },
+      () => setGeoState("unavailable"),
+      { timeout: 8000, maximumAge: 300000 },
+    );
+  };
+
+  const studioHref = (s: NearbyStudio) => `/s/${s.slug || s.id}`;
+
 
   if (done && winner) {
     return (
