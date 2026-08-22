@@ -13,6 +13,7 @@ import { requestAccountSignup } from "@/lib/accountSignup";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
+import { tagLabel } from "@/lib/tagLabel";
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
@@ -1724,7 +1725,11 @@ export default function StudioBookingPage() {
                     message_text: bookingWaMsg,
                   });
                 }}
-                className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"
+                className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] px-6 py-2 rounded-2xl font-semibold motion-safe:transition ${
+                  partner.status === "active"
+                    ? "border border-[#C4622D] text-[#C4622D] bg-white hover:bg-[#FAF6F1]"
+                    : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
+                }`}
               >
                 <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
                 <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
@@ -1732,10 +1737,10 @@ export default function StudioBookingPage() {
             )}
             <div className="flex flex-wrap gap-2">
               {(partner.languages || []).slice(0, 4).map((l: string) => (
-                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
+                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(l)}</span>
               ))}
               {(partner.amenities || []).slice(0, 4).map((a: string) => (
-                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
+                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(a)}</span>
               ))}
             </div>
           </aside>
@@ -1875,8 +1880,21 @@ export type StepDef = { label: string; labelEs: string };
 function Stepper({
   steps, current, maxReached, onGo,
 }: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+  // On narrow screens the five steps scroll, so keep the active one in view.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [current]);
   return (
-    <nav aria-label="Booking steps" className="flex items-start gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+    <nav
+      aria-label="Booking steps"
+      className="relative flex items-start gap-0.5 min-[900px]:gap-1 overflow-x-auto pb-1 -mx-1 px-1 max-w-full min-[900px]:max-w-[720px] no-scrollbar"
+    >
+      {/* Thin connector line behind the step bullets */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-8 right-8 top-[22px] h-px bg-[#E7D9CB]"
+      />
       {steps.map((s, i) => {
         const n = i + 1;
         const isCurrent = n === current;
@@ -1889,12 +1907,13 @@ function Stepper({
             onClick={() => reachable && onGo(n)}
             disabled={!reachable}
             aria-current={isCurrent ? "step" : undefined}
-            className={`flex-1 min-w-[86px] text-center px-1.5 py-2 rounded-xl motion-safe:transition ${
+            ref={isCurrent ? activeRef : undefined}
+            className={`relative flex-1 min-w-[62px] min-[900px]:min-w-[86px] text-center px-1 min-[900px]:px-1.5 py-2 rounded-xl motion-safe:transition ${
               isCurrent ? "bg-[#C4622D]/10" : ""
             } ${reachable && !isCurrent ? "hover:bg-[#F1E7DB]" : ""}`}
           >
             <span
-              className={`mx-auto mb-1 h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+              className={`relative mx-auto mb-1 h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ring-4 ring-[#FAF6F1] ${
                 isCurrent
                   ? "bg-[#C4622D] text-white"
                   : isDone
@@ -1905,13 +1924,13 @@ function Stepper({
               {isDone ? <Check size={13} /> : n}
             </span>
             <span
-              className={`block text-[11px] font-semibold leading-tight ${
+              className={`block text-[10px] min-[900px]:text-[11px] font-semibold leading-tight ${
                 isCurrent ? "text-[#C4622D]" : isDone ? "text-gray-700" : "text-[#A6968A]"
               }`}
             >
               {s.label}
             </span>
-            <span className="block text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
+            <span className="hidden min-[380px]:block text-[9px] min-[900px]:text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
           </button>
         );
       })}
