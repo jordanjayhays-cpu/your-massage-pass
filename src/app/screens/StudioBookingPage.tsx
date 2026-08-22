@@ -66,10 +66,13 @@ export default function StudioBookingPage() {
   const [rebookMode, setRebookMode] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   // "Almost there" details dialog, opened at the moment of booking.
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [dialogError, setDialogError] = useState<{ en: string; es: string } | null>(null);
-  // Handoff details dialog (name + languages) for unclaimed studios.
-  const [hoDetailsOpen, setHoDetailsOpen] = useState(false);
+  // Step-by-step wizard state (claimed studios).
+  const [step, setStep] = useState(1);
+  const [maxStep, setMaxStep] = useState(1);
+  const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
+  // Wizard state for the unclaimed-studio WhatsApp handoff.
+  const [hoStep, setHoStep] = useState(1);
+  const [hoMaxStep, setHoMaxStep] = useState(1);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
