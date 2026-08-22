@@ -34,6 +34,7 @@ export default function ShopDetail() {
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
   const [fav, setFav] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
 
