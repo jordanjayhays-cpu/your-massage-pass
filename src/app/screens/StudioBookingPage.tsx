@@ -563,7 +563,7 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {waLink ? (
-                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={waLink} target="_blank" rel="noreferrer" onClick={() => logSuccessWa(waMsg)} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <MessageCircle size={18} /> Confirm on WhatsApp
                     </a>
                   ) : studioNumber ? (
