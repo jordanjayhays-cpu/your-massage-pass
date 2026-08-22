@@ -132,12 +132,8 @@ export default function Web() {
             </p>
 
             <div className="flex items-center gap-6 text-sm text-[#56433a]">
-              <div className="flex items-center gap-1">
-                <span className="text-[#E0A458]">★</span>
-                <span className="font-medium">4.8</span>
-              </div>
-              <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
               <span>50+ studios across Madrid</span>
+
               <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
               <span>Pay at studio</span>
             </div>

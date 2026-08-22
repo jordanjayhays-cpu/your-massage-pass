@@ -103,8 +103,10 @@ export interface Shop {
   district: string;       // derived from address city
   address: string;
   duration: number;
-  rating: number;
-  reviews: number;
+  /** Real Google rating, or null when we do not have one. Never defaulted. */
+  rating: number | null;
+  /** Real Google review count, or null. Never defaulted. */
+  reviews: number | null;
   image: string;
   description: string;
   tags: string[];
@@ -187,8 +189,8 @@ export async function fetchShops(): Promise<Shop[]> {
       district: p.city ?? "Madrid",
       address: p.address ?? "",
       duration: svcs[0]?.duration ?? 60,
-      rating: 4.5,
-      reviews: 0,
+      rating: p.google_rating != null ? Number(p.google_rating) : null,
+      reviews: p.google_reviews != null ? Number(p.google_reviews) : null,
       image: studioImage({
         id: p.id,
         name: p.business_name,
@@ -301,8 +303,8 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     district: partner.city ?? "Madrid",
     address: partner.address ?? "",
     duration: matchedSvc.duration ?? 60,
-    rating: 4.5,
-    reviews: 0,
+    rating: partner.google_rating != null ? Number(partner.google_rating) : null,
+    reviews: partner.google_reviews != null ? Number(partner.google_reviews) : null,
     image: studioImage({
       id: partner.id,
       name: partner.business_name,

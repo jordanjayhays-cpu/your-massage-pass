@@ -189,7 +189,10 @@
       "youAreHere": "Du bist hier",
       "minutes": "Min.",
       "minutesShort": "m",
-      "studioCta": "Betreiben Sie ein Massagestudio? Jetzt kostenlos bei Massage Club anmelden →"
+      "studioCta": "Betreiben Sie ein Massagestudio? Jetzt kostenlos bei Massage Club anmelden →",
+      "quizCardTitle": "Unsicher, welche Massage die richtige ist?",
+      "quizCardSub": "Beantworte 4 kurze Fragen und wir sagen dir, was du buchen solltest und wie es auf Spanisch heißt.",
+      "quizCardCta": "Test starten"
     },
     "shopDetail": {
       "not_found": "Nicht gefunden.",

@@ -189,7 +189,10 @@
       "youAreHere": "Estás aquí",
       "minutes": "min",
       "minutesShort": "m",
-      "studioCta": "¿Tienes un estudio de masaje? Aparece gratis en Massage Club →"
+      "studioCta": "¿Tienes un estudio de masaje? Aparece gratis en Massage Club →",
+      "quizCardTitle": "¿No sabes qué masaje elegir?",
+      "quizCardSub": "Responde 4 preguntas rápidas y te decimos qué reservar y cómo se llama en español.",
+      "quizCardCta": "Hacer el test"
     },
     "shopDetail": {
       "not_found": "No encontrado.",

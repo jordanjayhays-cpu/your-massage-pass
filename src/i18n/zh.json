@@ -189,7 +189,10 @@
       "youAreHere": "您的位置",
       "minutes": "分钟",
       "minutesShort": "分",
-      "studioCta": "您经营按摩店吗？在 Massage Club 免费入驻 →"
+      "studioCta": "您经营按摩店吗？在 Massage Club 免费入驻 →",
+      "quizCardTitle": "不确定该选哪种按摩？",
+      "quizCardSub": "回答 4 个简单问题，我们会告诉你该预约什么，以及它的西班牙语名称。",
+      "quizCardCta": "开始测验"
     },
     "shopDetail": {
       "not_found": "未找到。",

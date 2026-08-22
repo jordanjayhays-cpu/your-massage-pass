@@ -1,4 +1,5 @@
 import { studioImageFallback } from "@/lib/studioImages";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -169,17 +170,31 @@ export default function MassageList() {
         )}
       </div>
 
-      {/* Quiz entry point */}
-      <div className="px-5 pt-3">
+      {/* Quiz entry point — full-width card between search and map */}
+      <div className="px-5 md:px-8 pt-4">
         <button
+          type="button"
           onClick={() => navigate("/app/discovery/quiz")}
           aria-label={t("app.discovery.quizCardAria")}
-          className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-full border border-primary/60 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="group w-full text-left rounded-3xl border border-border/70 bg-secondary/40 p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-safe:transition-all motion-safe:hover:border-primary/50 motion-safe:hover:bg-secondary/70 motion-safe:active:scale-[0.995]"
         >
-          <Sparkles className="h-4 w-4" />
-          {t("app.massageList.quizButton")}
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <h2 className="font-display text-lg font-semibold text-foreground leading-tight">
+                {t("app.massageList.quizCardTitle")}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("app.massageList.quizCardSub")}
+              </p>
+              <span className="mt-4 inline-flex items-center justify-center min-h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft group-hover:bg-primary/90 transition-colors">
+                {t("app.massageList.quizCardCta")}
+              </span>
+            </div>
+          </div>
         </button>
       </div>
+
 
       {/* Map header banner — shared component, also used on /app/discovery */}
       <div className="px-5 pt-5">
@@ -245,10 +260,17 @@ export default function MassageList() {
                           <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
                             {m.studio}
                           </h3>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Star className="h-4 w-4 fill-accent text-accent" />
-                            <span className="text-sm font-semibold text-foreground">{m.rating}</span>
-                          </div>
+                          {m.rating != null && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Star className="h-4 w-4 fill-accent text-accent" />
+                              <span className="text-sm font-semibold text-foreground">
+                                {Number(m.rating).toFixed(1)}
+                                {m.reviews != null && (
+                                  <span className="font-normal text-muted-foreground"> ({m.reviews})</span>
+                                )}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
@@ -256,13 +278,26 @@ export default function MassageList() {
                           <span className="truncate">{"district" in m && m.district ? m.district : t("app.massageList.madrid")}</span>
                         </div>
 
-                        <p className="text-xs text-foreground/80 mt-2 truncate">
-                          <span className="font-medium">{m.name}</span>
-                          <span className="text-muted-foreground"> · {m.duration} {t("app.massageList.minutes")}</span>
-                          {"price" in m && (m as any).price != null && (
-                            <span className="font-semibold text-primary"> · €{(m as any).price}</span>
-                          )}
-                        </p>
+                        {(() => {
+                          const svc = (m as any).partner_services?.[0];
+                          const primary = svc ? servicePrimaryName(svc, "") : "";
+                          const secondary = svc ? serviceSecondaryName(svc) : "";
+                          const price = svc?.price ?? (m as any).price;
+                          if (!primary) return null;
+                          return (
+                            <p className="text-xs text-foreground/80 mt-2 truncate">
+                              <span className="font-medium">{primary}</span>
+                              {secondary && <span className="text-muted-foreground"> · {secondary}</span>}
+                              {(svc?.duration ?? m.duration) != null && (
+                                <span className="text-muted-foreground"> · {svc?.duration ?? m.duration} {t("app.massageList.minutes")}</span>
+                              )}
+                              {price != null && (
+                                <span className="font-semibold text-primary"> · €{price}</span>
+                              )}
+                            </p>
+                          );
+                        })()}
+
 
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                           <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">

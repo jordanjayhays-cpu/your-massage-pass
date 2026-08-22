@@ -189,7 +189,10 @@
       "youAreHere": "Ti trovi qui",
       "minutes": "min",
       "minutesShort": "m",
-      "studioCta": "Gestisci un centro massaggi? Iscriviti gratis su Massage Club →"
+      "studioCta": "Gestisci un centro massaggi? Iscriviti gratis su Massage Club →",
+      "quizCardTitle": "Non sai quale massaggio scegliere?",
+      "quizCardSub": "Rispondi a 4 domande veloci e ti diremo cosa prenotare e come si chiama in spagnolo.",
+      "quizCardCta": "Fai il test"
     },
     "shopDetail": {
       "not_found": "Non trovato.",

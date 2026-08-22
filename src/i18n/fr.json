@@ -189,7 +189,10 @@
       "youAreHere": "Vous êtes ici",
       "minutes": "min",
       "minutesShort": "m",
-      "studioCta": "Vous gérez un studio ? Rejoignez Massage Club gratuitement →"
+      "studioCta": "Vous gérez un studio ? Rejoignez Massage Club gratuitement →",
+      "quizCardTitle": "Vous ne savez pas quel massage choisir ?",
+      "quizCardSub": "Répondez à 4 questions rapides et nous vous dirons quoi réserver, et comment cela s'appelle en espagnol.",
+      "quizCardCta": "Faire le test"
     },
     "shopDetail": {
       "not_found": "Non trouvé.",
