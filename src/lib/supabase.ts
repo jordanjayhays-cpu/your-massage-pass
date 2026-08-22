@@ -325,5 +325,6 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     partner_id: partner.id,
     partner_services: services ?? [],
     partner_availability: av,
+    status: partner.status ?? "pending",
   };
 }
