@@ -687,7 +687,24 @@
         "title": "Salva i dati per prenotare più velocemente",
         "button": "Salva"
       },
-      "feedback": "Inviaci un feedback — aiutaci a costruire tutto questo"
+      "feedback": "Inviaci un feedback — aiutaci a costruire tutto questo",
+      "emailAuth": {
+        "or": "O",
+        "continueWithEmail": "Continua con email",
+        "codeSent": "Ti abbiamo inviato un codice di 6 cifre a {{email}}",
+        "codeLabel": "Codice di 6 cifre",
+        "signIn": "Accedi",
+        "resend": "Invia di nuovo il codice",
+        "changeEmail": "Usa un'altra email",
+        "errors": {
+          "wrongCode": "Codice errato, riprova",
+          "expired": "Codice scaduto, richiedine uno nuovo",
+          "noActiveCode": "Nessun codice attivo. Richiedine uno nuovo.",
+          "tooManyAttempts": "Troppi tentativi, richiedi un nuovo codice",
+          "rateLimited": "Troppi codici richiesti. Attendi qualche minuto.",
+          "generic": "Qualcosa è andato storto. Riprova."
+        }
+      }
     },
     "handoff": {
       "notRegistered": "Questo studio non è ancora su Massage Club.",

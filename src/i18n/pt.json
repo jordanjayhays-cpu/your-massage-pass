@@ -687,7 +687,24 @@
         "title": "Guarde os seus dados para reservar mais rápido",
         "button": "Guardar"
       },
-      "feedback": "Dê a sua opinião — ajude-nos a construir isto"
+      "feedback": "Dê a sua opinião — ajude-nos a construir isto",
+      "emailAuth": {
+        "or": "Ou",
+        "continueWithEmail": "Continuar com email",
+        "codeSent": "Enviámos um código de 6 dígitos para {{email}}",
+        "codeLabel": "Código de 6 dígitos",
+        "signIn": "Entrar",
+        "resend": "Reenviar código",
+        "changeEmail": "Usar outro email",
+        "errors": {
+          "wrongCode": "Código errado, tente novamente",
+          "expired": "O código expirou, peça um novo",
+          "noActiveCode": "Sem código ativo. Peça um novo.",
+          "tooManyAttempts": "Demasiadas tentativas, peça um novo código",
+          "rateLimited": "Pediu demasiados códigos. Aguarde alguns minutos.",
+          "generic": "Algo correu mal. Tente novamente."
+        }
+      }
     },
     "handoff": {
       "notRegistered": "Este estúdio ainda não está no Massage Club.",

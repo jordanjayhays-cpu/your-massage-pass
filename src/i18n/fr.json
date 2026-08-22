@@ -687,7 +687,24 @@
         "title": "Enregistrer mes coordonnées pour réserver plus vite",
         "button": "Enregistrer"
       },
-      "feedback": "Partagez votre avis — aidez-nous à construire Massage Club"
+      "feedback": "Partagez votre avis — aidez-nous à construire Massage Club",
+      "emailAuth": {
+        "or": "Ou",
+        "continueWithEmail": "Continuer avec un e-mail",
+        "codeSent": "Nous avons envoyé un code à 6 chiffres à {{email}}",
+        "codeLabel": "Code à 6 chiffres",
+        "signIn": "Se connecter",
+        "resend": "Renvoyer le code",
+        "changeEmail": "Utiliser une autre adresse",
+        "errors": {
+          "wrongCode": "Code incorrect, réessayez",
+          "expired": "Code expiré, demandez-en un nouveau",
+          "noActiveCode": "Aucun code actif. Demandez-en un nouveau.",
+          "tooManyAttempts": "Trop de tentatives, demandez un nouveau code",
+          "rateLimited": "Trop de codes demandés. Patientez quelques minutes.",
+          "generic": "Une erreur est survenue. Réessayez."
+        }
+      }
     },
     "handoff": {
       "notRegistered": "Ce studio n'est pas encore sur Massage Club.",
