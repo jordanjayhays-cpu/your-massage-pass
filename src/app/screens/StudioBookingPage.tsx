@@ -64,8 +64,12 @@ export default function StudioBookingPage() {
   const [userId, setUserId] = useState<string | null>(null);
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
-  const [contactExpanded, setContactExpanded] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  // "Almost there" details dialog, opened at the moment of booking.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [dialogError, setDialogError] = useState<{ en: string; es: string } | null>(null);
+  // Handoff details dialog (name + languages) for unclaimed studios.
+  const [hoDetailsOpen, setHoDetailsOpen] = useState(false);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
