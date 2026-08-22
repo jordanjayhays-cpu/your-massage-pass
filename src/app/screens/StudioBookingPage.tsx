@@ -1485,13 +1485,13 @@ export default function StudioBookingPage() {
             {step === 3 && (
               <div>
                 <Section step="3" title="Customize your session" titleEs="Personaliza tu sesión">
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm min-[900px]:text-base text-gray-500 mb-4 min-[900px]:mb-5">
                     Optional, but it helps your therapist get it right.
-                    <span className="block text-xs text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
+                    <span className="block text-xs min-[900px]:text-sm text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
                   </p>
                   {customerProfile && prefsApplied && (
-                    <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-gray-700">Prefilled from your profile</span>
+                    <div className="mb-4 min-[900px]:mb-5 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 min-[900px]:px-4 py-2 min-[900px]:py-2.5 flex items-center justify-between gap-2">
+                      <span className="text-xs min-[900px]:text-sm font-medium text-gray-700">Prefilled from your profile</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -1501,7 +1501,7 @@ export default function StudioBookingPage() {
                           setConversationPref("");
                           setPrefsApplied(false);
                         }}
-                        className="text-xs font-semibold text-[#C4622D] underline"
+                        className="text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline"
                       >
                         Start blank
                       </button>
