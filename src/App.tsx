@@ -57,6 +57,8 @@ import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
 import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
 import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
+import ConsentBanner from "./components/ConsentBanner";
+
 
 
 
@@ -69,6 +71,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <RouteTracker />
+        <ConsentBanner />
+
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
           <Route path="/review" element={<Review />} />
