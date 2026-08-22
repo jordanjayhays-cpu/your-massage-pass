@@ -25,4 +25,4 @@ Read this first; it saves every session from rediscovering the setup.
 One lane per session. Name columns + LIMIT in SQL. Iterate functions locally, deploy once.
 Bulk row analysis (>~20 rows) → delegate to the `agent-worker` edge function on `neurodashboards`.
 
-The full system map lives in `niah-dashboard/CLAUDE.md`.
+**The master map lives in `mission-control/CLAUDE.md`.**
