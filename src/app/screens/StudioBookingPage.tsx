@@ -1087,6 +1087,7 @@ export default function StudioBookingPage() {
         next.set(key, (next.get(key) || 0) + 1);
         return next;
       });
+      setDetailsOpen(false);
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
       const msg = String(e?.message || "");
