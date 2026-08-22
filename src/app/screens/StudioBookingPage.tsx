@@ -632,28 +632,30 @@ export default function StudioBookingPage() {
     const googleRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative" style={{ background: "#FAF6F1" }}>
+      <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
         <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
-        <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
+        <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden text-center min-[900px]:text-left" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
             <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
           </div>
-          <div className="px-6 py-7">
+          <div className="px-6 py-7 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-10 min-[900px]:items-start">
+            {/* LEFT: studio identity + menu */}
+            <div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             {partner.address && (
-              <p className="text-sm flex items-center justify-center gap-1 mb-2" style={{ color: "#5a4736" }}>
+              <p className="text-sm flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
                 <span>📍</span>
                 <span>{partner.address}</span>
               </p>
             )}
             {rating ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
               </p>
             ) : googleRating != null ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {googleRating.toFixed(1)}
                 {googleReviews != null && (
@@ -671,6 +673,33 @@ export default function StudioBookingPage() {
               {t("app.handoff.bookDirectly")}
               <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
             </p>
+            {profile.services.length > 0 && (
+              <div className="mt-6 text-left">
+                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
+                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
+                  {profile.services.map(s => (
+                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
+                      <span className="min-w-0">
+                        <span className="block">
+                          {servicePrimaryName(s)}
+                          {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
+                        </span>
+                        {serviceSecondaryName(s) && (
+                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                        )}
+                      </span>
+                      {s.price != null && Number(s.price) > 0 && (
+                        <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            </div>
+
+            {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
+            <div className="min-[900px]:sticky min-[900px]:top-4">
             {waLink && (
               <div className="text-left rounded-2xl p-4 mb-4" style={{ background: "#FAF6F1" }}>
                 <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
@@ -680,7 +709,19 @@ export default function StudioBookingPage() {
                   {profile.services.length > 0 && (
                     <div>
                       <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
-                      <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                      <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                        <Link
+                          to="/discovery/quiz"
+                          className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
+                          style={{ borderColor: "#B85C38", background: "#F6E5DB" }}
+                        >
+                          <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
+                            <span className="block text-xs" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
+                          </span>
+                        </Link>
+                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2">
                         {profile.services.map((s: any) => {
                           const selected = hoServiceId === s.id;
                           const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
@@ -710,6 +751,7 @@ export default function StudioBookingPage() {
                             </button>
                           );
                         })}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -783,7 +825,7 @@ export default function StudioBookingPage() {
                     <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
                     <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
                   </a>
-                  <p className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                  <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                   {waTapped && (
                     <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
                       {t("app.handoff.afterNote")}
@@ -804,30 +846,9 @@ export default function StudioBookingPage() {
                 </a>
               )}
             </div>
-            {profile.services.length > 0 && (
-              <div className="mt-6 text-left">
-                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
-                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
-                  {profile.services.map(s => (
-                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
-                      <span className="min-w-0">
-                        <span className="block">
-                          {servicePrimaryName(s)}
-                          {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
-                        </span>
-                        {serviceSecondaryName(s) && (
-                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                        )}
-                      </span>
-                      {s.price != null && Number(s.price) > 0 && (
-                        <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
+            </div>
+
+            <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
             </div>
           </div>
@@ -835,6 +856,7 @@ export default function StudioBookingPage() {
       </div>
     );
   }
+
 
   // Name + at least one way to reach them (phone OR email). Phone is no longer required.
 
