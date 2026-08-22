@@ -100,6 +100,8 @@ export default function StudioBookingPage() {
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoName, setHoName] = useState("");
+  // Optional email on the handoff, so we can follow up after the WhatsApp booking.
+  const [hoEmail, setHoEmail] = useState("");
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
   const [hoAltDate, setHoAltDate] = useState("");
