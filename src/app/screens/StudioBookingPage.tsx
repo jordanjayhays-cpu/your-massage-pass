@@ -944,6 +944,23 @@ export default function StudioBookingPage() {
                           <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
                         </span>
                       </label>
+                      {!userId && !!hoEmail.trim() && (
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input type="checkbox" checked={createAccount}
+                            onChange={(e) => setCreateAccount(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-[#C4622D]" />
+                          <span className="text-xs leading-snug" style={{ color: "#5a4736" }}>
+                            Create my free Massage Club account
+                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                              Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
+                            </span>
+                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                              Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
+                            </span>
+                          </span>
+                        </label>
+                      )}
+
                       <div>
                         <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
