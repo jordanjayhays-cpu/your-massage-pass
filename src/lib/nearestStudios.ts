@@ -191,10 +191,11 @@ export async function findStudiosOfferingType(
 /** Does the studio the visitor came from also offer the recommended type? */
 export async function studioOffersType(slugOrId: string, type: MassageType): Promise<boolean> {
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
     const { data: partner } = await supabase
       .from("partners")
       .select("id")
-      .or(`slug.eq.${slugOrId},id.eq.${slugOrId}`)
+      .eq(isUuid ? "id" : "slug", slugOrId)
       .maybeSingle();
     if (!partner?.id) return false;
     const { data: services } = await supabase
