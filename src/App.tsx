@@ -79,6 +79,7 @@ const App = () => (
         <RouteTracker />
         <ConsentBanner />
         <AnalyticsOptOut />
+        <ThanksToast />
 
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
