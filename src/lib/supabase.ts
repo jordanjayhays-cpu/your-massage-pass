@@ -86,7 +86,10 @@ export async function saveLead(email: string, name: string, source: string): Pro
 // ─── Shop / Partner data ──────────────────────────────────────────────────────
 
 export interface ShopService {
-  name: string;
+  id?: string;
+  name: string;            // Spanish name — the one the studio uses. Sent in WhatsApp/email.
+  name_en?: string | null; // English name — shown to visitors as the primary line.
+  description_en?: string | null; // reserved, not populated yet
   type: string;
   duration: number;
   price: number;
