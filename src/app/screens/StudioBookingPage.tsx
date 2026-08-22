@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { studioWhatsappUrl, isWhatsappCapable } from "@/app/lib/whatsapp";
+import { studioWhatsappUrl, isWhatsappCapable, resolveWhatsappNumber, whatsappPrefill } from "@/app/lib/whatsapp";
 import { sendTrack } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
@@ -391,7 +391,7 @@ export default function StudioBookingPage() {
     // Claimed: friendly "you're booked" message.
     // NOTE: messages sent TO the studio always use the SPANISH service name.
     const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
-    const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
+    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
     // Unclaimed: ask the customer to send the booking request to the studio themselves.
     const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
     const unclaimedWaLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, unclaimedWaMsg) : null;
@@ -515,6 +515,7 @@ export default function StudioBookingPage() {
   // ─── Unclaimed studio handoff ───
   if (partner.status !== "active") {
     const studioNumber = (partner as any).whatsapp || partner.phone;
+    const waNumber = resolveWhatsappNumber(partner as any);
     const hoService = profile.services.find(s => s.id === hoServiceId) || null;
     const esDate = (v: string) => {
       if (!v) return "";
@@ -536,9 +537,11 @@ export default function StudioBookingPage() {
     // SPANISH ONLY — this line goes into the WhatsApp message read by the studio.
     const hoServiceEs = hoService ? serviceNameForStudio(hoService) : "";
     const serviceLine = hoService
-      ? hasPrice
-        ? `· ${hoServiceEs} · ${hoService.duration} min · ${hoPrice} €`
-        : `· ${hoServiceEs} (${hoService.duration} min)`
+      ? (() => {
+          const dur = Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : "";
+          const parts = [hoServiceEs, dur, hasPrice ? `${hoPrice} €` : ""].filter(Boolean);
+          return `· ${parts.join(" · ")}`;
+        })()
       : "";
     // Always Spanish — this text is sent to the studio, never translated.
     const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
@@ -618,7 +621,7 @@ export default function StudioBookingPage() {
         },
       });
     };
-    const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
+    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
@@ -673,20 +676,40 @@ export default function StudioBookingPage() {
                 </p>
                 <div className="space-y-3">
                   {profile.services.length > 0 && (
-                    <label className="block">
+                    <div>
                       <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
-                      <select
-                        value={hoServiceId}
-                        onChange={(e) => setHoServiceId(e.target.value)}
-                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm"
-                        style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }}
-                      >
-                        <option value="">—</option>
-                        {profile.services.map(s => (
-                          <option key={s.id} value={s.id}>{serviceInlineLabel(s)} · {s.duration} min</option>
-                        ))}
-                      </select>
-                    </label>
+                      <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                        {profile.services.map((s: any) => {
+                          const selected = hoServiceId === s.id;
+                          const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
+                          const price = Number(s.price);
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              onClick={() => setHoServiceId(selected ? "" : s.id)}
+                              className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
+                              style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
+                            >
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
+                                {serviceSecondaryName(s) && (
+                                  <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                                )}
+                              </span>
+                              <span className="text-right flex-shrink-0">
+                                {Number.isFinite(price) && price > 0 && (
+                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                                )}
+                                {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block">
@@ -786,12 +809,17 @@ export default function StudioBookingPage() {
                   {profile.services.map(s => (
                     <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
                       <span className="min-w-0">
-                        <span className="block">{servicePrimaryName(s)} · {s.duration} min</span>
+                        <span className="block">
+                          {servicePrimaryName(s)}
+                          {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
+                        </span>
                         {serviceSecondaryName(s) && (
                           <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                         )}
                       </span>
-                      <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{s.price}</span>
+                      {s.price != null && Number(s.price) > 0 && (
+                        <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
+                      )}
                     </div>
                   ))}
                 </div>
