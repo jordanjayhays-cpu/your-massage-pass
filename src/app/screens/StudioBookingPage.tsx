@@ -273,6 +273,7 @@ export default function StudioBookingPage() {
 
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
+      setHoEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
       setPhone(prev => prev || user.phone || user.user_metadata?.phone || "");
 
@@ -287,6 +288,7 @@ export default function StudioBookingPage() {
       setCustomerProfile(p);
       setName(prev => prev || p.full_name || "");
       setEmail(prev => prev || p.email || "");
+      setHoEmail(prev => prev || p.email || "");
       setPhone(prev => prev || p.phone || "");
       setProfileAllergies(p.allergies || "");
       setProfileHealthNotes(p.health_notes || "");
