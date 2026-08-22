@@ -58,6 +58,14 @@ export default function Discovery() {
           onSelect={(shop) => navigate(`/s/${shop.partner_id}`)}
         />
 
+        {/* Mid-page quiz entry point */}
+        <button
+          onClick={() => navigate("/discovery/quiz")}
+          aria-label={t("app.discovery.quizCardAria")}
+          className="group w-full text-center min-h-11 inline-flex items-center justify-center gap-2 text-accent text-sm font-medium hover:text-accent-foreground hover:bg-accent/10 rounded-xl px-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 motion-safe:transition-colors"
+        >
+          {t("app.discovery.quizMidPrompt")}
+        </button>
 
         <div>
           <h3 className="font-display text-2xl text-foreground">{t("app.discovery.exploreTitle")}</h3>
