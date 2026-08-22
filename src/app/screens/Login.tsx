@@ -26,7 +26,7 @@ const HERO_IMG =
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&display=swap";
 
 export default function Login() {
-  const { t } = useTranslation(undefined, { keyPrefix: "app.login" });
+  const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.login" });
   const studioCount = useStudioCount();
   const navigate = useNavigate();
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
@@ -34,19 +34,100 @@ export default function Login() {
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
   const [loading, setLoading] = useState(false);
 
+  // Email code (OTP) sign-in
+  const [otpEmail, setOtpEmail] = useState(getStoredUser()?.email ?? "");
+  const [otpStage, setOtpStage] = useState<"idle" | "code">("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
+  const handlingOtp = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!cancelled && session) navigate("/studios", { replace: true });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") navigate("/studios", { replace: true });
+      if (event === "SIGNED_IN" && !handlingOtp.current) navigate("/studios", { replace: true });
     });
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
   }, [navigate]);
+
+  const otpErrorMessage = (raw: string, status?: number) => {
+    if (status === 429 || /too_many_requests|rate/i.test(raw)) return t("emailAuth.errors.rateLimited");
+    if (/expired/i.test(raw)) return t("emailAuth.errors.expired");
+    if (/no_active_code|no active/i.test(raw)) return t("emailAuth.errors.noActiveCode");
+    if (/too_many_attempts|attempts/i.test(raw)) return t("emailAuth.errors.tooManyAttempts");
+    if (/invalid|wrong|incorrect/i.test(raw)) return t("emailAuth.errors.wrongCode");
+    return t("emailAuth.errors.generic");
+  };
+
+  const sendCode = async () => {
+    if (!otpEmail.includes("@")) {
+      toast.error(t("toasts.invalidEmail"));
+      return;
+    }
+    setOtpBusy(true);
+    const lang = (i18n.resolvedLanguage || "en").slice(0, 2);
+    const { data, error } = await supabase.functions.invoke("email-auth", {
+      body: { action: "send", email: otpEmail.trim().toLowerCase(), lang },
+    });
+    setOtpBusy(false);
+    if (error) {
+      const status = (error as any)?.context?.status;
+      toast.error(otpErrorMessage(`${(error as any)?.message ?? ""} ${JSON.stringify(data ?? {})}`, status));
+      return;
+    }
+    setOtpCode("");
+    setOtpStage("code");
+    toast.success(t("emailAuth.codeSent", { email: otpEmail.trim().toLowerCase() }));
+  };
+
+  const verifyCode = async () => {
+    if (otpCode.length !== 6) return;
+    setOtpBusy(true);
+    handlingOtp.current = true;
+    try {
+      const { data, error } = await supabase.functions.invoke("email-auth", {
+        body: { action: "verify", email: otpEmail.trim().toLowerCase(), code: otpCode },
+      });
+      if (error || !(data as any)?.token_hash) {
+        const status = (error as any)?.context?.status;
+        toast.error(otpErrorMessage(`${(error as any)?.message ?? ""} ${JSON.stringify(data ?? {})}`, status));
+        return;
+      }
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: (data as any).token_hash,
+      });
+      if (otpError) {
+        toast.error(otpErrorMessage(otpError.message));
+        return;
+      }
+      // New email users have no name yet: send them to the profile step first.
+      let needsName = true;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+          needsName = !((profile as any)?.first_name || (profile as any)?.full_name || metaName);
+        }
+      } catch {
+        needsName = false;
+      }
+      navigate(needsName ? "/profile" : "/studios", { replace: true });
+    } finally {
+      handlingOtp.current = false;
+      setOtpBusy(false);
+    }
+  };
 
   const handleEmailContinue = async () => {
     if (!email.includes("@")) {
@@ -63,6 +144,7 @@ export default function Login() {
     });
     if (error) toast.error(t("toasts.googleError"));
   };
+
 
   const handleFinalContinue = async () => {
     if (!name.trim()) {
