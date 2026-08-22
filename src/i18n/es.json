@@ -729,7 +729,24 @@
       "prefOptional": "Opcional. Si saltas estos campos, pediremos al estudio sus horas libres.",
       "afterNote": "Si te responden algo que no entiendes, reenvíalo a jordan@massageclub.io y te lo traducimos.",
       "prefLanguages": "Idiomas que hablas",
-      "prefLanguagesAdd": "añadir"
+      "prefLanguagesAdd": "añadir",
+      "emailLabel": "Email",
+      "emailHelp": "Recomendado. Comprobaremos que todo ha ido bien y te ayudamos si el estudio no responde.",
+      "emailHelpEs": "Recommended. We'll check everything went well and help if the studio doesn't reply.",
+      "reviewEmailNudge": "No has añadido email. No podremos hacer seguimiento si algo falla.",
+      "reviewEmailNudgeEs": "No email added. We won't be able to follow up if something goes wrong.",
+      "reviewEmailAdd": "Añadir email",
+      "reviewEmailAddEs": "Add email",
+      "reviewEmailSkip": "Continuar sin él",
+      "reviewEmailSkipEs": "Continue without it",
+      "helperService": "Precios reales publicados por {{studio}}.",
+      "helperServiceEs": "These are {{studio}}'s real published prices.",
+      "helperDayTime": "Elige una primera opción y una alternativa. El estudio confirma por WhatsApp.",
+      "helperDayTimeEs": "Pick a first choice and a backup. The studio confirms by WhatsApp.",
+      "helperInfo": "Para que el estudio sepa quién pregunta y podamos hacer seguimiento.",
+      "helperInfoEs": "So the studio knows who's asking, and we can follow up.",
+      "helperReview": "Lo hemos escrito en español por ti.",
+      "helperReviewEs": "We wrote it in Spanish for you. All they have to do is say yes."
     },
     "partnerAuth": {
       "resetTitle": "Crea una contraseña nueva",
@@ -1319,5 +1336,8 @@
       "hoursConfirmTitle": "Confirma tu horario",
       "hoursConfirmSubtitle": "Lo hemos rellenado con tu horario público. Ajusta lo que haga falta."
     }
+  },
+  "thanks_toast": {
+    "message": "¡Gracias!"
   }
 }

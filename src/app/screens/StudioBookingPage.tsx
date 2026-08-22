@@ -72,6 +72,8 @@ export default function StudioBookingPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [hoEmail, setHoEmail] = useState("");
+  const [emailNudgeDismissed, setEmailNudgeDismissed] = useState(false);
   // Customize
   const [pressure, setPressure] = useState("Medium");
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
@@ -101,8 +103,6 @@ export default function StudioBookingPage() {
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoName, setHoName] = useState("");
-  // Optional email on the handoff, so we can follow up after the WhatsApp booking.
-  const [hoEmail, setHoEmail] = useState("");
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
   const [hoAltDate, setHoAltDate] = useState("");
@@ -276,7 +276,6 @@ export default function StudioBookingPage() {
       setEmail(prev => prev || user.email || "");
       setHoEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
-
       setPhone(prev => prev || user.phone || user.user_metadata?.phone || "");
 
       // select("*") so one renamed column can never wipe out the whole pre-fill.
@@ -497,6 +496,25 @@ export default function StudioBookingPage() {
       const loc = encodeURIComponent(partner.address || partner.business_name || "");
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
     })();
+    const logSuccessWa = (message: string) => {
+      logWhatsappRequest({
+        partner_id: partner.id,
+        slug: partner.slug || partner.id,
+        studio_name: partner.business_name,
+        service_name: service ? serviceNameForStudio(service) : null,
+        price: service?.price ?? null,
+        day1: date ? isoDate(date) : null,
+        time1: time || null,
+        day2: null,
+        time2: null,
+        first_name: name.trim() || null,
+        contact_email: email.trim() || null,
+        languages: conversationPref || null,
+        user_id: userId,
+        wa_number: waNumber || null,
+        message_text: message,
+      });
+    };
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#FAF6F1" }}>
         <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
@@ -545,7 +563,7 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {waLink ? (
-                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={waLink} target="_blank" rel="noreferrer" onClick={() => logSuccessWa(waMsg)} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <MessageCircle size={18} /> Confirm on WhatsApp
                     </a>
                   ) : studioNumber ? (
@@ -564,7 +582,7 @@ export default function StudioBookingPage() {
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
-                    <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <a href={unclaimedWaLink} target="_blank" rel="noreferrer" onClick={() => logSuccessWa(unclaimedWaMsg)} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                       <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Enviar reserva por WhatsApp</span>
                       <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
                     </a>
@@ -688,6 +706,8 @@ export default function StudioBookingPage() {
       // Nothing selected: generic fallback that asks for a list of times.
       return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
     })();
+    const claimHook = `PD para el estudio: esta solicitud llega desde Massage Club. Si es tu negocio, puedes recibir reservas directas gratis: book.massageclub.io/claim/${partner.slug || partner.id}`;
+    const finalWaMsg = `${waMsg}\n\n${claimHook}`;
     const trackWhatsappIntent = () => {
       setWaTapped(true);
       clarityEvent("whatsapp_click");
@@ -705,26 +725,25 @@ export default function StudioBookingPage() {
           languages: spokenLangs,
         },
       });
-      // Fire and forget: never blocks the WhatsApp link.
       logWhatsappRequest({
         partner_id: partner.id,
-        slug: partner.slug || null,
+        slug: partner.slug || partner.id,
         studio_name: partner.business_name,
-        service_name: hoService ? servicePrimaryName(hoService) : null,
+        service_name: hoService ? serviceNameForStudio(hoService) : null,
         price: hasPrice ? hoPrice : null,
-        day1: hoDate || null,
+        day1: hoDate ? esDate(hoDate) : null,
         time1: hoTime || null,
-        day2: hoAltDate || null,
+        day2: hoAltDate ? esDate(hoAltDate) : null,
         time2: hoAltTime || null,
         first_name: hoName.trim() || null,
         contact_email: hoEmail.trim() || null,
-        languages: spokenLangs.join(", "),
+        languages: spokenLangs.join(", ") || null,
         user_id: userId,
-        wa_number: waNumber,
-        message_text: waMsg,
+        wa_number: waNumber || null,
+        message_text: finalWaMsg,
       });
     };
-    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
+    const waLink = waNumber ? studioWhatsappUrl(waNumber, finalWaMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
@@ -738,6 +757,15 @@ export default function StudioBookingPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
+    const handoffHelper = (step: number) => {
+      switch (step) {
+        case 1: return t("app.handoff.helperService", { studio: partner.business_name });
+        case 2: return t("app.handoff.helperDayTime");
+        case 3: return t("app.handoff.helperInfo");
+        case 4: return t("app.handoff.helperReview");
+        default: return "";
+      }
+    };
     return (
       <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
         <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
@@ -811,9 +839,14 @@ export default function StudioBookingPage() {
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
                 <div className="rounded-2xl p-4 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
-                  <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
-                    {t("app.handoff.prefTitle")}
-                  </p>
+                  {(() => {
+                    const helper = handoffHelper(hoStep);
+                    return helper ? (
+                      <p className="text-xs mb-3" style={{ color: "#7A7068" }}>
+                        {helper}
+                      </p>
+                    ) : null;
+                  })()}
 
                   {/* STEP 1: service */}
                   {hoStep === 1 && (
@@ -925,14 +958,10 @@ export default function StudioBookingPage() {
                           className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
                       <label className="block">
-                        <span className="text-xs" style={{ color: "#7A7068" }}>Email (optional)</span>
-                        <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
-                          onChange={(e) => setHoEmail(e.target.value)}
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.emailLabel")}</span>
+                        <input type="email" value={hoEmail} onChange={(e) => setHoEmail(e.target.value)}
                           className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                        <span className="block text-[11px] mt-1" style={{ color: "#9E9387" }}>
-                          So we can check everything went well with your booking.
-                          <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
-                        </span>
+                        <span className="block text-[11px] mt-1" style={{ color: "#9E9387" }}>{t("app.handoff.emailHelp")}</span>
                       </label>
                       <div>
                         <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
@@ -967,7 +996,6 @@ export default function StudioBookingPage() {
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                       <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
                     </div>
                   )}
@@ -981,9 +1009,25 @@ export default function StudioBookingPage() {
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
                         <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not given" />
+                        <SummaryRow label="Email" labelEs="Email" value={hoEmail.trim() || null} placeholder="Not given" />
                         <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
+                      {!hoEmail.trim() && !emailNudgeDismissed && (
+                        <div className="rounded-xl p-3 border" style={{ background: "#FDF8F3", borderColor: "#E6DCCF" }}>
+                          <p className="text-xs mb-2" style={{ color: "#7A7068" }}>{t("app.handoff.reviewEmailNudge")}</p>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => hoGo(3)}
+                              className="text-xs font-semibold underline underline-offset-2" style={{ color: "#B85C38" }}>
+                              {t("app.handoff.reviewEmailAdd")}
+                            </button>
+                            <button type="button" onClick={() => setEmailNudgeDismissed(true)}
+                              className="text-xs" style={{ color: "#9E9387" }}>
+                              {t("app.handoff.reviewEmailSkip")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <a
                         href={waLink}
                         target="_blank"
@@ -1204,17 +1248,21 @@ export default function StudioBookingPage() {
       return null;
     }
   };
-  const bookingWaMsg = whatsappPrefill({
-    studio: partner.business_name,
-    // SPANISH name — the studio reads its own menu.
-    service: service ? serviceNameForStudio(service) : null,
-    duration: (service as any)?.duration ?? null,
-    price: (service as any)?.price ?? null,
-    date: esLongDate(date),
-    time: time || null,
-    name: name || null,
-  });
-  const bookingWaHref = bookingWaNumber ? studioWhatsappUrl(bookingWaNumber, bookingWaMsg) : null;
+  const bookingWaHref = bookingWaNumber
+    ? studioWhatsappUrl(
+        bookingWaNumber,
+        whatsappPrefill({
+          studio: partner.business_name,
+          // SPANISH name — the studio reads its own menu.
+          service: service ? serviceNameForStudio(service) : null,
+          duration: (service as any)?.duration ?? null,
+          price: (service as any)?.price ?? null,
+          date: esLongDate(date),
+          time: time || null,
+          name: name || null,
+        }),
+      )
+    : null;
 
   return (
     <div className="min-h-screen bg-[#FAF6F1] relative">
@@ -1657,18 +1705,20 @@ export default function StudioBookingPage() {
                   });
                   logWhatsappRequest({
                     partner_id: partner.id,
-                    slug: partner.slug || null,
+                    slug: partner.slug || partner.id,
                     studio_name: partner.business_name,
-                    service_name: service ? servicePrimaryName(service) : null,
-                    price: service && total > 0 ? total : null,
-                    day1: prettyDay,
-                    time1: time,
+                    service_name: service ? serviceNameForStudio(service) : null,
+                    price: (service as any)?.price ?? null,
+                    day1: esLongDate(date),
+                    time1: time || null,
+                    day2: null,
+                    time2: null,
                     first_name: name.trim() || null,
                     contact_email: email.trim() || null,
-                    languages: spokenLangs.join(", "),
+                    languages: conversationPref || null,
                     user_id: userId,
-                    wa_number: bookingWaNumber,
-                    message_text: bookingWaMsg,
+                    wa_number: bookingWaNumber || null,
+                    message_text: decodeURIComponent(bookingWaHref.split("?text=")[1] || ""),
                   });
                 }}
                 className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"

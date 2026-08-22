@@ -16,15 +16,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MASSAGES, MADRID_CENTER } from "../data";
-import { fetchShopById } from "@/lib/supabase";
+import { supabase, fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { clarityEvent } from "@/lib/clarity";
 import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill } from "@/app/lib/whatsapp";
-import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack } from "@/lib/siteVisit";
+import { logWhatsappRequest } from "@/lib/whatsappLog";
 
 
 export default function ShopDetail() {
@@ -34,6 +34,7 @@ export default function ShopDetail() {
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
   const [fav, setFav] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
 
@@ -55,6 +56,12 @@ export default function ShopDetail() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
 
   // Initialize Google Map in the Location card once studio data is loaded
   useEffect(() => {
@@ -359,9 +366,19 @@ export default function ShopDetail() {
                     meta: { filled: false, service: false, date: false },
                   });
                   logWhatsappRequest({
-                    partner_id: m.partner_id || m.id,
-                    slug: m.slug || null,
-                    studio_name: m.studio || m.name || "Unknown studio",
+                    partner_id: m.status ? m.partner_id : null,
+                    slug: m.slug || m.id,
+                    studio_name: m.studio,
+                    service_name: null,
+                    price: null,
+                    day1: null,
+                    time1: null,
+                    day2: null,
+                    time2: null,
+                    first_name: null,
+                    contact_email: null,
+                    languages: null,
+                    user_id: userId,
                     wa_number: waNumber,
                     message_text: whatsappPrefill({ studio: m.studio }),
                   });
