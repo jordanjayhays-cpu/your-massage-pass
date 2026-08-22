@@ -532,10 +532,12 @@ export default function StudioBookingPage() {
     const noSpanish = visitorSpeaksSpanish ? "" : "Disculpa, todavía no hablo español. ";
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
+    // SPANISH ONLY — this line goes into the WhatsApp message read by the studio.
+    const hoServiceEs = hoService ? serviceNameForStudio(hoService) : "";
     const serviceLine = hoService
       ? hasPrice
-        ? `· ${hoService.name} · ${hoService.duration} min · ${hoPrice} €`
-        : `· ${hoService.name} (${hoService.duration} min)`
+        ? `· ${hoServiceEs} · ${hoService.duration} min · ${hoPrice} €`
+        : `· ${hoServiceEs} (${hoService.duration} min)`
       : "";
     // Always Spanish — this text is sent to the studio, never translated.
     const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
