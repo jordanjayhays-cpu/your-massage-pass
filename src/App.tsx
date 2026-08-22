@@ -32,6 +32,7 @@ import StudioSetup from "./app/screens/StudioSetup";
 import ClaimShortLink from "./app/screens/ClaimShortLink";
 import StudioPortal from "./app/screens/StudioPortal";
 import StudioBookingPage from "./app/screens/StudioBookingPage";
+import StudioIdRedirect from "./app/screens/StudioIdRedirect";
 import PartnerPhotos from "./app/screens/PartnerPhotos";
 import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
@@ -181,7 +182,8 @@ const App = () => (
           <Route path="/survey/studios" element={<SurveyStudios />} />
           <Route path="/founder" element={<FounderDashboard />} />
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
-          <Route path="/s/:studioId" element={<StudioBookingPage />} />
+          {/* Legacy id links stay alive, redirecting to the canonical /{slug} URL. */}
+          <Route path="/s/:studioId" element={<StudioIdRedirect />} />
           <Route path="/book/:studioId" element={<StudioBookingPage />} />
           {/* Permanent redirect for renamed Calma slug */}
           <Route path="/calma-madrid-spa" element={<Navigate to="/spa-calma" replace />} />
@@ -192,6 +194,9 @@ const App = () => (
           <Route path="/claim/:slug" element={<ClaimShortLink />} />
           <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Canonical studio URL on every host: /{slug} */}
+          <Route path="/:studioId" element={<StudioBookingPage />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
