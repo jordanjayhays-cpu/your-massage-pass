@@ -289,6 +289,7 @@ export default function StudioBookingPage() {
       setCustomerProfile(p);
       setName(prev => prev || p.full_name || "");
       setEmail(prev => prev || p.email || "");
+      setHoEmail(prev => prev || p.email || "");
       setPhone(prev => prev || p.phone || "");
       setProfileAllergies(p.allergies || "");
       setProfileHealthNotes(p.health_notes || "");
