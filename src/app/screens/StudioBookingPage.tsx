@@ -8,6 +8,8 @@ import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill } from "@/app
 import { sendTrack } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
+import { requestAccountSignup } from "@/lib/accountSignup";
+
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
@@ -103,6 +105,9 @@ export default function StudioBookingPage() {
   const [hoName, setHoName] = useState("");
   // Optional email on the handoff, so we can follow up after the WhatsApp booking.
   const [hoEmail, setHoEmail] = useState("");
+  // Passwordless account creation, offered to visitors who are not signed in.
+  const [createAccount, setCreateAccount] = useState(true);
+
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
   const [hoAltDate, setHoAltDate] = useState("");
