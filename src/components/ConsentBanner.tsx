@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { initClarity, loadClarity } from "@/lib/clarity";
+
 
 const KEY = "mc_consent";
 
