@@ -1703,6 +1703,23 @@ export default function StudioBookingPage() {
                     slug: partner.slug || partner.id,
                     meta: { filled: !!(service || date || time), service: !!service, date: !!date },
                   });
+                  logWhatsappRequest({
+                    partner_id: partner.id,
+                    slug: partner.slug || partner.id,
+                    studio_name: partner.business_name,
+                    service_name: service ? serviceNameForStudio(service) : null,
+                    price: (service as any)?.price ?? null,
+                    day1: esLongDate(date),
+                    time1: time || null,
+                    day2: null,
+                    time2: null,
+                    first_name: name.trim() || null,
+                    contact_email: email.trim() || null,
+                    languages: conversationPref || null,
+                    user_id: userId,
+                    wa_number: bookingWaNumber || null,
+                    message_text: decodeURIComponent(bookingWaHref.split("?text=")[1] || ""),
+                  });
                 }}
                 className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"
               >
