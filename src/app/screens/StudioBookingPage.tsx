@@ -1069,7 +1069,9 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-5 py-5 space-y-5">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 space-y-5 min-[900px]:space-y-0 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-8 min-[900px]:items-start">
+        {/* LEFT COLUMN: studio identity, address and services */}
+        <div className="space-y-5">
         {/* About */}
         {partner.description && <p className="text-sm text-gray-600">{partner.description}</p>}
 
@@ -1083,27 +1085,7 @@ export default function StudioBookingPage() {
           ))}
         </div>
 
-        {/* Ask on WhatsApp — always reachable, prefilled with whatever is picked */}
-        {bookingWaHref && (
-          <a
-            href={bookingWaHref}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              clarityEvent("whatsapp_click");
-              sendTrack({
-                event: "whatsapp_click",
-                path: window.location.pathname,
-                slug: partner.slug || partner.id,
-                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
-              });
-            }}
-            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
-          >
-            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
-          </a>
-        )}
+
 
         {/* Gallery */}
         {(partner.gallery || []).length > 0 && (
