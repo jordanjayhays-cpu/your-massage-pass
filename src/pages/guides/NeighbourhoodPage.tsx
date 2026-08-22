@@ -18,6 +18,8 @@ export interface NeighbourhoodStudio {
   serviceNames: string[];
   googleRating: number | null;
   googleReviews: number | null;
+  whatsapp: string | null;
+  phone: string | null;
 }
 
 /** Same quality bar as the dynamic sitemap: >= 3 services, not suspended,
@@ -28,7 +30,7 @@ export async function fetchNeighbourhoodStudios(
   const { data: partners, error } = await supabase
     .from("partners")
     .select(
-      "id, slug, business_name, address, status, outreach_status, google_rating, google_reviews"
+      "id, slug, business_name, address, status, outreach_status, google_rating, google_reviews, whatsapp, phone"
     )
     .eq("neighbourhood", neighbourhood)
     .neq("status", "suspended")
@@ -74,6 +76,8 @@ export async function fetchNeighbourhoodStudios(
       serviceNames: svcs.map((s) => s.name).filter(Boolean).slice(0, 3),
       googleRating: p.google_rating ?? null,
       googleReviews: p.google_reviews ?? null,
+      whatsapp: p.whatsapp ?? null,
+      phone: p.phone ?? null,
     });
   }
 
@@ -276,7 +280,7 @@ export default function NeighbourhoodPage({
                       </p>
                     )}
                     <div className="mt-1.5 flex justify-end">
-                      <StudioStatusBadge variant={studioBadgeVariant(s.status, s.id, freeTodayIds)} />
+                      <StudioStatusBadge variant={studioBadgeVariant(s.status, s.id, freeTodayIds, s)} />
                     </div>
                   </div>
                 </div>

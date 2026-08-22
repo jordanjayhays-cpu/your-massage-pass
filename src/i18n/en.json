@@ -213,7 +213,9 @@
       "location_title": "Location",
       "directions": "Directions",
       "call": "Call",
-      "chat": "Chat"
+      "chat": "Chat",
+      "whatsapp": "Ask on WhatsApp",
+      "whatsappEs": "Preguntar por WhatsApp"
     },
     "calendar": {
       "back": "Back",

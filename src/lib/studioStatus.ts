@@ -1,21 +1,25 @@
 import { supabase } from "./supabase";
+import { hasWhatsapp, type WhatsappSource } from "@/app/lib/whatsapp";
 
 export type StudioBadgeVariant = "available_today" | "book_online" | "ask_whatsapp";
 
 /** Derive the badge variant for a studio card.
  *  - claimed (status === "active") + a genuinely free slot today → available_today
  *  - claimed, no free slot today                                 → book_online
- *  - not claimed (no availability data, WhatsApp handoff)        → ask_whatsapp
+ *  - not claimed, and we really have a WhatsApp number           → ask_whatsapp
+ *  - not claimed, no reachable WhatsApp number                   → null (render nothing)
  */
 export function studioBadgeVariant(
   status: string | null | undefined,
   partnerId: string | null | undefined,
-  freeTodayIds?: Set<string> | null
-): StudioBadgeVariant {
-  if (status !== "active") return "ask_whatsapp";
+  freeTodayIds?: Set<string> | null,
+  contact?: WhatsappSource | null
+): StudioBadgeVariant | null {
+  if (status !== "active") return hasWhatsapp(contact) ? "ask_whatsapp" : null;
   if (partnerId && freeTodayIds?.has(partnerId)) return "available_today";
   return "book_online";
 }
+
 
 /** For the given claimed partner ids, return the subset that still has at least
  *  one free (not fully booked, not in the past) slot today. */

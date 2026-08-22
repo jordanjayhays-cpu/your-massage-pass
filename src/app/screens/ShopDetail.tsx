@@ -22,6 +22,8 @@ import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { clarityEvent } from "@/lib/clarity";
+import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill } from "@/app/lib/whatsapp";
+import { sendTrack } from "@/lib/siteVisit";
 
 
 export default function ShopDetail() {
@@ -147,6 +149,10 @@ export default function ShopDetail() {
   const district = m.district ?? "";
   const address = m.address ?? m.location ?? t("default_address");
   const phone = m.phone as string | undefined;
+  const waNumber = resolveWhatsappNumber(m);
+  const waHref = waNumber
+    ? studioWhatsappUrl(waNumber, whatsappPrefill({ studio: m.studio }))
+    : null;
   const firstSentence =
     (m.description as string | undefined)?.split(/[.!?](\s|$)/)[0]?.trim() ||
     t("default_description");
@@ -337,6 +343,29 @@ export default function ShopDetail() {
                 </a>
               </div>
             </div>
+
+            {waHref && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  clarityEvent("whatsapp_click");
+                  sendTrack({
+                    event: "whatsapp_click",
+                    path: window.location.pathname,
+                    slug: m.slug || m.id,
+                    meta: { filled: false, service: false, date: false },
+                  });
+                }}
+                className="mt-4 w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft motion-safe:transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" /> {t("whatsapp")}
+                </span>
+                <span className="text-xs font-normal opacity-90">{t("whatsappEs")}</span>
+              </a>
+            )}
 
             <div className="grid grid-cols-2 gap-3 mt-4">
               <a

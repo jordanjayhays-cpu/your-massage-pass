@@ -213,7 +213,9 @@
       "location_title": "地点",
       "directions": "路线指引",
       "call": "致电",
-      "chat": "聊天"
+      "chat": "聊天",
+      "whatsapp": "在 WhatsApp 上询问",
+      "whatsappEs": "Preguntar por WhatsApp"
     },
     "calendar": {
       "back": "返回",

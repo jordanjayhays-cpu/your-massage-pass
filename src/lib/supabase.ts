@@ -203,7 +203,7 @@ export async function fetchShops(): Promise<Shop[]> {
       type: (svcs[0]?.type || "Massage").toLowerCase(),
       lat: p.latitude ?? 40.4168,
       lng: p.longitude ?? -3.7033,
-      whatsapp: p.phone ? `+34 ${p.phone.replace(/\s+/g, "")}` : undefined,
+      whatsapp: (p as any).whatsapp || p.phone || undefined,
       phone: p.phone,
       email: p.email,
       services: svcs.map(s => s.name || "Massage"),
@@ -317,7 +317,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     type: (matchedSvc.type || "Massage").toLowerCase(),
     lat: partner.latitude ?? 40.4168,
     lng: partner.longitude ?? -3.7033,
-    whatsapp: partner.phone ? `+34 ${partner.phone.replace(/\s+/g, "")}` : undefined,
+    whatsapp: (partner as any).whatsapp || partner.phone || undefined,
     phone: partner.phone,
     email: partner.email,
     services: services?.map(s => s.name || "Massage") ?? [],
@@ -325,5 +325,6 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     partner_id: partner.id,
     partner_services: services ?? [],
     partner_availability: av,
+    status: partner.status ?? "pending",
   };
 }

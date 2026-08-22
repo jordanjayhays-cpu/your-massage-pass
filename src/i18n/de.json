@@ -213,7 +213,9 @@
       "location_title": "Standort",
       "directions": "Anfahrt",
       "call": "Anrufen",
-      "chat": "Chatten"
+      "chat": "Chatten",
+      "whatsapp": "Auf WhatsApp fragen",
+      "whatsappEs": "Preguntar por WhatsApp"
     },
     "calendar": {
       "back": "Zurück",
