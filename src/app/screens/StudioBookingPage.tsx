@@ -819,9 +819,14 @@ export default function StudioBookingPage() {
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
                 <div className="rounded-2xl p-4 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
-                  <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
-                    {t("app.handoff.prefTitle")}
-                  </p>
+                  {(() => {
+                    const helper = handoffHelper(hoStep);
+                    return helper ? (
+                      <p className="text-xs mb-3" style={{ color: "#7A7068" }}>
+                        {helper}
+                      </p>
+                    ) : null;
+                  })()}
 
                   {/* STEP 1: service */}
                   {hoStep === 1 && (
