@@ -1,15 +1,44 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight, RefreshCw, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUIZ, MASSAGE_TYPES, MassageType, MASSAGES } from "../data";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { clarityEvent } from "@/lib/clarity";
-import { findNearestStudios, distanceLabel, type NearbyStudio } from "@/lib/nearestStudios";
+import {
+  findNearestStudios,
+  findStudiosOfferingType,
+  studioOffersType,
+  distanceLabel,
+  type NearbyStudio,
+} from "@/lib/nearestStudios";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import StudioMap from "../components/StudioMap";
+import type { Shop } from "@/lib/supabase";
+
+const ORIGIN_KEY = "mc_quiz_origin";
+
+type QuizOrigin = { slug: string; name: string };
+
+/** Where the visitor opened the quiz from, kept across the quiz steps. */
+function readOrigin(params: URLSearchParams): QuizOrigin | null {
+  const slug = params.get("from");
+  const name = params.get("fromName");
+  if (slug) {
+    const origin = { slug, name: name || slug };
+    try { sessionStorage.setItem(ORIGIN_KEY, JSON.stringify(origin)); } catch { /* ignore */ }
+    return origin;
+  }
+  try {
+    const raw = sessionStorage.getItem(ORIGIN_KEY);
+    if (raw) return JSON.parse(raw) as QuizOrigin;
+  } catch { /* ignore */ }
+  return null;
+}
 
 export default function Quiz() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [step, setStep] = useState(0);
   const [scores, setScores] = useState<Record<MassageType, number>>({
     swedish: 0,
@@ -23,6 +52,12 @@ export default function Quiz() {
   // Nearest-studio recommendation (only after the visitor allows location).
   const [geoState, setGeoState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
   const [nearby, setNearby] = useState<NearbyStudio[]>([]);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [fallbackList, setFallbackList] = useState<
+    Omit<NearbyStudio, "km" | "meters" | "walkMinutes" | "lat" | "lng">[]
+  >([]);
+  const [origin] = useState<QuizOrigin | null>(() => readOrigin(params));
+  const [originOffers, setOriginOffers] = useState(false);
 
 
   useEffect(() => {
