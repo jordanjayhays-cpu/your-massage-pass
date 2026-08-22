@@ -169,17 +169,31 @@ export default function MassageList() {
         )}
       </div>
 
-      {/* Quiz entry point */}
-      <div className="px-5 pt-3">
+      {/* Quiz entry point — full-width card between search and map */}
+      <div className="px-5 md:px-8 pt-4">
         <button
+          type="button"
           onClick={() => navigate("/app/discovery/quiz")}
           aria-label={t("app.discovery.quizCardAria")}
-          className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-full border border-primary/60 bg-primary/5 text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="group w-full text-left rounded-3xl border border-border/70 bg-secondary/40 p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-safe:transition-all motion-safe:hover:border-primary/50 motion-safe:hover:bg-secondary/70 motion-safe:active:scale-[0.995]"
         >
-          <Sparkles className="h-4 w-4" />
-          {t("app.massageList.quizButton")}
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <h2 className="font-display text-lg font-semibold text-foreground leading-tight">
+                {t("app.massageList.quizCardTitle")}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("app.massageList.quizCardSub")}
+              </p>
+              <span className="mt-4 inline-flex items-center justify-center min-h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft group-hover:bg-primary/90 transition-colors">
+                {t("app.massageList.quizCardCta")}
+              </span>
+            </div>
+          </div>
         </button>
       </div>
+
 
       {/* Map header banner — shared component, also used on /app/discovery */}
       <div className="px-5 pt-5">
