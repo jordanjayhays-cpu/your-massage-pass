@@ -1454,6 +1454,7 @@ export default function StudioBookingPage() {
               </div>
             )}
           </Section>
+          </div>
         )}
 
         {/* 4. Customize lives in the left column on desktop */}
