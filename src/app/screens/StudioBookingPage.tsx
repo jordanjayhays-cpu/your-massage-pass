@@ -582,7 +582,7 @@ export default function StudioBookingPage() {
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
-                    <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <a href={unclaimedWaLink} target="_blank" rel="noreferrer" onClick={() => logSuccessWa(unclaimedWaMsg)} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                       <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Enviar reserva por WhatsApp</span>
                       <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
                     </a>
