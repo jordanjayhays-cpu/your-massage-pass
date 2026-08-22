@@ -110,7 +110,7 @@ export default function StudioBookingPage() {
     if (!profile?.partner) return;
     const p = profile.partner as any;
     const prevTitle = document.title;
-    document.title = `${p.business_name} — Masajes en Madrid | Massage Club`;
+    document.title = `${p.business_name}, Masajes en Madrid | Massage Club`;
     const desc = `Reserva en ${p.business_name}${p.address ? `, ${p.address}` : ""}. Menú y precios reales${p.price_from ? `, desde ${p.price_from}€` : ""}. Massage Club Madrid.`;
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) {
@@ -409,7 +409,7 @@ export default function StudioBookingPage() {
       const start = new Date(date); start.setHours(h, m, 0, 0);
       const end = new Date(start.getTime() + (service.duration || 60) * 60000);
       const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      const text = encodeURIComponent(`${serviceInlineLabel(service)} — ${partner.business_name}`);
+      const text = encodeURIComponent(`${serviceInlineLabel(service)} · ${partner.business_name}`);
       const details = encodeURIComponent(`Massage Club booking · Ref ${done.ref}`);
       const loc = encodeURIComponent(partner.address || partner.business_name || "");
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
@@ -556,7 +556,7 @@ export default function StudioBookingPage() {
       if (hoService && hoDate && hoTime) {
         const lines: string[] = [`${greeting} Me gustaría reservar:`];
         lines.push(serviceLine);
-        const alt = hoAltDate && hoAltTime ? ` — o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
+        const alt = hoAltDate && hoAltTime ? `, o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
         lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
