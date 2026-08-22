@@ -1865,7 +1865,7 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
 /** Rounded time pills for the handoff form (fixed options, real availability unknown). */
 function TimePills({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2 min-[900px]:gap-3">
       {HANDOFF_TIMES.map(t => {
         const active = value === t;
         return (
@@ -1875,7 +1875,7 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
             role="radio"
             aria-checked={active}
             onClick={() => onChange(active ? "" : t)}
-            className="px-3.5 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            className="px-3.5 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
             style={{
               borderColor: active ? "#C4622D" : "#E6DCCF",
               background: active ? "#C4622D" : "#ffffff",
