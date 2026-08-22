@@ -83,6 +83,7 @@ export default function StudioBookingPage() {
 
   // Persist locally whenever it changes.
   useEffect(() => { saveSpokenLangs(spokenLangs); }, [spokenLangs]);
+  useEffect(() => { clarityEvent("studio_view"); }, [studioId]);
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
