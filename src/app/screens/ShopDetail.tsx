@@ -366,7 +366,7 @@ export default function ShopDetail() {
                     meta: { filled: false, service: false, date: false },
                   });
                   logWhatsappRequest({
-                    partner_id: m.id,
+                    partner_id: m.status ? m.partner_id : null,
                     slug: m.slug || m.id,
                     studio_name: m.studio,
                     service_name: null,
