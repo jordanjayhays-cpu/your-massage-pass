@@ -110,7 +110,7 @@ export default function StudioBookingPage() {
     if (!profile?.partner) return;
     const p = profile.partner as any;
     const prevTitle = document.title;
-    document.title = `${p.business_name} — Masajes en Madrid | Massage Club`;
+    document.title = `${p.business_name}, Masajes en Madrid | Massage Club`;
     const desc = `Reserva en ${p.business_name}${p.address ? `, ${p.address}` : ""}. Menú y precios reales${p.price_from ? `, desde ${p.price_from}€` : ""}. Massage Club Madrid.`;
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) {
@@ -409,7 +409,7 @@ export default function StudioBookingPage() {
       const start = new Date(date); start.setHours(h, m, 0, 0);
       const end = new Date(start.getTime() + (service.duration || 60) * 60000);
       const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      const text = encodeURIComponent(`${serviceInlineLabel(service)} — ${partner.business_name}`);
+      const text = encodeURIComponent(`${serviceInlineLabel(service)} · ${partner.business_name}`);
       const details = encodeURIComponent(`Massage Club booking · Ref ${done.ref}`);
       const loc = encodeURIComponent(partner.address || partner.business_name || "");
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
@@ -476,8 +476,8 @@ export default function StudioBookingPage() {
             ) : (
               <>
                 <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  Casi listo — envía tu reserva al estudio para confirmarla.
-                  <span className="block text-xs mt-0.5">Almost done — send your booking to the studio to confirm it.</span>
+                  Casi listo. Envía tu reserva al estudio para confirmarla.
+                  <span className="block text-xs mt-0.5">Almost done. Send your booking to the studio to confirm it.</span>
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
@@ -556,7 +556,7 @@ export default function StudioBookingPage() {
       if (hoService && hoDate && hoTime) {
         const lines: string[] = [`${greeting} Me gustaría reservar:`];
         lines.push(serviceLine);
-        const alt = hoAltDate && hoAltTime ? ` — o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
+        const alt = hoAltDate && hoAltTime ? `, o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
         lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
         if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
         lines.push("");
@@ -632,28 +632,30 @@ export default function StudioBookingPage() {
     const googleRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative" style={{ background: "#FAF6F1" }}>
+      <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
         <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
-        <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
+        <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden text-center min-[900px]:text-left" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
             <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
           </div>
-          <div className="px-6 py-7">
+          <div className="px-6 py-7 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-10 min-[900px]:items-start">
+            {/* LEFT: studio identity + menu */}
+            <div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             {partner.address && (
-              <p className="text-sm flex items-center justify-center gap-1 mb-2" style={{ color: "#5a4736" }}>
+              <p className="text-sm flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
                 <span>📍</span>
                 <span>{partner.address}</span>
               </p>
             )}
             {rating ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
               </p>
             ) : googleRating != null ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {googleRating.toFixed(1)}
                 {googleReviews != null && (
@@ -671,6 +673,33 @@ export default function StudioBookingPage() {
               {t("app.handoff.bookDirectly")}
               <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
             </p>
+            {profile.services.length > 0 && (
+              <div className="mt-6 text-left">
+                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
+                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
+                  {profile.services.map(s => (
+                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
+                      <span className="min-w-0">
+                        <span className="block">
+                          {servicePrimaryName(s)}
+                          {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
+                        </span>
+                        {serviceSecondaryName(s) && (
+                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                        )}
+                      </span>
+                      {s.price != null && Number(s.price) > 0 && (
+                        <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            </div>
+
+            {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
+            <div className="min-[900px]:sticky min-[900px]:top-4">
             {waLink && (
               <div className="text-left rounded-2xl p-4 mb-4" style={{ background: "#FAF6F1" }}>
                 <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
@@ -680,7 +709,19 @@ export default function StudioBookingPage() {
                   {profile.services.length > 0 && (
                     <div>
                       <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
-                      <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                      <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                        <Link
+                          to="/discovery/quiz"
+                          className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
+                          style={{ borderColor: "#B85C38", background: "#F6E5DB" }}
+                        >
+                          <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
+                            <span className="block text-xs" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
+                          </span>
+                        </Link>
+                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2">
                         {profile.services.map((s: any) => {
                           const selected = hoServiceId === s.id;
                           const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
@@ -710,6 +751,7 @@ export default function StudioBookingPage() {
                             </button>
                           );
                         })}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -783,7 +825,7 @@ export default function StudioBookingPage() {
                     <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
                     <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
                   </a>
-                  <p className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                  <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                   {waTapped && (
                     <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
                       {t("app.handoff.afterNote")}
@@ -804,30 +846,9 @@ export default function StudioBookingPage() {
                 </a>
               )}
             </div>
-            {profile.services.length > 0 && (
-              <div className="mt-6 text-left">
-                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
-                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
-                  {profile.services.map(s => (
-                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
-                      <span className="min-w-0">
-                        <span className="block">
-                          {servicePrimaryName(s)}
-                          {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
-                        </span>
-                        {serviceSecondaryName(s) && (
-                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                        )}
-                      </span>
-                      {s.price != null && Number(s.price) > 0 && (
-                        <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
+            </div>
+
+            <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
             </div>
           </div>
@@ -835,6 +856,7 @@ export default function StudioBookingPage() {
       </div>
     );
   }
+
 
   // Name + at least one way to reach them (phone OR email). Phone is no longer required.
 
@@ -961,7 +983,7 @@ export default function StudioBookingPage() {
           setSlotCounts(counts);
         } catch {}
         setTime("");
-        setError("Esa hora se acaba de llenar — elige otra / That time just filled up — pick another");
+        setError("Esa hora se acaba de llenar, elige otra / That time just filled up, pick another");
       } else {
         setError(msg || "Something went wrong. Please try again.");
       }
@@ -1047,7 +1069,9 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-5 py-5 space-y-5">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 space-y-5 min-[900px]:space-y-0 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-8 min-[900px]:items-start">
+        {/* LEFT COLUMN: studio identity, address and services */}
+        <div className="space-y-5">
         {/* About */}
         {partner.description && <p className="text-sm text-gray-600">{partner.description}</p>}
 
@@ -1061,27 +1085,7 @@ export default function StudioBookingPage() {
           ))}
         </div>
 
-        {/* Ask on WhatsApp — always reachable, prefilled with whatever is picked */}
-        {bookingWaHref && (
-          <a
-            href={bookingWaHref}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              clarityEvent("whatsapp_click");
-              sendTrack({
-                event: "whatsapp_click",
-                path: window.location.pathname,
-                slug: partner.slug || partner.id,
-                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
-              });
-            }}
-            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
-          >
-            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
-          </a>
-        )}
+
 
         {/* Gallery */}
         {(partner.gallery || []).length > 0 && (
@@ -1134,7 +1138,18 @@ export default function StudioBookingPage() {
         {!rebookMode && (
         <Section step="1" title="Choose a service" titleEs="Elige un servicio">
           <div className="space-y-2">
+            <Link
+              to="/discovery/quiz"
+              className="w-full flex items-center gap-2 p-4 rounded-2xl border-2 border-[#C4622D] bg-[#F6E5DB] motion-safe:transition hover:opacity-95"
+            >
+              <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
+              <span className="min-w-0 text-left">
+                <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
+                <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
+              </span>
+            </Link>
             {profile.services.map(s => (
+
               <button key={s.id} onClick={() => setServiceId(s.id)}
                 className={`w-full text-left p-4 rounded-2xl border-2 transition ${
                   serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
@@ -1163,14 +1178,38 @@ export default function StudioBookingPage() {
           </div>
         </Section>
         )}
+        </div>
 
-
+        {/* RIGHT COLUMN: booking form + CTA, sticky on desktop */}
+        <div className="space-y-5 min-[900px]:sticky min-[900px]:top-4">
+        {/* Ask on WhatsApp: always reachable, prefilled with whatever is picked */}
+        {bookingWaHref && (
+          <a
+            href={bookingWaHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              clarityEvent("whatsapp_click");
+              sendTrack({
+                event: "whatsapp_click",
+                path: window.location.pathname,
+                slug: partner.slug || partner.id,
+                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
+              });
+            }}
+            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          >
+            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
+            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
+          </a>
+        )}
 
         {/* 2. Date */}
+
         {service && (
           <Section step="2" title="Pick a day" titleEs="Elige un día">
             {openDates.length === 0 ? (
-              <p className="text-sm text-gray-400">No availability set yet — message the studio directly.</p>
+              <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
             ) : (
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                 {openDates.map(d => {
@@ -1195,7 +1234,7 @@ export default function StudioBookingPage() {
         {service && date && (
           <Section step="3" title="Pick a time" titleEs="Elige una hora">
             {times.length === 0 ? (
-              <p className="text-sm text-gray-400">Fully booked that day — try another date.</p>
+              <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {times.map(t => {
@@ -1341,7 +1380,7 @@ export default function StudioBookingPage() {
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
-              <p className="text-xs text-gray-400">Add at least one way to reach you — email or phone.</p>
+              <p className="text-xs text-gray-400">Add at least one way to reach you: email or phone.</p>
               <label className="flex items-start gap-2 pt-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1382,8 +1421,11 @@ export default function StudioBookingPage() {
             )}
           </button>
         </div>
+        </div>
 
+        <div className="min-[900px]:col-span-2 space-y-5">
         {/* Contact footer */}
+
         <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
           {bookingWaNumber && (() => {
             const contactWa = studioWhatsappUrl(bookingWaNumber);
@@ -1421,7 +1463,9 @@ export default function StudioBookingPage() {
           <span>·</span>
           <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
         </div>
+        </div>
       </div>
+
     </div>
   );
 }
