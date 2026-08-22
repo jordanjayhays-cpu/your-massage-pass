@@ -76,6 +76,7 @@ const App = () => (
       <BrowserRouter>
         <RouteTracker />
         <ConsentBanner />
+        <AnalyticsOptOut />
 
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
