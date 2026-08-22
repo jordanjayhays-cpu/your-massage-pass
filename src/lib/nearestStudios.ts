@@ -134,3 +134,75 @@ export async function findNearestStudios(
     return [];
   }
 }
+
+/**
+ * Studios offering `type` when we have no location (permission denied).
+ * Same matching rules, no distances invented.
+ */
+export async function findStudiosOfferingType(
+  type: MassageType,
+  limit = 3,
+): Promise<Omit<NearbyStudio, "km" | "meters" | "walkMinutes" | "lat" | "lng">[]> {
+  try {
+    const { data: partners } = await supabase
+      .from("partners")
+      .select("id, slug, business_name, address, status")
+      .in("status", ["active", "pending"])
+      .limit(300);
+    if (!partners?.length) return [];
+
+    const { data: services } = await supabase
+      .from("partner_services")
+      .select("*")
+      .in("partner_id", partners.map((p: any) => p.id));
+
+    const byPartner = new Map<string, any>();
+    for (const s of services ?? []) {
+      if (!serviceMatchesType(s, type)) continue;
+      if (!byPartner.has(s.partner_id)) byPartner.set(s.partner_id, s);
+    }
+
+    const out: any[] = [];
+    for (const p of partners as any[]) {
+      const s = byPartner.get(p.id);
+      if (!s) continue;
+      const price = Number(s.price);
+      const duration = Number(s.duration);
+      out.push({
+        id: p.id,
+        slug: p.slug ?? null,
+        name: p.business_name || "Studio",
+        address: p.address ?? null,
+        service: {
+          id: s.id,
+          name: s.name ?? null,
+          name_en: s.name_en ?? null,
+          price: Number.isFinite(price) && price > 0 ? price : null,
+          duration: Number.isFinite(duration) && duration > 0 ? duration : null,
+        },
+      });
+    }
+    return out.slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/** Does the studio the visitor came from also offer the recommended type? */
+export async function studioOffersType(slugOrId: string, type: MassageType): Promise<boolean> {
+  try {
+    const { data: partner } = await supabase
+      .from("partners")
+      .select("id")
+      .or(`slug.eq.${slugOrId},id.eq.${slugOrId}`)
+      .maybeSingle();
+    if (!partner?.id) return false;
+    const { data: services } = await supabase
+      .from("partner_services")
+      .select("*")
+      .eq("partner_id", partner.id);
+    return (services ?? []).some((s: any) => serviceMatchesType(s, type));
+  } catch {
+    return false;
+  }
+}
