@@ -84,9 +84,14 @@ export default function Privacy() {
           </Section>
 
           <Section es="5. Cookies y almacenamiento local" en="Cookies and local storage">
-            Solo usamos cookies y localStorage esenciales: preferencia de idioma y sesión de usuario.
-            No usamos cookies de publicidad ni seguimiento de terceros.
+            Usamos cookies y localStorage esenciales: preferencia de idioma y sesión de usuario.
+            <br />
+            Si aceptas en el banner de cookies, usamos Microsoft Clarity para grabar repeticiones de sesión
+            anónimas y mapas de calor y así ver qué no funciona en la web y mejorarlo. Las grabaciones están
+            enmascaradas (no se capturan los textos que escribes) y nunca se venden ni se comparten con terceros
+            para publicidad. Si rechazas en el banner, Clarity no se carga en ningún momento.
           </Section>
+
 
           <Section es="6. Conservación" en="Retention">
             Guardamos tus datos mientras tengas una cuenta con nosotros o hasta que nos pidas que los eliminemos.
