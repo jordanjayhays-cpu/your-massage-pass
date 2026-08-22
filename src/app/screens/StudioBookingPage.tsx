@@ -1343,7 +1343,7 @@ export default function StudioBookingPage() {
             {step === 1 && (
               <div ref={serviceRef}>
                 <Section step="1" title="Choose a service" titleEs="Elige un servicio">
-                  {partner.description && <p className="text-sm text-gray-600 mb-4">{partner.description}</p>}
+                  {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4 min-[900px]:mb-5">{partner.description}</p>}
                   {(partner.gallery || []).length > 0 && (
                     <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
                       {partner.gallery.map((url: string, i: number) => (
