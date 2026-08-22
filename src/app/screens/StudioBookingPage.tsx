@@ -1845,16 +1845,16 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
             role="radio"
             aria-checked={active}
             onClick={() => onChange(active ? "" : iso)}
-            className="flex-shrink-0 w-16 py-2 rounded-2xl border-2 text-center motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            className="flex-shrink-0 w-16 min-[900px]:w-20 py-2 min-[900px]:py-3.5 rounded-2xl border-2 text-center motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
             style={{
               borderColor: active ? "#C4622D" : "#E6DCCF",
               background: active ? "#C4622D" : "#ffffff",
               color: active ? "#ffffff" : "#5a4736",
             }}
           >
-            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+            <div className="text-lg min-[900px]:text-2xl font-bold leading-none mt-0.5">{d.getDate()}</div>
+            <div className="text-[10px] min-[900px]:text-xs opacity-70">{MONTHS[d.getMonth()]}</div>
           </button>
         );
       })}
