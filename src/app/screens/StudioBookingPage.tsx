@@ -1335,9 +1335,9 @@ export default function StudioBookingPage() {
           </p>
         </div>
 
-        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8 min-[900px]:items-start">
+        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_360px] min-[900px]:gap-8 min-[900px]:items-start">
           {/* LEFT: one step at a time */}
-          <div className="space-y-5">
+          <div className="space-y-5 min-w-0">
 
             {/* STEP 1: service */}
             {step === 1 && (
