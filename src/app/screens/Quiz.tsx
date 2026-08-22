@@ -1,15 +1,44 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight, RefreshCw, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUIZ, MASSAGE_TYPES, MassageType, MASSAGES } from "../data";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { clarityEvent } from "@/lib/clarity";
-import { findNearestStudios, distanceLabel, type NearbyStudio } from "@/lib/nearestStudios";
+import {
+  findNearestStudios,
+  findStudiosOfferingType,
+  studioOffersType,
+  distanceLabel,
+  type NearbyStudio,
+} from "@/lib/nearestStudios";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import StudioMap from "../components/StudioMap";
+import type { Shop } from "@/lib/supabase";
+
+const ORIGIN_KEY = "mc_quiz_origin";
+
+type QuizOrigin = { slug: string; name: string };
+
+/** Where the visitor opened the quiz from, kept across the quiz steps. */
+function readOrigin(params: URLSearchParams): QuizOrigin | null {
+  const slug = params.get("from");
+  const name = params.get("fromName");
+  if (slug) {
+    const origin = { slug, name: name || slug };
+    try { sessionStorage.setItem(ORIGIN_KEY, JSON.stringify(origin)); } catch { /* ignore */ }
+    return origin;
+  }
+  try {
+    const raw = sessionStorage.getItem(ORIGIN_KEY);
+    if (raw) return JSON.parse(raw) as QuizOrigin;
+  } catch { /* ignore */ }
+  return null;
+}
 
 export default function Quiz() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [step, setStep] = useState(0);
   const [scores, setScores] = useState<Record<MassageType, number>>({
     swedish: 0,
@@ -23,6 +52,12 @@ export default function Quiz() {
   // Nearest-studio recommendation (only after the visitor allows location).
   const [geoState, setGeoState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
   const [nearby, setNearby] = useState<NearbyStudio[]>([]);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [fallbackList, setFallbackList] = useState<
+    Omit<NearbyStudio, "km" | "meters" | "walkMinutes" | "lat" | "lng">[]
+  >([]);
+  const [origin] = useState<QuizOrigin | null>(() => readOrigin(params));
+  const [originOffers, setOriginOffers] = useState(false);
 
 
   useEffect(() => {
@@ -48,6 +83,8 @@ export default function Quiz() {
     setDone(false);
     setGeoState("idle");
     setNearby([]);
+    setUserLoc(null);
+    setFallbackList([]);
   };
 
   const winnerType = (Object.entries(scores) as [MassageType, number][])
@@ -55,10 +92,21 @@ export default function Quiz() {
   const winner = MASSAGE_TYPES.find((t) => t.id === winnerType);
   const matchingStudios = MASSAGES.filter((m) => m.type === winnerType);
 
+  // Does the studio they came from also offer the recommended type?
+  useEffect(() => {
+    if (!done || !winnerType || !origin?.slug) return;
+    let cancelled = false;
+    studioOffersType(origin.slug, winnerType).then((ok) => {
+      if (!cancelled) setOriginOffers(ok);
+    });
+    return () => { cancelled = true; };
+  }, [done, winnerType, origin?.slug]);
+
   // Never blocks the result: on denial or error we simply keep the plain list.
   const askForLocation = () => {
     if (!winnerType || typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoState("unavailable");
+      findStudiosOfferingType(winnerType!, 3).then(setFallbackList).catch(() => {});
       return;
     }
     setGeoState("loading");
@@ -67,17 +115,43 @@ export default function Quiz() {
         const list = await findNearestStudios(winnerType, pos.coords.latitude, pos.coords.longitude, 3);
         if (list.length === 0) {
           setGeoState("unavailable");
+          findStudiosOfferingType(winnerType, 3).then(setFallbackList).catch(() => {});
           return;
         }
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setNearby(list);
         setGeoState("ready");
       },
-      () => setGeoState("unavailable"),
-      { timeout: 8000, maximumAge: 300000 },
+      () => {
+        setGeoState("unavailable");
+        findStudiosOfferingType(winnerType, 3).then(setFallbackList).catch(() => {});
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   };
 
-  const studioHref = (s: NearbyStudio) => `/s/${s.slug || s.id}`;
+  const studioHref = (s: { slug: string | null; id: string }) => `/s/${s.slug || s.id}`;
+
+  // Pins for the mini discovery map, built only from real coordinates.
+  const mapShops = nearby.map((s) => ({
+    id: s.id,
+    partner_id: s.id,
+    studio: s.name,
+    name: servicePrimaryName(s.service),
+    district: "",
+    address: s.address ?? "",
+    duration: s.service.duration ?? 0,
+    rating: null,
+    reviews: null,
+    image: "",
+    description: "",
+    tags: [],
+    type: winnerType ?? "",
+    lat: s.lat,
+    lng: s.lng,
+    services: [],
+    partner_services: [],
+  })) as unknown as Shop[];
 
 
   if (done && winner) {
@@ -137,8 +211,18 @@ export default function Quiz() {
               </div>
             )}
 
+            {/* Mini discovery: real map with the visitor and the matching studios */}
             {geoState === "ready" && nearby.length > 0 && (
               <div className="space-y-3">
+                {userLoc && (
+                  <StudioMap
+                    shops={mapShops}
+                    heightClass="h-[200px]"
+                    showSelectedCard={false}
+                    onSelect={(shop) => navigate(`/s/${(shop as any).partner_id || shop.id}`)}
+                  />
+                )}
+
                 <a
                   href={studioHref(nearby[0])}
                   className="block rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 hover:opacity-95 transition"
@@ -188,9 +272,44 @@ export default function Quiz() {
               </div>
             )}
 
+            {/* Location denied or unavailable: real studios, no distances invented */}
+            {geoState === "unavailable" && fallbackList.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-display text-lg font-semibold">Studios offering {winner.name}</h3>
+                {fallbackList.map((s) => (
+                  <a
+                    key={s.id}
+                    href={studioHref(s)}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary transition"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{s.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {servicePrimaryName(s.service)}
+                        {s.service.duration ? ` · ${s.service.duration} min` : ""}
+                        {s.service.price != null ? ` · €${s.service.price}` : ""}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </a>
+                ))}
+              </div>
+            )}
 
+            {/* Always offer the way back to the studio they came from */}
+            {origin && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/s/${origin.slug}`)}
+                className="w-full h-auto min-h-11 py-2 whitespace-normal"
+              >
+                {originOffers
+                  ? `Back to ${origin.name}, they offer ${winner.name} too`
+                  : `Back to ${origin.name}`}
+              </Button>
+            )}
 
-            {geoState !== "ready" && matchingStudios.length > 0 && (
+            {geoState === "idle" && matchingStudios.length > 0 && (
               <div>
                 <h3 className="font-display text-lg font-semibold mb-3">Try it in Madrid</h3>
                 <div className="space-y-2">

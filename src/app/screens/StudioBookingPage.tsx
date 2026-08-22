@@ -364,6 +364,14 @@ export default function StudioBookingPage() {
     return out;
   }, [slotsByDay]);
 
+  // The quiz remembers which studio sent the visitor there.
+  const quizHref = (() => {
+    const p: any = profile?.partner;
+    if (!p) return "/discovery/quiz";
+    const params = new URLSearchParams({ from: p.slug || p.id, fromName: p.business_name || "" });
+    return `/discovery/quiz?${params.toString()}`;
+  })();
+
   const service = profile?.services.find(s => s.id === serviceId) || null;
 
   // Studio capacity = how many massages can run in parallel (min 1).
@@ -746,9 +754,9 @@ export default function StudioBookingPage() {
                       <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
                       <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
                         <Link
-                          to="/discovery/quiz"
-                          className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
-                          style={{ borderColor: "#B85C38", background: "#F6E5DB" }}
+                          to={quizHref}
+                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
+                          style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
                         >
                           <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
                           <span className="min-w-0">
@@ -1239,8 +1247,8 @@ export default function StudioBookingPage() {
         <Section step="1" title="Choose a service" titleEs="Elige un servicio">
           <div className="space-y-2">
             <Link
-              to="/discovery/quiz"
-              className="w-full flex items-center gap-2 p-4 rounded-2xl border-2 border-[#C4622D] bg-[#F6E5DB] motion-safe:transition hover:opacity-95"
+              to={quizHref}
+              className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
             >
               <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
               <span className="min-w-0 text-left">
