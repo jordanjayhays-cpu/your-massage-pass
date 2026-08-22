@@ -357,6 +357,13 @@ export default function ShopDetail() {
                     slug: m.slug || m.id,
                     meta: { filled: false, service: false, date: false },
                   });
+                  logWhatsappRequest({
+                    partner_id: m.partner_id || m.id,
+                    slug: m.slug || null,
+                    studio_name: m.studio || m.name || "Unknown studio",
+                    wa_number: waNumber,
+                    message_text: whatsappPrefill({ studio: m.studio }),
+                  });
                 }}
                 className="mt-4 w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft motion-safe:transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
