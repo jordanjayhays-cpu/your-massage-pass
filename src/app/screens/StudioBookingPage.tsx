@@ -989,9 +989,25 @@ export default function StudioBookingPage() {
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
                         <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not given" />
+                        <SummaryRow label="Email" labelEs="Email" value={hoEmail.trim() || null} placeholder="Not given" />
                         <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
+                      {!hoEmail.trim() && (
+                        <div className="rounded-xl p-3 border" style={{ background: "#FDF8F3", borderColor: "#E6DCCF" }}>
+                          <p className="text-xs mb-2" style={{ color: "#7A7068" }}>{t("app.handoff.reviewEmailNudge")}</p>
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => hoGo(3)}
+                              className="text-xs font-semibold underline underline-offset-2" style={{ color: "#B85C38" }}>
+                              {t("app.handoff.reviewEmailAdd")}
+                            </button>
+                            <button type="button" onClick={() => {}}
+                              className="text-xs" style={{ color: "#9E9387" }}>
+                              {t("app.handoff.reviewEmailSkip")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <a
                         href={waLink}
                         target="_blank"
