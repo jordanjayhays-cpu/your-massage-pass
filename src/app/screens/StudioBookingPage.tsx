@@ -885,15 +885,15 @@ export default function StudioBookingPage() {
 
                   {/* STEP 2: day and time */}
                   {hoStep === 2 && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 min-[900px]:space-y-4">
                       <div>
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                        <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
                         <div className="mt-1.5">
                           <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
                         </div>
                       </div>
                       <div>
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                        <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
                         <div className="mt-1.5">
                           <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
                         </div>
@@ -902,16 +902,16 @@ export default function StudioBookingPage() {
                         <button
                           type="button"
                           onClick={() => setAltOpen(true)}
-                          className="text-sm font-semibold underline underline-offset-2"
+                          className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
                           style={{ color: "#B85C38" }}
                         >
                           + Add a second choice
-                          <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                          <span className="block text-xs min-[900px]:text-sm font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
                         </button>
                       ) : (
                         <div>
-                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                          <div className="mt-1.5 space-y-2">
+                          <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                          <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
                             <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
                             <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
                           </div>
