@@ -760,20 +760,20 @@ export default function StudioBookingPage() {
           <div className="px-6 py-7 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-10 min-[900px]:items-start">
             {/* LEFT: studio identity + menu */}
             <div>
-            <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            <h1 className="font-display text-3xl min-[900px]:text-4xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             {partner.address && (
-              <p className="text-sm flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
+              <p className="text-sm min-[900px]:text-base flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
                 <span>📍</span>
                 <span>{partner.address}</span>
               </p>
             )}
             {rating ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
               </p>
             ) : googleRating != null ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {googleRating.toFixed(1)}
                 {googleReviews != null && (
@@ -781,29 +781,29 @@ export default function StudioBookingPage() {
                 )}
               </p>
             ) : null}
-            <p className="text-sm mb-1" style={{ color: "#7A7068" }}>
+            <p className="text-sm min-[900px]:text-base mb-1" style={{ color: "#7A7068" }}>
               {t("app.handoff.notRegistered")}
             </p>
-            <p className="text-xs mb-5" style={{ color: "#9E9387" }}>
+            <p className="text-xs min-[900px]:text-sm mb-5" style={{ color: "#9E9387" }}>
               {t("app.handoff.notRegisteredSub")}
             </p>
-            <p className="text-sm mb-5" style={{ color: "#5a4736" }}>
+            <p className="text-sm min-[900px]:text-base mb-5" style={{ color: "#5a4736" }}>
               {t("app.handoff.bookDirectly")}
-              <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
+              <span className="block text-xs min-[900px]:text-sm mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
             </p>
             {profile.services.length > 0 && (
               <div className="mt-6 text-left">
-                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
-                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
+                <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
+                <div className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
                   {profile.services.map(s => (
-                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
+                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm min-[900px]:text-base" style={{ color: "#5a4736" }}>
                       <span className="min-w-0">
                         <span className="block">
                           {servicePrimaryName(s)}
                           {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
                         </span>
                         {serviceSecondaryName(s) && (
-                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                          <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                         )}
                       </span>
                       {s.price != null && Number(s.price) > 0 && (
@@ -821,28 +821,28 @@ export default function StudioBookingPage() {
             {waLink && (
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
-                <div className="rounded-2xl p-4 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
-                  <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
+                <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+                  <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
                     {t("app.handoff.prefTitle")}
                   </p>
 
                   {/* STEP 1: service */}
                   {hoStep === 1 && (
                     <div>
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
-                      <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                      <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
+                      <div className="mt-1.5 space-y-2 min-[900px]:space-y-3 max-h-72 overflow-y-auto pr-0.5">
                         <Link
                           to={quizHref}
-                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
+                          className="w-full text-left rounded-xl border border-dashed px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 min-h-[56px] min-[900px]:min-h-[68px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
                           style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
                         >
-                          <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
+                          <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
                           <span className="min-w-0">
-                            <span className="block text-sm font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
-                            <span className="block text-xs" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
+                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
+                            <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
                           </span>
                         </Link>
-                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2">
+                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2 min-[900px]:space-y-3">
                           {profile.services.map((s: any) => {
                             const selected = hoServiceId === s.id;
                             const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
@@ -854,20 +854,20 @@ export default function StudioBookingPage() {
                                 role="radio"
                                 aria-checked={selected}
                                 onClick={() => setHoServiceId(selected ? "" : s.id)}
-                                className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition"
+                                className="w-full text-left rounded-xl border px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 min-h-[56px] min-[900px]:min-h-[68px] flex items-start justify-between gap-3 motion-safe:transition"
                                 style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
                               >
                                 <span className="min-w-0">
-                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
+                                  <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
                                   {serviceSecondaryName(s) && (
-                                    <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                                    <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                                   )}
                                 </span>
                                 <span className="text-right flex-shrink-0">
                                   {Number.isFinite(price) && price > 0 && (
-                                    <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                                    <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
                                   )}
-                                  {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
+                                  {dur && <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{dur} min</span>}
                                 </span>
                               </button>
                             );
@@ -885,15 +885,15 @@ export default function StudioBookingPage() {
 
                   {/* STEP 2: day and time */}
                   {hoStep === 2 && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 min-[900px]:space-y-4">
                       <div>
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                        <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
                         <div className="mt-1.5">
                           <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
                         </div>
                       </div>
                       <div>
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                        <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
                         <div className="mt-1.5">
                           <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
                         </div>
@@ -902,16 +902,16 @@ export default function StudioBookingPage() {
                         <button
                           type="button"
                           onClick={() => setAltOpen(true)}
-                          className="text-sm font-semibold underline underline-offset-2"
+                          className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
                           style={{ color: "#B85C38" }}
                         >
                           + Add a second choice
-                          <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                          <span className="block text-xs min-[900px]:text-sm font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
                         </button>
                       ) : (
                         <div>
-                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                          <div className="mt-1.5 space-y-2">
+                          <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                          <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
                             <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
                             <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
                           </div>
@@ -929,18 +929,18 @@ export default function StudioBookingPage() {
 
                   {/* STEP 3: your info */}
                   {hoStep === 3 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 min-[900px]:space-y-5">
                       <label className="block">
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
                         <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
-                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
                       <label className="block">
-                        <span className="text-xs" style={{ color: "#7A7068" }}>Email (optional)</span>
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email (optional)</span>
                         <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
-                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                        <span className="block text-[11px] mt-1" style={{ color: "#9E9387" }}>
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                        <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
                           So we can check everything went well with your booking.
                           <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
                         </span>
@@ -949,13 +949,13 @@ export default function StudioBookingPage() {
                         <label className="flex items-start gap-2 cursor-pointer">
                           <input type="checkbox" checked={createAccount}
                             onChange={(e) => setCreateAccount(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 accent-[#C4622D]" />
-                          <span className="text-xs leading-snug" style={{ color: "#5a4736" }}>
+                            className="mt-0.5 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]" />
+                          <span className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5a4736" }}>
                             Create my free Massage Club account
-                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
                               Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
                             </span>
-                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
                               Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
                             </span>
                           </span>
@@ -963,47 +963,47 @@ export default function StudioBookingPage() {
                       )}
 
                       <div>
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 min-[900px]:gap-2">
                           {spokenLangs.map((code) => (
                             <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                              className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                              className="inline-flex items-center gap-1.5 h-7 min-[900px]:h-8 pl-2 min-[900px]:pl-2.5 pr-1.5 min-[900px]:pr-2 rounded-full border text-[12px] min-[900px]:text-sm"
                               style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
                               <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                className="w-4 h-3 min-[900px]:w-5 min-[900px]:h-4 rounded-[2px] object-cover" loading="lazy" />
                               {SPOKEN_LANG_NATIVE[code]}
                               <span aria-hidden style={{ color: "#9E9387" }}>×</span>
                             </button>
                           ))}
                           <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                            className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                            className="inline-flex items-center h-7 min-[900px]:h-8 px-2.5 min-[900px]:px-3 rounded-full border text-[12px] min-[900px]:text-sm"
                             style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
                             + {t("app.handoff.prefLanguagesAdd")}
                           </button>
                         </div>
                         {langPickerOpen && (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <div className="mt-1.5 flex flex-wrap gap-1.5 min-[900px]:gap-2">
                             {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
                               <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                                className="inline-flex items-center gap-1.5 h-7 min-[900px]:h-8 px-2.5 min-[900px]:px-3 rounded-full border text-[12px] min-[900px]:text-sm bg-white"
                                 style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
                                 <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                  className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                  className="w-4 h-3 min-[900px]:w-5 min-[900px]:h-4 rounded-[2px] object-cover" loading="lazy" />
                                 {SPOKEN_LANG_NATIVE[code]}
                               </button>
                             ))}
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
+                      <p className="text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                       <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
                     </div>
                   )}
 
                   {/* STEP 4: review and send */}
                   {hoStep === 4 && (
-                    <div className="space-y-3">
-                      <div className="rounded-xl bg-white p-3 space-y-2 border" style={{ borderColor: "#E6DCCF" }}>
+                    <div className="space-y-3 min-[900px]:space-y-4">
+                      <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
                         <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
@@ -1017,19 +1017,19 @@ export default function StudioBookingPage() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={trackWhatsappIntent}
-                        className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
+                        className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                         style={{ background: "#B85C38", color: "#fff" }}
                       >
-                        <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
-                        <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
+                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
+                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
                       </a>
-                      <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                      <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                       {waTapped && (
-                        <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
+                        <p className="text-xs min-[900px]:text-sm rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
                           {t("app.handoff.afterNote")}
                         </p>
                       )}
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
@@ -1343,7 +1343,7 @@ export default function StudioBookingPage() {
             {step === 1 && (
               <div ref={serviceRef}>
                 <Section step="1" title="Choose a service" titleEs="Elige un servicio">
-                  {partner.description && <p className="text-sm text-gray-600 mb-4">{partner.description}</p>}
+                  {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4 min-[900px]:mb-5">{partner.description}</p>}
                   {(partner.gallery || []).length > 0 && (
                     <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
                       {partner.gallery.map((url: string, i: number) => (
@@ -1358,54 +1358,54 @@ export default function StudioBookingPage() {
                     />
                   )}
                   {rebookMode && service && (
-                    <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 mb-3">
+                    <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 min-[900px]:p-5 mb-3 min-[900px]:mb-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                        <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] min-[900px]:text-xs font-semibold">
                           <Sparkles size={11} /> Your usual booking
                         </div>
-                        <button onClick={() => setRebookMode(false)} className="text-xs font-semibold text-[#C4622D] underline underline-offset-2">
+                        <button onClick={() => setRebookMode(false)} className="text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline underline-offset-2">
                           Change / Cambiar
                         </button>
                       </div>
-                      <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
-                      {serviceSecondaryName(service) && <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>}
+                      <p className="font-semibold text-gray-900 min-[900px]:text-base">{servicePrimaryName(service)}</p>
+                      {serviceSecondaryName(service) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(service)}</p>}
                     </div>
                   )}
                   {!rebookMode && (
                     <div className="space-y-2">
                       <Link
                         to={quizHref}
-                        className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
+                        className="w-full flex items-center gap-2 p-4 min-[900px]:p-5 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
                       >
                         <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
                         <span className="min-w-0 text-left">
-                          <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
-                          <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
+                          <span className="block text-sm min-[900px]:text-base font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
+                          <span className="block text-xs min-[900px]:text-sm text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
                         </span>
                       </Link>
                       {profile.services.map(s => (
                         <button key={s.id} onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
-                          className={`w-full text-left p-4 rounded-2xl border-2 transition ${
+                          className={`w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
                             serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                           }`}>
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
-                              {serviceSecondaryName(s) && <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>}
-                              {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
+                              <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
+                              {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
+                              {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
                               {Number(s.duration) > 0 && (
-                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
+                                <p className="text-xs min-[900px]:text-sm text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
                               )}
                             </div>
                             <div className="text-right flex-shrink-0">
                               {s.price != null && Number(s.price) > 0 && (
-                                <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                                <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
                               )}
                             </div>
                           </div>
                         </button>
                       ))}
-                      {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
+                      {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
                     </div>
                   )}
                 </Section>
@@ -1423,19 +1423,19 @@ export default function StudioBookingPage() {
               <div ref={dateRef}>
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
                   {openDates.length === 0 ? (
-                    <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
+                    <p className="text-sm min-[900px]:text-base text-gray-400">No availability set yet. Message the studio directly.</p>
                   ) : (
                     <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
                           <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); scrollIntoViewGently(e.currentTarget); }}
-                            className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
+                            className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
-                            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-                            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-                            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+                            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                            <div className="text-lg min-[900px]:text-2xl font-bold leading-none mt-0.5">{d.getDate()}</div>
+                            <div className="text-[10px] min-[900px]:text-xs opacity-70">{MONTHS[d.getMonth()]}</div>
                           </button>
                         );
                       })}
@@ -1443,23 +1443,23 @@ export default function StudioBookingPage() {
                   )}
                   {date && (
                     <div ref={timeRef} className="mt-5">
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Times <span className="font-normal text-gray-400">/ Horas</span></p>
+                      <p className="text-xs min-[900px]:text-xl font-semibold text-gray-500 mb-2 min-[900px]:mb-3">Times <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Horas</span></p>
                       {times.length === 0 ? (
-                        <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
+                        <p className="text-sm min-[900px]:text-base text-gray-400">Fully booked that day. Try another date.</p>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 min-[900px]:gap-3">
                           {times.map(t => {
                             const left = remainingFor(t);
                             const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
                             const lowStock = cap > 1 && left < cap;
                             return (
                               <button key={t} onClick={() => setTime(t)}
-                                className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                                className={`px-4 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition ${
                                   time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                                 }`}>
                                 {t}
                                 {lowStock && (
-                                  <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
+                                  <span className={`block text-[10px] min-[900px]:text-xs font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
                                     {left} left
                                   </span>
                                 )}
@@ -1485,13 +1485,13 @@ export default function StudioBookingPage() {
             {step === 3 && (
               <div>
                 <Section step="3" title="Customize your session" titleEs="Personaliza tu sesión">
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm min-[900px]:text-base text-gray-500 mb-4 min-[900px]:mb-5">
                     Optional, but it helps your therapist get it right.
-                    <span className="block text-xs text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
+                    <span className="block text-xs min-[900px]:text-sm text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
                   </p>
                   {customerProfile && prefsApplied && (
-                    <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-gray-700">Prefilled from your profile</span>
+                    <div className="mb-4 min-[900px]:mb-5 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 min-[900px]:px-4 py-2 min-[900px]:py-2.5 flex items-center justify-between gap-2">
+                      <span className="text-xs min-[900px]:text-sm font-medium text-gray-700">Prefilled from your profile</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -1501,7 +1501,7 @@ export default function StudioBookingPage() {
                           setConversationPref("");
                           setPrefsApplied(false);
                         }}
-                        className="text-xs font-semibold text-[#C4622D] underline"
+                        className="text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline"
                       >
                         Start blank
                       </button>
@@ -1550,20 +1550,20 @@ export default function StudioBookingPage() {
                   {addons.length > 0 && (
                     <>
                       <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Add-ons <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Extras</span></p>
-                      <div className="space-y-2 mb-4">
+                      <div className="space-y-2 min-[900px]:space-y-3 mb-4 min-[900px]:mb-5">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
                           return (
                             <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition min-[900px]:p-4 ${
+                              className={`w-full flex items-center justify-between p-3 min-[900px]:p-4 rounded-xl border-2 text-left transition ${
                                 on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                               }`}>
                               <div>
                                 <p className="text-sm font-medium text-gray-900 min-[900px]:text-base">{a.name}</p>
                                 <p className="text-xs text-gray-400 min-[900px]:text-sm">+€{a.price}</p>
                               </div>
-                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
-                                {on && <Check size={12} className="text-white" />}
+                              <div className={`h-5 w-5 min-[900px]:h-6 min-[900px]:w-6 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
+                                {on && <Check size={12} className="text-white min-[900px]:size-4" />}
                               </div>
                             </button>
                           );
@@ -1585,60 +1585,60 @@ export default function StudioBookingPage() {
             {step === 4 && (
               <div>
                 <Section step="4" title="Your details" titleEs="Tus datos">
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-[900px]:space-y-3">
                     <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setStepError(null); }} placeholder="Your name / Tu nombre"
                       aria-invalid={!!stepError && !name.trim()}
-                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
                     <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email"
-                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
                     <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs min-[900px]:text-sm text-gray-400">
                       Add at least one way to reach you: email or phone.
-                      <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Añade al menos un email o teléfono.</span>
                     </p>
                     {!userId && !!email.trim() && (
-                      <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                      <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={createAccount}
                           onChange={e => setCreateAccount(e.target.checked)}
-                          className="mt-1 h-4 w-4 accent-[#C4622D]"
+                          className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
                         />
-                        <span className="text-xs text-gray-600 leading-snug">
+                        <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
                           Create my free Massage Club account
-                          <span className="block text-[11px] text-gray-400">
+                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
                             Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
                           </span>
-                          <span className="block text-[11px] text-gray-400">
+                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
                             Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
                           </span>
                         </span>
                       </label>
                     )}
-                    <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                    <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
 
                       <input
                         type="checkbox"
                         checked={marketingOptIn}
                         onChange={e => setMarketingOptIn(e.target.checked)}
-                        className="mt-1 h-4 w-4 accent-[#C4622D]"
+                        className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
                       />
-                      <span className="text-xs text-gray-600 leading-snug">
+                      <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
                         Send me Massage Club news and offers (optional)
-                        <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
+                        <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
                       </span>
                     </label>
                     {stepError && (
-                      <p role="alert" className="text-sm font-medium text-[#B03A2E]">
+                      <p role="alert" className="text-sm min-[900px]:text-base font-medium text-[#B03A2E]">
                         {stepError.en}
-                        <span className="block text-xs font-normal text-[#8a7460]">{stepError.es}</span>
+                        <span className="block text-xs min-[900px]:text-sm font-normal text-[#8a7460]">{stepError.es}</span>
                       </p>
                     )}
                   </div>
@@ -1657,7 +1657,7 @@ export default function StudioBookingPage() {
             {step === 5 && (
               <div>
                 <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
                     <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
                     <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
                     <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
@@ -1670,11 +1670,11 @@ export default function StudioBookingPage() {
                     <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" />
                     <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
                   </div>
-                  {error && <p className="mt-3 text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+                  {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
                   <button
                     onClick={handleBook}
                     disabled={submitting || !canBook}
-                    className={`mt-4 w-full h-14 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
+                    className={`mt-4 w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
                       canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#9E8B78]"
                     }`}
                   >
@@ -1682,17 +1682,17 @@ export default function StudioBookingPage() {
                       <><Loader2 size={18} className="animate-spin" /> Booking</>
                     ) : (
                       <span className="flex flex-col items-center leading-tight">
-                        <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
-                        <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
+                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><CalendarDays size={18} /> Request booking · €{total}</span>
+                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar reserva</span>
                       </span>
                     )}
                   </button>
-                  <p className="mt-2 text-xs text-center text-[#8a7460]">
+                  <p className="mt-2 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
                     The studio confirms your time. You pay at the studio.
                     <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
                   </p>
                   <div className="pt-3">
-                    <button type="button" onClick={() => goStep(4)} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+                    <button type="button" onClick={() => goStep(4)} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
                       Back <span className="font-normal">/ Atrás</span>
                     </button>
                   </div>
@@ -1703,8 +1703,8 @@ export default function StudioBookingPage() {
 
           {/* RIGHT: running summary, desktop only */}
           <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-[2px] text-[#C4622D] mb-1">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
+              <p className="text-xs min-[900px]:text-sm font-bold uppercase tracking-[2px] text-[#C4622D] mb-1 min-[900px]:mb-2">
                 Your booking <span className="font-normal text-[#B3A597]">/ Tu reserva</span>
               </p>
               <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
@@ -1741,22 +1741,22 @@ export default function StudioBookingPage() {
                     message_text: bookingWaMsg,
                   });
                 }}
-                className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] px-6 py-2 rounded-2xl font-semibold motion-safe:transition ${
+                className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
                   partner.status === "active"
                     ? "border border-[#C4622D] text-[#C4622D] bg-white hover:bg-[#FAF6F1]"
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
               >
-                <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-                <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
+                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> Ask on WhatsApp</span>
+                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Preguntar por WhatsApp</span>
               </a>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 min-[900px]:gap-2.5">
               {(partner.languages || []).slice(0, 4).map((l: string) => (
-                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(l)}</span>
+                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs min-[900px]:text-sm text-gray-600">{tagLabel(l)}</span>
               ))}
               {(partner.amenities || []).slice(0, 4).map((a: string) => (
-                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(a)}</span>
+                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs min-[900px]:text-sm text-gray-600">{tagLabel(a)}</span>
               ))}
             </div>
           </aside>
@@ -1812,11 +1812,11 @@ export default function StudioBookingPage() {
 function Section({ step, title, titleEs, children }: { step: string; title: string; titleEs?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="h-6 w-6 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">{step}</div>
+      <div className="flex items-center gap-2 mb-3 min-[900px]:mb-4">
+        <div className="h-6 w-6 min-[900px]:h-8 min-[900px]:w-8 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs min-[900px]:text-sm font-bold flex-shrink-0">{step}</div>
         <div>
-          <h2 className="font-display text-lg leading-tight text-gray-900">{title}</h2>
-          {titleEs && <p className="text-xs text-[#8a7460] leading-tight">{titleEs}</p>}
+          <h2 className="font-display text-lg min-[900px]:text-[22px] leading-tight text-gray-900">{title}</h2>
+          {titleEs && <p className="text-xs min-[900px]:text-sm text-[#8a7460] leading-tight">{titleEs}</p>}
         </div>
       </div>
       {children}
@@ -1845,16 +1845,16 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
             role="radio"
             aria-checked={active}
             onClick={() => onChange(active ? "" : iso)}
-            className="flex-shrink-0 w-16 py-2 rounded-2xl border-2 text-center motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            className="flex-shrink-0 w-16 min-[900px]:w-20 py-2 min-[900px]:py-3.5 rounded-2xl border-2 text-center motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
             style={{
               borderColor: active ? "#C4622D" : "#E6DCCF",
               background: active ? "#C4622D" : "#ffffff",
               color: active ? "#ffffff" : "#5a4736",
             }}
           >
-            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+            <div className="text-lg min-[900px]:text-2xl font-bold leading-none mt-0.5">{d.getDate()}</div>
+            <div className="text-[10px] min-[900px]:text-xs opacity-70">{MONTHS[d.getMonth()]}</div>
           </button>
         );
       })}
@@ -1865,7 +1865,7 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
 /** Rounded time pills for the handoff form (fixed options, real availability unknown). */
 function TimePills({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2 min-[900px]:gap-3">
       {HANDOFF_TIMES.map(t => {
         const active = value === t;
         return (
@@ -1875,7 +1875,7 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
             role="radio"
             aria-checked={active}
             onClick={() => onChange(active ? "" : t)}
-            className="px-3.5 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            className="px-3.5 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
             style={{
               borderColor: active ? "#C4622D" : "#E6DCCF",
               background: active ? "#C4622D" : "#ffffff",
@@ -2002,32 +2002,32 @@ function WizardNav({
   skip?: () => void;
 }) {
   return (
-    <div className="pt-4 space-y-2">
+    <div className="pt-4 min-[900px]:pt-5 space-y-2 min-[900px]:space-y-3">
       <button
         type="button"
         onClick={onNext}
         disabled={disabled}
-        className={`w-full h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+        className={`w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
           disabled ? "bg-[#E7D9CB] text-[#9E8B78]" : "bg-[#C4622D] text-white shadow-lg"
         }`}
       >
-        <span>{label || "Continue"}</span>
-        <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+        <span className="min-[900px]:text-lg">{label || "Continue"}</span>
+        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{labelEs || "Continuar"}</span>
       </button>
       {disabled && hint && (
-        <p className="text-xs text-center text-[#8a7460]">
+        <p className="text-xs min-[900px]:text-sm text-center text-[#8a7460]">
           {hint}
           {hintEs && <span className="block">{hintEs}</span>}
         </p>
       )}
       <div className="flex items-center justify-between">
         {onBack ? (
-          <button type="button" onClick={onBack} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+          <button type="button" onClick={onBack} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
             Back <span className="font-normal">/ Atrás</span>
           </button>
         ) : <span />}
         {skip && (
-          <button type="button" onClick={skip} className="text-sm font-semibold text-[#C4622D] underline underline-offset-2">
+          <button type="button" onClick={skip} className="text-sm min-[900px]:text-base font-semibold text-[#C4622D] underline underline-offset-2">
             Skip this step <span className="font-normal">/ Saltar</span>
           </button>
         )}
@@ -2041,10 +2041,10 @@ function WizardNav({
 function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs text-gray-400 flex-shrink-0">
-        {label} <span className="text-[10px] text-gray-300">{labelEs}</span>
+      <span className="text-xs min-[900px]:text-sm text-gray-400 flex-shrink-0">
+        {label} <span className="text-[10px] min-[900px]:text-xs text-gray-300">{labelEs}</span>
       </span>
-      <span className={`text-sm text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
+      <span className={`text-sm min-[900px]:text-base text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
         {value || placeholder}
       </span>
     </div>
