@@ -1812,11 +1812,11 @@ export default function StudioBookingPage() {
 function Section({ step, title, titleEs, children }: { step: string; title: string; titleEs?: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="h-6 w-6 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">{step}</div>
+      <div className="flex items-center gap-2 mb-3 min-[900px]:mb-4">
+        <div className="h-6 w-6 min-[900px]:h-8 min-[900px]:w-8 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs min-[900px]:text-sm font-bold flex-shrink-0">{step}</div>
         <div>
-          <h2 className="font-display text-lg leading-tight text-gray-900">{title}</h2>
-          {titleEs && <p className="text-xs text-[#8a7460] leading-tight">{titleEs}</p>}
+          <h2 className="font-display text-lg min-[900px]:text-[22px] leading-tight text-gray-900">{title}</h2>
+          {titleEs && <p className="text-xs min-[900px]:text-sm text-[#8a7460] leading-tight">{titleEs}</p>}
         </div>
       </div>
       {children}
@@ -2041,10 +2041,10 @@ function WizardNav({
 function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-xs text-gray-400 flex-shrink-0">
-        {label} <span className="text-[10px] text-gray-300">{labelEs}</span>
+      <span className="text-xs min-[900px]:text-sm text-gray-400 flex-shrink-0">
+        {label} <span className="text-[10px] min-[900px]:text-xs text-gray-300">{labelEs}</span>
       </span>
-      <span className={`text-sm text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
+      <span className={`text-sm min-[900px]:text-base text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
         {value || placeholder}
       </span>
     </div>
