@@ -1059,7 +1059,10 @@ export default function StudioBookingPage() {
                 }`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-gray-900">{s.name}</p>
+                    <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
+                    {serviceSecondaryName(s) && (
+                      <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>
+                    )}
                     {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
                     <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {s.duration} min</p>
                   </div>
