@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight } from "lucide-react";
+import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import { useStudioCount } from "@/lib/studioCount";
+
 
 const USER_KEY = "mm-user";
 
