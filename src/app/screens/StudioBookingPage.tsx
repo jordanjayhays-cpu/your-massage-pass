@@ -388,10 +388,11 @@ export default function StudioBookingPage() {
     const isClaimed = partner.status === "active";
     const studioNumber = (partner as any).whatsapp || partner.phone;
     // Claimed: friendly "you're booked" message.
-    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
+    // NOTE: messages sent TO the studio always use the SPANISH service name.
+    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
     const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
     // Unclaimed: ask the customer to send the booking request to the studio themselves.
-    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${service?.name} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
+    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
     const unclaimedWaLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, unclaimedWaMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
