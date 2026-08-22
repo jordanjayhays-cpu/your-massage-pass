@@ -342,7 +342,14 @@ function StudioCard({ shop, href, freeTodayIds }: { shop: ShopWithSlug; href: st
           <ul className="mt-2.5 space-y-1 text-xs text-foreground/80">
             {services.map((sv, i) => (
               <li key={i} className="flex items-baseline justify-between gap-3">
-                <span className="truncate">{sv.name}</span>
+                <span className="min-w-0">
+                  <span className="block truncate">{servicePrimaryName(sv)}</span>
+                  {serviceSecondaryName(sv) && (
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {serviceSecondaryName(sv)}
+                    </span>
+                  )}
+                </span>
                 <span className="text-muted-foreground flex-shrink-0">
                   {sv.duration ? `${sv.duration} min` : ""}
                   {sv.price != null ? ` · €${sv.price}` : ""}
