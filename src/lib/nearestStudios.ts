@@ -114,6 +114,8 @@ export async function findNearestStudios(
         slug: p.slug ?? null,
         name: p.business_name || "Studio",
         address: p.address ?? null,
+        lat: Number(p.latitude),
+        lng: Number(p.longitude),
         km,
         meters,
         walkMinutes: Math.max(1, Math.round(meters / 80)),
