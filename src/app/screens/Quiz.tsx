@@ -190,7 +190,7 @@ export default function Quiz() {
 
 
 
-            {matchingStudios.length > 0 && (
+            {geoState !== "ready" && matchingStudios.length > 0 && (
               <div>
                 <h3 className="font-display text-lg font-semibold mb-3">Try it in Madrid</h3>
                 <div className="space-y-2">
