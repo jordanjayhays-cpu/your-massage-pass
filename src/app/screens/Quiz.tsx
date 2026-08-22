@@ -112,6 +112,84 @@ export default function Quiz() {
           <div className="px-6 py-5 space-y-5">
             <p className="text-foreground/85 leading-relaxed">{winner.description}</p>
 
+            {/* Nearest studio recommendation (opt-in location) */}
+            {geoState !== "ready" && (
+              <div className="rounded-2xl border border-[#E6DCCF] bg-[#FBEFE8] p-4">
+                <p className="text-sm font-semibold text-foreground">Want us to find the closest studio to you?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {geoState === "unavailable"
+                    ? "No problem, here are studios offering this massage in Madrid."
+                    : "We only use your location to sort studios by distance."}
+                </p>
+                {geoState !== "unavailable" && (
+                  <Button
+                    onClick={askForLocation}
+                    disabled={geoState === "loading"}
+                    className="mt-3 h-10"
+                  >
+                    {geoState === "loading" ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Finding studios…</>
+                    ) : (
+                      <><MapPin className="h-4 w-4" /> Find the closest studio</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {geoState === "ready" && nearby.length > 0 && (
+              <div className="space-y-3">
+                <a
+                  href={studioHref(nearby[0])}
+                  className="block rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 hover:opacity-95 transition"
+                >
+                  <span className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                    <MapPin className="h-3 w-3" /> Closest to you
+                  </span>
+                  <p className="font-display text-xl font-semibold mt-2">{nearby[0].name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {distanceLabel(nearby[0].meters, nearby[0].walkMinutes)}
+                  </p>
+                  {nearby[0].address && <p className="text-xs text-muted-foreground">{nearby[0].address}</p>}
+                  <p className="text-sm mt-2 font-medium">
+                    {servicePrimaryName(nearby[0].service)}
+                    {nearby[0].service.duration ? ` · ${nearby[0].service.duration} min` : ""}
+                    {nearby[0].service.price != null ? ` · €${nearby[0].service.price}` : ""}
+                  </p>
+                  {serviceSecondaryName(nearby[0].service) && (
+                    <p className="text-xs text-muted-foreground">{serviceSecondaryName(nearby[0].service)}</p>
+                  )}
+                  <span className="mt-3 inline-flex items-center justify-center h-11 w-full rounded-full bg-[#C4622D] text-white font-semibold text-sm">
+                    View studio <ChevronRight className="h-4 w-4" />
+                  </span>
+                </a>
+
+                {nearby.length > 1 && (
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Also nearby</h3>
+                    {nearby.slice(1).map((s) => (
+                      <a
+                        key={s.id}
+                        href={studioHref(s)}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary transition"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {distanceLabel(s.meters, s.walkMinutes)}
+                            {s.service.price != null ? ` · €${s.service.price}` : ""}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+
+
             {matchingStudios.length > 0 && (
               <div>
                 <h3 className="font-display text-lg font-semibold mb-3">Try it in Madrid</h3>
