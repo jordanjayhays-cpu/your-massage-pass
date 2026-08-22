@@ -29,10 +29,11 @@ export default function Discovery() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 pb-28">
-        {/* Quiz CTA */}
+        {/* Quiz CTA — full-card clickable */}
         <button
           onClick={() => navigate("/discovery/quiz")}
-          className="w-full text-left rounded-2xl p-5 bg-gradient-royal text-primary-foreground shadow-elegant relative overflow-hidden"
+          aria-label={t("app.discovery.quizCardAria")}
+          className="group w-full text-left rounded-2xl p-5 bg-gradient-royal text-primary-foreground shadow-elegant relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-safe:transition-all motion-safe:hover:shadow-elegant motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.99]"
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/20 blur-2xl" />
           <div className="relative">
@@ -43,7 +44,7 @@ export default function Discovery() {
             <p className="text-sm text-primary-foreground/80 mt-1">
               {t("app.discovery.quizDesc")}
             </p>
-            <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent">
+            <div className="mt-4 inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-full bg-accent text-accent-foreground text-sm font-semibold shadow-soft group-hover:bg-accent/90 transition-colors">
               {t("app.discovery.takeQuiz")} <ChevronRight className="h-4 w-4" />
             </div>
           </div>
@@ -86,6 +87,17 @@ export default function Discovery() {
                 <p className="px-3 py-2.5 text-xs text-muted-foreground leading-snug line-clamp-2">{g.tagline}</p>
               </button>
             ))}
+          </div>
+
+          {/* Second quiz entry point — after the styles list */}
+          <div className="mt-8 pt-6 border-t border-border text-center">
+            <p className="text-sm text-muted-foreground mb-3">{t("app.discovery.quizBottomTitle")}</p>
+            <button
+              onClick={() => navigate("/discovery/quiz")}
+              className="inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {t("app.discovery.quizBottomCta")}
+            </button>
           </div>
         </div>
       </div>
