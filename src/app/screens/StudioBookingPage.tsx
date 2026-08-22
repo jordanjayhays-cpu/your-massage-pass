@@ -1270,6 +1270,12 @@ export default function StudioBookingPage() {
                       ))}
                     </div>
                   )}
+                  {!rebookId && (
+                    <BookAgainBanner
+                      partnerId={partner.id}
+                      onRebook={(bookingId) => setSearchParams({ rebook: bookingId, step: "2" })}
+                    />
+                  )}
                   {rebookMode && service && (
                     <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 mb-3">
                       <div className="flex items-start justify-between gap-2 mb-2">
