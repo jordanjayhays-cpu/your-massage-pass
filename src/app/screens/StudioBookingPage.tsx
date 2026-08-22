@@ -1302,9 +1302,25 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 pb-28">
         {/* Stepper: always visible so nobody misses a step */}
         <Stepper steps={BOOKING_STEPS} current={step} maxReached={maxStep} onGo={goStep} />
+
+        {/* Always reachable Continue, so the primary action never hides below the fold */}
+        {step === 1 && <StickyContinue ready={!!service} onNext={() => goStep(2)} />}
+        {step === 2 && <StickyContinue ready={!!date && !!time} onNext={() => goStep(3)} />}
+        {step === 3 && <StickyContinue ready onNext={() => goStep(4)} />}
+        {step === 4 && (
+          <StickyContinue ready={!!name.trim() && hasContact} onNext={submitDetailsStep} />
+        )}
+        {step === 5 && (
+          <StickyContinue
+            ready={canBook && !submitting}
+            onNext={handleBook}
+            label={`Request booking · €${total}`}
+            labelEs="Solicitar reserva"
+          />
+        )}
 
         {/* Mobile: slim running summary under the stepper */}
         <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
