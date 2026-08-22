@@ -821,15 +821,15 @@ export default function StudioBookingPage() {
             {waLink && (
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
-                <div className="rounded-2xl p-4 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
-                  <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
+                <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+                  <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
                     {t("app.handoff.prefTitle")}
                   </p>
 
                   {/* STEP 1: service */}
                   {hoStep === 1 && (
                     <div>
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
+                      <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
                       <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
                         <Link
                           to={quizHref}
