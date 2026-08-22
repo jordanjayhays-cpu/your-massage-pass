@@ -21,6 +21,8 @@ export type NearbyStudio = {
   slug: string | null;
   name: string;
   address: string | null;
+  lat: number;
+  lng: number;
   km: number;
   meters: number;
   walkMinutes: number;
