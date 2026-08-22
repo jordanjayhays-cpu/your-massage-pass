@@ -1690,3 +1690,53 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
     </div>
   );
 }
+
+/** Centered modal on desktop, bottom sheet on mobile. */
+function BookingDialog({
+  title, titleEs, onClose, children,
+}: { title: string; titleEs: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-display text-xl leading-tight text-gray-900">{title}</h2>
+            <p className="text-xs text-[#8a7460]">{titleEs}</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-2xl leading-none text-gray-400 px-2">×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** One line of the live booking summary. */
+function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-xs text-gray-400 flex-shrink-0">
+        {label} <span className="text-[10px] text-gray-300">{labelEs}</span>
+      </span>
+      <span className={`text-sm text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
+        {value || placeholder}
+      </span>
+    </div>
+  );
+}
