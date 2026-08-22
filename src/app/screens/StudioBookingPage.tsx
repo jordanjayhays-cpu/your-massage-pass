@@ -1028,7 +1028,10 @@ export default function StudioBookingPage() {
                 Cambiar
               </button>
             </div>
-            <p className="font-semibold text-gray-900">{service.name}</p>
+            <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
+            {serviceSecondaryName(service) && (
+              <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>
+            )}
             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
               <span className="inline-flex items-center gap-1"><Clock size={11} /> {service.duration} min</span>
               <span className="inline-flex items-center gap-0.5"><Euro size={11} />{service.price}</span>
