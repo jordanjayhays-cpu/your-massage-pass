@@ -359,9 +359,17 @@ export default function StudioBookingPage() {
       if (prev.client_name) setName(prev.client_name);
       if (prev.client_phone) setPhone(prev.client_phone);
       if (prev.client_email) setEmail(prev.client_email);
-      setRebookMode(true);
+      if (stepParam === "2") {
+        // "Book again": everything stays editable, we just skip ahead one step.
+        setRebookMode(false);
+        setStep(2);
+        setMaxStep(m => Math.max(m, 2));
+        window.scrollTo({ top: 0, behavior: "auto" });
+      } else {
+        setRebookMode(true);
+      }
     })();
-  }, [rebookId, profile]);
+  }, [rebookId, stepParam, profile]);
 
 
 
