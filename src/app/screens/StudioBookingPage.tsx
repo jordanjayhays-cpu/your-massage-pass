@@ -9,6 +9,7 @@ import { sendTrack } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
   loadSpokenLangs, saveSpokenLangs, normalizeSpokenLangs,
@@ -388,10 +389,11 @@ export default function StudioBookingPage() {
     const isClaimed = partner.status === "active";
     const studioNumber = (partner as any).whatsapp || partner.phone;
     // Claimed: friendly "you're booked" message.
-    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${service?.name} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
+    // NOTE: messages sent TO the studio always use the SPANISH service name.
+    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
     const waLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, waMsg) : null;
     // Unclaimed: ask the customer to send the booking request to the studio themselves.
-    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${service?.name} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
+    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
     const unclaimedWaLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, unclaimedWaMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
@@ -405,7 +407,7 @@ export default function StudioBookingPage() {
       const start = new Date(date); start.setHours(h, m, 0, 0);
       const end = new Date(start.getTime() + (service.duration || 60) * 60000);
       const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      const text = encodeURIComponent(`${service.name} — ${partner.business_name}`);
+      const text = encodeURIComponent(`${serviceInlineLabel(service)} — ${partner.business_name}`);
       const details = encodeURIComponent(`Massage Club booking · Ref ${done.ref}`);
       const loc = encodeURIComponent(partner.address || partner.business_name || "");
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
@@ -427,8 +429,11 @@ export default function StudioBookingPage() {
             </p>
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
-                {service?.name} · {service?.duration} min · {total}€
+                {servicePrimaryName(service)} · {service?.duration} min · {total}€
               </div>
+              {serviceSecondaryName(service) && (
+                <div className="text-xs mb-1" style={{ color: "#8a7460" }}>{serviceSecondaryName(service)}</div>
+              )}
               <div className="text-base font-bold mb-1" style={{ color: "#B85C38" }}>
                 {prettyDate} · {time}
               </div>
@@ -528,10 +533,12 @@ export default function StudioBookingPage() {
     const noSpanish = visitorSpeaksSpanish ? "" : "Disculpa, todavía no hablo español. ";
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
+    // SPANISH ONLY — this line goes into the WhatsApp message read by the studio.
+    const hoServiceEs = hoService ? serviceNameForStudio(hoService) : "";
     const serviceLine = hoService
       ? hasPrice
-        ? `· ${hoService.name} · ${hoService.duration} min · ${hoPrice} €`
-        : `· ${hoService.name} (${hoService.duration} min)`
+        ? `· ${hoServiceEs} · ${hoService.duration} min · ${hoPrice} €`
+        : `· ${hoServiceEs} (${hoService.duration} min)`
       : "";
     // Always Spanish — this text is sent to the studio, never translated.
     const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
@@ -676,7 +683,7 @@ export default function StudioBookingPage() {
                       >
                         <option value="">—</option>
                         {profile.services.map(s => (
-                          <option key={s.id} value={s.id}>{s.name} · {s.duration} min</option>
+                          <option key={s.id} value={s.id}>{serviceInlineLabel(s)} · {s.duration} min</option>
                         ))}
                       </select>
                     </label>
@@ -777,9 +784,14 @@ export default function StudioBookingPage() {
                 <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
                   {profile.services.map(s => (
-                    <div key={s.id} className="flex items-center justify-between text-sm" style={{ color: "#5a4736" }}>
-                      <span>{s.name} · {s.duration} min</span>
-                      <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{s.price}</span>
+                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
+                      <span className="min-w-0">
+                        <span className="block">{servicePrimaryName(s)} · {s.duration} min</span>
+                        {serviceSecondaryName(s) && (
+                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                        )}
+                      </span>
+                      <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{s.price}</span>
                     </div>
                   ))}
                 </div>
@@ -1017,7 +1029,10 @@ export default function StudioBookingPage() {
                 Cambiar
               </button>
             </div>
-            <p className="font-semibold text-gray-900">{service.name}</p>
+            <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
+            {serviceSecondaryName(service) && (
+              <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>
+            )}
             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
               <span className="inline-flex items-center gap-1"><Clock size={11} /> {service.duration} min</span>
               <span className="inline-flex items-center gap-0.5"><Euro size={11} />{service.price}</span>
@@ -1045,7 +1060,10 @@ export default function StudioBookingPage() {
                 }`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-gray-900">{s.name}</p>
+                    <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
+                    {serviceSecondaryName(s) && (
+                      <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>
+                    )}
                     {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
                     <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {s.duration} min</p>
                   </div>
