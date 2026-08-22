@@ -1425,7 +1425,7 @@ export default function StudioBookingPage() {
                   {openDates.length === 0 ? (
                     <p className="text-sm min-[900px]:text-base text-gray-400">No availability set yet. Message the studio directly.</p>
                   ) : (
-                    <div className="flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
+                    <div className="relative flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
@@ -1439,6 +1439,7 @@ export default function StudioBookingPage() {
                           </button>
                         );
                       })}
+                      <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-[#FAF6F1] to-transparent" aria-hidden />
                     </div>
                   )}
                   {date && (
