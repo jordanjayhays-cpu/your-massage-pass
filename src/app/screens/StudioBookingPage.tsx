@@ -831,44 +831,6 @@ export default function StudioBookingPage() {
                       </div>
                     </div>
                   )}
-                  <label className="block">
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                    <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
-                      className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                  </label>
-                  <div className="text-left">
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {spokenLangs.map((code) => (
-                        <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                          className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
-                          style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
-                          <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                            className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
-                          {SPOKEN_LANG_NATIVE[code]}
-                          <span aria-hidden style={{ color: "#9E9387" }}>×</span>
-                        </button>
-                      ))}
-                      <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                        className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
-                        style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
-                        + {t("app.handoff.prefLanguagesAdd")}
-                      </button>
-                    </div>
-                    {langPickerOpen && (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
-                          <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
-                            style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
-                            <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                              className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
-                            {SPOKEN_LANG_NATIVE[code]}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                   <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                 </div>
               </div>
@@ -876,17 +838,77 @@ export default function StudioBookingPage() {
             <div className="flex flex-col items-center gap-3 w-full">
               {waLink ? (
                 <>
-                  <a href={waLink} target="_blank" rel="noreferrer" onClick={trackWhatsappIntent} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                  <button type="button" onClick={() => setHoDetailsOpen(true)} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                     <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
                     <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
-                  </a>
+                  </button>
                   <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                   {waTapped && (
                     <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
                       {t("app.handoff.afterNote")}
                     </p>
                   )}
+                  {hoDetailsOpen && (
+                    <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setHoDetailsOpen(false)}>
+                      <div className="space-y-4 text-left">
+                        <label className="block">
+                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                          <input type="text" value={hoName} autoFocus onChange={(e) => setHoName(e.target.value)}
+                            className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                        </label>
+                        <div>
+                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {spokenLangs.map((code) => (
+                              <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                                className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                                style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                                <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                                  className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                {SPOKEN_LANG_NATIVE[code]}
+                                <span aria-hidden style={{ color: "#9E9387" }}>×</span>
+                              </button>
+                            ))}
+                            <button type="button" onClick={() => setLangPickerOpen(o => !o)}
+                              className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                              style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
+                              + {t("app.handoff.prefLanguagesAdd")}
+                            </button>
+                          </div>
+                          {langPickerOpen && (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
+                                <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                                  style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
+                                  <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                                    className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                  {SPOKEN_LANG_NATIVE[code]}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => { trackWhatsappIntent(); setHoDetailsOpen(false); }}
+                          className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
+                          style={{ background: "#B85C38", color: "#fff" }}
+                        >
+                          <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Confirm request</span>
+                          <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
+                        </a>
+                        <p className="text-[11px] text-center" style={{ color: "#9E9387" }}>
+                          We write it in Spanish. They only need to say yes.
+                          <span className="block">Lo escribimos en español.</span>
+                        </p>
+                      </div>
+                    </BookingDialog>
+                  )}
                 </>
+
 
               ) : studioNumber ? (
                 <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
