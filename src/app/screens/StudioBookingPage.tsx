@@ -2002,32 +2002,32 @@ function WizardNav({
   skip?: () => void;
 }) {
   return (
-    <div className="pt-4 space-y-2">
+    <div className="pt-4 min-[900px]:pt-5 space-y-2 min-[900px]:space-y-3">
       <button
         type="button"
         onClick={onNext}
         disabled={disabled}
-        className={`w-full h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+        className={`w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
           disabled ? "bg-[#E7D9CB] text-[#9E8B78]" : "bg-[#C4622D] text-white shadow-lg"
         }`}
       >
-        <span>{label || "Continue"}</span>
-        <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+        <span className="min-[900px]:text-lg">{label || "Continue"}</span>
+        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{labelEs || "Continuar"}</span>
       </button>
       {disabled && hint && (
-        <p className="text-xs text-center text-[#8a7460]">
+        <p className="text-xs min-[900px]:text-sm text-center text-[#8a7460]">
           {hint}
           {hintEs && <span className="block">{hintEs}</span>}
         </p>
       )}
       <div className="flex items-center justify-between">
         {onBack ? (
-          <button type="button" onClick={onBack} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+          <button type="button" onClick={onBack} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
             Back <span className="font-normal">/ Atrás</span>
           </button>
         ) : <span />}
         {skip && (
-          <button type="button" onClick={skip} className="text-sm font-semibold text-[#C4622D] underline underline-offset-2">
+          <button type="button" onClick={skip} className="text-sm min-[900px]:text-base font-semibold text-[#C4622D] underline underline-offset-2">
             Skip this step <span className="font-normal">/ Saltar</span>
           </button>
         )}
