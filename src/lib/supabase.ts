@@ -123,6 +123,8 @@ export interface Shop {
   walkingText?: string;
   // raw partner data (for detail view)
   partner_id: string;
+  /** Clean URL slug for the studio page (book.massageclub.io/{slug}). */
+  slug?: string | null;
   partner_services: ShopService[];
   partner_availability?: Record<string, string[]>;
   google_rating?: number | null;
