@@ -1213,462 +1213,447 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 space-y-5 min-[900px]:space-y-0 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-8 min-[900px]:items-start">
-        {/* LEFT COLUMN: studio identity, address and services */}
-        <div className="space-y-5">
-        {/* About */}
-        {partner.description && <p className="text-sm text-gray-600">{partner.description}</p>}
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5">
+        {/* Stepper: always visible so nobody misses a step */}
+        <Stepper steps={BOOKING_STEPS} current={step} maxReached={maxStep} onGo={goStep} />
 
-        {/* Quick facts */}
-        <div className="flex flex-wrap gap-2">
-          {(partner.languages || []).slice(0, 4).map((l: string) => (
-            <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
-          ))}
-          {(partner.amenities || []).slice(0, 4).map((a: string) => (
-            <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
-          ))}
+        {/* Mobile: slim running summary under the stepper */}
+        <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
+          <p className="text-xs truncate">
+            <span className={service ? "font-semibold text-gray-800" : "text-gray-400"}>{service ? servicePrimaryName(service) : "Pick a service"}</span>
+            <span className="text-gray-300"> · </span>
+            <span className={prettyDay ? "font-semibold text-gray-800" : "text-gray-400"}>{prettyDay || "Pick a day"}</span>
+            <span className="text-gray-300"> · </span>
+            <span className={time ? "font-semibold text-gray-800" : "text-gray-400"}>{time || "Pick a time"}</span>
+            <span className="text-gray-300"> · </span>
+            <span className={service && total > 0 ? "font-semibold text-[#C4622D]" : "text-gray-400"}>{service && total > 0 ? `€${total}` : "Price"}</span>
+          </p>
         </div>
 
+        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8 min-[900px]:items-start">
+          {/* LEFT: one step at a time */}
+          <div className="space-y-5">
 
-
-        {/* Gallery */}
-        {(partner.gallery || []).length > 0 && (
-          <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
-            {partner.gallery.map((url: string, i: number) => (
-              <img key={i} src={url} alt="" className="h-28 w-40 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
-            ))}
-          </div>
-        )}
-
-        {/* Rebook summary card — Amazon-style "your usual" fast path */}
-        {rebookMode && service && (
-          <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
-                <Sparkles size={11} /> Tu reserva habitual
-              </div>
-              <button
-                onClick={() => setRebookMode(false)}
-                className="text-xs font-semibold text-[#C4622D] underline underline-offset-2"
-              >
-                Cambiar
-              </button>
-            </div>
-            <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
-            {serviceSecondaryName(service) && (
-              <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>
-            )}
-            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
-              {Number(service.duration) > 0 && (
-                <span className="inline-flex items-center gap-1"><Clock size={11} /> {Number(service.duration)} min</span>
-              )}
-              {service.price != null && Number(service.price) > 0 && (
-                <span className="inline-flex items-center gap-0.5"><Euro size={11} />{Number(service.price)}</span>
-              )}
-            </p>
-            {(pressure || focusAreas.length > 0 || addonNames.length > 0) && (
-              <p className="text-xs text-gray-600 mt-2">
-                {[
-                  pressure && `Presión: ${pressure}`,
-                  focusAreas.length > 0 && `Zonas: ${focusAreas.join(", ")}`,
-                  addonNames.length > 0 && `Extras: ${addonNames.join(", ")}`,
-                ].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
-        {!rebookMode && (
-        <div ref={serviceRef}>
-        <Section step="1" title="Choose a service" titleEs="Elige un servicio">
-          <div className="space-y-2">
-            <Link
-              to={quizHref}
-              className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
-            >
-              <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
-              <span className="min-w-0 text-left">
-                <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
-                <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
-              </span>
-            </Link>
-            {profile.services.map(s => (
-
-              <button key={s.id} onClick={() => setServiceId(s.id)}
-                className={`w-full text-left p-4 rounded-2xl border-2 transition ${
-                  serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
-                }`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
-                    {serviceSecondaryName(s) && (
-                      <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>
-                    )}
-                    {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
-                    {Number(s.duration) > 0 && (
-                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
-                    )}
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    {s.price != null && Number(s.price) > 0 && (
-                      <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
-                    )}
-                  </div>
-                </div>
-              </button>
-
-            ))}
-            {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
-          </div>
-        </Section>
-        </div>
-        )}
-
-        {/* 4. Customize */}
-        {!rebookMode && service && date && time && (
-          <Section step="4" title="Customize your session" titleEs="Personaliza tu sesión">
-            {customerProfile && prefsApplied && (
-              <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-gray-700">✨ Prefilled from your profile</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPressure("Medium");
-                    setFocusAreas([]);
-                    setAddonNames([]);
-                    setConversationPref("");
-                    setPrefsApplied(false);
-                  }}
-                  className="text-xs font-semibold text-[#C4622D] underline"
-                >
-                  Start blank
-                </button>
-              </div>
-            )}
-            <p className="text-xs font-semibold text-gray-500 mb-2">Comfort</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {[
-                { v: "silence", l: "🤫 Silence" },
-                { v: "minimal", l: "A little chat" },
-                { v: "chatty", l: "Happy to chat" },
-              ].map(o => (
-                <button
-                  key={o.v}
-                  type="button"
-                  onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    conversationPref === o.v
-                      ? "bg-[#C4622D] text-white border-[#C4622D]"
-                      : "bg-white text-gray-600 border-gray-200"
-                  }`}
-                >
-                  {o.l}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {PRESSURE_LEVELS.map(p => (
-                <button key={p} onClick={() => setPressure(p)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
-                  }`}>{p}</button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">Focus areas</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {FOCUS_AREAS.map(f => (
-                <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
-                  }`}>{f}</button>
-              ))}
-            </div>
-
-            {addons.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons</p>
-                <div className="space-y-2 mb-4">
-                  {addons.map((a: any) => {
-                    const on = addonNames.includes(a.name);
-                    return (
-                      <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
-                          on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
-                        }`}>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{a.name}</p>
-                          <p className="text-xs text-gray-400">+€{a.price}</p>
+            {/* STEP 1: service */}
+            {step === 1 && (
+              <div ref={serviceRef}>
+                <Section step="1" title="Choose a service" titleEs="Elige un servicio">
+                  {partner.description && <p className="text-sm text-gray-600 mb-4">{partner.description}</p>}
+                  {(partner.gallery || []).length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
+                      {partner.gallery.map((url: string, i: number) => (
+                        <img key={i} src={url} alt="" className="h-24 w-36 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
+                      ))}
+                    </div>
+                  )}
+                  {rebookMode && service && (
+                    <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 mb-3">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                          <Sparkles size={11} /> Your usual booking
                         </div>
-                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
-                          {on && <Check size={12} className="text-white" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist</p>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Anything we should know? Injuries, allergies, preferences…"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
-          </Section>
-        )}
-        </div>
-
-        {/* RIGHT COLUMN: booking form + CTA, sticky on desktop */}
-        <div className="space-y-5 min-[900px]:sticky min-[900px]:top-4">
-        {/* Ask on WhatsApp: always reachable, prefilled with whatever is picked */}
-        {bookingWaHref && (
-          <a
-            href={bookingWaHref}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              clarityEvent("whatsapp_click");
-              sendTrack({
-                event: "whatsapp_click",
-                path: window.location.pathname,
-                slug: partner.slug || partner.id,
-                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
-              });
-            }}
-            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
-          >
-            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
-          </a>
-        )}
-
-        {/* 2. Date */}
-
-        {service && (
-          <div ref={dateRef}>
-          <Section step="2" title="Pick a day" titleEs="Elige un día">
-            {openDates.length === 0 ? (
-              <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {openDates.map(d => {
-                  const active = date && isoDate(d) === isoDate(date);
-                  return (
-                    <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
-                      className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
-                        active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
-                      }`}>
-                      <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-                      <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-                      <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
-          </div>
-        )}
-
-        {/* 3. Time */}
-        {service && date && (
-          <div ref={timeRef}>
-          <Section step="3" title="Pick a time" titleEs="Elige una hora">
-            {times.length === 0 ? (
-              <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {times.map(t => {
-                  const left = remainingFor(t);
-                  const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
-                  const lowStock = cap > 1 && left < cap;
-
-                  return (
-                    <button key={t} onClick={() => setTime(t)}
-                      className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
-                        time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
-                      }`}>
-                      {t}
-                      {lowStock && (
-                        <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
-                          {left} left
+                        <button onClick={() => setRebookMode(false)} className="text-xs font-semibold text-[#C4622D] underline underline-offset-2">
+                          Change / Cambiar
+                        </button>
+                      </div>
+                      <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
+                      {serviceSecondaryName(service) && <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>}
+                    </div>
+                  )}
+                  {!rebookMode && (
+                    <div className="space-y-2">
+                      <Link
+                        to={quizHref}
+                        className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
+                      >
+                        <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
+                        <span className="min-w-0 text-left">
+                          <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
+                          <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                      </Link>
+                      {profile.services.map(s => (
+                        <button key={s.id} onClick={() => setServiceId(s.id)}
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition ${
+                            serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                          }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
+                              {serviceSecondaryName(s) && <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>}
+                              {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
+                              {Number(s.duration) > 0 && (
+                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              {s.price != null && Number(s.price) > 0 && (
+                                <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                      {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
+                    </div>
+                  )}
+                </Section>
+                <WizardNav
+                  onNext={() => goStep(2)}
+                  disabled={!service}
+                  hint="Choose a service to continue"
+                  hintEs="Elige un servicio para continuar"
+                />
               </div>
             )}
-          </Section>
-          </div>
-        )}
 
-        {/* 4. Customize lives in the left column on desktop */}
-
-        {/* Live summary: each row fills in as it is chosen */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
-          <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
-          <SummaryRow label="Day" labelEs="Día" value={date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null} placeholder="Pick a day" />
-          <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
-          <SummaryRow label="Price" labelEs="Precio" value={service && Number(total) > 0 ? `€${total}` : null} placeholder="Pick a service" />
-        </div>
-
-        {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-
-        {/* Sticky CTA: active as soon as service, day and time are chosen */}
-        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
-          {detailsKnown && (
-            <p className="mb-2 text-xs text-center text-[#8a7460]">
-              Booking as {name}{email ? `, ${email}` : ""}.{" "}
-              <button
-                type="button"
-                onClick={() => setDetailsOpen(true)}
-                className="font-semibold text-[#C4622D] underline underline-offset-2"
-              >
-                Change
-              </button>
-            </p>
-          )}
-          <button onClick={handleCta} disabled={submitting}
-            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
-              canRequest ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
-            }`}>
-            {submitting ? (
-              <><Loader2 size={18} className="animate-spin" /> Booking…</>
-            ) : canRequest ? (
-              <span className="flex flex-col items-center leading-tight">
-                <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
-                <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
-              </span>
-            ) : (
-              <span className="flex flex-col items-center leading-tight">
-                <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Select a service and time</span>
-                <span className="text-xs font-normal opacity-90">Elige un servicio y una hora</span>
-              </span>
-            )}
-          </button>
-          {ctaHint ? (
-            <p role="alert" className="mt-2 text-sm text-center font-medium text-[#B03A2E]">
-              {ctaHint.en}
-              <span className="block text-xs font-normal text-[#8a7460]">{ctaHint.es}</span>
-            </p>
-          ) : stepsLeft > 0 ? (
-            <p className="mt-2 text-xs text-center text-[#8a7460]">
-              {stepsLeft} {stepsLeft === 1 ? "step" : "steps"} left: {stepsLeftLabels.en}
-              <span className="block">{stepsLeft} {stepsLeft === 1 ? "paso" : "pasos"}: {stepsLeftLabels.es}</span>
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-center text-[#8a7460]">
-              All set. The studio confirms your time.
-              <span className="block">Todo listo. El estudio confirma tu hora.</span>
-            </p>
-          )}
-        </div>
-
-        {/* Details dialog, opened at the moment of booking */}
-        {detailsOpen && (
-          <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setDetailsOpen(false)}>
-            <div className="space-y-2">
-              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setDialogError(null); }} placeholder="Your name"
-                aria-invalid={!!dialogError && !name.trim()}
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  dialogError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                }`} />
-              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setDialogError(null); }} placeholder="Email" type="email"
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                }`} />
-              <input value={phone} onChange={e => { setPhone(e.target.value); setDialogError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                }`} />
-              <p className="text-xs text-gray-400">
-                Add at least one way to reach you: email or phone.
-                <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
-              </p>
-              <label className="flex items-start gap-2 pt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={marketingOptIn}
-                  onChange={e => setMarketingOptIn(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-[#C4622D]"
+            {/* STEP 2: day and time */}
+            {step === 2 && (
+              <div ref={dateRef}>
+                <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
+                  {openDates.length === 0 ? (
+                    <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
+                  ) : (
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                      {openDates.map(d => {
+                        const active = date && isoDate(d) === isoDate(date);
+                        return (
+                          <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
+                            className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
+                              active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                            }`}>
+                            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
+                            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {date && (
+                    <div ref={timeRef} className="mt-5">
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Times <span className="font-normal text-gray-400">/ Horas</span></p>
+                      {times.length === 0 ? (
+                        <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {times.map(t => {
+                            const left = remainingFor(t);
+                            const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
+                            const lowStock = cap > 1 && left < cap;
+                            return (
+                              <button key={t} onClick={() => setTime(t)}
+                                className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                                  time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                                }`}>
+                                {t}
+                                {lowStock && (
+                                  <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
+                                    {left} left
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Section>
+                <WizardNav
+                  onBack={() => goStep(1)}
+                  onNext={() => goStep(3)}
+                  disabled={!date || !time}
+                  hint="Pick a day and a time to continue"
+                  hintEs="Elige un día y una hora para continuar"
                 />
-                <span className="text-xs text-gray-600 leading-snug">
-                  Send me Massage Club news and offers (optional)
-                  <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
-                </span>
-              </label>
-              {dialogError && (
-                <p role="alert" className="text-sm font-medium text-[#B03A2E]">
-                  {dialogError.en}
-                  <span className="block text-xs font-normal text-[#8a7460]">{dialogError.es}</span>
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={confirmDetails}
-                disabled={submitting}
-                className="mt-2 w-full h-14 rounded-2xl bg-[#C4622D] text-white font-semibold flex items-center justify-center"
-              >
-                {submitting ? (
-                  <span className="inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin" /> Booking…</span>
-                ) : (
-                  <span className="flex flex-col items-center leading-tight">
-                    <span>Confirm request · €{total}</span>
-                    <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
-                  </span>
-                )}
-              </button>
+              </div>
+            )}
+
+            {/* STEP 3: customize */}
+            {step === 3 && (
+              <div>
+                <Section step="3" title="Customize your session" titleEs="Personaliza tu sesión">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Optional, but it helps your therapist get it right.
+                    <span className="block text-xs text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
+                  </p>
+                  {customerProfile && prefsApplied && (
+                    <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-gray-700">Prefilled from your profile</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPressure("Medium");
+                          setFocusAreas([]);
+                          setAddonNames([]);
+                          setConversationPref("");
+                          setPrefsApplied(false);
+                        }}
+                        className="text-xs font-semibold text-[#C4622D] underline"
+                      >
+                        Start blank
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Comfort <span className="font-normal text-gray-400">/ Confort</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {[
+                      { v: "silence", l: "Silence" },
+                      { v: "minimal", l: "A little chat" },
+                      { v: "chatty", l: "Happy to chat" },
+                    ].map(o => (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          conversationPref === o.v ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
+                        }`}
+                      >
+                        {o.l}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Pressure <span className="font-normal text-gray-400">/ Presión</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {PRESSURE_LEVELS.map(p => (
+                      <button key={p} onClick={() => setPressure(p)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
+                        }`}>{p}</button>
+                    ))}
+                  </div>
+
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Focus areas <span className="font-normal text-gray-400">/ Zonas</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {FOCUS_AREAS.map(f => (
+                      <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
+                        }`}>{f}</button>
+                    ))}
+                  </div>
+
+                  {addons.length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons <span className="font-normal text-gray-400">/ Extras</span></p>
+                      <div className="space-y-2 mb-4">
+                        {addons.map((a: any) => {
+                          const on = addonNames.includes(a.name);
+                          return (
+                            <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
+                                on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                              }`}>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                                <p className="text-xs text-gray-400">+€{a.price}</p>
+                              </div>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
+                                {on && <Check size={12} className="text-white" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist <span className="font-normal text-gray-400">/ Notas</span></p>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                    placeholder="Anything we should know? Injuries, allergies, preferences."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
+                </Section>
+                <WizardNav onBack={() => goStep(2)} onNext={() => goStep(4)} skip={() => goStep(4)} />
+              </div>
+            )}
+
+            {/* STEP 4: your details */}
+            {step === 4 && (
+              <div>
+                <Section step="4" title="Your details" titleEs="Tus datos">
+                  <div className="space-y-2">
+                    <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setStepError(null); }} placeholder="Your name / Tu nombre"
+                      aria-invalid={!!stepError && !name.trim()}
+                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                        stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                      }`} />
+                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email"
+                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                      }`} />
+                    <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
+                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                      }`} />
+                    <p className="text-xs text-gray-400">
+                      Add at least one way to reach you: email or phone.
+                      <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
+                    </p>
+                    <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={marketingOptIn}
+                        onChange={e => setMarketingOptIn(e.target.checked)}
+                        className="mt-1 h-4 w-4 accent-[#C4622D]"
+                      />
+                      <span className="text-xs text-gray-600 leading-snug">
+                        Send me Massage Club news and offers (optional)
+                        <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
+                      </span>
+                    </label>
+                    {stepError && (
+                      <p role="alert" className="text-sm font-medium text-[#B03A2E]">
+                        {stepError.en}
+                        <span className="block text-xs font-normal text-[#8a7460]">{stepError.es}</span>
+                      </p>
+                    )}
+                  </div>
+                </Section>
+                <WizardNav
+                  onBack={() => goStep(3)}
+                  onNext={submitDetailsStep}
+                  disabled={!name.trim() || !hasContact}
+                  hint="Add your name and an email or phone so the studio can reach you"
+                  hintEs="Añade tu nombre y un email o teléfono para que el estudio pueda contactarte"
+                />
+              </div>
+            )}
+
+            {/* STEP 5: confirm */}
+            {step === 5 && (
+              <div>
+                <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+                    <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
+                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
+                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
+                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" />
+                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" />
+                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" />
+                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonNames.length ? addonNames.join(", ") : null} placeholder="None" />
+                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" />
+                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" />
+                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" />
+                    <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
+                  </div>
+                  {error && <p className="mt-3 text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+                  <button
+                    onClick={handleBook}
+                    disabled={submitting || !canBook}
+                    className={`mt-4 w-full h-14 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
+                      canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#9E8B78]"
+                    }`}
+                  >
+                    {submitting ? (
+                      <><Loader2 size={18} className="animate-spin" /> Booking</>
+                    ) : (
+                      <span className="flex flex-col items-center leading-tight">
+                        <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
+                        <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
+                      </span>
+                    )}
+                  </button>
+                  <p className="mt-2 text-xs text-center text-[#8a7460]">
+                    The studio confirms your time. You pay at the studio.
+                    <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
+                  </p>
+                  <div className="pt-3">
+                    <button type="button" onClick={() => goStep(4)} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+                      Back <span className="font-normal">/ Atrás</span>
+                    </button>
+                  </div>
+                </Section>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: running summary, desktop only */}
+          <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-[2px] text-[#C4622D] mb-1">
+                Your booking <span className="font-normal text-[#B3A597]">/ Tu reserva</span>
+              </p>
+              <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
+              <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
+              <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
+              <SummaryRow label="Price" labelEs="Precio" value={service && total > 0 ? `€${total}` : null} placeholder="Pick a service" />
             </div>
-          </BookingDialog>
-        )}
-        </div>
-
-        <div className="min-[900px]:col-span-2 space-y-5">
-        {/* Contact footer */}
-
-        <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
-          {bookingWaNumber && (() => {
-            const contactWa = studioWhatsappUrl(bookingWaNumber);
-            return contactWa && (
-              <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
-                <MessageCircle size={14} /> WhatsApp
+            {bookingWaHref && (
+              <a
+                href={bookingWaHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  clarityEvent("whatsapp_click");
+                  sendTrack({
+                    event: "whatsapp_click",
+                    path: window.location.pathname,
+                    slug: partner.slug || partner.id,
+                    meta: { filled: !!(service || date || time), service: !!service, date: !!date },
+                  });
+                }}
+                className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"
+              >
+                <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
+                <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
               </a>
-            );
-          })()}
-          {partner.phone && (
-            <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
-              <Phone size={14} /> Call
-            </a>
-          )}
-          {partner.instagram && (
-            <a href={`https://instagram.com/${partner.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-pink-500">
-              <Instagram size={14} /> {partner.instagram}
-            </a>
-          )}
-        </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {(partner.languages || []).slice(0, 4).map((l: string) => (
+                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
+              ))}
+              {(partner.amenities || []).slice(0, 4).map((a: string) => (
+                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
+              ))}
+            </div>
+          </aside>
 
-        {/* Massage Club credit */}
-        <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
-          <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
-          <span>Powered by Massage Club</span>
-        </div>
+          <div className="min-[900px]:col-span-2 space-y-5">
+            {/* Contact footer */}
+            <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
+              {bookingWaNumber && (() => {
+                const contactWa = studioWhatsappUrl(bookingWaNumber);
+                return contactWa && (
+                  <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
+                    <MessageCircle size={14} /> WhatsApp
+                  </a>
+                );
+              })()}
+              {partner.phone && (
+                <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
+                  <Phone size={14} /> Call
+                </a>
+              )}
+              {partner.instagram && (
+                <a href={`https://instagram.com/${partner.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-pink-500">
+                  <Instagram size={14} /> {partner.instagram}
+                </a>
+              )}
+            </div>
 
-        {/* Legal footer */}
-        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
-          <span>Massage Club · Madrid</span>
-          <span>·</span>
-          <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
-          <span>·</span>
-          <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>
-          <span>·</span>
-          <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
-        </div>
+            {/* Massage Club credit */}
+            <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
+              <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
+              <span>Powered by Massage Club</span>
+            </div>
+
+            {/* Legal footer */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
+              <span>Massage Club · Madrid</span>
+              <span>·</span>
+              <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
+              <span>·</span>
+              <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>
+              <span>·</span>
+              <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
+            </div>
+          </div>
         </div>
       </div>
+
 
     </div>
   );
