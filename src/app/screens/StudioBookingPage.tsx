@@ -905,7 +905,61 @@ export default function StudioBookingPage() {
 
   // Name + at least one way to reach them (phone OR email). Phone is no longer required.
 
-  const canBook = service && date && time && name.trim() && (phone.trim() || email.trim());
+  const hasContact = !!(phone.trim() || email.trim());
+  const canBook = !!(service && date && time && name.trim() && hasContact);
+  // A signed-in customer with a name and a way to be reached never sees the form again.
+  const detailsKnown = !!(userId && name.trim() && hasContact);
+
+  // What is still missing, in the order the page asks for it.
+  const missing: { key: string; en: string; es: string }[] = [
+    !service && { key: "service", en: "a service", es: "un servicio" },
+    !date && { key: "date", en: "a day", es: "un día" },
+    !time && { key: "time", en: "a time", es: "una hora" },
+    !name.trim() && { key: "name", en: "your name", es: "tu nombre" },
+    !hasContact && { key: "contact", en: "an email or phone", es: "un email o teléfono" },
+  ].filter(Boolean) as { key: string; en: string; es: string }[];
+  const stepsLeft = missing.length;
+  const stepsLeftLabels = {
+    en: missing.map(m => m.en).join(", "),
+    es: missing.map(m => m.es).join(", "),
+  };
+
+  const scrollTo = (el: HTMLElement | null, focus?: HTMLInputElement | null) => {
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (focus) window.setTimeout(() => focus.focus({ preventScroll: true }), 350);
+  };
+
+  // The CTA is always clickable. If something is missing it takes you there.
+  const handleCta = () => {
+    if (canBook) {
+      setCtaHint(null);
+      setHighlight(null);
+      handleBook();
+      return;
+    }
+    const first = missing[0];
+    if (!first) return;
+    if (first.key === "service") {
+      setCtaHint({ en: "Choose a service to continue", es: "Elige un servicio para continuar" });
+      scrollTo(serviceRef.current);
+    } else if (first.key === "date") {
+      setCtaHint({ en: "Pick a day for your massage", es: "Elige un día para tu masaje" });
+      scrollTo(dateRef.current);
+    } else if (first.key === "time") {
+      setCtaHint({ en: "Pick a time for your massage", es: "Elige una hora para tu masaje" });
+      scrollTo(timeRef.current);
+    } else {
+      setContactExpanded(true);
+      setHighlight(first.key === "name" ? "name" : "contact");
+      setCtaHint({
+        en: "Add your name and an email or phone so the studio can reach you",
+        es: "Añade tu nombre y un email o teléfono para que el estudio pueda contactarte",
+      });
+      window.setTimeout(() => {
+        scrollTo(detailsRef.current, first.key === "name" ? nameRef.current : emailRef.current);
+      }, 40);
+    }
+  };
 
   const handleBook = async () => {
     if (!canBook) return;
