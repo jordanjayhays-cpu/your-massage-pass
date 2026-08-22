@@ -166,3 +166,12 @@
 .animate-slide-up {
   animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/* Horizontal scrollers (the booking stepper) without a visible scrollbar. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
