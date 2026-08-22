@@ -744,20 +744,23 @@ export default function StudioBookingPage() {
             </div>
 
             {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
-            <div className="min-[900px]:sticky min-[900px]:top-4">
+            <div className="min-[900px]:sticky min-[900px]:top-4 text-left">
             {waLink && (
-              <div className="text-left rounded-2xl p-4 mb-4" style={{ background: "#FAF6F1" }}>
-                <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
-                  {t("app.handoff.prefTitle")}
-                </p>
-                <div className="space-y-3">
-                  {profile.services.length > 0 && (
+              <>
+                <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
+                <div className="rounded-2xl p-4 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+                  <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
+                    {t("app.handoff.prefTitle")}
+                  </p>
+
+                  {/* STEP 1: service */}
+                  {hoStep === 1 && (
                     <div>
                       <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
                       <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
                         <Link
                           to={quizHref}
-                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
+                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
                           style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
                         >
                           <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
@@ -767,155 +770,180 @@ export default function StudioBookingPage() {
                           </span>
                         </Link>
                         <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2">
-                        {profile.services.map((s: any) => {
-                          const selected = hoServiceId === s.id;
-                          const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
-                          const price = Number(s.price);
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              onClick={() => setHoServiceId(selected ? "" : s.id)}
-                              className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
-                              style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
-                            >
-                              <span className="min-w-0">
-                                <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
-                                {serviceSecondaryName(s) && (
-                                  <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                                )}
-                              </span>
-                              <span className="text-right flex-shrink-0">
-                                {Number.isFinite(price) && price > 0 && (
-                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
-                                )}
-                                {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
-                              </span>
-                            </button>
-                          );
-                        })}
+                          {profile.services.map((s: any) => {
+                            const selected = hoServiceId === s.id;
+                            const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
+                            const price = Number(s.price);
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                onClick={() => setHoServiceId(selected ? "" : s.id)}
+                                className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition"
+                                style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
+                                  {serviceSecondaryName(s) && (
+                                    <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                                  )}
+                                </span>
+                                <span className="text-right flex-shrink-0">
+                                  {Number.isFinite(price) && price > 0 && (
+                                    <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                                  )}
+                                  {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
+                      <WizardNav
+                        onNext={() => hoGo(2)}
+                        disabled={!hoServiceId}
+                        hint="Choose a service to continue"
+                        hintEs="Elige un servicio para continuar"
+                      />
                     </div>
                   )}
-                  <div>
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
-                    <div className="mt-1.5">
-                      <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
-                    <div className="mt-1.5">
-                      <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
-                    </div>
-                  </div>
-                  {!altOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => setAltOpen(true)}
-                      className="text-sm font-semibold underline underline-offset-2"
-                      style={{ color: "#B85C38" }}
-                    >
-                      + Add a second choice
-                      <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
-                    </button>
-                  ) : (
-                    <div>
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                      <div className="mt-1.5 space-y-2">
-                        <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
-                        <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+
+                  {/* STEP 2: day and time */}
+                  {hoStep === 2 && (
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                        <div className="mt-1.5">
+                          <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
+                        </div>
                       </div>
+                      <div>
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                        <div className="mt-1.5">
+                          <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
+                        </div>
+                      </div>
+                      {!altOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setAltOpen(true)}
+                          className="text-sm font-semibold underline underline-offset-2"
+                          style={{ color: "#B85C38" }}
+                        >
+                          + Add a second choice
+                          <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                        </button>
+                      ) : (
+                        <div>
+                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                          <div className="mt-1.5 space-y-2">
+                            <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
+                            <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                          </div>
+                        </div>
+                      )}
+                      <WizardNav
+                        onBack={() => hoGo(1)}
+                        onNext={() => hoGo(3)}
+                        disabled={!hoDate || !hoTime}
+                        hint="Pick a day and a time to continue"
+                        hintEs="Elige un día y una hora para continuar"
+                      />
                     </div>
                   )}
-                  <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
-                </div>
-              </div>
-            )}
-            <div className="flex flex-col items-center gap-3 w-full">
-              {waLink ? (
-                <>
-                  <button type="button" onClick={() => setHoDetailsOpen(true)} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                    <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
-                    <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
-                  </button>
-                  <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                  {waTapped && (
-                    <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
-                      {t("app.handoff.afterNote")}
-                    </p>
-                  )}
-                  {hoDetailsOpen && (
-                    <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setHoDetailsOpen(false)}>
-                      <div className="space-y-4 text-left">
-                        <label className="block">
-                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                          <input type="text" value={hoName} autoFocus onChange={(e) => setHoName(e.target.value)}
-                            className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                        </label>
-                        <div>
-                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            {spokenLangs.map((code) => (
+
+                  {/* STEP 3: your info */}
+                  {hoStep === 3 && (
+                    <div className="space-y-4">
+                      <label className="block">
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                        <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
+                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                      </label>
+                      <div>
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {spokenLangs.map((code) => (
+                            <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                              className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                              style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                              <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                                className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                              {SPOKEN_LANG_NATIVE[code]}
+                              <span aria-hidden style={{ color: "#9E9387" }}>×</span>
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => setLangPickerOpen(o => !o)}
+                            className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                            style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
+                            + {t("app.handoff.prefLanguagesAdd")}
+                          </button>
+                        </div>
+                        {langPickerOpen && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
                               <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
-                                style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                                style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
                                 <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
                                   className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
                                 {SPOKEN_LANG_NATIVE[code]}
-                                <span aria-hidden style={{ color: "#9E9387" }}>×</span>
                               </button>
                             ))}
-                            <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                              className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
-                              style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
-                              + {t("app.handoff.prefLanguagesAdd")}
-                            </button>
                           </div>
-                          {langPickerOpen && (
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
-                                <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
-                                  style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
-                                  <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                    className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
-                                  {SPOKEN_LANG_NATIVE[code]}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => { trackWhatsappIntent(); setHoDetailsOpen(false); }}
-                          className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
-                          style={{ background: "#B85C38", color: "#fff" }}
-                        >
-                          <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Confirm request</span>
-                          <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
-                        </a>
-                        <p className="text-[11px] text-center" style={{ color: "#9E9387" }}>
-                          We write it in Spanish. They only need to say yes.
-                          <span className="block">Lo escribimos en español.</span>
-                        </p>
+                        )}
                       </div>
-                    </BookingDialog>
+                      <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
+                      <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
+                    </div>
                   )}
-                </>
 
-
-              ) : studioNumber ? (
+                  {/* STEP 4: review and send */}
+                  {hoStep === 4 && (
+                    <div className="space-y-3">
+                      <div className="rounded-xl bg-white p-3 space-y-2 border" style={{ borderColor: "#E6DCCF" }}>
+                        <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
+                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
+                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
+                        <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
+                        <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not given" />
+                        <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
+                        <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
+                      </div>
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={trackWhatsappIntent}
+                        className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
+                        style={{ background: "#B85C38", color: "#fff" }}
+                      >
+                        <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
+                        <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
+                      </a>
+                      <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                      {waTapped && (
+                        <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
+                          {t("app.handoff.afterNote")}
+                        </p>
+                      )}
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                        Back <span className="font-normal">/ Atrás</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            <div className="flex flex-col items-center gap-3 w-full">
+              {!waLink && studioNumber && (
                 <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                   <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
                   <span className="text-xs font-normal opacity-90">{t("app.handoff.callStudioSub")}</span>
                 </a>
-              ) : null}
+              )}
               {websiteUrl && (
                 <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                   <span>{t("app.handoff.visitWebsite")}</span>
@@ -924,6 +952,7 @@ export default function StudioBookingPage() {
               )}
             </div>
             </div>
+
 
             <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
