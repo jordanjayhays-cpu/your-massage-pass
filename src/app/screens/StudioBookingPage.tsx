@@ -72,6 +72,7 @@ export default function StudioBookingPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [hoEmail, setHoEmail] = useState("");
   // Customize
   const [pressure, setPressure] = useState("Medium");
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
