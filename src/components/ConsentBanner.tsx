@@ -25,6 +25,8 @@ export default function ConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // Load Clarity for visitors who already accepted on a previous visit.
+    initClarity();
     try {
       if (localStorage.getItem("mc_nt") === "1") return;
       if (localStorage.getItem(KEY)) return;
@@ -49,6 +51,8 @@ export default function ConsentBanner() {
         ad_personalization: "granted",
         analytics_storage: "granted",
       });
+      // Start session replay right away — no reload needed.
+      loadClarity();
     }
     setVisible(false);
   };
