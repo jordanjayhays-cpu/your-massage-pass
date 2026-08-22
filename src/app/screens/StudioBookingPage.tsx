@@ -1156,7 +1156,18 @@ export default function StudioBookingPage() {
         {!rebookMode && (
         <Section step="1" title="Choose a service" titleEs="Elige un servicio">
           <div className="space-y-2">
+            <Link
+              to="/discovery/quiz"
+              className="w-full flex items-center gap-2 p-4 rounded-2xl border-2 border-[#C4622D] bg-[#F6E5DB] motion-safe:transition hover:opacity-95"
+            >
+              <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
+              <span className="min-w-0 text-left">
+                <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
+                <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
+              </span>
+            </Link>
             {profile.services.map(s => (
+
               <button key={s.id} onClick={() => setServiceId(s.id)}
                 className={`w-full text-left p-4 rounded-2xl border-2 transition ${
                   serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
