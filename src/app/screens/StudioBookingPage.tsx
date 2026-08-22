@@ -13,6 +13,7 @@ import { requestAccountSignup } from "@/lib/accountSignup";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
+import { tagLabel } from "@/lib/tagLabel";
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
@@ -1301,9 +1302,25 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 pb-28">
         {/* Stepper: always visible so nobody misses a step */}
         <Stepper steps={BOOKING_STEPS} current={step} maxReached={maxStep} onGo={goStep} />
+
+        {/* Always reachable Continue, so the primary action never hides below the fold */}
+        {step === 1 && <StickyContinue ready={!!service} onNext={() => goStep(2)} />}
+        {step === 2 && <StickyContinue ready={!!date && !!time} onNext={() => goStep(3)} />}
+        {step === 3 && <StickyContinue ready onNext={() => goStep(4)} />}
+        {step === 4 && (
+          <StickyContinue ready={!!name.trim() && hasContact} onNext={submitDetailsStep} />
+        )}
+        {step === 5 && (
+          <StickyContinue
+            ready={canBook && !submitting}
+            onNext={handleBook}
+            label={`Request booking · €${total}`}
+            labelEs="Solicitar reserva"
+          />
+        )}
 
         {/* Mobile: slim running summary under the stepper */}
         <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
@@ -1367,7 +1384,7 @@ export default function StudioBookingPage() {
                         </span>
                       </Link>
                       {profile.services.map(s => (
-                        <button key={s.id} onClick={() => setServiceId(s.id)}
+                        <button key={s.id} onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
                           className={`w-full text-left p-4 rounded-2xl border-2 transition ${
                             serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                           }`}>
@@ -1412,7 +1429,7 @@ export default function StudioBookingPage() {
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
-                          <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
+                          <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); scrollIntoViewGently(e.currentTarget); }}
                             className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
@@ -1724,7 +1741,11 @@ export default function StudioBookingPage() {
                     message_text: bookingWaMsg,
                   });
                 }}
-                className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"
+                className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] px-6 py-2 rounded-2xl font-semibold motion-safe:transition ${
+                  partner.status === "active"
+                    ? "border border-[#C4622D] text-[#C4622D] bg-white hover:bg-[#FAF6F1]"
+                    : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
+                }`}
               >
                 <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
                 <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
@@ -1732,10 +1753,10 @@ export default function StudioBookingPage() {
             )}
             <div className="flex flex-wrap gap-2">
               {(partner.languages || []).slice(0, 4).map((l: string) => (
-                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
+                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(l)}</span>
               ))}
               {(partner.amenities || []).slice(0, 4).map((a: string) => (
-                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
+                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(a)}</span>
               ))}
             </div>
           </aside>
@@ -1872,11 +1893,59 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
 export type StepDef = { label: string; labelEs: string };
 
 /** Always visible wizard header. Completed steps are clickable, upcoming ones muted. */
+/** Keeps a freshly selected card comfortably in view without a jarring jump. */
+function scrollIntoViewGently(el: HTMLElement | null) {
+  if (!el) return;
+  try {
+    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+  } catch {
+    /* older browsers: no smooth scrolling, no problem */
+  }
+}
+
+/**
+ * Always reachable Continue bar. Full width on mobile, aligned under the right
+ * summary column on desktop, so picking a service never looks like nothing happened.
+ */
+function StickyContinue({
+  ready, onNext, label, labelEs,
+}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string }) {
+  if (!ready) return null;
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8">
+        <div className="hidden min-[900px]:block" />
+        <button
+          type="button"
+          onClick={onNext}
+          className="w-full h-13 min-h-[52px] rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+        >
+          <span>{label || "Continue"}</span>
+          <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Stepper({
   steps, current, maxReached, onGo,
 }: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+  // On narrow screens the five steps scroll, so keep the active one in view.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [current]);
   return (
-    <nav aria-label="Booking steps" className="flex items-start gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+    <nav
+      aria-label="Booking steps"
+      className="relative flex items-start gap-0.5 min-[900px]:gap-1 overflow-x-auto pb-1 -mx-1 px-1 max-w-full min-[900px]:max-w-[720px] no-scrollbar"
+    >
+      {/* Thin connector line behind the step bullets */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-8 right-8 top-[22px] h-px bg-[#E7D9CB]"
+      />
       {steps.map((s, i) => {
         const n = i + 1;
         const isCurrent = n === current;
@@ -1889,12 +1958,13 @@ function Stepper({
             onClick={() => reachable && onGo(n)}
             disabled={!reachable}
             aria-current={isCurrent ? "step" : undefined}
-            className={`flex-1 min-w-[86px] text-center px-1.5 py-2 rounded-xl motion-safe:transition ${
+            ref={isCurrent ? activeRef : undefined}
+            className={`relative flex-1 min-w-[62px] min-[900px]:min-w-[86px] text-center px-1 min-[900px]:px-1.5 py-2 rounded-xl motion-safe:transition ${
               isCurrent ? "bg-[#C4622D]/10" : ""
             } ${reachable && !isCurrent ? "hover:bg-[#F1E7DB]" : ""}`}
           >
             <span
-              className={`mx-auto mb-1 h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+              className={`relative mx-auto mb-1 h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ring-4 ring-[#FAF6F1] ${
                 isCurrent
                   ? "bg-[#C4622D] text-white"
                   : isDone
@@ -1905,13 +1975,13 @@ function Stepper({
               {isDone ? <Check size={13} /> : n}
             </span>
             <span
-              className={`block text-[11px] font-semibold leading-tight ${
+              className={`block text-[10px] min-[900px]:text-[11px] font-semibold leading-tight ${
                 isCurrent ? "text-[#C4622D]" : isDone ? "text-gray-700" : "text-[#A6968A]"
               }`}
             >
               {s.label}
             </span>
-            <span className="block text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
+            <span className="hidden min-[380px]:block text-[9px] min-[900px]:text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
           </button>
         );
       })}
