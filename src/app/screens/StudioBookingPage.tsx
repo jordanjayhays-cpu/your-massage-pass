@@ -227,14 +227,15 @@ export default function StudioBookingPage() {
 
   // Pre-fill name + email + phone if the customer is signed in.
   useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    let cancelled = false;
+
+    const prefill = async (user: any) => {
+      if (!user || cancelled) return;
       setUserId(user.id);
 
       // Spoken languages live in their own query so a missing column can never
       // break the rest of the pre-fill.
-      supabase.from("profiles").select("spoken_languages").eq("id", user.id).single().then(
+      supabase.from("profiles").select("spoken_languages").eq("id", user.id).maybeSingle().then(
         ({ data }) => {
           const saved = normalizeSpokenLangs((data as any)?.spoken_languages);
           if (saved.length) setSpokenLangs(saved);
@@ -242,41 +243,63 @@ export default function StudioBookingPage() {
         () => {},
       );
 
-
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
+      setPhone(prev => prev || user.phone || user.user_metadata?.phone || "");
+
+      // select("*") so one renamed column can never wipe out the whole pre-fill.
       const { data: prof } = await supabase
         .from("profiles")
-.select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes, medical_conditions, medications, avoid_areas, reason_for_visit, is_first_massage, preferred_therapist_gender, emergency_contact_name, emergency_contact_phone, massage_goals")
+        .select("*")
         .eq("id", user.id)
-        .single();
-      if (prof) {
-        setCustomerProfile(prof);
-        setName(prev => prev || prof.full_name || "");
-        setPhone(prev => prev || prof.phone || "");
-        setProfileAllergies(prof.allergies || "");
-        setProfileHealthNotes(prof.health_notes || "");
-        // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
-        if (!rebookId) {
-          let applied = false;
-          if (prof.preferred_pressure) {
-            setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
-            applied = true;
-          }
-          if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
-            setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
-            applied = true;
-          }
-          if (prof.conversation_pref) {
-            setConversationPref(prev => prev || prof.conversation_pref);
-            applied = true;
-          }
-          if (applied) setPrefsApplied(true);
+        .maybeSingle();
+      if (!prof || cancelled) return;
+      const p = prof as any;
+      setCustomerProfile(p);
+      setName(prev => prev || p.full_name || "");
+      setEmail(prev => prev || p.email || "");
+      setPhone(prev => prev || p.phone || "");
+      setProfileAllergies(p.allergies || "");
+      setProfileHealthNotes(p.health_notes || "");
+      // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
+      if (!rebookId) {
+        let applied = false;
+        if (p.preferred_pressure) {
+          setPressure(prev => (prev === "Medium" ? p.preferred_pressure : prev));
+          applied = true;
         }
+        if (Array.isArray(p.focus_areas) && p.focus_areas.length) {
+          setFocusAreas(prev => (prev.length === 0 ? p.focus_areas : prev));
+          applied = true;
+        }
+        if (p.conversation_pref) {
+          setConversationPref(prev => prev || p.conversation_pref);
+          applied = true;
+        }
+        if (applied) setPrefsApplied(true);
       }
+    };
 
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        prefill(session.user);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) prefill(user);
+      }
     })();
+
+    // The session can land after first paint (magic link, OAuth return).
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) prefill(session.user);
+    });
+
+    return () => {
+      cancelled = true;
+      sub?.subscription?.unsubscribe();
+    };
   }, []);
 
   // Rebook fast-path: prefill service + preferences + contact from a previous booking.
