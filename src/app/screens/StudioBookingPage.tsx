@@ -1550,20 +1550,20 @@ export default function StudioBookingPage() {
                   {addons.length > 0 && (
                     <>
                       <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Add-ons <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Extras</span></p>
-                      <div className="space-y-2 mb-4">
+                      <div className="space-y-2 min-[900px]:space-y-3 mb-4 min-[900px]:mb-5">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
                           return (
                             <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition min-[900px]:p-4 ${
+                              className={`w-full flex items-center justify-between p-3 min-[900px]:p-4 rounded-xl border-2 text-left transition ${
                                 on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                               }`}>
                               <div>
                                 <p className="text-sm font-medium text-gray-900 min-[900px]:text-base">{a.name}</p>
                                 <p className="text-xs text-gray-400 min-[900px]:text-sm">+€{a.price}</p>
                               </div>
-                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
-                                {on && <Check size={12} className="text-white" />}
+                              <div className={`h-5 w-5 min-[900px]:h-6 min-[900px]:w-6 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
+                                {on && <Check size={12} className="text-white min-[900px]:size-4" />}
                               </div>
                             </button>
                           );
