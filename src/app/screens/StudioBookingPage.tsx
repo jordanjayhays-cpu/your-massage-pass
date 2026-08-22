@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { studioWhatsappUrl, isWhatsappCapable, resolveWhatsappNumber, whatsappPrefill } from "@/app/lib/whatsapp";
+import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill } from "@/app/lib/whatsapp";
 import { sendTrack } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
