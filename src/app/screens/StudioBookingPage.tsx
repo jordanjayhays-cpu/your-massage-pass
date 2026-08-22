@@ -1443,23 +1443,23 @@ export default function StudioBookingPage() {
                   )}
                   {date && (
                     <div ref={timeRef} className="mt-5">
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Times <span className="font-normal text-gray-400">/ Horas</span></p>
+                      <p className="text-xs min-[900px]:text-xl font-semibold text-gray-500 mb-2 min-[900px]:mb-3">Times <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Horas</span></p>
                       {times.length === 0 ? (
-                        <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
+                        <p className="text-sm min-[900px]:text-base text-gray-400">Fully booked that day. Try another date.</p>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 min-[900px]:gap-3">
                           {times.map(t => {
                             const left = remainingFor(t);
                             const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
                             const lowStock = cap > 1 && left < cap;
                             return (
                               <button key={t} onClick={() => setTime(t)}
-                                className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                                className={`px-4 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition ${
                                   time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                                 }`}>
                                 {t}
                                 {lowStock && (
-                                  <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
+                                  <span className={`block text-[10px] min-[900px]:text-xs font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
                                     {left} left
                                   </span>
                                 )}
