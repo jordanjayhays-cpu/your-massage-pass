@@ -103,8 +103,6 @@ export default function StudioBookingPage() {
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
-  // Booking CTA guidance: which choice is missing, and the hint under the button.
-  const [ctaHint, setCtaHint] = useState<{ en: string; es: string } | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
