@@ -388,6 +388,8 @@ export default function StudioBookingPage() {
     const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
     const isClaimed = partner.status === "active";
     const studioNumber = (partner as any).whatsapp || partner.phone;
+    const waNumber = resolveWhatsappNumber(partner as any);
+
     // Claimed: friendly "you're booked" message.
     // NOTE: messages sent TO the studio always use the SPANISH service name.
     const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
