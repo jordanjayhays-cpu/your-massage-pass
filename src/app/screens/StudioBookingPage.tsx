@@ -1235,6 +1235,7 @@ export default function StudioBookingPage() {
 
         {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
         {!rebookMode && (
+        <div ref={serviceRef}>
         <Section step="1" title="Choose a service" titleEs="Elige un servicio">
           <div className="space-y-2">
             <Link
