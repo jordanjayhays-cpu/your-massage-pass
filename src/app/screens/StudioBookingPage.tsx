@@ -1507,8 +1507,8 @@ export default function StudioBookingPage() {
                       </button>
                     </div>
                   )}
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Comfort <span className="font-normal text-gray-400">/ Confort</span></p>
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Comfort <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Confort</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {[
                       { v: "silence", l: "Silence" },
                       { v: "minimal", l: "A little chat" },
@@ -1518,7 +1518,7 @@ export default function StudioBookingPage() {
                         key={o.v}
                         type="button"
                         onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
                           conversationPref === o.v ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}
                       >
