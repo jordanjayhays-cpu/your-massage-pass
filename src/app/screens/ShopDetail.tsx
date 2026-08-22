@@ -57,6 +57,12 @@ export default function ShopDetail() {
     });
   }, [id]);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
+
   // Initialize Google Map in the Location card once studio data is loaded
   useEffect(() => {
     if (!massage || !mapRef.current) return;
