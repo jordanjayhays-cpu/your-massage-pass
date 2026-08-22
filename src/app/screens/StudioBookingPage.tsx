@@ -704,6 +704,24 @@ export default function StudioBookingPage() {
           languages: spokenLangs,
         },
       });
+      // Fire and forget: never blocks the WhatsApp link.
+      logWhatsappRequest({
+        partner_id: partner.id,
+        slug: partner.slug || null,
+        studio_name: partner.business_name,
+        service_name: hoService ? servicePrimaryName(hoService) : null,
+        price: hasPrice ? hoPrice : null,
+        day1: hoDate || null,
+        time1: hoTime || null,
+        day2: hoAltDate || null,
+        time2: hoAltTime || null,
+        first_name: hoName.trim() || null,
+        contact_email: hoEmail.trim() || null,
+        languages: spokenLangs.join(", "),
+        user_id: userId,
+        wa_number: waNumber,
+        message_text: waMsg,
+      });
     };
     const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
     const websiteUrl = (() => {
