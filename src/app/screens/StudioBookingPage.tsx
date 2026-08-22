@@ -929,18 +929,18 @@ export default function StudioBookingPage() {
 
                   {/* STEP 3: your info */}
                   {hoStep === 3 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 min-[900px]:space-y-5">
                       <label className="block">
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
                         <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
-                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
                       <label className="block">
-                        <span className="text-xs" style={{ color: "#7A7068" }}>Email (optional)</span>
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email (optional)</span>
                         <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
-                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                        <span className="block text-[11px] mt-1" style={{ color: "#9E9387" }}>
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                        <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
                           So we can check everything went well with your booking.
                           <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
                         </span>
@@ -949,13 +949,13 @@ export default function StudioBookingPage() {
                         <label className="flex items-start gap-2 cursor-pointer">
                           <input type="checkbox" checked={createAccount}
                             onChange={(e) => setCreateAccount(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 accent-[#C4622D]" />
-                          <span className="text-xs leading-snug" style={{ color: "#5a4736" }}>
+                            className="mt-0.5 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]" />
+                          <span className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5a4736" }}>
                             Create my free Massage Club account
-                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
                               Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
                             </span>
-                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
                               Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
                             </span>
                           </span>
@@ -963,39 +963,39 @@ export default function StudioBookingPage() {
                       )}
 
                       <div>
-                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 min-[900px]:gap-2">
                           {spokenLangs.map((code) => (
                             <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                              className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                              className="inline-flex items-center gap-1.5 h-7 min-[900px]:h-8 pl-2 min-[900px]:pl-2.5 pr-1.5 min-[900px]:pr-2 rounded-full border text-[12px] min-[900px]:text-sm"
                               style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
                               <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                className="w-4 h-3 min-[900px]:w-5 min-[900px]:h-4 rounded-[2px] object-cover" loading="lazy" />
                               {SPOKEN_LANG_NATIVE[code]}
                               <span aria-hidden style={{ color: "#9E9387" }}>×</span>
                             </button>
                           ))}
                           <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                            className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                            className="inline-flex items-center h-7 min-[900px]:h-8 px-2.5 min-[900px]:px-3 rounded-full border text-[12px] min-[900px]:text-sm"
                             style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
                             + {t("app.handoff.prefLanguagesAdd")}
                           </button>
                         </div>
                         {langPickerOpen && (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <div className="mt-1.5 flex flex-wrap gap-1.5 min-[900px]:gap-2">
                             {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
                               <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                                className="inline-flex items-center gap-1.5 h-7 min-[900px]:h-8 px-2.5 min-[900px]:px-3 rounded-full border text-[12px] min-[900px]:text-sm bg-white"
                                 style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
                                 <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                  className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                                  className="w-4 h-3 min-[900px]:w-5 min-[900px]:h-4 rounded-[2px] object-cover" loading="lazy" />
                                 {SPOKEN_LANG_NATIVE[code]}
                               </button>
                             ))}
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
+                      <p className="text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                       <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
                     </div>
                   )}
