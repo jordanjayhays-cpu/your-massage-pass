@@ -224,16 +224,33 @@ export default function StudioMap({
       <div className={`relative rounded-3xl overflow-hidden shadow-soft border border-border/60 ${heightClass}`}>
         <div ref={mapRef} className="absolute inset-0" />
         <button
-          onClick={() => { if (!userLoc) requestUserLocation(); }}
+          type="button"
+          onClick={() => requestUserLocation(true)}
+          aria-live="polite"
           className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60 hover:bg-card transition"
         >
           <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
-            <Compass className="h-3 w-3 text-primary" />
+            {locating ? (
+              <Loader2 className="h-3 w-3 text-primary animate-spin" />
+            ) : (
+              <Compass className="h-3 w-3 text-primary" />
+            )}
           </div>
           <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
-            {userLoc ? t("app.massageList.yourLocation") : t("app.massageList.nearMadrid")}
+            {locating
+              ? t("app.massageList.locating", "Locating you…")
+              : userLoc
+              ? t("app.massageList.yourLocation")
+              : t("app.massageList.nearMadrid")}
           </span>
         </button>
+        {geoError && (
+          <div className="absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft">
+            <p className="text-[11px] text-muted-foreground">
+              {t("app.massageList.geoError", "We could not get your location. Showing studios around central Madrid.")}
+            </p>
+          </div>
+        )}
       </div>
 
       {showSelectedCard && selected && (
