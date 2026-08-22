@@ -755,27 +755,37 @@ export default function StudioBookingPage() {
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block">
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
-                      <input type="date" value={hoDate} onChange={(e) => setHoDate(e.target.value)}
-                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
-                      <input type="time" value={hoTime} onChange={(e) => setHoTime(e.target.value)}
-                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                    </label>
-                  </div>
                   <div>
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      <input type="date" value={hoAltDate} onChange={(e) => setHoAltDate(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                      <input type="time" value={hoAltTime} onChange={(e) => setHoAltTime(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                    <div className="mt-1.5">
+                      <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
                     </div>
                   </div>
+                  <div>
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                    <div className="mt-1.5">
+                      <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
+                    </div>
+                  </div>
+                  {!altOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setAltOpen(true)}
+                      className="text-sm font-semibold underline underline-offset-2"
+                      style={{ color: "#B85C38" }}
+                    >
+                      + Add a second choice
+                      <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                    </button>
+                  ) : (
+                    <div>
+                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                      <div className="mt-1.5 space-y-2">
+                        <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
+                        <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                      </div>
+                    </div>
+                  )}
                   <label className="block">
                     <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
                     <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
