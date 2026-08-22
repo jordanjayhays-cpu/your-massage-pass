@@ -264,8 +264,11 @@ export default function ShopDetail() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-display text-lg font-semibold text-foreground leading-snug">
-                        {s.name}
+                        {servicePrimaryName(s)}
                       </h3>
+                      {serviceSecondaryName(s) && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{serviceSecondaryName(s)}</p>
+                      )}
                       <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                         {s.description?.split(/[.!?](\s|$)/)[0]?.trim() || firstSentence}.
                       </p>
