@@ -1585,60 +1585,60 @@ export default function StudioBookingPage() {
             {step === 4 && (
               <div>
                 <Section step="4" title="Your details" titleEs="Tus datos">
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-[900px]:space-y-3">
                     <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setStepError(null); }} placeholder="Your name / Tu nombre"
                       aria-invalid={!!stepError && !name.trim()}
-                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
                     <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email"
-                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
                     <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs min-[900px]:text-sm text-gray-400">
                       Add at least one way to reach you: email or phone.
-                      <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Añade al menos un email o teléfono.</span>
                     </p>
                     {!userId && !!email.trim() && (
-                      <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                      <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={createAccount}
                           onChange={e => setCreateAccount(e.target.checked)}
-                          className="mt-1 h-4 w-4 accent-[#C4622D]"
+                          className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
                         />
-                        <span className="text-xs text-gray-600 leading-snug">
+                        <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
                           Create my free Massage Club account
-                          <span className="block text-[11px] text-gray-400">
+                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
                             Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
                           </span>
-                          <span className="block text-[11px] text-gray-400">
+                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
                             Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
                           </span>
                         </span>
                       </label>
                     )}
-                    <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                    <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
 
                       <input
                         type="checkbox"
                         checked={marketingOptIn}
                         onChange={e => setMarketingOptIn(e.target.checked)}
-                        className="mt-1 h-4 w-4 accent-[#C4622D]"
+                        className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
                       />
-                      <span className="text-xs text-gray-600 leading-snug">
+                      <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
                         Send me Massage Club news and offers (optional)
-                        <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
+                        <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
                       </span>
                     </label>
                     {stepError && (
-                      <p role="alert" className="text-sm font-medium text-[#B03A2E]">
+                      <p role="alert" className="text-sm min-[900px]:text-base font-medium text-[#B03A2E]">
                         {stepError.en}
-                        <span className="block text-xs font-normal text-[#8a7460]">{stepError.es}</span>
+                        <span className="block text-xs min-[900px]:text-sm font-normal text-[#8a7460]">{stepError.es}</span>
                       </p>
                     )}
                   </div>
