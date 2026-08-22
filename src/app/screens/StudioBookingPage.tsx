@@ -1443,7 +1443,9 @@ export default function StudioBookingPage() {
           <span>·</span>
           <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
         </div>
+        </div>
       </div>
+
     </div>
   );
 }
