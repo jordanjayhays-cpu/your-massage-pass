@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
 import { useEffect, useRef, useState } from "react";
-import { Compass, Star, Clock, MapPin } from "lucide-react";
+import { Compass, Star, Clock, MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MADRID_CENTER } from "../data";
 import { loadGoogleMaps } from "../lib/googleMaps";
