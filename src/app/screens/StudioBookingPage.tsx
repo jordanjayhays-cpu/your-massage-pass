@@ -728,7 +728,12 @@ export default function StudioBookingPage() {
         wa_number: waNumber,
         message_text: waMsg,
       });
+      // Fire and forget: passwordless account, never blocks the WhatsApp handoff.
+      if (!userId && createAccount && hoEmail.trim()) {
+        requestAccountSignup({ email: hoEmail.trim(), name: hoName.trim(), lang: siteLang });
+      }
     };
+
     const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
