@@ -273,6 +273,8 @@ export default function StudioBookingPage() {
 
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
+      setHoEmail(prev => prev || user.email || "");
+      setHoName(prev => prev || fullName);
       setName(prev => prev || fullName);
       setPhone(prev => prev || user.phone || user.user_metadata?.phone || "");
 
