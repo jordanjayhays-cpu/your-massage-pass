@@ -28,6 +28,26 @@ const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "F
 // Fixed options for the unclaimed-studio handoff, where real availability is unknown.
 const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
 
+// Wizard steps, shown in the header on every screen.
+const BOOKING_STEPS = [
+  { label: "Service", labelEs: "Servicio" },
+  { label: "Day and time", labelEs: "Día y hora" },
+  { label: "Customize", labelEs: "Personaliza" },
+  { label: "Your details", labelEs: "Tus datos" },
+  { label: "Confirm", labelEs: "Confirmar" },
+];
+const HANDOFF_STEPS = [
+  { label: "Service", labelEs: "Servicio" },
+  { label: "Day and time", labelEs: "Día y hora" },
+  { label: "Your info", labelEs: "Tus datos" },
+  { label: "Review", labelEs: "Revisar" },
+];
+const CONVERSATION_LABELS: Record<string, string> = {
+  silence: "Silence",
+  minimal: "A little chat",
+  chatty: "Happy to chat",
+};
+
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
