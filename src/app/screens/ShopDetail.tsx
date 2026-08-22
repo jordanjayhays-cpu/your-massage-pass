@@ -378,7 +378,7 @@ export default function ShopDetail() {
                     first_name: null,
                     contact_email: null,
                     languages: null,
-                    user_id: null,
+                    user_id: userId,
                     wa_number: waNumber,
                     message_text: whatsappPrefill({ studio: m.studio }),
                   });
