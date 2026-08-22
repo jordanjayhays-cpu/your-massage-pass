@@ -200,14 +200,14 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
             <div className="flex items-center gap-2 text-xs">
-              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {t("hero.studiosCount", { n: studioCount })}</span>
+              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {t("hero.studiosCount", { studios: studioCount })}</span>
             </div>
             <span className="text-[10px] uppercase tracking-[0.2em] bg-white/15 backdrop-blur px-2 py-1 rounded-full">{t("hero.payAtStudio")}</span>
           </div>
         </div>
 
         <p className="text-[15px] text-[#7A7068] mt-5 leading-relaxed">
-          {t("hero.description", { n: studioCount })}
+          {t("hero.description", { studios: studioCount })}
         </p>
       </div>
 
