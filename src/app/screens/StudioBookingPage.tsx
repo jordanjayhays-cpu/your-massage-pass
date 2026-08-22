@@ -1471,68 +1471,37 @@ export default function StudioBookingPage() {
 
         {/* 4. Customize lives in the left column on desktop */}
 
-        {/* 5. Your details — collapsed one-liner when we already know who they are */}
-        {service && date && time && detailsKnown && !contactExpanded && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-2">
-            <p className="text-sm text-gray-700 truncate">
-              {[name, phone, email].filter(Boolean).join(" · ")}
-            </p>
-            <button
-              onClick={() => setContactExpanded(true)}
-              className="text-xs font-semibold text-[#C4622D] underline underline-offset-2 flex-shrink-0"
-            >
-              editar
-            </button>
-          </div>
-        )}
-        {service && date && time && (!detailsKnown || contactExpanded) && (
-          <div ref={detailsRef}>
-          <Section step="5" title="Your details" titleEs="Tus datos">
-            <div className="space-y-2">
-              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Your name"
-                aria-invalid={highlight === "name"}
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  highlight === "name" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
-                }`} />
-              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Email" type="email"
-                aria-invalid={highlight === "contact"}
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
-                }`} />
-              <input value={phone} onChange={e => { setPhone(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
-                }`} />
-              <p className="text-xs text-gray-400">Add at least one way to reach you: email or phone.</p>
-              <label className="flex items-start gap-2 pt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={marketingOptIn}
-                  onChange={e => setMarketingOptIn(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-[#C4622D]"
-                />
-                <span className="text-xs text-gray-600 leading-snug">
-                  Quiero recibir novedades y ofertas de Massage Club por email (opcional)
-                  <span className="block text-[11px] text-gray-400">Send me Massage Club news and offers</span>
-                </span>
-              </label>
-            </div>
-          </Section>
-          </div>
-        )}
-
+        {/* Live summary: each row fills in as it is chosen */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+          <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
+          <SummaryRow label="Day" labelEs="Día" value={date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null} placeholder="Pick a day" />
+          <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
+          <SummaryRow label="Price" labelEs="Precio" value={service && Number(total) > 0 ? `€${total}` : null} placeholder="Pick a service" />
+        </div>
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
-        {/* Sticky CTA — always clickable, tells you exactly what is missing */}
+        {/* Sticky CTA: active as soon as service, day and time are chosen */}
         <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
+          {detailsKnown && (
+            <p className="mb-2 text-xs text-center text-[#8a7460]">
+              Booking as {name}{email ? `, ${email}` : ""}.{" "}
+              <button
+                type="button"
+                onClick={() => setDetailsOpen(true)}
+                className="font-semibold text-[#C4622D] underline underline-offset-2"
+              >
+                Change
+              </button>
+            </p>
+          )}
           <button onClick={handleCta} disabled={submitting}
             className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
-              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
+              canRequest ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
             }`}>
             {submitting ? (
               <><Loader2 size={18} className="animate-spin" /> Booking…</>
-            ) : service && date && time ? (
+            ) : canRequest ? (
               <span className="flex flex-col items-center leading-tight">
                 <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
                 <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
@@ -1561,6 +1530,64 @@ export default function StudioBookingPage() {
             </p>
           )}
         </div>
+
+        {/* Details dialog, opened at the moment of booking */}
+        {detailsOpen && (
+          <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setDetailsOpen(false)}>
+            <div className="space-y-2">
+              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setDialogError(null); }} placeholder="Your name"
+                aria-invalid={!!dialogError && !name.trim()}
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  dialogError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                }`} />
+              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setDialogError(null); }} placeholder="Email" type="email"
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                }`} />
+              <input value={phone} onChange={e => { setPhone(e.target.value); setDialogError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                }`} />
+              <p className="text-xs text-gray-400">
+                Add at least one way to reach you: email or phone.
+                <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
+              </p>
+              <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={e => setMarketingOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#C4622D]"
+                />
+                <span className="text-xs text-gray-600 leading-snug">
+                  Send me Massage Club news and offers (optional)
+                  <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
+                </span>
+              </label>
+              {dialogError && (
+                <p role="alert" className="text-sm font-medium text-[#B03A2E]">
+                  {dialogError.en}
+                  <span className="block text-xs font-normal text-[#8a7460]">{dialogError.es}</span>
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={confirmDetails}
+                disabled={submitting}
+                className="mt-2 w-full h-14 rounded-2xl bg-[#C4622D] text-white font-semibold flex items-center justify-center"
+              >
+                {submitting ? (
+                  <span className="inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin" /> Booking…</span>
+                ) : (
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>Confirm request · €{total}</span>
+                    <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
+                  </span>
+                )}
+              </button>
+            </div>
+          </BookingDialog>
+        )}
         </div>
 
         <div className="min-[900px]:col-span-2 space-y-5">
