@@ -682,7 +682,7 @@ export default function StudioBookingPage() {
                       >
                         <option value="">—</option>
                         {profile.services.map(s => (
-                          <option key={s.id} value={s.id}>{s.name} · {s.duration} min</option>
+                          <option key={s.id} value={s.id}>{serviceInlineLabel(s)} · {s.duration} min</option>
                         ))}
                       </select>
                     </label>
