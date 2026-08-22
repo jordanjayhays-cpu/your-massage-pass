@@ -737,6 +737,15 @@ export default function StudioBookingPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
+    const handoffHelper = (step: number) => {
+      switch (step) {
+        case 1: return t("app.handoff.helperService", { studio: partner.business_name });
+        case 2: return t("app.handoff.helperDayTime");
+        case 3: return t("app.handoff.helperInfo");
+        case 4: return t("app.handoff.helperReview");
+        default: return "";
+      }
+    };
     return (
       <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
         <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
