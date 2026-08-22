@@ -20,6 +20,7 @@ import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
+import { clarityEvent } from "@/lib/clarity";
 
 
 export default function ShopDetail() {
@@ -31,6 +32,10 @@ export default function ShopDetail() {
   const [fav, setFav] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
+
+  useEffect(() => { clarityEvent("studio_view"); }, [id]);
+
+
 
 
   useEffect(() => {

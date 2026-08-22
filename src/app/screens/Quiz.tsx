@@ -2,8 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUIZ, MASSAGE_TYPES, MassageType, MASSAGES } from "../data";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { clarityEvent } from "@/lib/clarity";
 
 export default function Quiz() {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ export default function Quiz() {
     lomi: 0,
   });
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    clarityEvent("quiz_start");
+  }, []);
 
   const total = QUIZ.length;
   const current = QUIZ[step];

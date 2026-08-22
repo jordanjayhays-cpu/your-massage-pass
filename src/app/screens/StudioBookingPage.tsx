@@ -6,6 +6,7 @@ import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, isWhatsappCapable } from "@/app/lib/whatsapp";
 import { sendTrack } from "@/lib/siteVisit";
+import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import {
@@ -82,6 +83,7 @@ export default function StudioBookingPage() {
 
   // Persist locally whenever it changes.
   useEffect(() => { saveSpokenLangs(spokenLangs); }, [spokenLangs]);
+  useEffect(() => { clarityEvent("studio_view"); }, [studioId]);
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
@@ -593,6 +595,7 @@ export default function StudioBookingPage() {
     })();
     const trackWhatsappIntent = () => {
       setWaTapped(true);
+      clarityEvent("whatsapp_click");
       const hasService = !!hoService;
       const hasDate = !!hoDate;
       sendTrack({

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { initClarity, loadClarity } from "@/lib/clarity";
+
 
 const KEY = "mc_consent";
 
@@ -23,6 +25,8 @@ export default function ConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // Load Clarity for visitors who already accepted on a previous visit.
+    initClarity();
     try {
       if (localStorage.getItem("mc_nt") === "1") return;
       if (localStorage.getItem(KEY)) return;
@@ -47,6 +51,8 @@ export default function ConsentBanner() {
         ad_personalization: "granted",
         analytics_storage: "granted",
       });
+      // Start session replay right away — no reload needed.
+      loadClarity();
     }
     setVisible(false);
   };
@@ -66,7 +72,7 @@ export default function ConsentBanner() {
     >
       <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-elegant p-4">
         <p className="text-sm text-foreground leading-snug">
-          We use cookies to measure how people find Massage Club. Nothing else.
+          We use cookies to see how people find and use Massage Club, so we can fix what does not work. Nothing is sold or shared.
         </p>
         <div className="mt-3 flex items-center gap-2">
           <button
