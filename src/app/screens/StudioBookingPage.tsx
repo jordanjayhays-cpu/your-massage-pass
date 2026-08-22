@@ -1420,12 +1420,12 @@ export default function StudioBookingPage() {
 
             {/* STEP 2: day and time */}
             {step === 2 && (
-              <div ref={dateRef}>
+              <div ref={dateRef} className="min-w-0">
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
                   {openDates.length === 0 ? (
                     <p className="text-sm min-[900px]:text-base text-gray-400">No availability set yet. Message the studio directly.</p>
                   ) : (
-                    <div className="flex gap-2 w-full overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
+                    <div className="flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
