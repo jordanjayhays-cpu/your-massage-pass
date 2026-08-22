@@ -28,6 +28,26 @@ const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "F
 // Fixed options for the unclaimed-studio handoff, where real availability is unknown.
 const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
 
+// Wizard steps, shown in the header on every screen.
+const BOOKING_STEPS = [
+  { label: "Service", labelEs: "Servicio" },
+  { label: "Day and time", labelEs: "Día y hora" },
+  { label: "Customize", labelEs: "Personaliza" },
+  { label: "Your details", labelEs: "Tus datos" },
+  { label: "Confirm", labelEs: "Confirmar" },
+];
+const HANDOFF_STEPS = [
+  { label: "Service", labelEs: "Servicio" },
+  { label: "Day and time", labelEs: "Día y hora" },
+  { label: "Your info", labelEs: "Tus datos" },
+  { label: "Review", labelEs: "Revisar" },
+];
+const CONVERSATION_LABELS: Record<string, string> = {
+  silence: "Silence",
+  minimal: "A little chat",
+  chatty: "Happy to chat",
+};
+
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -66,10 +86,13 @@ export default function StudioBookingPage() {
   const [rebookMode, setRebookMode] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   // "Almost there" details dialog, opened at the moment of booking.
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [dialogError, setDialogError] = useState<{ en: string; es: string } | null>(null);
-  // Handoff details dialog (name + languages) for unclaimed studios.
-  const [hoDetailsOpen, setHoDetailsOpen] = useState(false);
+  // Step-by-step wizard state (claimed studios).
+  const [step, setStep] = useState(1);
+  const [maxStep, setMaxStep] = useState(1);
+  const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
+  // Wizard state for the unclaimed-studio WhatsApp handoff.
+  const [hoStep, setHoStep] = useState(1);
+  const [hoMaxStep, setHoMaxStep] = useState(1);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
@@ -80,8 +103,6 @@ export default function StudioBookingPage() {
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
-  // Booking CTA guidance: which choice is missing, and the hint under the button.
-  const [ctaHint, setCtaHint] = useState<{ en: string; es: string } | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
@@ -675,6 +696,12 @@ export default function StudioBookingPage() {
       return /^https?:\/\//i.test(w) ? w : `https://${w}`;
     })();
     const googleRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
+    // Handoff wizard navigation.
+    const hoGo = (n: number) => {
+      setHoStep(n);
+      setHoMaxStep(m => Math.max(m, n));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
       <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
@@ -744,20 +771,23 @@ export default function StudioBookingPage() {
             </div>
 
             {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
-            <div className="min-[900px]:sticky min-[900px]:top-4">
+            <div className="min-[900px]:sticky min-[900px]:top-4 text-left">
             {waLink && (
-              <div className="text-left rounded-2xl p-4 mb-4" style={{ background: "#FAF6F1" }}>
-                <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
-                  {t("app.handoff.prefTitle")}
-                </p>
-                <div className="space-y-3">
-                  {profile.services.length > 0 && (
+              <>
+                <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
+                <div className="rounded-2xl p-4 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+                  <p className="text-xs font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
+                    {t("app.handoff.prefTitle")}
+                  </p>
+
+                  {/* STEP 1: service */}
+                  {hoStep === 1 && (
                     <div>
                       <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
                       <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
                         <Link
                           to={quizHref}
-                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
+                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
                           style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
                         >
                           <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
@@ -767,155 +797,180 @@ export default function StudioBookingPage() {
                           </span>
                         </Link>
                         <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2">
-                        {profile.services.map((s: any) => {
-                          const selected = hoServiceId === s.id;
-                          const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
-                          const price = Number(s.price);
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              onClick={() => setHoServiceId(selected ? "" : s.id)}
-                              className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B85C38]"
-                              style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
-                            >
-                              <span className="min-w-0">
-                                <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
-                                {serviceSecondaryName(s) && (
-                                  <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                                )}
-                              </span>
-                              <span className="text-right flex-shrink-0">
-                                {Number.isFinite(price) && price > 0 && (
-                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
-                                )}
-                                {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
-                              </span>
-                            </button>
-                          );
-                        })}
+                          {profile.services.map((s: any) => {
+                            const selected = hoServiceId === s.id;
+                            const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
+                            const price = Number(s.price);
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                onClick={() => setHoServiceId(selected ? "" : s.id)}
+                                className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition"
+                                style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
+                              >
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
+                                  {serviceSecondaryName(s) && (
+                                    <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                                  )}
+                                </span>
+                                <span className="text-right flex-shrink-0">
+                                  {Number.isFinite(price) && price > 0 && (
+                                    <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                                  )}
+                                  {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
+                      <WizardNav
+                        onNext={() => hoGo(2)}
+                        disabled={!hoServiceId}
+                        hint="Choose a service to continue"
+                        hintEs="Elige un servicio para continuar"
+                      />
                     </div>
                   )}
-                  <div>
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
-                    <div className="mt-1.5">
-                      <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
-                    <div className="mt-1.5">
-                      <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
-                    </div>
-                  </div>
-                  {!altOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => setAltOpen(true)}
-                      className="text-sm font-semibold underline underline-offset-2"
-                      style={{ color: "#B85C38" }}
-                    >
-                      + Add a second choice
-                      <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
-                    </button>
-                  ) : (
-                    <div>
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                      <div className="mt-1.5 space-y-2">
-                        <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
-                        <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+
+                  {/* STEP 2: day and time */}
+                  {hoStep === 2 && (
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                        <div className="mt-1.5">
+                          <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
+                        </div>
                       </div>
+                      <div>
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                        <div className="mt-1.5">
+                          <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
+                        </div>
+                      </div>
+                      {!altOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setAltOpen(true)}
+                          className="text-sm font-semibold underline underline-offset-2"
+                          style={{ color: "#B85C38" }}
+                        >
+                          + Add a second choice
+                          <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                        </button>
+                      ) : (
+                        <div>
+                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                          <div className="mt-1.5 space-y-2">
+                            <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
+                            <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                          </div>
+                        </div>
+                      )}
+                      <WizardNav
+                        onBack={() => hoGo(1)}
+                        onNext={() => hoGo(3)}
+                        disabled={!hoDate || !hoTime}
+                        hint="Pick a day and a time to continue"
+                        hintEs="Elige un día y una hora para continuar"
+                      />
                     </div>
                   )}
-                  <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
-                </div>
-              </div>
-            )}
-            <div className="flex flex-col items-center gap-3 w-full">
-              {waLink ? (
-                <>
-                  <button type="button" onClick={() => setHoDetailsOpen(true)} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                    <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
-                    <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
-                  </button>
-                  <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                  {waTapped && (
-                    <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#FAF6F1", color: "#5a4736" }}>
-                      {t("app.handoff.afterNote")}
-                    </p>
-                  )}
-                  {hoDetailsOpen && (
-                    <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setHoDetailsOpen(false)}>
-                      <div className="space-y-4 text-left">
-                        <label className="block">
-                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                          <input type="text" value={hoName} autoFocus onChange={(e) => setHoName(e.target.value)}
-                            className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                        </label>
-                        <div>
-                          <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            {spokenLangs.map((code) => (
+
+                  {/* STEP 3: your info */}
+                  {hoStep === 3 && (
+                    <div className="space-y-4">
+                      <label className="block">
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
+                        <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
+                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                      </label>
+                      <div>
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {spokenLangs.map((code) => (
+                            <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
+                              className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
+                              style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                              <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
+                                className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
+                              {SPOKEN_LANG_NATIVE[code]}
+                              <span aria-hidden style={{ color: "#9E9387" }}>×</span>
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => setLangPickerOpen(o => !o)}
+                            className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
+                            style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
+                            + {t("app.handoff.prefLanguagesAdd")}
+                          </button>
+                        </div>
+                        {langPickerOpen && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
                               <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                className="inline-flex items-center gap-1.5 h-7 pl-2 pr-1.5 rounded-full border text-[12px]"
-                                style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
+                                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
+                                style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
                                 <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
                                   className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
                                 {SPOKEN_LANG_NATIVE[code]}
-                                <span aria-hidden style={{ color: "#9E9387" }}>×</span>
                               </button>
                             ))}
-                            <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                              className="inline-flex items-center h-7 px-2.5 rounded-full border text-[12px]"
-                              style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
-                              + {t("app.handoff.prefLanguagesAdd")}
-                            </button>
                           </div>
-                          {langPickerOpen && (
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
-                                <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[12px] bg-white"
-                                  style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
-                                  <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                    className="w-4 h-3 rounded-[2px] object-cover" loading="lazy" />
-                                  {SPOKEN_LANG_NATIVE[code]}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => { trackWhatsappIntent(); setHoDetailsOpen(false); }}
-                          className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
-                          style={{ background: "#B85C38", color: "#fff" }}
-                        >
-                          <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Confirm request</span>
-                          <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
-                        </a>
-                        <p className="text-[11px] text-center" style={{ color: "#9E9387" }}>
-                          We write it in Spanish. They only need to say yes.
-                          <span className="block">Lo escribimos en español.</span>
-                        </p>
+                        )}
                       </div>
-                    </BookingDialog>
+                      <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
+                      <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
+                    </div>
                   )}
-                </>
 
-
-              ) : studioNumber ? (
+                  {/* STEP 4: review and send */}
+                  {hoStep === 4 && (
+                    <div className="space-y-3">
+                      <div className="rounded-xl bg-white p-3 space-y-2 border" style={{ borderColor: "#E6DCCF" }}>
+                        <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
+                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
+                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
+                        <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
+                        <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not given" />
+                        <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
+                        <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
+                      </div>
+                      <a
+                        href={waLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={trackWhatsappIntent}
+                        className="w-full inline-flex flex-col items-center justify-center h-14 px-6 rounded-2xl font-semibold"
+                        style={{ background: "#B85C38", color: "#fff" }}
+                      >
+                        <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
+                        <span className="text-xs font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
+                      </a>
+                      <p className="text-xs text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
+                      {waTapped && (
+                        <p className="text-xs rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
+                          {t("app.handoff.afterNote")}
+                        </p>
+                      )}
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                        Back <span className="font-normal">/ Atrás</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            <div className="flex flex-col items-center gap-3 w-full">
+              {!waLink && studioNumber && (
                 <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                   <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
                   <span className="text-xs font-normal opacity-90">{t("app.handoff.callStudioSub")}</span>
                 </a>
-              ) : null}
+              )}
               {websiteUrl && (
                 <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                   <span>{t("app.handoff.visitWebsite")}</span>
@@ -924,6 +979,7 @@ export default function StudioBookingPage() {
               )}
             </div>
             </div>
+
 
             <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
@@ -936,74 +992,32 @@ export default function StudioBookingPage() {
 
 
   // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
-
   const hasContact = !!(phone.trim() || email.trim());
-  // The CTA only needs a service, a day and a time. Details are asked in a dialog.
-  const canRequest = !!(service && date && time);
-  const canBook = !!(canRequest && name.trim() && hasContact);
-  // A signed-in customer with a name and a way to be reached skips the dialog.
-  const detailsKnown = !!(userId && name.trim() && hasContact);
+  const canBook = !!(service && date && time && name.trim() && hasContact);
+  const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
-  // What is still missing, in the order the page asks for it.
-  const missing: { key: string; en: string; es: string }[] = [
-    !service && { key: "service", en: "a service", es: "un servicio" },
-    !date && { key: "date", en: "a day", es: "un día" },
-    !time && { key: "time", en: "a time", es: "una hora" },
-  ].filter(Boolean) as { key: string; en: string; es: string }[];
-  const stepsLeft = missing.length;
-  const stepsLeftLabels = {
-    en: missing.map(m => m.en).join(", "),
-    es: missing.map(m => m.es).join(", "),
+  // Wizard navigation. Every step is shown, nothing is skipped automatically.
+  const goStep = (n: number) => {
+    setStep(n);
+    setMaxStep(m => Math.max(m, n));
+    setStepError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const scrollTo = (el: HTMLElement | null, focus?: HTMLInputElement | null) => {
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    if (focus) window.setTimeout(() => focus.focus({ preventScroll: true }), 350);
-  };
-
-  // The CTA is always clickable. Missing choices scroll into view, otherwise
-  // we either submit straight away or open the details dialog.
-  const handleCta = () => {
-    if (canRequest) {
-      setCtaHint(null);
-      if (detailsKnown) {
-        handleBook();
-      } else {
-        setDialogError(null);
-        setDetailsOpen(true);
-        window.setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 80);
-      }
-      return;
-    }
-    const first = missing[0];
-    if (!first) return;
-    if (first.key === "service") {
-      setCtaHint({ en: "Choose a service to continue", es: "Elige un servicio para continuar" });
-      scrollTo(serviceRef.current);
-    } else if (first.key === "date") {
-      setCtaHint({ en: "Pick a day for your massage", es: "Elige un día para tu masaje" });
-      scrollTo(dateRef.current);
-    } else {
-      setCtaHint({ en: "Pick a time for your massage", es: "Elige una hora para tu masaje" });
-      scrollTo(timeRef.current);
-    }
-  };
-
-  // Confirm button inside the details dialog.
-  const confirmDetails = () => {
+  const submitDetailsStep = () => {
     if (!name.trim()) {
-      setDialogError({ en: "Add your name so the studio knows who is coming", es: "Añade tu nombre para que el estudio sepa quién viene" });
+      setStepError({ en: "Add your name so the studio knows who is coming", es: "Añade tu nombre para que el estudio sepa quién viene" });
       nameRef.current?.focus();
       return;
     }
     if (!hasContact) {
-      setDialogError({ en: "Add an email or phone so the studio can reach you", es: "Añade un email o teléfono para que el estudio pueda contactarte" });
+      setStepError({ en: "Add an email or phone so the studio can reach you", es: "Añade un email o teléfono para que el estudio pueda contactarte" });
       emailRef.current?.focus();
       return;
     }
-    setDialogError(null);
-    handleBook();
+    goStep(5);
   };
+
 
   const handleBook = async () => {
     if (!canBook) return;
@@ -1111,7 +1125,7 @@ export default function StudioBookingPage() {
         next.set(key, (next.get(key) || 0) + 1);
         return next;
       });
-      setDetailsOpen(false);
+      
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
     } catch (e: any) {
       const msg = String(e?.message || "");
@@ -1213,462 +1227,447 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 space-y-5 min-[900px]:space-y-0 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-8 min-[900px]:items-start">
-        {/* LEFT COLUMN: studio identity, address and services */}
-        <div className="space-y-5">
-        {/* About */}
-        {partner.description && <p className="text-sm text-gray-600">{partner.description}</p>}
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5">
+        {/* Stepper: always visible so nobody misses a step */}
+        <Stepper steps={BOOKING_STEPS} current={step} maxReached={maxStep} onGo={goStep} />
 
-        {/* Quick facts */}
-        <div className="flex flex-wrap gap-2">
-          {(partner.languages || []).slice(0, 4).map((l: string) => (
-            <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
-          ))}
-          {(partner.amenities || []).slice(0, 4).map((a: string) => (
-            <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
-          ))}
+        {/* Mobile: slim running summary under the stepper */}
+        <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
+          <p className="text-xs truncate">
+            <span className={service ? "font-semibold text-gray-800" : "text-gray-400"}>{service ? servicePrimaryName(service) : "Pick a service"}</span>
+            <span className="text-gray-300"> · </span>
+            <span className={prettyDay ? "font-semibold text-gray-800" : "text-gray-400"}>{prettyDay || "Pick a day"}</span>
+            <span className="text-gray-300"> · </span>
+            <span className={time ? "font-semibold text-gray-800" : "text-gray-400"}>{time || "Pick a time"}</span>
+            <span className="text-gray-300"> · </span>
+            <span className={service && total > 0 ? "font-semibold text-[#C4622D]" : "text-gray-400"}>{service && total > 0 ? `€${total}` : "Price"}</span>
+          </p>
         </div>
 
+        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8 min-[900px]:items-start">
+          {/* LEFT: one step at a time */}
+          <div className="space-y-5">
 
-
-        {/* Gallery */}
-        {(partner.gallery || []).length > 0 && (
-          <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
-            {partner.gallery.map((url: string, i: number) => (
-              <img key={i} src={url} alt="" className="h-28 w-40 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
-            ))}
-          </div>
-        )}
-
-        {/* Rebook summary card — Amazon-style "your usual" fast path */}
-        {rebookMode && service && (
-          <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
-                <Sparkles size={11} /> Tu reserva habitual
-              </div>
-              <button
-                onClick={() => setRebookMode(false)}
-                className="text-xs font-semibold text-[#C4622D] underline underline-offset-2"
-              >
-                Cambiar
-              </button>
-            </div>
-            <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
-            {serviceSecondaryName(service) && (
-              <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>
-            )}
-            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
-              {Number(service.duration) > 0 && (
-                <span className="inline-flex items-center gap-1"><Clock size={11} /> {Number(service.duration)} min</span>
-              )}
-              {service.price != null && Number(service.price) > 0 && (
-                <span className="inline-flex items-center gap-0.5"><Euro size={11} />{Number(service.price)}</span>
-              )}
-            </p>
-            {(pressure || focusAreas.length > 0 || addonNames.length > 0) && (
-              <p className="text-xs text-gray-600 mt-2">
-                {[
-                  pressure && `Presión: ${pressure}`,
-                  focusAreas.length > 0 && `Zonas: ${focusAreas.join(", ")}`,
-                  addonNames.length > 0 && `Extras: ${addonNames.join(", ")}`,
-                ].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
-        {!rebookMode && (
-        <div ref={serviceRef}>
-        <Section step="1" title="Choose a service" titleEs="Elige un servicio">
-          <div className="space-y-2">
-            <Link
-              to={quizHref}
-              className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
-            >
-              <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
-              <span className="min-w-0 text-left">
-                <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
-                <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
-              </span>
-            </Link>
-            {profile.services.map(s => (
-
-              <button key={s.id} onClick={() => setServiceId(s.id)}
-                className={`w-full text-left p-4 rounded-2xl border-2 transition ${
-                  serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
-                }`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
-                    {serviceSecondaryName(s) && (
-                      <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>
-                    )}
-                    {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
-                    {Number(s.duration) > 0 && (
-                      <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
-                    )}
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    {s.price != null && Number(s.price) > 0 && (
-                      <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
-                    )}
-                  </div>
-                </div>
-              </button>
-
-            ))}
-            {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
-          </div>
-        </Section>
-        </div>
-        )}
-
-        {/* 4. Customize */}
-        {!rebookMode && service && date && time && (
-          <Section step="4" title="Customize your session" titleEs="Personaliza tu sesión">
-            {customerProfile && prefsApplied && (
-              <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-gray-700">✨ Prefilled from your profile</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPressure("Medium");
-                    setFocusAreas([]);
-                    setAddonNames([]);
-                    setConversationPref("");
-                    setPrefsApplied(false);
-                  }}
-                  className="text-xs font-semibold text-[#C4622D] underline"
-                >
-                  Start blank
-                </button>
-              </div>
-            )}
-            <p className="text-xs font-semibold text-gray-500 mb-2">Comfort</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {[
-                { v: "silence", l: "🤫 Silence" },
-                { v: "minimal", l: "A little chat" },
-                { v: "chatty", l: "Happy to chat" },
-              ].map(o => (
-                <button
-                  key={o.v}
-                  type="button"
-                  onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    conversationPref === o.v
-                      ? "bg-[#C4622D] text-white border-[#C4622D]"
-                      : "bg-white text-gray-600 border-gray-200"
-                  }`}
-                >
-                  {o.l}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">Pressure</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {PRESSURE_LEVELS.map(p => (
-                <button key={p} onClick={() => setPressure(p)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
-                  }`}>{p}</button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">Focus areas</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {FOCUS_AREAS.map(f => (
-                <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                    focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
-                  }`}>{f}</button>
-              ))}
-            </div>
-
-            {addons.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons</p>
-                <div className="space-y-2 mb-4">
-                  {addons.map((a: any) => {
-                    const on = addonNames.includes(a.name);
-                    return (
-                      <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
-                          on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
-                        }`}>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{a.name}</p>
-                          <p className="text-xs text-gray-400">+€{a.price}</p>
+            {/* STEP 1: service */}
+            {step === 1 && (
+              <div ref={serviceRef}>
+                <Section step="1" title="Choose a service" titleEs="Elige un servicio">
+                  {partner.description && <p className="text-sm text-gray-600 mb-4">{partner.description}</p>}
+                  {(partner.gallery || []).length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
+                      {partner.gallery.map((url: string, i: number) => (
+                        <img key={i} src={url} alt="" className="h-24 w-36 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
+                      ))}
+                    </div>
+                  )}
+                  {rebookMode && service && (
+                    <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 mb-3">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                          <Sparkles size={11} /> Your usual booking
                         </div>
-                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
-                          {on && <Check size={12} className="text-white" />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist</p>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Anything we should know? Injuries, allergies, preferences…"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
-          </Section>
-        )}
-        </div>
-
-        {/* RIGHT COLUMN: booking form + CTA, sticky on desktop */}
-        <div className="space-y-5 min-[900px]:sticky min-[900px]:top-4">
-        {/* Ask on WhatsApp: always reachable, prefilled with whatever is picked */}
-        {bookingWaHref && (
-          <a
-            href={bookingWaHref}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              clarityEvent("whatsapp_click");
-              sendTrack({
-                event: "whatsapp_click",
-                path: window.location.pathname,
-                slug: partner.slug || partner.id,
-                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
-              });
-            }}
-            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
-          >
-            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
-          </a>
-        )}
-
-        {/* 2. Date */}
-
-        {service && (
-          <div ref={dateRef}>
-          <Section step="2" title="Pick a day" titleEs="Elige un día">
-            {openDates.length === 0 ? (
-              <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {openDates.map(d => {
-                  const active = date && isoDate(d) === isoDate(date);
-                  return (
-                    <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
-                      className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
-                        active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
-                      }`}>
-                      <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-                      <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-                      <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
-          </div>
-        )}
-
-        {/* 3. Time */}
-        {service && date && (
-          <div ref={timeRef}>
-          <Section step="3" title="Pick a time" titleEs="Elige una hora">
-            {times.length === 0 ? (
-              <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {times.map(t => {
-                  const left = remainingFor(t);
-                  const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
-                  const lowStock = cap > 1 && left < cap;
-
-                  return (
-                    <button key={t} onClick={() => setTime(t)}
-                      className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
-                        time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
-                      }`}>
-                      {t}
-                      {lowStock && (
-                        <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
-                          {left} left
+                        <button onClick={() => setRebookMode(false)} className="text-xs font-semibold text-[#C4622D] underline underline-offset-2">
+                          Change / Cambiar
+                        </button>
+                      </div>
+                      <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
+                      {serviceSecondaryName(service) && <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>}
+                    </div>
+                  )}
+                  {!rebookMode && (
+                    <div className="space-y-2">
+                      <Link
+                        to={quizHref}
+                        className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
+                      >
+                        <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
+                        <span className="min-w-0 text-left">
+                          <span className="block text-sm font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
+                          <span className="block text-xs text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                      </Link>
+                      {profile.services.map(s => (
+                        <button key={s.id} onClick={() => setServiceId(s.id)}
+                          className={`w-full text-left p-4 rounded-2xl border-2 transition ${
+                            serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                          }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-gray-900">{servicePrimaryName(s)}</p>
+                              {serviceSecondaryName(s) && <p className="text-xs text-gray-500">{serviceSecondaryName(s)}</p>}
+                              {s.description && <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>}
+                              {Number(s.duration) > 0 && (
+                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              {s.price != null && Number(s.price) > 0 && (
+                                <p className="font-bold text-[#C4622D] flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                      {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
+                    </div>
+                  )}
+                </Section>
+                <WizardNav
+                  onNext={() => goStep(2)}
+                  disabled={!service}
+                  hint="Choose a service to continue"
+                  hintEs="Elige un servicio para continuar"
+                />
               </div>
             )}
-          </Section>
-          </div>
-        )}
 
-        {/* 4. Customize lives in the left column on desktop */}
-
-        {/* Live summary: each row fills in as it is chosen */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
-          <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
-          <SummaryRow label="Day" labelEs="Día" value={date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null} placeholder="Pick a day" />
-          <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
-          <SummaryRow label="Price" labelEs="Precio" value={service && Number(total) > 0 ? `€${total}` : null} placeholder="Pick a service" />
-        </div>
-
-        {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-
-        {/* Sticky CTA: active as soon as service, day and time are chosen */}
-        <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
-          {detailsKnown && (
-            <p className="mb-2 text-xs text-center text-[#8a7460]">
-              Booking as {name}{email ? `, ${email}` : ""}.{" "}
-              <button
-                type="button"
-                onClick={() => setDetailsOpen(true)}
-                className="font-semibold text-[#C4622D] underline underline-offset-2"
-              >
-                Change
-              </button>
-            </p>
-          )}
-          <button onClick={handleCta} disabled={submitting}
-            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
-              canRequest ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
-            }`}>
-            {submitting ? (
-              <><Loader2 size={18} className="animate-spin" /> Booking…</>
-            ) : canRequest ? (
-              <span className="flex flex-col items-center leading-tight">
-                <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
-                <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
-              </span>
-            ) : (
-              <span className="flex flex-col items-center leading-tight">
-                <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Select a service and time</span>
-                <span className="text-xs font-normal opacity-90">Elige un servicio y una hora</span>
-              </span>
-            )}
-          </button>
-          {ctaHint ? (
-            <p role="alert" className="mt-2 text-sm text-center font-medium text-[#B03A2E]">
-              {ctaHint.en}
-              <span className="block text-xs font-normal text-[#8a7460]">{ctaHint.es}</span>
-            </p>
-          ) : stepsLeft > 0 ? (
-            <p className="mt-2 text-xs text-center text-[#8a7460]">
-              {stepsLeft} {stepsLeft === 1 ? "step" : "steps"} left: {stepsLeftLabels.en}
-              <span className="block">{stepsLeft} {stepsLeft === 1 ? "paso" : "pasos"}: {stepsLeftLabels.es}</span>
-            </p>
-          ) : (
-            <p className="mt-2 text-xs text-center text-[#8a7460]">
-              All set. The studio confirms your time.
-              <span className="block">Todo listo. El estudio confirma tu hora.</span>
-            </p>
-          )}
-        </div>
-
-        {/* Details dialog, opened at the moment of booking */}
-        {detailsOpen && (
-          <BookingDialog title="Almost there" titleEs="Ya casi está" onClose={() => setDetailsOpen(false)}>
-            <div className="space-y-2">
-              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setDialogError(null); }} placeholder="Your name"
-                aria-invalid={!!dialogError && !name.trim()}
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  dialogError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                }`} />
-              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setDialogError(null); }} placeholder="Email" type="email"
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                }`} />
-              <input value={phone} onChange={e => { setPhone(e.target.value); setDialogError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
-                  dialogError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                }`} />
-              <p className="text-xs text-gray-400">
-                Add at least one way to reach you: email or phone.
-                <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
-              </p>
-              <label className="flex items-start gap-2 pt-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={marketingOptIn}
-                  onChange={e => setMarketingOptIn(e.target.checked)}
-                  className="mt-1 h-4 w-4 accent-[#C4622D]"
+            {/* STEP 2: day and time */}
+            {step === 2 && (
+              <div ref={dateRef}>
+                <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
+                  {openDates.length === 0 ? (
+                    <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
+                  ) : (
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                      {openDates.map(d => {
+                        const active = date && isoDate(d) === isoDate(date);
+                        return (
+                          <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
+                            className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
+                              active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                            }`}>
+                            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
+                            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {date && (
+                    <div ref={timeRef} className="mt-5">
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Times <span className="font-normal text-gray-400">/ Horas</span></p>
+                      {times.length === 0 ? (
+                        <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {times.map(t => {
+                            const left = remainingFor(t);
+                            const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
+                            const lowStock = cap > 1 && left < cap;
+                            return (
+                              <button key={t} onClick={() => setTime(t)}
+                                className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                                  time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                                }`}>
+                                {t}
+                                {lowStock && (
+                                  <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
+                                    {left} left
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Section>
+                <WizardNav
+                  onBack={() => goStep(1)}
+                  onNext={() => goStep(3)}
+                  disabled={!date || !time}
+                  hint="Pick a day and a time to continue"
+                  hintEs="Elige un día y una hora para continuar"
                 />
-                <span className="text-xs text-gray-600 leading-snug">
-                  Send me Massage Club news and offers (optional)
-                  <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
-                </span>
-              </label>
-              {dialogError && (
-                <p role="alert" className="text-sm font-medium text-[#B03A2E]">
-                  {dialogError.en}
-                  <span className="block text-xs font-normal text-[#8a7460]">{dialogError.es}</span>
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={confirmDetails}
-                disabled={submitting}
-                className="mt-2 w-full h-14 rounded-2xl bg-[#C4622D] text-white font-semibold flex items-center justify-center"
-              >
-                {submitting ? (
-                  <span className="inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin" /> Booking…</span>
-                ) : (
-                  <span className="flex flex-col items-center leading-tight">
-                    <span>Confirm request · €{total}</span>
-                    <span className="text-xs font-normal opacity-90">Confirmar solicitud</span>
-                  </span>
-                )}
-              </button>
+              </div>
+            )}
+
+            {/* STEP 3: customize */}
+            {step === 3 && (
+              <div>
+                <Section step="3" title="Customize your session" titleEs="Personaliza tu sesión">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Optional, but it helps your therapist get it right.
+                    <span className="block text-xs text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
+                  </p>
+                  {customerProfile && prefsApplied && (
+                    <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-gray-700">Prefilled from your profile</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPressure("Medium");
+                          setFocusAreas([]);
+                          setAddonNames([]);
+                          setConversationPref("");
+                          setPrefsApplied(false);
+                        }}
+                        className="text-xs font-semibold text-[#C4622D] underline"
+                      >
+                        Start blank
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Comfort <span className="font-normal text-gray-400">/ Confort</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {[
+                      { v: "silence", l: "Silence" },
+                      { v: "minimal", l: "A little chat" },
+                      { v: "chatty", l: "Happy to chat" },
+                    ].map(o => (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          conversationPref === o.v ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
+                        }`}
+                      >
+                        {o.l}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Pressure <span className="font-normal text-gray-400">/ Presión</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {PRESSURE_LEVELS.map(p => (
+                      <button key={p} onClick={() => setPressure(p)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
+                        }`}>{p}</button>
+                    ))}
+                  </div>
+
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Focus areas <span className="font-normal text-gray-400">/ Zonas</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {FOCUS_AREAS.map(f => (
+                      <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                          focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
+                        }`}>{f}</button>
+                    ))}
+                  </div>
+
+                  {addons.length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons <span className="font-normal text-gray-400">/ Extras</span></p>
+                      <div className="space-y-2 mb-4">
+                        {addons.map((a: any) => {
+                          const on = addonNames.includes(a.name);
+                          return (
+                            <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
+                                on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                              }`}>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                                <p className="text-xs text-gray-400">+€{a.price}</p>
+                              </div>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
+                                {on && <Check size={12} className="text-white" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist <span className="font-normal text-gray-400">/ Notas</span></p>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                    placeholder="Anything we should know? Injuries, allergies, preferences."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
+                </Section>
+                <WizardNav onBack={() => goStep(2)} onNext={() => goStep(4)} skip={() => goStep(4)} />
+              </div>
+            )}
+
+            {/* STEP 4: your details */}
+            {step === 4 && (
+              <div>
+                <Section step="4" title="Your details" titleEs="Tus datos">
+                  <div className="space-y-2">
+                    <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setStepError(null); }} placeholder="Your name / Tu nombre"
+                      aria-invalid={!!stepError && !name.trim()}
+                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                        stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                      }`} />
+                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email"
+                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                      }`} />
+                    <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
+                      className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                      }`} />
+                    <p className="text-xs text-gray-400">
+                      Add at least one way to reach you: email or phone.
+                      <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
+                    </p>
+                    <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={marketingOptIn}
+                        onChange={e => setMarketingOptIn(e.target.checked)}
+                        className="mt-1 h-4 w-4 accent-[#C4622D]"
+                      />
+                      <span className="text-xs text-gray-600 leading-snug">
+                        Send me Massage Club news and offers (optional)
+                        <span className="block text-[11px] text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
+                      </span>
+                    </label>
+                    {stepError && (
+                      <p role="alert" className="text-sm font-medium text-[#B03A2E]">
+                        {stepError.en}
+                        <span className="block text-xs font-normal text-[#8a7460]">{stepError.es}</span>
+                      </p>
+                    )}
+                  </div>
+                </Section>
+                <WizardNav
+                  onBack={() => goStep(3)}
+                  onNext={submitDetailsStep}
+                  disabled={!name.trim() || !hasContact}
+                  hint="Add your name and an email or phone so the studio can reach you"
+                  hintEs="Añade tu nombre y un email o teléfono para que el estudio pueda contactarte"
+                />
+              </div>
+            )}
+
+            {/* STEP 5: confirm */}
+            {step === 5 && (
+              <div>
+                <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+                    <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
+                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
+                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
+                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" />
+                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" />
+                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" />
+                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonNames.length ? addonNames.join(", ") : null} placeholder="None" />
+                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" />
+                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" />
+                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" />
+                    <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
+                  </div>
+                  {error && <p className="mt-3 text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+                  <button
+                    onClick={handleBook}
+                    disabled={submitting || !canBook}
+                    className={`mt-4 w-full h-14 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
+                      canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#9E8B78]"
+                    }`}
+                  >
+                    {submitting ? (
+                      <><Loader2 size={18} className="animate-spin" /> Booking</>
+                    ) : (
+                      <span className="flex flex-col items-center leading-tight">
+                        <span className="inline-flex items-center gap-2"><CalendarDays size={18} /> Request booking · €{total}</span>
+                        <span className="text-xs font-normal opacity-90">Solicitar reserva</span>
+                      </span>
+                    )}
+                  </button>
+                  <p className="mt-2 text-xs text-center text-[#8a7460]">
+                    The studio confirms your time. You pay at the studio.
+                    <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
+                  </p>
+                  <div className="pt-3">
+                    <button type="button" onClick={() => goStep(4)} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+                      Back <span className="font-normal">/ Atrás</span>
+                    </button>
+                  </div>
+                </Section>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: running summary, desktop only */}
+          <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-[2px] text-[#C4622D] mb-1">
+                Your booking <span className="font-normal text-[#B3A597]">/ Tu reserva</span>
+              </p>
+              <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
+              <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
+              <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
+              <SummaryRow label="Price" labelEs="Precio" value={service && total > 0 ? `€${total}` : null} placeholder="Pick a service" />
             </div>
-          </BookingDialog>
-        )}
-        </div>
-
-        <div className="min-[900px]:col-span-2 space-y-5">
-        {/* Contact footer */}
-
-        <div className="flex items-center justify-center gap-4 pt-2 pb-8 text-gray-400">
-          {bookingWaNumber && (() => {
-            const contactWa = studioWhatsappUrl(bookingWaNumber);
-            return contactWa && (
-              <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
-                <MessageCircle size={14} /> WhatsApp
+            {bookingWaHref && (
+              <a
+                href={bookingWaHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  clarityEvent("whatsapp_click");
+                  sendTrack({
+                    event: "whatsapp_click",
+                    path: window.location.pathname,
+                    slug: partner.slug || partner.id,
+                    meta: { filled: !!(service || date || time), service: !!service, date: !!date },
+                  });
+                }}
+                className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95"
+              >
+                <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
+                <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
               </a>
-            );
-          })()}
-          {partner.phone && (
-            <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
-              <Phone size={14} /> Call
-            </a>
-          )}
-          {partner.instagram && (
-            <a href={`https://instagram.com/${partner.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-pink-500">
-              <Instagram size={14} /> {partner.instagram}
-            </a>
-          )}
-        </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {(partner.languages || []).slice(0, 4).map((l: string) => (
+                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{l}</span>
+              ))}
+              {(partner.amenities || []).slice(0, 4).map((a: string) => (
+                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{a}</span>
+              ))}
+            </div>
+          </aside>
 
-        {/* Massage Club credit */}
-        <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
-          <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
-          <span>Powered by Massage Club</span>
-        </div>
+          <div className="min-[900px]:col-span-2 space-y-5">
+            {/* Contact footer */}
+            <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
+              {bookingWaNumber && (() => {
+                const contactWa = studioWhatsappUrl(bookingWaNumber);
+                return contactWa && (
+                  <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
+                    <MessageCircle size={14} /> WhatsApp
+                  </a>
+                );
+              })()}
+              {partner.phone && (
+                <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
+                  <Phone size={14} /> Call
+                </a>
+              )}
+              {partner.instagram && (
+                <a href={`https://instagram.com/${partner.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-pink-500">
+                  <Instagram size={14} /> {partner.instagram}
+                </a>
+              )}
+            </div>
 
-        {/* Legal footer */}
-        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
-          <span>Massage Club · Madrid</span>
-          <span>·</span>
-          <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
-          <span>·</span>
-          <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>
-          <span>·</span>
-          <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
-        </div>
+            {/* Massage Club credit */}
+            <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
+              <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
+              <span>Powered by Massage Club</span>
+            </div>
+
+            {/* Legal footer */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
+              <span>Massage Club · Madrid</span>
+              <span>·</span>
+              <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
+              <span>·</span>
+              <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>
+              <span>·</span>
+              <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
+            </div>
+          </div>
         </div>
       </div>
+
 
     </div>
   );
@@ -1755,41 +1754,104 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
   );
 }
 
-/** Centered modal on desktop, bottom sheet on mobile. */
-function BookingDialog({
-  title, titleEs, onClose, children,
-}: { title: string; titleEs: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
+export type StepDef = { label: string; labelEs: string };
 
+/** Always visible wizard header. Completed steps are clickable, upcoming ones muted. */
+function Stepper({
+  steps, current, maxReached, onGo,
+}: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto"
+    <nav aria-label="Booking steps" className="flex items-start gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+      {steps.map((s, i) => {
+        const n = i + 1;
+        const isCurrent = n === current;
+        const isDone = n < current || (n <= maxReached && n !== current);
+        const reachable = n <= maxReached;
+        return (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => reachable && onGo(n)}
+            disabled={!reachable}
+            aria-current={isCurrent ? "step" : undefined}
+            className={`flex-1 min-w-[86px] text-center px-1.5 py-2 rounded-xl motion-safe:transition ${
+              isCurrent ? "bg-[#C4622D]/10" : ""
+            } ${reachable && !isCurrent ? "hover:bg-[#F1E7DB]" : ""}`}
+          >
+            <span
+              className={`mx-auto mb-1 h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                isCurrent
+                  ? "bg-[#C4622D] text-white"
+                  : isDone
+                    ? "bg-[#C4622D]/15 text-[#C4622D]"
+                    : "bg-[#E7D9CB] text-[#9E8B78]"
+              }`}
+            >
+              {isDone ? <Check size={13} /> : n}
+            </span>
+            <span
+              className={`block text-[11px] font-semibold leading-tight ${
+                isCurrent ? "text-[#C4622D]" : isDone ? "text-gray-700" : "text-[#A6968A]"
+              }`}
+            >
+              {s.label}
+            </span>
+            <span className="block text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Back link plus the primary Continue button used at the bottom of each step. */
+function WizardNav({
+  onBack, onNext, disabled, label, labelEs, hint, hintEs, skip,
+}: {
+  onBack?: () => void;
+  onNext: () => void;
+  disabled?: boolean;
+  label?: string;
+  labelEs?: string;
+  hint?: string;
+  hintEs?: string;
+  skip?: () => void;
+}) {
+  return (
+    <div className="pt-4 space-y-2">
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={disabled}
+        className={`w-full h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+          disabled ? "bg-[#E7D9CB] text-[#9E8B78]" : "bg-[#C4622D] text-white shadow-lg"
+        }`}
       >
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h2 className="font-display text-xl leading-tight text-gray-900">{title}</h2>
-            <p className="text-xs text-[#8a7460]">{titleEs}</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-2xl leading-none text-gray-400 px-2">×</button>
-        </div>
-        {children}
+        <span>{label || "Continue"}</span>
+        <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+      </button>
+      {disabled && hint && (
+        <p className="text-xs text-center text-[#8a7460]">
+          {hint}
+          {hintEs && <span className="block">{hintEs}</span>}
+        </p>
+      )}
+      <div className="flex items-center justify-between">
+        {onBack ? (
+          <button type="button" onClick={onBack} className="text-sm font-semibold text-[#8a7460] underline underline-offset-2">
+            Back <span className="font-normal">/ Atrás</span>
+          </button>
+        ) : <span />}
+        {skip && (
+          <button type="button" onClick={skip} className="text-sm font-semibold text-[#C4622D] underline underline-offset-2">
+            Skip this step <span className="font-normal">/ Saltar</span>
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
 
 /** One line of the live booking summary. */
 function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
