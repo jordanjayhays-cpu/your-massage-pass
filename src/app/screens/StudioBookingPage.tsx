@@ -1586,7 +1586,27 @@ export default function StudioBookingPage() {
                       Add at least one way to reach you: email or phone.
                       <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
                     </p>
+                    {!userId && !!email.trim() && (
+                      <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={createAccount}
+                          onChange={e => setCreateAccount(e.target.checked)}
+                          className="mt-1 h-4 w-4 accent-[#C4622D]"
+                        />
+                        <span className="text-xs text-gray-600 leading-snug">
+                          Create my free Massage Club account
+                          <span className="block text-[11px] text-gray-400">
+                            Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
+                          </span>
+                          <span className="block text-[11px] text-gray-400">
+                            Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
+                          </span>
+                        </span>
+                      </label>
+                    )}
                     <label className="flex items-start gap-2 pt-2 cursor-pointer">
+
                       <input
                         type="checkbox"
                         checked={marketingOptIn}
