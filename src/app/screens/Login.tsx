@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
+import { useStudioCount } from "@/lib/studioCount";
 
 const USER_KEY = "mm-user";
 
@@ -25,6 +26,7 @@ const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital
 
 export default function Login() {
   const { t } = useTranslation(undefined, { keyPrefix: "app.login" });
+  const studioCount = useStudioCount();
   const navigate = useNavigate();
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
   const [name, setName] = useState(getStoredUser()?.name ?? "");
