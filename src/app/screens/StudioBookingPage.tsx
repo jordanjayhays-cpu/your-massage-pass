@@ -1357,8 +1357,8 @@ export default function StudioBookingPage() {
           </Section>
         )}
 
-        {/* 5. Your details — collapsed one-liner in rebook mode when we have contact info */}
-        {service && date && time && rebookMode && !contactExpanded && (name || email || phone) && (
+        {/* 5. Your details — collapsed one-liner when we already know who they are */}
+        {service && date && time && detailsKnown && !contactExpanded && (
           <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-2">
             <p className="text-sm text-gray-700 truncate">
               {[name, phone, email].filter(Boolean).join(" · ")}
@@ -1371,15 +1371,24 @@ export default function StudioBookingPage() {
             </button>
           </div>
         )}
-        {service && date && time && (!rebookMode || contactExpanded || !(name || email || phone)) && (
+        {service && date && time && (!detailsKnown || contactExpanded) && (
+          <div ref={detailsRef}>
           <Section step="5" title="Your details" titleEs="Tus datos">
             <div className="space-y-2">
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
+              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Your name"
+                aria-invalid={highlight === "name"}
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  highlight === "name" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
+                }`} />
+              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Email" type="email"
+                aria-invalid={highlight === "contact"}
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
+                }`} />
+              <input value={phone} onChange={e => { setPhone(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
+                }`} />
               <p className="text-xs text-gray-400">Add at least one way to reach you: email or phone.</p>
               <label className="flex items-start gap-2 pt-2 cursor-pointer">
                 <input
@@ -1395,6 +1404,7 @@ export default function StudioBookingPage() {
               </label>
             </div>
           </Section>
+          </div>
         )}
 
 
