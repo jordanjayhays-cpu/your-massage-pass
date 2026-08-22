@@ -686,6 +686,8 @@ export default function StudioBookingPage() {
       // Nothing selected: generic fallback that asks for a list of times.
       return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
     })();
+    const claimHook = `PD para el estudio: esta solicitud llega desde Massage Club. Si es tu negocio, puedes recibir reservas directas gratis: book.massageclub.io/claim/${partner.slug || partner.id}`;
+    const finalWaMsg = `${waMsg}\n\n${claimHook}`;
     const trackWhatsappIntent = () => {
       setWaTapped(true);
       clarityEvent("whatsapp_click");
@@ -703,8 +705,25 @@ export default function StudioBookingPage() {
           languages: spokenLangs,
         },
       });
+      logWhatsappRequest({
+        partner_id: partner.id,
+        slug: partner.slug || partner.id,
+        studio_name: partner.business_name,
+        service_name: hoService ? serviceNameForStudio(hoService) : null,
+        price: hasPrice ? hoPrice : null,
+        day1: hoDate || null,
+        time1: hoTime || null,
+        day2: hoAltDate || null,
+        time2: hoAltTime || null,
+        first_name: hoName.trim() || null,
+        contact_email: hoEmail.trim() || null,
+        languages: spokenLangs.join(", ") || null,
+        user_id: userId,
+        wa_number: waNumber || null,
+        message_text: finalWaMsg,
+      });
     };
-    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
+    const waLink = waNumber ? studioWhatsappUrl(waNumber, finalWaMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
