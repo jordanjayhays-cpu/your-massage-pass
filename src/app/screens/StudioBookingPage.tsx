@@ -9,6 +9,7 @@ import { sendTrack } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
   loadSpokenLangs, saveSpokenLangs, normalizeSpokenLangs,
