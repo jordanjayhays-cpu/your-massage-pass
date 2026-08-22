@@ -476,8 +476,8 @@ export default function StudioBookingPage() {
             ) : (
               <>
                 <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  Casi listo — envía tu reserva al estudio para confirmarla.
-                  <span className="block text-xs mt-0.5">Almost done — send your booking to the studio to confirm it.</span>
+                  Casi listo. Envía tu reserva al estudio para confirmarla.
+                  <span className="block text-xs mt-0.5">Almost done. Send your booking to the studio to confirm it.</span>
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
@@ -983,7 +983,7 @@ export default function StudioBookingPage() {
           setSlotCounts(counts);
         } catch {}
         setTime("");
-        setError("Esa hora se acaba de llenar — elige otra / That time just filled up — pick another");
+        setError("Esa hora se acaba de llenar, elige otra / That time just filled up, pick another");
       } else {
         setError(msg || "Something went wrong. Please try again.");
       }
@@ -1209,7 +1209,7 @@ export default function StudioBookingPage() {
         {service && (
           <Section step="2" title="Pick a day" titleEs="Elige un día">
             {openDates.length === 0 ? (
-              <p className="text-sm text-gray-400">No availability set yet — message the studio directly.</p>
+              <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
             ) : (
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                 {openDates.map(d => {
@@ -1234,7 +1234,7 @@ export default function StudioBookingPage() {
         {service && date && (
           <Section step="3" title="Pick a time" titleEs="Elige una hora">
             {times.length === 0 ? (
-              <p className="text-sm text-gray-400">Fully booked that day — try another date.</p>
+              <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {times.map(t => {
@@ -1380,7 +1380,7 @@ export default function StudioBookingPage() {
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
-              <p className="text-xs text-gray-400">Add at least one way to reach you — email or phone.</p>
+              <p className="text-xs text-gray-400">Add at least one way to reach you: email or phone.</p>
               <label className="flex items-start gap-2 pt-2 cursor-pointer">
                 <input
                   type="checkbox"
