@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { servicePrimaryName } from "@/lib/serviceName";
 import { supabase } from "@/lib/supabase";
 import GuideLayout, { GuideLinks } from "./GuideLayout";
 import StudioStatusBadge from "@/app/components/StudioStatusBadge";
@@ -43,7 +44,7 @@ export async function fetchNeighbourhoodStudios(
 
   const { data: services } = await supabase
     .from("partner_services")
-    .select("partner_id, name, price")
+    .select("partner_id, name, name_en, price")
     .in(
       "partner_id",
       eligible.map((p) => p.id)
@@ -52,7 +53,8 @@ export async function fetchNeighbourhoodStudios(
   const byPartner: Record<string, { name: string; price: number | null }[]> = {};
   for (const s of (services as any[]) ?? []) {
     (byPartner[s.partner_id] ||= []).push({
-      name: s.name ?? "",
+      // English first for readers of these guides; Spanish is the fallback.
+      name: servicePrimaryName(s, ""),
       price: s.price == null || isNaN(Number(s.price)) ? null : Number(s.price),
     });
   }
