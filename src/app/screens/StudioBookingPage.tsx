@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -25,6 +25,8 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PRESSURE_LEVELS = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
+// Fixed options for the unclaimed-studio handoff, where real availability is unknown.
+const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
 
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -73,6 +75,16 @@ export default function StudioBookingPage() {
   const [hoAltDate, setHoAltDate] = useState("");
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
+  const [altOpen, setAltOpen] = useState(false);
+  // Booking CTA guidance: which field is missing, and the hint under the button.
+  const [highlight, setHighlight] = useState<"name" | "contact" | null>(null);
+  const [ctaHint, setCtaHint] = useState<{ en: string; es: string } | null>(null);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+  const serviceRef = useRef<HTMLDivElement | null>(null);
+  const dateRef = useRef<HTMLDivElement | null>(null);
+  const timeRef = useRef<HTMLDivElement | null>(null);
   // Languages the visitor speaks — defaults to the site language, never a required field.
   const siteLang = (i18n.language || "en").slice(0, 2);
   const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
@@ -215,14 +227,15 @@ export default function StudioBookingPage() {
 
   // Pre-fill name + email + phone if the customer is signed in.
   useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    let cancelled = false;
+
+    const prefill = async (user: any) => {
+      if (!user || cancelled) return;
       setUserId(user.id);
 
       // Spoken languages live in their own query so a missing column can never
       // break the rest of the pre-fill.
-      supabase.from("profiles").select("spoken_languages").eq("id", user.id).single().then(
+      supabase.from("profiles").select("spoken_languages").eq("id", user.id).maybeSingle().then(
         ({ data }) => {
           const saved = normalizeSpokenLangs((data as any)?.spoken_languages);
           if (saved.length) setSpokenLangs(saved);
@@ -230,41 +243,63 @@ export default function StudioBookingPage() {
         () => {},
       );
 
-
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
+      setPhone(prev => prev || user.phone || user.user_metadata?.phone || "");
+
+      // select("*") so one renamed column can never wipe out the whole pre-fill.
       const { data: prof } = await supabase
         .from("profiles")
-.select("full_name, phone, preferred_pressure, focus_areas, allergies, health_notes, conversation_pref, music_pref, temperature_pref, scent_pref, lighting_pref, comfort_notes, medical_conditions, medications, avoid_areas, reason_for_visit, is_first_massage, preferred_therapist_gender, emergency_contact_name, emergency_contact_phone, massage_goals")
+        .select("*")
         .eq("id", user.id)
-        .single();
-      if (prof) {
-        setCustomerProfile(prof);
-        setName(prev => prev || prof.full_name || "");
-        setPhone(prev => prev || prof.phone || "");
-        setProfileAllergies(prof.allergies || "");
-        setProfileHealthNotes(prof.health_notes || "");
-        // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
-        if (!rebookId) {
-          let applied = false;
-          if (prof.preferred_pressure) {
-            setPressure(prev => (prev === "Medium" ? prof.preferred_pressure : prev));
-            applied = true;
-          }
-          if (Array.isArray(prof.focus_areas) && prof.focus_areas.length) {
-            setFocusAreas(prev => (prev.length === 0 ? prof.focus_areas : prev));
-            applied = true;
-          }
-          if (prof.conversation_pref) {
-            setConversationPref(prev => prev || prof.conversation_pref);
-            applied = true;
-          }
-          if (applied) setPrefsApplied(true);
+        .maybeSingle();
+      if (!prof || cancelled) return;
+      const p = prof as any;
+      setCustomerProfile(p);
+      setName(prev => prev || p.full_name || "");
+      setEmail(prev => prev || p.email || "");
+      setPhone(prev => prev || p.phone || "");
+      setProfileAllergies(p.allergies || "");
+      setProfileHealthNotes(p.health_notes || "");
+      // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
+      if (!rebookId) {
+        let applied = false;
+        if (p.preferred_pressure) {
+          setPressure(prev => (prev === "Medium" ? p.preferred_pressure : prev));
+          applied = true;
         }
+        if (Array.isArray(p.focus_areas) && p.focus_areas.length) {
+          setFocusAreas(prev => (prev.length === 0 ? p.focus_areas : prev));
+          applied = true;
+        }
+        if (p.conversation_pref) {
+          setConversationPref(prev => prev || p.conversation_pref);
+          applied = true;
+        }
+        if (applied) setPrefsApplied(true);
       }
+    };
 
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        prefill(session.user);
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) prefill(user);
+      }
     })();
+
+    // The session can land after first paint (magic link, OAuth return).
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) prefill(session.user);
+    });
+
+    return () => {
+      cancelled = true;
+      sub?.subscription?.unsubscribe();
+    };
   }, []);
 
   // Rebook fast-path: prefill service + preferences + contact from a previous booking.
@@ -755,27 +790,37 @@ export default function StudioBookingPage() {
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block">
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
-                      <input type="date" value={hoDate} onChange={(e) => setHoDate(e.target.value)}
-                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
-                      <input type="time" value={hoTime} onChange={(e) => setHoTime(e.target.value)}
-                        className="mt-1 w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                    </label>
-                  </div>
                   <div>
-                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      <input type="date" value={hoAltDate} onChange={(e) => setHoAltDate(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                      <input type="time" value={hoAltTime} onChange={(e) => setHoAltTime(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                    <div className="mt-1.5">
+                      <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
                     </div>
                   </div>
+                  <div>
+                    <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                    <div className="mt-1.5">
+                      <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
+                    </div>
+                  </div>
+                  {!altOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setAltOpen(true)}
+                      className="text-sm font-semibold underline underline-offset-2"
+                      style={{ color: "#B85C38" }}
+                    >
+                      + Add a second choice
+                      <span className="block text-xs font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                    </button>
+                  ) : (
+                    <div>
+                      <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                      <div className="mt-1.5 space-y-2">
+                        <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
+                        <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                      </div>
+                    </div>
+                  )}
                   <label className="block">
                     <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
                     <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
@@ -860,7 +905,61 @@ export default function StudioBookingPage() {
 
   // Name + at least one way to reach them (phone OR email). Phone is no longer required.
 
-  const canBook = service && date && time && name.trim() && (phone.trim() || email.trim());
+  const hasContact = !!(phone.trim() || email.trim());
+  const canBook = !!(service && date && time && name.trim() && hasContact);
+  // A signed-in customer with a name and a way to be reached never sees the form again.
+  const detailsKnown = !!(userId && name.trim() && hasContact);
+
+  // What is still missing, in the order the page asks for it.
+  const missing: { key: string; en: string; es: string }[] = [
+    !service && { key: "service", en: "a service", es: "un servicio" },
+    !date && { key: "date", en: "a day", es: "un día" },
+    !time && { key: "time", en: "a time", es: "una hora" },
+    !name.trim() && { key: "name", en: "your name", es: "tu nombre" },
+    !hasContact && { key: "contact", en: "an email or phone", es: "un email o teléfono" },
+  ].filter(Boolean) as { key: string; en: string; es: string }[];
+  const stepsLeft = missing.length;
+  const stepsLeftLabels = {
+    en: missing.map(m => m.en).join(", "),
+    es: missing.map(m => m.es).join(", "),
+  };
+
+  const scrollTo = (el: HTMLElement | null, focus?: HTMLInputElement | null) => {
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (focus) window.setTimeout(() => focus.focus({ preventScroll: true }), 350);
+  };
+
+  // The CTA is always clickable. If something is missing it takes you there.
+  const handleCta = () => {
+    if (canBook) {
+      setCtaHint(null);
+      setHighlight(null);
+      handleBook();
+      return;
+    }
+    const first = missing[0];
+    if (!first) return;
+    if (first.key === "service") {
+      setCtaHint({ en: "Choose a service to continue", es: "Elige un servicio para continuar" });
+      scrollTo(serviceRef.current);
+    } else if (first.key === "date") {
+      setCtaHint({ en: "Pick a day for your massage", es: "Elige un día para tu masaje" });
+      scrollTo(dateRef.current);
+    } else if (first.key === "time") {
+      setCtaHint({ en: "Pick a time for your massage", es: "Elige una hora para tu masaje" });
+      scrollTo(timeRef.current);
+    } else {
+      setContactExpanded(true);
+      setHighlight(first.key === "name" ? "name" : "contact");
+      setCtaHint({
+        en: "Add your name and an email or phone so the studio can reach you",
+        es: "Añade tu nombre y un email o teléfono para que el estudio pueda contactarte",
+      });
+      window.setTimeout(() => {
+        scrollTo(detailsRef.current, first.key === "name" ? nameRef.current : emailRef.current);
+      }, 40);
+    }
+  };
 
   const handleBook = async () => {
     if (!canBook) return;
@@ -1136,6 +1235,7 @@ export default function StudioBookingPage() {
 
         {/* 1. Service (hidden in rebook mode — the summary card above replaces it) */}
         {!rebookMode && (
+        <div ref={serviceRef}>
         <Section step="1" title="Choose a service" titleEs="Elige un servicio">
           <div className="space-y-2">
             <Link
@@ -1177,93 +1277,11 @@ export default function StudioBookingPage() {
             {profile.services.length === 0 && <p className="text-sm text-gray-400">No services listed yet.</p>}
           </div>
         </Section>
-        )}
         </div>
-
-        {/* RIGHT COLUMN: booking form + CTA, sticky on desktop */}
-        <div className="space-y-5 min-[900px]:sticky min-[900px]:top-4">
-        {/* Ask on WhatsApp: always reachable, prefilled with whatever is picked */}
-        {bookingWaHref && (
-          <a
-            href={bookingWaHref}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              clarityEvent("whatsapp_click");
-              sendTrack({
-                event: "whatsapp_click",
-                path: window.location.pathname,
-                slug: partner.slug || partner.id,
-                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
-              });
-            }}
-            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
-          >
-            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
-          </a>
-        )}
-
-        {/* 2. Date */}
-
-        {service && (
-          <Section step="2" title="Pick a day" titleEs="Elige un día">
-            {openDates.length === 0 ? (
-              <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
-            ) : (
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {openDates.map(d => {
-                  const active = date && isoDate(d) === isoDate(date);
-                  return (
-                    <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
-                      className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
-                        active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
-                      }`}>
-                      <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
-                      <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
-                      <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
-        )}
-
-        {/* 3. Time */}
-        {service && date && (
-          <Section step="3" title="Pick a time" titleEs="Elige una hora">
-            {times.length === 0 ? (
-              <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {times.map(t => {
-                  const left = remainingFor(t);
-                  const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
-                  const lowStock = cap > 1 && left < cap;
-
-                  return (
-                    <button key={t} onClick={() => setTime(t)}
-                      className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
-                        time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
-                      }`}>
-                      {t}
-                      {lowStock && (
-                        <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
-                          {left} left
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
         )}
 
         {/* 4. Customize */}
         {!rebookMode && service && date && time && (
-
           <Section step="4" title="Customize your session" titleEs="Personaliza tu sesión">
             {customerProfile && prefsApplied && (
               <div className="mb-4 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 py-2 flex items-center justify-between gap-2">
@@ -1356,9 +1374,97 @@ export default function StudioBookingPage() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
           </Section>
         )}
+        </div>
 
-        {/* 5. Your details — collapsed one-liner in rebook mode when we have contact info */}
-        {service && date && time && rebookMode && !contactExpanded && (name || email || phone) && (
+        {/* RIGHT COLUMN: booking form + CTA, sticky on desktop */}
+        <div className="space-y-5 min-[900px]:sticky min-[900px]:top-4">
+        {/* Ask on WhatsApp: always reachable, prefilled with whatever is picked */}
+        {bookingWaHref && (
+          <a
+            href={bookingWaHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              clarityEvent("whatsapp_click");
+              sendTrack({
+                event: "whatsapp_click",
+                path: window.location.pathname,
+                slug: partner.slug || partner.id,
+                meta: { filled: !!(service || date || time), service: !!service, date: !!date },
+              });
+            }}
+            className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-2xl font-semibold text-white bg-[#C4622D] shadow-sm motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          >
+            <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
+            <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
+          </a>
+        )}
+
+        {/* 2. Date */}
+
+        {service && (
+          <div ref={dateRef}>
+          <Section step="2" title="Pick a day" titleEs="Elige un día">
+            {openDates.length === 0 ? (
+              <p className="text-sm text-gray-400">No availability set yet. Message the studio directly.</p>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                {openDates.map(d => {
+                  const active = date && isoDate(d) === isoDate(date);
+                  return (
+                    <button key={isoDate(d)} onClick={() => { setDate(d); setTime(null); }}
+                      className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition ${
+                        active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                      }`}>
+                      <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                      <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
+                      <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+          </div>
+        )}
+
+        {/* 3. Time */}
+        {service && date && (
+          <div ref={timeRef}>
+          <Section step="3" title="Pick a time" titleEs="Elige una hora">
+            {times.length === 0 ? (
+              <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {times.map(t => {
+                  const left = remainingFor(t);
+                  const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
+                  const lowStock = cap > 1 && left < cap;
+
+                  return (
+                    <button key={t} onClick={() => setTime(t)}
+                      className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                        time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                      }`}>
+                      {t}
+                      {lowStock && (
+                        <span className={`block text-[10px] font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
+                          {left} left
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+          </div>
+        )}
+
+        {/* 4. Customize lives in the left column on desktop */}
+
+        {/* 5. Your details — collapsed one-liner when we already know who they are */}
+        {service && date && time && detailsKnown && !contactExpanded && (
           <div className="rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-2">
             <p className="text-sm text-gray-700 truncate">
               {[name, phone, email].filter(Boolean).join(" · ")}
@@ -1371,15 +1477,24 @@ export default function StudioBookingPage() {
             </button>
           </div>
         )}
-        {service && date && time && (!rebookMode || contactExpanded || !(name || email || phone)) && (
+        {service && date && time && (!detailsKnown || contactExpanded) && (
+          <div ref={detailsRef}>
           <Section step="5" title="Your details" titleEs="Tus datos">
             <div className="space-y-2">
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone / WhatsApp (optional)" type="tel"
-                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D]" />
+              <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Your name"
+                aria-invalid={highlight === "name"}
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  highlight === "name" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
+                }`} />
+              <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Email" type="email"
+                aria-invalid={highlight === "contact"}
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
+                }`} />
+              <input value={phone} onChange={e => { setPhone(e.target.value); setHighlight(null); setCtaHint(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
+                className={`w-full h-12 px-4 rounded-xl border bg-white text-sm focus:outline-none focus:border-[#C4622D] ${
+                  highlight === "contact" ? "border-2 border-[#B03A2E] ring-2 ring-[#B03A2E]/20" : "border-gray-200"
+                }`} />
               <p className="text-xs text-gray-400">Add at least one way to reach you: email or phone.</p>
               <label className="flex items-start gap-2 pt-2 cursor-pointer">
                 <input
@@ -1395,16 +1510,17 @@ export default function StudioBookingPage() {
               </label>
             </div>
           </Section>
+          </div>
         )}
 
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
-        {/* Sticky CTA — always reachable while scrolling */}
+        {/* Sticky CTA — always clickable, tells you exactly what is missing */}
         <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
-          <button onClick={handleBook} disabled={!canBook || submitting}
-            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
-              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-gray-200 text-gray-400"
+          <button onClick={handleCta} disabled={submitting}
+            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
             }`}>
             {submitting ? (
               <><Loader2 size={18} className="animate-spin" /> Booking…</>
@@ -1420,6 +1536,22 @@ export default function StudioBookingPage() {
               </span>
             )}
           </button>
+          {ctaHint ? (
+            <p role="alert" className="mt-2 text-sm text-center font-medium text-[#B03A2E]">
+              {ctaHint.en}
+              <span className="block text-xs font-normal text-[#8a7460]">{ctaHint.es}</span>
+            </p>
+          ) : stepsLeft > 0 ? (
+            <p className="mt-2 text-xs text-center text-[#8a7460]">
+              {stepsLeft} {stepsLeft === 1 ? "step" : "steps"} left: {stepsLeftLabels.en}
+              <span className="block">{stepsLeft} {stepsLeft === 1 ? "paso" : "pasos"}: {stepsLeftLabels.es}</span>
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-center text-[#8a7460]">
+              All set. The studio confirms your time.
+              <span className="block">Todo listo. El estudio confirma tu hora.</span>
+            </p>
+          )}
         </div>
         </div>
 
@@ -1481,6 +1613,72 @@ function Section({ step, title, titleEs, children }: { step: string; title: stri
         </div>
       </div>
       {children}
+    </div>
+  );
+}
+
+/** Horizontal day strip used by the WhatsApp handoff form (ISO value in/out). */
+function DayStrip({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const days: Date[] = [];
+  const today = new Date();
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push(d);
+  }
+  return (
+    <div role="radiogroup" aria-label={label} className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      {days.map(d => {
+        const iso = isoDate(d);
+        const active = value === iso;
+        return (
+          <button
+            key={iso}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(active ? "" : iso)}
+            className="flex-shrink-0 w-16 py-2 rounded-2xl border-2 text-center motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            style={{
+              borderColor: active ? "#C4622D" : "#E6DCCF",
+              background: active ? "#C4622D" : "#ffffff",
+              color: active ? "#ffffff" : "#5a4736",
+            }}
+          >
+            <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+            <div className="text-lg font-bold leading-none mt-0.5">{d.getDate()}</div>
+            <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Rounded time pills for the handoff form (fixed options, real availability unknown). */
+function TimePills({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+      {HANDOFF_TIMES.map(t => {
+        const active = value === t;
+        return (
+          <button
+            key={t}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(active ? "" : t)}
+            className="px-3.5 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            style={{
+              borderColor: active ? "#C4622D" : "#E6DCCF",
+              background: active ? "#C4622D" : "#ffffff",
+              color: active ? "#ffffff" : "#5a4736",
+            }}
+          >
+            {t}
+          </button>
+        );
+      })}
     </div>
   );
 }
