@@ -20,6 +20,7 @@ import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { clarityEvent } from "@/lib/clarity";
 
 
