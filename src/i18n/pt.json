@@ -213,7 +213,9 @@
       "location_title": "Localização",
       "directions": "Direções",
       "call": "Ligar",
-      "chat": "Chat"
+      "chat": "Chat",
+      "whatsapp": "Perguntar no WhatsApp",
+      "whatsappEs": "Preguntar por WhatsApp"
     },
     "calendar": {
       "back": "Voltar",

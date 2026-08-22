@@ -213,7 +213,9 @@
       "location_title": "Emplacement",
       "directions": "Itinéraire",
       "call": "Appeler",
-      "chat": "Chat"
+      "chat": "Chat",
+      "whatsapp": "Demander sur WhatsApp",
+      "whatsappEs": "Preguntar por WhatsApp"
     },
     "calendar": {
       "back": "Retour",

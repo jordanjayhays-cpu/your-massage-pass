@@ -394,7 +394,7 @@ export default function StudioBookingPage() {
     const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
     // Unclaimed: ask the customer to send the booking request to the studio themselves.
     const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
-    const unclaimedWaLink = isWhatsappCapable(studioNumber) ? studioWhatsappUrl(studioNumber, unclaimedWaMsg) : null;
+    const unclaimedWaLink = studioWhatsappUrl(resolveWhatsappNumber(partner as any), unclaimedWaMsg);
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
