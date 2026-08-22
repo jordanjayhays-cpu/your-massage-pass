@@ -60,6 +60,7 @@ import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
 import ConsentBanner from "./components/ConsentBanner";
 import AnalyticsOptOut from "./components/AnalyticsOptOut";
+import ThanksToast from "./components/ThanksToast";
 
 
 
