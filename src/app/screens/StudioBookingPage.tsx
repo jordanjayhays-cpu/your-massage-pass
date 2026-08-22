@@ -6,6 +6,7 @@ import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill } from "@/app/lib/whatsapp";
 import { sendTrack } from "@/lib/siteVisit";
+import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
