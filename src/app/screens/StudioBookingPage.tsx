@@ -760,20 +760,20 @@ export default function StudioBookingPage() {
           <div className="px-6 py-7 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-10 min-[900px]:items-start">
             {/* LEFT: studio identity + menu */}
             <div>
-            <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            <h1 className="font-display text-3xl min-[900px]:text-4xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             {partner.address && (
-              <p className="text-sm flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
+              <p className="text-sm min-[900px]:text-base flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
                 <span>📍</span>
                 <span>{partner.address}</span>
               </p>
             )}
             {rating ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
               </p>
             ) : googleRating != null ? (
-              <p className="text-sm font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
+              <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
                 {googleRating.toFixed(1)}
                 {googleReviews != null && (
@@ -781,29 +781,29 @@ export default function StudioBookingPage() {
                 )}
               </p>
             ) : null}
-            <p className="text-sm mb-1" style={{ color: "#7A7068" }}>
+            <p className="text-sm min-[900px]:text-base mb-1" style={{ color: "#7A7068" }}>
               {t("app.handoff.notRegistered")}
             </p>
-            <p className="text-xs mb-5" style={{ color: "#9E9387" }}>
+            <p className="text-xs min-[900px]:text-sm mb-5" style={{ color: "#9E9387" }}>
               {t("app.handoff.notRegisteredSub")}
             </p>
-            <p className="text-sm mb-5" style={{ color: "#5a4736" }}>
+            <p className="text-sm min-[900px]:text-base mb-5" style={{ color: "#5a4736" }}>
               {t("app.handoff.bookDirectly")}
-              <span className="block text-xs mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
+              <span className="block text-xs min-[900px]:text-sm mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
             </p>
             {profile.services.length > 0 && (
               <div className="mt-6 text-left">
-                <p className="text-xs font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
-                <div className="rounded-xl p-3 space-y-2" style={{ background: "#FAF6F1" }}>
+                <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
+                <div className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
                   {profile.services.map(s => (
-                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm" style={{ color: "#5a4736" }}>
+                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm min-[900px]:text-base" style={{ color: "#5a4736" }}>
                       <span className="min-w-0">
                         <span className="block">
                           {servicePrimaryName(s)}
                           {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
                         </span>
                         {serviceSecondaryName(s) && (
-                          <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                          <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                         )}
                       </span>
                       {s.price != null && Number(s.price) > 0 && (
