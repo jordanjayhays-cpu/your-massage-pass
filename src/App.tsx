@@ -139,7 +139,12 @@ const App = () => (
             <Route path="bookings" element={<MyBookings />} />
             <Route path="profile" element={<Profile />} />
           </Route>
+          {/* Customer email sign-in */}
+          <Route path="/login" element={<AppLayout />}>
+            <Route index element={<Login />} />
+          </Route>
           {/* Canonical studio list route */}
+
           <Route path="/studios" element={<AppLayout />}>
             <Route index element={<MassageList />} />
           </Route>

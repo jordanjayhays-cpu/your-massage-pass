@@ -76,7 +76,7 @@ export default function Welcome() {
                 : "Ask for a new link with your email and sign in with one tap."}
             </p>
             <Link
-              to="/app"
+              to="/login"
               className="mt-5 inline-flex items-center justify-center w-full h-12 rounded-2xl font-semibold"
               style={{ background: "#B85C38", color: "#fff" }}
             >
