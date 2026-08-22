@@ -83,6 +83,8 @@ export default function Quiz() {
     setDone(false);
     setGeoState("idle");
     setNearby([]);
+    setUserLoc(null);
+    setFallbackList([]);
   };
 
   const winnerType = (Object.entries(scores) as [MassageType, number][])
@@ -90,10 +92,21 @@ export default function Quiz() {
   const winner = MASSAGE_TYPES.find((t) => t.id === winnerType);
   const matchingStudios = MASSAGES.filter((m) => m.type === winnerType);
 
+  // Does the studio they came from also offer the recommended type?
+  useEffect(() => {
+    if (!done || !winnerType || !origin?.slug) return;
+    let cancelled = false;
+    studioOffersType(origin.slug, winnerType).then((ok) => {
+      if (!cancelled) setOriginOffers(ok);
+    });
+    return () => { cancelled = true; };
+  }, [done, winnerType, origin?.slug]);
+
   // Never blocks the result: on denial or error we simply keep the plain list.
   const askForLocation = () => {
     if (!winnerType || typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoState("unavailable");
+      findStudiosOfferingType(winnerType!, 3).then(setFallbackList).catch(() => {});
       return;
     }
     setGeoState("loading");
@@ -102,17 +115,43 @@ export default function Quiz() {
         const list = await findNearestStudios(winnerType, pos.coords.latitude, pos.coords.longitude, 3);
         if (list.length === 0) {
           setGeoState("unavailable");
+          findStudiosOfferingType(winnerType, 3).then(setFallbackList).catch(() => {});
           return;
         }
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setNearby(list);
         setGeoState("ready");
       },
-      () => setGeoState("unavailable"),
-      { timeout: 8000, maximumAge: 300000 },
+      () => {
+        setGeoState("unavailable");
+        findStudiosOfferingType(winnerType, 3).then(setFallbackList).catch(() => {});
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   };
 
-  const studioHref = (s: NearbyStudio) => `/s/${s.slug || s.id}`;
+  const studioHref = (s: { slug: string | null; id: string }) => `/s/${s.slug || s.id}`;
+
+  // Pins for the mini discovery map, built only from real coordinates.
+  const mapShops = nearby.map((s) => ({
+    id: s.id,
+    partner_id: s.id,
+    studio: s.name,
+    name: servicePrimaryName(s.service),
+    district: "",
+    address: s.address ?? "",
+    duration: s.service.duration ?? 0,
+    rating: null,
+    reviews: null,
+    image: "",
+    description: "",
+    tags: [],
+    type: winnerType ?? "",
+    lat: s.lat,
+    lng: s.lng,
+    services: [],
+    partner_services: [],
+  })) as unknown as Shop[];
 
 
   if (done && winner) {
