@@ -114,6 +114,7 @@
       "quizDesc": "回答4个简单问题，我们将为您推荐完美的按摩方案。",
       "takeQuiz": "开始测验",
       "quizCardAria": "参加测验，找到适合你的按摩",
+      "quizMidPrompt": "还不确定？参加60秒测验 →",
       "quizBottomTitle": "还是不确定？",
       "quizBottomCta": "参加60秒测验",
       "nearbyTitle": "附近的按摩店",
