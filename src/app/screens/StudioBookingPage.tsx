@@ -675,6 +675,12 @@ export default function StudioBookingPage() {
       return /^https?:\/\//i.test(w) ? w : `https://${w}`;
     })();
     const googleRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
+    // Handoff wizard navigation.
+    const hoGo = (n: number) => {
+      setHoStep(n);
+      setHoMaxStep(m => Math.max(m, n));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
       <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
