@@ -60,8 +60,8 @@ export type WhatsappPrefill = {
   name?: string | null;
 };
 
-const LANG_TAIL =
-  "Todavía no hablo español. Si habláis inglés, decídmelo y sigo en inglés 🙏";
+const NO_SPANISH = "Todavía no hablo español.";
+const ENGLISH_OFFER = "Si habláis inglés, decídmelo y sigo en inglés 🙏";
 
 /**
  * Spanish prefill for the "Ask on WhatsApp" button.
@@ -81,13 +81,8 @@ export function whatsappPrefill(p: WhatsappPrefill): string {
   if (p.name?.trim()) bits.push(`a nombre de ${p.name.trim()}`);
 
   if (bits.length === 0) {
-    return `¡Hola ${p.studio}! He visto vuestro estudio en Massage Club y me gustaría pedir una cita. ${LANG_TAIL}`;
+    return `¡Hola ${p.studio}! He visto vuestro estudio en Massage Club y me gustaría pedir una cita. ${NO_SPANISH} ${ENGLISH_OFFER}`;
   }
 
-  return `¡Hola ${p.studio}! Me gustaría reservar: ${bits.join(
-    " ",
-  )}. ${LANG_TAIL.replace(
-    "Si habláis",
-    "¿Me puedes confirmar con un \"sí\" o proponerme otra hora? Si habláis",
-  )}`;
+  return `¡Hola ${p.studio}! Me gustaría reservar: ${bits.join(" ")}. ${NO_SPANISH} ¿Me puedes confirmar con un "sí" o proponerme otra hora? ${ENGLISH_OFFER}`;
 }
