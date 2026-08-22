@@ -1507,8 +1507,8 @@ export default function StudioBookingPage() {
                       </button>
                     </div>
                   )}
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Comfort <span className="font-normal text-gray-400">/ Confort</span></p>
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Comfort <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Confort</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {[
                       { v: "silence", l: "Silence" },
                       { v: "minimal", l: "A little chat" },
@@ -1518,7 +1518,7 @@ export default function StudioBookingPage() {
                         key={o.v}
                         type="button"
                         onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
                           conversationPref === o.v ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}
                       >
@@ -1527,21 +1527,21 @@ export default function StudioBookingPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Pressure <span className="font-normal text-gray-400">/ Presión</span></p>
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Pressure <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Presión</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {PRESSURE_LEVELS.map(p => (
                       <button key={p} onClick={() => setPressure(p)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
                           pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}>{p}</button>
                     ))}
                   </div>
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Focus areas <span className="font-normal text-gray-400">/ Zonas</span></p>
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Focus areas <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Zonas</span></p>
+                  <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {FOCUS_AREAS.map(f => (
                       <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
                           focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}>{f}</button>
                     ))}
@@ -1549,18 +1549,18 @@ export default function StudioBookingPage() {
 
                   {addons.length > 0 && (
                     <>
-                      <p className="text-xs font-semibold text-gray-500 mb-2">Add-ons <span className="font-normal text-gray-400">/ Extras</span></p>
+                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Add-ons <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Extras</span></p>
                       <div className="space-y-2 mb-4">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
                           return (
                             <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition ${
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition min-[900px]:p-4 ${
                                 on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                               }`}>
                               <div>
-                                <p className="text-sm font-medium text-gray-900">{a.name}</p>
-                                <p className="text-xs text-gray-400">+€{a.price}</p>
+                                <p className="text-sm font-medium text-gray-900 min-[900px]:text-base">{a.name}</p>
+                                <p className="text-xs text-gray-400 min-[900px]:text-sm">+€{a.price}</p>
                               </div>
                               <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
                                 {on && <Check size={12} className="text-white" />}
@@ -1572,10 +1572,10 @@ export default function StudioBookingPage() {
                     </>
                   )}
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2">Notes for your therapist <span className="font-normal text-gray-400">/ Notas</span></p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Notes for your therapist <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Notas</span></p>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)}
                     placeholder="Anything we should know? Injuries, allergies, preferences."
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24" />
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24 min-[900px]:text-base min-[900px]:h-28" />
                 </Section>
                 <WizardNav onBack={() => goStep(2)} onNext={() => goStep(4)} skip={() => goStep(4)} />
               </div>
@@ -1912,16 +1912,15 @@ function StickyContinue({
 }: { ready: boolean; onNext: () => void; label?: string; labelEs?: string }) {
   if (!ready) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:grid min-[900px]:grid-cols-[1fr_360px] min-[900px]:gap-8">
-        <div className="hidden min-[900px]:block" />
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:flex min-[900px]:justify-center">
         <button
           type="button"
           onClick={onNext}
-          className="w-full h-13 min-h-[52px] rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          className="w-full min-[900px]:max-w-md min-[900px]:w-auto min-[900px]:px-16 h-13 min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
         >
-          <span>{label || "Continue"}</span>
-          <span className="text-xs font-normal opacity-90">{labelEs || "Continuar"}</span>
+          <span className="min-[900px]:text-lg">{label || "Continue"}</span>
+          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{labelEs || "Continuar"}</span>
         </button>
       </div>
     </div>
