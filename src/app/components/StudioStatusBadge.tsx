@@ -24,11 +24,13 @@ export default function StudioStatusBadge({
   variant,
   className,
 }: {
-  variant: StudioBadgeVariant;
+  variant: StudioBadgeVariant | null;
   className?: string;
 }) {
   const { t } = useTranslation();
+  if (!variant) return null;
   const label = t(LABEL_KEY[variant], { defaultValue: FALLBACK[variant] });
+
   return (
     <span
       className={cn(
