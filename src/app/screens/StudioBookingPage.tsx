@@ -75,6 +75,16 @@ export default function StudioBookingPage() {
   const [hoAltDate, setHoAltDate] = useState("");
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
+  const [altOpen, setAltOpen] = useState(false);
+  // Booking CTA guidance: which field is missing, and the hint under the button.
+  const [highlight, setHighlight] = useState<"name" | "contact" | null>(null);
+  const [ctaHint, setCtaHint] = useState<{ en: string; es: string } | null>(null);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+  const serviceRef = useRef<HTMLDivElement | null>(null);
+  const dateRef = useRef<HTMLDivElement | null>(null);
+  const timeRef = useRef<HTMLDivElement | null>(null);
   // Languages the visitor speaks — defaults to the site language, never a required field.
   const siteLang = (i18n.language || "en").slice(0, 2);
   const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
