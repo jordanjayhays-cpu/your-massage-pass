@@ -634,9 +634,9 @@
         "title2": "massage",
         "title3": "in Madrid",
         "imageAlt": "Calm Madrid massage studio",
-        "studiosCount": "60+ studios across Madrid",
+        "studiosCount": "{{count}}+ studios across Madrid",
         "payAtStudio": "Pay at studio",
-        "description": "60+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.",
+        "description": "{{count}}+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.",
         "ctaNote": "No account needed to look. No booking fee. You pay the studio directly."
       },
       "newInMadrid": {

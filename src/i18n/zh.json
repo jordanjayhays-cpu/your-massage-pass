@@ -634,9 +634,9 @@
         "title2": "第一次按摩",
         "title3": "体验",
         "imageAlt": "宁静的马德里按摩工作室",
-        "studiosCount": "遍布马德里的 60 多家工作室",
+        "studiosCount": "遍布马德里的 {{count}} 多家工作室",
         "payAtStudio": "到店支付",
-        "description": "60 多家显示真实价格的工作室，全程中文。如果工作室只使用 WhatsApp，我们会为您用西班牙语撰写预约消息。",
+        "description": "{{count}} 多家显示真实价格的工作室，全程中文。如果工作室只使用 WhatsApp，我们会为您用西班牙语撰写预约消息。",
         "ctaNote": "无需注册即可浏览。免收预订费。您直接向工作室付款。"
       },
       "newInMadrid": {

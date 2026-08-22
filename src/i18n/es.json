@@ -634,9 +634,9 @@
         "title2": "masaje",
         "title3": "en Madrid",
         "imageAlt": "Estudio de masajes tranquilo en Madrid",
-        "studiosCount": "60+ centros en Madrid",
+        "studiosCount": "{{count}}+ centros en Madrid",
         "payAtStudio": "Paga en el centro",
-        "description": "Más de 60 centros de Madrid con precios reales y publicados: compara y elige sin llamar. Sin comisión de reserva — pagas en el centro.",
+        "description": "Más de {{count}} centros de Madrid con precios reales y publicados: compara y elige sin llamar. Sin comisión de reserva — pagas en el centro.",
         "ctaNote": "No hace falta cuenta para mirar. Sin comisión de reserva. Pagas directamente al centro."
       },
       "newInMadrid": {

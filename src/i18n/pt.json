@@ -634,9 +634,9 @@
         "title2": "massagem",
         "title3": "em Madrid",
         "imageAlt": "Estúdio de massagens tranquilo em Madrid",
-        "studiosCount": "Mais de 60 estúdios em Madrid",
+        "studiosCount": "Mais de {{count}} estúdios em Madrid",
         "payAtStudio": "Pagamento no estúdio",
-        "description": "Mais de 60 estúdios com preços reais, em português. Se um estúdio apenas aceitar WhatsApp, escrevemos a sua mensagem em espanhol por si.",
+        "description": "Mais de {{count}} estúdios com preços reais, em português. Se um estúdio apenas aceitar WhatsApp, escrevemos a sua mensagem em espanhol por si.",
         "ctaNote": "Não é necessária conta para explorar. Sem taxas de reserva. Paga diretamente ao estúdio."
       },
       "newInMadrid": {

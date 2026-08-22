@@ -634,9 +634,9 @@
         "title2": "massaggio",
         "title3": "a Madrid",
         "imageAlt": "Tranquillo centro massaggi a Madrid",
-        "studiosCount": "Oltre 60 centri in tutta Madrid",
+        "studiosCount": "Oltre {{count}} centri in tutta Madrid",
         "payAtStudio": "Paga in sede",
-        "description": "Oltre 60 centri con prezzi reali, in italiano. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te.",
+        "description": "Oltre {{count}} centri con prezzi reali, in italiano. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te.",
         "ctaNote": "Nessun account necessario per curiosare. Nessuna commissione di prenotazione. Paghi direttamente in sede."
       },
       "newInMadrid": {

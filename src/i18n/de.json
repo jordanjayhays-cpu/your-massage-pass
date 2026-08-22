@@ -634,9 +634,9 @@
         "title2": "Massage",
         "title3": "in Madrid",
         "imageAlt": "Ruhiges Massage-Studio in Madrid",
-        "studiosCount": "Über 60 Studios in ganz Madrid",
+        "studiosCount": "Über {{count}} Studios in ganz Madrid",
         "payAtStudio": "Zahlung vor Ort im Studio",
-        "description": "Über 60 Studios mit echten Preisen, auf Deutsch. Wenn ein Studio nur WhatsApp nutzt, schreiben wir deine Nachricht für dich auf Spanisch.",
+        "description": "Über {{count}} Studios mit echten Preisen, auf Deutsch. Wenn ein Studio nur WhatsApp nutzt, schreiben wir deine Nachricht für dich auf Spanisch.",
         "ctaNote": "Kein Account zum Stöbern nötig. Keine Buchungsgebühr. Du zahlst direkt im Studio."
       },
       "newInMadrid": {
