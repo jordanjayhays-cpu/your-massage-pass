@@ -52,22 +52,21 @@ export default function YourFirstMassageInMadrid() {
 
         <h2 className="font-display text-2xl text-foreground mt-8">Do you take your clothes off?</h2>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
-          This is the question everyone has and nobody asks. The answer depends entirely on the type of
-          massage, and for the most common type in Madrid the answer is no.
+          Short answer: usually not everything, and it depends on the treatment.
         </p>
 
         <h3 className="font-display text-xl text-foreground mt-6">Thai massage, masaje tailandés</h3>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
-          You stay fully clothed. The studio gives you loose cotton trousers and a top to change into.
-          There is no oil. If the idea of undressing is what is putting you off, book Thai.
+          Fully clothed. The studio gives you loose cotton trousers and a top to change into, and there
+          is no oil. If undressing is the thing putting you off, this is the one to book.
         </p>
 
         <h3 className="font-display text-xl text-foreground mt-6">Oil massages</h3>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
-          This includes relajante, descontracturante, balinés, deportivo and most others. You undress to
-          your underwear and lie under a towel or sheet. The therapist uncovers only the part they are
-          working on and covers it again afterwards. You are never fully exposed. Keeping your
-          underwear on is normal and expected.
+          This covers relajante, descontracturante, balinés, deportivo and most others. You undress but
+          keep your underwear on. Some studios also offer disposable underwear if you would rather use
+          that, so it is worth asking. You lie under a towel or sheet and the therapist uncovers only the
+          part they are working on, then covers it again.
         </p>
 
         <h3 className="font-display text-xl text-foreground mt-6">Foot reflexology, reflexología podal</h3>
@@ -82,6 +81,17 @@ export default function YourFirstMassageInMadrid() {
 
         <p className="text-sm text-foreground/85 mt-4 leading-relaxed">
           You change privately. The therapist leaves the room and knocks before coming back in.
+        </p>
+        <p className="text-sm text-foreground/85 mt-3 leading-relaxed">
+          If you are not sure, ask. The phrase is:
+        </p>
+        <p className="text-sm text-foreground/85 mt-3 leading-relaxed">
+          <strong className="text-foreground">¿Qué me quito?</strong> What should I take off? Say “keh
+          meh KEE-toh”.
+        </p>
+        <p className="text-sm text-foreground/85 mt-3 leading-relaxed">
+          Every studio is asked this several times a week and nobody finds it awkward. Practice varies a
+          little between studios, so asking is more reliable than guessing.
         </p>
 
         <h2 className="font-display text-2xl text-foreground mt-8">What happens, in order</h2>
