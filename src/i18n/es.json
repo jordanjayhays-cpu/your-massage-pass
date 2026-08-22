@@ -114,6 +114,7 @@
       "quizDesc": "Responde 4 preguntas rápidas y te sugerimos el masaje perfecto para ti.",
       "takeQuiz": "Hacer el quiz",
       "quizCardAria": "Haz el quiz para encontrar tu masaje",
+      "quizMidPrompt": "¿Aún no sabes cuál? Haz el quiz de 60 segundos →",
       "quizBottomTitle": "¿Aún no lo tienes claro?",
       "quizBottomCta": "Haz el quiz de 60 segundos",
       "nearbyTitle": "Estudios cerca de ti",

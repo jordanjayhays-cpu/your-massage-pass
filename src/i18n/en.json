@@ -114,6 +114,7 @@
       "quizDesc": "Answer 4 quick questions and we'll suggest the perfect massage for you.",
       "takeQuiz": "Take the quiz",
       "quizCardAria": "Take the quiz to find your massage",
+      "quizMidPrompt": "Not sure which one? Take the 60-second quiz →",
       "quizBottomTitle": "Still not sure?",
       "quizBottomCta": "Take the 60-second quiz",
       "nearbyTitle": "Studios near you",
