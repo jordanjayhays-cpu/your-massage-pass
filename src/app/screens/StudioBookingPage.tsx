@@ -8,6 +8,8 @@ import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill } from "@/app
 import { sendTrack } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
+import { requestAccountSignup } from "@/lib/accountSignup";
+
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
@@ -103,6 +105,9 @@ export default function StudioBookingPage() {
   const [hoName, setHoName] = useState("");
   // Optional email on the handoff, so we can follow up after the WhatsApp booking.
   const [hoEmail, setHoEmail] = useState("");
+  // Passwordless account creation, offered to visitors who are not signed in.
+  const [createAccount, setCreateAccount] = useState(true);
+
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
   const [hoAltDate, setHoAltDate] = useState("");
@@ -723,7 +728,12 @@ export default function StudioBookingPage() {
         wa_number: waNumber,
         message_text: waMsg,
       });
+      // Fire and forget: passwordless account, never blocks the WhatsApp handoff.
+      if (!userId && createAccount && hoEmail.trim()) {
+        requestAccountSignup({ email: hoEmail.trim(), name: hoName.trim(), lang: siteLang });
+      }
     };
+
     const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
     const websiteUrl = (() => {
       if (!partner.website) return null;
@@ -934,6 +944,23 @@ export default function StudioBookingPage() {
                           <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
                         </span>
                       </label>
+                      {!userId && !!hoEmail.trim() && (
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input type="checkbox" checked={createAccount}
+                            onChange={(e) => setCreateAccount(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-[#C4622D]" />
+                          <span className="text-xs leading-snug" style={{ color: "#5a4736" }}>
+                            Create my free Massage Club account
+                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                              Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
+                            </span>
+                            <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                              Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
+                            </span>
+                          </span>
+                        </label>
+                      )}
+
                       <div>
                         <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -1171,7 +1198,13 @@ export default function StudioBookingPage() {
         return next;
       });
       
+      // Fire and forget: passwordless account for guests who opted in.
+      if (!userId && createAccount && email.trim()) {
+        requestAccountSignup({ email: email.trim(), name: name.trim().split(" ")[0], lang: siteLang });
+      }
+
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
+
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (/fully booked/i.test(msg)) {
@@ -1553,7 +1586,27 @@ export default function StudioBookingPage() {
                       Add at least one way to reach you: email or phone.
                       <span className="block text-[11px] text-gray-400">Añade al menos un email o teléfono.</span>
                     </p>
+                    {!userId && !!email.trim() && (
+                      <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={createAccount}
+                          onChange={e => setCreateAccount(e.target.checked)}
+                          className="mt-1 h-4 w-4 accent-[#C4622D]"
+                        />
+                        <span className="text-xs text-gray-600 leading-snug">
+                          Create my free Massage Club account
+                          <span className="block text-[11px] text-gray-400">
+                            Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
+                          </span>
+                          <span className="block text-[11px] text-gray-400">
+                            Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
+                          </span>
+                        </span>
+                      </label>
+                    )}
                     <label className="flex items-start gap-2 pt-2 cursor-pointer">
+
                       <input
                         type="checkbox"
                         checked={marketingOptIn}

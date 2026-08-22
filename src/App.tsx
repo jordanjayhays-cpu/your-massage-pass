@@ -39,6 +39,8 @@ import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
 import Home from "./pages/Home";
 import BookingResult from "./pages/BookingResult";
+import Welcome from "./pages/Welcome";
+
 import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -83,6 +85,8 @@ const App = () => (
 
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
+          <Route path="/welcome" element={<Welcome />} />
+
           <Route path="/review" element={<Review />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
@@ -135,7 +139,12 @@ const App = () => (
             <Route path="bookings" element={<MyBookings />} />
             <Route path="profile" element={<Profile />} />
           </Route>
+          {/* Customer email sign-in */}
+          <Route path="/login" element={<AppLayout />}>
+            <Route index element={<Login />} />
+          </Route>
           {/* Canonical studio list route */}
+
           <Route path="/studios" element={<AppLayout />}>
             <Route index element={<MassageList />} />
           </Route>
