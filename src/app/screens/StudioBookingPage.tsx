@@ -937,6 +937,12 @@ export default function StudioBookingPage() {
                         <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
                           className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
+                      <label className="block">
+                        <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.emailLabel")}</span>
+                        <input type="email" value={hoEmail} onChange={(e) => setHoEmail(e.target.value)}
+                          className="mt-1 w-full h-11 px-3 rounded-xl border bg-white text-sm" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                        <span className="block text-[11px] mt-1" style={{ color: "#9E9387" }}>{t("app.handoff.emailHelp")}</span>
+                      </label>
                       <div>
                         <span className="text-xs" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -970,7 +976,6 @@ export default function StudioBookingPage() {
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px]" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
                       <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
                     </div>
                   )}
