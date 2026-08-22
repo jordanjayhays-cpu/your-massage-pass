@@ -319,6 +319,82 @@ export default function Login() {
           </svg>
           {t("actions.google")}
         </Button>
+
+        {/* Email code sign-in */}
+        <div className="flex items-center gap-3 pt-1">
+          <div className="h-px flex-1 bg-[#E5DDD3]" />
+          <span className="text-[11px] uppercase tracking-[0.2em] text-[#9E9387]">{t("emailAuth.or")}</span>
+          <div className="h-px flex-1 bg-[#E5DDD3]" />
+        </div>
+
+        {otpStage === "idle" ? (
+          <div className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+            <label htmlFor="mc-otp-email" className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068] block">
+              {t("emailAuth.continueWithEmail")}
+            </label>
+            <input
+              id="mc-otp-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={otpEmail}
+              onChange={(e) => setOtpEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") sendCode(); }}
+              placeholder={t("emailStep.placeholder")}
+              className="w-full h-12 rounded-xl bg-[#F7F4F0] border border-[#E5DDD3] px-4 text-[#211C1A] placeholder:text-[#9E9387] focus:outline-none focus:ring-2 focus:ring-[#C4622D]/40"
+            />
+            <Button
+              onClick={sendCode}
+              disabled={otpBusy}
+              className="w-full h-12 rounded-full text-base font-medium"
+              style={{ background: "#211C1A", color: "#F7F4F0" }}
+            >
+              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" />{t("emailAuth.continueWithEmail")}</>}
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+            <p className="text-[13px] text-[#7A7068] leading-relaxed">
+              {t("emailAuth.codeSent", { email: otpEmail.trim().toLowerCase() })}
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={(e) => { if (e.key === "Enter") verifyCode(); }}
+              placeholder="000000"
+              aria-label={t("emailAuth.codeLabel")}
+              className="w-full h-16 rounded-xl bg-[#F7F4F0] border border-[#E5DDD3] text-center text-[30px] tracking-[0.45em] font-medium text-[#211C1A] placeholder:text-[#D6CCC0] focus:outline-none focus:ring-2 focus:ring-[#C4622D]/40"
+            />
+            <Button
+              onClick={verifyCode}
+              disabled={otpBusy || otpCode.length !== 6}
+              className="w-full h-12 rounded-full text-base font-medium"
+              style={{ background: "#C4622D", color: "#F7F4F0" }}
+            >
+              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("emailAuth.signIn")}
+            </Button>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => { setOtpStage("idle"); setOtpCode(""); }}
+                className="text-[12px] text-[#7A7068] hover:text-[#C4622D] min-h-11"
+              >
+                {t("emailAuth.changeEmail")}
+              </button>
+              <button
+                onClick={sendCode}
+                disabled={otpBusy}
+                className="text-[12px] font-medium text-[#C4622D] hover:underline min-h-11"
+              >
+                {t("emailAuth.resend")}
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => navigate("/partner/onboarding")}
           className="w-full text-center text-[13px] text-[#7A7068] hover:text-[#C4622D] pt-1"
