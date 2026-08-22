@@ -73,6 +73,9 @@ export default function StudioMap({
   const [ownShops, setOwnShops] = useState<Shop[]>([]);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [selected, setSelected] = useState<Shop | null>(null);
+  // Tap-to-locate feedback: the chip must never look dead.
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState(false);
 
   const allShops = shops ?? ownShops;
   const mapShops = allShops.filter(
