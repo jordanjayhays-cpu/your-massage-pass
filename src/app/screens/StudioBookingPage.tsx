@@ -830,19 +830,19 @@ export default function StudioBookingPage() {
                   {hoStep === 1 && (
                     <div>
                       <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
-                      <div className="mt-1.5 space-y-2 max-h-72 overflow-y-auto pr-0.5">
+                      <div className="mt-1.5 space-y-2 min-[900px]:space-y-3 max-h-72 overflow-y-auto pr-0.5">
                         <Link
                           to={quizHref}
-                          className="w-full text-left rounded-xl border border-dashed px-3 py-2.5 min-h-[56px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
+                          className="w-full text-left rounded-xl border border-dashed px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 min-h-[56px] min-[900px]:min-h-[68px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
                           style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
                         >
-                          <Sparkles size={16} style={{ color: "#B85C38", flexShrink: 0 }} />
+                          <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
                           <span className="min-w-0">
-                            <span className="block text-sm font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
-                            <span className="block text-xs" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
+                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
+                            <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
                           </span>
                         </Link>
-                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2">
+                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2 min-[900px]:space-y-3">
                           {profile.services.map((s: any) => {
                             const selected = hoServiceId === s.id;
                             const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
@@ -854,20 +854,20 @@ export default function StudioBookingPage() {
                                 role="radio"
                                 aria-checked={selected}
                                 onClick={() => setHoServiceId(selected ? "" : s.id)}
-                                className="w-full text-left rounded-xl border px-3 py-2.5 min-h-[56px] flex items-start justify-between gap-3 motion-safe:transition"
+                                className="w-full text-left rounded-xl border px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 min-h-[56px] min-[900px]:min-h-[68px] flex items-start justify-between gap-3 motion-safe:transition"
                                 style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
                               >
                                 <span className="min-w-0">
-                                  <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
+                                  <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
                                   {serviceSecondaryName(s) && (
-                                    <span className="block text-xs" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                                    <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                                   )}
                                 </span>
                                 <span className="text-right flex-shrink-0">
                                   {Number.isFinite(price) && price > 0 && (
-                                    <span className="block text-sm font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                                    <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
                                   )}
-                                  {dur && <span className="block text-xs" style={{ color: "#8a7460" }}>{dur} min</span>}
+                                  {dur && <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{dur} min</span>}
                                 </span>
                               </button>
                             );
