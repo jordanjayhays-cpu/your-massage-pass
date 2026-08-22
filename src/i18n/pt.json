@@ -16,7 +16,9 @@
       "noCommitment": "Sem necessidade de conta",
       "cancel": "Exploração gratuita",
       "launch": "Preços reais dos estúdios"
-    }
+    },
+    "studiosCount": "Mais de {{count}} estúdios em Madrid",
+    "description": "Mais de {{count}} estúdios com preços reais, em português. Se um estúdio apenas aceitar WhatsApp, escrevemos a sua mensagem em espanhol por si."
   },
   "stats": {
     "studios": "Estúdios em Madrid",
@@ -672,7 +674,7 @@
       "studioCard": {
         "label": "Para estúdios",
         "title": "Tem um estúdio? Provavelmente já está listado.",
-        "subtitle": "Criámos páginas para mais de 60 estúdios em Madrid. Reivindique o seu para gerir fotos, serviços e horários, e receba reservas diretamente. Gratuito, sem exclusividade.",
+        "subtitle": "Criámos páginas para mais de 50 estúdios em Madrid. Reivindique o seu para gerir fotos, serviços e horários, e receba reservas diretamente. Gratuito, sem exclusividade.",
         "button": "Reivindicar o seu estúdio"
       },
       "saveDetails": {

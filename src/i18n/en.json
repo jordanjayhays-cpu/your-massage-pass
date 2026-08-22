@@ -16,7 +16,9 @@
       "noCommitment": "No account needed",
       "cancel": "Free to browse",
       "launch": "Real studio prices"
-    }
+    },
+    "studiosCount": "{{count}}+ studios across Madrid",
+    "description": "{{count}}+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you."
   },
   "stats": {
     "studios": "Madrid studios",
@@ -672,7 +674,7 @@
       "studioCard": {
         "label": "For studios",
         "title": "Own a studio? You're probably already listed.",
-        "subtitle": "We built pages for 60+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.",
+        "subtitle": "We built pages for 50+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.",
         "button": "Claim your studio"
       },
       "saveDetails": {

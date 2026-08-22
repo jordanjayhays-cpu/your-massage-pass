@@ -16,7 +16,9 @@
       "noCommitment": "Sin registro",
       "cancel": "Explorar es gratis",
       "launch": "Precios reales"
-    }
+    },
+    "studiosCount": "{{count}}+ centros en Madrid",
+    "description": "Más de {{count}} centros de Madrid con precios reales y publicados: compara y elige sin llamar. Sin comisión de reserva — pagas en el centro."
   },
   "stats": {
     "studios": "Estudios en Madrid",
@@ -672,7 +674,7 @@
       "studioCard": {
         "label": "Para centros",
         "title": "¿Tienes un centro? Probablemente ya estés listado.",
-        "subtitle": "Hemos creado páginas para más de 60 centros de Madrid. Reclama el tuyo para gestionar fotos, servicios y horarios, y recibir reservas directamente. Gratis, sin exclusividad.",
+        "subtitle": "Hemos creado páginas para más de 50 centros de Madrid. Reclama el tuyo para gestionar fotos, servicios y horarios, y recibir reservas directamente. Gratis, sin exclusividad.",
         "button": "Reclama tu centro"
       },
       "saveDetails": {

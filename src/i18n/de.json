@@ -16,7 +16,9 @@
       "noCommitment": "Kein Konto erforderlich",
       "cancel": "Kostenlos stöbern",
       "launch": "Echte Studiopreise"
-    }
+    },
+    "studiosCount": "Über {{count}} Studios in ganz Madrid",
+    "description": "Über {{count}} Studios mit echten Preisen, auf Deutsch. Wenn ein Studio nur WhatsApp nutzt, schreiben wir deine Nachricht für dich auf Spanisch."
   },
   "stats": {
     "studios": "Studios in Madrid",
@@ -672,7 +674,7 @@
       "studioCard": {
         "label": "Für Studios",
         "title": "Besitzen Sie ein Studio? Sie sind wahrscheinlich bereits gelistet.",
-        "subtitle": "Wir haben Seiten für über 60 Studios in Madrid erstellt. Beanspruchen Sie Ihr Profil, um Fotos, Dienstleistungen und Öffnungszeiten zu verwalten und Buchungen direkt entgegenzunehmen. Kostenlos, ohne Exklusivität.",
+        "subtitle": "Wir haben Seiten für über 50 Studios in Madrid erstellt. Beanspruchen Sie Ihr Profil, um Fotos, Dienstleistungen und Öffnungszeiten zu verwalten und Buchungen direkt entgegenzunehmen. Kostenlos, ohne Exklusivität.",
         "button": "Studio beanspruchen"
       },
       "saveDetails": {

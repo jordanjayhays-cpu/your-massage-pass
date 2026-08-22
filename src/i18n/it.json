@@ -16,7 +16,9 @@
       "noCommitment": "Nessun account necessario",
       "cancel": "Consultazione gratuita",
       "launch": "Prezzi reali degli studio"
-    }
+    },
+    "studiosCount": "Oltre {{count}} centri in tutta Madrid",
+    "description": "Oltre {{count}} centri con prezzi reali, in italiano. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te."
   },
   "stats": {
     "studios": "Studio a Madrid",
@@ -672,7 +674,7 @@
       "studioCard": {
         "label": "Per gli studi",
         "title": "Hai uno studio? Probabilmente sei già in elenco.",
-        "subtitle": "Abbiamo creato pagine per oltre 60 studi di Madrid. Rivendica la tua per gestire foto, servizi e orari, e ricevere prenotazioni dirette. Gratuito, senza esclusiva.",
+        "subtitle": "Abbiamo creato pagine per oltre 50 studi di Madrid. Rivendica la tua per gestire foto, servizi e orari, e ricevere prenotazioni dirette. Gratuito, senza esclusiva.",
         "button": "Rivendica il tuo studio"
       },
       "saveDetails": {
