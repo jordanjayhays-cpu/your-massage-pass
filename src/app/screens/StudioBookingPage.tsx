@@ -1426,6 +1426,7 @@ export default function StudioBookingPage() {
 
         {/* 3. Time */}
         {service && date && (
+          <div ref={timeRef}>
           <Section step="3" title="Pick a time" titleEs="Elige una hora">
             {times.length === 0 ? (
               <p className="text-sm text-gray-400">Fully booked that day. Try another date.</p>
