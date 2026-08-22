@@ -1358,17 +1358,17 @@ export default function StudioBookingPage() {
                     />
                   )}
                   {rebookMode && service && (
-                    <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 mb-3">
+                    <div className="rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 min-[900px]:p-5 mb-3 min-[900px]:mb-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
+                        <div className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[11px] min-[900px]:text-xs font-semibold">
                           <Sparkles size={11} /> Your usual booking
                         </div>
-                        <button onClick={() => setRebookMode(false)} className="text-xs font-semibold text-[#C4622D] underline underline-offset-2">
+                        <button onClick={() => setRebookMode(false)} className="text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline underline-offset-2">
                           Change / Cambiar
                         </button>
                       </div>
-                      <p className="font-semibold text-gray-900">{servicePrimaryName(service)}</p>
-                      {serviceSecondaryName(service) && <p className="text-xs text-gray-500">{serviceSecondaryName(service)}</p>}
+                      <p className="font-semibold text-gray-900 min-[900px]:text-base">{servicePrimaryName(service)}</p>
+                      {serviceSecondaryName(service) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(service)}</p>}
                     </div>
                   )}
                   {!rebookMode && (
