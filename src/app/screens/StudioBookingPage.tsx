@@ -156,8 +156,8 @@ export default function StudioBookingPage() {
     if (!profile?.partner) return;
     const p = profile.partner as any;
     const prevTitle = document.title;
-    document.title = `${p.business_name}, Masajes en Madrid | Massage Club`;
-    const desc = `Reserva en ${p.business_name}${p.address ? `, ${p.address}` : ""}. Menú y precios reales${p.price_from ? `, desde ${p.price_from}€` : ""}. Massage Club Madrid.`;
+    document.title = `${p.business_name} · Massage Club`;
+    const desc = `${p.business_name}${p.address ? `, ${p.address}` : ", Madrid"}. Book a massage in English or Spanish${p.price_from ? `, from ${p.price_from}€` : ""}. Massage Club Madrid.`;
     let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (!meta) {
       meta = document.createElement("meta");
