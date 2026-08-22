@@ -911,11 +911,13 @@ export default function StudioBookingPage() {
   }
 
 
-  // Name + at least one way to reach them (phone OR email). Phone is no longer required.
+  // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
 
   const hasContact = !!(phone.trim() || email.trim());
-  const canBook = !!(service && date && time && name.trim() && hasContact);
-  // A signed-in customer with a name and a way to be reached never sees the form again.
+  // The CTA only needs a service, a day and a time. Details are asked in a dialog.
+  const canRequest = !!(service && date && time);
+  const canBook = !!(canRequest && name.trim() && hasContact);
+  // A signed-in customer with a name and a way to be reached skips the dialog.
   const detailsKnown = !!(userId && name.trim() && hasContact);
 
   // What is still missing, in the order the page asks for it.
@@ -923,8 +925,6 @@ export default function StudioBookingPage() {
     !service && { key: "service", en: "a service", es: "un servicio" },
     !date && { key: "date", en: "a day", es: "un día" },
     !time && { key: "time", en: "a time", es: "una hora" },
-    !name.trim() && { key: "name", en: "your name", es: "tu nombre" },
-    !hasContact && { key: "contact", en: "an email or phone", es: "un email o teléfono" },
   ].filter(Boolean) as { key: string; en: string; es: string }[];
   const stepsLeft = missing.length;
   const stepsLeftLabels = {
@@ -937,12 +937,18 @@ export default function StudioBookingPage() {
     if (focus) window.setTimeout(() => focus.focus({ preventScroll: true }), 350);
   };
 
-  // The CTA is always clickable. If something is missing it takes you there.
+  // The CTA is always clickable. Missing choices scroll into view, otherwise
+  // we either submit straight away or open the details dialog.
   const handleCta = () => {
-    if (canBook) {
+    if (canRequest) {
       setCtaHint(null);
-      setHighlight(null);
-      handleBook();
+      if (detailsKnown) {
+        handleBook();
+      } else {
+        setDialogError(null);
+        setDetailsOpen(true);
+        window.setTimeout(() => nameRef.current?.focus({ preventScroll: true }), 80);
+      }
       return;
     }
     const first = missing[0];
@@ -953,20 +959,26 @@ export default function StudioBookingPage() {
     } else if (first.key === "date") {
       setCtaHint({ en: "Pick a day for your massage", es: "Elige un día para tu masaje" });
       scrollTo(dateRef.current);
-    } else if (first.key === "time") {
+    } else {
       setCtaHint({ en: "Pick a time for your massage", es: "Elige una hora para tu masaje" });
       scrollTo(timeRef.current);
-    } else {
-      setContactExpanded(true);
-      setHighlight(first.key === "name" ? "name" : "contact");
-      setCtaHint({
-        en: "Add your name and an email or phone so the studio can reach you",
-        es: "Añade tu nombre y un email o teléfono para que el estudio pueda contactarte",
-      });
-      window.setTimeout(() => {
-        scrollTo(detailsRef.current, first.key === "name" ? nameRef.current : emailRef.current);
-      }, 40);
     }
+  };
+
+  // Confirm button inside the details dialog.
+  const confirmDetails = () => {
+    if (!name.trim()) {
+      setDialogError({ en: "Add your name so the studio knows who is coming", es: "Añade tu nombre para que el estudio sepa quién viene" });
+      nameRef.current?.focus();
+      return;
+    }
+    if (!hasContact) {
+      setDialogError({ en: "Add an email or phone so the studio can reach you", es: "Añade un email o teléfono para que el estudio pueda contactarte" });
+      emailRef.current?.focus();
+      return;
+    }
+    setDialogError(null);
+    handleBook();
   };
 
   const handleBook = async () => {
