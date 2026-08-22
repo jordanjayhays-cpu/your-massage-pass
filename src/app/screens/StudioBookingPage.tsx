@@ -1400,11 +1400,11 @@ export default function StudioBookingPage() {
 
         {error && <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
-        {/* Sticky CTA — always reachable while scrolling */}
+        {/* Sticky CTA — always clickable, tells you exactly what is missing */}
         <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#FAF6F1] via-[#FAF6F1] to-transparent">
-          <button onClick={handleBook} disabled={!canBook || submitting}
-            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 transition ${
-              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-gray-200 text-gray-400"
+          <button onClick={handleCta} disabled={submitting}
+            className={`w-full h-14 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+              canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#7a5c46]"
             }`}>
             {submitting ? (
               <><Loader2 size={18} className="animate-spin" /> Booking…</>
@@ -1420,6 +1420,22 @@ export default function StudioBookingPage() {
               </span>
             )}
           </button>
+          {ctaHint ? (
+            <p role="alert" className="mt-2 text-sm text-center font-medium text-[#B03A2E]">
+              {ctaHint.en}
+              <span className="block text-xs font-normal text-[#8a7460]">{ctaHint.es}</span>
+            </p>
+          ) : stepsLeft > 0 ? (
+            <p className="mt-2 text-xs text-center text-[#8a7460]">
+              {stepsLeft} {stepsLeft === 1 ? "step" : "steps"} left: {stepsLeftLabels.en}
+              <span className="block">{stepsLeft} {stepsLeft === 1 ? "paso" : "pasos"}: {stepsLeftLabels.es}</span>
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-center text-[#8a7460]">
+              All set. The studio confirms your time.
+              <span className="block">Todo listo. El estudio confirma tu hora.</span>
+            </p>
+          )}
         </div>
         </div>
 
