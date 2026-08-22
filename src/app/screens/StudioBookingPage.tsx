@@ -1703,8 +1703,8 @@ export default function StudioBookingPage() {
 
           {/* RIGHT: running summary, desktop only */}
           <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-[2px] text-[#C4622D] mb-1">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
+              <p className="text-xs min-[900px]:text-sm font-bold uppercase tracking-[2px] text-[#C4622D] mb-1 min-[900px]:mb-2">
                 Your booking <span className="font-normal text-[#B3A597]">/ Tu reserva</span>
               </p>
               <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
@@ -1741,22 +1741,22 @@ export default function StudioBookingPage() {
                     message_text: bookingWaMsg,
                   });
                 }}
-                className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] px-6 py-2 rounded-2xl font-semibold motion-safe:transition ${
+                className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
                   partner.status === "active"
                     ? "border border-[#C4622D] text-[#C4622D] bg-white hover:bg-[#FAF6F1]"
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
               >
-                <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Ask on WhatsApp</span>
-                <span className="text-xs font-normal opacity-90">Preguntar por WhatsApp</span>
+                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> Ask on WhatsApp</span>
+                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Preguntar por WhatsApp</span>
               </a>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 min-[900px]:gap-2.5">
               {(partner.languages || []).slice(0, 4).map((l: string) => (
-                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(l)}</span>
+                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs min-[900px]:text-sm text-gray-600">{tagLabel(l)}</span>
               ))}
               {(partner.amenities || []).slice(0, 4).map((a: string) => (
-                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs text-gray-600">{tagLabel(a)}</span>
+                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs min-[900px]:text-sm text-gray-600">{tagLabel(a)}</span>
               ))}
             </div>
           </aside>
