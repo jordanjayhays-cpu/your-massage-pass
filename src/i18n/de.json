@@ -687,7 +687,24 @@
         "title": "Daten für schnellere Buchung speichern",
         "button": "Speichern"
       },
-      "feedback": "Feedback teilen — helfen Sie uns beim Aufbau"
+      "feedback": "Feedback teilen — helfen Sie uns beim Aufbau",
+      "emailAuth": {
+        "or": "Oder",
+        "continueWithEmail": "Mit E-Mail fortfahren",
+        "codeSent": "Wir haben einen 6-stelligen Code an {{email}} gesendet",
+        "codeLabel": "6-stelliger Code",
+        "signIn": "Anmelden",
+        "resend": "Code erneut senden",
+        "changeEmail": "Andere E-Mail verwenden",
+        "errors": {
+          "wrongCode": "Falscher Code, bitte erneut versuchen",
+          "expired": "Code abgelaufen, fordere einen neuen an",
+          "noActiveCode": "Kein aktiver Code. Fordere einen neuen an.",
+          "tooManyAttempts": "Zu viele Versuche, fordere einen neuen Code an",
+          "rateLimited": "Zu viele Codes angefordert. Bitte warte ein paar Minuten.",
+          "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
+        }
+      }
     },
     "handoff": {
       "notRegistered": "Dieses Studio ist noch nicht bei Massage Club registriert.",

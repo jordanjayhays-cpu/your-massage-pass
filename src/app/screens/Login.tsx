@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight } from "lucide-react";
+import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { saveLead, supabase } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import { useStudioCount } from "@/lib/studioCount";
+
 
 const USER_KEY = "mm-user";
 
@@ -25,7 +26,7 @@ const HERO_IMG =
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&display=swap";
 
 export default function Login() {
-  const { t } = useTranslation(undefined, { keyPrefix: "app.login" });
+  const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.login" });
   const studioCount = useStudioCount();
   const navigate = useNavigate();
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
@@ -33,19 +34,100 @@ export default function Login() {
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
   const [loading, setLoading] = useState(false);
 
+  // Email code (OTP) sign-in
+  const [otpEmail, setOtpEmail] = useState(getStoredUser()?.email ?? "");
+  const [otpStage, setOtpStage] = useState<"idle" | "code">("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
+  const handlingOtp = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!cancelled && session) navigate("/studios", { replace: true });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") navigate("/studios", { replace: true });
+      if (event === "SIGNED_IN" && !handlingOtp.current) navigate("/studios", { replace: true });
     });
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
   }, [navigate]);
+
+  const otpErrorMessage = (raw: string, status?: number) => {
+    if (status === 429 || /too_many_requests|rate/i.test(raw)) return t("emailAuth.errors.rateLimited");
+    if (/expired/i.test(raw)) return t("emailAuth.errors.expired");
+    if (/no_active_code|no active/i.test(raw)) return t("emailAuth.errors.noActiveCode");
+    if (/too_many_attempts|attempts/i.test(raw)) return t("emailAuth.errors.tooManyAttempts");
+    if (/invalid|wrong|incorrect/i.test(raw)) return t("emailAuth.errors.wrongCode");
+    return t("emailAuth.errors.generic");
+  };
+
+  const sendCode = async () => {
+    if (!otpEmail.includes("@")) {
+      toast.error(t("toasts.invalidEmail"));
+      return;
+    }
+    setOtpBusy(true);
+    const lang = (i18n.resolvedLanguage || "en").slice(0, 2);
+    const { data, error } = await supabase.functions.invoke("email-auth", {
+      body: { action: "send", email: otpEmail.trim().toLowerCase(), lang },
+    });
+    setOtpBusy(false);
+    if (error) {
+      const status = (error as any)?.context?.status;
+      toast.error(otpErrorMessage(`${(error as any)?.message ?? ""} ${JSON.stringify(data ?? {})}`, status));
+      return;
+    }
+    setOtpCode("");
+    setOtpStage("code");
+    toast.success(t("emailAuth.codeSent", { email: otpEmail.trim().toLowerCase() }));
+  };
+
+  const verifyCode = async () => {
+    if (otpCode.length !== 6) return;
+    setOtpBusy(true);
+    handlingOtp.current = true;
+    try {
+      const { data, error } = await supabase.functions.invoke("email-auth", {
+        body: { action: "verify", email: otpEmail.trim().toLowerCase(), code: otpCode },
+      });
+      if (error || !(data as any)?.token_hash) {
+        const status = (error as any)?.context?.status;
+        toast.error(otpErrorMessage(`${(error as any)?.message ?? ""} ${JSON.stringify(data ?? {})}`, status));
+        return;
+      }
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: (data as any).token_hash,
+      });
+      if (otpError) {
+        toast.error(otpErrorMessage(otpError.message));
+        return;
+      }
+      // New email users have no name yet: send them to the profile step first.
+      let needsName = true;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+          needsName = !((profile as any)?.first_name || (profile as any)?.full_name || metaName);
+        }
+      } catch {
+        needsName = false;
+      }
+      navigate(needsName ? "/profile" : "/studios", { replace: true });
+    } finally {
+      handlingOtp.current = false;
+      setOtpBusy(false);
+    }
+  };
 
   const handleEmailContinue = async () => {
     if (!email.includes("@")) {
@@ -62,6 +144,7 @@ export default function Login() {
     });
     if (error) toast.error(t("toasts.googleError"));
   };
+
 
   const handleFinalContinue = async () => {
     if (!name.trim()) {
@@ -236,6 +319,82 @@ export default function Login() {
           </svg>
           {t("actions.google")}
         </Button>
+
+        {/* Email code sign-in */}
+        <div className="flex items-center gap-3 pt-1">
+          <div className="h-px flex-1 bg-[#E5DDD3]" />
+          <span className="text-[11px] uppercase tracking-[0.2em] text-[#9E9387]">{t("emailAuth.or")}</span>
+          <div className="h-px flex-1 bg-[#E5DDD3]" />
+        </div>
+
+        {otpStage === "idle" ? (
+          <div className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+            <label htmlFor="mc-otp-email" className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068] block">
+              {t("emailAuth.continueWithEmail")}
+            </label>
+            <input
+              id="mc-otp-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={otpEmail}
+              onChange={(e) => setOtpEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") sendCode(); }}
+              placeholder={t("emailStep.placeholder")}
+              className="w-full h-12 rounded-xl bg-[#F7F4F0] border border-[#E5DDD3] px-4 text-[#211C1A] placeholder:text-[#9E9387] focus:outline-none focus:ring-2 focus:ring-[#C4622D]/40"
+            />
+            <Button
+              onClick={sendCode}
+              disabled={otpBusy}
+              className="w-full h-12 rounded-full text-base font-medium"
+              style={{ background: "#211C1A", color: "#F7F4F0" }}
+            >
+              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" />{t("emailAuth.continueWithEmail")}</>}
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+            <p className="text-[13px] text-[#7A7068] leading-relaxed">
+              {t("emailAuth.codeSent", { email: otpEmail.trim().toLowerCase() })}
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={(e) => { if (e.key === "Enter") verifyCode(); }}
+              placeholder="000000"
+              aria-label={t("emailAuth.codeLabel")}
+              className="w-full h-16 rounded-xl bg-[#F7F4F0] border border-[#E5DDD3] text-center text-[30px] tracking-[0.45em] font-medium text-[#211C1A] placeholder:text-[#D6CCC0] focus:outline-none focus:ring-2 focus:ring-[#C4622D]/40"
+            />
+            <Button
+              onClick={verifyCode}
+              disabled={otpBusy || otpCode.length !== 6}
+              className="w-full h-12 rounded-full text-base font-medium"
+              style={{ background: "#C4622D", color: "#F7F4F0" }}
+            >
+              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("emailAuth.signIn")}
+            </Button>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => { setOtpStage("idle"); setOtpCode(""); }}
+                className="text-[12px] text-[#7A7068] hover:text-[#C4622D] min-h-11"
+              >
+                {t("emailAuth.changeEmail")}
+              </button>
+              <button
+                onClick={sendCode}
+                disabled={otpBusy}
+                className="text-[12px] font-medium text-[#C4622D] hover:underline min-h-11"
+              >
+                {t("emailAuth.resend")}
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => navigate("/partner/onboarding")}
           className="w-full text-center text-[13px] text-[#7A7068] hover:text-[#C4622D] pt-1"

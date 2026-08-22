@@ -687,7 +687,24 @@
         "title": "Save details for faster booking",
         "button": "Save"
       },
-      "feedback": "Share feedback — help us build this"
+      "feedback": "Share feedback — help us build this",
+      "emailAuth": {
+        "or": "Or",
+        "continueWithEmail": "Continue with email",
+        "codeSent": "We emailed a 6-digit code to {{email}}",
+        "codeLabel": "6-digit code",
+        "signIn": "Sign in",
+        "resend": "Resend code",
+        "changeEmail": "Use another email",
+        "errors": {
+          "wrongCode": "Wrong code, try again",
+          "expired": "Code expired, request a new one",
+          "noActiveCode": "No active code. Request a new one.",
+          "tooManyAttempts": "Too many attempts, request a new code",
+          "rateLimited": "Too many codes requested. Please wait a few minutes.",
+          "generic": "Something went wrong. Please try again."
+        }
+      }
     },
     "handoff": {
       "notRegistered": "This studio isn't on Massage Club yet.",

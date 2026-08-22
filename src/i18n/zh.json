@@ -687,7 +687,24 @@
         "title": "保存详情以便更快捷地预订",
         "button": "保存"
       },
-      "feedback": "分享反馈 —— 帮助我们完善项目"
+      "feedback": "分享反馈 —— 帮助我们完善项目",
+      "emailAuth": {
+        "or": "或",
+        "continueWithEmail": "使用邮箱继续",
+        "codeSent": "我们已将 6 位验证码发送至 {{email}}",
+        "codeLabel": "6 位验证码",
+        "signIn": "登录",
+        "resend": "重新发送验证码",
+        "changeEmail": "使用其他邮箱",
+        "errors": {
+          "wrongCode": "验证码错误，请重试",
+          "expired": "验证码已过期，请重新获取",
+          "noActiveCode": "没有有效的验证码，请重新获取。",
+          "tooManyAttempts": "尝试次数过多，请重新获取验证码",
+          "rateLimited": "请求验证码过于频繁，请稍等几分钟。",
+          "generic": "出错了，请重试。"
+        }
+      }
     },
     "handoff": {
       "notRegistered": "该工作室尚未入驻 Massage Club。",
