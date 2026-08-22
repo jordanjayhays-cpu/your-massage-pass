@@ -123,6 +123,8 @@ export interface Shop {
   walkingText?: string;
   // raw partner data (for detail view)
   partner_id: string;
+  /** Clean URL slug for the studio page (book.massageclub.io/{slug}). */
+  slug?: string | null;
   partner_services: ShopService[];
   partner_availability?: Record<string, string[]>;
   google_rating?: number | null;
@@ -183,7 +185,7 @@ export async function fetchShops(): Promise<Shop[]> {
     const types = [...new Set(svcs.map(s => s.type).filter(Boolean))];
     const prices = svcs.map(s => Number(s.price)).filter(n => !isNaN(n));
     shops.push({
-      id: p.id,                                   // studio id → routes to /s/<id>
+      id: p.id,                                   // studio id → resolved to /{slug}
       name: p.business_name || "Studio",
       studio: p.business_name || "Studio",
       district: p.city ?? "Madrid",
@@ -209,6 +211,7 @@ export async function fetchShops(): Promise<Shop[]> {
       services: svcs.map(s => s.name || "Massage"),
       basePrice: prices.length ? Math.min(...prices) : undefined,
       partner_id: p.id,
+      slug: p.slug ?? null,
       partner_services: svcs,
       partner_availability: availabilityByPartner[p.id],
       google_rating: p.google_rating ?? null,

@@ -81,7 +81,7 @@ export default function PartnerDashboard() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error(t("partner.dashboard.pleaseSignIn")); navigate("/partner/login"); return; }
-    setShareUrl(`https://book.massageclub.io/s/${user.id}`);
+    setShareUrl(`https://book.massageclub.io/${user.id}`);
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
       supabase.from("partners").select("business_name, address, google_calendar_connected, google_calendar_id, auto_confirm_bookings, slug").eq("id", user.id).single(),
@@ -89,7 +89,7 @@ export default function PartnerDashboard() {
     ]);
 
     const slug = (partnerData as { slug?: string } | null)?.slug?.trim();
-    setShareUrl(slug ? `https://book.massageclub.io/${slug}` : `https://book.massageclub.io/s/${user.id}`);
+    setShareUrl(`https://book.massageclub.io/${slug || user.id}`);
     setPartner(partnerData);
     setBookings(bookingsData ?? []);
     setLoading(false);

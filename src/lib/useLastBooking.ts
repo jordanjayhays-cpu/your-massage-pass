@@ -21,7 +21,7 @@ export type LastBooking = {
 
 /** Deep link that reopens the booking wizard on "Day and time" with the same service. */
 export const bookAgainHref = (b: LastBooking) =>
-  `/s/${b.studioKey}?rebook=${b.id}&step=2`;
+  `/${b.studioKey}?rebook=${b.id}&step=2`;
 
 const firstNameFrom = (...candidates: (string | null | undefined)[]) => {
   for (const c of candidates) {

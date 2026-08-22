@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import GuideLayout, { GuideLinks } from "./GuideLayout";
 import StudioStatusBadge from "@/app/components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
+import { studioPath } from "@/lib/studioHref";
 
 const SITE = "https://book.massageclub.io";
 
@@ -102,7 +103,7 @@ export const NEIGHBOURHOODS: { path: string; label: string }[] = [
 ];
 
 function studioHref(s: NeighbourhoodStudio) {
-  return s.slug ? `/${s.slug}` : `/s/${s.id}`;
+  return studioPath(s);
 }
 
 export default function NeighbourhoodPage({

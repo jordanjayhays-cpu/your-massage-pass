@@ -15,6 +15,7 @@ import {
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import StudioMap from "../components/StudioMap";
 import type { Shop } from "@/lib/supabase";
+import { studioPath } from "@/lib/studioHref";
 
 const ORIGIN_KEY = "mc_quiz_origin";
 
@@ -130,7 +131,7 @@ export default function Quiz() {
     );
   };
 
-  const studioHref = (s: { slug: string | null; id: string }) => `/s/${s.slug || s.id}`;
+  const studioHref = (s: { slug: string | null; id: string }) => studioPath(s);
 
   // Pins for the mini discovery map, built only from real coordinates.
   const mapShops = nearby.map((s) => ({
@@ -219,7 +220,7 @@ export default function Quiz() {
                     shops={mapShops}
                     heightClass="h-[200px]"
                     showSelectedCard={false}
-                    onSelect={(shop) => navigate(`/s/${(shop as any).partner_id || shop.id}`)}
+                    onSelect={(shop) => navigate(studioPath(shop as any))}
                   />
                 )}
 
@@ -300,7 +301,7 @@ export default function Quiz() {
             {origin && (
               <Button
                 variant="outline"
-                onClick={() => navigate(`/s/${origin.slug}`)}
+                onClick={() => navigate(studioPath(origin as any))}
                 className="w-full h-auto min-h-11 py-2 whitespace-normal"
               >
                 {originOffers

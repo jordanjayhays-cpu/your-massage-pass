@@ -14,6 +14,7 @@ import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { BookAgainChip } from "../components/BookAgain";
+import { studioPath } from "@/lib/studioHref";
 
 
 
@@ -97,7 +98,7 @@ export default function MassageList() {
 
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
     if ("partner_id" in m && (m as Shop).partner_id) {
-      navigate(`/s/${(m as Shop).partner_id}`);
+      navigate(studioPath(m as Shop));
       return;
     }
     set({ massageId: m.id, shop: m });
