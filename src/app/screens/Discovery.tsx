@@ -4,6 +4,7 @@ import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MASSAGE_GUIDE } from "../data";
 import StudioMap from "../components/StudioMap";
+import { studioPath } from "@/lib/studioHref";
 
 export default function Discovery() {
   const navigate = useNavigate();
@@ -55,7 +56,7 @@ export default function Discovery() {
           heading={geoState === "ready" ? t("app.discovery.nearbyTitle") : t("app.discovery.nearbyTitleMadrid")}
           heightClass="h-[260px]"
           onGeoStateChange={setGeoState}
-          onSelect={(shop) => navigate(`/s/${shop.partner_id}`)}
+          onSelect={(shop) => navigate(studioPath(shop))}
         />
 
         {/* Mid-page quiz entry point */}

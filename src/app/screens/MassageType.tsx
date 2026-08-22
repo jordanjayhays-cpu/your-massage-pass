@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MASSAGE_GUIDE, MASSAGE_TYPES, MASSAGES, type MassageGuide } from "../data";
 import { fetchShops, type Shop } from "@/lib/supabase";
 import { useBooking } from "../BookingContext";
+import { studioPath } from "@/lib/studioHref";
 
 type AnyStudio = Shop | (typeof MASSAGES)[number];
 
@@ -109,7 +110,7 @@ export default function MassageTypePage() {
 
   const handleBook = (s: AnyStudio) => {
     if ((s as Shop).partner_id) {
-      navigate(`/s/${(s as Shop).partner_id}`);
+      navigate(studioPath(s as Shop));
       return;
     }
     set({ massageId: (s as any).id, shop: s as any });
