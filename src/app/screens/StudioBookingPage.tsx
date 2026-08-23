@@ -143,8 +143,8 @@ export default function StudioBookingPage() {
   useEffect(() => { saveSpokenLangs(spokenLangs); }, [spokenLangs]);
   useEffect(() => {
     clarityEvent("studio_view");
-    trackEvent("studio_view", { slug: partner?.slug || studioId });
-  }, [studioId, partner?.slug]);
+    trackEvent("studio_view", { slug: studioId });
+  }, [studioId]);
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
@@ -1142,7 +1142,7 @@ export default function StudioBookingPage() {
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
     // A step completes whenever we move forward from it.
-    if (n > step) trackEvent("wizard_step", { slug: partner?.slug || studioId, meta: { step: BOOKING_STEPS[step - 1]?.en ?? String(step) } });
+    if (n > step) trackEvent("wizard_step", { slug: partner?.slug || studioId, meta: { step: BOOKING_STEPS[step - 1]?.label ?? String(step) } });
     setStep(n);
     setMaxStep(m => Math.max(m, n));
     setStepError(null);
