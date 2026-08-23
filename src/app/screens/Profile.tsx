@@ -893,7 +893,7 @@ export default function Profile() {
 
         {/* Massage preferences card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2>
+          <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2><SavedTag section="prefs" /></div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.preferredPressure")}</label>
@@ -1061,7 +1061,7 @@ export default function Profile() {
         {/* Comfort & experience card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2>
+            <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2><SavedTag section="comfort" /></div>
             <p className="text-xs text-gray-500">{t("app.profile.comfort.subtitle")}</p>
           </div>
 
@@ -1159,7 +1159,7 @@ export default function Profile() {
 
         {/* Personal details card */}
         <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2>
+          <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2><SavedTag section="personal" /></div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1275,7 +1275,7 @@ export default function Profile() {
         {/* Health & safety card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2>
+            <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2><SavedTag section="health" /></div>
             <p className="text-xs text-gray-500">{t("app.profile.health.subtitle")}</p>
           </div>
 
