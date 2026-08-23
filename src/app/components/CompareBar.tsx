@@ -6,7 +6,7 @@ import { useCompare, comparePath } from "@/lib/compare";
  * Sticky bottom bar listing the studios picked for comparison.
  * Hidden when nothing is selected. Disabled until at least two are chosen.
  */
-export default function CompareBar() {
+export default function CompareBar({ className = "pb-3" }: { className?: string }) {
   const { items, remove, clear } = useCompare();
   const navigate = useNavigate();
   if (items.length === 0) return null;
@@ -14,7 +14,7 @@ export default function CompareBar() {
   const ready = items.length >= 2;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pointer-events-none">
+    <div className={`fixed inset-x-0 bottom-0 z-50 px-3 pointer-events-none ${className}`}>
       <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">

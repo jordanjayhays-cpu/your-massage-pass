@@ -479,7 +479,7 @@ export default function MassageList() {
         </div>
       </div>
 
-      <CompareBar />
+      <CompareBar className="pb-[86px]" />
     </div>
   );
 }
