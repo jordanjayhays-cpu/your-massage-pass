@@ -403,6 +403,26 @@ export default function MassageList() {
                           );
                         })()}
 
+                        {userLoc && typeof (m as any).lat === "number" && typeof (m as any).lng === "number" && (() => {
+                          const km = haversineKm(userLoc, m as any);
+                          const dirUrl = walkingDirectionsUrl(m as any, `${m.studio} Madrid`, userLoc);
+                          return (
+                            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2">
+                              <span>{distanceLabel(km, lang)}</span>
+                              {dirUrl && (
+                                <a
+                                  href={dirUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-primary font-semibold hover:underline"
+                                >
+                                  Directions / Cómo llegar
+                                </a>
+                              )}
+                            </p>
+                          );
+                        })()}
 
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                           <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
