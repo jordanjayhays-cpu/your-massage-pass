@@ -50,6 +50,17 @@ export function studioWhatsappUrl(number?: string | null, message = ""): string 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * The one helper every tel: link in the app should use.
+ * Strips spaces and punctuation, prefixes +34 for 9-digit Spanish numbers.
+ */
+export function telHref(number?: string | null): string | null {
+  const digits = waDigits(number);
+  if (!digits) return null;
+  return `tel:+${digits}`;
+}
+
+
 export type WhatsappPrefill = {
   studio: string;
   service?: string | null;   // SPANISH service name — the studio reads Spanish

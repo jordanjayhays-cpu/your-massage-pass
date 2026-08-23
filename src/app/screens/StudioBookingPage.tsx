@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill } from "@/app/lib/whatsapp";
+import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
+import MassageExplainerNote from "@/app/components/MassageExplainerNote";
+import { haversineKm, distanceLabel, walkingDirectionsUrl, loadSavedLocation, requestLocation, type LatLng } from "@/lib/distance";
 import { sendTrack } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
@@ -99,6 +101,8 @@ export default function StudioBookingPage() {
   const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
   // Wizard state for the unclaimed-studio WhatsApp handoff.
   const [hoStep, setHoStep] = useState(1);
+  // Distances are only ever shown once the visitor has granted location.
+  const [userLoc, setUserLoc] = useState<LatLng | null>(() => loadSavedLocation());
   const [hoMaxStep, setHoMaxStep] = useState(1);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
@@ -449,12 +453,24 @@ export default function StudioBookingPage() {
 
 
   const addons = profile?.addons ?? [];
-  const addonsTotal = addons
-    .filter((a: any) => addonNames.includes(a.name))
-    .reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
+  const selectedAddons = addons.filter((a: any) => addonNames.includes(a.name));
+  const addonsTotal = selectedAddons.reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
+  const addonsExtraMinutes = selectedAddons.reduce((sum: number, a: any) => sum + (Number(a.duration_extra) || 0), 0);
   const total = (Number(service?.price) || 0) + addonsTotal;
+  /** Confirm-step review lines. */
+  const addonSummary = selectedAddons.length
+    ? selectedAddons.map((a: any) => `${a.name} (+€${Number(a.price) || 0})`).join(", ")
+    : null;
+  const serviceSummary = service
+    ? [
+        servicePrimaryName(service),
+        Number(service.duration) > 0 ? `${Number(service.duration) + addonsExtraMinutes} min` : "",
+        Number(service.price) > 0 ? `€${Number(service.price)}` : "",
+      ].filter(Boolean).join(" · ")
+    : null;
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+
 
   if (loading) {
     return (
@@ -474,6 +490,36 @@ export default function StudioBookingPage() {
   }
 
   const { partner } = profile;
+
+  // ─── Distance and walking directions ───
+  const studioLatLng: LatLng | null =
+    (partner as any).latitude != null && (partner as any).longitude != null
+      ? { lat: Number((partner as any).latitude), lng: Number((partner as any).longitude) }
+      : null;
+  const distanceKm = userLoc && studioLatLng ? haversineKm(userLoc, studioLatLng) : null;
+  const directionsHref = walkingDirectionsUrl(studioLatLng, partner.address || partner.business_name, userLoc);
+  const distanceBlock = (dark: boolean) => (
+    <p className={`text-sm flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 ${dark ? "text-white/80" : ""}`} style={dark ? undefined : { color: "#5a4736" }}>
+      {distanceKm != null ? (
+        <span>{distanceLabel(distanceKm, siteLang === "es" ? "es" : "en")}</span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => requestLocation().then(loc => loc && setUserLoc(loc))}
+          className="underline underline-offset-2 font-semibold"
+        >
+          Show distance <span className="font-normal">/ Ver distancia</span>
+        </button>
+      )}
+      {directionsHref && (
+        <a href={directionsHref} target="_blank" rel="noreferrer" className={`underline underline-offset-2 font-semibold ${dark ? "" : "text-[#C4622D]"}`}>
+          Directions <span className="font-normal">/ Cómo llegar</span>
+        </a>
+      )}
+    </p>
+  );
+
+
 
   // ─── Confirmation screen ───
   if (done) {
@@ -549,7 +595,7 @@ export default function StudioBookingPage() {
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {gcal && (
-                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <CalendarDays size={18} /> Add to my calendar
                     </a>
                   )}
@@ -558,7 +604,7 @@ export default function StudioBookingPage() {
                       <MessageCircle size={18} /> Confirm on WhatsApp
                     </a>
                   ) : studioNumber ? (
-                    <a href={`tel:${studioNumber}`} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <Phone size={18} /> Llamar al estudio
                       <span className="block text-xs font-normal opacity-80">Call the studio</span>
                     </a>
@@ -578,7 +624,7 @@ export default function StudioBookingPage() {
                       <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
                     </a>
                   ) : studioNumber ? (
-                    <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                       <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
                       <span className="text-xs font-normal opacity-90">Call the studio</span>
                     </a>
@@ -590,7 +636,7 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {gcal && (
-                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <CalendarDays size={18} /> Add to my calendar
                     </a>
                   )}
@@ -755,7 +801,7 @@ export default function StudioBookingPage() {
     };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
-      <div className="min-h-screen p-4 relative" style={{ background: "#FAF6F1" }}>
+      <div className="min-h-screen p-4 pb-28 relative" style={{ background: "#FAF6F1" }}>
         <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
         <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden text-center min-[900px]:text-left" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
@@ -772,6 +818,7 @@ export default function StudioBookingPage() {
                 <span>{partner.address}</span>
               </p>
             )}
+            <div className="mb-2 flex justify-center min-[900px]:justify-start">{distanceBlock(false)}</div>
             {rating ? (
               <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
@@ -826,6 +873,11 @@ export default function StudioBookingPage() {
             {waLink && (
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
+                {/* The only Continue: one sticky bar, never an inline duplicate */}
+                {hoStep === 1 && <StickyContinue ready={!!hoServiceId} onNext={() => hoGo(2)} />}
+                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} />}
+                {hoStep === 3 && <StickyContinue ready onNext={() => hoGo(4)} />}
+
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
                   <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
                     {t("app.handoff.prefTitle")}
@@ -879,6 +931,13 @@ export default function StudioBookingPage() {
                           })}
                         </div>
                       </div>
+                      {hoService && (
+                        <MassageExplainerNote
+                          names={[(hoService as any).name_en, (hoService as any).name, (hoService as any).type]}
+                          className="mt-3"
+                        />
+                      )}
+
                       <WizardNav
                         onNext={() => hoGo(2)}
                         disabled={!hoServiceId}
@@ -1044,7 +1103,7 @@ export default function StudioBookingPage() {
             )}
             <div className="flex flex-col items-center gap-3 w-full">
               {!waLink && studioNumber && (
-                <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                   <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
                   <span className="text-xs font-normal opacity-90">{t("app.handoff.callStudioSub")}</span>
                 </a>
@@ -1302,6 +1361,7 @@ export default function StudioBookingPage() {
                   <MapPin size={12} /> {partner.address}
                 </p>
               )}
+              {distanceBlock(true)}
             </div>
           </div>
         </div>
@@ -1320,12 +1380,14 @@ export default function StudioBookingPage() {
         )}
         {step === 5 && (
           <StickyContinue
-            ready={canBook && !submitting}
+            ready={canBook}
+            busy={submitting}
             onNext={handleBook}
             label={`Request booking · €${total}`}
             labelEs="Solicitar reserva"
           />
         )}
+
 
         {/* Mobile: slim running summary under the stepper */}
         <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
@@ -1389,30 +1451,39 @@ export default function StudioBookingPage() {
                         </span>
                       </Link>
                       {profile.services.map(s => (
-                        <button key={s.id} onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
-                          className={`w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
-                            serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
-                          }`}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
-                              {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
-                              {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
-                              {Number(s.duration) > 0 && (
-                                <p className="text-xs min-[900px]:text-sm text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
-                              )}
+                        <div key={s.id}>
+                          <button onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
+                            className={`card-auto w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
+                              serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                            }`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
+                                {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
+                                {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
+                                {Number(s.duration) > 0 && (
+                                  <p className="text-xs min-[900px]:text-sm text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
+                                )}
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                {s.price != null && Number(s.price) > 0 && (
+                                  <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              {s.price != null && Number(s.price) > 0 && (
-                                <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
-                              )}
-                            </div>
-                          </div>
-                        </button>
+                          </button>
+                          {serviceId === s.id && (
+                            <MassageExplainerNote
+                              names={[(s as any).name_en, s.name, (s as any).type]}
+                              className="mt-2"
+                            />
+                          )}
+                        </div>
                       ))}
                       {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
                     </div>
                   )}
+
                 </Section>
                 <WizardNav
                   onNext={() => goStep(2)}
@@ -1555,21 +1626,30 @@ export default function StudioBookingPage() {
 
                   {addons.length > 0 && (
                     <>
-                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Add-ons <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Extras</span></p>
+                      <p className="text-xs font-semibold text-gray-500 mb-1 min-[900px]:text-xl min-[900px]:mb-1.5">Make it yours <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Hazlo tuyo</span></p>
+                      <p className="text-xs min-[900px]:text-sm text-gray-400 mb-2 min-[900px]:mb-3">Extras this studio offers. Added to your total.</p>
                       <div className="space-y-2 min-[900px]:space-y-3 mb-4 min-[900px]:mb-5">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
+                          const price = Number(a.price) || 0;
+                          const extra = Number(a.duration_extra) || 0;
                           return (
                             <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                              className={`w-full flex items-center justify-between p-3 min-[900px]:p-4 rounded-xl border-2 text-left transition ${
+                              aria-pressed={on}
+                              className={`card-auto w-full flex items-center justify-between gap-3 p-3 min-[900px]:p-4 rounded-xl border-2 text-left transition ${
                                 on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                               }`}>
-                              <div>
+                              <div className="min-w-0">
                                 <p className="text-sm font-medium text-gray-900 min-[900px]:text-base">{a.name}</p>
-                                <p className="text-xs text-gray-400 min-[900px]:text-sm">+€{a.price}</p>
+                                {a.name_es && a.name_es !== a.name && (
+                                  <p className="text-xs text-gray-500 min-[900px]:text-sm">{a.name_es}</p>
+                                )}
+                                <p className="text-xs text-[#C4622D] font-semibold min-[900px]:text-sm">
+                                  +€{price}{extra > 0 ? ` · +${extra} min` : ""}
+                                </p>
                               </div>
-                              <div className={`h-5 w-5 min-[900px]:h-6 min-[900px]:w-6 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
-                                {on && <Check size={12} className="text-white min-[900px]:size-4" />}
+                              <div className={`h-6 w-6 min-[900px]:h-7 min-[900px]:w-7 flex-shrink-0 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
+                                {on && <Check size={13} className="text-white min-[900px]:size-4" />}
                               </div>
                             </button>
                           );
@@ -1577,6 +1657,7 @@ export default function StudioBookingPage() {
                       </div>
                     </>
                   )}
+
 
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Notes for your therapist <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Notas</span></p>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)}
@@ -1610,12 +1691,11 @@ export default function StudioBookingPage() {
                       <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Añade al menos un email o teléfono.</span>
                     </p>
                     {!userId && !!email.trim() && (
-                      <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
+                      <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={createAccount}
                           onChange={e => setCreateAccount(e.target.checked)}
-                          className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
                         />
                         <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
                           Create my free Massage Club account
@@ -1628,19 +1708,7 @@ export default function StudioBookingPage() {
                         </span>
                       </label>
                     )}
-                    <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
 
-                      <input
-                        type="checkbox"
-                        checked={marketingOptIn}
-                        onChange={e => setMarketingOptIn(e.target.checked)}
-                        className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
-                      />
-                      <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
-                        Send me Massage Club news and offers (optional)
-                        <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
-                      </span>
-                    </label>
                     {stepError && (
                       <p role="alert" className="text-sm min-[900px]:text-base font-medium text-[#B03A2E]">
                         {stepError.en}
@@ -1664,47 +1732,44 @@ export default function StudioBookingPage() {
               <div>
                 <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
                   <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
-                    <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
-                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
-                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
-                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" />
-                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" />
-                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" />
-                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonNames.length ? addonNames.join(", ") : null} placeholder="None" />
-                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" />
-                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" />
-                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" />
+                    <SummaryRow label="Service" labelEs="Servicio" value={serviceSummary} placeholder="Pick a service" onChange={() => goStep(1)} />
+                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" onChange={() => goStep(2)} />
+                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" onChange={() => goStep(2)} />
+                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" onChange={() => goStep(3)} />
+                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" onChange={() => goStep(3)} />
+                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" onChange={() => goStep(3)} />
+                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonSummary} placeholder="None" onChange={() => goStep(3)} />
+                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" onChange={() => goStep(3)} />
+                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" onChange={() => goStep(4)} />
+                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" onChange={() => goStep(4)} />
                     <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
                   </div>
-                  {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-                  <button
-                    onClick={handleBook}
-                    disabled={submitting || !canBook}
-                    className={`mt-4 w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
-                      canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#9E8B78]"
-                    }`}
-                  >
-                    {submitting ? (
-                      <><Loader2 size={18} className="animate-spin" /> Booking</>
-                    ) : (
-                      <span className="flex flex-col items-center leading-tight">
-                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><CalendarDays size={18} /> Request booking · €{total}</span>
-                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar reserva</span>
+
+                  {/* Marketing opt-in lives here, under the contact summary, unchecked by default */}
+                  <label className="mt-4 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={marketingOptIn}
+                      onChange={e => setMarketingOptIn(e.target.checked)}
+                    />
+                    <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
+                      Email me Madrid massage deals and new studios (about once a month, no spam)
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
+                        Recíbe ofertas de masajes en Madrid y nuevos estudios (una vez al mes, sin spam)
                       </span>
-                    )}
-                  </button>
-                  <p className="mt-2 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
+                    </span>
+                  </label>
+
+                  {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+                  <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
                     The studio confirms your time. You pay at the studio.
                     <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
                   </p>
-                  <div className="pt-3">
-                    <button type="button" onClick={() => goStep(4)} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
-                      Back <span className="font-normal">/ Atrás</span>
-                    </button>
-                  </div>
+                  <WizardNav onBack={() => goStep(4)} />
                 </Section>
               </div>
             )}
+
           </div>
 
           {/* RIGHT: running summary, desktop only */}
@@ -1784,7 +1849,7 @@ export default function StudioBookingPage() {
                 );
               })()}
               {partner.phone && (
-                <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
+                <a href={telHref(partner.phone) || undefined} className="flex items-center gap-1 text-sm hover:text-gray-600">
                   <Phone size={14} /> Call
                 </a>
               )}
@@ -1919,24 +1984,28 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, labelEs,
-}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string }) {
-  if (!ready) return null;
+  ready, onNext, label, labelEs, busy,
+}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:flex min-[900px]:justify-center">
         <button
           type="button"
           onClick={onNext}
-          className="w-full min-[900px]:max-w-md min-[900px]:w-auto min-[900px]:px-16 h-13 min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          disabled={!ready || busy}
+          aria-disabled={!ready || busy}
+          className={`w-full min-[900px]:max-w-md min-[900px]:w-auto min-[900px]:px-16 min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+            ready && !busy ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
+          }`}
         >
-          <span className="min-[900px]:text-lg">{label || "Continue"}</span>
-          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{labelEs || "Continuar"}</span>
+          <span className="min-[900px]:text-lg">{busy ? "Booking" : label || "Continue"}</span>
+          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{busy ? "Reservando" : labelEs || "Continuar"}</span>
         </button>
       </div>
     </div>
   );
 }
+
 
 function Stepper({
   steps, current, maxReached, onGo,
@@ -1999,12 +2068,15 @@ function Stepper({
   );
 }
 
-/** Back link plus the primary Continue button used at the bottom of each step. */
+/**
+ * Step footer: Back, an optional Skip, and the "why is Continue not lit" hint.
+ * The Continue button itself lives ONLY in the sticky bar, never inline.
+ */
 function WizardNav({
-  onBack, onNext, disabled, label, labelEs, hint, hintEs, skip,
+  onBack, disabled, hint, hintEs, skip,
 }: {
   onBack?: () => void;
-  onNext: () => void;
+  onNext?: () => void;
   disabled?: boolean;
   label?: string;
   labelEs?: string;
@@ -2014,17 +2086,6 @@ function WizardNav({
 }) {
   return (
     <div className="pt-4 min-[900px]:pt-5 space-y-2 min-[900px]:space-y-3">
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={disabled}
-        className={`w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
-          disabled ? "bg-[#E7D9CB] text-[#9E8B78]" : "bg-[#C4622D] text-white shadow-lg"
-        }`}
-      >
-        <span className="min-[900px]:text-lg">{label || "Continue"}</span>
-        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{labelEs || "Continuar"}</span>
-      </button>
       {disabled && hint && (
         <p className="text-xs min-[900px]:text-sm text-center text-[#8a7460]">
           {hint}
@@ -2048,16 +2109,38 @@ function WizardNav({
 }
 
 
+
 /** One line of the live booking summary. */
-function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
+function SummaryRow({
+  label, labelEs, value, placeholder, onChange,
+}: {
+  label: string;
+  labelEs: string;
+  value: string | null;
+  placeholder: string;
+  /** When given, the row gets a small "Change / Cambiar" link back to that step. */
+  onChange?: () => void;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-xs min-[900px]:text-sm text-gray-400 flex-shrink-0">
         {label} <span className="text-[10px] min-[900px]:text-xs text-gray-300">{labelEs}</span>
       </span>
-      <span className={`text-sm min-[900px]:text-base text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
-        {value || placeholder}
+      <span className="flex items-baseline gap-2 min-w-0 justify-end">
+        <span className={`text-sm min-[900px]:text-base text-right ${value ? "font-semibold text-gray-900" : "text-gray-300"}`} style={{ overflowWrap: "anywhere" }}>
+          {value || placeholder}
+        </span>
+        {onChange && (
+          <button
+            type="button"
+            onClick={onChange}
+            className="flex-shrink-0 text-[11px] min-[900px]:text-xs font-semibold text-[#C4622D] underline underline-offset-2"
+          >
+            Change <span className="font-normal">/ Cambiar</span>
+          </button>
+        )}
       </span>
     </div>
   );
 }
+

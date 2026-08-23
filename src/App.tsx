@@ -21,6 +21,7 @@ import PartnerOnboarding from "./app/screens/PartnerOnboarding";
 import PartnerDashboard from "./app/screens/PartnerDashboard";
 import PartnerProfile from "./app/screens/PartnerProfile";
 import PartnerServices from "./app/screens/PartnerServices";
+import PartnerAddons from "./app/screens/PartnerAddons";
 import PartnerCalendar from "./app/screens/PartnerCalendar";
 import PartnerConnectCalendar from "./app/screens/PartnerConnectCalendar";
 import Survey from "./app/screens/Survey";
@@ -173,6 +174,7 @@ const App = () => (
           <Route path="/partner/dashboard" element={<PartnerDashboard />} />
           <Route path="/partner/profile" element={<PartnerProfile />} />
           <Route path="/partner/services" element={<PartnerServices />} />
+          <Route path="/partner/addons" element={<PartnerAddons />} />
           <Route path="/partner/calendar" element={<PartnerCalendar />} />
           <Route path="/partner/connect-calendar" element={<PartnerConnectCalendar />} />
           <Route path="/partner/photos" element={<PartnerPhotos />} />

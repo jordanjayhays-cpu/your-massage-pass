@@ -1,3 +1,4 @@
+import { telHref } from "@/app/lib/whatsapp";
 import { useMemo } from "react";
 
 function getParam(sp: URLSearchParams, key: string): string {
@@ -335,7 +336,7 @@ export default function BookingResult() {
                     <>
                       {" · "}
                       <a
-                        href={`tel:${ph.replace(/\s/g, "")}`}
+                        href={telHref(ph) || undefined}
                         style={{ color: "#B85C38", textDecoration: "underline" }}
                       >
                         {ph}

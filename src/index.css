@@ -175,3 +175,60 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Brand checkboxes ───────────────────────────────────────────────────────
+   Native checkboxes render browser blue and are too small to tap reliably.
+   Any `input[type="checkbox"]` in the app gets a 24px clay/cream box. */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border: 2px solid #E6DCCF;
+  border-radius: 7px;
+  background: #ffffff;
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+input[type="checkbox"]::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  transform: scale(0);
+  transition: transform 120ms ease-in-out;
+  box-shadow: inset 1em 1em #ffffff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+input[type="checkbox"]:checked {
+  background: #C4622D;
+  border-color: #C4622D;
+}
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid #B85C38;
+  outline-offset: 2px;
+}
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Font-scaling safety ────────────────────────────────────────────────────
+   Android system font scaling pushed text outside fixed-height cards.
+   Anything that opts into a minimum height must be allowed to grow. */
+.card-auto {
+  height: auto !important;
+  overflow-wrap: anywhere;
+}
+
+/* Room for the fixed bottom tab bar plus the device safe area. */
+.pb-tabbar {
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+}

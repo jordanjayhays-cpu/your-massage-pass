@@ -22,7 +22,7 @@ import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { clarityEvent } from "@/lib/clarity";
-import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill } from "@/app/lib/whatsapp";
+import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack } from "@/lib/siteVisit";
 
@@ -382,7 +382,7 @@ export default function ShopDetail() {
 
             <div className="grid grid-cols-2 gap-3 mt-4">
               <a
-                href={phone ? `tel:${phone}` : undefined}
+                href={telHref(phone) || undefined}
                 onClick={(e) => { if (!phone) e.preventDefault(); }}
                 className="h-12 rounded-full border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/50 transition shadow-soft"
               >

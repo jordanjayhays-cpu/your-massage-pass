@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import BottomNav, { shouldShowBottomNav } from "./components/BottomNav";
+import BottomNav from "./components/BottomNav";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 // Hide the floating language toggle on screens that render their own prominently
@@ -19,15 +19,18 @@ function shouldShowLangToggle(pathname: string) {
  */
 export function MobileFrame({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const navVisible = shouldShowBottomNav(pathname);
+
   const langVisible = shouldShowLangToggle(pathname);
   return (
     <div className="h-screen w-full bg-background flex flex-col relative overflow-hidden">
-      <div className={navVisible ? "flex-1 min-h-0 overflow-y-auto pb-[68px]" : "flex-1 min-h-0 overflow-y-auto"}>
+      {/* The tab bar is a real flex item, so every scroll area (and any sticky
+          Save bar inside it) ends above the tabs instead of sliding under them. */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="h-full w-full mx-auto md:max-w-5xl xl:max-w-6xl">
           {children}
         </div>
       </div>
+
       {langVisible && (
         <div className="absolute top-3 right-3 z-50 pointer-events-auto">
           <LanguageFlagToggle />
