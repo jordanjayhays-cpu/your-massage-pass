@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight, RefreshCw, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QUIZ, MASSAGE_TYPES, MassageType, MASSAGES } from "../data";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
@@ -96,6 +96,14 @@ export default function Quiz() {
     .sort((a, b) => b[1] - a[1])[0]?.[0];
   const winner = MASSAGE_TYPES.find((t) => t.id === winnerType);
   const matchingStudios = MASSAGES.filter((m) => m.type === winnerType);
+
+  // One quiz_finish per completed run, carrying the recommended type.
+  const finishLogged = useRef(false);
+  useEffect(() => {
+    if (!done || !winnerType || finishLogged.current) return;
+    finishLogged.current = true;
+    trackEvent("quiz_finish", { meta: { recommended: winnerType } });
+  }, [done, winnerType]);
 
   // Does the studio they came from also offer the recommended type?
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { trackEvent } from "@/lib/siteVisit";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Info, X, ExternalLink, Sparkles, Shirt, Droplet, Droplets, Footprints, Smile } from "lucide-react";
@@ -214,6 +215,10 @@ export default function MassageTypeInfoButton({
   const type = findMassageType(...names);
   if (!type) return null;
   const vitals = vitalsFor(type.slug);
+  const openSheet = () => {
+    trackEvent("info_sheet_open", { meta: { type: type.slug } });
+    setOpen(true);
+  };
 
   const stop = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -240,14 +245,14 @@ export default function MassageTypeInfoButton({
         aria-label={`About ${type.name.en} / Sobre ${type.name.es}`}
         onClick={(e) => {
           stop(e);
-          setOpen(true);
+          openSheet();
         }}
         onPointerDown={stop}
         onMouseDown={stop}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             stop(e);
-            setOpen(true);
+            openSheet();
           }
         }}
         className={`inline-flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#E6DCCF] bg-[#FAF6F1] text-[#B85C38] motion-safe:transition hover:bg-[#F6EFE6] ${className}`}
