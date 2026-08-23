@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, X, ExternalLink, Sparkles } from "lucide-react";
+import { Info, X, ExternalLink, Sparkles, Shirt, Layers, Droplet, Droplets, Footprints, Smile } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { findMassageType, type MassageTypeContent } from "@/lib/massageTypes";
+import {
+  findMassageType,
+  vitalsFor,
+  pressureColor,
+  PRESSURE_LABELS,
+  BEST_FOR_LABELS,
+  BEST_FOR_COLORS,
+  CLOTHING_LABELS,
+  OIL_LABELS,
+  type MassageTypeContent,
+} from "@/lib/massageTypes";
 
 /**
  * Massage type education, without ever losing your place in the booking flow.
@@ -12,6 +22,93 @@ import { findMassageType, type MassageTypeContent } from "@/lib/massageTypes";
  * service card it sits inside, and closing it returns you exactly where you
  * were. The "Open full page" link opens the standalone page in a new tab.
  */
+
+/** Five dot pressure scale, filled left to right, coloured by intensity. */
+export function PressureDots({ level, size = 9 }: { level: number; size?: number }) {
+  const color = pressureColor(level);
+  return (
+    <span className="inline-flex items-center gap-[3px]" aria-hidden>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: 999,
+            background: i <= level ? color : "transparent",
+            border: `1px solid ${i <= level ? color : "#E0D6C8"}`,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
+function QuickFact({ icon, en, es }: { icon: React.ReactNode; en: string; es: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E6DCCF] bg-[#FAF6F1] px-2.5 py-1 text-xs text-[#5a4736]">
+      <span className="text-[#8a7460]">{icon}</span>
+      {en} <span className="text-[#8a7460]">/ {es}</span>
+    </span>
+  );
+}
+
+/** The vitals block: pressure meter, best-for chips, quick facts. */
+export function MassageTypeVitals({ type }: { type: MassageTypeContent }) {
+  const v = vitalsFor(type.slug);
+  if (!v) return null;
+  const label = PRESSURE_LABELS[Math.min(Math.max(v.pressure, 1), 5) - 1];
+  const clothingIcon =
+    v.clothing === "dressed" ? <Shirt size={13} />
+    : v.clothing === "face-only" ? <Smile size={13} />
+    : v.clothing === "feet-only" ? <Footprints size={13} />
+    : <Layers size={13} />;
+
+  return (
+    <div className="rounded-2xl border border-[#E6DCCF] bg-[#FDFBF8] p-4">
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#8a7460]">
+          Pressure <span className="font-medium normal-case tracking-normal">/ Presión</span>
+        </p>
+        <div className="mt-1.5 flex items-center gap-2.5">
+          <PressureDots level={v.pressure} size={11} />
+          <span className="text-sm font-semibold text-[#4a4038]">
+            {label.en} <span className="font-normal text-[#8a7460]">/ {label.es}</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {v.bestFor.map((k) => {
+          const c = BEST_FOR_COLORS[k];
+          return (
+            <span
+              key={k}
+              className="rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={{ background: c.bg, color: c.fg, border: `1px solid ${c.border}` }}
+            >
+              {BEST_FOR_LABELS[k].en} <span className="font-normal opacity-70">/ {BEST_FOR_LABELS[k].es}</span>
+            </span>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <QuickFact icon={clothingIcon} en={CLOTHING_LABELS[v.clothing].en} es={CLOTHING_LABELS[v.clothing].es} />
+        <QuickFact
+          icon={v.oil === "none" ? <Droplet size={13} /> : <Droplets size={13} />}
+          en={OIL_LABELS[v.oil].en}
+          es={OIL_LABELS[v.oil].es}
+        />
+        {type.firstTimer && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FBEFE8] px-2.5 py-1 text-xs font-semibold text-[#B85C38]">
+            <Sparkles size={13} /> Great first massage <span className="font-normal opacity-80">/ Ideal primer masaje</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** The write-up itself, shared by the overlay and the standalone page. */
 export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es: boolean }) {
@@ -23,11 +120,7 @@ export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es: bo
   ];
   return (
     <div className="space-y-4">
-      {type.firstTimer && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FBEFE8] px-3 py-1 text-xs font-semibold text-[#B85C38]">
-          <Sparkles size={13} /> Great first massage / Ideal primer masaje
-        </span>
-      )}
+      <MassageTypeVitals type={type} />
       {sections.map((s) => (
         <div key={s.en}>
           <h3 className="text-sm font-bold uppercase tracking-[1.2px] text-[#B85C38]">
@@ -41,6 +134,7 @@ export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es: bo
     </div>
   );
 }
+
 
 function Overlay({ type, onClose }: { type: MassageTypeContent; onClose: () => void }) {
   const { i18n } = useTranslation();
@@ -117,6 +211,7 @@ export default function MassageTypeInfoButton({
   const [open, setOpen] = useState(false);
   const type = findMassageType(...names);
   if (!type) return null;
+  const vitals = vitalsFor(type.slug);
 
   const stop = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -125,8 +220,18 @@ export default function MassageTypeInfoButton({
 
   return (
     <>
+      {vitals && (
+        <span
+          className="hidden flex-shrink-0 items-center min-[380px]:inline-flex"
+          title={`Pressure ${PRESSURE_LABELS[vitals.pressure - 1].en} / Presión ${PRESSURE_LABELS[vitals.pressure - 1].es}`}
+          aria-label={`Pressure ${PRESSURE_LABELS[vitals.pressure - 1].en}`}
+        >
+          <PressureDots level={vitals.pressure} size={6} />
+        </span>
+      )}
       {/* Not a <button>: these sit inside clickable service cards that are
           themselves buttons, and nested buttons are invalid HTML. */}
+
       <span
         role="button"
         tabIndex={0}
