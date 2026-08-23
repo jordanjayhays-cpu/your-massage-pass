@@ -20,6 +20,13 @@ import CompareToggle from "./CompareToggle";
 
 export type GeoState = "pending" | "ready" | "fallback";
 
+/** Stable key for a studio across list and map. */
+export function studioKey(s: any): string {
+  return String(s?.slug || s?.partner_id || s?.id || "");
+}
+
+export type MapBounds = { north: number; south: number; east: number; west: number };
+
 type Props = {
   /** Studios to plot. When omitted, the map loads every studio itself. */
   shops?: Shop[];
@@ -37,15 +44,22 @@ type Props = {
   onUserLocation?: (loc: { lat: number; lng: number }) => void;
   /** On phones, open the branded location sheet once per session shortly after load. */
   autoAskOnMobile?: boolean;
+  /** Studio key highlighted from the list (desktop hover sync). */
+  highlightedKey?: string | null;
+  /** Fired when a pin is hovered or left, so the list can highlight its card. */
+  onHoverStudio?: (key: string | null) => void;
+  /** Enables the "Search this area" chip and reports the visible bounds. */
+  onSearchArea?: (bounds: MapBounds) => void;
 };
 
 /** Branded clay pin: solid clay circle, white centre dot, white border. */
-function brandPin(active: boolean) {
+function brandPin(active: boolean, visited = false) {
   const size = active ? 34 : 28;
+  const fill = active ? "#E0A458" : "#C4622D";
   return {
     url: `data:image/svg+xml,${encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="#ffffff" stroke-width="2.5"/>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" opacity="${visited && !active ? 0.45 : 1}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${fill}" stroke="#ffffff" stroke-width="2.5"/>
         <circle cx="${size / 2}" cy="${size / 2}" r="${size / 7}" fill="#ffffff"/>
       </svg>`
     )}`,
@@ -53,6 +67,39 @@ function brandPin(active: boolean) {
     anchor: new google.maps.Point(size / 2, size / 2),
   };
 }
+
+/** Airbnb-style price pill: white with clay text, inverted when active. */
+function pricePin(price: number, active: boolean, visited = false) {
+  const text = `€${Math.round(price)}`;
+  const scale = active ? 1.12 : 1;
+  const w = Math.round((26 + text.length * 9) * scale);
+  const h = Math.round(28 * scale);
+  const bg = active ? "#C4622D" : "#FFFFFF";
+  const fg = active ? "#FFFFFF" : "#C4622D";
+  return {
+    url: `data:image/svg+xml,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" opacity="${visited && !active ? 0.5 : 1}">
+        <rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${bg}" stroke="#C4622D" stroke-width="1.6"/>
+        <text x="${w / 2}" y="${h / 2 + 4}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="${Math.round(12 * scale)}" font-weight="700" fill="${fg}">${text}</text>
+      </svg>`
+    )}`,
+    scaledSize: new google.maps.Size(w, h),
+    anchor: new google.maps.Point(w / 2, h / 2),
+  };
+}
+
+/** Cheapest 60 minute massage the studio offers, or null. */
+function lowest60Price(shop: any): number | null {
+  const list: any[] = shop?.partner_services || [];
+  const prices = list
+    .filter((s) => Number(s?.duration) === 60 && Number.isFinite(Number(s?.price)) && Number(s.price) > 0)
+    .map((s) => Number(s.price));
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/** Price pills only make sense once the map is zoomed into a neighbourhood. */
+const PRICE_ZOOM = 14;
+
 
 
 /**
