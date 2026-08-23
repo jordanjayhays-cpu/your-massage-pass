@@ -320,13 +320,27 @@ export default function MassageList() {
           shops={realShops}
           heightClass="h-[230px]"
           autoAskOnMobile
+          highlightedKey={hoverKey}
+          onHoverStudio={setHoverKey}
+          onSearchArea={setAreaBounds}
           onUserLocation={(loc) => {
             setUserLoc(loc);
             setAreaName(savedLocationResult()?.areaName ?? null);
           }}
           onSelect={(shop) => handleBook(shop)}
         />
+        {areaBounds && (
+          <button
+            type="button"
+            onClick={() => setAreaBounds(null)}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+          >
+            Showing this area only · Clear
+            <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
+          </button>
+        )}
       </div>
+
 
 
       {/* Studios list */}
