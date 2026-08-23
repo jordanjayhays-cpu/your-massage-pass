@@ -2049,15 +2049,36 @@ function WizardNav({
 
 
 /** One line of the live booking summary. */
-function SummaryRow({ label, labelEs, value, placeholder }: { label: string; labelEs: string; value: string | null; placeholder: string }) {
+function SummaryRow({
+  label, labelEs, value, placeholder, onChange,
+}: {
+  label: string;
+  labelEs: string;
+  value: string | null;
+  placeholder: string;
+  /** When given, the row gets a small "Change / Cambiar" link back to that step. */
+  onChange?: () => void;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-xs min-[900px]:text-sm text-gray-400 flex-shrink-0">
         {label} <span className="text-[10px] min-[900px]:text-xs text-gray-300">{labelEs}</span>
       </span>
-      <span className={`text-sm min-[900px]:text-base text-right truncate ${value ? "font-semibold text-gray-900" : "text-gray-300"}`}>
-        {value || placeholder}
+      <span className="flex items-baseline gap-2 min-w-0 justify-end">
+        <span className={`text-sm min-[900px]:text-base text-right ${value ? "font-semibold text-gray-900" : "text-gray-300"}`} style={{ overflowWrap: "anywhere" }}>
+          {value || placeholder}
+        </span>
+        {onChange && (
+          <button
+            type="button"
+            onClick={onChange}
+            className="flex-shrink-0 text-[11px] min-[900px]:text-xs font-semibold text-[#C4622D] underline underline-offset-2"
+          >
+            Change <span className="font-normal">/ Cambiar</span>
+          </button>
+        )}
       </span>
     </div>
   );
 }
+
