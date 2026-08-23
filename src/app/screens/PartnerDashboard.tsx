@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText } from "lucide-react";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -352,6 +352,7 @@ export default function PartnerDashboard() {
             {[
               { label: t("partner.dashboard.quickEditProfile"), sub: t("partner.dashboard.quickEditProfileSub"), path: "/partner/profile", icon: Settings },
               { label: t("partner.dashboard.quickAddServices"), sub: t("partner.dashboard.quickAddServicesSub"), path: "/partner/services", icon: Star },
+              { label: "Add-ons / Extras", sub: "Hot stones, aromatherapy and more", path: "/partner/addons", icon: Sparkles },
               { label: t("partner.dashboard.quickPhotos"), sub: t("partner.dashboard.quickPhotosSub"), path: "/partner/photos", icon: ImageIcon },
               { label: t("partner.dashboard.quickAvailability"), sub: t("partner.dashboard.quickAvailabilitySub"), path: "/partner/calendar", icon: Clock },
               { label: t("partner.dashboard.quickClients"), sub: t("partner.dashboard.quickClientsSub"), path: "/partner/clients", icon: Users },

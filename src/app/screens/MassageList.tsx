@@ -52,6 +52,21 @@ export default function MassageList() {
     });
   }, []);
 
+  // Debounce the search query so the dropdown/spinner do not thrash on every keystroke.
+  useEffect(() => {
+    if (!q.trim()) {
+      setDebouncedQ("");
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      setDebouncedQ(q);
+      setSearching(false);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [q]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +92,7 @@ export default function MassageList() {
   const allShops: Shop[] = [...realShops];
 
   const origin = userLoc ?? MADRID_CENTER;
+  const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
 
   const filtered = allShops
     .filter((m) => {
@@ -96,6 +112,27 @@ export default function MassageList() {
         : (m as any).km ?? Number.POSITIVE_INFINITY,
     }))
     .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
+
+  const dropdownResults = debouncedQ.trim()
+    ? allShops
+        .filter((m) => {
+          if (!m || !m.name || !m.studio) return false;
+          const query = debouncedQ.toLowerCase();
+          return (
+            m.name.toLowerCase().includes(query) ||
+            m.studio.toLowerCase().includes(query) ||
+            ("district" in m && m.district?.toLowerCase().includes(query))
+          );
+        })
+        .slice(0, 8)
+    : [];
+
+  const handleShowDistances = async () => {
+    setLocatingDistances(true);
+    const loc = await requestLocation();
+    setLocatingDistances(false);
+    if (loc) setUserLoc(loc);
+  };
 
 
 
