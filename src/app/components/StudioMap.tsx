@@ -267,25 +267,54 @@ export default function StudioMap({
         });
       mapInstanceRef.current = map;
 
+      // Zoom and pan listeners: price pills at close zoom, "Search this area"
+      // once the visitor moves the map themselves.
+      if (!(map as any).__mcListeners) {
+        (map as any).__mcListeners = true;
+        const syncZoom = () => setCloseZoom((map.getZoom() ?? 13) >= PRICE_ZOOM);
+        syncZoom();
+        map.addListener("zoom_changed", () => {
+          syncZoom();
+          setMoved(true);
+        });
+        map.addListener("dragend", () => setMoved(true));
+      }
+
       clustererRef.current?.clearMarkers();
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
+      markersByKeyRef.current = new Map();
 
       mapShops.forEach((m: any) => {
+        const key = studioKey(m);
+        const price = lowest60Price(m);
+        const visited = isStudioVisited(m.slug, m.partner_id, m.id);
+        const iconFor = (active: boolean) =>
+          closeZoom && price != null ? pricePin(price, active, visited) : brandPin(active, visited);
         const marker = new google.maps.Marker({
           position: { lat: m.lat, lng: m.lng },
           title: m.studio,
-          icon: brandPin(false),
+          icon: iconFor(false),
         });
+        (marker as any).__mcIconFor = iconFor;
         marker.addListener("click", () => {
-          markersRef.current.forEach((mr) => mr.setIcon(brandPin(false)));
-          marker.setIcon(brandPin(true));
           setSelected(m as Shop);
+          setOwnHoverKey(key);
           map.panTo({ lat: m.lat, lng: m.lng });
           if (!showSelectedCard) onSelect?.(m as Shop);
         });
+        marker.addListener("mouseover", () => {
+          setOwnHoverKey(key);
+          hoverCbRef.current?.(key);
+        });
+        marker.addListener("mouseout", () => {
+          setOwnHoverKey(null);
+          hoverCbRef.current?.(null);
+        });
         markersRef.current.push(marker);
+        markersByKeyRef.current.set(key, marker);
       });
+
 
       if (!clustererRef.current) {
         clustererRef.current = new MarkerClusterer({
