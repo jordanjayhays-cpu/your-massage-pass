@@ -838,6 +838,11 @@ export default function StudioBookingPage() {
             {waLink && (
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
+                {/* The only Continue: one sticky bar, never an inline duplicate */}
+                {hoStep === 1 && <StickyContinue ready={!!hoServiceId} onNext={() => hoGo(2)} />}
+                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} />}
+                {hoStep === 3 && <StickyContinue ready onNext={() => hoGo(4)} />}
+
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
                   <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
                     {t("app.handoff.prefTitle")}
