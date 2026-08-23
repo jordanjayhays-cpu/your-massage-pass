@@ -1383,19 +1383,51 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Save success card */}
+      {showSaveSuccess && (
+        <div className="px-5 pb-4">
+          <div className="max-w-lg mx-auto rounded-2xl border border-[#E5DDD3] bg-white p-5 shadow-sm text-center">
+            <div className="mx-auto h-11 w-11 rounded-full bg-[#C4622D]/10 flex items-center justify-center">
+              <Check className="h-6 w-6 text-[#C4622D]" />
+            </div>
+            <p className="mt-3 font-bold text-gray-900">{t("app.profile.successTitle")}</p>
+            <p className="text-sm text-gray-600 mt-1">{t("app.profile.successBody")}</p>
+            <button
+              onClick={() => navigate("/studios")}
+              className="mt-4 w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
+            >
+              {t("app.profile.successCta")}
+            </button>
+            <button
+              onClick={() => setShowSaveSuccess(false)}
+              className="mt-2 w-full h-10 text-sm text-gray-500"
+            >
+              {t("app.profile.keepEditing")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Save */}
       <div className="sticky bottom-0 inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
+          {saveError && (
+            <p className="text-sm text-red-600 mb-2 text-center">
+              {t("app.profile.saveError")}: {saveError}
+            </p>
+          )}
           <button
             onClick={save}
             disabled={saving}
             className="w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("app.profile.save")}
+            {!saving && justSaved && <Check className="h-4 w-4" />}
+            {justSaved && !saving ? t("app.profile.savedBtn") : t("app.profile.save")}
           </button>
         </div>
       </div>
+
     </div>
   );
 }
