@@ -71,6 +71,30 @@ export function savedLocationResult(): LocationResult | null {
   return choiceToResult(loadChoice());
 }
 
+/** True once any answer (granted, area, or denied) was recorded this session. */
+export function locationChoiceMade(): boolean {
+  return loadChoice() !== null;
+}
+
+const SS_AUTO_KEY = "mc-location-auto-shown";
+
+/** True once the sheet has been auto-opened this session. */
+export function locationSheetAutoShown(): boolean {
+  try {
+    return sessionStorage.getItem(SS_AUTO_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markLocationSheetAutoShown() {
+  try {
+    sessionStorage.setItem(SS_AUTO_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 /** True once the visitor refused the browser prompt this session. */
 export function locationWasDenied(): boolean {
   return loadChoice()?.status === "denied";
