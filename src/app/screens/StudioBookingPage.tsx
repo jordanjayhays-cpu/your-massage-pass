@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
-import MassageExplainerNote from "@/app/components/MassageExplainerNote";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
@@ -941,13 +940,6 @@ export default function StudioBookingPage() {
                           })}
                         </div>
                       </div>
-                      {hoService && (
-                        <MassageExplainerNote
-                          names={[(hoService as any).name_en, (hoService as any).name, (hoService as any).type]}
-                          className="mt-3"
-                        />
-                      )}
-
                       <WizardNav
                         onNext={() => hoGo(2)}
                         disabled={!hoServiceId}
@@ -1483,12 +1475,6 @@ export default function StudioBookingPage() {
                               </div>
                             </div>
                           </button>
-                          {serviceId === s.id && (
-                            <MassageExplainerNote
-                              names={[(s as any).name_en, s.name, (s as any).type]}
-                              className="mt-2"
-                            />
-                          )}
                         </div>
                       ))}
                       {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
