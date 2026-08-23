@@ -818,6 +818,7 @@ export default function StudioBookingPage() {
                 <span>{partner.address}</span>
               </p>
             )}
+            <div className="mb-2 flex justify-center min-[900px]:justify-start">{distanceBlock(false)}</div>
             {rating ? (
               <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
                 <span style={{ color: "#E0A458" }}>★</span>
@@ -1360,6 +1361,7 @@ export default function StudioBookingPage() {
                   <MapPin size={12} /> {partner.address}
                 </p>
               )}
+              {distanceBlock(true)}
             </div>
           </div>
         </div>
