@@ -17,6 +17,8 @@ import { fetchShops } from "@/lib/supabase";
 import { haversineKm, distanceLabel, walkingDirectionsUrl } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
 import CompareToggle from "./CompareToggle";
+import { isStudioVisited } from "@/lib/visitedStudios";
+
 
 export type GeoState = "pending" | "ready" | "fallback";
 
