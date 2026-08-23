@@ -26,21 +26,21 @@ type Props = {
   onUserLocation?: (loc: { lat: number; lng: number }) => void;
 };
 
-const STUDIO_ICONS: Record<string, string> = {
-  "Casa Cibeles": "🧖‍♀️",
-  "El Retiro Wellness": "💆",
-  "Salamanca Spa Real": "🔥",
-  "Chamberí Manos": "🏃",
-  "Malasaña Holístico": "🪷",
-  "La Latina Termas": "🌊",
-};
-
-function getStudioIcon(studio: string): string {
-  for (const [key, icon] of Object.entries(STUDIO_ICONS)) {
-    if (studio.includes(key.split(" ")[0])) return icon;
-  }
-  return "💆";
+/** Branded clay pin: solid clay circle, white centre dot, white border. */
+function brandPin(active: boolean) {
+  const size = active ? 34 : 28;
+  return {
+    url: `data:image/svg+xml,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="#ffffff" stroke-width="2.5"/>
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 7}" fill="#ffffff"/>
+      </svg>`
+    )}`,
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size / 2),
+  };
 }
+
 
 const MAP_STYLES: google.maps.MapTypeStyle[] = [
   { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
