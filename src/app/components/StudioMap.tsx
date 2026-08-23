@@ -4,6 +4,7 @@ import { Compass, Star, Clock, MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MADRID_CENTER } from "../data";
 import { loadGoogleMaps } from "../lib/googleMaps";
+import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { fetchShops } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 
@@ -68,6 +69,7 @@ export default function StudioMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
 
   const [ownShops, setOwnShops] = useState<Shop[]>([]);
