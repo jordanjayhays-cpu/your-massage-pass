@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
-import MassageExplainerNote from "@/app/components/MassageExplainerNote";
+import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack } from "@/lib/siteVisit";
@@ -861,9 +861,12 @@ export default function StudioBookingPage() {
                           <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                         )}
                       </span>
-                      {s.price != null && Number(s.price) > 0 && (
-                        <span className="font-semibold flex-shrink-0" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
-                      )}
+                      <span className="flex flex-shrink-0 items-center gap-2">
+                        {s.price != null && Number(s.price) > 0 && (
+                          <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
+                        )}
+                        <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -923,24 +926,20 @@ export default function StudioBookingPage() {
                                     <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
                                   )}
                                 </span>
-                                <span className="text-right flex-shrink-0">
-                                  {Number.isFinite(price) && price > 0 && (
-                                    <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
-                                  )}
-                                  {dur && <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{dur} min</span>}
+                                <span className="flex flex-shrink-0 items-center gap-2">
+                                  <span className="text-right">
+                                    {Number.isFinite(price) && price > 0 && (
+                                      <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                                    )}
+                                    {dur && <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{dur} min</span>}
+                                  </span>
+                                  <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
                                 </span>
                               </button>
                             );
                           })}
                         </div>
                       </div>
-                      {hoService && (
-                        <MassageExplainerNote
-                          names={[(hoService as any).name_en, (hoService as any).name, (hoService as any).type]}
-                          className="mt-3"
-                        />
-                      )}
-
                       <WizardNav
                         onNext={() => hoGo(2)}
                         disabled={!hoServiceId}
@@ -1468,19 +1467,14 @@ export default function StudioBookingPage() {
                                   <p className="text-xs min-[900px]:text-sm text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
                                 )}
                               </div>
-                              <div className="text-right flex-shrink-0">
+                              <div className="flex flex-shrink-0 items-center gap-2">
                                 {s.price != null && Number(s.price) > 0 && (
                                   <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
                                 )}
+                                <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
                               </div>
                             </div>
                           </button>
-                          {serviceId === s.id && (
-                            <MassageExplainerNote
-                              names={[(s as any).name_en, s.name, (s as any).type]}
-                              className="mt-2"
-                            />
-                          )}
                         </div>
                       ))}
                       {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
