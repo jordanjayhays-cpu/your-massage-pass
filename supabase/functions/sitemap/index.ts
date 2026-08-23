@@ -26,6 +26,22 @@ const STATIC_ROUTES = [
   "/madrid/chueca",
   "/madrid/centro",
   "/madrid/malasana",
+  // Massage type education pages
+  "/massages/swedish",
+  "/massages/deep-tissue",
+  "/massages/thai",
+  "/massages/balinese",
+  "/massages/shiatsu",
+  "/massages/sports",
+  "/massages/lymphatic",
+  "/massages/hot-stone",
+  "/massages/kobido",
+  "/massages/gua-sha",
+  "/massages/head-scalp",
+  "/massages/prenatal",
+  "/massages/couples",
+  "/massages/foot-legs",
+  "/massages/four-hands",
 ];
 
 const corsHeaders = {
