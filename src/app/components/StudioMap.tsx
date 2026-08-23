@@ -141,14 +141,20 @@ export default function StudioMap({
   onGeoStateChange,
   onUserLocation,
   autoAskOnMobile = false,
+  highlightedKey = null,
+  onHoverStudio,
+  onSearchArea,
 }: Props) {
   const { t, i18n } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersByKeyRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const didFitRef = useRef(false);
+  const hoverCbRef = useRef<Props["onHoverStudio"]>(onHoverStudio);
+  hoverCbRef.current = onHoverStudio;
 
   const [ownShops, setOwnShops] = useState<Shop[]>([]);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
@@ -158,7 +164,14 @@ export default function StudioMap({
   const [geoError, setGeoError] = useState(false);
   // Set when the visitor picked a neighbourhood instead of sharing location.
   const [areaName, setAreaName] = useState<string | null>(null);
+  // Price pills replace dots once the map is zoomed in.
+  const [closeZoom, setCloseZoom] = useState(false);
+  // "Search this area" appears once the visitor moves the map themselves.
+  const [moved, setMoved] = useState(false);
+  const [ownHoverKey, setOwnHoverKey] = useState<string | null>(null);
   const askLocation = useLocationAsk();
+  const activeKey = highlightedKey || ownHoverKey || (selected ? studioKey(selected) : null);
+
 
   const allShops = shops ?? ownShops;
   const mapShops = allShops.filter(
