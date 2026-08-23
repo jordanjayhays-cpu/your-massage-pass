@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill } from "@/app/lib/whatsapp";
+import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
+import MassageExplainerNote from "@/app/components/MassageExplainerNote";
+import { haversineKm, distanceLabel, walkingDirectionsUrl, loadSavedLocation, requestLocation, type LatLng } from "@/lib/distance";
 import { sendTrack } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
@@ -99,6 +101,8 @@ export default function StudioBookingPage() {
   const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
   // Wizard state for the unclaimed-studio WhatsApp handoff.
   const [hoStep, setHoStep] = useState(1);
+  // Distances are only ever shown once the visitor has granted location.
+  const [userLoc, setUserLoc] = useState<LatLng | null>(() => loadSavedLocation());
   const [hoMaxStep, setHoMaxStep] = useState(1);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
