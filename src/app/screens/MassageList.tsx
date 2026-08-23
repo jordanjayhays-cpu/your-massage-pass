@@ -304,7 +304,11 @@ export default function MassageList() {
         <StudioMap
           shops={realShops}
           heightClass="h-[230px]"
-          onUserLocation={setUserLoc}
+          autoAskOnMobile
+          onUserLocation={(loc) => {
+            setUserLoc(loc);
+            setAreaName(savedLocationResult()?.areaName ?? null);
+          }}
           onSelect={(shop) => handleBook(shop)}
         />
       </div>
