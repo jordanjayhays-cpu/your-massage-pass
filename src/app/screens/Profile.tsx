@@ -131,22 +131,23 @@ export default function Profile() {
   const [preferredLanguage, setPreferredLanguage] = useState("");
 
   // Birthday split into three selects; stored as the same YYYY-MM-DD string.
-  const [y, m, d] = (dateOfBirth || "").split("-");
-  const dobParts = {
-    year: y || "",
-    month: m ? String(Number(m)) : "",
-    day: d ? String(Number(d)) : "",
-  };
+  const [dobParts, setDobParts] = useState({ day: "", month: "", year: "" });
+  useEffect(() => {
+    const [yy, mm, dd] = (dateOfBirth || "").split("-");
+    if (yy && mm && dd) {
+      setDobParts({ year: yy, month: String(Number(mm)), day: String(Number(dd)) });
+    }
+  }, [dateOfBirth]);
   const setDobPart = (part: "day" | "month" | "year", value: string) => {
     const next = { ...dobParts, [part]: value };
-    if (!next.day || !next.month || !next.year) {
-      setDateOfBirth("");
-      return;
-    }
+    setDobParts(next);
     setDateOfBirth(
-      `${next.year}-${String(Number(next.month)).padStart(2, "0")}-${String(Number(next.day)).padStart(2, "0")}`
+      next.day && next.month && next.year
+        ? `${next.year}-${String(Number(next.month)).padStart(2, "0")}-${String(Number(next.day)).padStart(2, "0")}`
+        : ""
     );
   };
+
 
 
 
