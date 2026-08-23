@@ -96,6 +96,10 @@ export default function MassageList() {
   }, []);
 
   const allShops: Shop[] = [...realShops];
+  // Map v2: "Search this area" filter, and list/map hover sync on desktop.
+  const [areaBounds, setAreaBounds] = useState<MapBounds | null>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+
 
   const origin = userLoc ?? MADRID_CENTER;
   const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
