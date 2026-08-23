@@ -307,6 +307,16 @@ export default function MassageList() {
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="font-display text-2xl text-foreground">{t("app.massageList.studiosNearYou")}</h2>
           <div className="flex items-center gap-3">
+            {!userLoc && (
+              <button
+                onClick={handleShowDistances}
+                disabled={locatingDistances}
+                className="text-[10px] font-bold tracking-[0.12em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1 transition"
+              >
+                {locatingDistances ? <Loader2 className="h-3 w-3 animate-spin" /> : <Compass className="h-3 w-3" />}
+                {locatingDistances ? "Locating…" : "Show distances / Ver distancias"}
+              </button>
+            )}
             <button
               onClick={() => navigate("/app/discovery")}
               className="text-[10px] font-bold tracking-[0.12em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1 transition"
