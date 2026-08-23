@@ -373,14 +373,15 @@ export type BestForKey =
   | "face"
   | "pregnancy";
 
-export type ClothingKey = "towel" | "dressed" | "face-only" | "feet-only";
+export type ClothingKey = "dressed" | "face-only" | "feet-only";
 export type OilKey = "oil" | "light-oil" | "none";
 
 export type MassageVitals = {
   /** 1 to 5 */
   pressure: number;
   bestFor: BestForKey[];
-  clothing: ClothingKey;
+  /** Clothing fact is only shown for types where the user stays dressed. */
+  clothing?: ClothingKey;
   oil: OilKey;
 };
 
