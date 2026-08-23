@@ -34,8 +34,10 @@ export default function ShopDetail() {
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
   const [fav, setFav] = useState(false);
+  const [waTapped, setWaTapped] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
+  const waLoggedRef = useRef(false);
 
   useEffect(() => { clarityEvent("studio_view"); }, [id]);
 
