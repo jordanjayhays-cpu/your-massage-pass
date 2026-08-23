@@ -119,35 +119,8 @@ export default function StudioMap({
     });
   };
 
-  const legacyRequestUserLocation = (fromTap = false) => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      if (fromTap) setGeoError(true);
-      onGeoStateChange?.("fallback");
-      return;
-    }
-    if (fromTap) {
-      setGeoError(false);
-      setLocating(true);
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLocating(false);
-        setGeoError(false);
-        setUserLoc(loc);
-        onUserLocation?.(loc);
-        onGeoStateChange?.("ready");
-      },
-      () => {
-        setLocating(false);
-        if (fromTap) setGeoError(true);
-        onGeoStateChange?.("fallback");
-      },
-      { enableHighAccuracy: true, timeout: fromTap ? 15000 : 8000, maximumAge: fromTap ? 0 : 60000 }
-    );
-  };
+  // Use a remembered choice on mount; never prompt cold.
 
-  // Ask once on mount, fall back to central Madrid after ~3s.
   useEffect(() => {
     onGeoStateChange?.("pending");
     const saved = savedLocationResult();
