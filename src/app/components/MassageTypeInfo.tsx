@@ -211,6 +211,7 @@ export default function MassageTypeInfoButton({
   const [open, setOpen] = useState(false);
   const type = findMassageType(...names);
   if (!type) return null;
+  const vitals = vitalsFor(type.slug);
 
   const stop = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -219,8 +220,18 @@ export default function MassageTypeInfoButton({
 
   return (
     <>
+      {vitals && (
+        <span
+          className="hidden flex-shrink-0 items-center min-[380px]:inline-flex"
+          title={`Pressure ${PRESSURE_LABELS[vitals.pressure - 1].en} / Presión ${PRESSURE_LABELS[vitals.pressure - 1].es}`}
+          aria-label={`Pressure ${PRESSURE_LABELS[vitals.pressure - 1].en}`}
+        >
+          <PressureDots level={vitals.pressure} size={6} />
+        </span>
+      )}
       {/* Not a <button>: these sit inside clickable service cards that are
           themselves buttons, and nested buttons are invalid HTML. */}
+
       <span
         role="button"
         tabIndex={0}
