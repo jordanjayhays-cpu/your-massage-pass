@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, X, ExternalLink, Sparkles, Shirt, Layers, Droplet, Droplets, Footprints, Smile } from "lucide-react";
+import { Info, X, ExternalLink, Sparkles, Shirt, Droplet, Droplets, Footprints, Smile } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   findMassageType,
