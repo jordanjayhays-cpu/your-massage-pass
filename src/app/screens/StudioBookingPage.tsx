@@ -17,6 +17,8 @@ import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
+import { markStudioVisited } from "@/lib/visitedStudios";
+
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
