@@ -501,7 +501,7 @@ export default function StudioBookingPage() {
   const distanceBlock = (dark: boolean) => (
     <p className={`text-sm flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 ${dark ? "text-white/80" : ""}`} style={dark ? undefined : { color: "#5a4736" }}>
       {distanceKm != null ? (
-        <span>{distanceLabel(distanceKm, esLang ? "es" : "en")}</span>
+        <span>{distanceLabel(distanceKm, siteLang === "es" ? "es" : "en")}</span>
       ) : (
         <button
           type="button"
