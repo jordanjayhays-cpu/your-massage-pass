@@ -534,7 +534,14 @@
           "dim": "Dim",
           "normal": "Normal"
         }
-      }
+      },
+      "savedInline": "Saved",
+      "savedBtn": "Saved",
+      "successTitle": "Profile saved.",
+      "successBody": "Studios will see your preferences when you book.",
+      "successCta": "Find your massage",
+      "keepEditing": "Keep editing",
+      "saveError": "Could not save"
     },
     "myBookings": {
       "title": "My bookings",
