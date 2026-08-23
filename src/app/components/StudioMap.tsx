@@ -171,14 +171,13 @@ export default function StudioMap({
   }, []);
 
   /**
-   * Phones only: open our branded sheet once per session, about a second in,
-   * so the page has settled first. Desktop keeps chip-tap only.
+   * All devices: open our branded sheet once per session, about a second in,
+   * so the page has settled first.
    */
   useEffect(() => {
     if (!autoAskOnMobile) return;
-    const isPhone = window.matchMedia("(max-width: 767px)").matches;
-    if (!isPhone) return;
     if (locationChoiceMade() || locationSheetAutoShown()) return;
+
     const timer = window.setTimeout(() => {
       if (locationChoiceMade() || locationSheetAutoShown()) return;
       markLocationSheetAutoShown();
