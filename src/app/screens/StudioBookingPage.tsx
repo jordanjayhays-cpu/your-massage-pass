@@ -6,7 +6,8 @@ import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
 import MassageExplainerNote from "@/app/components/MassageExplainerNote";
-import { haversineKm, distanceLabel, walkingDirectionsUrl, loadSavedLocation, requestLocation, type LatLng } from "@/lib/distance";
+import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
+import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
@@ -102,7 +103,9 @@ export default function StudioBookingPage() {
   // Wizard state for the unclaimed-studio WhatsApp handoff.
   const [hoStep, setHoStep] = useState(1);
   // Distances are only ever shown once the visitor has granted location.
-  const [userLoc, setUserLoc] = useState<LatLng | null>(() => loadSavedLocation());
+  const [userLoc, setUserLoc] = useState<LatLng | null>(() => savedLocationResult()?.loc ?? null);
+  const [locAreaName, setLocAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
+  const askLocation = useLocationAsk();
   const [hoMaxStep, setHoMaxStep] = useState(1);
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
@@ -501,11 +504,11 @@ export default function StudioBookingPage() {
   const distanceBlock = (dark: boolean) => (
     <p className={`text-sm flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 ${dark ? "text-white/80" : ""}`} style={dark ? undefined : { color: "#5a4736" }}>
       {distanceKm != null ? (
-        <span>{distanceLabel(distanceKm, siteLang === "es" ? "es" : "en")}</span>
+        <span>{distanceLabel(distanceKm, siteLang === "es" ? "es" : "en")} {locAreaName ? originSuffix(locAreaName, siteLang === "es" ? "es" : "en") : ""}</span>
       ) : (
         <button
           type="button"
-          onClick={() => requestLocation().then(loc => loc && setUserLoc(loc))}
+          onClick={() => askLocation((res) => { if (res) { setUserLoc(res.loc); setLocAreaName(res.areaName); } })}
           className="underline underline-offset-2 font-semibold"
         >
           Show distance <span className="font-normal">/ Ver distancia</span>

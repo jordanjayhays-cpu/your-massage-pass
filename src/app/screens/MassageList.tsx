@@ -32,7 +32,7 @@ export default function MassageList() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isPartner, setIsPartner] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => savedLocationResult()?.loc ?? null);
   const [visibleCount, setVisibleCount] = useState(8);
   const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
   const [searchOpen, setSearchOpen] = useState(false);
