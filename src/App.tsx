@@ -115,8 +115,9 @@ const App = () => (
 
           {/* Standalone massage type pages (static slugs win over /massages/:id) */}
           {MASSAGE_TYPE_SLUGS.map((slug) => (
-            <Route key={slug} path={`/massages/${slug}`} element={<MassageTypePage />} />
+            <Route key={slug} path={`/massages/${slug}`} element={<MassageTypePage slug={slug} />} />
           ))}
+
 
 
           {/* Branded forwarder for the "confirm your opening hours" email link.
