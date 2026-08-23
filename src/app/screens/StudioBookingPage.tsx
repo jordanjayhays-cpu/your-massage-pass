@@ -1999,12 +1999,15 @@ function Stepper({
   );
 }
 
-/** Back link plus the primary Continue button used at the bottom of each step. */
+/**
+ * Step footer: Back, an optional Skip, and the "why is Continue not lit" hint.
+ * The Continue button itself lives ONLY in the sticky bar, never inline.
+ */
 function WizardNav({
-  onBack, onNext, disabled, label, labelEs, hint, hintEs, skip,
+  onBack, disabled, hint, hintEs, skip,
 }: {
   onBack?: () => void;
-  onNext: () => void;
+  onNext?: () => void;
   disabled?: boolean;
   label?: string;
   labelEs?: string;
@@ -2014,17 +2017,6 @@ function WizardNav({
 }) {
   return (
     <div className="pt-4 min-[900px]:pt-5 space-y-2 min-[900px]:space-y-3">
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={disabled}
-        className={`w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
-          disabled ? "bg-[#E7D9CB] text-[#9E8B78]" : "bg-[#C4622D] text-white shadow-lg"
-        }`}
-      >
-        <span className="min-[900px]:text-lg">{label || "Continue"}</span>
-        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{labelEs || "Continuar"}</span>
-      </button>
       {disabled && hint && (
         <p className="text-xs min-[900px]:text-sm text-center text-[#8a7460]">
           {hint}
@@ -2046,6 +2038,7 @@ function WizardNav({
     </div>
   );
 }
+
 
 
 /** One line of the live booking summary. */
