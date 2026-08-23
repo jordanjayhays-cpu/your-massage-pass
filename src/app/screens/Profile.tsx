@@ -530,9 +530,17 @@ export default function Profile() {
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
-    if (error) toast.error(error.message);
-    else toast.success(t("app.profile.toasts.profileSaved"));
+    if (error) {
+      setSaveError(error.message);
+      toast.error(error.message);
+      return;
+    }
+    setSaveError("");
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 2000);
+    setShowSaveSuccess(true);
   };
+
 
   const signOut = async () => {
     await supabase.auth.signOut();
