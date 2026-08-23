@@ -130,6 +130,8 @@ export interface Shop {
   google_rating?: number | null;
   google_reviews?: number | null;
   status?: string;
+  /** Languages the studio speaks, as stored on the partner row. */
+  languages?: string[] | null;
 }
 
 /** Fetch all active shops with their services from Supabase.
@@ -217,6 +219,7 @@ export async function fetchShops(): Promise<Shop[]> {
       google_rating: p.google_rating ?? null,
       google_reviews: p.google_reviews ?? null,
       status: p.status ?? "pending",
+      languages: Array.isArray((p as any).languages) ? (p as any).languages : null,
     });
   }
 
