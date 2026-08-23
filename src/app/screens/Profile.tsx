@@ -109,6 +109,8 @@ const LANG_BY_CODE: Record<string, string> = {
 export default function Profile() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+
 
 
   const SHOW_REFERRAL = false; // Parked until we process payments — see docs/PARKED_IDEAS.md
