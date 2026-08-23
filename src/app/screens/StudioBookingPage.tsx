@@ -1772,11 +1772,40 @@ export default function StudioBookingPage() {
                   </label>
 
                   {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+
+                  {/* Quiet first-timer reassurance, right before the commit */}
+                  <div className="mt-4 rounded-2xl border border-[#EADFD2] bg-[#FBF7F2] px-4 py-3">
+                    <p className="text-xs min-[900px]:text-sm text-[#5a4736] leading-snug">
+                      First massage? Draping is always used, you choose the pressure, and you can stop anytime.
+                    </p>
+                    <p className="text-[11px] min-[900px]:text-xs text-[#8a7460] leading-snug mt-0.5">
+                      ¿Primer masaje? Siempre se usa toalla, tú eliges la presión y puedes parar cuando quieras.
+                    </p>
+                    <a
+                      href="/guides/your-first-massage-in-madrid"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-1.5 text-xs min-[900px]:text-sm font-semibold text-[#C4622D] hover:underline"
+                    >
+                      Read the first-timer guide <span className="font-normal opacity-80">/ Lee la guía para principiantes</span>
+                    </a>
+                  </div>
+
                   <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
-                    The studio confirms your time. You pay at the studio.
-                    <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
+                    {autoConfirm ? (
+                      <>
+                        Your time is confirmed right away. You pay at the studio.
+                        <span className="block">Tu hora se confirma al instante. Pagas en el estudio.</span>
+                      </>
+                    ) : (
+                      <>
+                        The studio confirms your time. You pay at the studio.
+                        <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
+                      </>
+                    )}
                   </p>
                   <WizardNav onBack={() => goStep(4)} />
+
                 </Section>
               </div>
             )}
