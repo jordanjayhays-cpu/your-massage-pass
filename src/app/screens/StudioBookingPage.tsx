@@ -1919,24 +1919,28 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, labelEs,
-}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string }) {
-  if (!ready) return null;
+  ready, onNext, label, labelEs, busy,
+}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:flex min-[900px]:justify-center">
         <button
           type="button"
           onClick={onNext}
-          className="w-full min-[900px]:max-w-md min-[900px]:w-auto min-[900px]:px-16 h-13 min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight bg-[#C4622D] text-white shadow-lg motion-safe:transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2"
+          disabled={!ready || busy}
+          aria-disabled={!ready || busy}
+          className={`w-full min-[900px]:max-w-md min-[900px]:w-auto min-[900px]:px-16 min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D] focus-visible:ring-offset-2 ${
+            ready && !busy ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
+          }`}
         >
-          <span className="min-[900px]:text-lg">{label || "Continue"}</span>
-          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{labelEs || "Continuar"}</span>
+          <span className="min-[900px]:text-lg">{busy ? "Booking" : label || "Continue"}</span>
+          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{busy ? "Reservando" : labelEs || "Continuar"}</span>
         </button>
       </div>
     </div>
   );
 }
+
 
 function Stepper({
   steps, current, maxReached, onGo,
