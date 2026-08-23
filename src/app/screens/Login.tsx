@@ -361,14 +361,27 @@ export default function Login() {
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
+              name="one-time-code"
+              pattern="[0-9]*"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onPaste={(e) => {
+                const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+                if (!pasted) return;
+                e.preventDefault();
+                setOtpCode(pasted);
+                const el = e.currentTarget;
+                requestAnimationFrame(() => {
+                  el.focus();
+                  el.setSelectionRange(pasted.length, pasted.length);
+                });
+              }}
               onKeyDown={(e) => { if (e.key === "Enter") verifyCode(); }}
               placeholder="000000"
               aria-label={t("emailAuth.codeLabel")}
               className="w-full h-16 rounded-xl bg-[#F7F4F0] border border-[#E5DDD3] text-center text-[30px] tracking-[0.45em] font-medium text-[#211C1A] placeholder:text-[#D6CCC0] focus:outline-none focus:ring-2 focus:ring-[#C4622D]/40"
             />
+
             <Button
               onClick={verifyCode}
               disabled={otpBusy || otpCode.length !== 6}

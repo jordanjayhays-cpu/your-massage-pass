@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown, Check } from "lucide-react";
@@ -109,6 +109,8 @@ const LANG_BY_CODE: Record<string, string> = {
 export default function Profile() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+
 
 
   const SHOW_REFERRAL = false; // Parked until we process payments — see docs/PARKED_IDEAS.md
@@ -395,9 +397,11 @@ export default function Profile() {
   );
 
   const goBack = () => {
-    if (window.history.length > 1) navigate(-1);
-    else navigate("/app");
+    // location.key is "default" only when this is the first entry in the app's history
+    if (location.key !== "default" && window.history.length > 1) navigate(-1);
+    else navigate("/app/massages");
   };
+
 
 
   const toggleFocus = (v: string) =>
