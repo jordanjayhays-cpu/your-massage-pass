@@ -265,10 +265,15 @@ export default function StudioMap({
       } else if (!didFitRef.current && mapShops.length > 0) {
         const bounds = new google.maps.LatLngBounds();
         mapShops.forEach((m: any) => bounds.extend({ lat: m.lat, lng: m.lng }));
-        map.fitBounds(bounds, 32);
+        map.fitBounds(bounds, 24);
         google.maps.event.addListenerOnce(map, "idle", () => {
           const z = map.getZoom() ?? 13;
+          // Outlying studios must not pull the default view out to the region.
           if (z > 14) map.setZoom(14);
+          if (z < 12) {
+            map.setZoom(12);
+            map.setCenter(MADRID_CENTER);
+          }
         });
         didFitRef.current = true;
       }
