@@ -435,6 +435,23 @@ export default function StudioMap({
               : t("app.massageList.nearMadrid")}
           </span>
         </button>
+        {onSearchArea && moved && (
+          <button
+            type="button"
+            onClick={() => {
+              const b = mapInstanceRef.current?.getBounds();
+              if (!b) return;
+              const ne = b.getNorthEast();
+              const sw = b.getSouthWest();
+              onSearchArea({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
+              setMoved(false);
+            }}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 backdrop-blur border border-[#EADFD2] shadow-soft px-4 py-2 text-xs font-semibold text-[#C4622D] hover:bg-white transition"
+          >
+            Search this area <span className="font-normal text-[#8a7460]">/ Buscar en esta zona</span>
+          </button>
+        )}
+
         {geoError && (
           <div className="absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft">
             <p className="text-[11px] text-muted-foreground">
