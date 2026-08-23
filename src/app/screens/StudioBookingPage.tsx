@@ -1392,10 +1392,14 @@ export default function StudioBookingPage() {
             ready={canBook}
             busy={submitting}
             onNext={handleBook}
-            label={`Request booking · €${total}`}
-            labelEs="Solicitar reserva"
+            label={autoConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
+            labelEs={autoConfirm ? "Reservar ahora" : "Solicitar reserva"}
+            badge={autoConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
+            note="Free to book · Pay at the studio · No card needed"
+            noteEs="Reserva gratis · Paga en el estudio · Sin tarjeta"
           />
         )}
+
 
 
         {/* Mobile: slim running summary under the stepper */}
