@@ -1389,30 +1389,39 @@ export default function StudioBookingPage() {
                         </span>
                       </Link>
                       {profile.services.map(s => (
-                        <button key={s.id} onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
-                          className={`w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
-                            serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
-                          }`}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
-                              {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
-                              {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
-                              {Number(s.duration) > 0 && (
-                                <p className="text-xs min-[900px]:text-sm text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
-                              )}
+                        <div key={s.id}>
+                          <button onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
+                            className={`card-auto w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
+                              serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                            }`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
+                                {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
+                                {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
+                                {Number(s.duration) > 0 && (
+                                  <p className="text-xs min-[900px]:text-sm text-gray-400 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
+                                )}
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                {s.price != null && Number(s.price) > 0 && (
+                                  <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              {s.price != null && Number(s.price) > 0 && (
-                                <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
-                              )}
-                            </div>
-                          </div>
-                        </button>
+                          </button>
+                          {serviceId === s.id && (
+                            <MassageExplainerNote
+                              names={[(s as any).name_en, s.name, (s as any).type]}
+                              className="mt-2"
+                            />
+                          )}
+                        </div>
                       ))}
                       {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
                     </div>
                   )}
+
                 </Section>
                 <WizardNav
                   onNext={() => goStep(2)}
