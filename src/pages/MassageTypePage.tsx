@@ -13,8 +13,9 @@ import NotFound from "./NotFound";
  * Standalone, shareable page for one massage type: /massages/<slug>.
  * Same write-up as the in-flow overlay, plus the studios that list it.
  */
-export default function MassageTypePage() {
-  const { slug } = useParams();
+export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
+  const params = useParams();
+  const slug = slugProp ?? params.slug;
   const { i18n } = useTranslation();
   const es = (i18n.language || "en").startsWith("es");
   const type = massageTypeBySlug(slug);
