@@ -534,7 +534,14 @@
           "dim": "Tenue",
           "normal": "Normal"
         }
-      }
+      },
+      "savedInline": "Guardado",
+      "savedBtn": "Guardado",
+      "successTitle": "Perfil guardado.",
+      "successBody": "Los estudios verán tus preferencias cuando reserves.",
+      "successCta": "Encuentra tu masaje",
+      "keepEditing": "Seguir editando",
+      "saveError": "No se pudo guardar"
     },
     "myBookings": {
       "title": "Mis reservas",

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown, Check } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import {
@@ -200,6 +200,15 @@ export default function Profile() {
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [mySuggestions, setMySuggestions] = useState<any[]>([]);
 
+  // Auto-save state
+  const hydrated = useRef(false);
+  const [savedSection, setSavedSection] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+
+
 
   useEffect(() => {
     (async () => {
@@ -289,8 +298,107 @@ export default function Profile() {
 
       }
       setLoading(false);
+      window.setTimeout(() => { hydrated.current = true; }, 300);
     })();
   }, []);
+
+
+  // ---- Auto-save (per section, debounced ~1s). Consent + emergency contact
+  // are intentionally excluded: they need the explicit Save press.
+  const autoSaveSection = async (section: string, patch: Record<string, any>) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: user.id, ...patch, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    if (error) { setSaveError(error.message); return; }
+    setSaveError("");
+    setSavedSection(section);
+    window.setTimeout(() => setSavedSection(s => (s === section ? null : s)), 2200);
+  };
+
+  const useSectionAutoSave = (section: string, deps: any[], patch: () => Record<string, any>) => {
+    useEffect(() => {
+      if (!hydrated.current || !user) return;
+      const id = window.setTimeout(() => { void autoSaveSection(section, patch()); }, 1000);
+      return () => window.clearTimeout(id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+  };
+
+  useSectionAutoSave(
+    "prefs",
+    [preferredMassageTypes, preferredDuration, typicalBudget, usualAddons, massageFrequency, massageGoals, pressure, preferredTherapistGender, focusAreas, allergies, healthNotes],
+    () => ({
+      preferred_massage_types: preferredMassageTypes.length ? preferredMassageTypes : null,
+      preferred_duration: preferredDuration ?? null,
+      typical_budget: typicalBudget || null,
+      usual_addons: usualAddons.length ? usualAddons : null,
+      massage_frequency: massageFrequency || null,
+      massage_goals: massageGoals.length ? massageGoals : null,
+      preferred_pressure: pressure || null,
+      preferred_therapist_gender: preferredTherapistGender || null,
+      focus_areas: focusAreas.length ? focusAreas : null,
+      allergies: allergies || null,
+      health_notes: healthNotes || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "comfort",
+    [conversationPref, musicPref, temperaturePref, scentPref, lightingPref, comfortNotes],
+    () => ({
+      conversation_pref: conversationPref || null,
+      music_pref: musicPref || null,
+      temperature_pref: temperaturePref || null,
+      scent_pref: scentPref || null,
+      lighting_pref: lightingPref || null,
+      comfort_notes: comfortNotes || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "personal",
+    [firstName, lastName, phone, dateOfBirth, gender, city, preferredLanguage],
+    () => ({
+      first_name: firstName || null,
+      last_name: lastName || null,
+      full_name: `${firstName} ${lastName}`.trim() || null,
+      phone: phone || null,
+      date_of_birth: dateOfBirth || null,
+      gender: gender || null,
+      city: city || null,
+      preferred_language: preferredLanguage || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "health",
+    [reasonForVisit, medicalConditions, medications, pastSurgeries, avoidAreas],
+    () => ({
+      reason_for_visit: reasonForVisit || null,
+      medical_conditions: medicalConditions.length ? medicalConditions : null,
+      medications: medications || null,
+      past_surgeries: pastSurgeries || null,
+      avoid_areas: avoidAreas || null,
+    }),
+  );
+
+  const SavedTag = ({ section }: { section: string }) => (
+    <span
+      className={`text-xs font-medium text-[#C4622D] transition-opacity duration-500 ${
+        savedSection === section ? "opacity-100" : "opacity-0"
+      }`}
+      aria-live="polite"
+    >
+      {t("app.profile.savedInline")}
+    </span>
+  );
+
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/app");
+  };
+
 
   const toggleFocus = (v: string) =>
     setFocusAreas(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
@@ -422,9 +530,17 @@ export default function Profile() {
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
-    if (error) toast.error(error.message);
-    else toast.success(t("app.profile.toasts.profileSaved"));
+    if (error) {
+      setSaveError(error.message);
+      toast.error(error.message);
+      return;
+    }
+    setSaveError("");
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 2000);
+    setShowSaveSuccess(true);
   };
+
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -472,11 +588,13 @@ export default function Profile() {
     <div className="h-full overflow-y-auto bg-[#F7F4F0]">
       <div className="max-w-lg mx-auto px-5 pt-6 pb-8">
         <button
-          onClick={() => navigate("/app/bookings")}
-          className="flex items-center gap-1 text-sm text-gray-500 mb-3"
+          onClick={goBack}
+          aria-label={t("app.profile.header.back")}
+          className="flex items-center gap-1.5 text-sm text-gray-600 mb-3 h-10 pl-2 pr-4 -ml-2 rounded-full bg-white border border-[#E5DDD3] shadow-sm"
         >
-          <ArrowLeft size={14} /> {t("app.profile.header.back")}
+          <ArrowLeft size={18} /> {t("app.profile.header.back")}
         </button>
+
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">{t("app.profile.header.title")}</h1>
           <button
@@ -775,7 +893,7 @@ export default function Profile() {
 
         {/* Massage preferences card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2>
+          <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2><SavedTag section="prefs" /></div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.preferredPressure")}</label>
@@ -943,7 +1061,7 @@ export default function Profile() {
         {/* Comfort & experience card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2>
+            <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2><SavedTag section="comfort" /></div>
             <p className="text-xs text-gray-500">{t("app.profile.comfort.subtitle")}</p>
           </div>
 
@@ -1041,7 +1159,7 @@ export default function Profile() {
 
         {/* Personal details card */}
         <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2>
+          <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2><SavedTag section="personal" /></div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1157,7 +1275,7 @@ export default function Profile() {
         {/* Health & safety card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2>
+            <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2><SavedTag section="health" /></div>
             <p className="text-xs text-gray-500">{t("app.profile.health.subtitle")}</p>
           </div>
 
@@ -1265,19 +1383,51 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Save success card */}
+      {showSaveSuccess && (
+        <div className="px-5 pb-4">
+          <div className="max-w-lg mx-auto rounded-2xl border border-[#E5DDD3] bg-white p-5 shadow-sm text-center">
+            <div className="mx-auto h-11 w-11 rounded-full bg-[#C4622D]/10 flex items-center justify-center">
+              <Check className="h-6 w-6 text-[#C4622D]" />
+            </div>
+            <p className="mt-3 font-bold text-gray-900">{t("app.profile.successTitle")}</p>
+            <p className="text-sm text-gray-600 mt-1">{t("app.profile.successBody")}</p>
+            <button
+              onClick={() => navigate("/studios")}
+              className="mt-4 w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
+            >
+              {t("app.profile.successCta")}
+            </button>
+            <button
+              onClick={() => setShowSaveSuccess(false)}
+              className="mt-2 w-full h-10 text-sm text-gray-500"
+            >
+              {t("app.profile.keepEditing")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Sticky Save */}
       <div className="sticky bottom-0 inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
+          {saveError && (
+            <p className="text-sm text-red-600 mb-2 text-center">
+              {t("app.profile.saveError")}: {saveError}
+            </p>
+          )}
           <button
             onClick={save}
             disabled={saving}
             className="w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("app.profile.save")}
+            {!saving && justSaved && <Check className="h-4 w-4" />}
+            {justSaved && !saving ? t("app.profile.savedBtn") : t("app.profile.save")}
           </button>
         </div>
       </div>
+
     </div>
   );
 }
