@@ -405,9 +405,8 @@ export const BEST_FOR_COLORS: Record<BestForKey, { bg: string; fg: string; borde
 };
 
 export const CLOTHING_LABELS: Record<ClothingKey, { en: string; es: string }> = {
-  towel: { en: "Towel draping", es: "Con toalla" },
   dressed: { en: "Stay dressed", es: "Con ropa" },
-  "face-only": { en: "Face only, stay dressed", es: "Solo rostro, con ropa" },
+  "face-only": { en: "Face only, dressed", es: "Solo rostro, con ropa" },
   "feet-only": { en: "Shoes and socks off only", es: "Solo sin zapatos ni calcetines" },
 };
 
