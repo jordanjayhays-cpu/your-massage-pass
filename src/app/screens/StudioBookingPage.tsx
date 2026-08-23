@@ -1555,21 +1555,30 @@ export default function StudioBookingPage() {
 
                   {addons.length > 0 && (
                     <>
-                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Add-ons <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Extras</span></p>
+                      <p className="text-xs font-semibold text-gray-500 mb-1 min-[900px]:text-xl min-[900px]:mb-1.5">Make it yours <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Hazlo tuyo</span></p>
+                      <p className="text-xs min-[900px]:text-sm text-gray-400 mb-2 min-[900px]:mb-3">Extras this studio offers. Added to your total.</p>
                       <div className="space-y-2 min-[900px]:space-y-3 mb-4 min-[900px]:mb-5">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
+                          const price = Number(a.price) || 0;
+                          const extra = Number(a.duration_extra) || 0;
                           return (
                             <button key={a.id} onClick={() => toggle(addonNames, a.name, setAddonNames)}
-                              className={`w-full flex items-center justify-between p-3 min-[900px]:p-4 rounded-xl border-2 text-left transition ${
+                              aria-pressed={on}
+                              className={`card-auto w-full flex items-center justify-between gap-3 p-3 min-[900px]:p-4 rounded-xl border-2 text-left transition ${
                                 on ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                               }`}>
-                              <div>
+                              <div className="min-w-0">
                                 <p className="text-sm font-medium text-gray-900 min-[900px]:text-base">{a.name}</p>
-                                <p className="text-xs text-gray-400 min-[900px]:text-sm">+€{a.price}</p>
+                                {a.name_es && a.name_es !== a.name && (
+                                  <p className="text-xs text-gray-500 min-[900px]:text-sm">{a.name_es}</p>
+                                )}
+                                <p className="text-xs text-[#C4622D] font-semibold min-[900px]:text-sm">
+                                  +€{price}{extra > 0 ? ` · +${extra} min` : ""}
+                                </p>
                               </div>
-                              <div className={`h-5 w-5 min-[900px]:h-6 min-[900px]:w-6 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
-                                {on && <Check size={12} className="text-white min-[900px]:size-4" />}
+                              <div className={`h-6 w-6 min-[900px]:h-7 min-[900px]:w-7 flex-shrink-0 rounded-full border-2 flex items-center justify-center ${on ? "border-[#C4622D] bg-[#C4622D]" : "border-gray-300"}`}>
+                                {on && <Check size={13} className="text-white min-[900px]:size-4" />}
                               </div>
                             </button>
                           );
@@ -1577,6 +1586,7 @@ export default function StudioBookingPage() {
                       </div>
                     </>
                   )}
+
 
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Notes for your therapist <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Notas</span></p>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)}
