@@ -18,6 +18,7 @@ import StudioMap from "../components/StudioMap";
 import type { Shop } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
 import { useLocationAsk } from "@/lib/locationConsent";
+import { comparePath, saveQuizRecommendedType, setCompareEntries } from "@/lib/compare";
 
 const ORIGIN_KEY = "mc_quiz_origin";
 
@@ -102,6 +103,7 @@ export default function Quiz() {
   useEffect(() => {
     if (!done || !winnerType || finishLogged.current) return;
     finishLogged.current = true;
+    saveQuizRecommendedType(winnerType);
     trackEvent("quiz_finish", { meta: { recommended: winnerType } });
   }, [done, winnerType]);
 
@@ -254,6 +256,23 @@ export default function Quiz() {
                     View studio <ChevronRight className="h-4 w-4" />
                   </span>
                 </a>
+
+                {nearby.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const picks = nearby.slice(0, 3).map((s) => ({
+                        key: (s.slug || s.id) as string,
+                        name: s.name,
+                      }));
+                      setCompareEntries(picks);
+                      navigate(comparePath(picks.map((p) => p.key)));
+                    }}
+                    className="w-full min-h-11 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition"
+                  >
+                    Compare nearest <span className="font-normal opacity-75">· Comparar los más cercanos</span>
+                  </button>
+                )}
 
                 {nearby.length > 1 && (
                   <div className="space-y-2">
