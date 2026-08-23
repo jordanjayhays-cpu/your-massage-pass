@@ -6,6 +6,7 @@ import { MADRID_CENTER } from "../data";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { fetchShops } from "@/lib/supabase";
+import { haversineKm, distanceLabel, walkingDirectionsUrl } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
 
 export type GeoState = "pending" | "ready" | "fallback";
@@ -300,6 +301,26 @@ export default function StudioMap({
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selected.district}</span>
                 )}
               </div>
+              {userLoc && typeof selected.lat === "number" && typeof selected.lng === "number" && (() => {
+                const lang: "en" | "es" = t("app.massageList.bookNow").length && document.documentElement.lang?.startsWith("es") ? "es" : "en";
+                const km = haversineKm(userLoc, selected as any);
+                const dirUrl = walkingDirectionsUrl(selected as any, `${selected.studio} Madrid`, userLoc);
+                return (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
+                    <span>{distanceLabel(km, lang)}</span>
+                    {dirUrl && (
+                      <a
+                        href={dirUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary font-semibold hover:underline"
+                      >
+                        Directions / Cómo llegar
+                      </a>
+                    )}
+                  </p>
+                );
+              })()}
               <button
                 onClick={() => onSelect?.(selected)}
                 className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
