@@ -43,6 +43,9 @@ import Web from "./pages/Web";
 import Home from "./pages/Home";
 import BookingResult from "./pages/BookingResult";
 import Welcome from "./pages/Welcome";
+import MassageTypePage from "./pages/MassageTypePage";
+import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
+
 
 import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
