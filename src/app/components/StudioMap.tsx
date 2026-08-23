@@ -154,41 +154,56 @@ export default function StudioMap({
       mapInstanceRef.current = map;
       if (userLoc) map.setCenter(userLoc);
 
-      const iconSvg = (emoji: string, active: boolean) => {
-        const size = active ? 52 : 42;
-        return {
-          url: `data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-              <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="white" stroke-width="3"/>
-              <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="${active ? 26 : 20}">${emoji}</text>
-            </svg>`
-          )}`,
-          scaledSize: new google.maps.Size(size, size),
-          anchor: new google.maps.Point(size / 2, size / 2),
-        };
-      };
-
+      clustererRef.current?.clearMarkers();
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
 
       mapShops.forEach((m: any) => {
         const marker = new google.maps.Marker({
           position: { lat: m.lat, lng: m.lng },
-          map,
           title: m.studio,
-          icon: iconSvg(getStudioIcon(m.studio), false),
+          icon: brandPin(false),
         });
         marker.addListener("click", () => {
-          markersRef.current.forEach((mr) =>
-            mr.setIcon(iconSvg(getStudioIcon(mr.getTitle() ?? ""), false))
-          );
-          marker.setIcon(iconSvg(getStudioIcon(m.studio), true));
+          markersRef.current.forEach((mr) => mr.setIcon(brandPin(false)));
+          marker.setIcon(brandPin(true));
           setSelected(m as Shop);
           map.panTo({ lat: m.lat, lng: m.lng });
           if (!showSelectedCard) onSelect?.(m as Shop);
         });
         markersRef.current.push(marker);
       });
+
+      if (!clustererRef.current) {
+        clustererRef.current = new MarkerClusterer({
+          map,
+          renderer: {
+            render: ({ count, position }) =>
+              new google.maps.Marker({
+                position,
+                zIndex: 1000 + count,
+                label: {
+                  text: String(count),
+                  color: "#ffffff",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                },
+                icon: {
+                  url: `data:image/svg+xml,${encodeURIComponent(
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+                      <circle cx="22" cy="22" r="20" fill="#C4622D" stroke="#ffffff" stroke-width="3"/>
+                    </svg>`
+                  )}`,
+                  scaledSize: new google.maps.Size(44, 44),
+                  anchor: new google.maps.Point(22, 22),
+                  labelOrigin: new google.maps.Point(22, 22),
+                },
+              }),
+          },
+        });
+      }
+      clustererRef.current.addMarkers(markersRef.current);
+
 
       if (userMarkerRef.current) {
         userMarkerRef.current.setMap(null);
