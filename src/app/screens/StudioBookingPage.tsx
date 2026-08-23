@@ -896,6 +896,13 @@ export default function StudioBookingPage() {
                           })}
                         </div>
                       </div>
+                      {hoService && (
+                        <MassageExplainerNote
+                          names={[(hoService as any).name_en, (hoService as any).name, (hoService as any).type]}
+                          className="mt-3"
+                        />
+                      )}
+
                       <WizardNav
                         onNext={() => hoGo(2)}
                         disabled={!hoServiceId}
