@@ -303,6 +303,103 @@ export default function Profile() {
   }, []);
 
 
+  // ---- Auto-save (per section, debounced ~1s). Consent + emergency contact
+  // are intentionally excluded: they need the explicit Save press.
+  const autoSaveSection = async (section: string, patch: Record<string, any>) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: user.id, ...patch, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    if (error) { setSaveError(error.message); return; }
+    setSaveError("");
+    setSavedSection(section);
+    window.setTimeout(() => setSavedSection(s => (s === section ? null : s)), 2200);
+  };
+
+  const useSectionAutoSave = (section: string, deps: any[], patch: () => Record<string, any>) => {
+    useEffect(() => {
+      if (!hydrated.current || !user) return;
+      const id = window.setTimeout(() => { void autoSaveSection(section, patch()); }, 1000);
+      return () => window.clearTimeout(id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+  };
+
+  useSectionAutoSave(
+    "prefs",
+    [preferredMassageTypes, preferredDuration, typicalBudget, usualAddons, massageFrequency, massageGoals, pressure, preferredTherapistGender, focusAreas, allergies, healthNotes],
+    () => ({
+      preferred_massage_types: preferredMassageTypes.length ? preferredMassageTypes : null,
+      preferred_duration: preferredDuration ?? null,
+      typical_budget: typicalBudget || null,
+      usual_addons: usualAddons.length ? usualAddons : null,
+      massage_frequency: massageFrequency || null,
+      massage_goals: massageGoals.length ? massageGoals : null,
+      preferred_pressure: pressure || null,
+      preferred_therapist_gender: preferredTherapistGender || null,
+      focus_areas: focusAreas.length ? focusAreas : null,
+      allergies: allergies || null,
+      health_notes: healthNotes || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "comfort",
+    [conversationPref, musicPref, temperaturePref, scentPref, lightingPref, comfortNotes],
+    () => ({
+      conversation_pref: conversationPref || null,
+      music_pref: musicPref || null,
+      temperature_pref: temperaturePref || null,
+      scent_pref: scentPref || null,
+      lighting_pref: lightingPref || null,
+      comfort_notes: comfortNotes || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "personal",
+    [firstName, lastName, phone, dateOfBirth, gender, city, preferredLanguage],
+    () => ({
+      first_name: firstName || null,
+      last_name: lastName || null,
+      full_name: `${firstName} ${lastName}`.trim() || null,
+      phone: phone || null,
+      date_of_birth: dateOfBirth || null,
+      gender: gender || null,
+      city: city || null,
+      preferred_language: preferredLanguage || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "health",
+    [reasonForVisit, medicalConditions, medications, pastSurgeries, avoidAreas],
+    () => ({
+      reason_for_visit: reasonForVisit || null,
+      medical_conditions: medicalConditions.length ? medicalConditions : null,
+      medications: medications || null,
+      past_surgeries: pastSurgeries || null,
+      avoid_areas: avoidAreas || null,
+    }),
+  );
+
+  const SavedTag = ({ section }: { section: string }) => (
+    <span
+      className={`text-xs font-medium text-[#C4622D] transition-opacity duration-500 ${
+        savedSection === section ? "opacity-100" : "opacity-0"
+      }`}
+      aria-live="polite"
+    >
+      {t("app.profile.savedInline")}
+    </span>
+  );
+
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/app");
+  };
+
+
   const toggleFocus = (v: string) =>
     setFocusAreas(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
 
