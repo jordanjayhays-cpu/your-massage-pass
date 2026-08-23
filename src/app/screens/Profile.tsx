@@ -588,11 +588,13 @@ export default function Profile() {
     <div className="h-full overflow-y-auto bg-[#F7F4F0]">
       <div className="max-w-lg mx-auto px-5 pt-6 pb-8">
         <button
-          onClick={() => navigate("/app/bookings")}
-          className="flex items-center gap-1 text-sm text-gray-500 mb-3"
+          onClick={goBack}
+          aria-label={t("app.profile.header.back")}
+          className="flex items-center gap-1.5 text-sm text-gray-600 mb-3 h-10 pl-2 pr-4 -ml-2 rounded-full bg-white border border-[#E5DDD3] shadow-sm"
         >
-          <ArrowLeft size={14} /> {t("app.profile.header.back")}
+          <ArrowLeft size={18} /> {t("app.profile.header.back")}
         </button>
+
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">{t("app.profile.header.title")}</h1>
           <button
