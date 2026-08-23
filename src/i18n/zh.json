@@ -534,7 +534,14 @@
           "dim": "昏暗灯光",
           "normal": "正常"
         }
-      }
+      },
+      "keepEditing": "继续编辑",
+      "saveError": "保存失败",
+      "savedBtn": "已保存",
+      "savedInline": "已保存",
+      "successBody": "您预约时，工作室将看到您的偏好。",
+      "successCta": "寻找您的按摩",
+      "successTitle": "个人资料已保存。"
     },
     "myBookings": {
       "title": "我的预约",

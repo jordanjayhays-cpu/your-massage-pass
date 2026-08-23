@@ -534,7 +534,14 @@
           "dim": "Luz suave",
           "normal": "Normal"
         }
-      }
+      },
+      "keepEditing": "Continuar editando",
+      "saveError": "Não foi possível salvar",
+      "savedBtn": "Salvo",
+      "savedInline": "Salvo",
+      "successBody": "Os estúdios verão suas preferências quando você reservar.",
+      "successCta": "Encontre sua massagem",
+      "successTitle": "Perfil salvo."
     },
     "myBookings": {
       "title": "As minhas reservas",

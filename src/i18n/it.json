@@ -534,7 +534,14 @@
           "dim": "Luce soffusa",
           "normal": "Normale"
         }
-      }
+      },
+      "keepEditing": "Continua a modificare",
+      "saveError": "Impossibile salvare",
+      "savedBtn": "Salvato",
+      "savedInline": "Salvato",
+      "successBody": "Gli studi vedranno le tue preferenze quando prenoti.",
+      "successCta": "Trova il tuo massaggio",
+      "successTitle": "Profilo salvato."
     },
     "myBookings": {
       "title": "Le mie prenotazioni",

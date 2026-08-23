@@ -534,7 +534,14 @@
           "dim": "Tamisée",
           "normal": "Normale"
         }
-      }
+      },
+      "keepEditing": "Continuer à modifier",
+      "saveError": "Impossible d'enregistrer",
+      "savedBtn": "Enregistré",
+      "savedInline": "Enregistré",
+      "successBody": "Les studios verront vos préférences lors de votre réservation.",
+      "successCta": "Trouvez votre massage",
+      "successTitle": "Profil enregistré."
     },
     "myBookings": {
       "title": "Mes réservations",

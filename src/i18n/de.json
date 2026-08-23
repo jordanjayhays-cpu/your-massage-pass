@@ -534,7 +534,14 @@
           "dim": "Gedimmtes Licht",
           "normal": "Normal"
         }
-      }
+      },
+      "keepEditing": "Weiter bearbeiten",
+      "saveError": "Speichern fehlgeschlagen",
+      "savedBtn": "Gespeichert",
+      "savedInline": "Gespeichert",
+      "successBody": "Studios sehen deine Präferenzen bei der Buchung.",
+      "successCta": "Finde deine Massage",
+      "successTitle": "Profil gespeichert."
     },
     "myBookings": {
       "title": "Meine Buchungen",
