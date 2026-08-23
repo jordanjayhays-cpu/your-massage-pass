@@ -1214,6 +1214,11 @@ export default function Profile() {
             />
           </div>
 
+        {/* Emergency contact & consent */}
+        <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+
+
+
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.emergencyContact")}</label>
             <div className="mt-2 grid grid-cols-2 gap-3">
