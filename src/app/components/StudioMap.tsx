@@ -2,7 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Compass, Star, Clock, MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
+import {
+  useLocationAsk,
+  savedLocationResult,
+  originSuffix,
+  locationChoiceMade,
+  locationSheetAutoShown,
+  markLocationSheetAutoShown,
+} from "@/lib/locationConsent";
 import { MADRID_CENTER } from "../data";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
@@ -27,6 +34,8 @@ type Props = {
   onGeoStateChange?: (state: GeoState) => void;
   /** Reports the resolved user location (for distance sorting in parents). */
   onUserLocation?: (loc: { lat: number; lng: number }) => void;
+  /** On phones, open the branded location sheet once per session shortly after load. */
+  autoAskOnMobile?: boolean;
 };
 
 /** Branded clay pin: solid clay circle, white centre dot, white border. */
@@ -45,13 +54,30 @@ function brandPin(active: boolean) {
 }
 
 
+/**
+ * Paper-like brand basemap: warm cream ground, very muted roads, soft
+ * gray-brown labels. Google's own POI and transit pins are hidden so the
+ * only markers on the map are our studios. Street and area names stay.
+ */
 const MAP_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#f6efe1" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#5b4636" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#f6efe1" }] },
+  { elementType: "geometry", stylers: [{ color: "#EEEAE4" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8A7C6D" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#F6F2EC" }, { weight: 2 }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#DED7CD" }] },
+  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.neighborhood", elementType: "labels.text.fill", stylers: [{ color: "#9A8B7A" }] },
+  { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#E9E4DC" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#bcd4d8" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ visibility: "on" }, { color: "#DFE3D4" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#F7F4EF" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#E3DCD1" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9C8E7E" }] },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#F4F0E8" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#EFE7DA" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#CFDCDD" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#A0AFB0" }] },
 ];
 
 /**
@@ -66,6 +92,7 @@ export default function StudioMap({
   onSelect,
   onGeoStateChange,
   onUserLocation,
+  autoAskOnMobile = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -73,6 +100,7 @@ export default function StudioMap({
   const markersRef = useRef<google.maps.Marker[]>([]);
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
+  const didFitRef = useRef(false);
 
   const [ownShops, setOwnShops] = useState<Shop[]>([]);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
@@ -142,6 +170,24 @@ export default function StudioMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Phones only: open our branded sheet once per session, about a second in,
+   * so the page has settled first. Desktop keeps chip-tap only.
+   */
+  useEffect(() => {
+    if (!autoAskOnMobile) return;
+    const isPhone = window.matchMedia("(max-width: 767px)").matches;
+    if (!isPhone) return;
+    if (locationChoiceMade() || locationSheetAutoShown()) return;
+    const timer = window.setTimeout(() => {
+      if (locationChoiceMade() || locationSheetAutoShown()) return;
+      markLocationSheetAutoShown();
+      requestUserLocation();
+    }, 1000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAskOnMobile]);
+
   // Render map + markers
   useEffect(() => {
     if (!mapRef.current) return;
@@ -160,7 +206,6 @@ export default function StudioMap({
           styles: MAP_STYLES,
         });
       mapInstanceRef.current = map;
-      if (userLoc) map.setCenter(userLoc);
 
       clustererRef.current?.clearMarkers();
       markersRef.current.forEach((m) => m.setMap(null));
@@ -212,6 +257,22 @@ export default function StudioMap({
       }
       clustererRef.current.addMarkers(markersRef.current);
 
+      // Default view: frame all studio pins so clusters read as a few tidy
+      // bubbles. Once we know where the visitor is, we centre on them instead.
+      if (userLoc) {
+        map.setCenter(userLoc);
+        map.setZoom(14);
+      } else if (!didFitRef.current && mapShops.length > 0) {
+        const bounds = new google.maps.LatLngBounds();
+        mapShops.forEach((m: any) => bounds.extend({ lat: m.lat, lng: m.lng }));
+        map.fitBounds(bounds, 32);
+        google.maps.event.addListenerOnce(map, "idle", () => {
+          const z = map.getZoom() ?? 13;
+          if (z > 14) map.setZoom(14);
+        });
+        didFitRef.current = true;
+      }
+
 
       if (userMarkerRef.current) {
         userMarkerRef.current.setMap(null);
@@ -244,7 +305,7 @@ export default function StudioMap({
       {heading && (
         <h3 className="font-display text-lg font-semibold text-foreground mb-3">{heading}</h3>
       )}
-      <div className={`relative rounded-3xl overflow-hidden shadow-soft border border-border/60 ${heightClass}`}>
+      <div className={`relative rounded-3xl overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${heightClass}`}>
         <div ref={mapRef} className="absolute inset-0" />
         <button
           type="button"
