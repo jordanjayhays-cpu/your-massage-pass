@@ -17,6 +17,8 @@ import { BookAgainChip } from "../components/BookAgain";
 import { studioPath } from "@/lib/studioHref";
 import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
+import CompareToggle from "../components/CompareToggle";
+import CompareBar from "../components/CompareBar";
 
 
 
@@ -444,6 +446,10 @@ export default function MassageList() {
                             variant={studioBadgeVariant((m as any).status, (m as any).partner_id, freeTodayIds, m as any)}
                           />
                         </div>
+
+                        <div className="mt-2">
+                          <CompareToggle studio={m as any} size="sm" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -472,6 +478,8 @@ export default function MassageList() {
           </button>
         </div>
       </div>
+
+      <CompareBar />
     </div>
   );
 }

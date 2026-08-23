@@ -16,6 +16,7 @@ import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { fetchShops } from "@/lib/supabase";
 import { haversineKm, distanceLabel, walkingDirectionsUrl } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
+import CompareToggle from "./CompareToggle";
 
 export type GeoState = "pending" | "ready" | "fallback";
 
@@ -391,12 +392,15 @@ export default function StudioMap({
                   </p>
                 );
               })()}
-              <button
-                onClick={() => onSelect?.(selected)}
-                className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
-              >
-                {t("app.massageList.bookNow")}
-              </button>
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => onSelect?.(selected)}
+                  className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
+                >
+                  {t("app.massageList.bookNow")}
+                </button>
+                <CompareToggle studio={selected as any} size="sm" />
+              </div>
             </div>
           </div>
         </div>
