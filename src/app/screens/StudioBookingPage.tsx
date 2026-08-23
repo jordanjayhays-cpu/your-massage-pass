@@ -1724,6 +1724,9 @@ export default function StudioBookingPage() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => {
+                  if (waLoggedRef.current) return;
+                  waLoggedRef.current = true;
+                  setAskWaTapped(true);
                   clarityEvent("whatsapp_click");
                   sendTrack({
                     event: "whatsapp_click",
@@ -1748,7 +1751,9 @@ export default function StudioBookingPage() {
                   });
                 }}
                 className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
-                  partner.status === "active"
+                  askWaTapped
+                    ? "pointer-events-none opacity-70"
+                    : partner.status === "active"
                     ? "border border-[#C4622D] text-[#C4622D] bg-white hover:bg-[#FAF6F1]"
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
