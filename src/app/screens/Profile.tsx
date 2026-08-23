@@ -834,13 +834,20 @@ export default function Profile() {
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
-            <input
-              value={preferredLanguage}
-              onChange={e => setPreferredLanguage(e.target.value)}
-              placeholder={t("app.profile.personal.preferredLanguagePlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreferredLanguage(l)}
+                  className={chip(preferredLanguage === l)}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
+
         </div>
 
         {/* Massage preferences card */}
