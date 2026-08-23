@@ -561,7 +561,7 @@ export default function StudioBookingPage() {
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {gcal && (
-                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <CalendarDays size={18} /> Add to my calendar
                     </a>
                   )}
@@ -570,7 +570,7 @@ export default function StudioBookingPage() {
                       <MessageCircle size={18} /> Confirm on WhatsApp
                     </a>
                   ) : studioNumber ? (
-                    <a href={`tel:${studioNumber}`} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <Phone size={18} /> Llamar al estudio
                       <span className="block text-xs font-normal opacity-80">Call the studio</span>
                     </a>
@@ -590,7 +590,7 @@ export default function StudioBookingPage() {
                       <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
                     </a>
                   ) : studioNumber ? (
-                    <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                       <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
                       <span className="text-xs font-normal opacity-90">Call the studio</span>
                     </a>
@@ -602,7 +602,7 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {gcal && (
-                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <CalendarDays size={18} /> Add to my calendar
                     </a>
                   )}
@@ -1068,7 +1068,7 @@ export default function StudioBookingPage() {
             )}
             <div className="flex flex-col items-center gap-3 w-full">
               {!waLink && studioNumber && (
-                <a href={`tel:${studioNumber}`} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
+                <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                   <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
                   <span className="text-xs font-normal opacity-90">{t("app.handoff.callStudioSub")}</span>
                 </a>
@@ -1813,7 +1813,7 @@ export default function StudioBookingPage() {
                 );
               })()}
               {partner.phone && (
-                <a href={`tel:${partner.phone}`} className="flex items-center gap-1 text-sm hover:text-gray-600">
+                <a href={telHref(partner.phone) || undefined} className="flex items-center gap-1 text-sm hover:text-gray-600">
                   <Phone size={14} /> Call
                 </a>
               )}
