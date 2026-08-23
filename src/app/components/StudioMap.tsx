@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Compass, Star, Clock, MapPin, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { MADRID_CENTER } from "../data";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
@@ -79,6 +80,9 @@ export default function StudioMap({
   // Tap-to-locate feedback: the chip must never look dead.
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState(false);
+  // Set when the visitor picked a neighbourhood instead of sharing location.
+  const [areaName, setAreaName] = useState<string | null>(null);
+  const askLocation = useLocationAsk();
 
   const allShops = shops ?? ownShops;
   const mapShops = allShops.filter(
@@ -95,7 +99,27 @@ export default function StudioMap({
     return () => { cancelled = true; };
   }, [shops]);
 
-  const requestUserLocation = (fromTap = false) => {
+  /**
+   * Soft-ask only. The native prompt is never fired from here without the
+   * visitor first tapping through our own sheet.
+   */
+  const requestUserLocation = () => {
+    setGeoError(false);
+    setLocating(true);
+    askLocation((res) => {
+      setLocating(false);
+      if (!res) {
+        onGeoStateChange?.("fallback");
+        return;
+      }
+      setUserLoc(res.loc);
+      setAreaName(res.areaName);
+      onUserLocation?.(res.loc);
+      onGeoStateChange?.("ready");
+    });
+  };
+
+  const legacyRequestUserLocation = (fromTap = false) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       if (fromTap) setGeoError(true);
       onGeoStateChange?.("fallback");
@@ -126,7 +150,15 @@ export default function StudioMap({
   // Ask once on mount, fall back to central Madrid after ~3s.
   useEffect(() => {
     onGeoStateChange?.("pending");
-    requestUserLocation();
+    const saved = savedLocationResult();
+    if (saved) {
+      setUserLoc(saved.loc);
+      setAreaName(saved.areaName);
+      onUserLocation?.(saved.loc);
+      onGeoStateChange?.("ready");
+    } else {
+      onGeoStateChange?.("fallback");
+    }
     const timer = window.setTimeout(() => {
       setUserLoc((cur) => {
         if (!cur) onGeoStateChange?.("fallback");
@@ -243,7 +275,7 @@ export default function StudioMap({
         <div ref={mapRef} className="absolute inset-0" />
         <button
           type="button"
-          onClick={() => requestUserLocation(true)}
+          onClick={() => requestUserLocation()}
           aria-live="polite"
           className="absolute top-3 left-3 flex items-center gap-2 bg-card/95 backdrop-blur-sm rounded-full pl-3 pr-4 py-1.5 shadow-soft border border-border/60 hover:bg-card transition"
         >
