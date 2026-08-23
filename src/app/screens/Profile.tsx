@@ -130,6 +130,26 @@ export default function Profile() {
   const [city, setCity] = useState("");
   const [preferredLanguage, setPreferredLanguage] = useState("");
 
+  // Birthday split into three selects; stored as the same YYYY-MM-DD string.
+  const [y, m, d] = (dateOfBirth || "").split("-");
+  const dobParts = {
+    year: y || "",
+    month: m ? String(Number(m)) : "",
+    day: d ? String(Number(d)) : "",
+  };
+  const setDobPart = (part: "day" | "month" | "year", value: string) => {
+    const next = { ...dobParts, [part]: value };
+    if (!next.day || !next.month || !next.year) {
+      setDateOfBirth("");
+      return;
+    }
+    setDateOfBirth(
+      `${next.year}-${String(Number(next.month)).padStart(2, "0")}-${String(Number(next.day)).padStart(2, "0")}`
+    );
+  };
+
+
+
   // New preferences
   const [preferredMassageTypes, setPreferredMassageTypes] = useState<string[]>([]);
   const [preferredDuration, setPreferredDuration] = useState<number | null>(null);
