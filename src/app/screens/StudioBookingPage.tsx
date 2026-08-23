@@ -1320,12 +1320,14 @@ export default function StudioBookingPage() {
         )}
         {step === 5 && (
           <StickyContinue
-            ready={canBook && !submitting}
+            ready={canBook}
+            busy={submitting}
             onNext={handleBook}
             label={`Request booking · €${total}`}
             labelEs="Solicitar reserva"
           />
         )}
+
 
         {/* Mobile: slim running summary under the stepper */}
         <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
