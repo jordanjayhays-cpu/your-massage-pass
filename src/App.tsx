@@ -110,6 +110,12 @@ const App = () => (
           <Route path="/guides/is-massage-good-for-you" element={<IsMassageGoodForYou />} />
           <Route path="/guides/your-first-massage-in-madrid" element={<YourFirstMassageInMadrid />} />
 
+          {/* Standalone massage type pages (static slugs win over /massages/:id) */}
+          {MASSAGE_TYPE_SLUGS.map((slug) => (
+            <Route key={slug} path={`/massages/${slug}`} element={<MassageTypePage />} />
+          ))}
+
+
           {/* Branded forwarder for the "confirm your opening hours" email link.
               Preserves query string and hash, then hops to the Supabase edge function. */}
           <Route path="/confirm-hours" element={<ConfirmHoursRedirect />} />
