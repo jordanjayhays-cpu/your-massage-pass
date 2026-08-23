@@ -144,7 +144,9 @@ export default function StudioBookingPage() {
   useEffect(() => {
     clarityEvent("studio_view");
     trackEvent("studio_view", { slug: studioId });
+    markStudioVisited(studioId);
   }, [studioId]);
+
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
