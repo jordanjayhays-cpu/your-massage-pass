@@ -289,8 +289,10 @@ export default function Profile() {
 
       }
       setLoading(false);
+      window.setTimeout(() => { hydrated.current = true; }, 300);
     })();
   }, []);
+
 
   const toggleFocus = (v: string) =>
     setFocusAreas(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
