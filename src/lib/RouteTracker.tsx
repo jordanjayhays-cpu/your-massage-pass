@@ -15,12 +15,14 @@ export default function RouteTracker() {
     const path = location.pathname;
     if (last.current === path) return;
     last.current = path;
+    // Fires on the first load AND on every client-side route change.
     logSiteVisit(path);
     if (initial.current) {
       initial.current = false;
       logCampaignVisit(path);
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   return null;
 }
+
