@@ -9,6 +9,7 @@
  * session so the sheet does not reappear on every page.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { trackEvent } from "@/lib/siteVisit";
 import { useTranslation } from "react-i18next";
 import { MapPin, Loader2 } from "lucide-react";
 import { saveLocation, type LatLng } from "@/lib/distance";
@@ -140,6 +141,7 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
   const runBrowserPrompt = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       storeChoice({ status: "denied" });
+      trackEvent("locate_denied");
       setPhase("fallback");
       return;
     }
@@ -149,10 +151,12 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         saveLocation(loc);
         storeChoice({ status: "granted", loc });
+        trackEvent("locate_granted");
         finish({ loc, areaName: null });
       },
       () => {
         storeChoice({ status: "denied" });
+        trackEvent("locate_denied");
         setPhase("fallback");
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },

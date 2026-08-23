@@ -25,7 +25,9 @@ export function sendTrack(payload: Record<string, unknown>): void {
   try {
     const body = JSON.stringify(payload);
     if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-      const ok = navigator.sendBeacon(TRACK_URL, new Blob([body], { type: "application/json" }));
+      // text/plain keeps the beacon a "simple" request, so no CORS preflight
+      // is needed and route-change beacons are not silently dropped.
+      const ok = navigator.sendBeacon(TRACK_URL, new Blob([body], { type: "text/plain;charset=UTF-8" }));
       if (ok) return;
     }
     void fetch(TRACK_URL, {
@@ -41,6 +43,24 @@ export function sendTrack(payload: Record<string, unknown>): void {
     /* ignore */
   }
 }
+
+/**
+ * Named funnel event. Routed to site_events by the track function.
+ * Respects the same opt-out logic as pageviews and never blocks the UI.
+ */
+export function trackEvent(
+  event: string,
+  opts?: { slug?: string | null; meta?: Record<string, unknown> }
+): void {
+  sendTrack({
+    event,
+    path: typeof window !== "undefined" ? window.location.pathname : "/",
+    slug: opts?.slug ?? null,
+    partner_slug: opts?.slug ?? null,
+    meta: opts?.meta ?? null,
+  });
+}
+
 
 /**
  * Fire-and-forget pageview beacon.
