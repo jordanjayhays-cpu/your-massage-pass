@@ -16,6 +16,7 @@ import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import StudioMap from "../components/StudioMap";
 import type { Shop } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
+import { useLocationAsk } from "@/lib/locationConsent";
 
 const ORIGIN_KEY = "mc_quiz_origin";
 
@@ -54,6 +55,7 @@ export default function Quiz() {
   const [geoState, setGeoState] = useState<"idle" | "loading" | "ready" | "unavailable">("idle");
   const [nearby, setNearby] = useState<NearbyStudio[]>([]);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const askLocation = useLocationAsk();
   const [fallbackList, setFallbackList] = useState<
     Omit<NearbyStudio, "km" | "meters" | "walkMinutes" | "lat" | "lng">[]
   >([]);
@@ -103,32 +105,26 @@ export default function Quiz() {
     return () => { cancelled = true; };
   }, [done, winnerType, origin?.slug]);
 
-  // Never blocks the result: on denial or error we simply keep the plain list.
+  // Never blocks the result. The branded sheet comes first, so the native
+  // permission prompt is never fired cold.
   const askForLocation = () => {
-    if (!winnerType || typeof navigator === "undefined" || !navigator.geolocation) {
-      setGeoState("unavailable");
-      findStudiosOfferingType(winnerType!, 3).then(setFallbackList).catch(() => {});
-      return;
-    }
+    if (!winnerType) return;
     setGeoState("loading");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const list = await findNearestStudios(winnerType, pos.coords.latitude, pos.coords.longitude, 3);
-        if (list.length === 0) {
-          setGeoState("unavailable");
-          findStudiosOfferingType(winnerType, 3).then(setFallbackList).catch(() => {});
-          return;
-        }
-        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setNearby(list);
-        setGeoState("ready");
-      },
-      () => {
+    askLocation(async (res) => {
+      if (!res) {
+        setGeoState("idle");
+        return;
+      }
+      const list = await findNearestStudios(winnerType, res.loc.lat, res.loc.lng, 3);
+      if (list.length === 0) {
         setGeoState("unavailable");
         findStudiosOfferingType(winnerType, 3).then(setFallbackList).catch(() => {});
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-    );
+        return;
+      }
+      setUserLoc(res.loc);
+      setNearby(list);
+      setGeoState("ready");
+    });
   };
 
   const studioHref = (s: { slug: string | null; id: string }) => studioPath(s);
