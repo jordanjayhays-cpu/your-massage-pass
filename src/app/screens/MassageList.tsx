@@ -15,7 +15,8 @@ import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { BookAgainChip } from "../components/BookAgain";
 import { studioPath } from "@/lib/studioHref";
-import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl, requestLocation } from "@/lib/distance";
+import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl } from "@/lib/distance";
+import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 
 
 
@@ -38,6 +39,9 @@ export default function MassageList() {
   const [debouncedQ, setDebouncedQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [locatingDistances, setLocatingDistances] = useState(false);
+  // Neighbourhood name when the visitor picked an area instead of sharing location.
+  const [areaName, setAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
+  const askLocation = useLocationAsk();
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
@@ -127,11 +131,15 @@ export default function MassageList() {
         .slice(0, 8)
     : [];
 
-  const handleShowDistances = async () => {
+  // Soft-ask first: our sheet, then the browser prompt only on the primary tap.
+  const handleShowDistances = () => {
     setLocatingDistances(true);
-    const loc = await requestLocation();
-    setLocatingDistances(false);
-    if (loc) setUserLoc(loc);
+    askLocation((res) => {
+      setLocatingDistances(false);
+      if (!res) return;
+      setUserLoc(res.loc);
+      setAreaName(res.areaName);
+    });
   };
 
 
@@ -408,7 +416,7 @@ export default function MassageList() {
                           const dirUrl = walkingDirectionsUrl(m as any, `${m.studio} Madrid`, userLoc);
                           return (
                             <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2">
-                              <span>{distanceLabel(km, lang)}</span>
+                              <span>{distanceLabel(km, lang)} {areaName ? originSuffix(areaName, lang) : ""}</span>
                               {dirUrl && (
                                 <a
                                   href={dirUrl}
