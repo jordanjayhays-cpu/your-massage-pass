@@ -378,15 +378,22 @@ export default function MassageList() {
               {filtered.slice(0, visibleCount).map((m, idx) => {
                 const isFav = favorites.has(m.id);
                 const isSelected = selectedStudio?.id === m.id || (!selectedStudio && idx === 0);
+                const mKey = studioKey(m);
+                const isHovered = hoverKey != null && hoverKey === mKey;
                 return (
                   <div
                     key={m.id}
                     className={cn(
                       "w-full min-w-0 bg-card border rounded-3xl p-3 shadow-soft hover:shadow-elegant transition-all cursor-pointer",
-                      isSelected ? "border-primary/60 ring-1 ring-primary/30" : "border-border/60"
+                      isHovered
+                        ? "border-primary ring-2 ring-primary/30"
+                        : isSelected ? "border-primary/60 ring-1 ring-primary/30" : "border-border/60"
                     )}
+                    onMouseEnter={() => setHoverKey(mKey)}
+                    onMouseLeave={() => setHoverKey((cur) => (cur === mKey ? null : cur))}
                     onClick={() => handleBook(m)}
                   >
+
                     <div className="flex gap-3">
                       <div className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary">
                         {m.image && (
