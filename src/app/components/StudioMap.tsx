@@ -312,7 +312,7 @@ export default function StudioMap({
                 const dirUrl = walkingDirectionsUrl(selected as any, `${selected.studio} Madrid`, userLoc);
                 return (
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
-                    <span>{distanceLabel(km, lang)}</span>
+                    <span>{distanceLabel(km, lang)} {areaName ? originSuffix(areaName, lang) : ""}</span>
                     {dirUrl && (
                       <a
                         href={dirUrl}
