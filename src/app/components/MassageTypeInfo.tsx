@@ -94,7 +94,9 @@ export function MassageTypeVitals({ type }: { type: MassageTypeContent }) {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <QuickFact icon={clothingIcon} en={CLOTHING_LABELS[v.clothing].en} es={CLOTHING_LABELS[v.clothing].es} />
+        {v.clothing && clothingIcon && (
+          <QuickFact icon={clothingIcon} en={CLOTHING_LABELS[v.clothing].en} es={CLOTHING_LABELS[v.clothing].es} />
+        )}
         <QuickFact
           icon={v.oil === "none" ? <Droplet size={13} /> : <Droplets size={13} />}
           en={OIL_LABELS[v.oil].en}
