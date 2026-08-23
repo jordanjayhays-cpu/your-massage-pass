@@ -491,6 +491,36 @@ export default function StudioBookingPage() {
 
   const { partner } = profile;
 
+  // ─── Distance and walking directions ───
+  const studioLatLng: LatLng | null =
+    (partner as any).latitude != null && (partner as any).longitude != null
+      ? { lat: Number((partner as any).latitude), lng: Number((partner as any).longitude) }
+      : null;
+  const distanceKm = userLoc && studioLatLng ? haversineKm(userLoc, studioLatLng) : null;
+  const directionsHref = walkingDirectionsUrl(studioLatLng, partner.address || partner.business_name, userLoc);
+  const distanceBlock = (dark: boolean) => (
+    <p className={`text-sm flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 ${dark ? "text-white/80" : ""}`} style={dark ? undefined : { color: "#5a4736" }}>
+      {distanceKm != null ? (
+        <span>{distanceLabel(distanceKm, esLang ? "es" : "en")}</span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => requestLocation().then(loc => loc && setUserLoc(loc))}
+          className="underline underline-offset-2 font-semibold"
+        >
+          Show distance <span className="font-normal">/ Ver distancia</span>
+        </button>
+      )}
+      {directionsHref && (
+        <a href={directionsHref} target="_blank" rel="noreferrer" className={`underline underline-offset-2 font-semibold ${dark ? "" : "text-[#C4622D]"}`}>
+          Directions <span className="font-normal">/ Cómo llegar</span>
+        </a>
+      )}
+    </p>
+  );
+
+
+
   // ─── Confirmation screen ───
   if (done) {
     const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
