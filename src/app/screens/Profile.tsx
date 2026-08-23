@@ -92,10 +92,24 @@ const LIGHTING: { label: string; value: string }[] = [
   { label: "Dim", value: "dim" },
   { label: "Normal", value: "normal" },
 ];
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 85 }, (_, i) => CURRENT_YEAR - 16 - i);
+
+const LANGUAGE_OPTIONS = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "中文", "العربية"];
+const LANG_BY_CODE: Record<string, string> = {
+  en: "English", es: "Español", fr: "Français", de: "Deutsch",
+  it: "Italiano", pt: "Português", zh: "中文", ar: "العربية",
+};
 
 export default function Profile() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+
 
   const SHOW_REFERRAL = false; // Parked until we process payments — see docs/PARKED_IDEAS.md
   const [loading, setLoading] = useState(true);
