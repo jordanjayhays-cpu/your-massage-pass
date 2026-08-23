@@ -392,7 +392,20 @@ export default function StudioMap({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allShops, userLoc]);
+  }, [allShops, userLoc, closeZoom]);
+
+  // Keep pin styling in sync with whatever is highlighted (card hover, pin
+  // hover, or the selected studio) without rebuilding every marker.
+  useEffect(() => {
+    markersByKeyRef.current.forEach((marker, key) => {
+      const iconFor = (marker as any).__mcIconFor as ((active: boolean) => any) | undefined;
+      if (!iconFor) return;
+      const active = key === activeKey;
+      marker.setIcon(iconFor(active));
+      marker.setZIndex(active ? 5000 : 1);
+    });
+  }, [activeKey, closeZoom, allShops]);
+
 
   return (
     <div>
