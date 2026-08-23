@@ -1664,47 +1664,44 @@ export default function StudioBookingPage() {
               <div>
                 <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
                   <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
-                    <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
-                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
-                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
-                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" />
-                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" />
-                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" />
-                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonNames.length ? addonNames.join(", ") : null} placeholder="None" />
-                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" />
-                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" />
-                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" />
+                    <SummaryRow label="Service" labelEs="Servicio" value={serviceSummary} placeholder="Pick a service" onChange={() => goStep(1)} />
+                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" onChange={() => goStep(2)} />
+                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" onChange={() => goStep(2)} />
+                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" onChange={() => goStep(3)} />
+                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" onChange={() => goStep(3)} />
+                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" onChange={() => goStep(3)} />
+                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonSummary} placeholder="None" onChange={() => goStep(3)} />
+                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" onChange={() => goStep(3)} />
+                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" onChange={() => goStep(4)} />
+                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" onChange={() => goStep(4)} />
                     <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
                   </div>
-                  {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
-                  <button
-                    onClick={handleBook}
-                    disabled={submitting || !canBook}
-                    className={`mt-4 w-full h-14 min-[900px]:h-16 rounded-2xl font-semibold flex items-center justify-center gap-2 motion-safe:transition ${
-                      canBook ? "bg-[#C4622D] text-white shadow-lg" : "bg-[#E7D9CB] text-[#9E8B78]"
-                    }`}
-                  >
-                    {submitting ? (
-                      <><Loader2 size={18} className="animate-spin" /> Booking</>
-                    ) : (
-                      <span className="flex flex-col items-center leading-tight">
-                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><CalendarDays size={18} /> Request booking · €{total}</span>
-                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar reserva</span>
+
+                  {/* Marketing opt-in lives here, under the contact summary, unchecked by default */}
+                  <label className="mt-4 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={marketingOptIn}
+                      onChange={e => setMarketingOptIn(e.target.checked)}
+                    />
+                    <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
+                      Email me Madrid massage deals and new studios (about once a month, no spam)
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
+                        Recíbe ofertas de masajes en Madrid y nuevos estudios (una vez al mes, sin spam)
                       </span>
-                    )}
-                  </button>
-                  <p className="mt-2 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
+                    </span>
+                  </label>
+
+                  {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+                  <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
                     The studio confirms your time. You pay at the studio.
                     <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
                   </p>
-                  <div className="pt-3">
-                    <button type="button" onClick={() => goStep(4)} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
-                      Back <span className="font-normal">/ Atrás</span>
-                    </button>
-                  </div>
+                  <WizardNav onBack={() => goStep(4)} />
                 </Section>
               </div>
             )}
+
           </div>
 
           {/* RIGHT: running summary, desktop only */}
