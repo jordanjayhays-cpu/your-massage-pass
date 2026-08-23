@@ -109,8 +109,17 @@ export default function MassageList() {
         m.studio.toLowerCase().includes(query) ||
         ("district" in m && m.district?.toLowerCase().includes(query));
       const matchesType = typeFilter === "all" || m.type === typeFilter;
-      return matchesQ && matchesType;
+      const matchesArea =
+        !areaBounds ||
+        (typeof (m as any).lat === "number" &&
+          typeof (m as any).lng === "number" &&
+          (m as any).lat <= areaBounds.north &&
+          (m as any).lat >= areaBounds.south &&
+          (m as any).lng <= areaBounds.east &&
+          (m as any).lng >= areaBounds.west);
+      return matchesQ && matchesType && matchesArea;
     })
+
     .map((m) => ({
       ...m,
       km: typeof (m as any).lat === "number" && typeof (m as any).lng === "number"
