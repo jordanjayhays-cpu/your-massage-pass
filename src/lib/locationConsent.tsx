@@ -184,32 +184,30 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
           <div
             role="dialog"
             aria-modal="true"
-            className="relative w-full sm:max-w-md bg-[#FAF6F1] rounded-t-3xl sm:rounded-3xl border border-[#EADFD2] shadow-[0_-8px_40px_rgba(80,44,20,0.18)] px-6 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-6"
+            className="relative w-full sm:max-w-[360px] bg-[#FAF6F1] rounded-t-3xl sm:rounded-3xl border border-[#EADFD2] shadow-[0_-8px_40px_rgba(80,44,20,0.18)] px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5"
           >
-            <div className="mx-auto mb-4 h-14 w-14 rounded-full flex items-center justify-center" style={{ background: "#F2E3D5" }}>
-              <MapPin size={26} style={{ color: "#C4622D" }} />
+            <div className="mx-auto mb-3 h-12 w-12 rounded-full flex items-center justify-center" style={{ background: "#F2E3D5" }}>
+              <MapPin size={20} style={{ color: "#C4622D" }} />
             </div>
 
             {phase !== "fallback" ? (
               <>
-                <h2 className="font-display text-xl font-semibold text-center" style={{ color: "#2b2b2b" }}>
-                  See studios near you
+                <h2 className="font-display text-lg font-semibold text-center leading-tight" style={{ color: "#2b2b2b" }}>
+                  Find massages near you
                 </h2>
-                <p className="text-sm text-center mb-3" style={{ color: "#8a7460" }}>Ver estudios cerca de ti</p>
+                <p className="text-xs text-center" style={{ color: "#8a7460" }}>Masajes cerca de ti</p>
 
-                <p className="text-sm text-center leading-relaxed" style={{ color: "#5a4736" }}>
-                  We use your location once, only to sort studios by distance. We never store it or share it.
-                </p>
-                <p className="text-xs text-center leading-relaxed mt-1" style={{ color: "#8a7460" }}>
-                  Usamos tu ubicación una vez, solo para ordenar los estudios por distancia. No la guardamos ni la compartimos.
+                <p className="text-xs text-center mt-2" style={{ color: "#5a4736" }}>
+                  Used once, never stored.{" "}
+                  <span style={{ color: "#8a7460" }}>Un solo uso, nunca se guarda.</span>
                 </p>
 
-                <div className="mt-5 space-y-2">
+                <div className="mt-4 space-y-1.5">
                   <button
                     type="button"
                     onClick={runBrowserPrompt}
                     disabled={phase === "locating"}
-                    className="w-full min-h-[52px] rounded-2xl font-semibold text-white flex flex-col items-center justify-center leading-tight disabled:opacity-70"
+                    className="w-full min-h-[48px] rounded-2xl font-semibold text-white flex items-center justify-center leading-tight disabled:opacity-70"
                     style={{ background: "#C4622D" }}
                   >
                     {phase === "locating" ? (
@@ -217,28 +215,26 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
                         <Loader2 size={16} className="animate-spin" /> Locating you
                       </span>
                     ) : (
-                      <>
-                        <span>Show distances</span>
-                        <span className="text-xs font-normal opacity-90">Mostrar distancias</span>
-                      </>
+                      <span className="text-sm">
+                        Show what's nearby <span className="font-normal opacity-85">/ Ver qué hay cerca</span>
+                      </span>
                     )}
                   </button>
                   <button
                     type="button"
                     onClick={() => finish(null)}
-                    className="w-full min-h-11 rounded-2xl text-sm font-medium"
+                    className="w-full min-h-10 rounded-2xl text-sm font-medium"
                     style={{ color: "#8a7460" }}
                   >
                     Not now <span className="opacity-70">/ Ahora no</span>
                   </button>
                 </div>
 
-                <p className="text-[11px] text-center mt-3" style={{ color: "#9E8B78" }}>
-                  Your browser will ask for permission next.
-                  <br />
-                  Tu navegador pedirá permiso ahora.
+                <p className="text-[10px] text-center mt-2" style={{ color: "#9E8B78" }}>
+                  Your browser will ask first · Tu navegador pedirá permiso
                 </p>
               </>
+
             ) : (
               <>
                 <h2 className="font-display text-xl font-semibold text-center" style={{ color: "#2b2b2b" }}>
