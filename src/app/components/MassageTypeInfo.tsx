@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, X, ExternalLink, Sparkles, Shirt, Layers, Droplet, Droplets, Footprints, Smile } from "lucide-react";
+import { Info, X, ExternalLink, Sparkles, Shirt, Droplet, Droplets, Footprints, Smile } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   findMassageType,
@@ -62,7 +62,7 @@ export function MassageTypeVitals({ type }: { type: MassageTypeContent }) {
     v.clothing === "dressed" ? <Shirt size={13} />
     : v.clothing === "face-only" ? <Smile size={13} />
     : v.clothing === "feet-only" ? <Footprints size={13} />
-    : <Layers size={13} />;
+    : null;
 
   return (
     <div className="rounded-2xl border border-[#E6DCCF] bg-[#FDFBF8] p-4">
@@ -94,7 +94,9 @@ export function MassageTypeVitals({ type }: { type: MassageTypeContent }) {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <QuickFact icon={clothingIcon} en={CLOTHING_LABELS[v.clothing].en} es={CLOTHING_LABELS[v.clothing].es} />
+        {v.clothing && clothingIcon && (
+          <QuickFact icon={clothingIcon} en={CLOTHING_LABELS[v.clothing].en} es={CLOTHING_LABELS[v.clothing].es} />
+        )}
         <QuickFact
           icon={v.oil === "none" ? <Droplet size={13} /> : <Droplets size={13} />}
           en={OIL_LABELS[v.oil].en}

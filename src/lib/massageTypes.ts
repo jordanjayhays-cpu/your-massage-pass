@@ -373,14 +373,15 @@ export type BestForKey =
   | "face"
   | "pregnancy";
 
-export type ClothingKey = "towel" | "dressed" | "face-only" | "feet-only";
+export type ClothingKey = "dressed" | "face-only" | "feet-only";
 export type OilKey = "oil" | "light-oil" | "none";
 
 export type MassageVitals = {
   /** 1 to 5 */
   pressure: number;
   bestFor: BestForKey[];
-  clothing: ClothingKey;
+  /** Clothing fact is only shown for types where the user stays dressed. */
+  clothing?: ClothingKey;
   oil: OilKey;
 };
 
@@ -404,9 +405,8 @@ export const BEST_FOR_COLORS: Record<BestForKey, { bg: string; fg: string; borde
 };
 
 export const CLOTHING_LABELS: Record<ClothingKey, { en: string; es: string }> = {
-  towel: { en: "Towel draping", es: "Con toalla" },
   dressed: { en: "Stay dressed", es: "Con ropa" },
-  "face-only": { en: "Face only, stay dressed", es: "Solo rostro, con ropa" },
+  "face-only": { en: "Face only, dressed", es: "Solo rostro, con ropa" },
   "feet-only": { en: "Shoes and socks off only", es: "Solo sin zapatos ni calcetines" },
 };
 
@@ -432,21 +432,21 @@ export function pressureColor(level: number): string {
 }
 
 export const MASSAGE_VITALS: Record<string, MassageVitals> = {
-  swedish: { pressure: 2, bestFor: ["relaxation"], clothing: "towel", oil: "oil" },
-  "deep-tissue": { pressure: 5, bestFor: ["tension"], clothing: "towel", oil: "oil" },
+  swedish: { pressure: 2, bestFor: ["relaxation"], oil: "oil" },
+  "deep-tissue": { pressure: 5, bestFor: ["tension"], oil: "oil" },
   thai: { pressure: 4, bestFor: ["energy", "tension"], clothing: "dressed", oil: "none" },
-  balinese: { pressure: 3, bestFor: ["relaxation", "tension"], clothing: "towel", oil: "oil" },
+  balinese: { pressure: 3, bestFor: ["relaxation", "tension"], oil: "oil" },
   shiatsu: { pressure: 4, bestFor: ["tension", "energy"], clothing: "dressed", oil: "none" },
-  sports: { pressure: 4, bestFor: ["sport", "tension"], clothing: "towel", oil: "oil" },
-  lymphatic: { pressure: 1, bestFor: ["relaxation"], clothing: "towel", oil: "oil" },
-  "hot-stone": { pressure: 2, bestFor: ["relaxation", "tension"], clothing: "towel", oil: "oil" },
+  sports: { pressure: 4, bestFor: ["sport", "tension"], oil: "oil" },
+  lymphatic: { pressure: 1, bestFor: ["relaxation"], oil: "oil" },
+  "hot-stone": { pressure: 2, bestFor: ["relaxation", "tension"], oil: "oil" },
   kobido: { pressure: 2, bestFor: ["face"], clothing: "face-only", oil: "light-oil" },
   "gua-sha": { pressure: 1, bestFor: ["face"], clothing: "face-only", oil: "oil" },
   "head-scalp": { pressure: 2, bestFor: ["relaxation", "tension"], clothing: "dressed", oil: "none" },
-  prenatal: { pressure: 2, bestFor: ["pregnancy", "relaxation"], clothing: "towel", oil: "oil" },
-  couples: { pressure: 3, bestFor: ["relaxation"], clothing: "towel", oil: "oil" },
+  prenatal: { pressure: 2, bestFor: ["pregnancy", "relaxation"], oil: "oil" },
+  couples: { pressure: 3, bestFor: ["relaxation"], oil: "oil" },
   "foot-legs": { pressure: 3, bestFor: ["tension", "relaxation"], clothing: "feet-only", oil: "oil" },
-  "four-hands": { pressure: 3, bestFor: ["relaxation"], clothing: "towel", oil: "oil" },
+  "four-hands": { pressure: 3, bestFor: ["relaxation"], oil: "oil" },
 };
 
 export function vitalsFor(slug?: string | null): MassageVitals | null {
