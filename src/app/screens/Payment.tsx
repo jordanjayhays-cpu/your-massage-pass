@@ -315,7 +315,7 @@ export default function Payment() {
             })}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-flex items-center justify-center w-full h-11 rounded-full bg-card border border-border text-foreground font-semibold hover:bg-secondary transition"
+            className="mt-4 inline-flex items-center justify-center gap-2 w-full h-12 rounded-full bg-card border-2 border-primary text-primary font-semibold hover:bg-secondary transition"
           >
             {t("app.payment.confirmed.calendar.button")}
           </a>
