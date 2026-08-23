@@ -1610,12 +1610,11 @@ export default function StudioBookingPage() {
                       <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Añade al menos un email o teléfono.</span>
                     </p>
                     {!userId && !!email.trim() && (
-                      <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
+                      <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={createAccount}
                           onChange={e => setCreateAccount(e.target.checked)}
-                          className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
                         />
                         <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
                           Create my free Massage Club account
@@ -1628,19 +1627,7 @@ export default function StudioBookingPage() {
                         </span>
                       </label>
                     )}
-                    <label className="flex items-start gap-2 pt-2 min-[900px]:pt-3 cursor-pointer">
 
-                      <input
-                        type="checkbox"
-                        checked={marketingOptIn}
-                        onChange={e => setMarketingOptIn(e.target.checked)}
-                        className="mt-1 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]"
-                      />
-                      <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
-                        Send me Massage Club news and offers (optional)
-                        <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Quiero recibir novedades y ofertas de Massage Club por email</span>
-                      </span>
-                    </label>
                     {stepError && (
                       <p role="alert" className="text-sm min-[900px]:text-base font-medium text-[#B03A2E]">
                         {stepError.en}
