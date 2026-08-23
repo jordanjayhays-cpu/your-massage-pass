@@ -21,6 +21,7 @@ import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { clarityEvent } from "@/lib/clarity";
 import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
@@ -288,11 +289,14 @@ export default function ShopDetail() {
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      {s.price != null && (
-                        <p className="font-display text-2xl font-semibold text-foreground">
-                          €{s.price}
-                        </p>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {s.price != null && (
+                          <p className="font-display text-2xl font-semibold text-foreground">
+                            €{s.price}
+                          </p>
+                        )}
+                        <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
+                      </div>
                       <span className="inline-block mt-1 text-[10px] font-bold tracking-[0.12em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
                         {t("pay_at_studio")}
                       </span>
