@@ -7,7 +7,7 @@ import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Spar
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
-import StudioMap from "../components/StudioMap";
+import StudioMap, { studioKey, type MapBounds } from "../components/StudioMap";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
