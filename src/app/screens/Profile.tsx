@@ -200,6 +200,15 @@ export default function Profile() {
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [mySuggestions, setMySuggestions] = useState<any[]>([]);
 
+  // Auto-save state
+  const hydrated = useRef(false);
+  const [savedSection, setSavedSection] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+
+
 
   useEffect(() => {
     (async () => {
