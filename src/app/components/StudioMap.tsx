@@ -272,8 +272,7 @@ export default function StudioMap({
       mapInstanceRef.current = map;
 
       // Zoom and pan listeners: price pills at close zoom, "Search this area"
-      // once the visitor moves the map themselves. Our own framing must never
-      // trigger the chip, so movements only count after the map has settled.
+      // only after a real user gesture (our own framing must never trigger it).
       if (!(map as any).__mcListeners) {
         (map as any).__mcListeners = true;
         const syncZoom = () => setCloseZoom((map.getZoom() ?? 13) >= PRICE_ZOOM);
@@ -285,12 +284,11 @@ export default function StudioMap({
         map.addListener("dragend", () => {
           if (allowMoveRef.current) setMoved(true);
         });
+        const markGesture = () => { allowMoveRef.current = true; };
+        mapRef.current.addEventListener("pointerdown", markGesture);
+        mapRef.current.addEventListener("wheel", markGesture, { passive: true });
       }
-      // Any programmatic reframing below re-arms the guard.
-      allowMoveRef.current = false;
-      google.maps.event.addListenerOnce(map, "idle", () => {
-        window.setTimeout(() => { allowMoveRef.current = true; }, 600);
-      });
+
 
 
 
