@@ -395,9 +395,11 @@ export default function Profile() {
   );
 
   const goBack = () => {
-    if (window.history.length > 1) navigate(-1);
-    else navigate("/app");
+    // location.key is "default" only when this is the first entry in the app's history
+    if (location.key !== "default" && window.history.length > 1) navigate(-1);
+    else navigate("/app/massages");
   };
+
 
 
   const toggleFocus = (v: string) =>
