@@ -3,7 +3,7 @@ import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Sparkles } from "lucide-react";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
@@ -15,12 +15,13 @@ import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { BookAgainChip } from "../components/BookAgain";
 import { studioPath } from "@/lib/studioHref";
+import { haversineKm, distanceLabel, walkingDirectionsUrl, requestLocation } from "@/lib/distance";
 
 
 
 export default function MassageList() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { set } = useBooking();
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<MassageType | "all">("all");
@@ -33,6 +34,10 @@ export default function MassageList() {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
   const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [locatingDistances, setLocatingDistances] = useState(false);
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
 
