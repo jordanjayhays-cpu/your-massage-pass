@@ -496,6 +496,9 @@ export default function StudioBookingPage() {
   }
 
   const { partner } = profile;
+  /** Studios that confirm automatically get a commit CTA, not a request CTA. */
+  const autoConfirm = !!(partner as any).auto_confirm_bookings;
+
 
   // ─── Distance and walking directions ───
   const studioLatLng: LatLng | null =
