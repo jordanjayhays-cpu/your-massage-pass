@@ -449,12 +449,24 @@ export default function StudioBookingPage() {
 
 
   const addons = profile?.addons ?? [];
-  const addonsTotal = addons
-    .filter((a: any) => addonNames.includes(a.name))
-    .reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
+  const selectedAddons = addons.filter((a: any) => addonNames.includes(a.name));
+  const addonsTotal = selectedAddons.reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
+  const addonsExtraMinutes = selectedAddons.reduce((sum: number, a: any) => sum + (Number(a.duration_extra) || 0), 0);
   const total = (Number(service?.price) || 0) + addonsTotal;
+  /** Confirm-step review lines. */
+  const addonSummary = selectedAddons.length
+    ? selectedAddons.map((a: any) => `${a.name} (+€${Number(a.price) || 0})`).join(", ")
+    : null;
+  const serviceSummary = service
+    ? [
+        servicePrimaryName(service),
+        Number(service.duration) > 0 ? `${Number(service.duration) + addonsExtraMinutes} min` : "",
+        Number(service.price) > 0 ? `€${Number(service.price)}` : "",
+      ].filter(Boolean).join(" · ")
+    : null;
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+
 
   if (loading) {
     return (
