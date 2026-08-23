@@ -66,7 +66,7 @@ export default function StudioMap({
   onGeoStateChange,
   onUserLocation,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -302,7 +302,7 @@ export default function StudioMap({
                 )}
               </div>
               {userLoc && typeof selected.lat === "number" && typeof selected.lng === "number" && (() => {
-                const lang: "en" | "es" = t("app.massageList.bookNow").length && document.documentElement.lang?.startsWith("es") ? "es" : "en";
+                const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
                 const km = haversineKm(userLoc, selected as any);
                 const dirUrl = walkingDirectionsUrl(selected as any, `${selected.studio} Madrid`, userLoc);
                 return (
