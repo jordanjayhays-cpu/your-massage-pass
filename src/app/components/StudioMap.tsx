@@ -170,6 +170,8 @@ export default function StudioMap({
   const [closeZoom, setCloseZoom] = useState(false);
   // "Search this area" appears once the visitor moves the map themselves.
   const [moved, setMoved] = useState(false);
+  const allowMoveRef = useRef(false);
+
   const [ownHoverKey, setOwnHoverKey] = useState<string | null>(null);
   const askLocation = useLocationAsk();
   const activeKey = highlightedKey || ownHoverKey || (selected ? studioKey(selected) : null);
