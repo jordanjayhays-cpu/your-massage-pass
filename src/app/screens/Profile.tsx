@@ -779,13 +779,37 @@ export default function Profile() {
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
-            <input
-              type="date"
-              value={dateOfBirth}
-              onChange={e => setDateOfBirth(e.target.value)}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              <select
+                aria-label="Day"
+                value={dobParts.day}
+                onChange={e => setDobPart("day", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Day</option>
+                {DAY_OPTIONS.map(d => <option key={d} value={String(d)}>{d}</option>)}
+              </select>
+              <select
+                aria-label="Month"
+                value={dobParts.month}
+                onChange={e => setDobPart("month", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Month</option>
+                {MONTH_NAMES.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+              </select>
+              <select
+                aria-label="Year"
+                value={dobParts.year}
+                onChange={e => setDobPart("year", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Year</option>
+                {YEAR_OPTIONS.map(y => <option key={y} value={String(y)}>{y}</option>)}
+              </select>
+            </div>
           </div>
+
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
