@@ -25,7 +25,7 @@ import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { clarityEvent } from "@/lib/clarity";
 import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
-import { sendTrack } from "@/lib/siteVisit";
+import { sendTrack, trackEvent } from "@/lib/siteVisit";
 
 
 export default function ShopDetail() {
@@ -361,6 +361,7 @@ export default function ShopDetail() {
                   waLoggedRef.current = true;
                   setWaTapped(true);
                   clarityEvent("whatsapp_click");
+                  trackEvent("wa_click", { slug: m.slug || m.id });
                   sendTrack({
                     event: "whatsapp_click",
                     path: window.location.pathname,

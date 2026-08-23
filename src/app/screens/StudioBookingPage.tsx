@@ -8,7 +8,7 @@ import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } fr
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
-import { sendTrack } from "@/lib/siteVisit";
+import { sendTrack, trackEvent } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
@@ -141,7 +141,10 @@ export default function StudioBookingPage() {
 
   // Persist locally whenever it changes.
   useEffect(() => { saveSpokenLangs(spokenLangs); }, [spokenLangs]);
-  useEffect(() => { clarityEvent("studio_view"); }, [studioId]);
+  useEffect(() => {
+    clarityEvent("studio_view");
+    trackEvent("studio_view", { slug: partner?.slug || studioId });
+  }, [studioId, partner?.slug]);
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
@@ -751,6 +754,7 @@ export default function StudioBookingPage() {
       waLoggedRef.current = true;
       setWaTapped(true);
       clarityEvent("whatsapp_click");
+      trackEvent("wa_click", { slug: partner.slug || partner.id });
       const hasService = !!hoService;
       const hasDate = !!hoDate;
       sendTrack({
@@ -1137,6 +1141,8 @@ export default function StudioBookingPage() {
 
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
+    // A step completes whenever we move forward from it.
+    if (n > step) trackEvent("wizard_step", { slug: partner?.slug || studioId, meta: { step: BOOKING_STEPS[step - 1]?.en ?? String(step) } });
     setStep(n);
     setMaxStep(m => Math.max(m, n));
     setStepError(null);
@@ -1160,6 +1166,7 @@ export default function StudioBookingPage() {
 
   const handleBook = async () => {
     if (!canBook) return;
+    trackEvent("booking_submitted", { slug: partner?.slug || studioId });
     setSubmitting(true);
     setError("");
     const comfortPrefs = {
@@ -1454,7 +1461,7 @@ export default function StudioBookingPage() {
                       </Link>
                       {profile.services.map(s => (
                         <div key={s.id}>
-                          <button onClick={(e) => { setServiceId(s.id); scrollIntoViewGently(e.currentTarget); }}
+                          <button onClick={(e) => { setServiceId(s.id); trackEvent("wizard_service_selected", { slug: partner?.slug || studioId, meta: { service: servicePrimaryName(s) } }); scrollIntoViewGently(e.currentTarget); }}
                             className={`card-auto w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
                               serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                             }`}>
@@ -1790,6 +1797,7 @@ export default function StudioBookingPage() {
                   waLoggedRef.current = true;
                   setAskWaTapped(true);
                   clarityEvent("whatsapp_click");
+                  trackEvent("wa_click", { slug: partner.slug || partner.id });
                   sendTrack({
                     event: "whatsapp_click",
                     path: window.location.pathname,

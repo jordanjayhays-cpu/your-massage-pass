@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { QUIZ, MASSAGE_TYPES, MassageType, MASSAGES } from "../data";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/siteVisit";
 import { clarityEvent } from "@/lib/clarity";
 import {
   findNearestStudios,
@@ -65,6 +66,7 @@ export default function Quiz() {
 
   useEffect(() => {
     clarityEvent("quiz_start");
+    trackEvent("quiz_start");
   }, []);
 
   const total = QUIZ.length;
