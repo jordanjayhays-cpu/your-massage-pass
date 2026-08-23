@@ -1213,9 +1213,11 @@ export default function Profile() {
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
+        </div>
 
         {/* Emergency contact & consent */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+
 
 
 
