@@ -15,7 +15,7 @@ import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { BookAgainChip } from "../components/BookAgain";
 import { studioPath } from "@/lib/studioHref";
-import { haversineKm, distanceLabel, walkingDirectionsUrl, requestLocation } from "@/lib/distance";
+import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl, requestLocation } from "@/lib/distance";
 
 
 
@@ -185,21 +185,71 @@ export default function MassageList() {
 
       {/* Search */}
       <div className="px-5 pt-5">
-        <div className="flex items-center gap-2 bg-card rounded-full shadow-soft border border-border/60 pl-5 pr-2 h-14">
-          <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-          <input
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setVisibleCount(8); }}
-            placeholder={t("app.massageList.searchPlaceholder")}
-            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
-          />
-          <button
-            onClick={() => setShowFilters((s) => !s)}
-            aria-label={t("app.massageList.filters")}
-            className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-secondary/80 transition"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </button>
+        <div className="relative">
+          <div className="flex items-center gap-2 bg-card rounded-full shadow-soft border border-border/60 pl-5 pr-2 h-14">
+            <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            <input
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setVisibleCount(8); setSearchOpen(true); }}
+              onFocus={() => { if (q.trim()) setSearchOpen(true); }}
+              onBlur={() => { window.setTimeout(() => setSearchOpen(false), 150); }}
+              onKeyDown={(e) => { if (e.key === "Escape") setSearchOpen(false); }}
+              placeholder={t("app.massageList.searchPlaceholder")}
+              className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+            />
+            {searching && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin flex-shrink-0" />}
+            <button
+              onClick={() => setShowFilters((s) => !s)}
+              aria-label={t("app.massageList.filters")}
+              className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-secondary/80 transition"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
+          </div>
+
+          {q.trim() !== "" && (
+            <p className="pt-2 pl-1 text-xs text-muted-foreground">
+              {filtered.length === 1
+                ? "1 studio found"
+                : `${filtered.length} studios found`}
+              <span className="text-muted-foreground/70">
+                {" "}· {filtered.length === 1 ? "1 estudio encontrado" : `${filtered.length} estudios encontrados`}
+              </span>
+            </p>
+          )}
+
+          {searchOpen && debouncedQ.trim() !== "" && (
+            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 bg-white rounded-2xl border border-[#E6DCCF] shadow-lg max-h-[320px] overflow-y-auto">
+              {dropdownResults.length === 0 ? (
+                <div className="px-4 py-6 text-center">
+                  <p className="text-sm text-foreground/80">No studios found</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">No hay estudios</p>
+                </div>
+              ) : (
+                dropdownResults.map((m) => {
+                  const km = userLoc && typeof (m as any).lat === "number" && typeof (m as any).lng === "number"
+                    ? haversineKm(userLoc, m as any)
+                    : null;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); setSearchOpen(false); setQ(""); handleBook(m); }}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left border-b border-[#E6DCCF] last:border-b-0 hover:bg-[#FAF6F1] transition"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-[#2b2b2b] truncate">{m.studio}</p>
+                        <p className="text-xs text-[#8a7460] truncate">{"district" in m && m.district ? m.district : "Madrid"}</p>
+                      </div>
+                      {km != null && (
+                        <span className="text-xs text-[#8a7460] flex-shrink-0">{distanceLabelShort(km)}</span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
         {showFilters && (

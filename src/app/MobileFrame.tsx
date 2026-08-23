@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import BottomNav, { shouldShowBottomNav } from "./components/BottomNav";
+import BottomNav from "./components/BottomNav";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 
 // Hide the floating language toggle on screens that render their own prominently
@@ -19,7 +19,7 @@ function shouldShowLangToggle(pathname: string) {
  */
 export function MobileFrame({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const navVisible = shouldShowBottomNav(pathname);
+
   const langVisible = shouldShowLangToggle(pathname);
   return (
     <div className="h-screen w-full bg-background flex flex-col relative overflow-hidden">
