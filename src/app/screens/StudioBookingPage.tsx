@@ -17,6 +17,8 @@ import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
+import { markStudioVisited } from "@/lib/visitedStudios";
+
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
   SPOKEN_LANGS, SPOKEN_LANG_NATIVE, SPOKEN_LANG_FLAG,
@@ -144,7 +146,9 @@ export default function StudioBookingPage() {
   useEffect(() => {
     clarityEvent("studio_view");
     trackEvent("studio_view", { slug: studioId });
+    markStudioVisited(studioId);
   }, [studioId]);
+
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
@@ -496,6 +500,9 @@ export default function StudioBookingPage() {
   }
 
   const { partner } = profile;
+  /** Studios that confirm automatically get a commit CTA, not a request CTA. */
+  const autoConfirm = !!(partner as any).auto_confirm_bookings;
+
 
   // ─── Distance and walking directions ───
   const studioLatLng: LatLng | null =
@@ -1392,10 +1399,14 @@ export default function StudioBookingPage() {
             ready={canBook}
             busy={submitting}
             onNext={handleBook}
-            label={`Request booking · €${total}`}
-            labelEs="Solicitar reserva"
+            label={autoConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
+            labelEs={autoConfirm ? "Reservar ahora" : "Solicitar reserva"}
+            badge={autoConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
+            note="Free to book · Pay at the studio · No card needed"
+            noteEs="Reserva gratis · Paga en el estudio · Sin tarjeta"
           />
         )}
+
 
 
         {/* Mobile: slim running summary under the stepper */}
@@ -1765,11 +1776,40 @@ export default function StudioBookingPage() {
                   </label>
 
                   {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
+
+                  {/* Quiet first-timer reassurance, right before the commit */}
+                  <div className="mt-4 rounded-2xl border border-[#EADFD2] bg-[#FBF7F2] px-4 py-3">
+                    <p className="text-xs min-[900px]:text-sm text-[#5a4736] leading-snug">
+                      First massage? Draping is always used, you choose the pressure, and you can stop anytime.
+                    </p>
+                    <p className="text-[11px] min-[900px]:text-xs text-[#8a7460] leading-snug mt-0.5">
+                      ¿Primer masaje? Siempre se usa toalla, tú eliges la presión y puedes parar cuando quieras.
+                    </p>
+                    <a
+                      href="/guides/your-first-massage-in-madrid"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-1.5 text-xs min-[900px]:text-sm font-semibold text-[#C4622D] hover:underline"
+                    >
+                      Read the first-timer guide <span className="font-normal opacity-80">/ Lee la guía para principiantes</span>
+                    </a>
+                  </div>
+
                   <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
-                    The studio confirms your time. You pay at the studio.
-                    <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
+                    {autoConfirm ? (
+                      <>
+                        Your time is confirmed right away. You pay at the studio.
+                        <span className="block">Tu hora se confirma al instante. Pagas en el estudio.</span>
+                      </>
+                    ) : (
+                      <>
+                        The studio confirms your time. You pay at the studio.
+                        <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
+                      </>
+                    )}
                   </p>
                   <WizardNav onBack={() => goStep(4)} />
+
                 </Section>
               </div>
             )}
@@ -1989,11 +2029,19 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, labelEs, busy,
-}: { ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean }) {
+  ready, onNext, label, labelEs, busy, badge, note, noteEs,
+}: {
+  ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean;
+  badge?: { text: string; textEs: string }; note?: string; noteEs?: string;
+}) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto min-[900px]:flex min-[900px]:justify-center">
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
+        {badge && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3E7] border border-[#CBE0C4] px-3 py-1 text-[11px] font-semibold text-[#3F6B36]">
+            <Check size={12} strokeWidth={3} /> {badge.text} <span className="font-normal opacity-80">/ {badge.textEs}</span>
+          </span>
+        )}
         <button
           type="button"
           onClick={onNext}
@@ -2006,10 +2054,17 @@ function StickyContinue({
           <span className="min-[900px]:text-lg">{busy ? "Booking" : label || "Continue"}</span>
           <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{busy ? "Reservando" : labelEs || "Continuar"}</span>
         </button>
+        {note && (
+          <p className="text-[11px] min-[900px]:text-xs text-center text-[#8a7460]">
+            {note}
+            {noteEs && <span className="block text-[#B3A597]">{noteEs}</span>}
+          </p>
+        )}
       </div>
     </div>
   );
 }
+
 
 
 function Stepper({

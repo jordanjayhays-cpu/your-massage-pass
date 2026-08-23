@@ -7,7 +7,7 @@ import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Spar
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
-import StudioMap from "../components/StudioMap";
+import StudioMap, { studioKey, type MapBounds } from "../components/StudioMap";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -96,6 +96,10 @@ export default function MassageList() {
   }, []);
 
   const allShops: Shop[] = [...realShops];
+  // Map v2: "Search this area" filter, and list/map hover sync on desktop.
+  const [areaBounds, setAreaBounds] = useState<MapBounds | null>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+
 
   const origin = userLoc ?? MADRID_CENTER;
   const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
@@ -109,8 +113,17 @@ export default function MassageList() {
         m.studio.toLowerCase().includes(query) ||
         ("district" in m && m.district?.toLowerCase().includes(query));
       const matchesType = typeFilter === "all" || m.type === typeFilter;
-      return matchesQ && matchesType;
+      const matchesArea =
+        !areaBounds ||
+        (typeof (m as any).lat === "number" &&
+          typeof (m as any).lng === "number" &&
+          (m as any).lat <= areaBounds.north &&
+          (m as any).lat >= areaBounds.south &&
+          (m as any).lng <= areaBounds.east &&
+          (m as any).lng >= areaBounds.west);
+      return matchesQ && matchesType && matchesArea;
     })
+
     .map((m) => ({
       ...m,
       km: typeof (m as any).lat === "number" && typeof (m as any).lng === "number"
@@ -307,13 +320,27 @@ export default function MassageList() {
           shops={realShops}
           heightClass="h-[230px]"
           autoAskOnMobile
+          highlightedKey={hoverKey}
+          onHoverStudio={setHoverKey}
+          onSearchArea={setAreaBounds}
           onUserLocation={(loc) => {
             setUserLoc(loc);
             setAreaName(savedLocationResult()?.areaName ?? null);
           }}
           onSelect={(shop) => handleBook(shop)}
         />
+        {areaBounds && (
+          <button
+            type="button"
+            onClick={() => setAreaBounds(null)}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+          >
+            Showing this area only · Clear
+            <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
+          </button>
+        )}
       </div>
+
 
 
       {/* Studios list */}
@@ -351,15 +378,22 @@ export default function MassageList() {
               {filtered.slice(0, visibleCount).map((m, idx) => {
                 const isFav = favorites.has(m.id);
                 const isSelected = selectedStudio?.id === m.id || (!selectedStudio && idx === 0);
+                const mKey = studioKey(m);
+                const isHovered = hoverKey != null && hoverKey === mKey;
                 return (
                   <div
                     key={m.id}
                     className={cn(
                       "w-full min-w-0 bg-card border rounded-3xl p-3 shadow-soft hover:shadow-elegant transition-all cursor-pointer",
-                      isSelected ? "border-primary/60 ring-1 ring-primary/30" : "border-border/60"
+                      isHovered
+                        ? "border-primary ring-2 ring-primary/30"
+                        : isSelected ? "border-primary/60 ring-1 ring-primary/30" : "border-border/60"
                     )}
+                    onMouseEnter={() => setHoverKey(mKey)}
+                    onMouseLeave={() => setHoverKey((cur) => (cur === mKey ? null : cur))}
                     onClick={() => handleBook(m)}
                   >
+
                     <div className="flex gap-3">
                       <div className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary">
                         {m.image && (

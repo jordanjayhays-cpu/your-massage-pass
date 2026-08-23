@@ -17,8 +17,17 @@ import { fetchShops } from "@/lib/supabase";
 import { haversineKm, distanceLabel, walkingDirectionsUrl } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
 import CompareToggle from "./CompareToggle";
+import { isStudioVisited } from "@/lib/visitedStudios";
+
 
 export type GeoState = "pending" | "ready" | "fallback";
+
+/** Stable key for a studio across list and map. */
+export function studioKey(s: any): string {
+  return String(s?.slug || s?.partner_id || s?.id || "");
+}
+
+export type MapBounds = { north: number; south: number; east: number; west: number };
 
 type Props = {
   /** Studios to plot. When omitted, the map loads every studio itself. */
@@ -37,15 +46,22 @@ type Props = {
   onUserLocation?: (loc: { lat: number; lng: number }) => void;
   /** On phones, open the branded location sheet once per session shortly after load. */
   autoAskOnMobile?: boolean;
+  /** Studio key highlighted from the list (desktop hover sync). */
+  highlightedKey?: string | null;
+  /** Fired when a pin is hovered or left, so the list can highlight its card. */
+  onHoverStudio?: (key: string | null) => void;
+  /** Enables the "Search this area" chip and reports the visible bounds. */
+  onSearchArea?: (bounds: MapBounds) => void;
 };
 
 /** Branded clay pin: solid clay circle, white centre dot, white border. */
-function brandPin(active: boolean) {
+function brandPin(active: boolean, visited = false) {
   const size = active ? 34 : 28;
+  const fill = active ? "#E0A458" : "#C4622D";
   return {
     url: `data:image/svg+xml,${encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${active ? "#E0A458" : "#C4622D"}" stroke="#ffffff" stroke-width="2.5"/>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" opacity="${visited && !active ? 0.45 : 1}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${fill}" stroke="#ffffff" stroke-width="2.5"/>
         <circle cx="${size / 2}" cy="${size / 2}" r="${size / 7}" fill="#ffffff"/>
       </svg>`
     )}`,
@@ -53,6 +69,39 @@ function brandPin(active: boolean) {
     anchor: new google.maps.Point(size / 2, size / 2),
   };
 }
+
+/** Airbnb-style price pill: white with clay text, inverted when active. */
+function pricePin(price: number, active: boolean, visited = false) {
+  const text = `€${Math.round(price)}`;
+  const scale = active ? 1.12 : 1;
+  const w = Math.round((26 + text.length * 9) * scale);
+  const h = Math.round(28 * scale);
+  const bg = active ? "#C4622D" : "#FFFFFF";
+  const fg = active ? "#FFFFFF" : "#C4622D";
+  return {
+    url: `data:image/svg+xml,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" opacity="${visited && !active ? 0.5 : 1}">
+        <rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${bg}" stroke="#C4622D" stroke-width="1.6"/>
+        <text x="${w / 2}" y="${h / 2 + 4}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="${Math.round(12 * scale)}" font-weight="700" fill="${fg}">${text}</text>
+      </svg>`
+    )}`,
+    scaledSize: new google.maps.Size(w, h),
+    anchor: new google.maps.Point(w / 2, h / 2),
+  };
+}
+
+/** Cheapest 60 minute massage the studio offers, or null. */
+function lowest60Price(shop: any): number | null {
+  const list: any[] = shop?.partner_services || [];
+  const prices = list
+    .filter((s) => Number(s?.duration) === 60 && Number.isFinite(Number(s?.price)) && Number(s.price) > 0)
+    .map((s) => Number(s.price));
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/** Price pills only make sense once the map is zoomed into a neighbourhood. */
+const PRICE_ZOOM = 14;
+
 
 
 /**
@@ -94,14 +143,20 @@ export default function StudioMap({
   onGeoStateChange,
   onUserLocation,
   autoAskOnMobile = false,
+  highlightedKey = null,
+  onHoverStudio,
+  onSearchArea,
 }: Props) {
   const { t, i18n } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersByKeyRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const didFitRef = useRef(false);
+  const hoverCbRef = useRef<Props["onHoverStudio"]>(onHoverStudio);
+  hoverCbRef.current = onHoverStudio;
 
   const [ownShops, setOwnShops] = useState<Shop[]>([]);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
@@ -111,7 +166,16 @@ export default function StudioMap({
   const [geoError, setGeoError] = useState(false);
   // Set when the visitor picked a neighbourhood instead of sharing location.
   const [areaName, setAreaName] = useState<string | null>(null);
+  // Price pills replace dots once the map is zoomed in.
+  const [closeZoom, setCloseZoom] = useState(false);
+  // "Search this area" appears once the visitor moves the map themselves.
+  const [moved, setMoved] = useState(false);
+  const allowMoveRef = useRef(false);
+
+  const [ownHoverKey, setOwnHoverKey] = useState<string | null>(null);
   const askLocation = useLocationAsk();
+  const activeKey = highlightedKey || ownHoverKey || (selected ? studioKey(selected) : null);
+
 
   const allShops = shops ?? ownShops;
   const mapShops = allShops.filter(
@@ -207,25 +271,62 @@ export default function StudioMap({
         });
       mapInstanceRef.current = map;
 
+      // Zoom and pan listeners: price pills at close zoom, "Search this area"
+      // only after a real user gesture (our own framing must never trigger it).
+      if (!(map as any).__mcListeners) {
+        (map as any).__mcListeners = true;
+        const syncZoom = () => setCloseZoom((map.getZoom() ?? 13) >= PRICE_ZOOM);
+        syncZoom();
+        map.addListener("zoom_changed", () => {
+          syncZoom();
+          if (allowMoveRef.current) setMoved(true);
+        });
+        map.addListener("dragend", () => {
+          if (allowMoveRef.current) setMoved(true);
+        });
+        const markGesture = () => { allowMoveRef.current = true; };
+        mapRef.current.addEventListener("pointerdown", markGesture);
+        mapRef.current.addEventListener("wheel", markGesture, { passive: true });
+      }
+
+
+
+
       clustererRef.current?.clearMarkers();
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
+      markersByKeyRef.current = new Map();
 
       mapShops.forEach((m: any) => {
+        const key = studioKey(m);
+        const price = lowest60Price(m);
+        const visited = isStudioVisited(m.slug, m.partner_id, m.id);
+        const iconFor = (active: boolean) =>
+          closeZoom && price != null ? pricePin(price, active, visited) : brandPin(active, visited);
         const marker = new google.maps.Marker({
           position: { lat: m.lat, lng: m.lng },
           title: m.studio,
-          icon: brandPin(false),
+          icon: iconFor(false),
         });
+        (marker as any).__mcIconFor = iconFor;
         marker.addListener("click", () => {
-          markersRef.current.forEach((mr) => mr.setIcon(brandPin(false)));
-          marker.setIcon(brandPin(true));
           setSelected(m as Shop);
+          setOwnHoverKey(key);
           map.panTo({ lat: m.lat, lng: m.lng });
           if (!showSelectedCard) onSelect?.(m as Shop);
         });
+        marker.addListener("mouseover", () => {
+          setOwnHoverKey(key);
+          hoverCbRef.current?.(key);
+        });
+        marker.addListener("mouseout", () => {
+          setOwnHoverKey(null);
+          hoverCbRef.current?.(null);
+        });
         markersRef.current.push(marker);
+        markersByKeyRef.current.set(key, marker);
       });
+
 
       if (!clustererRef.current) {
         clustererRef.current = new MarkerClusterer({
@@ -303,7 +404,20 @@ export default function StudioMap({
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allShops, userLoc]);
+  }, [allShops, userLoc, closeZoom]);
+
+  // Keep pin styling in sync with whatever is highlighted (card hover, pin
+  // hover, or the selected studio) without rebuilding every marker.
+  useEffect(() => {
+    markersByKeyRef.current.forEach((marker, key) => {
+      const iconFor = (marker as any).__mcIconFor as ((active: boolean) => any) | undefined;
+      if (!iconFor) return;
+      const active = key === activeKey;
+      marker.setIcon(iconFor(active));
+      marker.setZIndex(active ? 5000 : 1);
+    });
+  }, [activeKey, closeZoom, allShops]);
+
 
   return (
     <div>
@@ -333,6 +447,23 @@ export default function StudioMap({
               : t("app.massageList.nearMadrid")}
           </span>
         </button>
+        {onSearchArea && moved && (
+          <button
+            type="button"
+            onClick={() => {
+              const b = mapInstanceRef.current?.getBounds();
+              if (!b) return;
+              const ne = b.getNorthEast();
+              const sw = b.getSouthWest();
+              onSearchArea({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
+              setMoved(false);
+            }}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 backdrop-blur border border-[#EADFD2] shadow-soft px-4 py-2 text-xs font-semibold text-[#C4622D] hover:bg-white transition"
+          >
+            Search this area <span className="font-normal text-[#8a7460]">/ Buscar en esta zona</span>
+          </button>
+        )}
+
         {geoError && (
           <div className="absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft">
             <p className="text-[11px] text-muted-foreground">
