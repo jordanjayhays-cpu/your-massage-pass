@@ -62,7 +62,7 @@ export function MassageTypeVitals({ type }: { type: MassageTypeContent }) {
     v.clothing === "dressed" ? <Shirt size={13} />
     : v.clothing === "face-only" ? <Smile size={13} />
     : v.clothing === "feet-only" ? <Footprints size={13} />
-    : <Layers size={13} />;
+    : null;
 
   return (
     <div className="rounded-2xl border border-[#E6DCCF] bg-[#FDFBF8] p-4">
