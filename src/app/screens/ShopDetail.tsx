@@ -34,8 +34,10 @@ export default function ShopDetail() {
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
   const [fav, setFav] = useState(false);
+  const [waTapped, setWaTapped] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
+  const waLoggedRef = useRef(false);
 
   useEffect(() => { clarityEvent("studio_view"); }, [id]);
 
@@ -351,6 +353,9 @@ export default function ShopDetail() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => {
+                  if (waLoggedRef.current) return;
+                  waLoggedRef.current = true;
+                  setWaTapped(true);
                   clarityEvent("whatsapp_click");
                   sendTrack({
                     event: "whatsapp_click",
@@ -366,7 +371,7 @@ export default function ShopDetail() {
                     message_text: whatsappPrefill({ studio: m.studio }),
                   });
                 }}
-                className="mt-4 w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft motion-safe:transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className={`mt-4 w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft motion-safe:transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${waTapped ? "pointer-events-none opacity-80" : ""}`}
               >
                 <span className="inline-flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" /> {t("whatsapp")}

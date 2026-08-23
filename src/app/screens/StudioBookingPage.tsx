@@ -114,12 +114,15 @@ export default function StudioBookingPage() {
   const [hoAltDate, setHoAltDate] = useState("");
   const [hoAltTime, setHoAltTime] = useState("");
   const [waTapped, setWaTapped] = useState(false);
+  const [askWaTapped, setAskWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
   const dateRef = useRef<HTMLDivElement | null>(null);
   const timeRef = useRef<HTMLDivElement | null>(null);
+  // Guard so a single WhatsApp tap logs exactly one row.
+  const waLoggedRef = useRef(false);
   // Languages the visitor speaks — defaults to the site language, never a required field.
   const siteLang = (i18n.language || "en").slice(0, 2);
   const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
@@ -695,6 +698,8 @@ export default function StudioBookingPage() {
       return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
     })();
     const trackWhatsappIntent = () => {
+      if (waLoggedRef.current) return;
+      waLoggedRef.current = true;
       setWaTapped(true);
       clarityEvent("whatsapp_click");
       const hasService = !!hoService;
@@ -1017,7 +1022,7 @@ export default function StudioBookingPage() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={trackWhatsappIntent}
-                        className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
+                        className={`w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold ${waTapped ? "pointer-events-none opacity-80" : ""}`}
                         style={{ background: "#B85C38", color: "#fff" }}
                       >
                         <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
@@ -1719,6 +1724,9 @@ export default function StudioBookingPage() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => {
+                  if (waLoggedRef.current) return;
+                  waLoggedRef.current = true;
+                  setAskWaTapped(true);
                   clarityEvent("whatsapp_click");
                   sendTrack({
                     event: "whatsapp_click",
@@ -1743,7 +1751,9 @@ export default function StudioBookingPage() {
                   });
                 }}
                 className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
-                  partner.status === "active"
+                  askWaTapped
+                    ? "pointer-events-none opacity-70"
+                    : partner.status === "active"
                     ? "border border-[#C4622D] text-[#C4622D] bg-white hover:bg-[#FAF6F1]"
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
