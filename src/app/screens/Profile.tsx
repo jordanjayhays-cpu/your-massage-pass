@@ -92,10 +92,24 @@ const LIGHTING: { label: string; value: string }[] = [
   { label: "Dim", value: "dim" },
   { label: "Normal", value: "normal" },
 ];
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 85 }, (_, i) => CURRENT_YEAR - 16 - i);
+
+const LANGUAGE_OPTIONS = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "中文", "العربية"];
+const LANG_BY_CODE: Record<string, string> = {
+  en: "English", es: "Español", fr: "Français", de: "Deutsch",
+  it: "Italiano", pt: "Português", zh: "中文", ar: "العربية",
+};
 
 export default function Profile() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+
 
   const SHOW_REFERRAL = false; // Parked until we process payments — see docs/PARKED_IDEAS.md
   const [loading, setLoading] = useState(true);
@@ -115,6 +129,27 @@ export default function Profile() {
   const [gender, setGender] = useState("");
   const [city, setCity] = useState("");
   const [preferredLanguage, setPreferredLanguage] = useState("");
+
+  // Birthday split into three selects; stored as the same YYYY-MM-DD string.
+  const [dobParts, setDobParts] = useState({ day: "", month: "", year: "" });
+  useEffect(() => {
+    const [yy, mm, dd] = (dateOfBirth || "").split("-");
+    if (yy && mm && dd) {
+      setDobParts({ year: yy, month: String(Number(mm)), day: String(Number(dd)) });
+    }
+  }, [dateOfBirth]);
+  const setDobPart = (part: "day" | "month" | "year", value: string) => {
+    const next = { ...dobParts, [part]: value };
+    setDobParts(next);
+    setDateOfBirth(
+      next.day && next.month && next.year
+        ? `${next.year}-${String(Number(next.month)).padStart(2, "0")}-${String(Number(next.day)).padStart(2, "0")}`
+        : ""
+    );
+  };
+
+
+
 
   // New preferences
   const [preferredMassageTypes, setPreferredMassageTypes] = useState<string[]>([]);
@@ -192,7 +227,10 @@ export default function Profile() {
         setDateOfBirth(data?.date_of_birth || "");
         setGender(data?.gender || "");
         setCity(data?.city || "");
-        setPreferredLanguage(data?.preferred_language || "");
+        setPreferredLanguage(
+          data?.preferred_language || LANG_BY_CODE[(i18n.language || "en").slice(0, 2)] || ""
+        );
+
 
         setPressure(data?.preferred_pressure || "");
         setPreferredTherapistGender(data?.preferred_therapist_gender || "");
@@ -779,13 +817,37 @@ export default function Profile() {
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
-            <input
-              type="date"
-              value={dateOfBirth}
-              onChange={e => setDateOfBirth(e.target.value)}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              <select
+                aria-label="Day"
+                value={dobParts.day}
+                onChange={e => setDobPart("day", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Day</option>
+                {DAY_OPTIONS.map(d => <option key={d} value={String(d)}>{d}</option>)}
+              </select>
+              <select
+                aria-label="Month"
+                value={dobParts.month}
+                onChange={e => setDobPart("month", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Month</option>
+                {MONTH_NAMES.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+              </select>
+              <select
+                aria-label="Year"
+                value={dobParts.year}
+                onChange={e => setDobPart("year", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Year</option>
+                {YEAR_OPTIONS.map(y => <option key={y} value={String(y)}>{y}</option>)}
+              </select>
+            </div>
           </div>
+
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
@@ -810,13 +872,20 @@ export default function Profile() {
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
-            <input
-              value={preferredLanguage}
-              onChange={e => setPreferredLanguage(e.target.value)}
-              placeholder={t("app.profile.personal.preferredLanguagePlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreferredLanguage(l)}
+                  className={chip(preferredLanguage === l)}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
+
         </div>
 
         {/* Massage preferences card */}
