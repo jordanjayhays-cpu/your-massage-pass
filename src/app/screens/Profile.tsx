@@ -773,121 +773,6 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Personal details card */}
-        <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.firstName")}</label>
-              <input
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.lastName")}</label>
-              <input
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.email")}</label>
-            <input
-              value={user.email || ""}
-              readOnly
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.phone")}</label>
-            <input
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder={t("app.profile.personal.phonePlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
-            <div className="mt-1 grid grid-cols-3 gap-2">
-              <select
-                aria-label="Day"
-                value={dobParts.day}
-                onChange={e => setDobPart("day", e.target.value)}
-                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
-              >
-                <option value="">Day</option>
-                {DAY_OPTIONS.map(d => <option key={d} value={String(d)}>{d}</option>)}
-              </select>
-              <select
-                aria-label="Month"
-                value={dobParts.month}
-                onChange={e => setDobPart("month", e.target.value)}
-                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
-              >
-                <option value="">Month</option>
-                {MONTH_NAMES.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
-              </select>
-              <select
-                aria-label="Year"
-                value={dobParts.year}
-                onChange={e => setDobPart("year", e.target.value)}
-                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
-              >
-                <option value="">Year</option>
-                {YEAR_OPTIONS.map(y => <option key={y} value={String(y)}>{y}</option>)}
-              </select>
-            </div>
-          </div>
-
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {GENDERS.map(g => (
-                <button key={g} type="button" onClick={() => setGender(g)} className={chip(gender === g)}>
-                  {t(`app.profile.options.genders.${GENDER_KEYS[g]}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.city")}</label>
-            <input
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              placeholder={t("app.profile.personal.cityPlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {LANGUAGE_OPTIONS.map(l => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setPreferredLanguage(l)}
-                  className={chip(preferredLanguage === l)}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
         {/* Massage preferences card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2>
@@ -1154,6 +1039,121 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Personal details card */}
+        <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.firstName")}</label>
+              <input
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.lastName")}</label>
+              <input
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.email")}</label>
+            <input
+              value={user.email || ""}
+              readOnly
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.phone")}</label>
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder={t("app.profile.personal.phonePlaceholder")}
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              <select
+                aria-label="Day"
+                value={dobParts.day}
+                onChange={e => setDobPart("day", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Day</option>
+                {DAY_OPTIONS.map(d => <option key={d} value={String(d)}>{d}</option>)}
+              </select>
+              <select
+                aria-label="Month"
+                value={dobParts.month}
+                onChange={e => setDobPart("month", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Month</option>
+                {MONTH_NAMES.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+              </select>
+              <select
+                aria-label="Year"
+                value={dobParts.year}
+                onChange={e => setDobPart("year", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Year</option>
+                {YEAR_OPTIONS.map(y => <option key={y} value={String(y)}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GENDERS.map(g => (
+                <button key={g} type="button" onClick={() => setGender(g)} className={chip(gender === g)}>
+                  {t(`app.profile.options.genders.${GENDER_KEYS[g]}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.city")}</label>
+            <input
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              placeholder={t("app.profile.personal.cityPlaceholder")}
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreferredLanguage(l)}
+                  className={chip(preferredLanguage === l)}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
         {/* Health & safety card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
@@ -1213,6 +1213,13 @@ export default function Profile() {
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
+        </div>
+
+        {/* Emergency contact & consent */}
+        <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+
+
+
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.emergencyContact")}</label>
