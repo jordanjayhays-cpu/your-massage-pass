@@ -227,7 +227,10 @@ export default function Profile() {
         setDateOfBirth(data?.date_of_birth || "");
         setGender(data?.gender || "");
         setCity(data?.city || "");
-        setPreferredLanguage(data?.preferred_language || "");
+        setPreferredLanguage(
+          data?.preferred_language || LANG_BY_CODE[(i18n.language || "en").slice(0, 2)] || ""
+        );
+
 
         setPressure(data?.preferred_pressure || "");
         setPreferredTherapistGender(data?.preferred_therapist_gender || "");
