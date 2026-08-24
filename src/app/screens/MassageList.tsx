@@ -2,7 +2,7 @@ import { studioImageFallback } from "@/lib/studioImages";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
