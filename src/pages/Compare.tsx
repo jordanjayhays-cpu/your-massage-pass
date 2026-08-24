@@ -273,7 +273,8 @@ export default function Compare() {
           <h1 className="font-display text-2xl text-foreground">Compare studios</h1>
           <p className="text-sm text-muted-foreground mt-1">Comparar estudios</p>
           <p className="mt-6 text-sm text-foreground/80">
-            Pick at least 2 <span className="text-muted-foreground">· Elige al menos 2</span>
+            Pick another studio to compare prices{" "}
+            <span className="text-muted-foreground">· Elige otro estudio para comparar precios</span>
           </p>
           <Link
             to="/studios"
