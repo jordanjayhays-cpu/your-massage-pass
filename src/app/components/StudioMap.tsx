@@ -18,6 +18,8 @@ import { haversineKm, distanceLabel, walkingDirectionsUrl } from "@/lib/distance
 import type { Shop } from "@/lib/supabase";
 import CompareToggle from "./CompareToggle";
 import { isStudioVisited } from "@/lib/visitedStudios";
+import { studioPath } from "@/lib/studioHref";
+
 
 
 export type GeoState = "pending" | "ready" | "fallback";
