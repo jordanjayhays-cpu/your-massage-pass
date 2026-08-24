@@ -45,17 +45,18 @@ export default function Login() {
 
   useEffect(() => {
     let cancelled = false;
+    const dest = createMode ? "/app/profile" : "/studios";
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!cancelled && session) navigate("/studios", { replace: true });
+      if (!cancelled && session) navigate(dest, { replace: true });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" && !handlingOtp.current) navigate("/studios", { replace: true });
+      if (event === "SIGNED_IN" && !handlingOtp.current) navigate(dest, { replace: true });
     });
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, createMode]);
 
   const otpErrorMessage = (raw: string, status?: number) => {
     if (status === 429 || /too_many_requests|rate/i.test(raw)) return t("emailAuth.errors.rateLimited");
