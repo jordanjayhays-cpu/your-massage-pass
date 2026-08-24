@@ -334,8 +334,26 @@ export default function Compare() {
         {/* Columns: 2 fit on mobile, the third swipes into view */}
         <div className="mt-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
           <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
-            {selected.map((s) => (
+            {selected.map((s) => {
+              const verdicts = verdictsFor(s, selected, activeType, userLoc);
+              return (
               <div key={compareKey(s)} className="snap-start min-w-0">
+                {verdicts.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-1.5">
+                    {verdicts.map((v) => (
+                      <span
+                        key={v.en}
+                        title={`${v.en} · ${v.es}`}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight",
+                          v.className
+                        )}
+                      >
+                        {lang === "es" ? v.es : v.en}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <Link to={studioPath(s)} className="block relative h-28 rounded-2xl overflow-hidden bg-secondary">
                   {s.image && (
                     <img
@@ -357,7 +375,8 @@ export default function Compare() {
                   <span className="truncate">{s.district || "Madrid"}</span>
                 </p>
               </div>
-            ))}
+              );
+            })}
 
           </div>
 
