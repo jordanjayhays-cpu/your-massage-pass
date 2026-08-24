@@ -125,7 +125,7 @@ export default function Login() {
       } catch {
         needsName = false;
       }
-      navigate(needsName ? "/profile" : "/studios", { replace: true });
+      navigate(createMode || needsName ? "/app/profile" : "/studios", { replace: true });
     } finally {
       handlingOtp.current = false;
       setOtpBusy(false);
