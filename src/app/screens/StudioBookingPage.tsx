@@ -580,8 +580,17 @@ export default function StudioBookingPage() {
             <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             <p className="text-base font-semibold mb-6" style={{ color: "#3d2b1f" }}>
-              ¡Tu reserva está hecha! 🎉
-              <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
+              {isClaimed && !instantConfirm ? (
+                <>
+                  ¡Solicitud enviada! 🎉
+                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>Request sent, the studio will confirm by email.</span>
+                </>
+              ) : (
+                <>
+                  ¡Tu reserva está hecha! 🎉
+                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
+                </>
+              )}
             </p>
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
@@ -605,10 +614,19 @@ export default function StudioBookingPage() {
             </div>
             {isClaimed ? (
               <>
-                <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  El estudio confirmará tu cita en breve.
-                  <span className="block text-xs mt-0.5">The studio will confirm your appointment shortly.</span>
-                </p>
+                {instantConfirm ? (
+                  <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+                    Tu hora está confirmada. Pagas en el estudio, sin tarjeta.
+                    <span className="block text-xs mt-0.5">Your time is confirmed. You pay at the studio, no card needed.</span>
+                  </p>
+                ) : (
+                  <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+                    El estudio suele confirmar en unas horas y te avisamos por email. Pagas en el estudio, sin tarjeta.
+                    <span className="block text-xs mt-0.5">
+                      The studio usually confirms within a few hours and you will get an email. You pay at the studio, no card needed.
+                    </span>
+                  </p>
+                )}
                 <div className="flex flex-col items-center gap-3 w-full">
                   {gcal && (
                     <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
