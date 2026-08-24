@@ -254,6 +254,8 @@ export default function FounderDashboard() {
   useEffect(() => {
     if (!isFounder) return;
     (async () => {
+      const since14 = dayKey(Date.now() - 14 * DAY_MS);
+      const since90 = new Date(Date.now() - 90 * DAY_MS).toISOString();
       const [
         { count: profCount },
         { data: bks },
@@ -261,19 +263,31 @@ export default function FounderDashboard() {
         { data: vals },
         { data: mktRows },
         { data: allEmailRows },
+        { data: visitRows },
+        { data: eventRows },
+        { data: waRows },
+        { data: contactRows },
       ] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(500),
-        supabase.from("partners").select("id,business_name"),
+        supabase.from("partners").select("id,business_name,slug,status,email,outreach_email_at,outreach_status"),
         supabase.from("validation_responses").select("*").order("created_at", { ascending: false }),
         supabase.from("marketing_contacts").select("*").order("last_booking_at", { ascending: false }),
         supabase.from("bookings").select("client_email").not("client_email", "is", null).limit(10000),
+        supabase.from("site_visits").select("visitor_key,path,day").gte("day", since14).limit(20000),
+        supabase.from("site_events").select("event,visitor_key,day,partner_slug").gte("day", since14).limit(20000),
+        supabase.from("whatsapp_requests").select("*").gte("created_at", since90).order("created_at", { ascending: false }).limit(2000),
+        supabase.from("customer_contacts").select("email,bookings,has_account,marketing_opt_in").limit(10000),
       ]);
       setProfileCount(profCount ?? 0);
       setBookings(bks ?? []);
-      setPartners(prs ?? []);
+      setPartners((prs as Partner[]) ?? []);
       setValidation((vals as ValRow[]) ?? []);
       setMarketingContacts((mktRows as any[]) ?? []);
+      setVisits((visitRows as SiteVisit[]) ?? []);
+      setEvents((eventRows as SiteEvent[]) ?? []);
+      setWaRequests((waRows as WaRequest[]) ?? []);
+      setContacts((contactRows as CustomerContact[]) ?? []);
       const distinct = new Set<string>();
       for (const r of (allEmailRows as any[]) ?? []) {
         const e = (r?.client_email || "").toLowerCase().trim();
@@ -286,6 +300,7 @@ export default function FounderDashboard() {
         .select("id, studio_name, area, reason, client_email, status, created_at")
         .order("created_at", { ascending: false });
       setSuggestions((sugRows as any[]) ?? []);
+
     })();
   }, [isFounder, refreshTick]);
 
