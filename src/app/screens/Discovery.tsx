@@ -68,6 +68,9 @@ export default function Discovery() {
           {t("app.discovery.quizMidPrompt")}
         </button>
 
+        <ExploreMassageTypes />
+
+
         <div>
           <h3 className="font-display text-2xl text-foreground">{t("app.discovery.exploreTitle")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
