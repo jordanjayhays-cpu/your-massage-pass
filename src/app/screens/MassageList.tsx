@@ -395,24 +395,35 @@ export default function MassageList() {
                   >
 
                     <div className="flex gap-3">
-                      <div className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary">
+                      <Link
+                        to={cardHref(m)}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block"
+                      >
                         {m.image && (
                           <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
                         )}
                         <button
-                          onClick={(e) => { e.stopPropagation(); toggleFav(m.id); }}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFav(m.id); }}
                           aria-label={t("app.massageList.favorite")}
                           className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
                         >
                           <Heart className={cn("h-3.5 w-3.5", isFav ? "fill-primary text-primary" : "text-foreground")} />
                         </button>
-                      </div>
+                      </Link>
 
                       <div className="flex-1 min-w-0 py-1">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
-                            {m.studio}
+                          <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate min-w-0">
+                            <Link
+                              to={cardHref(m)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="block truncate md:hover:text-primary transition-colors"
+                            >
+                              {m.studio}
+                            </Link>
                           </h3>
+
                           {m.rating != null && (
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <Star className="h-4 w-4 fill-accent text-accent" />
