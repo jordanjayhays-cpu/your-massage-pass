@@ -3,7 +3,7 @@ import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Search, Star, MapPin, Heart, SlidersHorizontal, UserCircle, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
+import { Search, Star, MapPin, Heart, SlidersHorizontal, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import StudioMap, { studioKey, type MapBounds } from "../components/StudioMap";
 import { fetchShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import ProfileHeaderButton from "@/app/components/ProfileHeaderButton";
 import StudioStatusBadge from "../components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { BookAgainChip } from "../components/BookAgain";
@@ -186,17 +187,8 @@ export default function MassageList() {
     <div className="flex flex-col h-full overflow-y-auto bg-background">
       {/* Top utility bar */}
       <div className="px-5 pt-5 flex items-center justify-between gap-4">
-        <button
-          onClick={() => navigate("/app/profile")}
-          aria-label={t("app.massageList.profile")}
-          className="h-10 w-10 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition shadow-soft"
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={t("app.massageList.profile")} className="h-full w-full object-cover" />
-          ) : (
-            <UserCircle className="h-5 w-5 text-muted-foreground" />
-          )}
-        </button>
+        <ProfileHeaderButton />
+
         <div className="flex items-center gap-3">
           <LanguageFlagToggle variant="compact" />
           {isPartner && (
