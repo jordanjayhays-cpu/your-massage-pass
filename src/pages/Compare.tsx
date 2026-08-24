@@ -212,7 +212,7 @@ export default function Compare() {
           <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
             {selected.map((s) => (
               <div key={compareKey(s)} className="snap-start min-w-0">
-                <div className="relative h-28 rounded-2xl overflow-hidden bg-secondary">
+                <Link to={studioPath(s)} className="block relative h-28 rounded-2xl overflow-hidden bg-secondary">
                   {s.image && (
                     <img
                       src={s.image}
@@ -221,16 +221,20 @@ export default function Compare() {
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   )}
-                </div>
-                <p className="font-display text-base font-semibold text-foreground leading-tight mt-2 break-words">
+                </Link>
+                <Link
+                  to={studioPath(s)}
+                  className="block font-display text-base font-semibold text-foreground leading-tight mt-2 break-words md:hover:text-primary transition-colors"
+                >
                   {s.studio}
-                </p>
+                </Link>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                   <MapPin className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">{s.district || "Madrid"}</span>
                 </p>
               </div>
             ))}
+
           </div>
 
           {/* Rating */}
