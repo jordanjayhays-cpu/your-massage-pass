@@ -58,6 +58,15 @@ export default function Login() {
     };
   }, [navigate, createMode]);
 
+  useEffect(() => {
+    if (!createMode) return;
+    const id = window.setTimeout(() => {
+      document.getElementById("mc-email-auth")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("mc-otp-email")?.focus({ preventScroll: true });
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [createMode]);
+
   const otpErrorMessage = (raw: string, status?: number) => {
     if (status === 429 || /too_many_requests|rate/i.test(raw)) return t("emailAuth.errors.rateLimited");
     if (/expired/i.test(raw)) return t("emailAuth.errors.expired");
