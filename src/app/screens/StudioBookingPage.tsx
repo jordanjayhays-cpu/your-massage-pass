@@ -19,6 +19,8 @@ import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
+import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
+
 
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
@@ -481,6 +483,14 @@ export default function StudioBookingPage() {
     : null;
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+
+  // Abandoned-booking capture: signed-out visitors who picked a day and time
+  // but have not submitted yet. Declared before the early returns below.
+  const leadSheet = useAbandonedBookingCapture({
+    eligible: step > 2 && !!date && !!time,
+    onFinalStep: step === 5,
+    disabled: !!userId || !!done,
+  });
 
 
   if (loading) {
@@ -1166,6 +1176,9 @@ export default function StudioBookingPage() {
   const hasContact = !!(phone.trim() || email.trim());
   const canBook = !!(service && date && time && name.trim() && hasContact);
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
+
+
+
 
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
@@ -1946,8 +1959,18 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
+      <AbandonedBookingSheet
+        open={leadSheet.open}
+        onClose={leadSheet.close}
+        slug={partner?.slug || studioId || null}
+        serviceName={service ? servicePrimaryName(service) : null}
+        date={date ? isoDate(date) : null}
+        time={time}
+        defaultEmail={email}
+      />
 
     </div>
+
   );
 }
 
