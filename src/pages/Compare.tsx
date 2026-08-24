@@ -525,6 +525,57 @@ export default function Compare() {
             </div>
           </Row>
 
+          {/* Open today, only when at least one studio has hours */}
+          {selected.some((s) => openToday(s)) && (
+            <Row label="Open today" labelEs="Abierto hoy">
+              <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
+                {selected.map((s) => {
+                  const hours = openToday(s);
+                  return (
+                    <div key={compareKey(s)} className="snap-start min-w-0 text-sm text-foreground break-words">
+                      {hours ? (
+                        <>
+                          <span>{hours.en}</span>
+                          {hours.es !== hours.en && (
+                            <span className="block text-xs text-muted-foreground">{hours.es}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not listed · Sin datos</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Row>
+          )}
+
+          {/* Known for, derived from services or tags */}
+          {selected.some((s) => knownFor(s, selected, "en")) && (
+            <Row label="Known for" labelEs="Especialidad">
+              <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
+                {selected.map((s) => {
+                  const en = knownFor(s, selected, "en");
+                  const es = knownFor(s, selected, "es");
+                  return (
+                    <div key={compareKey(s)} className="snap-start min-w-0 text-sm text-foreground break-words">
+                      {en ? (
+                        <>
+                          <span>{en}</span>
+                          {es && es !== en && (
+                            <span className="block text-xs text-muted-foreground">{es}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not listed · Sin datos</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Row>
+          )}
+
           {/* Amenities / tags */}
           <Row label="Amenities" labelEs="Servicios">
             <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
