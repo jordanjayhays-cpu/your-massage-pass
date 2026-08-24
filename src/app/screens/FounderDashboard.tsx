@@ -13,14 +13,43 @@ const FOUNDER_EMAILS = [
 type Booking = {
   id: number | string;
   client_name?: string;
+  client_email?: string | null;
   spa_name?: string;
+  massage_type?: string | null;
   booking_date?: string;
   booking_time?: string;
   status?: string;
   created_at?: string;
   is_test?: boolean | null;
+  partner_id?: string | null;
 };
-type Partner = { id: string; business_name?: string };
+type Partner = {
+  id: string;
+  business_name?: string;
+  slug?: string | null;
+  status?: string | null;
+  email?: string | null;
+  outreach_email_at?: string | null;
+  outreach_status?: string | null;
+};
+type SiteVisit = { visitor_key?: string | null; path?: string | null; day?: string | null };
+type SiteEvent = { event?: string | null; visitor_key?: string | null; day?: string | null; partner_slug?: string | null };
+type WaRequest = {
+  id?: string;
+  studio_name?: string | null;
+  first_name?: string | null;
+  slug?: string | null;
+  partner_id?: string | null;
+  outcome?: string | null;
+  created_at?: string;
+};
+type CustomerContact = {
+  email?: string | null;
+  bookings?: number | null;
+  has_account?: boolean | null;
+  marketing_opt_in?: boolean | null;
+};
+
 type ValRow = {
   id: string;
   survey_type: "b2c" | "b2b";
