@@ -48,21 +48,26 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
             >
               Clear <span className="text-muted-foreground/70">· Borrar</span>
             </button>
-            <button
-              type="button"
-              disabled={!ready}
-              onClick={() => navigate(comparePath(items.map((i) => i.key)))}
-              className="h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft disabled:opacity-45 disabled:cursor-not-allowed hover:opacity-90 transition"
-            >
-              Compare ({items.length})
-            </button>
+            {ready ? (
+              <button
+                type="button"
+                onClick={() => navigate(comparePath(items.map((i) => i.key)))}
+                className="h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft hover:opacity-90 transition"
+              >
+                Compare ({items.length})
+              </button>
+            ) : (
+              <span className="inline-flex flex-col justify-center rounded-full border border-dashed border-primary/50 bg-primary/5 px-4 py-2 min-h-11 text-left animate-pulse-once">
+                <span className="text-xs font-semibold text-primary leading-tight">
+                  Pick another studio to compare prices
+                </span>
+                <span className="text-[10px] text-muted-foreground leading-tight">
+                  Elige otro estudio para comparar precios
+                </span>
+              </span>
+            )}
           </div>
         </div>
-        {!ready && (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Pick at least 2 <span className="text-muted-foreground/70">· Elige al menos 2</span>
-          </p>
-        )}
       </div>
     </div>
   );

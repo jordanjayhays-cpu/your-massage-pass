@@ -132,6 +132,10 @@ export interface Shop {
   status?: string;
   /** Languages the studio speaks, as stored on the partner row. */
   languages?: string[] | null;
+  /** Raw opening hours JSON from the partner row, when the studio set them. */
+  opening_hours?: Record<string, any> | null;
+  /** True when the studio confirms bookings automatically. */
+  auto_confirm_bookings?: boolean | null;
 }
 
 /** Fetch all active shops with their services from Supabase.
@@ -220,6 +224,8 @@ export async function fetchShops(): Promise<Shop[]> {
       google_reviews: p.google_reviews ?? null,
       status: p.status ?? "pending",
       languages: Array.isArray((p as any).languages) ? (p as any).languages : null,
+      opening_hours: (p as any).opening_hours ?? null,
+      auto_confirm_bookings: (p as any).auto_confirm_bookings ?? null,
     });
   }
 

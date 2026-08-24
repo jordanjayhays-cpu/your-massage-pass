@@ -42,6 +42,130 @@ function priceRange(shop: Shop): string | null {
   return min === max ? `€${min}` : `€${min} - €${max}`;
 }
 
+/** Cheapest price for the selected massage type, or null. */
+function typePrice(shop: Shop, type: MassageTypeContent | null): number | null {
+  const prices = servicesOfType(shop, type)
+    .map((s) => Number(s.price))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/** Studio confirms bookings itself, no WhatsApp round trip. */
+function isInstant(shop: Shop): boolean {
+  return shop.auto_confirm_bookings === true;
+}
+
+const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+/**
+ * Today's hours from partners.opening_hours. Returns the raw string when the
+ * shape is not the {open, close, closed} object we write from the partner app.
+ */
+function openToday(shop: Shop): { en: string; es: string } | null {
+  const oh: any = shop.opening_hours;
+  if (!oh) return null;
+  if (typeof oh === "string") return { en: oh, es: oh };
+  const today = oh[DAY_KEYS[new Date().getDay()]];
+  if (today == null) return null;
+  if (typeof today === "string") return { en: today, es: today };
+  if (today.closed) return { en: "Closed today", es: "Cerrado hoy" };
+  if (today.open && today.close) {
+    const s = `${today.open} - ${today.close}`;
+    return { en: s, es: s };
+  }
+  return null;
+}
+
+/**
+ * The studio's most distinctive offering: a massage type only it offers among
+ * the compared studios, else its most offered type, else its first tag.
+ * Never invents copy, always derived from services or tags.
+ */
+function knownFor(shop: Shop, all: Shop[], lang: "en" | "es"): string | null {
+  const typesOf = (s: Shop) => {
+    const counts = new Map<string, { t: MassageTypeContent; n: number }>();
+    (s.partner_services || []).forEach((sv) => {
+      const t = findMassageType(sv.name_en, sv.name, sv.type);
+      if (!t) return;
+      const cur = counts.get(t.slug);
+      if (cur) cur.n += 1;
+      else counts.set(t.slug, { t, n: 1 });
+    });
+    return counts;
+  };
+  const mine = typesOf(shop);
+  if (mine.size > 0) {
+    const othersHave = new Set<string>();
+    all.forEach((o) => {
+      if (compareKey(o) === compareKey(shop)) return;
+      typesOf(o).forEach((_v, slug) => othersHave.add(slug));
+    });
+    const unique = [...mine.values()].filter((v) => !othersHave.has(v.t.slug));
+    const pick = (unique.length ? unique : [...mine.values()]).sort((a, b) => b.n - a.n)[0];
+    if (pick) return pick.t.name[lang];
+  }
+  const tag = (shop.tags || []).filter(Boolean)[0];
+  return tag ? tagLabel(String(tag)) : null;
+}
+
+type Verdict = { en: string; es: string; className: string };
+
+const VERDICT_STYLE = {
+  closest: "bg-[#F6E3D6] text-[#A2501F] border-[#EBCDB8]",
+  price: "bg-[#E4EBDE] text-[#4F6B48] border-[#D2DEC9]",
+  rated: "bg-[#F7E9CC] text-[#8A6414] border-[#EEDBB1]",
+  instant: "bg-[#DEEEDD] text-[#3F6B44] border-[#C7E0C7]",
+};
+
+/** Small "which one?" chips per column, computed from the compared data. */
+function verdictsFor(
+  shop: Shop,
+  all: Shop[],
+  activeType: MassageTypeContent | null,
+  userLoc: { lat: number; lng: number } | null
+): Verdict[] {
+  const out: Verdict[] = [];
+
+  if (userLoc) {
+    const dists = all
+      .filter((s) => typeof s.lat === "number" && typeof s.lng === "number")
+      .map((s) => ({ k: compareKey(s), km: haversineKm(userLoc, s) }));
+    if (dists.length > 1) {
+      const min = Math.min(...dists.map((d) => d.km));
+      const mine = dists.find((d) => d.k === compareKey(shop));
+      if (mine && Math.abs(mine.km - min) < 0.001) {
+        out.push({ en: "Closest", es: "El más cercano", className: VERDICT_STYLE.closest });
+      }
+    }
+  }
+
+  const prices = all.map((s) => ({ k: compareKey(s), p: typePrice(s, activeType) })).filter((x) => x.p != null);
+  if (prices.length > 1) {
+    const min = Math.min(...prices.map((x) => x.p as number));
+    const mine = prices.find((x) => x.k === compareKey(shop));
+    if (mine && mine.p === min) {
+      out.push({ en: "Best price", es: "Mejor precio", className: VERDICT_STYLE.price });
+    }
+  }
+
+  const rated = all
+    .map((s) => ({ k: compareKey(s), r: s.rating != null ? Number(s.rating) : null, n: Number(s.reviews ?? 0) }))
+    .filter((x) => x.r != null && x.n > 0);
+  if (rated.length > 1) {
+    const max = Math.max(...rated.map((x) => x.r as number));
+    const mine = rated.find((x) => x.k === compareKey(shop));
+    if (mine && mine.r === max) {
+      out.push({ en: "Best rated", es: "Mejor valorado", className: VERDICT_STYLE.rated });
+    }
+  }
+
+  if (isInstant(shop)) {
+    out.push({ en: "Instant booking", es: "Reserva al instante", className: VERDICT_STYLE.instant });
+  }
+
+  return out;
+}
+
 /** Full-width label above each fact row, columns aligned underneath. */
 function Row({
   label,
@@ -149,7 +273,8 @@ export default function Compare() {
           <h1 className="font-display text-2xl text-foreground">Compare studios</h1>
           <p className="text-sm text-muted-foreground mt-1">Comparar estudios</p>
           <p className="mt-6 text-sm text-foreground/80">
-            Pick at least 2 <span className="text-muted-foreground">· Elige al menos 2</span>
+            Pick another studio to compare prices{" "}
+            <span className="text-muted-foreground">· Elige otro estudio para comparar precios</span>
           </p>
           <Link
             to="/studios"
@@ -210,8 +335,26 @@ export default function Compare() {
         {/* Columns: 2 fit on mobile, the third swipes into view */}
         <div className="mt-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
           <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
-            {selected.map((s) => (
+            {selected.map((s) => {
+              const verdicts = verdictsFor(s, selected, activeType, userLoc);
+              return (
               <div key={compareKey(s)} className="snap-start min-w-0">
+                {verdicts.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-1.5">
+                    {verdicts.map((v) => (
+                      <span
+                        key={v.en}
+                        title={`${v.en} · ${v.es}`}
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight",
+                          v.className
+                        )}
+                      >
+                        {lang === "es" ? v.es : v.en}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <Link to={studioPath(s)} className="block relative h-28 rounded-2xl overflow-hidden bg-secondary">
                   {s.image && (
                     <img
@@ -233,7 +376,8 @@ export default function Compare() {
                   <span className="truncate">{s.district || "Madrid"}</span>
                 </p>
               </div>
-            ))}
+              );
+            })}
 
           </div>
 
@@ -312,6 +456,13 @@ export default function Compare() {
                 const cheapest = matches
                   .filter((m) => Number.isFinite(Number(m.price)))
                   .sort((a, b) => Number(a.price) - Number(b.price))[0];
+                const durations = [
+                  ...new Set(
+                    matches
+                      .map((m) => Number(m.duration))
+                      .filter((n) => Number.isFinite(n) && n > 0)
+                  ),
+                ].sort((a, b) => a - b);
                 return (
                   <div key={compareKey(s)} className="snap-start min-w-0">
                     {cheapest ? (
@@ -320,7 +471,11 @@ export default function Compare() {
                           €{Number(cheapest.price)}
                         </p>
                         <p className="text-sm text-foreground/80 mt-1">
-                          {cheapest.duration ? `${cheapest.duration} min` : ""}
+                          {durations.length > 1
+                            ? `${durations.join(" / ")} min`
+                            : cheapest.duration
+                            ? `${cheapest.duration} min`
+                            : ""}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">{servicePrimaryName(cheapest, "")}</p>
                       </>
@@ -370,6 +525,57 @@ export default function Compare() {
               })}
             </div>
           </Row>
+
+          {/* Open today, only when at least one studio has hours */}
+          {selected.some((s) => openToday(s)) && (
+            <Row label="Open today" labelEs="Abierto hoy">
+              <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
+                {selected.map((s) => {
+                  const hours = openToday(s);
+                  return (
+                    <div key={compareKey(s)} className="snap-start min-w-0 text-sm text-foreground break-words">
+                      {hours ? (
+                        <>
+                          <span>{hours.en}</span>
+                          {hours.es !== hours.en && (
+                            <span className="block text-xs text-muted-foreground">{hours.es}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not listed · Sin datos</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Row>
+          )}
+
+          {/* Known for, derived from services or tags */}
+          {selected.some((s) => knownFor(s, selected, "en")) && (
+            <Row label="Known for" labelEs="Especialidad">
+              <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
+                {selected.map((s) => {
+                  const en = knownFor(s, selected, "en");
+                  const es = knownFor(s, selected, "es");
+                  return (
+                    <div key={compareKey(s)} className="snap-start min-w-0 text-sm text-foreground break-words">
+                      {en ? (
+                        <>
+                          <span>{en}</span>
+                          {es && es !== en && (
+                            <span className="block text-xs text-muted-foreground">{es}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not listed · Sin datos</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Row>
+          )}
 
           {/* Amenities / tags */}
           <Row label="Amenities" labelEs="Servicios">
