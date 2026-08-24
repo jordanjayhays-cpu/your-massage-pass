@@ -132,6 +132,10 @@ export interface Shop {
   status?: string;
   /** Languages the studio speaks, as stored on the partner row. */
   languages?: string[] | null;
+  /** Raw opening hours JSON from the partner row, when the studio set them. */
+  opening_hours?: Record<string, any> | null;
+  /** True when the studio confirms bookings automatically. */
+  auto_confirm_bookings?: boolean | null;
 }
 
 /** Fetch all active shops with their services from Supabase.
