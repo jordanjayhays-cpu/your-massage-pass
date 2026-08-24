@@ -19,6 +19,8 @@ import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
+import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
+
 
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
 import {
@@ -1946,8 +1948,18 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
+      <AbandonedBookingSheet
+        open={leadSheet.open}
+        onClose={leadSheet.close}
+        slug={partner?.slug || studioId || null}
+        serviceName={service ? servicePrimaryName(service) : null}
+        date={date ? isoDate(date) : null}
+        time={time}
+        defaultEmail={email}
+      />
 
     </div>
+
   );
 }
 
