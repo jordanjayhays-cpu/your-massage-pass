@@ -455,6 +455,13 @@ export default function Compare() {
                 const cheapest = matches
                   .filter((m) => Number.isFinite(Number(m.price)))
                   .sort((a, b) => Number(a.price) - Number(b.price))[0];
+                const durations = [
+                  ...new Set(
+                    matches
+                      .map((m) => Number(m.duration))
+                      .filter((n) => Number.isFinite(n) && n > 0)
+                  ),
+                ].sort((a, b) => a - b);
                 return (
                   <div key={compareKey(s)} className="snap-start min-w-0">
                     {cheapest ? (
@@ -463,7 +470,11 @@ export default function Compare() {
                           €{Number(cheapest.price)}
                         </p>
                         <p className="text-sm text-foreground/80 mt-1">
-                          {cheapest.duration ? `${cheapest.duration} min` : ""}
+                          {durations.length > 1
+                            ? `${durations.join(" / ")} min`
+                            : cheapest.duration
+                            ? `${cheapest.duration} min`
+                            : ""}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">{servicePrimaryName(cheapest, "")}</p>
                       </>
