@@ -484,6 +484,14 @@ export default function StudioBookingPage() {
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
 
+  // Abandoned-booking capture: signed-out visitors who picked a day and time
+  // but have not submitted yet. Declared before the early returns below.
+  const leadSheet = useAbandonedBookingCapture({
+    eligible: step > 2 && !!date && !!time,
+    onFinalStep: step === 5,
+    disabled: !!userId || !!done,
+  });
+
 
   if (loading) {
     return (
