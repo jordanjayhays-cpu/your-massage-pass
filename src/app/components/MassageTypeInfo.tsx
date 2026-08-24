@@ -1,11 +1,16 @@
 import { trackEvent } from "@/lib/siteVisit";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, X, ExternalLink, Sparkles, Shirt, Droplet, Droplets, Footprints, Smile } from "lucide-react";
+import {
+  Info, X, ExternalLink, Sparkles, Shirt, Droplet, Droplets, Footprints, Smile,
+  Globe, Hand, Circle, Flame, Feather, MoveDiagonal, ArrowDownToLine, Sun, Moon,
+  Armchair, Users, Baby, Activity, Clock, Waves, Wind, Leaf, Heart, Gem, Rows3,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   findMassageType,
   vitalsFor,
+  factsFor,
   pressureColor,
   PRESSURE_LABELS,
   BEST_FOR_LABELS,
@@ -13,7 +18,11 @@ import {
   CLOTHING_LABELS,
   OIL_LABELS,
   type MassageTypeContent,
+  type Fact,
+  type WhoFact,
+  type FactIcon,
 } from "@/lib/massageTypes";
+
 
 /**
  * Massage type education, without ever losing your place in the booking flow.
