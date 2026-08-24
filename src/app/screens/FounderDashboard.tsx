@@ -141,6 +141,72 @@ function Bar({ label, count, total }: { label: string; count: number; total: num
   );
 }
 
+const DAY_MS = 86400000;
+const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10);
+
+/** Hero stat card: big serif number, EN/ES label, optional delta and muted note. */
+function HeroStat({
+  label, labelEs, value, delta, note,
+}: {
+  label: string; labelEs: string; value: number | string;
+  delta?: number | null; note?: string | null;
+}) {
+  const up = typeof delta === "number" && delta > 0;
+  const down = typeof delta === "number" && delta < 0;
+  return (
+    <div className="rounded-3xl bg-white border border-[#E5DDD3] p-5 shadow-[0_10px_30px_-20px_rgba(122,48,0,0.2)]">
+      <p style={serif} className="text-4xl leading-none">{value}</p>
+      <p className="text-[12px] font-medium mt-2 text-[#211C1A]">{label}</p>
+      <p className="text-[11px] text-[#A79C92]">{labelEs}</p>
+      {typeof delta === "number" && delta !== 0 && (
+        <p className="text-[11px] mt-1.5 font-medium" style={{ color: up ? "#3F7A46" : down ? "#B4483A" : "#7A7068" }}>
+          {up ? "▲" : "▼"} {Math.abs(delta)} vs last week
+        </p>
+      )}
+      {note && <p className="text-[11px] text-[#A79C92] mt-1.5">{note}</p>}
+    </div>
+  );
+}
+
+function StatusChip({ status }: { status?: string | null }) {
+  const s = (status || "").toLowerCase();
+  const map: Record<string, { bg: string; fg: string; label: string }> = {
+    confirmed: { bg: "#DDEFD8", fg: "#2F5E33", label: "Confirmed" },
+    pending: { bg: "#F4E9D6", fg: "#5A4413", label: "Pending" },
+    cancelled: { bg: "#F4D6D0", fg: "#8A3626", label: "Cancelled" },
+    active: { bg: "#DDEFD8", fg: "#2F5E33", label: "Claimed" },
+  };
+  const v = map[s] || { bg: "#F0E7DB", fg: "#7A7068", label: status || "unknown" };
+  return (
+    <span className="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest" style={{ background: v.bg, color: v.fg }}>
+      {v.label}
+    </span>
+  );
+}
+
+/** Horizontal funnel bar with count and drop-off from the previous stage. */
+function FunnelRow({
+  label, labelEs, count, top, prev,
+}: { label: string; labelEs: string; count: number; top: number; prev: number | null }) {
+  const pct = top ? Math.round((count / top) * 100) : 0;
+  const drop = prev != null && prev > 0 ? Math.round(((prev - count) / prev) * 100) : null;
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between items-baseline text-xs mb-1 gap-3">
+        <span className="text-[#211C1A]">{label} <span className="text-[#A79C92]">{labelEs}</span></span>
+        <span className="text-[#7A7068] whitespace-nowrap">
+          {count === 0 ? "collecting data" : `${count} · ${pct}%`}
+          {drop != null && count > 0 ? ` · ${drop}% drop off` : ""}
+        </span>
+      </div>
+      <div className="h-3 rounded-full bg-[#F0E7DB] overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${Math.max(pct, count ? 4 : 0)}%`, background: "#C4622D" }} />
+      </div>
+    </div>
+  );
+}
+
+
 export default function FounderDashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
