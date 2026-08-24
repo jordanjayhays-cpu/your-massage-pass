@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ export default function Login() {
   const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.login" });
   const studioCount = useStudioCount();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const createMode = searchParams.get("create") === "1";
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
   const [name, setName] = useState(getStoredUser()?.name ?? "");
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
