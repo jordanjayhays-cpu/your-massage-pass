@@ -224,6 +224,8 @@ export async function fetchShops(): Promise<Shop[]> {
       google_reviews: p.google_reviews ?? null,
       status: p.status ?? "pending",
       languages: Array.isArray((p as any).languages) ? (p as any).languages : null,
+      opening_hours: (p as any).opening_hours ?? null,
+      auto_confirm_bookings: (p as any).auto_confirm_bookings ?? null,
     });
   }
 
