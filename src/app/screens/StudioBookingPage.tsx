@@ -17,6 +17,7 @@ import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
+import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
 
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
@@ -502,6 +503,8 @@ export default function StudioBookingPage() {
   const { partner } = profile;
   /** Studios that confirm automatically get a commit CTA, not a request CTA. */
   const autoConfirm = !!(partner as any).auto_confirm_bookings;
+  /** Instant confirmation only holds for dates before 1 Sep 2026; after that every booking is a request. */
+  const instantConfirm = isInstantConfirm(autoConfirm, date);
 
 
   // ─── Distance and walking directions ───
@@ -1399,9 +1402,9 @@ export default function StudioBookingPage() {
             ready={canBook}
             busy={submitting}
             onNext={handleBook}
-            label={autoConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
-            labelEs={autoConfirm ? "Reservar ahora" : "Solicitar reserva"}
-            badge={autoConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
+            label={instantConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
+            labelEs={instantConfirm ? "Reservar ahora" : "Solicitar reserva"}
+            badge={instantConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
             note="Free to book · Pay at the studio · No card needed"
             noteEs="Reserva gratis · Paga en el estudio · Sin tarjeta"
           />
@@ -1796,7 +1799,7 @@ export default function StudioBookingPage() {
                   </div>
 
                   <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
-                    {autoConfirm ? (
+                    {instantConfirm ? (
                       <>
                         Your time is confirmed right away. You pay at the studio.
                         <span className="block">Tu hora se confirma al instante. Pagas en el estudio.</span>
