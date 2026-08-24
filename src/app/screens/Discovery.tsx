@@ -4,7 +4,9 @@ import { ArrowLeft, Sparkles, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { MASSAGE_GUIDE } from "../data";
 import StudioMap from "../components/StudioMap";
+import ExploreMassageTypes from "../components/ExploreMassageTypes";
 import { studioPath } from "@/lib/studioHref";
+
 
 export default function Discovery() {
   const navigate = useNavigate();
@@ -67,6 +69,9 @@ export default function Discovery() {
         >
           {t("app.discovery.quizMidPrompt")}
         </button>
+
+        <ExploreMassageTypes />
+
 
         <div>
           <h3 className="font-display text-2xl text-foreground">{t("app.discovery.exploreTitle")}</h3>
