@@ -452,3 +452,342 @@ export const MASSAGE_VITALS: Record<string, MassageVitals> = {
 export function vitalsFor(slug?: string | null): MassageVitals | null {
   return (slug && MASSAGE_VITALS[slug]) || null;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Fact chips: the visual, chip-based version of the four text sections    */
+/* ---------------------------------------------------------------------- */
+
+/** Icon keys resolved to lucide icons in MassageTypeInfo.tsx. */
+export type FactIcon =
+  | "mat"
+  | "shirt"
+  | "sparkles"
+  | "globe"
+  | "oil"
+  | "no-oil"
+  | "hands"
+  | "stone"
+  | "heat"
+  | "feather"
+  | "stretch"
+  | "pressure"
+  | "sun"
+  | "moon"
+  | "chair"
+  | "feet"
+  | "face"
+  | "users"
+  | "baby"
+  | "run"
+  | "clock"
+  | "waves"
+  | "wind"
+  | "leaf"
+  | "heart"
+  | "tool";
+
+export type Fact = { icon: FactIcon; en: string; es: string };
+/** Who-it-is-for chips reuse the best-for colour vocabulary. */
+export type WhoFact = Fact & { tone: BestForKey };
+
+export type MassageFacts = {
+  /** One short line, max one sentence, shown above the what-it-is chips. */
+  line: { en: string; es: string };
+  what: Fact[];
+  origin: Fact;
+  who: WhoFact[];
+  /** Three at most. */
+  expect: Fact[];
+};
+
+export const MASSAGE_FACTS: Record<string, MassageFacts> = {
+  swedish: {
+    line: { en: "The classic relaxation massage.", es: "El masaje de relajación clásico." },
+    what: [
+      { icon: "waves", en: "Long gliding strokes", es: "Movimientos largos" },
+      { icon: "oil", en: "With oil", es: "Con aceite" },
+      { icon: "feather", en: "Light to medium pressure", es: "Presión suave o media" },
+    ],
+    origin: { icon: "globe", en: "Europe · 19th century", es: "Europa · siglo XIX" },
+    who: [
+      { icon: "moon", tone: "relaxation", en: "Want to unwind", es: "Quieres desconectar" },
+      { icon: "clock", tone: "relaxation", en: "Busy week", es: "Semana intensa" },
+      { icon: "sparkles", tone: "relaxation", en: "First massage", es: "Primer masaje" },
+    ],
+    expect: [
+      { icon: "shirt", en: "Undress to comfort", es: "Te desvistes a tu gusto" },
+      { icon: "hands", en: "Back, legs, arms, neck", es: "Espalda, piernas, brazos, cuello" },
+      { icon: "moon", en: "Leave deeply relaxed", es: "Sales muy relajado" },
+    ],
+  },
+  "deep-tissue": {
+    line: { en: "Slow, firm work into the deeper muscle layers.", es: "Trabajo lento y firme en las capas musculares profundas." },
+    what: [
+      { icon: "pressure", en: "Strong pressure", es: "Presión fuerte" },
+      { icon: "hands", en: "Knots and tight spots", es: "Nudos y zonas cargadas" },
+      { icon: "oil", en: "With oil", es: "Con aceite" },
+    ],
+    origin: { icon: "globe", en: "Swedish technique · therapeutic focus", es: "Técnica sueca · enfoque terapéutico" },
+    who: [
+      { icon: "chair", tone: "tension", en: "Sit at a desk", es: "Trabajas sentado" },
+      { icon: "hands", tone: "tension", en: "Sore back", es: "Espalda dolorida" },
+      { icon: "pressure", tone: "tension", en: "Like it strong", es: "Te gusta fuerte" },
+    ],
+    expect: [
+      { icon: "pressure", en: "Intense on tight spots", es: "Intenso en zonas cargadas" },
+      { icon: "clock", en: "Mild soreness next day", es: "Algo de agujetas al día siguiente" },
+      { icon: "hands", en: "Say when it is too much", es: "Avisa si es demasiado" },
+    ],
+  },
+  thai: {
+    line: { en: "Stretching and compression, often called passive yoga.", es: "Estiramientos y compresiones, a menudo llamado yoga pasivo." },
+    what: [
+      { icon: "mat", en: "On a floor mat", es: "En colchoneta" },
+      { icon: "shirt", en: "Loose clothing", es: "Ropa cómoda" },
+      { icon: "sparkles", en: "Passive yoga", es: "Yoga pasivo" },
+    ],
+    origin: { icon: "globe", en: "Thailand · centuries old", es: "Tailandia · siglos de tradición" },
+    who: [
+      { icon: "chair", tone: "tension", en: "Sit a lot", es: "Mucho tiempo sentado" },
+      { icon: "hands", tone: "tension", en: "Feel stiff", es: "Rigidez" },
+      { icon: "stretch", tone: "energy", en: "Want mobility", es: "Ganar movilidad" },
+    ],
+    expect: [
+      { icon: "no-oil", en: "No oil", es: "Sin aceite" },
+      { icon: "stretch", en: "Stretch and press", es: "Estiramiento y presión" },
+      { icon: "sun", en: "Leave feeling awake", es: "Sales despierto" },
+    ],
+  },
+  balinese: {
+    line: { en: "A full body oil massage with more variety than Swedish.", es: "Masaje corporal con aceite y más variedad que el sueco." },
+    what: [
+      { icon: "oil", en: "Aromatic oil", es: "Aceite aromático" },
+      { icon: "hands", en: "Kneading and acupressure", es: "Amasamiento y digitopresión" },
+      { icon: "stretch", en: "Gentle stretches", es: "Estiramientos suaves" },
+    ],
+    origin: { icon: "globe", en: "Bali, Indonesia", es: "Bali, Indonesia" },
+    who: [
+      { icon: "moon", tone: "relaxation", en: "Want deep relaxation", es: "Buscas relajación profunda" },
+      { icon: "pressure", tone: "tension", en: "Want more pressure", es: "Quieres más presión" },
+      { icon: "sparkles", tone: "relaxation", en: "Like a sensory session", es: "Te gusta lo sensorial" },
+    ],
+    expect: [
+      { icon: "waves", en: "Flowing strokes", es: "Movimientos fluidos" },
+      { icon: "pressure", en: "Firmer pressure points", es: "Puntos de presión firmes" },
+      { icon: "clock", en: "Unhurried pace", es: "Sin prisa" },
+    ],
+  },
+  shiatsu: {
+    line: { en: "Japanese finger pressure along meridian points.", es: "Presión japonesa con los dedos sobre los meridianos." },
+    what: [
+      { icon: "shirt", en: "Comfortable clothing", es: "Ropa cómoda" },
+      { icon: "no-oil", en: "No oil", es: "Sin aceite" },
+      { icon: "pressure", en: "Thumbs, palms, elbows", es: "Pulgares, palmas, codos" },
+    ],
+    origin: { icon: "globe", en: "Japan · formalized 20th century", es: "Japón · formalizado en el siglo XX" },
+    who: [
+      { icon: "shirt", tone: "tension", en: "Prefer staying dressed", es: "Prefieres estar vestido" },
+      { icon: "pressure", tone: "tension", en: "Want firm pressure", es: "Buscas presión firme" },
+      { icon: "sparkles", tone: "energy", en: "Curious about meridians", es: "Curiosidad por los meridianos" },
+    ],
+    expect: [
+      { icon: "waves", en: "Steady rhythm", es: "Ritmo constante" },
+      { icon: "leaf", en: "Grounding and focused", es: "Centrado y con calma" },
+      { icon: "no-oil", en: "Stay dressed", es: "Con ropa" },
+    ],
+  },
+  sports: {
+    line: { en: "Targeted work on muscles stressed by training.", es: "Trabajo dirigido sobre los músculos que carga el entrenamiento." },
+    what: [
+      { icon: "run", en: "Vigorous and targeted", es: "Enérgico y dirigido" },
+      { icon: "hands", en: "Kneading and friction", es: "Amasamiento y fricción" },
+      { icon: "stretch", en: "Stretching", es: "Estiramiento" },
+    ],
+    origin: { icon: "globe", en: "Modern athletics · training recovery", es: "Deporte moderno · recuperación" },
+    who: [
+      { icon: "run", tone: "sport", en: "Runners", es: "Corredores" },
+      { icon: "run", tone: "sport", en: "Gym goers", es: "Gente de gimnasio" },
+      { icon: "clock", tone: "sport", en: "Before or after training", es: "Antes o después de entrenar" },
+    ],
+    expect: [
+      { icon: "hands", en: "You name the muscle groups", es: "Tú eliges los grupos musculares" },
+      { icon: "pressure", en: "Can be intense", es: "Puede ser intenso" },
+      { icon: "oil", en: "With oil", es: "Con aceite" },
+    ],
+  },
+  lymphatic: {
+    line: { en: "Very light rhythmic strokes following lymph flow.", es: "Movimientos muy suaves y rítmicos que siguen el flujo linfático." },
+    what: [
+      { icon: "feather", en: "Feather light", es: "Muy suave" },
+      { icon: "waves", en: "Slow and rhythmic", es: "Lento y rítmico" },
+      { icon: "oil", en: "With oil", es: "Con aceite" },
+    ],
+    origin: { icon: "globe", en: "Europe · Vodder method, 1930s", es: "Europa · método Vodder, años treinta" },
+    who: [
+      { icon: "feet", tone: "relaxation", en: "Heavy legs", es: "Piernas pesadas" },
+      { icon: "waves", tone: "relaxation", en: "Feel puffy", es: "Sensación de hinchazón" },
+      { icon: "feather", tone: "relaxation", en: "Want it very gentle", es: "Quieres algo muy suave" },
+    ],
+    expect: [
+      { icon: "feather", en: "Much lighter than usual", es: "Mucho más suave de lo normal" },
+      { icon: "waves", en: "Repetitive gentle passes", es: "Pasadas suaves repetidas" },
+      { icon: "moon", en: "Very calming", es: "Muy calmante" },
+    ],
+  },
+  "hot-stone": {
+    line: { en: "Heated stones glided over muscles and rested on key points.", es: "Piedras calientes que se deslizan y se apoyan en puntos clave." },
+    what: [
+      { icon: "stone", en: "Smooth warm stones", es: "Piedras lisas calientes" },
+      { icon: "heat", en: "Heat instead of hard pressure", es: "Calor en vez de presión fuerte" },
+      { icon: "oil", en: "With oil", es: "Con aceite" },
+    ],
+    origin: { icon: "globe", en: "Several cultures · modernized in the 1990s", es: "Varias culturas · modernizado en los noventa" },
+    who: [
+      { icon: "heat", tone: "relaxation", en: "Love warmth", es: "Te encanta el calor" },
+      { icon: "feather", tone: "tension", en: "Dislike deep pressure", es: "No te gusta la presión profunda" },
+      { icon: "moon", tone: "relaxation", en: "Want to slow down", es: "Quieres bajar el ritmo" },
+    ],
+    expect: [
+      { icon: "heat", en: "Warm, never burning", es: "Cálido, nunca quema" },
+      { icon: "hands", en: "Stones plus hand strokes", es: "Piedras y trabajo de manos" },
+      { icon: "moon", en: "Muscles soften slowly", es: "El músculo se ablanda poco a poco" },
+    ],
+  },
+  kobido: {
+    line: { en: "A Japanese facial massage of fast, precise movements.", es: "Masaje facial japonés de movimientos rápidos y precisos." },
+    what: [
+      { icon: "face", en: "Face, neck and scalp", es: "Cara, cuello y cuero cabelludo" },
+      { icon: "hands", en: "Fast precise movements", es: "Movimientos rápidos y precisos" },
+      { icon: "oil", en: "Light oil only", es: "Solo aceite ligero" },
+    ],
+    origin: { icon: "globe", en: "Japan · lineage since the 15th century", es: "Japón · linaje desde el siglo XV" },
+    who: [
+      { icon: "face", tone: "face", en: "Jaw tension", es: "Tensión de mandíbula" },
+      { icon: "sparkles", tone: "face", en: "Want a natural facial", es: "Buscas un facial natural" },
+      { icon: "clock", tone: "face", en: "Short focused session", es: "Sesión corta y concreta" },
+    ],
+    expect: [
+      { icon: "face", en: "Lie face up, dressed", es: "Boca arriba y vestido" },
+      { icon: "waves", en: "Quick rhythmic strokes", es: "Pasadas rápidas y rítmicas" },
+      { icon: "no-oil", en: "No needles, no products", es: "Sin agujas ni productos" },
+    ],
+  },
+  "gua-sha": {
+    line: { en: "A smooth stone tool glided over oiled skin.", es: "Una herramienta de piedra lisa que se desliza sobre la piel con aceite." },
+    what: [
+      { icon: "tool", en: "Stone tool", es: "Herramienta de piedra" },
+      { icon: "face", en: "Face and neck", es: "Cara y cuello" },
+      { icon: "feather", en: "Gentle strokes", es: "Pasadas suaves" },
+    ],
+    origin: { icon: "globe", en: "China · traditional practice", es: "China · práctica tradicional" },
+    who: [
+      { icon: "face", tone: "face", en: "Curious about facials", es: "Curiosidad por los faciales" },
+      { icon: "face", tone: "face", en: "Jaw or neck tension", es: "Tensión de mandíbula o cuello" },
+      { icon: "feather", tone: "face", en: "Want something soft", es: "Buscas algo delicado" },
+    ],
+    expect: [
+      { icon: "tool", en: "Unusual at first, then pleasant", es: "Raro al principio, luego agradable" },
+      { icon: "feather", en: "Soft on the face", es: "Delicado en el rostro" },
+      { icon: "clock", en: "Brief redness possible", es: "Puede quedar algo de rojez" },
+    ],
+  },
+  "head-scalp": {
+    line: { en: "Focused work on scalp, head and neck.", es: "Trabajo centrado en cuero cabelludo, cabeza y cuello." },
+    what: [
+      { icon: "hands", en: "Fingertip work", es: "Con las yemas de los dedos" },
+      { icon: "shirt", en: "Stay dressed", es: "Con ropa" },
+      { icon: "clock", en: "Short session", es: "Sesión corta" },
+    ],
+    origin: { icon: "globe", en: "India · champi tradition", es: "India · tradición champi" },
+    who: [
+      { icon: "chair", tone: "tension", en: "Screen heavy days", es: "Muchas horas de pantalla" },
+      { icon: "face", tone: "tension", en: "Headache prone", es: "Propenso a dolor de cabeza" },
+      { icon: "moon", tone: "relaxation", en: "Love head touch", es: "Te encanta que te toquen la cabeza" },
+    ],
+    expect: [
+      { icon: "chair", en: "Seated or lying down", es: "Sentado o tumbado" },
+      { icon: "no-oil", en: "Usually no oil", es: "Normalmente sin aceite" },
+      { icon: "moon", en: "Big relaxation, fast", es: "Mucha relajación en poco tiempo" },
+    ],
+  },
+  prenatal: {
+    line: { en: "Gentle massage adapted for pregnancy.", es: "Masaje suave adaptado al embarazo." },
+    what: [
+      { icon: "baby", en: "Side lying position", es: "Tumbada de lado" },
+      { icon: "feather", en: "Supportive cushions", es: "Cojines de apoyo" },
+      { icon: "oil", en: "Light pressure with oil", es: "Presión ligera con aceite" },
+    ],
+    origin: { icon: "globe", en: "Swedish technique · adapted for pregnancy", es: "Técnica sueca · adaptada al embarazo" },
+    who: [
+      { icon: "baby", tone: "pregnancy", en: "Pregnant, usually from month four", es: "Embarazada, normalmente desde el cuarto mes" },
+      { icon: "hands", tone: "pregnancy", en: "Lower back or hip load", es: "Carga lumbar o de cadera" },
+      { icon: "feet", tone: "pregnancy", en: "Tired legs", es: "Piernas cansadas" },
+    ],
+    expect: [
+      { icon: "baby", en: "Careful positioning", es: "Colocación cuidadosa" },
+      { icon: "feather", en: "Lighter pressure", es: "Presión más ligera" },
+      { icon: "clock", en: "Say you are pregnant when booking", es: "Avisa al reservar" },
+    ],
+  },
+  couples: {
+    line: { en: "Two people, two therapists, one room, at the same time.", es: "Dos personas, dos terapeutas, una sala y a la vez." },
+    what: [
+      { icon: "users", en: "Side by side", es: "Uno al lado del otro" },
+      { icon: "hands", en: "Two therapists", es: "Dos terapeutas" },
+      { icon: "oil", en: "Usually with oil", es: "Normalmente con aceite" },
+    ],
+    origin: { icon: "globe", en: "Spa format · made for sharing", es: "Formato de spa · para compartir" },
+    who: [
+      { icon: "heart", tone: "relaxation", en: "Couples", es: "Parejas" },
+      { icon: "users", tone: "relaxation", en: "Friends", es: "Amigos" },
+      { icon: "sparkles", tone: "relaxation", en: "Nervous first timers", es: "Primera vez con nervios" },
+    ],
+    expect: [
+      { icon: "users", en: "Same as an individual massage", es: "Igual que un masaje individual" },
+      { icon: "heart", en: "Shared room", es: "Sala compartida" },
+      { icon: "sparkles", en: "Less intimidating first time", es: "Una primera vez que impone menos" },
+    ],
+  },
+  "foot-legs": {
+    line: { en: "Focused work on feet, calves and legs.", es: "Trabajo centrado en pies, gemelos y piernas." },
+    what: [
+      { icon: "feet", en: "Feet and legs only", es: "Solo pies y piernas" },
+      { icon: "pressure", en: "Reflexology style points", es: "Puntos estilo reflexología" },
+      { icon: "chair", en: "Seated or reclined", es: "Sentado o reclinado" },
+    ],
+    origin: { icon: "globe", en: "China · reflexology traditions", es: "China · tradiciones de reflexología" },
+    who: [
+      { icon: "feet", tone: "tension", en: "On your feet all day", es: "Todo el día de pie" },
+      { icon: "clock", tone: "relaxation", en: "Travelling", es: "De viaje" },
+      { icon: "feet", tone: "relaxation", en: "Tired legs", es: "Piernas cansadas" },
+    ],
+    expect: [
+      { icon: "shirt", en: "Shoes and socks off only", es: "Solo sin zapatos ni calcetines" },
+      { icon: "pressure", en: "Firm thumb pressure", es: "Presión firme con los pulgares" },
+      { icon: "sun", en: "Lighter step after", es: "Sales con las piernas ligeras" },
+    ],
+  },
+  "four-hands": {
+    line: { en: "Two therapists working in synchronized rhythm.", es: "Dos terapeutas trabajando en ritmo sincronizado." },
+    what: [
+      { icon: "hands", en: "Four hands at once", es: "Cuatro manos a la vez" },
+      { icon: "waves", en: "Mirrored movements", es: "Movimientos en espejo" },
+      { icon: "oil", en: "With oil", es: "Con aceite" },
+    ],
+    origin: { icon: "globe", en: "Luxury spa format", es: "Formato de spa de lujo" },
+    who: [
+      { icon: "sparkles", tone: "relaxation", en: "Massage lovers", es: "Amantes del masaje" },
+      { icon: "heart", tone: "relaxation", en: "Marking an occasion", es: "Celebras algo" },
+      { icon: "waves", tone: "relaxation", en: "Want something immersive", es: "Buscas algo envolvente" },
+    ],
+    expect: [
+      { icon: "hands", en: "Twice the coverage", es: "El doble de cobertura" },
+      { icon: "waves", en: "Hard to track, immersive", es: "Difícil de seguir, envolvente" },
+      { icon: "clock", en: "Premium priced", es: "Precio premium" },
+    ],
+  },
+};
+
+export function factsFor(slug?: string | null): MassageFacts | null {
+  return (slug && MASSAGE_FACTS[slug]) || null;
+}
