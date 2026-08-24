@@ -127,6 +127,14 @@ export default function Web() {
               </Link>
             </div>
 
+            <Link
+              to="/login?create=1"
+              className="inline-flex items-center gap-1 mb-4 text-sm text-[#7A7068] underline underline-offset-4 hover:text-[#99420d] transition"
+            >
+              Create a free profile
+            </Link>
+
+
             <p className="text-sm text-[#7A7068] mb-10">
               No account needed to look. No booking fee. You pay the studio directly.
             </p>
