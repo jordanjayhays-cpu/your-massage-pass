@@ -113,30 +113,138 @@ export function MassageTypeVitals({ type }: { type: MassageTypeContent }) {
   );
 }
 
-/** The write-up itself, shared by the overlay and the standalone page. */
-export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es: boolean }) {
-  const sections: { en: string; esLabel: string; body: { en: string; es: string } }[] = [
-    { en: "What it is", esLabel: "Qué es", body: type.what },
-    { en: "Where it comes from", esLabel: "De dónde viene", body: type.from },
-    { en: "Who it's for", esLabel: "Para quién es", body: type.who },
-    { en: "What to expect", esLabel: "Qué esperar", body: type.expect },
-  ];
+/** Icon lookup for the fact chips. */
+const FACT_ICONS: Record<FactIcon, React.ReactNode> = {
+  mat: <Rows3 size={13} />,
+  shirt: <Shirt size={13} />,
+  sparkles: <Sparkles size={13} />,
+  globe: <Globe size={13} />,
+  oil: <Droplets size={13} />,
+  "no-oil": <Droplet size={13} />,
+  hands: <Hand size={13} />,
+  stone: <Circle size={13} />,
+  heat: <Flame size={13} />,
+  feather: <Feather size={13} />,
+  stretch: <MoveDiagonal size={13} />,
+  pressure: <ArrowDownToLine size={13} />,
+  sun: <Sun size={13} />,
+  moon: <Moon size={13} />,
+  chair: <Armchair size={13} />,
+  feet: <Footprints size={13} />,
+  face: <Smile size={13} />,
+  users: <Users size={13} />,
+  baby: <Baby size={13} />,
+  run: <Activity size={13} />,
+  clock: <Clock size={13} />,
+  waves: <Waves size={13} />,
+  wind: <Wind size={13} />,
+  leaf: <Leaf size={13} />,
+  heart: <Heart size={13} />,
+  tool: <Gem size={13} />,
+};
+
+function FactChip({ fact }: { fact: Fact }) {
   return (
-    <div className="space-y-4">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E6DCCF] bg-[#FAF6F1] px-2.5 py-1 text-xs text-[#4a4038]">
+      <span className="text-[#8a7460]">{FACT_ICONS[fact.icon]}</span>
+      <span className="font-semibold">{fact.en}</span>
+      <span className="text-[#8a7460]">/ {fact.es}</span>
+    </span>
+  );
+}
+
+function WhoChip({ fact }: { fact: WhoFact }) {
+  const c = BEST_FOR_COLORS[fact.tone];
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
+      style={{ background: c.bg, color: c.fg, border: `1px solid ${c.border}` }}
+    >
+      {FACT_ICONS[fact.icon]}
+      <span className="font-semibold">{fact.en}</span>
+      <span className="opacity-70">/ {fact.es}</span>
+    </span>
+  );
+}
+
+function SectionKicker({ en, es }: { en: string; es: string }) {
+  return (
+    <h3 className="text-sm font-bold uppercase tracking-[1.2px] text-[#B85C38]">
+      {en} <span className="font-medium normal-case tracking-normal text-[#8a7460]">/ {es}</span>
+    </h3>
+  );
+}
+
+/** The write-up itself, shared by the overlay and the standalone page. */
+export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es?: boolean }) {
+  const facts = factsFor(type.slug);
+
+  if (!facts) {
+    const sections: { en: string; esLabel: string; body: { en: string; es: string } }[] = [
+      { en: "What it is", esLabel: "Qué es", body: type.what },
+      { en: "Where it comes from", esLabel: "De dónde viene", body: type.from },
+      { en: "Who it's for", esLabel: "Para quién es", body: type.who },
+      { en: "What to expect", esLabel: "Qué esperar", body: type.expect },
+    ];
+    return (
+      <div className="space-y-4">
+        <MassageTypeVitals type={type} />
+        {sections.map((s) => (
+          <div key={s.en}>
+            <SectionKicker en={s.en} es={s.esLabel} />
+            <p className="mt-1 text-[15px] leading-relaxed text-[#4a4038]">{s.body.en}</p>
+            <p className="mt-1 text-[15px] leading-relaxed text-[#8a7460]">{s.body.es}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
       <MassageTypeVitals type={type} />
-      {sections.map((s) => (
-        <div key={s.en}>
-          <h3 className="text-sm font-bold uppercase tracking-[1.2px] text-[#B85C38]">
-            {s.en} <span className="font-medium normal-case tracking-normal text-[#8a7460]">/ {s.esLabel}</span>
-          </h3>
-          <p className="mt-1 text-[15px] leading-relaxed text-[#4a4038]">{s.body.en}</p>
-          <p className="mt-1 text-[15px] leading-relaxed text-[#8a7460]">{s.body.es}</p>
+
+      <div>
+        <SectionKicker en="What it is" es="Qué es" />
+        <p className="mt-1 text-[15px] font-semibold leading-snug text-[#4a4038]">{facts.line.en}</p>
+        <p className="text-[15px] leading-snug text-[#8a7460]">{facts.line.es}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {facts.what.map((f) => <FactChip key={f.en} fact={f} />)}
         </div>
-      ))}
-      {es && null}
+      </div>
+
+      <div>
+        <SectionKicker en="Where it comes from" es="De dónde viene" />
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <FactChip fact={facts.origin} />
+        </div>
+      </div>
+
+      <div>
+        <SectionKicker en="Who it's for" es="Para quién es" />
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {facts.who.map((f) => <WhoChip key={f.en} fact={f} />)}
+        </div>
+      </div>
+
+      <div>
+        <SectionKicker en="What to expect" es="Qué esperar" />
+        <ul className="mt-2 space-y-1.5">
+          {facts.expect.slice(0, 3).map((f) => (
+            <li key={f.en} className="flex items-center gap-2 text-[15px] text-[#4a4038]">
+              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#FAF6F1] text-[#B85C38]">
+                {FACT_ICONS[f.icon]}
+              </span>
+              <span className="font-semibold">{f.en}</span>
+              <span className="text-[#8a7460]">/ {f.es}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
+
 
 
 function Overlay({ type, onClose }: { type: MassageTypeContent; onClose: () => void }) {
