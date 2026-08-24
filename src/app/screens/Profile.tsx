@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown, Check } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown, Check, Sparkles, Clock, CalendarCheck } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import {
@@ -572,15 +572,33 @@ export default function Profile() {
         <div className="h-16 w-16 rounded-full bg-[#C4622D]/10 flex items-center justify-center mb-4">
           <UserCircle className="h-8 w-8 text-[#C4622D]" />
         </div>
-        <h1 className="text-xl font-bold text-gray-900">{t("app.profile.signedOut.title")}</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t("app.profile.signedOut.createTitle")}</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
-          {t("app.profile.signedOut.subtitle")}
+          {t("app.profile.signedOut.createSubtitle")}
         </p>
+        <ul className="mt-6 space-y-3 text-left max-w-xs w-full">
+          {[
+            { Icon: Sparkles, text: t("app.profile.signedOut.benefit1") },
+            { Icon: Clock, text: t("app.profile.signedOut.benefit2") },
+            { Icon: CalendarCheck, text: t("app.profile.signedOut.benefit3") },
+          ].map(({ Icon, text }, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
+              <Icon className="h-4 w-4 text-[#C4622D] mt-0.5 flex-shrink-0" />
+              <span>{text}</span>
+            </li>
+          ))}
+        </ul>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/login?create=1")}
           className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
         >
-          {t("app.profile.signedOut.signInButton")}
+          {t("app.profile.signedOut.createButton")}
+        </button>
+        <button
+          onClick={() => navigate("/login")}
+          className="mt-3 text-sm text-[#7A7068] underline underline-offset-4 hover:text-[#C4622D] min-h-11"
+        >
+          {t("app.profile.signedOut.alreadyHave")}
         </button>
       </div>
     );

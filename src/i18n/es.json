@@ -313,7 +313,14 @@
       "signedOut": {
         "title": "Inicia sesión para configurar tu perfil",
         "subtitle": "Guarda tus preferencias para que cada centro sepa cómo te gusta el masaje.",
-        "signInButton": "Iniciar sesión"
+        "signInButton": "Iniciar sesión",
+        "createTitle": "Crea tu perfil",
+        "createSubtitle": "Configura tu perfil de Massage Club en menos de un minuto.",
+        "createButton": "Crea tu perfil",
+        "alreadyHave": "¿Ya tienes uno? Inicia sesión",
+        "benefit1": "Tu foto y tus preferencias llegan al estudio antes de que entres por la puerta",
+        "benefit2": "Reserva más rápido la próxima vez, con tus datos ya rellenados",
+        "benefit3": "Todas tus reservas en un solo sitio"
       },
       "header": {
         "back": "Atrás",
@@ -712,7 +719,10 @@
           "tooManyAttempts": "Demasiados intentos, pide un código nuevo",
           "rateLimited": "Has pedido demasiados códigos. Espera unos minutos.",
           "generic": "Algo ha fallado. Inténtalo de nuevo."
-        }
+        },
+        "createHeading": "Crea tu perfil",
+        "createSubheading": "Introduce tu email y te enviamos un código de 6 dígitos.",
+        "createSubmit": "Crea tu perfil"
       }
     },
     "handoff": {

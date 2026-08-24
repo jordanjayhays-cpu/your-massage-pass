@@ -149,6 +149,12 @@ export default function Home() {
                 className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
               />
             </div>
+            <Link
+              to="/login?create=1"
+              className="inline-flex items-center gap-1 mt-3 text-sm text-muted-foreground underline underline-offset-4 hover:text-primary transition"
+            >
+              {isSpanish ? "Crea tu perfil gratis" : "Create a free profile"}
+            </Link>
           </div>
         </section>
 

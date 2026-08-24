@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ export default function Login() {
   const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.login" });
   const studioCount = useStudioCount();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const createMode = searchParams.get("create") === "1";
   const [step, setStep] = useState<"choice" | "name" | "email">("choice");
   const [name, setName] = useState(getStoredUser()?.name ?? "");
   const [email, setEmail] = useState(getStoredUser()?.email ?? "");
@@ -43,17 +45,27 @@ export default function Login() {
 
   useEffect(() => {
     let cancelled = false;
+    const dest = createMode ? "/app/profile" : "/studios";
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!cancelled && session) navigate("/studios", { replace: true });
+      if (!cancelled && session) navigate(dest, { replace: true });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" && !handlingOtp.current) navigate("/studios", { replace: true });
+      if (event === "SIGNED_IN" && !handlingOtp.current) navigate(dest, { replace: true });
     });
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, createMode]);
+
+  useEffect(() => {
+    if (!createMode) return;
+    const id = window.setTimeout(() => {
+      document.getElementById("mc-email-auth")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById("mc-otp-email")?.focus({ preventScroll: true });
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [createMode]);
 
   const otpErrorMessage = (raw: string, status?: number) => {
     if (status === 429 || /too_many_requests|rate/i.test(raw)) return t("emailAuth.errors.rateLimited");
@@ -122,7 +134,7 @@ export default function Login() {
       } catch {
         needsName = false;
       }
-      navigate(needsName ? "/profile" : "/studios", { replace: true });
+      navigate(createMode || needsName ? "/app/profile" : "/studios", { replace: true });
     } finally {
       handlingOtp.current = false;
       setOtpBusy(false);
@@ -328,9 +340,15 @@ export default function Login() {
         </div>
 
         {otpStage === "idle" ? (
-          <div className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+          <div id="mc-email-auth" className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+            {createMode && (
+              <div>
+                <h2 style={serif} className="text-[26px] leading-tight text-[#211C1A]">{t("emailAuth.createHeading")}</h2>
+                <p className="text-[13px] text-[#7A7068] mt-1">{t("emailAuth.createSubheading")}</p>
+              </div>
+            )}
             <label htmlFor="mc-otp-email" className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068] block">
-              {t("emailAuth.continueWithEmail")}
+              {createMode ? t("emailAuth.createSubmit") : t("emailAuth.continueWithEmail")}
             </label>
             <input
               id="mc-otp-email"
@@ -349,7 +367,7 @@ export default function Login() {
               className="w-full h-12 rounded-full text-base font-medium"
               style={{ background: "#211C1A", color: "#F7F4F0" }}
             >
-              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" />{t("emailAuth.continueWithEmail")}</>}
+              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" />{createMode ? t("emailAuth.createSubmit") : t("emailAuth.continueWithEmail")}</>}
             </Button>
           </div>
         ) : (
