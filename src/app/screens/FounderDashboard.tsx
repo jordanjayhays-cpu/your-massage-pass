@@ -509,7 +509,86 @@ export default function FounderDashboard() {
           </div>
         </div>
 
+        {/* 1. Hero row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <HeroStat
+            label="Bookings this week"
+            labelEs="Reservas esta semana"
+            value={bookingsThisWeek}
+            delta={bookingsThisWeek - bookingsPrevWeek}
+            note={cancelledThisWeek ? `${cancelledThisWeek} rescheduled or cancelled` : null}
+          />
+          <HeroStat label="Completed all time" labelEs="Completadas en total" value={completedAllTime} />
+          <HeroStat
+            label="Upcoming"
+            labelEs="Próximas"
+            value={upcomingConfirmed}
+            note={upcoming.length > upcomingConfirmed ? `${upcoming.length - upcomingConfirmed} awaiting confirmation` : null}
+          />
+          <HeroStat
+            label="Visitors this week"
+            labelEs="Visitantes esta semana"
+            value={visitorsThisWeek}
+            delta={visitorsPrevWeek ? visitorsThisWeek - visitorsPrevWeek : null}
+          />
+        </div>
+
         <div className="space-y-6">
+          {/* 2. Upcoming bookings */}
+          <Card title="Upcoming bookings">
+            <div className="divide-y divide-[#F0E7DB]">
+              {upcoming.slice(0, 12).map((b) => (
+                <div key={b.id} className="py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="font-medium tabular-nums">{b.booking_date} {b.booking_time}</span>
+                  <span>{(b.client_name || "Guest").trim().split(" ")[0]}</span>
+                  <span className="text-[#7A7068]">· {b.spa_name || "Studio"}</span>
+                  {b.massage_type && <span className="text-[#7A7068]">· {String(b.massage_type).replace(/_/g, " ")}</span>}
+                  <span className="ml-auto"><StatusChip status={b.status} /></span>
+                </div>
+              ))}
+              {upcoming.length === 0 && <p className="text-sm text-[#7A7068] py-4">No upcoming bookings yet.</p>}
+            </div>
+          </Card>
+
+          {/* 3. Funnel */}
+          <Card title="Funnel this week">
+            {funnel.map((f, i) => (
+              <FunnelRow
+                key={f.label}
+                label={f.label}
+                labelEs={f.labelEs}
+                count={f.count}
+                top={funnelTop}
+                prev={i === 0 ? null : funnel[i - 1].count}
+              />
+            ))}
+          </Card>
+
+          {/* 4. Demand signals */}
+          <Card title="Demand signals">
+            <div className="flex items-baseline gap-3 mb-4">
+              <p style={serif} className="text-3xl">{waThisWeek.length}</p>
+              <p className="text-sm text-[#7A7068]">WhatsApp requests this week / Solicitudes de WhatsApp esta semana</p>
+            </div>
+            <div className="divide-y divide-[#F0E7DB]">
+              {waThisWeek.map((w, i) => (
+                <div key={(w.id || "") + i} className="py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="font-medium">{w.studio_name || "Unknown studio"}</span>
+                  {w.first_name && <span className="text-[#7A7068]">· {w.first_name}</span>}
+                  <span className="text-[#7A7068]">· {w.created_at ? new Date(w.created_at).toLocaleDateString() : ""}</span>
+                  {w.outcome && (
+                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest"
+                      style={{ background: w.outcome === "happened" ? "#DDEFD8" : "#F0E7DB", color: "#211C1A" }}>
+                      {w.outcome === "happened" ? "Happened" : w.outcome === "no_reply" ? "No reply" : w.outcome}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {waThisWeek.length === 0 && <p className="text-sm text-[#7A7068] py-4">No WhatsApp requests this week.</p>}
+            </div>
+          </Card>
+
+
           <Card title="Your links">
             <p className="text-sm text-[#7A7068] mb-4">Copy a link and share it. The tag on the end records which audience it came from — nobody filling it out sees it.</p>
             {LINK_GROUPS.map((g) => (
