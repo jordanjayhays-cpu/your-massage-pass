@@ -358,7 +358,7 @@ export default function Login() {
               className="w-full h-12 rounded-full text-base font-medium"
               style={{ background: "#211C1A", color: "#F7F4F0" }}
             >
-              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" />{t("emailAuth.continueWithEmail")}</>}
+              {otpBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Mail className="h-4 w-4 mr-2" />{createMode ? t("emailAuth.createSubmit") : t("emailAuth.continueWithEmail")}</>}
             </Button>
           </div>
         ) : (
