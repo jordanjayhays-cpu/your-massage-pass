@@ -331,9 +331,15 @@ export default function Login() {
         </div>
 
         {otpStage === "idle" ? (
-          <div className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+          <div id="mc-email-auth" className="rounded-[20px] bg-white border border-[#E5DDD3] p-4 space-y-3">
+            {createMode && (
+              <div>
+                <h2 style={serif} className="text-[26px] leading-tight text-[#211C1A]">{t("emailAuth.createHeading")}</h2>
+                <p className="text-[13px] text-[#7A7068] mt-1">{t("emailAuth.createSubheading")}</p>
+              </div>
+            )}
             <label htmlFor="mc-otp-email" className="text-[11px] uppercase tracking-[0.2em] text-[#7A7068] block">
-              {t("emailAuth.continueWithEmail")}
+              {createMode ? t("emailAuth.createSubmit") : t("emailAuth.continueWithEmail")}
             </label>
             <input
               id="mc-otp-email"
