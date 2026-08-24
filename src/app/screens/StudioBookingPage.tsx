@@ -17,6 +17,7 @@ import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
+import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
 
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
@@ -502,6 +503,8 @@ export default function StudioBookingPage() {
   const { partner } = profile;
   /** Studios that confirm automatically get a commit CTA, not a request CTA. */
   const autoConfirm = !!(partner as any).auto_confirm_bookings;
+  /** Instant confirmation only holds for dates before 1 Sep 2026; after that every booking is a request. */
+  const instantConfirm = isInstantConfirm(autoConfirm, date);
 
 
   // ─── Distance and walking directions ───
@@ -577,8 +580,17 @@ export default function StudioBookingPage() {
             <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             <p className="text-base font-semibold mb-6" style={{ color: "#3d2b1f" }}>
-              ¡Tu reserva está hecha! 🎉
-              <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
+              {isClaimed && !instantConfirm ? (
+                <>
+                  ¡Solicitud enviada! 🎉
+                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>Request sent, the studio will confirm by email.</span>
+                </>
+              ) : (
+                <>
+                  ¡Tu reserva está hecha! 🎉
+                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
+                </>
+              )}
             </p>
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
@@ -602,10 +614,19 @@ export default function StudioBookingPage() {
             </div>
             {isClaimed ? (
               <>
-                <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  El estudio confirmará tu cita en breve.
-                  <span className="block text-xs mt-0.5">The studio will confirm your appointment shortly.</span>
-                </p>
+                {instantConfirm ? (
+                  <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+                    Tu hora está confirmada. Pagas en el estudio, sin tarjeta.
+                    <span className="block text-xs mt-0.5">Your time is confirmed. You pay at the studio, no card needed.</span>
+                  </p>
+                ) : (
+                  <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+                    El estudio suele confirmar en unas horas y te avisamos por email. Pagas en el estudio, sin tarjeta.
+                    <span className="block text-xs mt-0.5">
+                      The studio usually confirms within a few hours and you will get an email. You pay at the studio, no card needed.
+                    </span>
+                  </p>
+                )}
                 <div className="flex flex-col items-center gap-3 w-full">
                   {gcal && (
                     <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
@@ -1399,9 +1420,9 @@ export default function StudioBookingPage() {
             ready={canBook}
             busy={submitting}
             onNext={handleBook}
-            label={autoConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
-            labelEs={autoConfirm ? "Reservar ahora" : "Solicitar reserva"}
-            badge={autoConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
+            label={instantConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
+            labelEs={instantConfirm ? "Reservar ahora" : "Solicitar reserva"}
+            badge={instantConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
             note="Free to book · Pay at the studio · No card needed"
             noteEs="Reserva gratis · Paga en el estudio · Sin tarjeta"
           />
@@ -1796,7 +1817,7 @@ export default function StudioBookingPage() {
                   </div>
 
                   <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
-                    {autoConfirm ? (
+                    {instantConfirm ? (
                       <>
                         Your time is confirmed right away. You pay at the studio.
                         <span className="block">Tu hora se confirma al instante. Pagas en el estudio.</span>

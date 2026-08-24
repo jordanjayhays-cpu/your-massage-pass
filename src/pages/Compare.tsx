@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { instantConfirmWindowOpen } from "@/lib/instantConfirm";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Check, Star, MapPin, MessageCircle, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -50,9 +51,9 @@ function typePrice(shop: Shop, type: MassageTypeContent | null): number | null {
   return prices.length ? Math.min(...prices) : null;
 }
 
-/** Studio confirms bookings itself, no WhatsApp round trip. */
+/** Studio confirms bookings itself, and only while instant confirmation still applies (before 1 Sep 2026). */
 function isInstant(shop: Shop): boolean {
-  return shop.auto_confirm_bookings === true;
+  return shop.auto_confirm_bookings === true && instantConfirmWindowOpen();
 }
 
 const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
