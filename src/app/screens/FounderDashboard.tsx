@@ -232,6 +232,11 @@ export default function FounderDashboard() {
     id: string; studio_name: string; area: string | null; reason: string | null;
     client_email: string | null; status: string; created_at: string;
   }>>([]);
+  const [visits, setVisits] = useState<SiteVisit[]>([]);
+  const [events, setEvents] = useState<SiteEvent[]>([]);
+  const [waRequests, setWaRequests] = useState<WaRequest[]>([]);
+  const [contacts, setContacts] = useState<CustomerContact[]>([]);
+
 
 
   useEffect(() => {
