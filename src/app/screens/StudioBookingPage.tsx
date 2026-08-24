@@ -1169,6 +1169,15 @@ export default function StudioBookingPage() {
   const canBook = !!(service && date && time && name.trim() && hasContact);
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
+  // Abandoned-booking capture: signed-out visitors who picked a day and time
+  // but have not submitted yet.
+  const leadSheet = useAbandonedBookingCapture({
+    eligible: step > 2 && !!date && !!time,
+    onFinalStep: step === 5,
+    disabled: !!userId || !!done,
+  });
+
+
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
     // A step completes whenever we move forward from it.
