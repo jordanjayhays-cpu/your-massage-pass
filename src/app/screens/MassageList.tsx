@@ -161,6 +161,10 @@ export default function MassageList() {
 
 
 
+  /** Same destination as tapping the card / Book now. */
+  const cardHref = (m: Shop | typeof MASSAGES[0]) =>
+    "partner_id" in m && (m as Shop).partner_id ? studioPath(m as Shop) : `/massages/${m.id}`;
+
   const handleBook = (m: Shop | typeof MASSAGES[0]) => {
     if ("partner_id" in m && (m as Shop).partner_id) {
       navigate(studioPath(m as Shop));
