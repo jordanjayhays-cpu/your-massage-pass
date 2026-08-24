@@ -668,24 +668,51 @@ export default function FounderDashboard() {
           <StudioPipeline refreshTick={refreshTick} />
 
           <Card title="Supply">
-
-            <Stat label="Partners" value={partners.length} />
-            <div className="mt-6 divide-y divide-[#F0E7DB]">
-              {partners.map((p) => (
-                <div key={p.id} className="py-2 flex items-center justify-between text-sm">
-                  <span>{p.business_name || "Unnamed studio"}</span>
-                  <span className="text-[#7A7068]">{bookingsByPartner[(p.business_name || "").trim()] || 0} bookings</span>
-                </div>
-              ))}
-              {partners.length === 0 && <p className="text-sm text-[#7A7068] py-4">No partners yet.</p>}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+              <Stat label="Studios total" value={partners.length} />
+              <Stat label="Claimed" value={claimedCount} />
+              <Stat label="Contacted" value={contactedCount} />
+              <Stat label="Eligible for follow-up" value={followUpCount} />
+            </div>
+            <div className="max-h-96 overflow-auto rounded-xl border border-[#E5DDD3]">
+              <table className="w-full text-sm">
+                <thead className="bg-[#FBF8F4] sticky top-0">
+                  <tr className="text-left text-[11px] uppercase tracking-widest text-[#7A7068]">
+                    <th className="px-3 py-2">Studio</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Bookings</th>
+                    <th className="px-3 py-2">WhatsApp</th>
+                    <th className="px-3 py-2">Views 7d</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F0E7DB]">
+                  {[...partners]
+                    .sort((a, b) => realBookingsFor(b) - realBookingsFor(a) || waCountFor(b) - waCountFor(a))
+                    .map((p) => (
+                      <tr key={p.id}>
+                        <td className="px-3 py-2 font-medium">{p.business_name || "Unnamed studio"}</td>
+                        <td className="px-3 py-2"><StatusChip status={p.status} /></td>
+                        <td className="px-3 py-2">{realBookingsFor(p)}</td>
+                        <td className="px-3 py-2 text-[#7A7068]">{waCountFor(p)}</td>
+                        <td className="px-3 py-2 text-[#7A7068]">{p.slug ? (pageViewsBySlug[p.slug] || 0) : "—"}</td>
+                      </tr>
+                    ))}
+                  {partners.length === 0 && (
+                    <tr><td colSpan={5} className="px-3 py-6 text-center text-[#7A7068]">No studios yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </Card>
 
           <Card title="Clientes / Customer list">
-            <div className="grid grid-cols-2 gap-6 mb-4">
-              <Stat label={`${marketingContacts.length} clientes con consentimiento de marketing`} value={marketingContacts.length} />
-              <Stat label="Contactos totales (incl. sin opt-in)" value={totalDistinctEmails} />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-4">
+              <Stat label="Total contacts" value={contactsTotal || totalDistinctEmails} />
+              <Stat label="With bookings" value={contactsWithBookings} />
+              <Stat label="With accounts" value={contactsWithAccounts} />
+              <Stat label="Marketing opt-ins" value={contactsOptedIn || marketingContacts.length} />
             </div>
+
             <div className="flex justify-end mb-3">
               <button
                 onClick={() => {
