@@ -349,12 +349,31 @@ export default function FounderDashboard() {
     );
   }
 
-  // Aggregate bookings — real (is_test !== true) is the headline, test is muted
+  // ── Booking truth: a booking is never cancelled and never a test row ────────
   const now = Date.now();
   const isTest = (b: Booking) => b.is_test === true;
-  const realBookings = bookings.filter((b) => !isTest(b));
+  const isCancelled = (b: Booking) => (b.status || "").toLowerCase() === "cancelled";
+  const realBookings = bookings.filter((b) => !isTest(b) && !isCancelled(b));
+  const cancelledReal = bookings.filter((b) => !isTest(b) && isCancelled(b));
   const testBookings = bookings.filter(isTest);
-  const within30 = (b: Booking) => !!b.created_at && now - new Date(b.created_at).getTime() < 30 * 86400000;
+  const createdAt = (b: Booking) => (b.created_at ? new Date(b.created_at).getTime() : 0);
+  const weekStart = now - 7 * DAY_MS;
+  const prevWeekStart = now - 14 * DAY_MS;
+  const bookingsThisWeek = realBookings.filter((b) => createdAt(b) >= weekStart).length;
+  const bookingsPrevWeek = realBookings.filter((b) => createdAt(b) >= prevWeekStart && createdAt(b) < weekStart).length;
+  const cancelledThisWeek = cancelledReal.filter((b) => createdAt(b) >= weekStart).length;
+
+  const today = dayKey(now);
+  const isFuture = (b: Booking) => !!b.booking_date && b.booking_date >= today;
+  const completedAllTime = realBookings.filter(
+    (b) => (b.status || "").toLowerCase() === "completed" || (!!b.booking_date && b.booking_date < today)
+  ).length;
+  const upcoming = realBookings
+    .filter(isFuture)
+    .sort((a, b) => `${a.booking_date} ${a.booking_time}`.localeCompare(`${b.booking_date} ${b.booking_time}`));
+  const upcomingConfirmed = upcoming.filter((b) => (b.status || "").toLowerCase() === "confirmed").length;
+
+  const within30 = (b: Booking) => !!b.created_at && now - createdAt(b) < 30 * DAY_MS;
   const last30 = realBookings.filter(within30).length;
   const last30Test = testBookings.filter(within30).length;
   const byStatus = { pending: 0, confirmed: 0, cancelled: 0 } as Record<string, number>;
@@ -366,13 +385,77 @@ export default function FounderDashboard() {
   }
 
   const bookingsByPartner: Record<string, number> = {};
+  const bookingsByPartnerId: Record<string, number> = {};
   for (const b of realBookings) {
     const key = (b.spa_name || "").trim();
-    if (!key) continue;
-    bookingsByPartner[key] = (bookingsByPartner[key] || 0) + 1;
+    if (key) bookingsByPartner[key] = (bookingsByPartner[key] || 0) + 1;
+    if (b.partner_id) bookingsByPartnerId[b.partner_id] = (bookingsByPartnerId[b.partner_id] || 0) + 1;
   }
+  const realBookingsFor = (p: Partner) =>
+    bookingsByPartnerId[p.id] ?? bookingsByPartner[(p.business_name || "").trim()] ?? 0;
 
   const recentBookings = (showTestBookings ? bookings : realBookings).slice(0, 10);
+
+  // ── Traffic ─────────────────────────────────────────────────────────────────
+  const weekDay = dayKey(weekStart);
+  const prevDay = dayKey(prevWeekStart);
+  const visitorsThisWeek = new Set(
+    visits.filter((v) => (v.day || "") >= weekDay && v.visitor_key).map((v) => v.visitor_key as string)
+  ).size;
+  const visitorsPrevWeek = new Set(
+    visits.filter((v) => (v.day || "") >= prevDay && (v.day || "") < weekDay && v.visitor_key).map((v) => v.visitor_key as string)
+  ).size;
+
+  const eventsThisWeek = events.filter((e) => (e.day || "") >= weekDay);
+  const countEvent = (name: string) => eventsThisWeek.filter((e) => e.event === name).length;
+  const funnel = [
+    { label: "Visitors", labelEs: "Visitantes", count: visitorsThisWeek },
+    { label: "Studio views", labelEs: "Vistas de estudio", count: countEvent("studio_view") },
+    { label: "Service selected", labelEs: "Servicio elegido", count: countEvent("wizard_service_selected") },
+    { label: "Booking submitted", labelEs: "Reserva enviada", count: countEvent("booking_submitted") },
+  ];
+  const funnelTop = funnel[0].count || Math.max(...funnel.map((f) => f.count), 1);
+
+  const pageViewsBySlug: Record<string, number> = {};
+  for (const v of visits) {
+    if ((v.day || "") < weekDay) continue;
+    const path = (v.path || "").replace(/^\/+|\/+$/g, "");
+    if (!path) continue;
+    const last = path.split("/").pop() as string;
+    pageViewsBySlug[last] = (pageViewsBySlug[last] || 0) + 1;
+  }
+
+  // ── Demand signals ──────────────────────────────────────────────────────────
+  const realWa = waRequests.filter((w) => (w.first_name || "").trim().toLowerCase() !== "preview");
+  const waThisWeek = realWa.filter((w) => w.created_at && new Date(w.created_at).getTime() >= weekStart);
+  const waCountByStudio: Record<string, number> = {};
+  for (const w of realWa) {
+    const key = (w.slug || w.partner_id || (w.studio_name || "").trim()).toString();
+    if (!key) continue;
+    waCountByStudio[key] = (waCountByStudio[key] || 0) + 1;
+  }
+  const waCountFor = (p: Partner) =>
+    (p.slug ? waCountByStudio[p.slug] || 0 : 0) ||
+    waCountByStudio[p.id] ||
+    waCountByStudio[(p.business_name || "").trim()] ||
+    0;
+
+  // ── Supply ──────────────────────────────────────────────────────────────────
+  const claimedCount = partners.filter((p) => (p.status || "").toLowerCase() === "active").length;
+  const contactedCount = partners.filter((p) => !!p.outreach_email_at).length;
+  const followUpCount = partners.filter((p) => {
+    const out = (p.outreach_status || "").toLowerCase();
+    if (out === "bounced" || out === "rejected" || out === "skipped_not_massage") return false;
+    if ((p.status || "").toLowerCase() === "active") return false;
+    return !!p.outreach_email_at;
+  }).length;
+
+  // ── Customers ───────────────────────────────────────────────────────────────
+  const contactsTotal = contacts.length;
+  const contactsWithBookings = contacts.filter((c) => (c.bookings ?? 0) > 0).length;
+  const contactsWithAccounts = contacts.filter((c) => c.has_account === true).length;
+  const contactsOptedIn = contacts.filter((c) => c.marketing_opt_in === true).length;
+
 
   // Source filter
   const sourceCounts: Record<string, number> = {};
