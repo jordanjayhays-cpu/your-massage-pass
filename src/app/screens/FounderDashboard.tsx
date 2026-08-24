@@ -590,7 +590,7 @@ export default function FounderDashboard() {
 
 
           <Card title="Your links">
-            <p className="text-sm text-[#7A7068] mb-4">Copy a link and share it. The tag on the end records which audience it came from — nobody filling it out sees it.</p>
+            <p className="text-sm text-[#7A7068] mb-4">Copy a link and share it. The tag on the end records which audience it came from. Nobody filling it out sees it.</p>
             {LINK_GROUPS.map((g) => (
               <div key={g.group} className="mb-5">
                 <p className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2">{g.group}</p>
