@@ -186,17 +186,8 @@ export default function MassageList() {
     <div className="flex flex-col h-full overflow-y-auto bg-background">
       {/* Top utility bar */}
       <div className="px-5 pt-5 flex items-center justify-between gap-4">
-        <button
-          onClick={() => navigate("/app/profile")}
-          aria-label={t("app.massageList.profile")}
-          className="h-10 w-10 rounded-full overflow-hidden bg-card border border-border flex items-center justify-center hover:border-primary/50 transition shadow-soft"
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={t("app.massageList.profile")} className="h-full w-full object-cover" />
-          ) : (
-            <UserCircle className="h-5 w-5 text-muted-foreground" />
-          )}
-        </button>
+        <ProfileHeaderButton />
+
         <div className="flex items-center gap-3">
           <LanguageFlagToggle variant="compact" />
           {isPartner && (
