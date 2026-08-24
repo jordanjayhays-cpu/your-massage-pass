@@ -477,14 +477,29 @@ export default function StudioMap({
         <div className="mt-3 bg-card border border-border rounded-3xl shadow-elegant p-4">
           <div className="flex gap-3">
             {selected.image && (
-              <img src={selected.image} alt={selected.studio} className="h-20 w-20 rounded-2xl object-cover flex-shrink-0" />
+              <a
+                href={studioPath(selected as any)}
+                onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
+                className="flex-shrink-0"
+              >
+                <img src={selected.image} alt={selected.studio} className="h-20 w-20 rounded-2xl object-cover" />
+              </a>
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-display text-lg font-semibold text-foreground leading-tight">{selected.studio}</p>
-                  <p className="text-xs text-primary font-semibold mt-0.5">{selected.name}</p>
+                  <a
+                    href={studioPath(selected as any)}
+                    onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
+                    className="block font-display text-lg font-semibold text-foreground leading-tight md:hover:text-primary transition-colors"
+                  >
+                    {selected.studio}
+                  </a>
+                  {selected.name && selected.name.trim() !== (selected.studio || "").trim() && (
+                    <p className="text-xs text-primary font-semibold mt-0.5">{selected.name}</p>
+                  )}
                 </div>
+
                 <button
                   onClick={() => setSelected(null)}
                   className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm"
