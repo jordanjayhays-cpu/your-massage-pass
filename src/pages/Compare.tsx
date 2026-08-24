@@ -42,6 +42,130 @@ function priceRange(shop: Shop): string | null {
   return min === max ? `€${min}` : `€${min} - €${max}`;
 }
 
+/** Cheapest price for the selected massage type, or null. */
+function typePrice(shop: Shop, type: MassageTypeContent | null): number | null {
+  const prices = servicesOfType(shop, type)
+    .map((s) => Number(s.price))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+/** Studio confirms bookings itself, no WhatsApp round trip. */
+function isInstant(shop: Shop): boolean {
+  return shop.auto_confirm_bookings === true;
+}
+
+const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+/**
+ * Today's hours from partners.opening_hours. Returns the raw string when the
+ * shape is not the {open, close, closed} object we write from the partner app.
+ */
+function openToday(shop: Shop): { en: string; es: string } | null {
+  const oh: any = shop.opening_hours;
+  if (!oh) return null;
+  if (typeof oh === "string") return { en: oh, es: oh };
+  const today = oh[DAY_KEYS[new Date().getDay()]];
+  if (today == null) return null;
+  if (typeof today === "string") return { en: today, es: today };
+  if (today.closed) return { en: "Closed today", es: "Cerrado hoy" };
+  if (today.open && today.close) {
+    const s = `${today.open} - ${today.close}`;
+    return { en: s, es: s };
+  }
+  return null;
+}
+
+/**
+ * The studio's most distinctive offering: a massage type only it offers among
+ * the compared studios, else its most offered type, else its first tag.
+ * Never invents copy, always derived from services or tags.
+ */
+function knownFor(shop: Shop, all: Shop[], lang: "en" | "es"): string | null {
+  const typesOf = (s: Shop) => {
+    const counts = new Map<string, { t: MassageTypeContent; n: number }>();
+    (s.partner_services || []).forEach((sv) => {
+      const t = findMassageType(sv.name_en, sv.name, sv.type);
+      if (!t) return;
+      const cur = counts.get(t.slug);
+      if (cur) cur.n += 1;
+      else counts.set(t.slug, { t, n: 1 });
+    });
+    return counts;
+  };
+  const mine = typesOf(shop);
+  if (mine.size > 0) {
+    const othersHave = new Set<string>();
+    all.forEach((o) => {
+      if (compareKey(o) === compareKey(shop)) return;
+      typesOf(o).forEach((_v, slug) => othersHave.add(slug));
+    });
+    const unique = [...mine.values()].filter((v) => !othersHave.has(v.t.slug));
+    const pick = (unique.length ? unique : [...mine.values()]).sort((a, b) => b.n - a.n)[0];
+    if (pick) return pick.t.name[lang];
+  }
+  const tag = (shop.tags || []).filter(Boolean)[0];
+  return tag ? tagLabel(String(tag)) : null;
+}
+
+type Verdict = { en: string; es: string; className: string };
+
+const VERDICT_STYLE = {
+  closest: "bg-[#F6E3D6] text-[#A2501F] border-[#EBCDB8]",
+  price: "bg-[#E4EBDE] text-[#4F6B48] border-[#D2DEC9]",
+  rated: "bg-[#F7E9CC] text-[#8A6414] border-[#EEDBB1]",
+  instant: "bg-[#DEEEDD] text-[#3F6B44] border-[#C7E0C7]",
+};
+
+/** Small "which one?" chips per column, computed from the compared data. */
+function verdictsFor(
+  shop: Shop,
+  all: Shop[],
+  activeType: MassageTypeContent | null,
+  userLoc: { lat: number; lng: number } | null
+): Verdict[] {
+  const out: Verdict[] = [];
+
+  if (userLoc) {
+    const dists = all
+      .filter((s) => typeof s.lat === "number" && typeof s.lng === "number")
+      .map((s) => ({ k: compareKey(s), km: haversineKm(userLoc, s) }));
+    if (dists.length > 1) {
+      const min = Math.min(...dists.map((d) => d.km));
+      const mine = dists.find((d) => d.k === compareKey(shop));
+      if (mine && Math.abs(mine.km - min) < 0.001) {
+        out.push({ en: "Closest", es: "El más cercano", className: VERDICT_STYLE.closest });
+      }
+    }
+  }
+
+  const prices = all.map((s) => ({ k: compareKey(s), p: typePrice(s, activeType) })).filter((x) => x.p != null);
+  if (prices.length > 1) {
+    const min = Math.min(...prices.map((x) => x.p as number));
+    const mine = prices.find((x) => x.k === compareKey(shop));
+    if (mine && mine.p === min) {
+      out.push({ en: "Best price", es: "Mejor precio", className: VERDICT_STYLE.price });
+    }
+  }
+
+  const rated = all
+    .map((s) => ({ k: compareKey(s), r: s.rating != null ? Number(s.rating) : null, n: Number(s.reviews ?? 0) }))
+    .filter((x) => x.r != null && x.n > 0);
+  if (rated.length > 1) {
+    const max = Math.max(...rated.map((x) => x.r as number));
+    const mine = rated.find((x) => x.k === compareKey(shop));
+    if (mine && mine.r === max) {
+      out.push({ en: "Best rated", es: "Mejor valorado", className: VERDICT_STYLE.rated });
+    }
+  }
+
+  if (isInstant(shop)) {
+    out.push({ en: "Instant booking", es: "Reserva al instante", className: VERDICT_STYLE.instant });
+  }
+
+  return out;
+}
+
 /** Full-width label above each fact row, columns aligned underneath. */
 function Row({
   label,
