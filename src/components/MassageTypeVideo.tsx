@@ -43,7 +43,8 @@ export function MassageTypeVideo({ slug, variant = "page", className = "" }: Pro
       key={src}
       src={src}
       poster={poster}
-      className={`${width} ${className}`}
+      widthClass={width}
+      className={className}
       label={`${slug} massage`}
       onError={() => setState("missing")}
     />
