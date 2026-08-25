@@ -719,7 +719,10 @@
           "tooManyAttempts": "尝试次数过多，请重新获取验证码",
           "rateLimited": "请求验证码过于频繁，请稍等几分钟。",
           "generic": "出错了，请重试。"
-        }
+        },
+        "createHeading": "Create your profile",
+        "createSubheading": "Enter your email and we will send you a 6-digit code.",
+        "createSubmit": "Create your profile"
       }
     },
     "handoff": {

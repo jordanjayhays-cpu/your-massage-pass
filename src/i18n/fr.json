@@ -719,7 +719,10 @@
           "tooManyAttempts": "Trop de tentatives, demandez un nouveau code",
           "rateLimited": "Trop de codes demandés. Patientez quelques minutes.",
           "generic": "Une erreur est survenue. Réessayez."
-        }
+        },
+        "createHeading": "Create your profile",
+        "createSubheading": "Enter your email and we will send you a 6-digit code.",
+        "createSubmit": "Create your profile"
       }
     },
     "handoff": {

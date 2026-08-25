@@ -716,10 +716,13 @@
           "wrongCode": "Código errado, tente novamente",
           "expired": "O código expirou, peça um novo",
           "noActiveCode": "Sem código ativo. Peça um novo.",
-          "tooManyAttempts": "Demasiadas tentativas, peça um novo código",
+          "tooManyAttempts": "Demasiadas tentativis, peça um novo código",
           "rateLimited": "Pediu demasiados códigos. Aguarde alguns minutos.",
           "generic": "Algo correu mal. Tente novamente."
-        }
+        },
+        "createHeading": "Create your profile",
+        "createSubheading": "Enter your email and we will send you a 6-digit code.",
+        "createSubmit": "Create your profile"
       }
     },
     "handoff": {

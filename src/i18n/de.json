@@ -719,7 +719,10 @@
           "tooManyAttempts": "Zu viele Versuche, fordere einen neuen Code an",
           "rateLimited": "Zu viele Codes angefordert. Bitte warte ein paar Minuten.",
           "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
-        }
+        },
+        "createHeading": "Create your profile",
+        "createSubheading": "Enter your email and we will send you a 6-digit code.",
+        "createSubmit": "Create your profile"
       }
     },
     "handoff": {
