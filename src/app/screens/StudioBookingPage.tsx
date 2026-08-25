@@ -764,6 +764,14 @@ export default function StudioBookingPage() {
     const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
     const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
     const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoEmailValid;
+    // One-line reminder of the choice, kept visible in the sticky bar.
+    const hoSummaryLine = hoService
+      ? [
+          servicePrimaryName(hoService),
+          Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : null,
+          hasPrice ? `€${hoPrice}` : null,
+        ].filter(Boolean).join(" · ")
+      : null;
     const waMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
