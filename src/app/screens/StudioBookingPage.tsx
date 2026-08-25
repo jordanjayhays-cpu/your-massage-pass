@@ -951,17 +951,26 @@ export default function StudioBookingPage() {
             </div>
 
             {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
-            <div className="min-[900px]:sticky min-[900px]:top-4 text-left">
+            <div ref={hoPanelRef} className="min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
             {waLink && (
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
                 {/* The only Continue: one sticky bar, never an inline duplicate */}
-                {hoStep === 1 && <StickyContinue ready={!!hoServiceId} onNext={() => hoGo(2)} />}
-                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} />}
+                {hoStep === 1 && (
+                  <StickyContinue
+                    ready={!!hoServiceId}
+                    onNext={() => hoGo(2)}
+                    summary={hoSummaryLine}
+                    note={hoServiceId ? undefined : "Pick a service to continue"}
+                    noteEs={hoServiceId ? undefined : "Elige un servicio para continuar"}
+                  />
+                )}
+                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} summary={hoSummaryLine} />}
                 {hoStep === 3 && (
                   <StickyContinue
                     ready={hoDetailsReady}
                     onNext={() => hoGo(4)}
+                    summary={hoSummaryLine}
                     note={hoDetailsReady ? undefined : "Add your first name, last name and email to continue"}
                     noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido y email para continuar"}
                   />
