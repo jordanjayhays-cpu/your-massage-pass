@@ -497,11 +497,11 @@ export default function StudioBookingPage() {
   // visitor is inside the wizard (it must never compete with the Continue bar).
   useEffect(() => {
     setWaBubbleContext({
-      studio: partner?.business_name ?? null,
-      hidden: !!done || step > 1 || !partner,
+      studio: (profile?.partner as any)?.business_name ?? null,
+      hidden: !!done || step > 1 || !profile?.partner,
     });
     return () => clearWaBubbleContext();
-  }, [partner?.business_name, done, step]);
+  }, [(profile?.partner as any)?.business_name, done, step]);
 
 
   if (loading) {
