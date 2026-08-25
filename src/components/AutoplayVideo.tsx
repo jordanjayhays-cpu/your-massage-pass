@@ -8,6 +8,9 @@ interface Props {
   className?: string;
   label?: string;
   onClick?: () => void;
+  /** Replaces the default max-width classes. */
+  widthClass?: string;
+  onError?: () => void;
 }
 
 /**
@@ -22,6 +25,8 @@ export function AutoplayVideo({
   className = "",
   label = "Video",
   onClick,
+  widthClass,
+  onError,
 }: Props) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [reduced, setReduced] = useState(false);
@@ -55,7 +60,7 @@ export function AutoplayVideo({
     return () => io.disconnect();
   }, [reduced]);
 
-  const width = size === "sm" ? "max-w-[240px] min-[900px]:max-w-[280px]" : "max-w-[300px] min-[900px]:max-w-[340px]";
+  const width = widthClass ?? (size === "sm" ? "max-w-[240px] min-[900px]:max-w-[280px]" : "max-w-[300px] min-[900px]:max-w-[340px]");
 
   return (
     <div
@@ -73,6 +78,7 @@ export function AutoplayVideo({
         loop
         preload="metadata"
         controls={reduced}
+        onError={onError}
         className="w-full aspect-[9/16] rounded-[22px] border object-cover"
         style={{ borderColor: "#E6DED4", background: "#000" }}
       />

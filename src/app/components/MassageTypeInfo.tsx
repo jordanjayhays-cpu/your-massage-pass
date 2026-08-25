@@ -1,3 +1,4 @@
+import { MassageTypeVideo } from "@/components/MassageTypeVideo";
 import { trackEvent } from "@/lib/siteVisit";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -185,7 +186,15 @@ function SectionKicker({ en, es }: { en: string; es: string }) {
 }
 
 /** The write-up itself, shared by the overlay and the standalone page. */
-export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es?: boolean }) {
+export function MassageTypeBody({
+  type,
+  es,
+  videoVariant = "page",
+}: {
+  type: MassageTypeContent;
+  es?: boolean;
+  videoVariant?: "page" | "overlay";
+}) {
   const facts = factsFor(type.slug);
 
   if (!facts) {
@@ -198,6 +207,7 @@ export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es?: b
     return (
       <div className="space-y-4">
         <MassageTypeVitals type={type} />
+        <MassageTypeVideo slug={type.slug} variant={videoVariant} />
         {sections.map((s) => (
           <div key={s.en}>
             <SectionKicker en={s.en} es={s.esLabel} />
@@ -212,6 +222,7 @@ export function MassageTypeBody({ type, es }: { type: MassageTypeContent; es?: b
   return (
     <div className="space-y-5">
       <MassageTypeVitals type={type} />
+      <MassageTypeVideo slug={type.slug} variant={videoVariant} />
 
       <div>
         <SectionKicker en="What it is" es="Qué es" />
@@ -300,7 +311,7 @@ function Overlay({ type, onClose }: { type: MassageTypeContent; onClose: () => v
           </button>
         </div>
 
-        <MassageTypeBody type={type} es={es} />
+        <MassageTypeBody type={type} es={es} videoVariant="overlay" />
 
         <a
           href={`/massages/${type.slug}`}
