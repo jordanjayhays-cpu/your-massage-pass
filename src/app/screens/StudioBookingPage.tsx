@@ -117,8 +117,10 @@ export default function StudioBookingPage() {
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoName, setHoName] = useState("");
-  // Optional email on the handoff, so we can follow up after the WhatsApp booking.
+  const [hoLastName, setHoLastName] = useState("");
+  // Required email on the handoff, so we can follow up after the WhatsApp booking.
   const [hoEmail, setHoEmail] = useState("");
+
   // Passwordless account creation, offered to visitors who are not signed in.
   const [createAccount, setCreateAccount] = useState(true);
 
@@ -757,6 +759,9 @@ export default function StudioBookingPage() {
     };
     const hoWhen1 = exactWhen(hoDate, hoTime);
     const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
+    const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
+    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
+    const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoEmailValid;
     const waMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
@@ -765,9 +770,10 @@ export default function StudioBookingPage() {
       price: hasPrice ? hoPrice : null,
       when1: hoWhen1,
       when2: hoWhen2,
-      name: hoName.trim() || null,
+      name: hoFullName || null,
       languages: spokenLangs,
     });
+
 
 
     const trackWhatsappIntent = () => {
@@ -801,7 +807,7 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
-        first_name: hoName.trim() || null,
+        first_name: hoFullName || null,
         contact_email: hoEmail.trim() || null,
         languages: spokenLangs.join(", "),
         user_id: userId,
@@ -810,7 +816,7 @@ export default function StudioBookingPage() {
       });
       // Fire and forget: passwordless account, never blocks the WhatsApp handoff.
       if (!userId && createAccount && hoEmail.trim()) {
-        requestAccountSignup({ email: hoEmail.trim(), name: hoName.trim(), lang: siteLang });
+        requestAccountSignup({ email: hoEmail.trim(), name: hoFullName, lang: siteLang });
       }
     };
 
@@ -939,7 +945,15 @@ export default function StudioBookingPage() {
                 {/* The only Continue: one sticky bar, never an inline duplicate */}
                 {hoStep === 1 && <StickyContinue ready={!!hoServiceId} onNext={() => hoGo(2)} />}
                 {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} />}
-                {hoStep === 3 && <StickyContinue ready onNext={() => hoGo(4)} />}
+                {hoStep === 3 && (
+                  <StickyContinue
+                    ready={hoDetailsReady}
+                    onNext={() => hoGo(4)}
+                    note={hoDetailsReady ? undefined : "Add your first name, last name and email to continue"}
+                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido y email para continuar"}
+                  />
+                )}
+
 
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
                   <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
@@ -1047,19 +1061,33 @@ export default function StudioBookingPage() {
                     <div className="space-y-4 min-[900px]:space-y-5">
                       <label className="block">
                         <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                        <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
+                        <input type="text" autoComplete="given-name" value={hoName} onChange={(e) => setHoName(e.target.value)}
                           className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
                       <label className="block">
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email (optional)</span>
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          Last name <span className="opacity-80">/ Apellido</span>
+                        </span>
+                        <input type="text" autoComplete="family-name" value={hoLastName} onChange={(e) => setHoLastName(e.target.value)}
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email</span>
                         <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
-                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base"
+                          style={{ borderColor: hoEmail.trim() && !hoEmailValid ? "#C4622D" : "#E6DCCF", color: "#2b2b2b" }} />
+                        {hoEmail.trim() && !hoEmailValid && (
+                          <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#C4622D" }}>
+                            Enter a valid email <span className="opacity-80">/ Introduce un email válido</span>
+                          </span>
+                        )}
                         <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
                           So we can check everything went well with your booking.
                           <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
                         </span>
                       </label>
+
                       {!userId && !!hoEmail.trim() && (
                         <label className="flex items-start gap-2 cursor-pointer">
                           <input type="checkbox" checked={createAccount}
@@ -1111,7 +1139,28 @@ export default function StudioBookingPage() {
                         )}
                       </div>
                       <p className="text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
-                      <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
+                      <div className="pt-4 min-[900px]:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => hoGo(4)}
+                          disabled={!hoDetailsReady}
+                          aria-disabled={!hoDetailsReady}
+                          className={`w-full min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition ${
+                            hoDetailsReady ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
+                          }`}
+                        >
+                          <span className="min-[900px]:text-lg">Continue</span>
+                          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">Continuar</span>
+                        </button>
+                        {!hoDetailsReady && (
+                          <p className="mt-2 text-xs min-[900px]:text-sm text-center" style={{ color: "#8a7460" }}>
+                            Add your first name, last name and email to continue
+                            <span className="block">Añade tu nombre, apellido y email para continuar</span>
+                          </p>
+                        )}
+                      </div>
+                      <WizardNav onBack={() => hoGo(2)} />
+
                     </div>
                   )}
 
@@ -1123,7 +1172,7 @@ export default function StudioBookingPage() {
                         <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
-                        <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not given" />
+                        <SummaryRow label="Name" labelEs="Nombre" value={hoFullName || null} placeholder="Not given" />
                         <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
