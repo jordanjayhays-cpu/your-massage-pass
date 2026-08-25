@@ -685,11 +685,11 @@ export default function StudioBookingPage() {
                     </a>
                   ) : null}
                   {websiteUrl && (
-                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <span>Reservar en su web</span>
-                      <span className="text-xs font-normal opacity-80">Book on their website</span>
+                    <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
+                      Ver su web / Visit their website
                     </a>
                   )}
+
                   {gcal && (
                     <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <CalendarDays size={18} /> Add to my calendar
