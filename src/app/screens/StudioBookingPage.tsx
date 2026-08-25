@@ -1172,7 +1172,15 @@ export default function StudioBookingPage() {
                         )}
                       </div>
                       <p className="text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
-                      <div className="pt-4 min-[900px]:pt-5">
+                      <div className="rounded-xl p-3 min-[900px]:p-4 text-left" style={{ background: "#FAF6F1" }}>
+                        <p className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5a4736" }}>
+                          {partner.business_name} is not registered with Massage Club yet, so we book this one by hand. Send us the message and we will contact the studio and confirm your time with you, usually within a few hours.
+                        </p>
+                        <p className="text-[11px] min-[900px]:text-xs leading-snug mt-1" style={{ color: "#7A7068" }}>
+                          {partner.business_name} todavía no está registrado en Massage Club, así que esta reserva la hacemos a mano. Envíanos el mensaje y contactamos con el estudio para confirmarte la hora, normalmente en unas horas.
+                        </p>
+                      </div>
+                      <div className="pt-2 min-[900px]:pt-3">
                         <button
                           type="button"
                           onClick={() => hoGo(4)}
