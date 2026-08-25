@@ -22,6 +22,8 @@ import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
 import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
+import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
+
 
 
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
