@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { trackAccountCreatedConversion, isFreshlyCreatedUser } from "@/lib/adsConversion";
+
 
 type State = "working" | "ok" | "failed";
 
