@@ -1206,7 +1206,7 @@ export default function StudioBookingPage() {
                   )}
 
                   {/* STEP 4: review and send */}
-                  {hoStep === 4 && (
+                  {hoStep === 4 && !waTapped && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
@@ -1222,18 +1222,49 @@ export default function StudioBookingPage() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={trackWhatsappIntent}
-                        className={`w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold ${waTapped ? "pointer-events-none opacity-80" : ""}`}
+                        className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                         style={{ background: "#B85C38", color: "#fff" }}
                       >
                         <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
                         <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
                       </a>
                       <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                      {waTapped && (
-                        <p className="text-xs min-[900px]:text-sm rounded-xl px-3 py-2" style={{ background: "#ffffff", color: "#5a4736" }}>
-                          {t("app.handoff.afterNote")}
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                        Back <span className="font-normal">/ Atrás</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* STEP 4: confirmation after WhatsApp is opened */}
+                  {hoStep === 4 && waTapped && (
+                    <div className="space-y-4 min-[900px]:space-y-5 text-center">
+                      <div className="mx-auto flex h-14 w-14 min-[900px]:h-16 min-[900px]:w-16 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
+                        <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
+                      </div>
+                      <div>
+                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>We are on it</h3>
+                        <p className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>Nos ponemos con ello</p>
+                      </div>
+                      <div className="rounded-xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
+                        <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
+                          Your request is with us. Because {partner.business_name} is not on Massage Club yet, we contact them directly and come back to you on WhatsApp with the confirmed time. Nothing is booked until we confirm.
                         </p>
-                      )}
+                        <p className="text-xs min-[900px]:text-sm leading-snug mt-2" style={{ color: "#7A7068" }}>
+                          Tenemos tu solicitud. Como {partner.business_name} todavía no está en Massage Club, contactamos con ellos directamente y te confirmamos la hora por WhatsApp. No hay nada reservado hasta que te confirmemos.
+                        </p>
+                      </div>
+                      <Link
+                        to="/studios"
+                        className="inline-flex flex-col items-center justify-center w-full h-12 min-[900px]:h-14 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition"
+                        style={{ borderColor: "#B85C38", color: "#B85C38" }}
+                      >
+                        <span className="inline-flex items-center gap-2">Browse other studios</span>
+                        <span className="text-xs font-normal opacity-90">Ver otros estudios</span>
+                      </Link>
+                      <p className="text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>
+                        Studios already on Massage Club confirm instantly.
+                        <span className="block">Los estudios que ya están en Massage Club confirman al instante.</span>
+                      </p>
                       <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
