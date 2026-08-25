@@ -12,6 +12,8 @@ import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { BookAgainCard } from "@/app/components/BookAgain";
+import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
+
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
@@ -157,6 +159,46 @@ export default function Home() {
             </Link>
           </div>
         </section>
+
+        {/* How booking works */}
+        <section className="pb-10 md:pb-12">
+          <h2 className="font-display text-xl md:text-2xl text-foreground mb-4">
+            {isSpanish ? "Cómo funciona la reserva" : "How booking works"}
+          </h2>
+          <div className="grid gap-6 md:grid-cols-[auto_1fr] md:items-center">
+            <HowBookingWorksVideo
+              label={isSpanish ? "Cómo funciona la reserva" : "How booking works"}
+            />
+            <div className="space-y-3 max-w-md mx-auto md:mx-0">
+              {(isSpanish
+                ? [
+                    "Elige un masaje y una hora",
+                    "Enviamos la solicitud en español",
+                    "Recibes la confirmación por email",
+                  ]
+                : [
+                    "Pick a massage and a time",
+                    "We send the request in Spanish",
+                    "You get confirmation by email",
+                  ]
+              ).map((line, i) => (
+                <div key={line} className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm md:text-base text-foreground leading-snug pt-1">{line}</p>
+                </div>
+              ))}
+              <Link
+                to="/studios"
+                className="inline-flex items-center gap-1.5 mt-2 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft hover:opacity-90 transition"
+              >
+                {isSpanish ? "Ver estudios" : "Browse studios"} <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
 
         {/* Grid */}
         <section className="pb-12">
