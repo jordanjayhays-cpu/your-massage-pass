@@ -746,24 +746,28 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    const hoWhen = (() => {
-      const bits: string[] = [];
-      const main = [localDate(hoDate), hoTime].filter(Boolean).join(" ");
-      if (main) bits.push(main);
-      const alt = [localDate(hoAltDate), hoAltTime].filter(Boolean).join(" ");
-      if (alt) bits.push(siteLang === "es" ? `o ${alt}` : `or ${alt}`);
-      return bits.length ? bits.join(" ") : null;
-    })();
+    // Exact selections only: the concierge needs a precise day and time to ask the studio.
+    const exactWhen = (d: string, tm: string) => {
+      const day = localDate(d);
+      if (!day && !tm) return null;
+      if (!tm) return day;
+      if (!day) return tm;
+      return siteLang === "es" ? `${day} a las ${tm}` : `${day} at ${tm}`;
+    };
+    const hoWhen1 = exactWhen(hoDate, hoTime);
+    const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
     const waMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
       service: hoService ? servicePrimaryName(hoService) : null,
       duration: Number((hoService as any)?.duration) || null,
       price: hasPrice ? hoPrice : null,
-      when: hoWhen,
+      when1: hoWhen1,
+      when2: hoWhen2,
       name: hoName.trim() || null,
       languages: spokenLangs,
     });
+
 
     const trackWhatsappIntent = () => {
       if (waLoggedRef.current) return;
