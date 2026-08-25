@@ -10,6 +10,7 @@ import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
+import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
 
@@ -491,6 +492,16 @@ export default function StudioBookingPage() {
     onFinalStep: step === 5,
     disabled: !!userId || !!done,
   });
+
+  // Concierge bubble: studio context on the profile/first step, hidden once the
+  // visitor is inside the wizard (it must never compete with the Continue bar).
+  useEffect(() => {
+    setWaBubbleContext({
+      studio: (profile?.partner as any)?.business_name ?? null,
+      hidden: !!done || step > 1 || !profile?.partner,
+    });
+    return () => clearWaBubbleContext();
+  }, [(profile?.partner as any)?.business_name, done, step]);
 
 
   if (loading) {
