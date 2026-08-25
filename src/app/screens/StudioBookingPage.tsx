@@ -814,7 +814,7 @@ export default function StudioBookingPage() {
       }
     };
 
-    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
+    const waLink = conciergeWhatsappUrl(waMsg);
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
