@@ -807,7 +807,7 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
-        first_name: hoName.trim() || null,
+        first_name: hoFullName || null,
         contact_email: hoEmail.trim() || null,
         languages: spokenLangs.join(", "),
         user_id: userId,
