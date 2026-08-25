@@ -26,10 +26,11 @@ export function MobileFrame({ children }: { children: ReactNode }) {
       {/* The tab bar is a real flex item, so every scroll area (and any sticky
           Save bar inside it) ends above the tabs instead of sliding under them. */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="h-full w-full mx-auto md:max-w-5xl xl:max-w-6xl">
+        <div className="h-full w-full mx-auto md:max-w-5xl xl:max-w-6xl xl:px-8 2xl:max-w-[1440px] min-[1800px]:max-w-[1680px]">
           {children}
         </div>
       </div>
+
 
       {langVisible && (
         <div className="absolute top-3 right-3 z-50 pointer-events-auto">
