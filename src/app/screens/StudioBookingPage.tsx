@@ -782,6 +782,7 @@ export default function StudioBookingPage() {
       when2: hoWhen2,
       name: hoFullName || null,
       languages: spokenLangs,
+      unclaimed: true,
     });
 
 
