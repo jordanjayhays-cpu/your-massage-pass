@@ -364,12 +364,13 @@ export default function MassageList() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 min-[1600px]:grid-cols-2">
           {shopsLoading ? (
-            <p className="md:col-span-2 xl:col-span-3 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
+            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="md:col-span-2 xl:col-span-3 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
+            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
           ) : (
+
             <>
               {filtered.slice(0, visibleCount).map((m, idx) => {
                 const isFav = favorites.has(m.id);
