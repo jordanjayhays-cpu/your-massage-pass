@@ -1139,7 +1139,28 @@ export default function StudioBookingPage() {
                         )}
                       </div>
                       <p className="text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
-                      <WizardNav onBack={() => hoGo(2)} onNext={() => hoGo(4)} />
+                      <div className="pt-4 min-[900px]:pt-5">
+                        <button
+                          type="button"
+                          onClick={() => hoGo(4)}
+                          disabled={!hoDetailsReady}
+                          aria-disabled={!hoDetailsReady}
+                          className={`w-full min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition ${
+                            hoDetailsReady ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
+                          }`}
+                        >
+                          <span className="min-[900px]:text-lg">Continue</span>
+                          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">Continuar</span>
+                        </button>
+                        {!hoDetailsReady && (
+                          <p className="mt-2 text-xs min-[900px]:text-sm text-center" style={{ color: "#8a7460" }}>
+                            Add your first name, last name and email to continue
+                            <span className="block">Añade tu nombre, apellido y email para continuar</span>
+                          </p>
+                        )}
+                      </div>
+                      <WizardNav onBack={() => hoGo(2)} />
+
                     </div>
                   )}
 
