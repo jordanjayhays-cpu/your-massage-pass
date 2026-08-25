@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import { MASSAGE_GUIDE } from "../data";
 import StudioMap from "../components/StudioMap";
 import ExploreMassageTypes from "../components/ExploreMassageTypes";
+import { QuizPromoVideo } from "@/components/QuizPromoVideo";
+import { trackEvent } from "@/lib/siteVisit";
+import { clarityEvent } from "@/lib/clarity";
 import { studioPath } from "@/lib/studioHref";
 
 
@@ -12,6 +15,12 @@ export default function Discovery() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [geoState, setGeoState] = useState<"pending" | "ready" | "fallback">("pending");
+
+  const startQuiz = () => {
+    clarityEvent("quiz_start");
+    trackEvent("quiz_start");
+    navigate("/discovery/quiz");
+  };
 
 
 
@@ -104,14 +113,19 @@ export default function Discovery() {
           </div>
 
           {/* Second quiz entry point — after the styles list */}
-          <div className="mt-8 pt-6 border-t border-border text-center">
-            <p className="text-sm text-muted-foreground mb-3">{t("app.discovery.quizBottomTitle")}</p>
-            <button
-              onClick={() => navigate("/discovery/quiz")}
-              className="inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              {t("app.discovery.quizBottomCta")}
-            </button>
+          <div className="mt-8 pt-6 border-t border-border">
+            <div className="flex flex-col items-center gap-5 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-center min-[900px]:gap-8">
+              <QuizPromoVideo onClick={startQuiz} />
+              <div className="text-center min-[900px]:text-left">
+                <p className="text-sm text-muted-foreground mb-3">{t("app.discovery.quizBottomTitle")}</p>
+                <button
+                  onClick={startQuiz}
+                  className="inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  {t("app.discovery.quizBottomCta")}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
