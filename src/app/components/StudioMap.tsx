@@ -144,6 +144,7 @@ export default function StudioMap({
   shops,
   heightClass = "h-[230px]",
   roundedClass = "rounded-3xl",
+  wrapperClass = "",
   heading,
   showSelectedCard = true,
   onSelect,
