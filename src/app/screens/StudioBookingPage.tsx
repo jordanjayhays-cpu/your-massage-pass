@@ -652,13 +652,9 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {waLink ? (
-                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <MessageCircle size={18} /> Confirm on WhatsApp
-                    </a>
-                  ) : studioNumber ? (
-                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <Phone size={18} /> Llamar al estudio
-                      <span className="block text-xs font-normal opacity-80">Call the studio</span>
+                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
+                      <span className="text-xs font-normal opacity-80">Escríbenos por WhatsApp y te lo organizamos</span>
                     </a>
                   ) : null}
                 </div>
@@ -666,15 +662,17 @@ export default function StudioBookingPage() {
             ) : (
               <>
                 <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  Casi listo. Envía tu reserva al estudio para confirmarla.
-                  <span className="block text-xs mt-0.5">Almost done. Send your booking to the studio to confirm it.</span>
+                  Casi listo. Escríbenos por WhatsApp y te lo organizamos.
+                  <span className="block text-xs mt-0.5">Almost done. WhatsApp us and we set it up.</span>
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
                     <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Enviar reserva por WhatsApp</span>
-                      <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
+                      <span className="text-xs font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
                     </a>
+                  ) : null}
+
                   ) : studioNumber ? (
                     <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
                       <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
