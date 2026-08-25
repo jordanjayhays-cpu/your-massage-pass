@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown, Check, Sparkles, Clock, CalendarCheck } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
-import {
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
+import {
   REFERRAL_REWARD_EUR,
   getOrCreateReferralCode,
   getUnusedCredits,
