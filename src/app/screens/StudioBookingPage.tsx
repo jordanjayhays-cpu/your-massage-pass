@@ -498,7 +498,7 @@ export default function StudioBookingPage() {
   useEffect(() => {
     setWaBubbleContext({
       studio: partner?.business_name ?? null,
-      hidden: done || step > 1 || !partner,
+      hidden: !!done || step > 1 || !partner,
     });
     return () => clearWaBubbleContext();
   }, [partner?.business_name, done, step]);
