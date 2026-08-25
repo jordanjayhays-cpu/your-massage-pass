@@ -502,12 +502,17 @@ export default function StudioBookingPage() {
   // Concierge bubble: studio context on the profile/first step, hidden once the
   // visitor is inside the wizard (it must never compete with the Continue bar).
   useEffect(() => {
+    // The unclaimed-studio concierge wizard runs on hoStep and shows its own
+    // sticky Continue bar on steps 1-3, so the bubble must stay out of the way.
+    const unclaimed = (profile?.partner as any)?.status && (profile?.partner as any).status !== "active";
+    const handoffWizard = !!unclaimed && hoStep <= 3;
     setWaBubbleContext({
       studio: (profile?.partner as any)?.business_name ?? null,
-      hidden: !!done || step > 1 || !profile?.partner,
+      hidden: !!done || step > 1 || handoffWizard || !profile?.partner,
     });
     return () => clearWaBubbleContext();
-  }, [(profile?.partner as any)?.business_name, done, step]);
+  }, [(profile?.partner as any)?.business_name, (profile?.partner as any)?.status, done, step, hoStep]);
+
 
 
   if (loading) {
