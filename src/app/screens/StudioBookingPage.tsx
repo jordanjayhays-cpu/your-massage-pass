@@ -719,25 +719,9 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    // If the visitor speaks Spanish, the apology makes no sense — drop it,
-    // along with the "reply to me in X" offer line.
-    const visitorSpeaksSpanish = speaksSpanish(spokenLangs);
-    const noSpanish = visitorSpeaksSpanish ? "" : "Disculpa, todavía no hablo español. ";
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
-    // SPANISH ONLY — this line goes into the WhatsApp message read by the studio.
-    const hoServiceEs = hoService ? serviceNameForStudio(hoService) : "";
-    const serviceLine = hoService
-      ? (() => {
-          const dur = Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : "";
-          const parts = [hoServiceEs, dur, hasPrice ? `${hoPrice} €` : ""].filter(Boolean);
-          return `· ${parts.join(" · ")}`;
-        })()
-      : "";
-    // Always Spanish — this text is sent to the studio, never translated.
-    const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
-    const langOffer = spanishLanguageOffer(spokenLangs);
-    const found = `Os encontré en Massage Club: ${studioUrl}${langOffer ? `\n${langOffer} 🙏` : ""}`;
+
     // Concierge model: the message goes to MASSAGE CLUB, in the visitor's language.
     const localDate = (v: string) => {
       if (!v) return "";
