@@ -1506,7 +1506,10 @@ export default function StudioBookingPage() {
                             }`}>
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
+                                <p className="font-semibold text-gray-900 min-[900px]:text-lg flex items-center gap-1.5">
+                                  {serviceId === s.id && <Check size={16} className="text-[#C4622D] flex-shrink-0" />}
+                                  {servicePrimaryName(s)}
+                                </p>
                                 {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
                                 {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
                                 {Number(s.duration) > 0 && (
