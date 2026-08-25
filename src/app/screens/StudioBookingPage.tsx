@@ -554,13 +554,21 @@ export default function StudioBookingPage() {
     const studioNumber = (partner as any).whatsapp || partner.phone;
     const waNumber = resolveWhatsappNumber(partner as any);
 
-    // Claimed: friendly "you're booked" message.
-    // NOTE: messages sent TO the studio always use the SPANISH service name.
-    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
-    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
-    // Unclaimed: ask the customer to send the booking request to the studio themselves.
-    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
-    const unclaimedWaLink = studioWhatsappUrl(resolveWhatsappNumber(partner as any), unclaimedWaMsg);
+    // Concierge model: every client CTA opens a chat with MASSAGE CLUB, never the studio.
+    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` ${time}` : ""}` : (time || null);
+    const conciergeMsg = conciergePrefill({
+      lang: siteLang,
+      studio: partner.business_name,
+      service: service ? servicePrimaryName(service) : null,
+      duration: (service as any)?.duration ?? null,
+      price: (service as any)?.price ?? null,
+      when: conciergeWhen,
+      name: name || null,
+      languages: spokenLangs,
+    });
+    const waLink = conciergeWhatsappUrl(conciergeMsg);
+    const unclaimedWaLink = waLink;
+
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
