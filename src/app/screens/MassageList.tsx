@@ -308,39 +308,40 @@ export default function MassageList() {
         </button>
       </div>
 
+      {/* Desktop (>=1280px): marketplace split, list left, sticky map right.
+          Below 1280px this stays exactly as before: map above list. */}
+      <div className="xl:grid xl:grid-cols-[58fr_42fr] xl:gap-6 xl:items-start">
+        {/* Map header banner — shared component, also used on /app/discovery */}
+        <div className="px-5 pt-5 xl:order-2 xl:pr-5 xl:pl-0 xl:sticky xl:top-4 xl:self-start">
+          <BookAgainChip className="mb-3" />
+          <StudioMap
+            shops={realShops}
+            heightClass="h-[230px] xl:h-[calc(100vh-170px)]"
+            autoAskOnMobile
+            highlightedKey={hoverKey}
+            onHoverStudio={setHoverKey}
+            onSearchArea={setAreaBounds}
+            onUserLocation={(loc) => {
+              setUserLoc(loc);
+              setAreaName(savedLocationResult()?.areaName ?? null);
+            }}
+            onSelect={(shop) => handleBook(shop)}
+          />
+          {areaBounds && (
+            <button
+              type="button"
+              onClick={() => setAreaBounds(null)}
+              className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+            >
+              Showing this area only · Clear
+              <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
+            </button>
+          )}
+        </div>
 
-      {/* Map header banner — shared component, also used on /app/discovery */}
-      <div className="px-5 pt-5">
-        <BookAgainChip className="mb-3" />
-        <StudioMap
-          shops={realShops}
-          heightClass="h-[230px]"
-          autoAskOnMobile
-          highlightedKey={hoverKey}
-          onHoverStudio={setHoverKey}
-          onSearchArea={setAreaBounds}
-          onUserLocation={(loc) => {
-            setUserLoc(loc);
-            setAreaName(savedLocationResult()?.areaName ?? null);
-          }}
-          onSelect={(shop) => handleBook(shop)}
-        />
-        {areaBounds && (
-          <button
-            type="button"
-            onClick={() => setAreaBounds(null)}
-            className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
-          >
-            Showing this area only · Clear
-            <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
-          </button>
-        )}
-      </div>
+        {/* Studios list */}
+        <div className="px-5 md:px-8 pt-6 pb-28 xl:order-1 xl:min-w-0 xl:pr-0">
 
-
-
-      {/* Studios list */}
-      <div className="px-5 md:px-8 pt-6 pb-28">
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="font-display text-2xl text-foreground">{t("app.massageList.studiosNearYou")}</h2>
           <div className="flex items-center gap-3">
@@ -364,12 +365,13 @@ export default function MassageList() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 min-[1600px]:grid-cols-2">
           {shopsLoading ? (
-            <p className="md:col-span-2 xl:col-span-3 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
+            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="md:col-span-2 xl:col-span-3 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
+            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
           ) : (
+
             <>
               {filtered.slice(0, visibleCount).map((m, idx) => {
                 const isFav = favorites.has(m.id);
@@ -497,7 +499,7 @@ export default function MassageList() {
                 );
               })}
               {filtered.length > visibleCount && (
-                <div className="md:col-span-2 xl:col-span-3 flex justify-center pt-2">
+                <div className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 flex justify-center pt-2">
                   <button
                     onClick={() => setVisibleCount((c) => c + 8)}
                     className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
@@ -518,7 +520,9 @@ export default function MassageList() {
             {t("app.massageList.studioCta")}
           </button>
         </div>
+        </div>
       </div>
+
 
       <CompareBar className="pb-[86px]" />
     </div>
