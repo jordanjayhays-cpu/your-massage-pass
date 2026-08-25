@@ -50,6 +50,88 @@ export function studioWhatsappUrl(number?: string | null, message = ""): string 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+/* ─────────── Concierge model ───────────
+ * Every CLIENT-facing WhatsApp CTA opens a chat with Massage Club, never with
+ * the studio. We arrange the booking on the client's behalf.
+ */
+export const MASSAGE_CLUB_WA = "34612474827";
+export const MASSAGE_CLUB_WA_DISPLAY = "+34 612 474 827";
+
+/** wa.me link to the Massage Club concierge number. Always returns a link. */
+export function conciergeWhatsappUrl(message = ""): string {
+  return `https://wa.me/${MASSAGE_CLUB_WA}?text=${encodeURIComponent(message)}`;
+}
+
+const LANG_NAMES_EN: Record<string, string> = {
+  en: "English", es: "Spanish", fr: "French", de: "German",
+  it: "Italian", pt: "Portuguese", zh: "Chinese",
+};
+const LANG_NAMES_ES: Record<string, string> = {
+  en: "inglés", es: "español", fr: "francés", de: "alemán",
+  it: "italiano", pt: "portugués", zh: "chino",
+};
+
+function joinList(items: string[], and: string): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} ${and} ${items[items.length - 1]}`;
+}
+
+export type ConciergePrefill = {
+  lang?: string | null;          // "es" → Spanish message, anything else → English
+  studio: string;
+  service?: string | null;
+  duration?: number | null;
+  price?: number | null;
+  when?: string | null;          // human readable day/time selections
+  name?: string | null;          // first name if known
+  languages?: string[] | null;   // spoken language codes
+};
+
+/**
+ * The prefilled message the client sends to Massage Club.
+ * Only includes the fields we actually know; the minimum viable message is
+ * "Hi Massage Club! I'd like to book at {studio}."
+ */
+export function conciergePrefill(p: ConciergePrefill): string {
+  const es = String(p.lang || "").slice(0, 2).toLowerCase() === "es";
+  const firstName = (p.name || "").trim().split(/\s+/)[0] || "";
+  const meta: string[] = [];
+  if (p.duration && Number(p.duration) > 0) meta.push(`${Number(p.duration)} min`);
+  if (p.price != null && Number(p.price) > 0) meta.push(`${Number(p.price)}€`);
+  const serviceLabel = p.service
+    ? meta.length ? `${p.service} (${meta.join(", ")})` : String(p.service)
+    : "";
+
+  const langCodes = (p.languages || []).filter(Boolean);
+  const langNames = langCodes
+    .map((c) => (es ? LANG_NAMES_ES[c] : LANG_NAMES_EN[c]))
+    .filter(Boolean) as string[];
+
+  const parts: string[] = [];
+  if (es) {
+    parts.push(
+      serviceLabel
+        ? `¡Hola Massage Club! Me gustaría reservar ${serviceLabel} en ${p.studio}.`
+        : `¡Hola Massage Club! Me gustaría reservar en ${p.studio}.`
+    );
+    if (p.when) parts.push(`Preferencia: ${p.when}.`);
+    if (firstName) parts.push(`Me llamo ${firstName}.`);
+    if (langNames.length) parts.push(`Hablo ${joinList(langNames, "y")}.`);
+  } else {
+    parts.push(
+      serviceLabel
+        ? `Hi Massage Club! I'd like a ${serviceLabel} at ${p.studio}.`
+        : `Hi Massage Club! I'd like to book at ${p.studio}.`
+    );
+    if (p.when) parts.push(`Preferred: ${p.when}.`);
+    if (firstName) parts.push(`My name is ${firstName}.`);
+    if (langNames.length) parts.push(`I speak ${joinList(langNames, "and")}.`);
+  }
+  return parts.join(" ");
+}
+
+
+
 /**
  * The one helper every tel: link in the app should use.
  * Strips spaces and punctuation, prefixes +34 for 9-digit Spanish numbers.
