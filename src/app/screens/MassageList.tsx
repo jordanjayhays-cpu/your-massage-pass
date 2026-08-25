@@ -518,7 +518,9 @@ export default function MassageList() {
             {t("app.massageList.studioCta")}
           </button>
         </div>
+        </div>
       </div>
+
 
       <CompareBar className="pb-[86px]" />
     </div>
