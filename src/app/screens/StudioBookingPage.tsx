@@ -1160,11 +1160,11 @@ export default function StudioBookingPage() {
                 </a>
               )}
               {websiteUrl && (
-                <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                  <span>{t("app.handoff.visitWebsite")}</span>
-                  <span className="text-xs font-normal opacity-80">{t("app.handoff.visitWebsiteSub")}</span>
+                <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
+                  {t("app.handoff.visitWebsite")}
                 </a>
               )}
+
             </div>
             </div>
 
