@@ -313,7 +313,14 @@
       "signedOut": {
         "title": "Melde dich an, um dein Profil einzurichten",
         "subtitle": "Speichere deine Vorlieben, damit jedes Studio weiß, wie du deine Massage am liebsten magst.",
-        "signInButton": "Anmelden"
+        "signInButton": "Anmelden",
+        "createTitle": "Create your profile",
+        "createSubtitle": "Set up your Massage Club profile in under a minute.",
+        "createButton": "Create your profile",
+        "alreadyHave": "Already have one? Sign in",
+        "benefit1": "Your photo and preferences reach the studio before you arrive",
+        "benefit2": "Book faster next time, details prefilled",
+        "benefit3": "All your bookings in one place"
       },
       "header": {
         "back": "Zurück",
@@ -712,7 +719,10 @@
           "tooManyAttempts": "Zu viele Versuche, fordere einen neuen Code an",
           "rateLimited": "Zu viele Codes angefordert. Bitte warte ein paar Minuten.",
           "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
-        }
+        },
+        "createHeading": "Create your profile",
+        "createSubheading": "Enter your email and we will send you a 6-digit code.",
+        "createSubmit": "Create your profile"
       }
     },
     "handoff": {
