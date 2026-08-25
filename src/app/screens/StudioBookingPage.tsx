@@ -492,6 +492,16 @@ export default function StudioBookingPage() {
     disabled: !!userId || !!done,
   });
 
+  // Concierge bubble: studio context on the profile/first step, hidden once the
+  // visitor is inside the wizard (it must never compete with the Continue bar).
+  useEffect(() => {
+    setWaBubbleContext({
+      studio: partner?.business_name ?? null,
+      hidden: done || step > 1 || !partner,
+    });
+    return () => clearWaBubbleContext();
+  }, [partner?.business_name, done, step]);
+
 
   if (loading) {
     return (
