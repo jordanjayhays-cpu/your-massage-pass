@@ -367,11 +367,11 @@ export default function MassageList() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 min-[1600px]:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
           {shopsLoading ? (
-            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
+            <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
+            <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
           ) : (
 
             <>
@@ -501,7 +501,7 @@ export default function MassageList() {
                 );
               })}
               {filtered.length > visibleCount && (
-                <div className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 flex justify-center pt-2">
+                <div className="md:col-span-2 xl:col-span-1 flex justify-center pt-2">
                   <button
                     onClick={() => setVisibleCount((c) => c + 8)}
                     className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
