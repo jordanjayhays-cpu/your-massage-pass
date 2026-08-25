@@ -36,6 +36,10 @@ type Props = {
   shops?: Shop[];
   /** Tailwind height class for the map canvas. */
   heightClass?: string;
+  /** Tailwind rounding classes for the map frame. */
+  roundedClass?: string;
+  /** Tailwind classes for the outer wrapper. */
+  wrapperClass?: string;
   /** Optional heading rendered above the map. */
   heading?: string;
   /** Show the selected-studio card beneath the map. */
@@ -139,6 +143,8 @@ const MAP_STYLES: google.maps.MapTypeStyle[] = [
 export default function StudioMap({
   shops,
   heightClass = "h-[230px]",
+  roundedClass = "rounded-3xl",
+  wrapperClass = "",
   heading,
   showSelectedCard = true,
   onSelect,
@@ -422,11 +428,12 @@ export default function StudioMap({
 
 
   return (
-    <div>
+    <div className={wrapperClass}>
+
       {heading && (
         <h3 className="font-display text-lg font-semibold text-foreground mb-3">{heading}</h3>
       )}
-      <div className={`relative rounded-3xl overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${heightClass}`}>
+      <div className={`relative ${roundedClass} overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${heightClass}`}>
         <div ref={mapRef} className="absolute inset-0" />
         <button
           type="button"

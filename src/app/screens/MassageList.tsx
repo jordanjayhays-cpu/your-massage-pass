@@ -310,13 +310,15 @@ export default function MassageList() {
 
       {/* Desktop (>=1280px): marketplace split, list left, sticky map right.
           Below 1280px this stays exactly as before: map above list. */}
-      <div className="xl:grid xl:grid-cols-[58fr_42fr] xl:gap-6 xl:items-start">
+      <div className="xl:grid xl:grid-cols-[41fr_59fr] xl:gap-8 xl:items-start">
         {/* Map header banner — shared component, also used on /app/discovery */}
-        <div className="px-5 pt-5 xl:order-2 xl:pr-5 xl:pl-0 xl:sticky xl:top-4 xl:self-start">
-          <BookAgainChip className="mb-3" />
+        <div className="px-5 pt-5 xl:order-2 xl:px-0 xl:pt-0 xl:sticky xl:top-0 xl:self-start xl:h-screen xl:flex xl:flex-col">
+          <BookAgainChip className="mb-3 xl:mx-4 xl:mt-4" />
           <StudioMap
             shops={realShops}
-            heightClass="h-[230px] xl:h-[calc(100vh-170px)]"
+            wrapperClass="xl:flex-1 xl:min-h-0 xl:flex xl:flex-col"
+            heightClass="h-[230px] xl:h-auto xl:flex-1 xl:min-h-0"
+            roundedClass="rounded-3xl xl:rounded-none xl:rounded-r-3xl"
             autoAskOnMobile
             highlightedKey={hoverKey}
             onHoverStudio={setHoverKey}
@@ -365,11 +367,11 @@ export default function MassageList() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1 min-[1600px]:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
           {shopsLoading ? (
-            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
+            <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
+            <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
           ) : (
 
             <>
@@ -499,7 +501,7 @@ export default function MassageList() {
                 );
               })}
               {filtered.length > visibleCount && (
-                <div className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 flex justify-center pt-2">
+                <div className="md:col-span-2 xl:col-span-1 flex justify-center pt-2">
                   <button
                     onClick={() => setVisibleCount((c) => c + 8)}
                     className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
