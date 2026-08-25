@@ -311,7 +311,7 @@ function Overlay({ type, onClose }: { type: MassageTypeContent; onClose: () => v
           </button>
         </div>
 
-        <MassageTypeBody type={type} es={es} />
+        <MassageTypeBody type={type} es={es} videoVariant="overlay" />
 
         <a
           href={`/massages/${type.slug}`}
