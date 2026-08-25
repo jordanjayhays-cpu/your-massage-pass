@@ -1873,14 +1873,17 @@ export default function StudioBookingPage() {
           <div className="min-[900px]:col-span-2 space-y-5">
             {/* Contact footer */}
             <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
-              {bookingWaNumber && (() => {
-                const contactWa = studioWhatsappUrl(bookingWaNumber);
-                return contactWa && (
+              {(() => {
+                const contactWa = conciergeWhatsappUrl(
+                  conciergePrefill({ lang: siteLang, studio: partner.business_name, languages: spokenLangs })
+                );
+                return (
                   <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
                     <MessageCircle size={14} /> WhatsApp
                   </a>
                 );
               })()}
+
               {partner.phone && (
                 <a href={telHref(partner.phone) || undefined} className="flex items-center gap-1 text-sm hover:text-gray-600">
                   <Phone size={14} /> Call
