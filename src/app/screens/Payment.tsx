@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar as CalIcon, Clock, MapPin, Check, Star, Wallet, MessageCircle } from "lucide-react";
-import { studioWhatsappUrl } from "../lib/whatsapp";
+import { conciergeWhatsappUrl, conciergePrefill } from "../lib/whatsapp";
 import { googleReviewUrl } from "../lib/googleReview";
 import { googleCalendarUrl } from "../lib/calendarLink";
 import { Button } from "@/components/ui/button";
@@ -271,17 +271,17 @@ export default function Payment() {
 
         {/* WhatsApp the studio */}
         {(() => {
-          const waLink = studioWhatsappUrl(
-            (massage as any).whatsapp,
-            t("app.payment.confirmed.whatsapp.message", {
+          const waLink = conciergeWhatsappUrl(
+            conciergePrefill({
+              lang: i18n.language,
               studio: massage.studio,
-              name: massage.name,
-              date: dateLabel,
-              time: booking.time,
-              clientName: contact.name
+              service: massage.name,
+              duration: massage.duration,
+              when: [dateLabel, booking.time].filter(Boolean).join(" "),
+              name: contact.name,
             })
           );
-          return waLink && (
+          return (
             <a
               href={waLink}
               target="_blank"
@@ -290,7 +290,7 @@ export default function Payment() {
               style={{ backgroundColor: "#25D366" }}
             >
               <MessageCircle className="h-5 w-5" />
-              {t("app.payment.confirmed.whatsapp.button", { studio: massage.studio })}
+              WhatsApp us and we set it up
             </a>
           );
         })()}
