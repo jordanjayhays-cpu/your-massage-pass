@@ -34,7 +34,15 @@ export default function Welcome() {
         setState("failed");
         return;
       }
+      // Welcome links land brand-new accounts; count the conversion once.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (isFreshlyCreatedUser(user?.created_at, 24 * 60 * 60 * 1000)) trackAccountCreatedConversion();
+      } catch {
+        /* ignore */
+      }
       setState("ok");
+
       window.setTimeout(() => {
         if (!cancelled) navigate("/", { replace: true });
       }, 1400);
