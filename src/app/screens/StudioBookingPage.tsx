@@ -20,6 +20,7 @@ import { tagLabel } from "@/lib/tagLabel";
 import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
 import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
+import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 
 
 import { servicePrimaryName, serviceSecondaryName, serviceNameForStudio, serviceInlineLabel } from "@/lib/serviceName";
@@ -99,7 +100,6 @@ export default function StudioBookingPage() {
   const [userId, setUserId] = useState<string | null>(null);
   // Rebook fast-path: when true, hide expanded pickers and show a summary card.
   const [rebookMode, setRebookMode] = useState(false);
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
   // "Almost there" details dialog, opened at the moment of booking.
   // Step-by-step wizard state (claimed studios).
   const [step, setStep] = useState(1);
@@ -687,6 +687,14 @@ export default function StudioBookingPage() {
                 </div>
               </>
             )}
+            <MarketingOptInCard
+              className="mt-6"
+              email={email.trim() || null}
+              userId={userId}
+              source="booking_success"
+              bookingRef={done.ref}
+            />
+
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
               Massage Club · Madrid · book.massageclub.io
             </div>
@@ -1259,8 +1267,8 @@ export default function StudioBookingPage() {
         reason_for_visit: customerProfile?.reason_for_visit || null,
         is_first_visit: customerProfile?.is_first_massage ?? null,
         client_preferences: clientPreferences,
-        marketing_opt_in: marketingOptIn,
-        marketing_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
+        marketing_opt_in: false,
+        marketing_opt_in_at: null,
       }).select("id").single();
 
 
@@ -1793,21 +1801,6 @@ export default function StudioBookingPage() {
                     <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" onChange={() => goStep(4)} />
                     <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
                   </div>
-
-                  {/* Marketing opt-in lives here, under the contact summary, unchecked by default */}
-                  <label className="mt-4 flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={marketingOptIn}
-                      onChange={e => setMarketingOptIn(e.target.checked)}
-                    />
-                    <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
-                      Email me Madrid massage deals and new studios (about once a month, no spam)
-                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
-                        Recíbe ofertas de masajes en Madrid y nuevos estudios (una vez al mes, sin spam)
-                      </span>
-                    </span>
-                  </label>
 
                   {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
 
