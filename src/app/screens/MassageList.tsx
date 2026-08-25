@@ -498,7 +498,7 @@ export default function MassageList() {
                 );
               })}
               {filtered.length > visibleCount && (
-                <div className="md:col-span-2 xl:col-span-3 flex justify-center pt-2">
+                <div className="md:col-span-2 xl:col-span-1 min-[1600px]:col-span-2 flex justify-center pt-2">
                   <button
                     onClick={() => setVisibleCount((c) => c + 8)}
                     className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
