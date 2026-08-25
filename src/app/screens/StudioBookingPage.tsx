@@ -945,7 +945,15 @@ export default function StudioBookingPage() {
                 {/* The only Continue: one sticky bar, never an inline duplicate */}
                 {hoStep === 1 && <StickyContinue ready={!!hoServiceId} onNext={() => hoGo(2)} />}
                 {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} />}
-                {hoStep === 3 && <StickyContinue ready onNext={() => hoGo(4)} />}
+                {hoStep === 3 && (
+                  <StickyContinue
+                    ready={hoDetailsReady}
+                    onNext={() => hoGo(4)}
+                    note={hoDetailsReady ? undefined : "Add your first name, last name and email to continue"}
+                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido y email para continuar"}
+                  />
+                )}
+
 
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
                   <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
