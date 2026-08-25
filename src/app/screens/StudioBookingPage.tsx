@@ -874,29 +874,47 @@ export default function StudioBookingPage() {
             {profile.services.length > 0 && (
               <div className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
-                <div className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
-                  {profile.services.map(s => (
-                    <div key={s.id} className="flex items-start justify-between gap-3 text-sm min-[900px]:text-base" style={{ color: "#5a4736" }}>
-                      <span className="min-w-0">
-                        <span className="block">
-                          {servicePrimaryName(s)}
-                          {Number(s.duration) > 0 && ` · ${Number(s.duration)} min`}
+                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
+                  {profile.services.map((s: any) => {
+                    const selected = hoServiceId === s.id;
+                    const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
+                    const price = Number(s.price);
+                    return (
+                      <div
+                        key={s.id}
+                        role="radio"
+                        aria-checked={selected}
+                        tabIndex={0}
+                        onClick={() => { setHoServiceId(selected ? "" : s.id); if (!selected) trackEvent("wizard_service_selected", { slug: partner.slug || partner.id, meta: { service: servicePrimaryName(s) } }); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setHoServiceId(selected ? "" : s.id); } }}
+                        className="cursor-pointer rounded-xl border-2 px-3 py-2.5 min-[900px]:px-4 min-[900px]:py-3.5 flex items-start justify-between gap-3 text-sm min-[900px]:text-base motion-safe:transition"
+                        style={{ color: "#5a4736", borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
+                      >
+                        <span className="min-w-0 flex items-start gap-2">
+                          {selected && <Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} />}
+                          <span className="min-w-0">
+                            <span className="block font-semibold" style={{ color: "#2b2b2b" }}>
+                              {servicePrimaryName(s)}
+                              {dur ? ` · ${dur} min` : ""}
+                            </span>
+                            {serviceSecondaryName(s) && (
+                              <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                            )}
+                          </span>
                         </span>
-                        {serviceSecondaryName(s) && (
-                          <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                        )}
-                      </span>
-                      <span className="flex flex-shrink-0 items-center gap-2">
-                        {s.price != null && Number(s.price) > 0 && (
-                          <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{Number(s.price)}</span>
-                        )}
-                        <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
-                      </span>
-                    </div>
-                  ))}
+                        <span className="flex flex-shrink-0 items-center gap-2">
+                          {Number.isFinite(price) && price > 0 && (
+                            <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
+                          )}
+                          <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
+
             </div>
 
             {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
@@ -914,64 +932,56 @@ export default function StudioBookingPage() {
                     {t("app.handoff.prefTitle")}
                   </p>
 
-                  {/* STEP 1: service */}
+                  {/* STEP 1: slim summary of the selection made in the menu */}
                   {hoStep === 1 && (
                     <div>
-                      <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefService")}</span>
-                      <div className="mt-1.5 space-y-2 min-[900px]:space-y-3 max-h-72 overflow-y-auto pr-0.5">
-                        <Link
-                          to={quizHref}
-                          className="w-full text-left rounded-xl border border-dashed px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 min-h-[56px] min-[900px]:min-h-[68px] flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
-                          style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
-                        >
-                          <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
-                          <span className="min-w-0">
-                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
-                            <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
-                          </span>
-                        </Link>
-                        <div role="radiogroup" aria-label={t("app.handoff.prefService")} className="space-y-2 min-[900px]:space-y-3">
-                          {profile.services.map((s: any) => {
-                            const selected = hoServiceId === s.id;
-                            const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
-                            const price = Number(s.price);
-                            return (
-                              <button
-                                key={s.id}
-                                type="button"
-                                role="radio"
-                                aria-checked={selected}
-                                onClick={() => setHoServiceId(selected ? "" : s.id)}
-                                className="w-full text-left rounded-xl border px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 min-h-[56px] min-[900px]:min-h-[68px] flex items-start justify-between gap-3 motion-safe:transition"
-                                style={{ borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
-                              >
-                                <span className="min-w-0">
-                                  <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>{servicePrimaryName(s)}</span>
-                                  {serviceSecondaryName(s) && (
-                                    <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                                  )}
-                                </span>
-                                <span className="flex flex-shrink-0 items-center gap-2">
-                                  <span className="text-right">
-                                    {Number.isFinite(price) && price > 0 && (
-                                      <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
-                                    )}
-                                    {dur && <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{dur} min</span>}
-                                  </span>
-                                  <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                      <Link
+                        to={quizHref}
+                        className="w-full text-left rounded-xl border border-dashed px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
+                        style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
+                      >
+                        <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
+                        <span className="min-w-0">
+                          <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
+                          <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
+                        </span>
+                      </Link>
+
+                      <div className="mt-3 rounded-xl border px-3 py-3 min-[900px]:px-4 min-[900px]:py-4" style={{ borderColor: "#E6DCCF", background: "#ffffff" }}>
+                        {hoService ? (
+                          <>
+                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>
+                              {servicePrimaryName(hoService)}
+                            </span>
+                            {serviceSecondaryName(hoService) && (
+                              <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(hoService)}</span>
+                            )}
+                            <span className="mt-1 block text-sm" style={{ color: "#5a4736" }}>
+                              {Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : ""}
+                              {Number((hoService as any).duration) > 0 && hasPrice ? " · " : ""}
+                              {hasPrice ? `€${hoPrice}` : ""}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#7A7068" }}>Choose a service to continue</span>
+                            <span className="block text-xs min-[900px]:text-sm" style={{ color: "#9E9387" }}>Elige un servicio para continuar</span>
+                          </>
+                        )}
                       </div>
-                      <WizardNav
-                        onNext={() => hoGo(2)}
+
+                      <button
+                        type="button"
+                        onClick={() => hoGo(2)}
                         disabled={!hoServiceId}
-                        hint="Choose a service to continue"
-                        hintEs="Elige un servicio para continuar"
-                      />
+                        className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition disabled:opacity-40"
+                        style={{ background: "#B85C38" }}
+                      >
+                        Request via WhatsApp
+                        <span className="block text-xs font-normal opacity-90">Solicitar por WhatsApp</span>
+                      </button>
                     </div>
+
                   )}
 
                   {/* STEP 2: day and time */}
@@ -1496,7 +1506,10 @@ export default function StudioBookingPage() {
                             }`}>
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="font-semibold text-gray-900 min-[900px]:text-lg">{servicePrimaryName(s)}</p>
+                                <p className="font-semibold text-gray-900 min-[900px]:text-lg flex items-center gap-1.5">
+                                  {serviceId === s.id && <Check size={16} className="text-[#C4622D] flex-shrink-0" />}
+                                  {servicePrimaryName(s)}
+                                </p>
                                 {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
                                 {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
                                 {Number(s.duration) > 0 && (

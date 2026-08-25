@@ -331,7 +331,7 @@ export default function MassageTypeInfoButton({
   const [open, setOpen] = useState(false);
   const type = findMassageType(...names);
   if (!type) return null;
-  const vitals = vitalsFor(type.slug);
+  
   const openSheet = () => {
     trackEvent("info_sheet_open", { meta: { type: type.slug } });
     setOpen(true);
@@ -344,15 +344,9 @@ export default function MassageTypeInfoButton({
 
   return (
     <>
-      {vitals && (
-        <span
-          className="hidden flex-shrink-0 items-center min-[380px]:inline-flex"
-          title={`Pressure ${PRESSURE_LABELS[vitals.pressure - 1].en} / Presión ${PRESSURE_LABELS[vitals.pressure - 1].es}`}
-          aria-label={`Pressure ${PRESSURE_LABELS[vitals.pressure - 1].en}`}
-        >
-          <PressureDots level={vitals.pressure} size={6} />
-        </span>
-      )}
+      {/* Pressure dots deliberately live inside the overlay and on the massage
+          type pages only. Menu rows stay clean: name, duration, price, info. */}
+
       {/* Not a <button>: these sit inside clickable service cards that are
           themselves buttons, and nested buttons are invalid HTML. */}
 
