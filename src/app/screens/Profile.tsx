@@ -6,6 +6,7 @@ import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, Che
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import {
+import MarketingOptInCard from "@/app/components/MarketingOptInCard";
   REFERRAL_REWARD_EUR,
   getOrCreateReferralCode,
   getUnusedCredits,
@@ -1426,6 +1427,12 @@ export default function Profile() {
             >
               {t("app.profile.keepEditing")}
             </button>
+            <MarketingOptInCard
+              className="mt-4"
+              email={user?.email ?? null}
+              userId={user?.id ?? null}
+              source="profile_setup"
+            />
           </div>
         </div>
       )}
