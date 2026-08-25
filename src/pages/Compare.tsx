@@ -608,7 +608,7 @@ export default function Compare() {
             <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
               {selected.map((s) => {
                 const instant = s.status === "active";
-                const label = instant ? "Book" : hasWhatsapp(s) ? "Ask on WhatsApp" : "View studio";
+                const label = instant ? "Book" : hasWhatsapp(s) ? "WhatsApp us" : "View studio";
                 const labelEs = instant ? "Reservar" : hasWhatsapp(s) ? "Preguntar por WhatsApp" : "Ver estudio";
                 return (
                   <Link

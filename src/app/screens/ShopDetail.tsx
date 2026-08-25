@@ -23,13 +23,13 @@ import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { clarityEvent } from "@/lib/clarity";
-import { resolveWhatsappNumber, studioWhatsappUrl, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
+import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
 
 
 export default function ShopDetail() {
-  const { t } = useTranslation(undefined, { keyPrefix: "app.shopDetail" });
+  const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.shopDetail" });
   const navigate = useNavigate();
   const { id } = useParams();
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
@@ -154,9 +154,10 @@ export default function ShopDetail() {
   const address = m.address ?? m.location ?? t("default_address");
   const phone = m.phone as string | undefined;
   const waNumber = resolveWhatsappNumber(m);
-  const waHref = waNumber
-    ? studioWhatsappUrl(waNumber, whatsappPrefill({ studio: m.studio }))
-    : null;
+  // Concierge model: client CTAs open a chat with Massage Club, not the studio.
+  const waMessage = conciergePrefill({ lang: i18n.language, studio: m.studio });
+  const waHref = conciergeWhatsappUrl(waMessage);
+
   const firstSentence =
     (m.description as string | undefined)?.split(/[.!?](\s|$)/)[0]?.trim() ||
     t("default_description");
@@ -373,7 +374,7 @@ export default function ShopDetail() {
                     slug: m.slug || null,
                     studio_name: m.studio || m.name || "Unknown studio",
                     wa_number: waNumber,
-                    message_text: whatsappPrefill({ studio: m.studio }),
+                    message_text: waMessage,
                   });
                 }}
                 className={`mt-4 w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft motion-safe:transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${waTapped ? "pointer-events-none opacity-80" : ""}`}

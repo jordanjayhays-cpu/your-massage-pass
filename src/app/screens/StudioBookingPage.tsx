@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { studioWhatsappUrl, resolveWhatsappNumber, whatsappPrefill, telHref } from "@/app/lib/whatsapp";
+import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
@@ -554,13 +554,21 @@ export default function StudioBookingPage() {
     const studioNumber = (partner as any).whatsapp || partner.phone;
     const waNumber = resolveWhatsappNumber(partner as any);
 
-    // Claimed: friendly "you're booked" message.
-    // NOTE: messages sent TO the studio always use the SPANISH service name.
-    const waMsg = `¡Hola ${partner.business_name}! Acabo de reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time} a través de Massage Club. Soy ${name}. ¡Nos vemos! 🙏`;
-    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
-    // Unclaimed: ask the customer to send the booking request to the studio themselves.
-    const unclaimedWaMsg = `¡Hola ${partner.business_name}! Quiero reservar ${serviceNameForStudio(service)} para el ${prettyDate} a las ${time}. Soy ${name}${phone ? ` (${phone})` : ""}. Os encontré en Massage Club. ¿Me lo podéis confirmar? ¡Gracias! 🙏`;
-    const unclaimedWaLink = studioWhatsappUrl(resolveWhatsappNumber(partner as any), unclaimedWaMsg);
+    // Concierge model: every client CTA opens a chat with MASSAGE CLUB, never the studio.
+    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` ${time}` : ""}` : (time || null);
+    const conciergeMsg = conciergePrefill({
+      lang: siteLang,
+      studio: partner.business_name,
+      service: service ? servicePrimaryName(service) : null,
+      duration: (service as any)?.duration ?? null,
+      price: (service as any)?.price ?? null,
+      when: conciergeWhen,
+      name: name || null,
+      languages: spokenLangs,
+    });
+    const waLink = conciergeWhatsappUrl(conciergeMsg);
+    const unclaimedWaLink = waLink;
+
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
@@ -644,13 +652,9 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {waLink ? (
-                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <MessageCircle size={18} /> Confirm on WhatsApp
-                    </a>
-                  ) : studioNumber ? (
-                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <Phone size={18} /> Llamar al estudio
-                      <span className="block text-xs font-normal opacity-80">Call the studio</span>
+                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
+                      <span className="text-xs font-normal opacity-80">Escríbenos por WhatsApp y te lo organizamos</span>
                     </a>
                   ) : null}
                 </div>
@@ -658,19 +662,14 @@ export default function StudioBookingPage() {
             ) : (
               <>
                 <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  Casi listo. Envía tu reserva al estudio para confirmarla.
-                  <span className="block text-xs mt-0.5">Almost done. Send your booking to the studio to confirm it.</span>
+                  Casi listo. Escríbenos por WhatsApp y te lo organizamos.
+                  <span className="block text-xs mt-0.5">Almost done. WhatsApp us and we set it up.</span>
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
                     <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Enviar reserva por WhatsApp</span>
-                      <span className="text-xs font-normal opacity-90">Send booking via WhatsApp</span>
-                    </a>
-                  ) : studioNumber ? (
-                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                      <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
-                      <span className="text-xs font-normal opacity-90">Call the studio</span>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
+                      <span className="text-xs font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
                     </a>
                   ) : null}
                   {websiteUrl && (
@@ -720,81 +719,41 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    // If the visitor speaks Spanish, the apology makes no sense — drop it,
-    // along with the "reply to me in X" offer line.
-    const visitorSpeaksSpanish = speaksSpanish(spokenLangs);
-    const noSpanish = visitorSpeaksSpanish ? "" : "Disculpa, todavía no hablo español. ";
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
-    // SPANISH ONLY — this line goes into the WhatsApp message read by the studio.
-    const hoServiceEs = hoService ? serviceNameForStudio(hoService) : "";
-    const serviceLine = hoService
-      ? (() => {
-          const dur = Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : "";
-          const parts = [hoServiceEs, dur, hasPrice ? `${hoPrice} €` : ""].filter(Boolean);
-          return `· ${parts.join(" · ")}`;
-        })()
-      : "";
-    // Always Spanish — this text is sent to the studio, never translated.
-    const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
-    const langOffer = spanishLanguageOffer(spokenLangs);
-    const found = `Os encontré en Massage Club: ${studioUrl}${langOffer ? `\n${langOffer} 🙏` : ""}`;
-    const waMsg = (() => {
-      const greeting = `¡Hola ${partner.business_name}!`;
 
-      // Fully specified: service + date/time.
-      if (hoService && hoDate && hoTime) {
-        const lines: string[] = [`${greeting} Me gustaría reservar:`];
-        lines.push(serviceLine);
-        const alt = hoAltDate && hoAltTime ? `, o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
-        lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
-        return lines.join("\n");
+    // Concierge model: the message goes to MASSAGE CLUB, in the visitor's language.
+    const localDate = (v: string) => {
+      if (!v) return "";
+      const [y, mo, d] = v.split("-").map(Number);
+      if (!y || !mo || !d) return "";
+      try {
+        return new Intl.DateTimeFormat(siteLang === "es" ? "es-ES" : "en-GB", {
+          weekday: "long", day: "numeric", month: "long",
+        }).format(new Date(y, mo - 1, d));
+      } catch {
+        return v;
       }
-
-      // Service chosen but no date/time yet.
-      if (hoService) {
-        const lines: string[] = [`${greeting} Me gustaría reservar:`];
-        lines.push(serviceLine);
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
-        return lines.join("\n");
-      }
-
-      // Date + time chosen but no service.
-      if (hoDate && hoTime) {
-        const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)} a las ${hoTime}.`];
-        if (hoAltDate && hoAltTime) lines.push(`También valdría el ${esDate(hoAltDate)} a las ${hoAltTime}.`);
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
-        return lines.join("\n");
-      }
-
-      // Date only.
-      if (hoDate) {
-        const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)}.`];
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
-        return lines.join("\n");
-      }
-
-      // Time only.
-      if (hoTime) {
-        const lines: string[] = [`${greeting} Me gustaría reservar un masaje a las ${hoTime}.`];
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
-        return lines.join("\n");
-      }
-
-      // Nothing selected: generic fallback that asks for a list of times.
-      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
+    };
+    const hoWhen = (() => {
+      const bits: string[] = [];
+      const main = [localDate(hoDate), hoTime].filter(Boolean).join(" ");
+      if (main) bits.push(main);
+      const alt = [localDate(hoAltDate), hoAltTime].filter(Boolean).join(" ");
+      if (alt) bits.push(siteLang === "es" ? `o ${alt}` : `or ${alt}`);
+      return bits.length ? bits.join(" ") : null;
     })();
+    const waMsg = conciergePrefill({
+      lang: siteLang,
+      studio: partner.business_name,
+      service: hoService ? servicePrimaryName(hoService) : null,
+      duration: Number((hoService as any)?.duration) || null,
+      price: hasPrice ? hoPrice : null,
+      when: hoWhen,
+      name: hoName.trim() || null,
+      languages: spokenLangs,
+    });
+
     const trackWhatsappIntent = () => {
       if (waLoggedRef.current) return;
       waLoggedRef.current = true;
@@ -839,7 +798,7 @@ export default function StudioBookingPage() {
       }
     };
 
-    const waLink = waNumber ? studioWhatsappUrl(waNumber, waMsg) : null;
+    const waLink = conciergeWhatsappUrl(waMsg);
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
@@ -1360,17 +1319,18 @@ export default function StudioBookingPage() {
       return null;
     }
   };
-  const bookingWaMsg = whatsappPrefill({
+  const bookingWaMsg = conciergePrefill({
+    lang: siteLang,
     studio: partner.business_name,
-    // SPANISH name — the studio reads its own menu.
-    service: service ? serviceNameForStudio(service) : null,
+    service: service ? servicePrimaryName(service) : null,
     duration: (service as any)?.duration ?? null,
     price: (service as any)?.price ?? null,
-    date: esLongDate(date),
-    time: time || null,
+    when: [esLongDate(date), time || ""].filter(Boolean).join(" ") || null,
     name: name || null,
+    languages: spokenLangs,
   });
-  const bookingWaHref = bookingWaNumber ? studioWhatsappUrl(bookingWaNumber, bookingWaMsg) : null;
+  const bookingWaHref = conciergeWhatsappUrl(bookingWaMsg);
+
 
   return (
     <div className="min-h-screen bg-[#FAF6F1] relative">
@@ -1895,8 +1855,9 @@ export default function StudioBookingPage() {
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
               >
-                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> Ask on WhatsApp</span>
-                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Preguntar por WhatsApp</span>
+                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
+                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
+
               </a>
             )}
             <div className="flex flex-wrap gap-2 min-[900px]:gap-2.5">
@@ -1912,14 +1873,17 @@ export default function StudioBookingPage() {
           <div className="min-[900px]:col-span-2 space-y-5">
             {/* Contact footer */}
             <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
-              {bookingWaNumber && (() => {
-                const contactWa = studioWhatsappUrl(bookingWaNumber);
-                return contactWa && (
+              {(() => {
+                const contactWa = conciergeWhatsappUrl(
+                  conciergePrefill({ lang: siteLang, studio: partner.business_name, languages: spokenLangs })
+                );
+                return (
                   <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
                     <MessageCircle size={14} /> WhatsApp
                   </a>
                 );
               })()}
+
               {partner.phone && (
                 <a href={telHref(partner.phone) || undefined} className="flex items-center gap-1 text-sm hover:text-gray-600">
                   <Phone size={14} /> Call
