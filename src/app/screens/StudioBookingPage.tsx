@@ -1821,18 +1821,18 @@ export default function StudioBookingPage() {
                       className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
-                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email"
+                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
+                      aria-invalid={!!email.trim() && !emailValid}
                       className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        (stepError && !hasContact) || (!!email.trim() && !emailValid) ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
                     <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                      }`} />
+                      className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D]" />
                     <p className="text-xs min-[900px]:text-sm text-gray-400">
-                      Add at least one way to reach you: email or phone.
-                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Añade al menos un email o teléfono.</span>
+                      Your confirmation and reminders go to your email.
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Tu confirmación y los recordatorios llegan a tu email.</span>
                     </p>
+
                     {!userId && !!email.trim() && (
                       <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
                         <input
