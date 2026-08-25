@@ -108,6 +108,8 @@ export default function StudioBookingPage() {
   const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
   // Wizard state for the unclaimed-studio WhatsApp handoff.
   const [hoStep, setHoStep] = useState(1);
+  // The handoff panel heading, so every step transition visibly moves the viewport.
+  const hoPanelRef = useRef<HTMLDivElement | null>(null);
   // Distances are only ever shown once the visitor has granted location.
   const [userLoc, setUserLoc] = useState<LatLng | null>(() => savedLocationResult()?.loc ?? null);
   const [locAreaName, setLocAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
