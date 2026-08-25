@@ -222,6 +222,7 @@ export function MassageTypeBody({
   return (
     <div className="space-y-5">
       <MassageTypeVitals type={type} />
+      <MassageTypeVideo slug={type.slug} variant={videoVariant} />
 
       <div>
         <SectionKicker en="What it is" es="Qué es" />
