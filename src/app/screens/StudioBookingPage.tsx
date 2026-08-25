@@ -895,6 +895,14 @@ export default function StudioBookingPage() {
                 Este estudio todavía no está en Massage Club. Aun así te organizamos la reserva.
               </span>
             </p>
+            <div className="mb-5">
+              <HowBookingWorksVideo size="sm" label="This is how we book it for you" />
+              <p className="mt-2 text-center text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                This is how we book it for you
+                <span className="block">Así te lo reservamos</span>
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={() => {
