@@ -123,6 +123,8 @@ export default function Login() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+        // Only a brand-new auth user counts as an account creation conversion.
+        if (isFreshlyCreatedUser(user?.created_at)) trackAccountCreatedConversion();
         if (user) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -134,6 +136,7 @@ export default function Login() {
       } catch {
         needsName = false;
       }
+
       navigate(createMode || needsName ? "/app/profile" : "/studios", { replace: true });
     } finally {
       handlingOtp.current = false;
