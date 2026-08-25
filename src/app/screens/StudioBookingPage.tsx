@@ -1061,19 +1061,33 @@ export default function StudioBookingPage() {
                     <div className="space-y-4 min-[900px]:space-y-5">
                       <label className="block">
                         <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                        <input type="text" value={hoName} onChange={(e) => setHoName(e.target.value)}
+                        <input type="text" autoComplete="given-name" value={hoName} onChange={(e) => setHoName(e.target.value)}
                           className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
                       <label className="block">
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email (optional)</span>
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          Last name <span className="opacity-80">/ Apellido</span>
+                        </span>
+                        <input type="text" autoComplete="family-name" value={hoLastName} onChange={(e) => setHoLastName(e.target.value)}
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email</span>
                         <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
-                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base"
+                          style={{ borderColor: hoEmail.trim() && !hoEmailValid ? "#C4622D" : "#E6DCCF", color: "#2b2b2b" }} />
+                        {hoEmail.trim() && !hoEmailValid && (
+                          <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#C4622D" }}>
+                            Enter a valid email <span className="opacity-80">/ Introduce un email válido</span>
+                          </span>
+                        )}
                         <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
                           So we can check everything went well with your booking.
                           <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
                         </span>
                       </label>
+
                       {!userId && !!hoEmail.trim() && (
                         <label className="flex items-start gap-2 cursor-pointer">
                           <input type="checkbox" checked={createAccount}
