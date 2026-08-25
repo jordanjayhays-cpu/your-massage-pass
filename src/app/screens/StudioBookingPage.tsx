@@ -1261,7 +1261,9 @@ export default function StudioBookingPage() {
 
 
   // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
-  const hasContact = !!(phone.trim() || email.trim());
+  // Email is required: every confirmation and reminder is sent by email.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const hasContact = emailValid;
   const canBook = !!(service && date && time && name.trim() && hasContact);
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
