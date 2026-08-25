@@ -46,18 +46,27 @@ export function useLastBooking(partnerId?: string | null) {
         if (!cancelled) { setLastBooking(null); setLoading(false); }
         return;
       }
-      let query = supabase
-        .from("bookings")
-        .select("id, massage_type, spa_name, partner_id, client_name, status, is_test, created_at, partners!inner ( id, slug, business_name, cover_url, status )")
-        .eq("user_id", user.id)
-        .neq("status", "cancelled")
-        .not("is_test", "is", true)
-        .eq("partners.status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (partnerId) query = query.eq("partner_id", partnerId);
+      // Two shapes: the strict one filters test bookings server side. If the
+      // is_test column is not present we fall back to the same query without
+      // it, so the feature degrades instead of disappearing.
+      const build = (withTest: boolean) => {
+        let q = supabase
+          .from("bookings")
+          .select(
+            `id, massage_type, spa_name, partner_id, client_name, status, created_at${withTest ? ", is_test" : ""}, partners!inner ( id, slug, business_name, cover_url, status )`,
+          )
+          .eq("user_id", user.id)
+          .neq("status", "cancelled")
+          .eq("partners.status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (withTest) q = q.not("is_test", "is", true);
+        if (partnerId) q = q.eq("partner_id", partnerId);
+        return q;
+      };
 
-      const { data, error } = await query.maybeSingle();
+      let { data, error } = await build(true).maybeSingle();
+      if (error) ({ data, error } = await build(false).maybeSingle());
       if (cancelled) return;
       if (error || !data) { setLastBooking(null); setLoading(false); return; }
 
