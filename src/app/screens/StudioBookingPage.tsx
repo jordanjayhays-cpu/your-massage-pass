@@ -108,6 +108,8 @@ export default function StudioBookingPage() {
   const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
   // Wizard state for the unclaimed-studio WhatsApp handoff.
   const [hoStep, setHoStep] = useState(1);
+  // The handoff panel heading, so every step transition visibly moves the viewport.
+  const hoPanelRef = useRef<HTMLDivElement | null>(null);
   // Distances are only ever shown once the visitor has granted location.
   const [userLoc, setUserLoc] = useState<LatLng | null>(() => savedLocationResult()?.loc ?? null);
   const [locAreaName, setLocAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
@@ -762,6 +764,14 @@ export default function StudioBookingPage() {
     const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
     const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
     const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoEmailValid;
+    // One-line reminder of the choice, kept visible in the sticky bar.
+    const hoSummaryLine = hoService
+      ? [
+          servicePrimaryName(hoService),
+          Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : null,
+          hasPrice ? `€${hoPrice}` : null,
+        ].filter(Boolean).join(" · ")
+      : null;
     const waMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
@@ -831,7 +841,18 @@ export default function StudioBookingPage() {
     const hoGo = (n: number) => {
       setHoStep(n);
       setHoMaxStep(m => Math.max(m, n));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Bring the newly revealed step into view. Without this the next step
+      // renders below the fold and the tap looks like it did nothing.
+      requestAnimationFrame(() => {
+        const el = hoPanelRef.current;
+        if (el) {
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          } catch { /* fall through */ }
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
     };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
@@ -894,7 +915,9 @@ export default function StudioBookingPage() {
             {profile.services.length > 0 && (
               <div id="mc-services-menu" className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
-                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
+                {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
+                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
+
                   {profile.services.map((s: any) => {
                     const selected = hoServiceId === s.id;
                     const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
@@ -938,17 +961,26 @@ export default function StudioBookingPage() {
             </div>
 
             {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
-            <div className="min-[900px]:sticky min-[900px]:top-4 text-left">
+            <div ref={hoPanelRef} className="min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
             {waLink && (
               <>
                 <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
                 {/* The only Continue: one sticky bar, never an inline duplicate */}
-                {hoStep === 1 && <StickyContinue ready={!!hoServiceId} onNext={() => hoGo(2)} />}
-                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} />}
+                {hoStep === 1 && (
+                  <StickyContinue
+                    ready={!!hoServiceId}
+                    onNext={() => hoGo(2)}
+                    summary={hoSummaryLine}
+                    note={hoServiceId ? undefined : "Pick a service to continue"}
+                    noteEs={hoServiceId ? undefined : "Elige un servicio para continuar"}
+                  />
+                )}
+                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} summary={hoSummaryLine} />}
                 {hoStep === 3 && (
                   <StickyContinue
                     ready={hoDetailsReady}
                     onNext={() => hoGo(4)}
+                    summary={hoSummaryLine}
                     note={hoDetailsReady ? undefined : "Add your first name, last name and email to continue"}
                     noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido y email para continuar"}
                   />
@@ -1229,7 +1261,9 @@ export default function StudioBookingPage() {
 
 
   // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
-  const hasContact = !!(phone.trim() || email.trim());
+  // Email is required: every confirmation and reminder is sent by email.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const hasContact = emailValid;
   const canBook = !!(service && date && time && name.trim() && hasContact);
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
@@ -1253,7 +1287,7 @@ export default function StudioBookingPage() {
       return;
     }
     if (!hasContact) {
-      setStepError({ en: "Add an email or phone so the studio can reach you", es: "Añade un email o teléfono para que el estudio pueda contactarte" });
+      setStepError({ en: "Add a valid email so we can send your confirmation", es: "Añade un email válido para enviarte la confirmación" });
       emailRef.current?.focus();
       return;
     }
@@ -1787,18 +1821,18 @@ export default function StudioBookingPage() {
                       className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                         stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
-                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email"
+                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
+                      aria-invalid={!!email.trim() && !emailValid}
                       className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        (stepError && !hasContact) || (!!email.trim() && !emailValid) ? "border-2 border-[#B03A2E]" : "border-gray-200"
                       }`} />
                     <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        stepError && !hasContact ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                      }`} />
+                      className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D]" />
                     <p className="text-xs min-[900px]:text-sm text-gray-400">
-                      Add at least one way to reach you: email or phone.
-                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Añade al menos un email o teléfono.</span>
+                      Your confirmation and reminders go to your email.
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Tu confirmación y los recordatorios llegan a tu email.</span>
                     </p>
+
                     {!userId && !!email.trim() && (
                       <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
                         <input
@@ -1830,8 +1864,8 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!name.trim() || !hasContact}
-                  hint="Add your name and an email or phone so the studio can reach you"
-                  hintEs="Añade tu nombre y un email o teléfono para que el estudio pueda contactarte"
+                  hint="Add your name and a valid email, that is where your confirmation goes"
+                  hintEs="Añade tu nombre y un email válido, ahí te llega la confirmación"
                 />
               </div>
             )}
@@ -2122,14 +2156,17 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, labelEs, busy, badge, note, noteEs,
+  ready, onNext, label, labelEs, busy, badge, note, noteEs, summary,
 }: {
   ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean;
-  badge?: { text: string; textEs: string }; note?: string; noteEs?: string;
+  badge?: { text: string; textEs: string }; note?: string; noteEs?: string; summary?: string | null;
 }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
+        {summary && (
+          <p className="w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">{summary}</p>
+        )}
         {badge && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3E7] border border-[#CBE0C4] px-3 py-1 text-[11px] font-semibold text-[#3F6B36]">
             <Check size={12} strokeWidth={3} /> {badge.text} <span className="font-normal opacity-80">/ {badge.textEs}</span>
