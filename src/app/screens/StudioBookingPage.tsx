@@ -1341,7 +1341,7 @@ export default function StudioBookingPage() {
     service: service ? servicePrimaryName(service) : null,
     duration: (service as any)?.duration ?? null,
     price: (service as any)?.price ?? null,
-    when: [esLongDate(date), time || ""].filter(Boolean).join(" ") || null,
+    when1: [esLongDate(date), time ? `a las ${time}` : ""].filter(Boolean).join(" ") || null,
     name: name || null,
     languages: spokenLangs,
   });
