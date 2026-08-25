@@ -738,62 +738,38 @@ export default function StudioBookingPage() {
     const studioUrl = `book.massageclub.io/${partner.slug || partner.id}`;
     const langOffer = spanishLanguageOffer(spokenLangs);
     const found = `Os encontré en Massage Club: ${studioUrl}${langOffer ? `\n${langOffer} 🙏` : ""}`;
-    const waMsg = (() => {
-      const greeting = `¡Hola ${partner.business_name}!`;
-
-      // Fully specified: service + date/time.
-      if (hoService && hoDate && hoTime) {
-        const lines: string[] = [`${greeting} Me gustaría reservar:`];
-        lines.push(serviceLine);
-        const alt = hoAltDate && hoAltTime ? `, o ${esDate(hoAltDate)} a las ${hoAltTime}` : "";
-        lines.push(`· ${esDate(hoDate)} a las ${hoTime}${alt}`);
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes confirmar con un "sí", o proponerme otra hora? ${found}`);
-        return lines.join("\n");
+    // Concierge model: the message goes to MASSAGE CLUB, in the visitor's language.
+    const localDate = (v: string) => {
+      if (!v) return "";
+      const [y, mo, d] = v.split("-").map(Number);
+      if (!y || !mo || !d) return "";
+      try {
+        return new Intl.DateTimeFormat(siteLang === "es" ? "es-ES" : "en-GB", {
+          weekday: "long", day: "numeric", month: "long",
+        }).format(new Date(y, mo - 1, d));
+      } catch {
+        return v;
       }
-
-      // Service chosen but no date/time yet.
-      if (hoService) {
-        const lines: string[] = [`${greeting} Me gustaría reservar:`];
-        lines.push(serviceLine);
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana para este servicio? Puedo responder con una hora y ya está. ${found}`);
-        return lines.join("\n");
-      }
-
-      // Date + time chosen but no service.
-      if (hoDate && hoTime) {
-        const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)} a las ${hoTime}.`];
-        if (hoAltDate && hoAltTime) lines.push(`También valdría el ${esDate(hoAltDate)} a las ${hoAltTime}.`);
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué servicios tenéis libres a esa hora? Puedo responder con un "sí". ${found}`);
-        return lines.join("\n");
-      }
-
-      // Date only.
-      if (hoDate) {
-        const lines: string[] = [`${greeting} Me gustaría reservar un masaje para el ${esDate(hoDate)}.`];
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué horas tenéis libres ese día? Puedo responder con una hora y ya está. ${found}`);
-        return lines.join("\n");
-      }
-
-      // Time only.
-      if (hoTime) {
-        const lines: string[] = [`${greeting} Me gustaría reservar un masaje a las ${hoTime}.`];
-        if (hoName.trim()) lines.push(`· A nombre de ${hoName.trim()}`);
-        lines.push("");
-        lines.push(`${noSpanish}¿Me puedes decir qué días tenéis libres a esa hora? Puedo responder con un día y ya está. ${found}`);
-        return lines.join("\n");
-      }
-
-      // Nothing selected: generic fallback that asks for a list of times.
-      return `${greeting} Me gustaría reservar un masaje con vosotros.\n\n${noSpanish}¿Me puedes decir qué horas tenéis libres esta semana? Puedo responder con una hora y ya está. ${found}`;
+    };
+    const hoWhen = (() => {
+      const bits: string[] = [];
+      const main = [localDate(hoDate), hoTime].filter(Boolean).join(" ");
+      if (main) bits.push(main);
+      const alt = [localDate(hoAltDate), hoAltTime].filter(Boolean).join(" ");
+      if (alt) bits.push(siteLang === "es" ? `o ${alt}` : `or ${alt}`);
+      return bits.length ? bits.join(" ") : null;
     })();
+    const waMsg = conciergePrefill({
+      lang: siteLang,
+      studio: partner.business_name,
+      service: hoService ? servicePrimaryName(hoService) : null,
+      duration: Number((hoService as any)?.duration) || null,
+      price: hasPrice ? hoPrice : null,
+      when: hoWhen,
+      name: hoName.trim() || null,
+      languages: spokenLangs,
+    });
+
     const trackWhatsappIntent = () => {
       if (waLoggedRef.current) return;
       waLoggedRef.current = true;
