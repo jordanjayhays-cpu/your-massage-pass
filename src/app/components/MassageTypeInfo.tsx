@@ -207,7 +207,6 @@ export function MassageTypeBody({
     return (
       <div className="space-y-4">
         <MassageTypeVitals type={type} />
-      <MassageTypeVideo slug={type.slug} variant={videoVariant} />
         <MassageTypeVideo slug={type.slug} variant={videoVariant} />
         {sections.map((s) => (
           <div key={s.en}>
