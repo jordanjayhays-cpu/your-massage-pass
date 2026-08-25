@@ -566,14 +566,15 @@ export default function StudioBookingPage() {
     const waNumber = resolveWhatsappNumber(partner as any);
 
     // Concierge model: every client CTA opens a chat with MASSAGE CLUB, never the studio.
-    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` ${time}` : ""}` : (time || null);
+    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` at ${time}` : ""}` : (time || null);
     const conciergeMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
       service: service ? servicePrimaryName(service) : null,
       duration: (service as any)?.duration ?? null,
       price: (service as any)?.price ?? null,
-      when: conciergeWhen,
+      when1: conciergeWhen,
+
       name: name || null,
       languages: spokenLangs,
     });
@@ -746,24 +747,28 @@ export default function StudioBookingPage() {
         return v;
       }
     };
-    const hoWhen = (() => {
-      const bits: string[] = [];
-      const main = [localDate(hoDate), hoTime].filter(Boolean).join(" ");
-      if (main) bits.push(main);
-      const alt = [localDate(hoAltDate), hoAltTime].filter(Boolean).join(" ");
-      if (alt) bits.push(siteLang === "es" ? `o ${alt}` : `or ${alt}`);
-      return bits.length ? bits.join(" ") : null;
-    })();
+    // Exact selections only: the concierge needs a precise day and time to ask the studio.
+    const exactWhen = (d: string, tm: string) => {
+      const day = localDate(d);
+      if (!day && !tm) return null;
+      if (!tm) return day;
+      if (!day) return tm;
+      return siteLang === "es" ? `${day} a las ${tm}` : `${day} at ${tm}`;
+    };
+    const hoWhen1 = exactWhen(hoDate, hoTime);
+    const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
     const waMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
       service: hoService ? servicePrimaryName(hoService) : null,
       duration: Number((hoService as any)?.duration) || null,
       price: hasPrice ? hoPrice : null,
-      when: hoWhen,
+      when1: hoWhen1,
+      when2: hoWhen2,
       name: hoName.trim() || null,
       languages: spokenLangs,
     });
+
 
     const trackWhatsappIntent = () => {
       if (waLoggedRef.current) return;
@@ -1336,7 +1341,7 @@ export default function StudioBookingPage() {
     service: service ? servicePrimaryName(service) : null,
     duration: (service as any)?.duration ?? null,
     price: (service as any)?.price ?? null,
-    when: [esLongDate(date), time || ""].filter(Boolean).join(" ") || null,
+    when1: [esLongDate(date), time ? `a las ${time}` : ""].filter(Boolean).join(" ") || null,
     name: name || null,
     languages: spokenLangs,
   });

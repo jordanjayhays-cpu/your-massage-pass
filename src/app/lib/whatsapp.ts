@@ -82,7 +82,9 @@ export type ConciergePrefill = {
   service?: string | null;
   duration?: number | null;
   price?: number | null;
-  when?: string | null;          // human readable day/time selections
+  when?: string | null;          // legacy free-form preference (used when when1 is absent)
+  when1?: string | null;         // exact first choice, e.g. "Saturday Aug 30 at 16:00"
+  when2?: string | null;         // exact backup choice, optional
   name?: string | null;          // first name if known
   languages?: string[] | null;   // spoken language codes
 };
@@ -107,6 +109,9 @@ export function conciergePrefill(p: ConciergePrefill): string {
     .map((c) => (es ? LANG_NAMES_ES[c] : LANG_NAMES_EN[c]))
     .filter(Boolean) as string[];
 
+  const first = (p.when1 || "").trim();
+  const backup = (p.when2 || "").trim();
+
   const parts: string[] = [];
   if (es) {
     parts.push(
@@ -114,7 +119,12 @@ export function conciergePrefill(p: ConciergePrefill): string {
         ? `¡Hola Massage Club! Me gustaría reservar ${serviceLabel} en ${p.studio}.`
         : `¡Hola Massage Club! Me gustaría reservar en ${p.studio}.`
     );
-    if (p.when) parts.push(`Preferencia: ${p.when}.`);
+    if (first) {
+      parts.push(`Primera opción: ${first}.`);
+      if (backup) parts.push(`Segunda opción: ${backup}.`);
+    } else if (p.when) {
+      parts.push(`Preferencia: ${p.when}.`);
+    }
     if (firstName) parts.push(`Me llamo ${firstName}.`);
     if (langNames.length) parts.push(`Hablo ${joinList(langNames, "y")}.`);
   } else {
@@ -123,12 +133,18 @@ export function conciergePrefill(p: ConciergePrefill): string {
         ? `Hi Massage Club! I'd like a ${serviceLabel} at ${p.studio}.`
         : `Hi Massage Club! I'd like to book at ${p.studio}.`
     );
-    if (p.when) parts.push(`Preferred: ${p.when}.`);
+    if (first) {
+      parts.push(`First choice: ${first}.`);
+      if (backup) parts.push(`Backup: ${backup}.`);
+    } else if (p.when) {
+      parts.push(`Preferred: ${p.when}.`);
+    }
     if (firstName) parts.push(`My name is ${firstName}.`);
     if (langNames.length) parts.push(`I speak ${joinList(langNames, "and")}.`);
   }
   return parts.join(" ");
 }
+
 
 
 

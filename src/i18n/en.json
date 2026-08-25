@@ -742,7 +742,7 @@
       "prefName": "Your first name",
       "prefDate": "Preferred day",
       "prefTime": "Time",
-      "prefAlt": "Second choice (optional)",
+      "prefAlt": "Backup option (optional)",
       "prefOptional": "Optional. If you skip these, we’ll ask the studio for their free times.",
       "afterNote": "If they reply with something you don’t understand, forward it to jordan@massageclub.io and we’ll translate.",
       "prefLanguages": "Languages you speak",
