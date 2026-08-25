@@ -19,6 +19,7 @@ import type { Shop } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
 import { useLocationAsk } from "@/lib/locationConsent";
 import { comparePath, saveQuizRecommendedType, setCompareEntries } from "@/lib/compare";
+import QuizEmailCapture from "../components/QuizEmailCapture";
 
 const ORIGIN_KEY = "mc_quiz_origin";
 
@@ -194,6 +195,8 @@ export default function Quiz() {
 
           <div className="px-6 py-5 space-y-5">
             <p className="text-foreground/85 leading-relaxed">{winner.description}</p>
+
+            <QuizEmailCapture resultSlug={winner.id} />
 
             {/* Nearest studio recommendation (opt-in location) */}
             {geoState !== "ready" && (
