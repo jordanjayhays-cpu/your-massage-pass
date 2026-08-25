@@ -8,6 +8,8 @@ import { saveLead, supabase } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import { useStudioCount } from "@/lib/studioCount";
+import { trackAccountCreatedConversion, isFreshlyCreatedUser } from "@/lib/adsConversion";
+
 
 
 const USER_KEY = "mm-user";
@@ -123,6 +125,8 @@ export default function Login() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+        // Only a brand-new auth user counts as an account creation conversion.
+        if (isFreshlyCreatedUser(user?.created_at)) trackAccountCreatedConversion();
         if (user) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -134,6 +138,7 @@ export default function Login() {
       } catch {
         needsName = false;
       }
+
       navigate(createMode || needsName ? "/app/profile" : "/studios", { replace: true });
     } finally {
       handlingOtp.current = false;

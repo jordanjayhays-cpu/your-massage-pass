@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { trackAccountCreatedConversion, isFreshlyCreatedUser } from "@/lib/adsConversion";
+
 
 type State = "working" | "ok" | "failed";
 
@@ -32,7 +34,15 @@ export default function Welcome() {
         setState("failed");
         return;
       }
+      // Welcome links land brand-new accounts; count the conversion once.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (isFreshlyCreatedUser(user?.created_at, 24 * 60 * 60 * 1000)) trackAccountCreatedConversion();
+      } catch {
+        /* ignore */
+      }
       setState("ok");
+
       window.setTimeout(() => {
         if (!cancelled) navigate("/", { replace: true });
       }, 1400);

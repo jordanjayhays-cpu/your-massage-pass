@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { trackAccountCreatedConversion } from "@/lib/adsConversion";
 
 /**
  * Fire and forget: ask the backend to create a passwordless Massage Club
@@ -16,6 +17,13 @@ export function requestAccountSignup(opts: { email: string; name?: string | null
           name: (opts.name || "").trim() || null,
           lang: (opts.lang || localStorage.getItem("mm-lang") || navigator.language || "en").slice(0, 2),
         },
+      })
+      .then(({ data, error }) => {
+        if (error) return;
+        // Only count genuinely new accounts, never an existing user re-signing in.
+        const d = data as Record<string, unknown> | null;
+        const created = d?.created ?? d?.is_new ?? d?.new_user ?? d?.created_account;
+        if (created === true) trackAccountCreatedConversion();
       })
       .catch(() => {});
   } catch {
