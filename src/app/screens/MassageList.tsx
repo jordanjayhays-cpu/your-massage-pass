@@ -308,39 +308,40 @@ export default function MassageList() {
         </button>
       </div>
 
+      {/* Desktop (>=1280px): marketplace split, list left, sticky map right.
+          Below 1280px this stays exactly as before: map above list. */}
+      <div className="xl:grid xl:grid-cols-[58fr_42fr] xl:gap-6 xl:items-start">
+        {/* Map header banner — shared component, also used on /app/discovery */}
+        <div className="px-5 pt-5 xl:order-2 xl:pr-5 xl:pl-0 xl:sticky xl:top-4 xl:self-start">
+          <BookAgainChip className="mb-3" />
+          <StudioMap
+            shops={realShops}
+            heightClass="h-[230px] xl:h-[calc(100vh-170px)]"
+            autoAskOnMobile
+            highlightedKey={hoverKey}
+            onHoverStudio={setHoverKey}
+            onSearchArea={setAreaBounds}
+            onUserLocation={(loc) => {
+              setUserLoc(loc);
+              setAreaName(savedLocationResult()?.areaName ?? null);
+            }}
+            onSelect={(shop) => handleBook(shop)}
+          />
+          {areaBounds && (
+            <button
+              type="button"
+              onClick={() => setAreaBounds(null)}
+              className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+            >
+              Showing this area only · Clear
+              <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
+            </button>
+          )}
+        </div>
 
-      {/* Map header banner — shared component, also used on /app/discovery */}
-      <div className="px-5 pt-5">
-        <BookAgainChip className="mb-3" />
-        <StudioMap
-          shops={realShops}
-          heightClass="h-[230px]"
-          autoAskOnMobile
-          highlightedKey={hoverKey}
-          onHoverStudio={setHoverKey}
-          onSearchArea={setAreaBounds}
-          onUserLocation={(loc) => {
-            setUserLoc(loc);
-            setAreaName(savedLocationResult()?.areaName ?? null);
-          }}
-          onSelect={(shop) => handleBook(shop)}
-        />
-        {areaBounds && (
-          <button
-            type="button"
-            onClick={() => setAreaBounds(null)}
-            className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
-          >
-            Showing this area only · Clear
-            <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
-          </button>
-        )}
-      </div>
+        {/* Studios list */}
+        <div className="px-5 md:px-8 pt-6 pb-28 xl:order-1 xl:min-w-0 xl:pr-0">
 
-
-
-      {/* Studios list */}
-      <div className="px-5 md:px-8 pt-6 pb-28">
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="font-display text-2xl text-foreground">{t("app.massageList.studiosNearYou")}</h2>
           <div className="flex items-center gap-3">
