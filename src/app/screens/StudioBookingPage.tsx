@@ -1855,8 +1855,9 @@ export default function StudioBookingPage() {
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
               >
-                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> Ask on WhatsApp</span>
-                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Preguntar por WhatsApp</span>
+                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
+                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
+
               </a>
             )}
             <div className="flex flex-wrap gap-2 min-[900px]:gap-2.5">
