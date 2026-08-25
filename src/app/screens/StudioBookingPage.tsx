@@ -759,6 +759,9 @@ export default function StudioBookingPage() {
     };
     const hoWhen1 = exactWhen(hoDate, hoTime);
     const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
+    const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
+    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
+    const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoEmailValid;
     const waMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
@@ -767,9 +770,10 @@ export default function StudioBookingPage() {
       price: hasPrice ? hoPrice : null,
       when1: hoWhen1,
       when2: hoWhen2,
-      name: hoName.trim() || null,
+      name: hoFullName || null,
       languages: spokenLangs,
     });
+
 
 
     const trackWhatsappIntent = () => {
