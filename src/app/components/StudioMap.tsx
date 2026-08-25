@@ -429,7 +429,7 @@ export default function StudioMap({
       {heading && (
         <h3 className="font-display text-lg font-semibold text-foreground mb-3">{heading}</h3>
       )}
-      <div className={`relative rounded-3xl overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${heightClass}`}>
+      <div className={`relative ${roundedClass} overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${heightClass}`}>
         <div ref={mapRef} className="absolute inset-0" />
         <button
           type="button"
