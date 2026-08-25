@@ -154,9 +154,10 @@ export default function ShopDetail() {
   const address = m.address ?? m.location ?? t("default_address");
   const phone = m.phone as string | undefined;
   const waNumber = resolveWhatsappNumber(m);
-  const waHref = waNumber
-    ? studioWhatsappUrl(waNumber, whatsappPrefill({ studio: m.studio }))
-    : null;
+  // Concierge model: client CTAs open a chat with Massage Club, not the studio.
+  const waMessage = conciergePrefill({ lang: i18n.language, studio: m.studio });
+  const waHref = conciergeWhatsappUrl(waMessage);
+
   const firstSentence =
     (m.description as string | undefined)?.split(/[.!?](\s|$)/)[0]?.trim() ||
     t("default_description");
