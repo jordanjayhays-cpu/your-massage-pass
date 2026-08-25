@@ -10,6 +10,7 @@ import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
+import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
 
