@@ -425,7 +425,8 @@ export default function StudioMap({
 
 
   return (
-    <div>
+    <div className={wrapperClass}>
+
       {heading && (
         <h3 className="font-display text-lg font-semibold text-foreground mb-3">{heading}</h3>
       )}
