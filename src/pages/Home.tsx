@@ -12,6 +12,8 @@ import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { BookAgainCard } from "@/app/components/BookAgain";
+import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
+
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
