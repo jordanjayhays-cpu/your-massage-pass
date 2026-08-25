@@ -1287,7 +1287,7 @@ export default function StudioBookingPage() {
       return;
     }
     if (!hasContact) {
-      setStepError({ en: "Add an email or phone so the studio can reach you", es: "Añade un email o teléfono para que el estudio pueda contactarte" });
+      setStepError({ en: "Add a valid email so we can send your confirmation", es: "Añade un email válido para enviarte la confirmación" });
       emailRef.current?.focus();
       return;
     }
