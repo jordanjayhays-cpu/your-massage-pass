@@ -685,11 +685,11 @@ export default function StudioBookingPage() {
                     </a>
                   ) : null}
                   {websiteUrl && (
-                    <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <span>Reservar en su web</span>
-                      <span className="text-xs font-normal opacity-80">Book on their website</span>
+                    <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
+                      Ver su web / Visit their website
                     </a>
                   )}
+
                   {gcal && (
                     <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <CalendarDays size={18} /> Add to my calendar
@@ -861,18 +861,32 @@ export default function StudioBookingPage() {
                 )}
               </p>
             ) : null}
-            <p className="text-sm min-[900px]:text-base mb-1" style={{ color: "#7A7068" }}>
-              {t("app.handoff.notRegistered")}
-            </p>
-            <p className="text-xs min-[900px]:text-sm mb-5" style={{ color: "#9E9387" }}>
-              {t("app.handoff.notRegisteredSub")}
-            </p>
             <p className="text-sm min-[900px]:text-base mb-5" style={{ color: "#5a4736" }}>
-              {t("app.handoff.bookDirectly")}
-              <span className="block text-xs min-[900px]:text-sm mt-0.5" style={{ color: "#7A7068" }}>{t("app.handoff.bookDirectlySub")}</span>
+              This studio isn't on Massage Club yet. We can still set up your booking for you.
+              <span className="block text-xs min-[900px]:text-sm mt-0.5" style={{ color: "#7A7068" }}>
+                Este estudio todavía no está en Massage Club. Aun así te organizamos la reserva.
+              </span>
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (hoServiceId) { hoGo(2); return; }
+                document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              className="w-full min-[900px]:w-auto inline-flex flex-col items-center justify-center min-h-[52px] px-7 rounded-full font-semibold text-white motion-safe:transition hover:opacity-90"
+              style={{ background: "#B85C38" }}
+            >
+              <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Book a massage</span>
+              <span className="text-xs font-normal opacity-90">Reserva un masaje</span>
+            </button>
+            {!hoServiceId && (
+              <p className="text-xs mt-2" style={{ color: "#9E9387" }}>
+                Pick a service below first <span className="opacity-80">/ Elige antes un servicio</span>
+              </p>
+            )}
+
             {profile.services.length > 0 && (
-              <div className="mt-6 text-left">
+              <div id="mc-services-menu" className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
                   {profile.services.map((s: any) => {
@@ -1146,11 +1160,11 @@ export default function StudioBookingPage() {
                 </a>
               )}
               {websiteUrl && (
-                <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                  <span>{t("app.handoff.visitWebsite")}</span>
-                  <span className="text-xs font-normal opacity-80">{t("app.handoff.visitWebsiteSub")}</span>
+                <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
+                  {t("app.handoff.visitWebsite")}
                 </a>
               )}
+
             </div>
             </div>
 
