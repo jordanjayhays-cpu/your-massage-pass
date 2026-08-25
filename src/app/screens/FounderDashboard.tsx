@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FounderAgentChat from "./FounderAgentChat";
 import StudioPipeline from "./founder/StudioPipeline";
+import ConciergeTab from "./founder/ConciergeTab";
+
 
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
