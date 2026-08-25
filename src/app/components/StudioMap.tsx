@@ -36,8 +36,10 @@ type Props = {
   shops?: Shop[];
   /** Tailwind height class for the map canvas. */
   heightClass?: string;
-  /** Tailwind rounding classes for the map frame. */
-  roundedClass?: string;
+  /** Tailwind classes for the outer wrapper. */
+  wrapperClass?: string;
+  /** Optional heading rendered above the map. */
+  heading?: string;
   /** Optional heading rendered above the map. */
   heading?: string;
   /** Show the selected-studio card beneath the map. */
