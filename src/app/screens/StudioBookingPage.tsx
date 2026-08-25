@@ -2154,14 +2154,17 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, labelEs, busy, badge, note, noteEs,
+  ready, onNext, label, labelEs, busy, badge, note, noteEs, summary,
 }: {
   ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean;
-  badge?: { text: string; textEs: string }; note?: string; noteEs?: string;
+  badge?: { text: string; textEs: string }; note?: string; noteEs?: string; summary?: string | null;
 }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
+        {summary && (
+          <p className="w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">{summary}</p>
+        )}
         {badge && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3E7] border border-[#CBE0C4] px-3 py-1 text-[11px] font-semibold text-[#3F6B36]">
             <Check size={12} strokeWidth={3} /> {badge.text} <span className="font-normal opacity-80">/ {badge.textEs}</span>
