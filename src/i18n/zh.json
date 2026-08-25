@@ -313,7 +313,14 @@
       "signedOut": {
         "title": "登录以设置个人资料",
         "subtitle": "保存您的偏好，以便工作室了解您的按摩习惯。",
-        "signInButton": "登录"
+        "signInButton": "登录",
+        "createTitle": "Create your profile",
+        "createSubtitle": "Set up your Massage Club profile in under a minute.",
+        "createButton": "Create your profile",
+        "alreadyHave": "Already have one? Sign in",
+        "benefit1": "Your photo and preferences reach the studio before you arrive",
+        "benefit2": "Book faster next time, details prefilled",
+        "benefit3": "All your bookings in one place"
       },
       "header": {
         "back": "返回",
