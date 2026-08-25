@@ -816,7 +816,7 @@ export default function StudioBookingPage() {
       });
       // Fire and forget: passwordless account, never blocks the WhatsApp handoff.
       if (!userId && createAccount && hoEmail.trim()) {
-        requestAccountSignup({ email: hoEmail.trim(), name: hoName.trim(), lang: siteLang });
+        requestAccountSignup({ email: hoEmail.trim(), name: hoFullName, lang: siteLang });
       }
     };
 
