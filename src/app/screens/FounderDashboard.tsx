@@ -927,6 +927,9 @@ export default function FounderDashboard() {
             )}
           </Card>
         </div>
+        </>
+        )}
+
 
         {/* Agent Team Chat */}
         <div className="mt-6">
