@@ -310,13 +310,14 @@ export default function MassageList() {
 
       {/* Desktop (>=1280px): marketplace split, list left, sticky map right.
           Below 1280px this stays exactly as before: map above list. */}
-      <div className="xl:grid xl:grid-cols-[58fr_42fr] xl:gap-6 xl:items-start">
+      <div className="xl:grid xl:grid-cols-[41fr_59fr] xl:gap-8 xl:items-start">
         {/* Map header banner — shared component, also used on /app/discovery */}
-        <div className="px-5 pt-5 xl:order-2 xl:pr-5 xl:pl-0 xl:sticky xl:top-4 xl:self-start">
-          <BookAgainChip className="mb-3" />
+        <div className="px-5 pt-5 xl:order-2 xl:px-0 xl:pt-0 xl:sticky xl:top-0 xl:self-start xl:h-[calc(100vh-64px)] xl:flex xl:flex-col">
+          <BookAgainChip className="mb-3 xl:mx-4 xl:mt-4" />
           <StudioMap
             shops={realShops}
-            heightClass="h-[230px] xl:h-[calc(100vh-170px)]"
+            heightClass="h-[230px] xl:h-full xl:flex-1"
+            roundedClass="rounded-3xl xl:rounded-none xl:rounded-l-3xl"
             autoAskOnMobile
             highlightedKey={hoverKey}
             onHoverStudio={setHoverKey}
