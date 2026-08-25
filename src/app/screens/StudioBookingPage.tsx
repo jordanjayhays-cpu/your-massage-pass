@@ -672,13 +672,6 @@ export default function StudioBookingPage() {
                       <span className="text-xs font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
                     </a>
                   ) : null}
-
-                  ) : studioNumber ? (
-                    <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                      <span className="inline-flex items-center gap-2"><Phone size={18} /> Llamar al estudio</span>
-                      <span className="text-xs font-normal opacity-90">Call the studio</span>
-                    </a>
-                  ) : null}
                   {websiteUrl && (
                     <a href={websiteUrl} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <span>Reservar en su web</span>
