@@ -70,6 +70,7 @@ import RouteTracker from "./lib/RouteTracker";
 import ConsentBanner from "./components/ConsentBanner";
 import AnalyticsOptOut from "./components/AnalyticsOptOut";
 import ThanksToast from "./components/ThanksToast";
+import WhatsAppBubble from "./app/components/WhatsAppBubble";
 
 
 
@@ -90,6 +91,7 @@ const App = () => (
         <ConsentBanner />
         <AnalyticsOptOut />
         <ThanksToast />
+        <WhatsAppBubble />
 
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
