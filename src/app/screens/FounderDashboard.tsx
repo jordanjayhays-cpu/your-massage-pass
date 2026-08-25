@@ -211,6 +211,8 @@ export default function FounderDashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [tab, setTab] = useState<"overview" | "concierge">("overview");
+
 
   const [profileCount, setProfileCount] = useState<number | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
