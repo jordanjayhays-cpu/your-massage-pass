@@ -331,7 +331,7 @@ export default function MassageTypeInfoButton({
   const [open, setOpen] = useState(false);
   const type = findMassageType(...names);
   if (!type) return null;
-  const vitals = vitalsFor(type.slug);
+  
   const openSheet = () => {
     trackEvent("info_sheet_open", { meta: { type: type.slug } });
     setOpen(true);
