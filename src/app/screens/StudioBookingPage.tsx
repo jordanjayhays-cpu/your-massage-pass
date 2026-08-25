@@ -566,14 +566,15 @@ export default function StudioBookingPage() {
     const waNumber = resolveWhatsappNumber(partner as any);
 
     // Concierge model: every client CTA opens a chat with MASSAGE CLUB, never the studio.
-    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` ${time}` : ""}` : (time || null);
+    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` at ${time}` : ""}` : (time || null);
     const conciergeMsg = conciergePrefill({
       lang: siteLang,
       studio: partner.business_name,
       service: service ? servicePrimaryName(service) : null,
       duration: (service as any)?.duration ?? null,
       price: (service as any)?.price ?? null,
-      when: conciergeWhen,
+      when1: conciergeWhen,
+
       name: name || null,
       languages: spokenLangs,
     });
