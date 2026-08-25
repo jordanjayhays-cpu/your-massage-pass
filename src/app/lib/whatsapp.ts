@@ -87,6 +87,7 @@ export type ConciergePrefill = {
   when2?: string | null;         // exact backup choice, optional
   name?: string | null;          // first name if known
   languages?: string[] | null;   // spoken language codes
+  unclaimed?: boolean;          // true when the studio is not on Massage Club yet
 };
 
 /**
@@ -141,6 +142,13 @@ export function conciergePrefill(p: ConciergePrefill): string {
     }
     if (firstName) parts.push(`My name is ${firstName}.`);
     if (langNames.length) parts.push(`I speak ${joinList(langNames, "and")}.`);
+  }
+  if (p.unclaimed) {
+    parts.push(
+      es
+        ? `(Entiendo que este estudio todavía no está en Massage Club y que vosotros lo organizáis.)`
+        : `(I understand this studio is not on Massage Club yet and you will arrange it for me.)`
+    );
   }
   return parts.join(" ");
 }
