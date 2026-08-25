@@ -277,7 +277,7 @@ export default function Payment() {
               studio: massage.studio,
               service: massage.name,
               duration: massage.duration,
-              when: [dateLabel, booking.time].filter(Boolean).join(" "),
+              when1: [dateLabel, booking.time].filter(Boolean).join(" "),
               name: contact.name,
             })
           );
