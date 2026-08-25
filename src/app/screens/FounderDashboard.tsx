@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import FounderAgentChat from "./FounderAgentChat";
 import StudioPipeline from "./founder/StudioPipeline";
 import ConciergeTab from "./founder/ConciergeTab";
+import BookingWaButtons from "./founder/BookingWaButtons";
 
 
 
@@ -24,6 +25,9 @@ type Booking = {
   created_at?: string;
   is_test?: boolean | null;
   partner_id?: string | null;
+  client_phone?: string | null;
+  lang?: string | null;
+  client_lang?: string | null;
 };
 type Partner = {
   id: string;
@@ -33,6 +37,9 @@ type Partner = {
   email?: string | null;
   outreach_email_at?: string | null;
   outreach_status?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  address?: string | null;
 };
 type SiteVisit = { visitor_key?: string | null; path?: string | null; day?: string | null };
 type SiteEvent = { event?: string | null; visitor_key?: string | null; day?: string | null; partner_slug?: string | null };
@@ -274,7 +281,7 @@ export default function FounderDashboard() {
       ] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(500),
-        supabase.from("partners").select("id,business_name,slug,status,email,outreach_email_at,outreach_status"),
+        supabase.from("partners").select("id,business_name,slug,status,email,outreach_email_at,outreach_status,phone,whatsapp,address"),
         supabase.from("validation_responses").select("*").order("created_at", { ascending: false }),
         supabase.from("marketing_contacts").select("*").order("last_booking_at", { ascending: false }),
         supabase.from("bookings").select("client_email").not("client_email", "is", null).limit(10000),
@@ -376,6 +383,24 @@ export default function FounderDashboard() {
     .filter(isFuture)
     .sort((a, b) => `${a.booking_date} ${a.booking_time}`.localeCompare(`${b.booking_date} ${b.booking_time}`));
   const upcomingConfirmed = upcoming.filter((b) => (b.status || "").toLowerCase() === "confirmed").length;
+
+  // Partner lookup so each booking card can reach the studio's WhatsApp number.
+  const partnerFor = (b: Booking): Partner | null => {
+    if (b.partner_id) {
+      const byId = partners.find((p) => p.id === b.partner_id);
+      if (byId) return byId;
+    }
+    const name = (b.spa_name || "").trim().toLowerCase();
+    return partners.find((p) => (p.business_name || "").trim().toLowerCase() === name) || null;
+  };
+
+  // Due soon: confirmed, non test bookings happening today or tomorrow.
+  const tomorrow = dayKey(now + DAY_MS);
+  const dueSoon = upcoming.filter(
+    (b) =>
+      (b.status || "").toLowerCase() === "confirmed" &&
+      (b.booking_date === today || b.booking_date === tomorrow)
+  );
 
   const within30 = (b: Booking) => !!b.created_at && now - createdAt(b) < 30 * DAY_MS;
   const last30 = realBookings.filter(within30).length;
@@ -534,6 +559,35 @@ export default function FounderDashboard() {
 
         {tab === "overview" && (
         <>
+        {/* 0. Due soon */}
+        {dueSoon.length > 0 && (
+          <div className="rounded-3xl bg-white border border-[#E5DDD3] p-4 sm:p-5 mb-6">
+            <div className="flex items-baseline gap-2 mb-3">
+              <h2 style={serif} className="text-2xl">Due soon</h2>
+              <span className="text-xs text-[#7A7068]">Today and tomorrow</span>
+            </div>
+            <div className="space-y-2">
+              {dueSoon.map((b) => (
+                <div key={`due-${b.id}`} className="rounded-2xl border border-[#E5DDD3] bg-[#FBF8F4] p-3">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+                    <span className="font-semibold tabular-nums">
+                      {b.booking_date === today ? "Today" : "Tomorrow"} {b.booking_time}
+                    </span>
+                    <span>{(b.client_name || "Guest").trim().split(" ")[0]}</span>
+                    <span className="text-[#7A7068]">· {b.spa_name || "Studio"}</span>
+                    {b.massage_type && (
+                      <span className="text-[#7A7068]">· {String(b.massage_type).replace(/_/g, " ")}</span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <BookingWaButtons booking={b} partner={partnerFor(b)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 1. Hero row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 
@@ -569,7 +623,10 @@ export default function FounderDashboard() {
                   <span>{(b.client_name || "Guest").trim().split(" ")[0]}</span>
                   <span className="text-[#7A7068]">· {b.spa_name || "Studio"}</span>
                   {b.massage_type && <span className="text-[#7A7068]">· {String(b.massage_type).replace(/_/g, " ")}</span>}
-                  <span className="ml-auto"><StatusChip status={b.status} /></span>
+                  <span className="ml-auto flex items-center gap-2">
+                    <BookingWaButtons booking={b} partner={partnerFor(b)} />
+                    <StatusChip status={b.status} />
+                  </span>
                 </div>
               ))}
               {upcoming.length === 0 && <p className="text-sm text-[#7A7068] py-4">No upcoming bookings yet.</p>}
