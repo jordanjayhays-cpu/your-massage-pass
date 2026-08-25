@@ -8,6 +8,8 @@ import { saveLead, supabase } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import { useStudioCount } from "@/lib/studioCount";
+import { trackAccountCreatedConversion, isFreshlyCreatedUser } from "@/lib/adsConversion";
+
 
 
 const USER_KEY = "mm-user";
