@@ -1864,8 +1864,8 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!name.trim() || !hasContact}
-                  hint="Add your name and an email or phone so the studio can reach you"
-                  hintEs="Añade tu nombre y un email o teléfono para que el estudio pueda contactarte"
+                  hint="Add your name and a valid email, that is where your confirmation goes"
+                  hintEs="Añade tu nombre y un email válido, ahí te llega la confirmación"
                 />
               </div>
             )}
