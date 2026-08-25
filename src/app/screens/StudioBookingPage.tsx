@@ -833,7 +833,18 @@ export default function StudioBookingPage() {
     const hoGo = (n: number) => {
       setHoStep(n);
       setHoMaxStep(m => Math.max(m, n));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Bring the newly revealed step into view. Without this the next step
+      // renders below the fold and the tap looks like it did nothing.
+      requestAnimationFrame(() => {
+        const el = hoPanelRef.current;
+        if (el) {
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          } catch { /* fall through */ }
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
     };
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
