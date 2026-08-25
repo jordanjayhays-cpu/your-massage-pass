@@ -1,9 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-
-const VIDEO_URL =
-  "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/media/how-booking-works.mp4";
-const POSTER_URL =
-  "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/media/how-booking-works-poster.jpg";
+import { AutoplayVideo } from "./AutoplayVideo";
 
 interface Props {
   /** Max width of the phone frame in px (mobile). Desktop adds ~40px. */
@@ -12,62 +7,25 @@ interface Props {
   label?: string;
 }
 
+const VIDEO_URL =
+  "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/media/how-booking-works.mp4";
+const POSTER_URL =
+  "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/media/how-booking-works-poster.jpg";
+
 /**
  * Vertical 9:16 explainer clip in a phone-sized frame.
  * Autoplays only while at least 50% visible; pauses when out of view.
  * Respects prefers-reduced-motion by showing controls and never autoplaying.
  */
 export function HowBookingWorksVideo({ size = "md", className = "", label = "How booking works" }: Props) {
-  const ref = useRef<HTMLVideoElement | null>(null);
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || reduced) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-            el.play().catch(() => {
-              /* autoplay can be blocked, ignore */
-            });
-          } else {
-            el.pause();
-          }
-        }
-      },
-      { threshold: [0, 0.5, 1] }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [reduced]);
-
-  const width = size === "sm" ? "max-w-[240px] min-[900px]:max-w-[280px]" : "max-w-[300px] min-[900px]:max-w-[340px]";
-
   return (
-    <div className={`mx-auto w-full ${width} ${className}`}>
-      <video
-        ref={ref}
-        src={VIDEO_URL}
-        poster={POSTER_URL}
-        aria-label={label}
-        playsInline
-        muted
-        loop
-        preload="metadata"
-        controls={reduced}
-        className="w-full aspect-[9/16] rounded-[22px] border object-cover"
-        style={{ borderColor: "#E6DED4", background: "#000" }}
-      />
-    </div>
+    <AutoplayVideo
+      src={VIDEO_URL}
+      poster={POSTER_URL}
+      size={size}
+      className={className}
+      label={label}
+    />
   );
 }
 
