@@ -48,9 +48,11 @@ export function useLastBooking(partnerId?: string | null) {
       }
       let query = supabase
         .from("bookings")
-        .select("id, massage_type, spa_name, partner_id, client_name, status, created_at, partners ( id, slug, business_name, cover_url )")
+        .select("id, massage_type, spa_name, partner_id, client_name, status, is_test, created_at, partners!inner ( id, slug, business_name, cover_url, status )")
         .eq("user_id", user.id)
         .neq("status", "cancelled")
+        .not("is_test", "is", true)
+        .eq("partners.status", "active")
         .order("created_at", { ascending: false })
         .limit(1);
       if (partnerId) query = query.eq("partner_id", partnerId);
@@ -61,6 +63,10 @@ export function useLastBooking(partnerId?: string | null) {
 
       const row = data as any;
       const partner = Array.isArray(row.partners) ? row.partners[0] : row.partners;
+      // Belt and braces: never surface test data or non-active studios.
+      if (row.is_test === true || !partner || partner.status !== "active") {
+        setLastBooking(null); setLoading(false); return;
+      }
       const key = partner?.slug || row.partner_id;
       if (!key) { setLastBooking(null); setLoading(false); return; }
 
