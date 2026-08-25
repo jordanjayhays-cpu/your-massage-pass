@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FounderAgentChat from "./FounderAgentChat";
 import StudioPipeline from "./founder/StudioPipeline";
+import ConciergeTab from "./founder/ConciergeTab";
+
 
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
@@ -211,6 +213,8 @@ export default function FounderDashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [tab, setTab] = useState<"overview" | "concierge">("overview");
+
 
   const [profileCount, setProfileCount] = useState<number | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -509,8 +513,30 @@ export default function FounderDashboard() {
           </div>
         </div>
 
+        <div className="flex gap-2 mb-6">
+          {(["overview", "concierge"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="px-4 h-9 rounded-full text-sm font-medium border capitalize"
+              style={{
+                background: tab === t ? "#C4622D" : "#FFFFFF",
+                color: tab === t ? "#F7F4F0" : "#211C1A",
+                borderColor: tab === t ? "#C4622D" : "#E5DDD3",
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {tab === "concierge" && <ConciergeTab refreshTick={refreshTick} />}
+
+        {tab === "overview" && (
+        <>
         {/* 1. Hero row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
           <HeroStat
             label="Bookings this week"
             labelEs="Reservas esta semana"
@@ -905,6 +931,9 @@ export default function FounderDashboard() {
             )}
           </Card>
         </div>
+        </>
+        )}
+
 
         {/* Agent Team Chat */}
         <div className="mt-6">
