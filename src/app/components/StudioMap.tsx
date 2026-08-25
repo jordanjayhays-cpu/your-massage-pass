@@ -141,6 +141,7 @@ const MAP_STYLES: google.maps.MapTypeStyle[] = [
 export default function StudioMap({
   shops,
   heightClass = "h-[230px]",
+  roundedClass = "rounded-3xl",
   heading,
   showSelectedCard = true,
   onSelect,
