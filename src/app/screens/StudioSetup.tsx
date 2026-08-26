@@ -451,7 +451,6 @@ function StudioSetupInner() {
           .from("partners")
           .select("*")
           .eq("claim_token", claimToken)
-          .eq("status", "pending")
           .maybeSingle();
         if (error || !partner) {
           setSourceError(t("partner.studioSetup.claimInvalidError"));
@@ -465,6 +464,12 @@ function StudioSetupInner() {
 
         setSourceData(partner);
         setEmail(partner.email || "");
+        setActivateEmail(partner.email || "");
+        setActivateAddress(partner.address || "");
+        if (partner.status !== "pending") {
+          setClaimActivated(true);
+          setLiveEmail(partner.email || "");
+        }
         setStudio({
           business_name: partner.business_name || "",
           address: partner.address || "",
@@ -481,9 +486,11 @@ function StudioSetupInner() {
         if (user) {
           setPartnerId(user.id);
           setEmail(user.email || partner.email || "");
+          setClaimAdvanced(true);
           setStep(2);
         }
         setValidatingSource(false);
+
       })();
       return;
     }
