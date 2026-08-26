@@ -406,6 +406,7 @@ export default function ShopDetail() {
           </div>
         </div>
       </div>
+      {favouriteSheet}
     </div>
   );
 }
