@@ -369,6 +369,51 @@ export default function MassageList() {
           </div>
         </div>
 
+        {/* All / Saved tabs, so the saved list has somewhere to live */}
+        <div className="flex items-center gap-2 mb-4" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={!savedOnly}
+            onClick={() => { setSavedOnly(false); setVisibleCount(8); }}
+            className={cn(
+              "h-9 px-4 rounded-full text-xs font-semibold border transition",
+              !savedOnly ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/50",
+            )}
+          >
+            {lang === "es" ? "Todos" : "All"}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={savedOnly}
+            onClick={() => { setSavedOnly(true); setVisibleCount(8); }}
+            className={cn(
+              "h-9 px-4 rounded-full text-xs font-semibold border transition flex items-center gap-1.5",
+              savedOnly ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/50",
+            )}
+          >
+            <Heart className={cn("h-3 w-3", savedOnly ? "fill-current" : "")} />
+            {lang === "es" ? "Guardados" : "Saved"}
+            {favourites.length > 0 && <span className="opacity-80">({favourites.length})</span>}
+          </button>
+        </div>
+
+        {savedOnly && favourites.length === 0 && (
+          <div className="rounded-3xl border border-border/70 bg-secondary/40 p-5 mb-4">
+            <p className="text-sm font-semibold text-foreground">
+              {lang === "es" ? "Aún no has guardado estudios" : "No saved studios yet"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lang === "es"
+                ? "Toca el corazón en cualquier estudio para guardarlo aquí."
+                : "Tap the heart on any studio to keep it here."}
+            </p>
+          </div>
+        )}
+
+
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
           {shopsLoading ? (
             <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
