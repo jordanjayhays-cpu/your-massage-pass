@@ -234,6 +234,25 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
           </div>
         </section>
       </div>
+
+      {/* Mobile only conversion bar. Desktop keeps the page clean. */}
+      {matches.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E6DCCF] bg-white/95 px-4 py-3 backdrop-blur min-[900px]:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate text-sm font-semibold text-[#2b2b2b]">
+              {es ? type.name.es : type.name.en}
+            </span>
+            <button
+              type="button"
+              onClick={scrollToStudios}
+              className="flex min-h-11 flex-shrink-0 items-center justify-center rounded-full bg-[#B85C38] px-5 text-sm font-semibold text-white"
+            >
+              {es ? "Buscar estudio" : "Find a studio"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 }
