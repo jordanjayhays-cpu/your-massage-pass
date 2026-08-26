@@ -213,6 +213,10 @@ const App = () => (
           <Route path="/claim/:slug" element={<ClaimShortLink />} />
           <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Studio terms page */}
+          <Route path="/for-studios" element={<ForStudios />} />
+          <Route path="/para-estudios" element={<ForStudios />} />
+
           {/* Canonical studio URL on every host: /{slug} */}
           <Route path="/:studioId" element={<StudioBookingPage />} />
 
