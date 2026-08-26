@@ -411,6 +411,15 @@ export default function StudioBookingPage() {
     })();
   }, [rebookId, stepParam, profile]);
 
+  // Deep link from a massage type landing page: ?service=<id> preselects it.
+  const serviceParam = searchParams.get("service");
+  useEffect(() => {
+    if (!serviceParam || !profile || rebookId) return;
+    const match = profile.services.find(s => s.id === serviceParam);
+    if (!match) return;
+    setServiceId(prev => prev ?? match.id);
+    setHoServiceId(prev => prev || match.id);
+  }, [serviceParam, profile, rebookId]);
 
 
 
