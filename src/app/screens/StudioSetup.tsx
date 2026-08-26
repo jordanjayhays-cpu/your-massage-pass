@@ -578,7 +578,7 @@ function StudioSetupInner() {
   const handleMagicLink = async () => {
     if (!email) { toast.error(t("partner.studioSetup.enterEmailFirst")); return; }
     setMagicLoading(true);
-    const emailRedirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}`;
+    const emailRedirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}&full=1`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo },
