@@ -6,6 +6,7 @@ import { MobileFrame } from "./MobileFrame";
 import { supabase } from "@/lib/supabase";
 import { captureReferralFromUrl } from "@/lib/referral";
 import { captureSource } from "@/lib/attribution";
+import { migrateFavouritesToAccount } from "@/lib/favourites";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
