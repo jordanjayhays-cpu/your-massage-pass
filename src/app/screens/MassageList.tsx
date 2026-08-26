@@ -126,7 +126,8 @@ export default function MassageList() {
           (m as any).lat >= areaBounds.south &&
           (m as any).lng <= areaBounds.east &&
           (m as any).lng >= areaBounds.west);
-      return matchesQ && matchesType && matchesArea;
+      const matchesSaved = !savedOnly || isFavourite(favouriteKey(m as any));
+      return matchesQ && matchesType && matchesArea && matchesSaved;
     })
 
     .map((m) => ({
