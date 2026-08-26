@@ -323,6 +323,15 @@ export default function Login() {
         <p className="text-[13px] text-[#7A7068] text-center leading-relaxed">
           {t("hero.ctaNote")}
         </p>
+        <button
+          onClick={() => {
+            navigate("/login?create=1");
+            requestAnimationFrame(() => document.getElementById("mc-email-auth")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+          }}
+          className="mx-auto block text-[13px] text-[#7A7068] underline underline-offset-4 hover:text-[#C4622D] min-h-11"
+        >
+          {i18n.language?.startsWith("es") ? "Crea tu perfil gratis" : "Create a free profile"}
+        </button>
         <Button
           onClick={handleGoogle}
           variant="outline"
