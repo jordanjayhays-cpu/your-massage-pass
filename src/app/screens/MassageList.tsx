@@ -308,41 +308,37 @@ export default function MassageList() {
         </button>
       </div>
 
-      {/* Desktop (>=1280px): marketplace split, list left, sticky map right.
-          Below 1280px this stays exactly as before: map above list. */}
-      <div className="xl:grid xl:grid-cols-[48fr_52fr] xl:gap-8 xl:items-start">
-        {/* Map header banner — shared component, also used on /app/discovery */}
-        <div className="px-5 pt-5 xl:order-2 xl:px-0 xl:pt-0 xl:sticky xl:top-0 xl:self-start xl:h-screen xl:flex xl:flex-col">
-          <BookAgainChip className="mb-3 xl:mx-4 xl:mt-4" />
-          <StudioMap
-            shops={realShops}
-            wrapperClass="xl:flex-1 xl:min-h-0 xl:flex xl:flex-col"
-            heightClass="h-[230px] xl:h-auto xl:flex-1 xl:min-h-0"
-            roundedClass="rounded-3xl xl:rounded-none xl:rounded-r-3xl"
-            autoAskOnMobile
-            highlightedKey={hoverKey}
-            onHoverStudio={setHoverKey}
-            onSearchArea={setAreaBounds}
-            onUserLocation={(loc) => {
-              setUserLoc(loc);
-              setAreaName(savedLocationResult()?.areaName ?? null);
-            }}
-            onSelect={(shop) => handleBook(shop)}
-          />
-          {areaBounds && (
-            <button
-              type="button"
-              onClick={() => setAreaBounds(null)}
-              className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
-            >
-              Showing this area only · Clear
-              <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
-            </button>
-          )}
-        </div>
+      {/* Map header banner — shared component, also used on /app/discovery */}
+      <div className="px-5 pt-5">
+        <BookAgainChip className="mb-3" />
+        <StudioMap
+          shops={realShops}
+          heightClass="h-[230px]"
+          roundedClass="rounded-3xl"
+          autoAskOnMobile
+          highlightedKey={hoverKey}
+          onHoverStudio={setHoverKey}
+          onSearchArea={setAreaBounds}
+          onUserLocation={(loc) => {
+            setUserLoc(loc);
+            setAreaName(savedLocationResult()?.areaName ?? null);
+          }}
+          onSelect={(shop) => handleBook(shop)}
+        />
+        {areaBounds && (
+          <button
+            type="button"
+            onClick={() => setAreaBounds(null)}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+          >
+            Showing this area only · Clear
+            <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
+          </button>
+        )}
+      </div>
 
         {/* Studios list */}
-        <div className="px-5 md:px-8 pt-6 pb-28 xl:order-1 xl:min-w-0 xl:pr-0">
+        <div className="px-5 md:px-8 pt-6 pb-28">
 
         {/* Heading on its own row until the column is wide enough (about 700px)
             to carry the meta actions beside it. */}
@@ -565,7 +561,6 @@ export default function MassageList() {
           >
             {t("app.massageList.studioCta")}
           </button>
-        </div>
         </div>
       </div>
 
