@@ -917,6 +917,202 @@ function StudioSetupInner() {
     );
   }
 
+  // ---------------------------------------------------------------------
+  // ONE-TAP CLAIM (default for /claim/<slug> links)
+  // A yes is all it takes to be listed and receive bookings. Account,
+  // calendar, hours and photos are optional and come after, never before.
+  // ---------------------------------------------------------------------
+  const claimSlug = (sourceData?.slug || sourceData?.id || "").toString();
+  const claimPageUrl = `book.massageclub.io/${claimSlug}`;
+  const needsAddress = !((sourceData?.address || "").trim());
+
+  const handleActivate = async () => {
+    setActivateError("");
+    const em = activateEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) { setActivateError(t("partner.studioSetup.oneStepEmailInvalid")); return; }
+    if (needsAddress && !activateAddress.trim()) { setActivateError(t("partner.studioSetup.oneStepAddressRequired")); return; }
+    setActivating(true);
+    const { data, error } = await supabase.rpc("claim_activate_partner", {
+      p_claim_token: claimToken,
+      p_email: em,
+      p_address: activateAddress.trim() || null,
+    });
+    setActivating(false);
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) { setActivateError(t("partner.studioSetup.oneStepFailed")); return; }
+    setLiveEmail(row.email || em);
+    setSourceData((prev: any) => ({ ...prev, status: "active", email: row.email || em, address: activateAddress.trim() || prev?.address, slug: row.slug || prev?.slug }));
+    setClaimActivated(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openOptionalSetup = () => { setClaimAdvanced(true); setStep(1); window.scrollTo({ top: 0 }); };
+
+  const helpWaHref = `https://wa.me/${MASSAGE_CLUB_WA}?text=${encodeURIComponent(
+    `Hola Jordan, soy de ${sourceData?.business_name || "mi estudio"}. ¿Me lo configuráis vosotros?`
+  )}`;
+
+  if (mode === "claim" && !claimAdvanced) {
+    const realServices = services.filter(s => s.name.trim());
+    return (
+      <div className="min-h-screen bg-[#FAF6F1]">
+        <div className="max-w-xl mx-auto px-4 py-8 space-y-4">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 bg-[#B85C38] text-[#FAF6F1] px-4 py-1.5 rounded-full text-sm font-semibold mb-3">
+              <img src="/brand/mc-avatar-cream.png" alt="Massage Club" className="h-6 w-6 rounded-full object-cover -ml-1" />
+              {t("partner.studioSetup.oneStepBadge")}
+            </div>
+            <h1 className="font-display text-3xl font-bold text-[#2b2b2b]">
+              {t("partner.studioSetup.oneStepHeading", { businessName: sourceData?.business_name })}
+            </h1>
+            {!claimActivated && (
+              <p className="text-[#7A7068] text-sm mt-1">{t("partner.studioSetup.oneStepSub")}</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-[#E5DDD3] bg-[#FAF7F2] p-4">
+            <label className="text-xs font-medium text-[#7A7068] mb-2 block">{t("partner.studioSetup.langChooserLabel")}</label>
+            <PartnerLangPills value={lang} onChange={(l) => { setLang(l); applyPartnerLang(l); }} />
+          </div>
+
+          {claimActivated ? (
+            <>
+              <Card className="border border-[#9E4D22] shadow-[0_10px_30px_rgba(184,92,56,0.25)] rounded-2xl bg-gradient-to-br from-[#B85C38] to-[#9E4D22]">
+                <CardContent className="p-8 text-center text-white">
+                  <div className="h-16 w-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="h-8 w-8 text-white" />
+                  </div>
+                  <h2 className="font-display text-2xl font-bold mb-2 text-white">{t("partner.studioSetup.oneStepLiveTitle")}</h2>
+                  <p className="text-[#FAF6F1] text-sm font-semibold">
+                    {t("partner.studioSetup.oneStepLiveUrl", { url: claimPageUrl })}
+                  </p>
+                  <p className="text-[#FAF6F1]/90 text-sm mt-2">
+                    {t("partner.studioSetup.oneStepLiveBody", { email: liveEmail })}
+                  </p>
+                  <a
+                    href={`/${claimSlug}`}
+                    className="mt-6 inline-flex w-full items-center justify-center h-12 rounded-xl bg-white text-[#B85C38] font-semibold"
+                  >
+                    {t("partner.studioSetup.oneStepViewPage")}
+                  </a>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border border-[#E5DDD3] rounded-2xl">
+                <CardContent className="p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#9E9387] mb-3">
+                    {t("partner.studioSetup.oneStepOptionalTitle")}
+                  </p>
+                  <div className="flex flex-col items-start gap-2.5">
+                    {[
+                      t("partner.studioSetup.oneStepOptAccount"),
+                      t("partner.studioSetup.oneStepOptCalendar"),
+                      t("partner.studioSetup.oneStepOptHours"),
+                      t("partner.studioSetup.oneStepOptPhotos"),
+                    ].map(label => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={openOptionalSetup}
+                        className="text-sm text-[#B85C38] hover:underline underline-offset-2"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card className="bg-white border border-[#E5DDD3] shadow-[0_4px_20px_rgba(184,92,56,0.06)] rounded-2xl">
+                <CardContent className="p-6 space-y-4">
+                  <div>
+                    <p className="font-display text-lg font-semibold text-[#2b2b2b]">{sourceData?.business_name}</p>
+                    {sourceData?.address && (
+                      <p className="text-sm text-[#7A7068] flex items-center gap-1.5 mt-1">
+                        <MapPin size={14} /> {sourceData.address}
+                      </p>
+                    )}
+                    <p className="text-xs text-[#9E9387] mt-1">{claimPageUrl}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E5DDD3] bg-[#FAF6F1] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#9E9387] mb-2">
+                      {t("partner.studioSetup.oneStepServicesTitle")}
+                    </p>
+                    {realServices.length === 0 ? (
+                      <p className="text-sm text-[#7A7068]">{t("partner.studioSetup.oneStepNoServices")}</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {realServices.map((s, i) => (
+                          <li key={i} className="flex items-baseline justify-between gap-3 text-sm text-[#2b2b2b]">
+                            <span>{s.name} <span className="text-[#9E9387]">· {s.duration} min</span></span>
+                            <span className="font-semibold whitespace-nowrap">{s.price} €</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {!activateOpen ? (
+                    <>
+                      <Button
+                        onClick={() => setActivateOpen(true)}
+                        className="w-full h-14 bg-[#B85C38] hover:bg-[#9E4D22] text-white text-base font-semibold rounded-xl"
+                      >
+                        {t("partner.studioSetup.oneStepYes")}
+                      </Button>
+                      <p className="text-xs text-center text-[#7A7068]">{t("partner.studioSetup.oneStepReassure")}</p>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.oneStepEmailLabel")}</label>
+                        <Input type="email" value={activateEmail} onChange={e => setActivateEmail(e.target.value)} placeholder={t("partner.studioSetup.emailPlaceholder")} className="h-12" />
+                        <p className="text-[11px] text-[#7A7068] mt-1.5">{t("partner.studioSetup.oneStepEmailHelp")}</p>
+                      </div>
+                      {needsAddress && (
+                        <div>
+                          <label className="text-xs font-medium text-[#7A7068] mb-1 block">{t("partner.studioSetup.oneStepAddressLabel")}</label>
+                          <Input value={activateAddress} onChange={e => setActivateAddress(e.target.value)} placeholder={t("partner.studioSetup.oneStepAddressPlaceholder")} className="h-12" />
+                        </div>
+                      )}
+                      {activateError && <p className="text-sm text-red-600 bg-red-500/10 p-3 rounded-xl">{activateError}</p>}
+                      <Button
+                        onClick={handleActivate}
+                        disabled={activating}
+                        className="w-full h-14 bg-[#B85C38] hover:bg-[#9E4D22] text-white text-base font-semibold rounded-xl"
+                      >
+                        {activating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t("partner.studioSetup.oneStepActivating")}</> : t("partner.studioSetup.oneStepConfirm")}
+                      </Button>
+                      <p className="text-xs text-center text-[#7A7068]">{t("partner.studioSetup.oneStepReassure")}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          <div className="text-center pt-2 space-y-1">
+            <a href={helpWaHref} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#B85C38] hover:underline">
+              {t("partner.studioSetup.oneStepHelp")}
+            </a>
+            <p className="text-xs text-[#9E9387]">{t("partner.studioSetup.oneStepHelpSub")}</p>
+          </div>
+
+          <div className="text-center pt-2">
+            <a href="/for-studios" className="text-xs font-medium text-[#7A7068] hover:text-[#B85C38] hover:underline">
+              {t("partner.studioSetup.claimBadgeLabel")} · /for-studios
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+
   const stepLabels = mode === "claim"
     ? [t("partner.studioSetup.stepLabelSignIn"), t("partner.studioSetup.stepLabelReview"), t("partner.studioSetup.stepLabelServices"), t("partner.studioSetup.stepLabelCalendar"), t("partner.studioSetup.stepLabelPassword"), t("partner.studioSetup.stepLabelLive")]
     : mode === "draft"
