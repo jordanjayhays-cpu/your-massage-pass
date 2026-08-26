@@ -339,6 +339,7 @@ export default function Web() {
           <div>
             <div className="font-medium text-[#1f1b19] mb-3">For studios</div>
             <ul className="space-y-2">
+              <li><Link to="/for-studios" className="hover:text-[#99420d]">Terms for studios</Link></li>
               <li><Link to="/partner/onboarding" className="hover:text-[#99420d]">Become a partner</Link></li>
               <li><Link to="/partner/login" className="hover:text-[#99420d]">Partner login</Link></li>
             </ul>
