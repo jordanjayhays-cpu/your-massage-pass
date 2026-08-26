@@ -242,21 +242,24 @@ export default function Web() {
               From sore to sorted in three steps.
             </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            {STEPS.map((step) => (
-              <div key={step.n}>
-                <div
-                  className="text-5xl text-[#ffb693] mb-4"
-                  style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
-                >
-                  {step.n}
+          <div className="grid gap-10 lg:grid-cols-[320px_1fr] lg:items-center">
+            <HowBookingWorksVideo label="How booking works" />
+            <div className="grid md:grid-cols-3 gap-10">
+              {STEPS.map((step) => (
+                <div key={step.n}>
+                  <div
+                    className="text-5xl text-[#ffb693] mb-4"
+                    style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
+                  >
+                    {step.n}
+                  </div>
+                  <h3 className="text-xl mb-2" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
+                    {step.t}
+                  </h3>
+                  <p className="text-[#7A7068] leading-relaxed">{step.d}</p>
                 </div>
-                <h3 className="text-xl mb-2" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-                  {step.t}
-                </h3>
-                <p className="text-[#7A7068] leading-relaxed">{step.d}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
