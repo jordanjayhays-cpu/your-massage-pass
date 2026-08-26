@@ -1338,7 +1338,7 @@ export default function StudioBookingPage() {
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
     // A step completes whenever we move forward from it.
-    if (n > step) trackEvent("wizard_step", { slug: partner?.slug || studioId, meta: { step: BOOKING_STEPS[step - 1]?.label ?? String(step) } });
+    if (n > step) trackEvent(`wizard_step_${n}`, { slug: partner?.slug || studioId, meta: { step: BOOKING_STEPS[step - 1]?.label ?? String(step) } });
     setStep(n);
     setMaxStep(m => Math.max(m, n));
     setStepError(null);
@@ -1670,7 +1670,7 @@ export default function StudioBookingPage() {
                               <div className="min-w-0">
                                 <p className="font-semibold text-gray-900 min-[900px]:text-lg flex items-center gap-1.5">
                                   {serviceId === s.id && <Check size={16} className="text-[#C4622D] flex-shrink-0" />}
-                                  {servicePrimaryName(s)}
+                                  {servicePrimaryName(s)}{Number(s.duration) > 0 ? ` · ${Number(s.duration)} min` : ""}
                                 </p>
                                 {serviceSecondaryName(s) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s)}</p>}
                                 {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
@@ -1707,7 +1707,10 @@ export default function StudioBookingPage() {
               <div ref={dateRef} className="min-w-0">
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
                   {openDates.length === 0 ? (
-                    <p className="text-sm min-[900px]:text-base text-gray-400">No availability set yet. Message the studio directly.</p>
+                    <div className="text-sm min-[900px]:text-base text-gray-500">
+                      <p>Este estudio todavía no ha publicado horarios. Pídelo por WhatsApp y lo organizamos.</p>
+                      <p className="text-gray-400 mt-1">This studio has not published its hours yet. Ask on WhatsApp and we will arrange it.</p>
+                    </div>
                   ) : (
                     <div className="relative flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
                       {openDates.map(d => {

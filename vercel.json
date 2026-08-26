@@ -22,10 +22,6 @@
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/sitemap"
     },
     {
-      "source": "/:slug/hours",
-      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours?slug=:slug"
-    },
-    {
       "source": "/confirm-hours",
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours"
     },
