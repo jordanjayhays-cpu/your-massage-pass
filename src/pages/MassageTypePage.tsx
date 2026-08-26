@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin } from "lucide-react";
+import { ArrowLeft, MapPin, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { massageTypeBySlug, findMassageType, MASSAGE_TYPES_CONTENT } from "@/lib/massageTypes";
 import { MassageTypeBody } from "@/app/components/MassageTypeInfo";
-import { fetchShops, type Shop } from "@/lib/supabase";
+import { fetchShops, type Shop, type ShopService } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import { conciergePrefill, conciergeWhatsappUrl, MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
+import { logWhatsappRequest } from "@/lib/whatsappLog";
+import { trackEvent } from "@/lib/siteVisit";
+import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import NotFound from "./NotFound";
+
 
 /**
  * Standalone, shareable page for one massage type: /massages/<slug>.
