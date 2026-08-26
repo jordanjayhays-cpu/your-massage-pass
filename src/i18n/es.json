@@ -1209,9 +1209,9 @@
       "toastAutoConfirmOff": "Confirmación automática desactivada"
     },
     "studioSetup": {
-      "oneStepBadge": "Tu página está lista",
-      "oneStepHeading": "{{businessName}} ya está en Massage Club",
-      "oneStepSub": "Esto es lo que ya ven los clientes. No hay nada que montar ni instalar.",
+      "oneStepBadge": "Vuestra página, en borrador",
+      "oneStepHeading": "Hemos preparado vuestra página",
+      "oneStepSub": "No está activa hasta que lo digáis vosotros.",
       "oneStepServicesTitle": "Servicios y precios que tenemos de vosotros",
       "oneStepNoServices": "Aún no hay servicios. Los añadimos nosotros más adelante.",
       "oneStepYes": "Sí, empezad a enviarme reservas",
@@ -1236,7 +1236,6 @@
       "oneStepHelp": "Configurádmelo vosotros",
       "oneStepHelpSub": "Lo hacemos juntos por WhatsApp",
       "oneStepEmailHelp": "Solo lo usamos para enviaros reservas.",
-
       "pwErrorMinLength": "La contraseña debe tener al menos 8 caracteres.",
       "pwErrorMismatch": "Las contraseñas no coinciden.",
       "pwSavedToast": "Contraseña guardada",

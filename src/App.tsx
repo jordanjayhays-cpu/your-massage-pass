@@ -66,6 +66,7 @@ import MadridMalasana from "./pages/guides/MadridMalasana";
 import IsMassageGoodForYou from "./pages/guides/IsMassageGoodForYou";
 import YourFirstMassageInMadrid from "./pages/guides/YourFirstMassageInMadrid";
 import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
+import StudioHours from "./pages/StudioHours";
 import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
 import ConsentBanner from "./components/ConsentBanner";
@@ -130,7 +131,7 @@ const App = () => (
           <Route path="/confirm-hours" element={<ConfirmHoursRedirect />} />
 
           {/* Per-studio pretty hours link: book.massageclub.io/spa-calma/hours?c=ab12cd */}
-          <Route path="/:studioId/hours" element={<ConfirmHoursRedirect />} />
+          <Route path="/:studioId/hours" element={<StudioHours />} />
 
           {/* Branded forwarder for one-tap booking action links in emails.
               Preserves query string and hash, then hops to the Supabase edge function. */}
