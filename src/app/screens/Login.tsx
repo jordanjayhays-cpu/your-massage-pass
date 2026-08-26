@@ -458,6 +458,10 @@ export default function Login() {
       {/* How it works — editorial three column */}
       <div className="px-6 mt-10">
         <p className="text-[11px] uppercase tracking-[0.3em] text-[#7A7068] mb-5">{t("howItWorks.title")}</p>
+        <HowBookingWorksVideo
+          className="mb-6"
+          label={i18n.language?.startsWith("es") ? "Cómo funciona la reserva" : "How booking works"}
+        />
         <div className="space-y-5">
           {[
             { n: "01", icon: Search, title: t("howItWorks.step1.title"), sub: t("howItWorks.step1.subtitle") },
