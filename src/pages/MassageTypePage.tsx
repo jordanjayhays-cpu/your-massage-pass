@@ -121,7 +121,8 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
 
   return (
     <div className="min-h-screen bg-[#FDFBF8]">
-      <div className="mx-auto max-w-[760px] px-5 py-6 min-[900px]:py-10">
+      <div className="mx-auto max-w-[760px] px-5 py-6 pb-28 min-[900px]:py-10 min-[900px]:pb-10">
+
         <Link to="/studios" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#B85C38]">
           <ArrowLeft size={16} /> All studios <span className="font-normal text-[#8a7460]">/ Todos los estudios</span>
         </Link>
