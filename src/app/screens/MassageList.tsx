@@ -310,7 +310,7 @@ export default function MassageList() {
 
       {/* Desktop (>=1280px): marketplace split, list left, sticky map right.
           Below 1280px this stays exactly as before: map above list. */}
-      <div className="xl:grid xl:grid-cols-[41fr_59fr] xl:gap-8 xl:items-start">
+      <div className="xl:grid xl:grid-cols-[48fr_52fr] xl:gap-8 xl:items-start">
         {/* Map header banner — shared component, also used on /app/discovery */}
         <div className="px-5 pt-5 xl:order-2 xl:px-0 xl:pt-0 xl:sticky xl:top-0 xl:self-start xl:h-screen xl:flex xl:flex-col">
           <BookAgainChip className="mb-3 xl:mx-4 xl:mt-4" />
@@ -344,9 +344,11 @@ export default function MassageList() {
         {/* Studios list */}
         <div className="px-5 md:px-8 pt-6 pb-28 xl:order-1 xl:min-w-0 xl:pr-0">
 
-        <div className="flex items-baseline justify-between mb-4">
+        {/* Heading on its own row until the column is wide enough (about 700px)
+            to carry the meta actions beside it. */}
+        <div className="flex flex-col gap-2 mb-4 min-[1700px]:flex-row min-[1700px]:items-baseline min-[1700px]:justify-between">
           <h2 className="font-display text-2xl text-foreground">{t("app.massageList.studiosNearYou")}</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {!userLoc && (
               <button
                 onClick={handleShowDistances}
