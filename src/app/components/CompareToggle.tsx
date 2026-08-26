@@ -51,7 +51,10 @@ export default function CompareToggle({ studio, className, size = "md" }: Props)
         {selected ? <Check className="h-3 w-3 text-primary" /> : <Scale className="h-2.5 w-2.5 text-muted-foreground" />}
       </span>
       <span className="font-semibold">Compare</span>
-      <span className={cn("font-normal", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>· Comparar</span>
+      {/* The Spanish gloss is dropped in the compact size so chips fit two per row. */}
+      {size !== "sm" && (
+        <span className={cn("font-normal", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>· Comparar</span>
+      )}
     </button>
   );
 }
