@@ -407,7 +407,7 @@ export default function MassageList() {
                           <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
                         )}
                         <button
-                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFav(m.id); }}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavourite(m as any); }}
                           aria-label={t("app.massageList.favorite")}
                           className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
                         >
