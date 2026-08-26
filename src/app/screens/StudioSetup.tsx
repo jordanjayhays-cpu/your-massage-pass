@@ -563,7 +563,7 @@ function StudioSetupInner() {
   // Step 1 (claim): sign in with Google — comes back to this same claim URL.
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    const redirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}`;
+    const redirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}&full=1`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
