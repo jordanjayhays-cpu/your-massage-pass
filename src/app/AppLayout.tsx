@@ -14,7 +14,14 @@ export default function AppLayout() {
   useEffect(() => {
     captureReferralFromUrl();
     captureSource();
+    // Any favourites saved while logged out follow the visitor into the account.
+    void migrateFavouritesToAccount();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") void migrateFavouritesToAccount();
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
+
 
 
   // Sync preferred language from the signed-in user's profile (once per session).
