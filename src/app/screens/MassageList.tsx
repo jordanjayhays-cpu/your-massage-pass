@@ -571,6 +571,7 @@ export default function MassageList() {
 
 
       <CompareBar className="pb-[86px]" />
+      {favouriteSheet}
     </div>
   );
 }
