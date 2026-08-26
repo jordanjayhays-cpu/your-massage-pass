@@ -400,7 +400,7 @@ export default function MassageList() {
                       <Link
                         to={cardHref(m)}
                         onClick={(e) => { e.stopPropagation(); }}
-                        className="relative h-[110px] w-[110px] rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block"
+                        className="relative h-24 w-24 rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block"
                       >
                         {m.image && (
                           <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
@@ -408,28 +408,28 @@ export default function MassageList() {
                         <button
                           onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFav(m.id); }}
                           aria-label={t("app.massageList.favorite")}
-                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
+                          className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
                         >
-                          <Heart className={cn("h-3.5 w-3.5", isFav ? "fill-primary text-primary" : "text-foreground")} />
+                          <Heart className={cn("h-3 w-3", isFav ? "fill-primary text-primary" : "text-foreground")} />
                         </button>
                       </Link>
 
-                      <div className="flex-1 min-w-0 py-1">
+                      <div className="flex-1 min-w-0 py-0.5">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate min-w-0">
+                          <h3 className="font-display text-[17px] font-semibold text-foreground leading-snug min-w-0">
                             <Link
                               to={cardHref(m)}
                               onClick={(e) => e.stopPropagation()}
-                              className="block truncate md:hover:text-primary transition-colors"
+                              className="block line-clamp-2 break-words md:hover:text-primary transition-colors"
                             >
                               {m.studio}
                             </Link>
                           </h3>
 
                           {m.rating != null && (
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Star className="h-4 w-4 fill-accent text-accent" />
-                              <span className="text-sm font-semibold text-foreground">
+                            <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+                              <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                              <span className="text-xs font-semibold text-foreground whitespace-nowrap">
                                 {Number(m.rating).toFixed(1)}
                                 {m.reviews != null && (
                                   <span className="font-normal text-muted-foreground"> ({m.reviews})</span>
@@ -440,23 +440,22 @@ export default function MassageList() {
                         </div>
 
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3" />
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">{"district" in m && m.district ? m.district : t("app.massageList.madrid")}</span>
                         </div>
 
                         {(() => {
+                          // Compact card: the English massage type plus the price.
+                          // The studio's own internal menu name stays on the studio page.
                           const svc = (m as any).partner_services?.[0];
-                          const primary = svc ? servicePrimaryName(svc, "") : "";
-                          const secondary = svc ? serviceSecondaryName(svc) : "";
+                          if (!svc) return null;
+                          const typed = findMassageType(svc.name_en, svc.name);
+                          const label = typed?.name.en || servicePrimaryName(svc, "");
                           const price = svc?.price ?? (m as any).price;
-                          if (!primary) return null;
+                          if (!label) return null;
                           return (
-                            <p className="text-xs text-foreground/80 mt-2 truncate">
-                              <span className="font-medium">{primary}</span>
-                              {secondary && <span className="text-muted-foreground"> · {secondary}</span>}
-                              {(svc?.duration ?? m.duration) != null && (
-                                <span className="text-muted-foreground"> · {svc?.duration ?? m.duration} {t("app.massageList.minutes")}</span>
-                              )}
+                            <p className="text-xs text-foreground/80 mt-1.5 line-clamp-2 break-words">
+                              <span className="font-medium">{label}</span>
                               {price != null && (
                                 <span className="font-semibold text-primary"> · €{price}</span>
                               )}
@@ -468,7 +467,7 @@ export default function MassageList() {
                           const km = haversineKm(userLoc, m as any);
                           const dirUrl = walkingDirectionsUrl(m as any, `${m.studio} Madrid`, userLoc);
                           return (
-                            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-2">
+                            <p className="text-[11px] text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                               <span>{distanceLabel(km, lang)} {areaName ? originSuffix(areaName, lang) : ""}</span>
                               {dirUrl && (
                                 <a
@@ -478,7 +477,7 @@ export default function MassageList() {
                                   onClick={(e) => e.stopPropagation()}
                                   className="text-primary font-semibold hover:underline"
                                 >
-                                  Directions / Cómo llegar
+                                  Directions
                                 </a>
                               )}
                             </p>
@@ -486,16 +485,14 @@ export default function MassageList() {
                         })()}
 
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                          <span className="text-[10px] font-bold tracking-[0.1em] uppercase px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
+                          <span className="text-[10px] font-bold tracking-[0.06em] uppercase px-2 py-1 rounded-full bg-secondary text-muted-foreground whitespace-nowrap">
                             {t("app.massageList.payAtStudio")}
-                            </span>
+                          </span>
                           <StudioStatusBadge
+                            className="tracking-[0.06em] px-2 whitespace-nowrap"
                             variant={studioBadgeVariant((m as any).status, (m as any).partner_id, freeTodayIds, m as any)}
                           />
-                        </div>
-
-                        <div className="mt-2">
-                          <CompareToggle studio={m as any} size="sm" />
+                          <CompareToggle studio={m as any} size="sm" className="px-2" />
                         </div>
                       </div>
                     </div>
