@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
 import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
