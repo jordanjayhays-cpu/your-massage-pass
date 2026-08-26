@@ -379,7 +379,7 @@ export default function MassageList() {
 
             <>
               {filtered.slice(0, visibleCount).map((m, idx) => {
-                const isFav = favorites.has(m.id);
+                const isFav = isFavourite(favouriteKey(m as any));
                 const isSelected = selectedStudio?.id === m.id || (!selectedStudio && idx === 0);
                 const mKey = studioKey(m);
                 const isHovered = hoverKey != null && hoverKey === mKey;
