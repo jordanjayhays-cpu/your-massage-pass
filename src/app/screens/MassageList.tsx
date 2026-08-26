@@ -338,7 +338,7 @@ export default function MassageList() {
       </div>
 
         {/* Studios list */}
-        <div className="px-5 md:px-8 pt-6 pb-28 xl:order-1 xl:min-w-0 xl:pr-0">
+        <div className="px-5 md:px-8 pt-6 pb-28">
 
         {/* Heading on its own row until the column is wide enough (about 700px)
             to carry the meta actions beside it. */}
