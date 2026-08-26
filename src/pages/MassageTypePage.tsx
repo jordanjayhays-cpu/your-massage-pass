@@ -43,9 +43,21 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
     fetchShops().then(setShops).catch(() => {});
   }, []);
 
+  // Ad traffic lands straight here, so the pageview is a funnel event of its own.
+  useEffect(() => {
+    if (!type) return;
+    trackEvent("type_page_view", { slug: type.slug, meta: { type: type.slug } });
+  }, [type?.slug]);
+
+  // The mobile sticky bar owns the bottom right corner on these pages.
+  useEffect(() => {
+    setWaBubbleContext({ hidden: true });
+    return () => clearWaBubbleContext();
+  }, []);
+
   const matches = useMemo(() => {
     if (!type) return [];
-    const out: { shop: Shop; service: any }[] = [];
+    const out: { shop: Shop; service: ShopService }[] = [];
     for (const shop of shops) {
       for (const s of shop.partner_services ?? []) {
         const found = findMassageType((s as any).name_en, (s as any).name, (s as any).type);
@@ -55,8 +67,19 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
         }
       }
     }
-    return out;
+    // Studios that can be booked on Massage Club first, then cheapest first.
+    return out
+      .sort((a, b) => {
+        const activeA = a.shop.status === "active" ? 0 : 1;
+        const activeB = b.shop.status === "active" ? 0 : 1;
+        if (activeA !== activeB) return activeA - activeB;
+        const pa = Number(a.service.price) || Number.POSITIVE_INFINITY;
+        const pb = Number(b.service.price) || Number.POSITIVE_INFINITY;
+        return pa - pb;
+      })
+      .slice(0, 6);
   }, [shops, type]);
+
 
   if (!type) return <NotFound />;
 
