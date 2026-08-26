@@ -82,7 +82,7 @@ export default function Web() {
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#56433a]">
             <a href="#studios" className="hover:text-[#99420d]">Studios</a>
             <a href="#how" className="hover:text-[#99420d]">How it works</a>
-            <a href="#partners" className="hover:text-[#99420d]">For studios</a>
+            <Link to="/for-studios" className="hover:text-[#99420d]">For studios</Link>
           </nav>
           <div className="flex items-center gap-3">
             <Link to="/studios" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
