@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -151,6 +151,12 @@ export default function PartnerLogin() {
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground">{t("partner.login.title")}</h1>
           <p className="text-muted-foreground mt-2">{t("partner.login.subtitle")}</p>
+          <Link
+            to="/for-studios"
+            className="inline-block mt-3 text-xs font-medium text-primary hover:underline"
+          >
+            Read the terms for studios / Lee las condiciones para centros
+          </Link>
         </div>
 
         <Card className="bg-card border-border shadow-elegant">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -32,12 +32,18 @@ export default function ClaimShortLink() {
   }, [slug, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
       {error ? (
         <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
       ) : (
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       )}
+      <Link
+        to="/for-studios"
+        className="mt-8 text-xs font-medium text-primary hover:underline"
+      >
+        Terms for studios / Condiciones para centros
+      </Link>
     </div>
   );
 }

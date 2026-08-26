@@ -51,6 +51,7 @@ import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
 import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import ForStudios from "./pages/ForStudios";
 import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
 import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
 import MassagePricesMadridStudy from "./pages/guides/MassagePricesMadridStudy";
@@ -212,6 +213,10 @@ const App = () => (
           <Route path="/claim/:slug" element={<ClaimShortLink />} />
           <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Studio terms page */}
+          <Route path="/for-studios" element={<ForStudios />} />
+          <Route path="/para-estudios" element={<ForStudios />} />
+
           {/* Canonical studio URL on every host: /{slug} */}
           <Route path="/:studioId" element={<StudioBookingPage />} />
 

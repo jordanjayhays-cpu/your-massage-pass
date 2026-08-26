@@ -2097,6 +2097,8 @@ export default function StudioBookingPage() {
             <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
               <span>Massage Club · Madrid</span>
               <span>·</span>
+              <Link to="/for-studios" className="hover:text-[#C4622D] transition">For studios</Link>
+              <span>·</span>
               <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
               <span>·</span>
               <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>

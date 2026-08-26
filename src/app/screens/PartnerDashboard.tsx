@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -178,6 +178,12 @@ export default function PartnerDashboard() {
               </div>
             </div>
             <div className="flex gap-2 items-center">
+              <Link
+                to="/for-studios"
+                className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
+              >
+                For studios
+              </Link>
               <button
                 onClick={() => window.open("/portal-tour.html", "_blank", "noopener,noreferrer")}
                 className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
