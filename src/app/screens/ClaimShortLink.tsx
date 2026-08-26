@@ -32,12 +32,18 @@ export default function ClaimShortLink() {
   }, [slug, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
       {error ? (
         <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
       ) : (
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       )}
+      <Link
+        to="/for-studios"
+        className="mt-8 text-xs font-medium text-primary hover:underline"
+      >
+        Terms for studios / Condiciones para centros
+      </Link>
     </div>
   );
 }
