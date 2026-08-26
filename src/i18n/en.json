@@ -1209,7 +1209,7 @@
       "toastAutoConfirmOff": "Auto-confirm disabled"
     },
     "studioSetup": {
-      "oneStepBadge": "We have prepared your page",
+      "oneStepBadge": "Your page, as a draft",
       "oneStepHeading": "We have prepared your page",
       "oneStepSub": "It is not active until you say so.",
       "oneStepServicesTitle": "Services and prices we have for you",

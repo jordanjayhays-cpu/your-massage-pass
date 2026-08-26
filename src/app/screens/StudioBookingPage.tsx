@@ -446,6 +446,13 @@ export default function StudioBookingPage() {
     return out;
   }, [slotsByDay]);
 
+  // Step 2 must never open empty: preselect the first day that has slots.
+  useEffect(() => {
+    if (step !== 2 || date || openDates.length === 0) return;
+    setDate(openDates[0]);
+    setTime(null);
+  }, [step, date, openDates]);
+
   // The quiz remembers which studio sent the visitor there.
   const quizHref = (() => {
     const p: any = profile?.partner;
