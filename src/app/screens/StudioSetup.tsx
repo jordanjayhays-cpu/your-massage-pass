@@ -321,6 +321,18 @@ function StudioSetupInner() {
   const TOTAL_STEPS = mode === "claim" ? 6 : 5;
   const DONE_STEP = TOTAL_STEPS;
 
+  // One-tap claim: being listed and receiving bookings requires nothing but a yes.
+  // The optional wizard (account, calendar, hours, photos) only opens on request.
+  const [claimAdvanced, setClaimAdvanced] = useState(searchParams.get("full") === "1");
+  const [claimActivated, setClaimActivated] = useState(false);
+  const [activateOpen, setActivateOpen] = useState(false);
+  const [activateEmail, setActivateEmail] = useState("");
+  const [activateAddress, setActivateAddress] = useState("");
+  const [activateError, setActivateError] = useState("");
+  const [activating, setActivating] = useState(false);
+  const [liveEmail, setLiveEmail] = useState("");
+
+
   // Password creation (claim mode)
   const [newPassword, setNewPassword] = useState("");
   const [newPassword2, setNewPassword2] = useState("");
