@@ -411,6 +411,15 @@ export default function StudioBookingPage() {
     })();
   }, [rebookId, stepParam, profile]);
 
+  // Deep link from a massage type landing page: ?service=<id> preselects it.
+  const serviceParam = searchParams.get("service");
+  useEffect(() => {
+    if (!serviceParam || !profile || rebookId) return;
+    const match = profile.services.find(s => s.id === serviceParam);
+    if (!match) return;
+    setServiceId(prev => prev ?? match.id);
+    setHoServiceId(prev => prev || match.id);
+  }, [serviceParam, profile, rebookId]);
 
 
 
@@ -446,6 +455,7 @@ export default function StudioBookingPage() {
   })();
 
   const service = profile?.services.find(s => s.id === serviceId) || null;
+
 
   // Studio capacity = how many massages can run in parallel (min 1).
   const therapistCount = Math.max(1, Number(profile?.partner?.capacity) || 0, profile?.therapists?.length || 0);
