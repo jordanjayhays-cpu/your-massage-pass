@@ -79,9 +79,45 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
       })
       .slice(0, 6);
   }, [shops, type]);
+  const studiosRef = useRef<HTMLElement | null>(null);
 
+  const trackStudioClick = (shop: Shop, serviceName: string) => {
+    trackEvent("type_page_studio_click", {
+      slug: type?.slug ?? null,
+      meta: { type: type?.slug, studio: shop.studio, studio_slug: shop.slug || shop.partner_id, service: serviceName },
+    });
+  };
+
+  const requestViaWhatsapp = (shop: Shop, service: ShopService, serviceName: string) => {
+    trackStudioClick(shop, serviceName);
+    trackEvent("type_page_cta_click", { slug: type?.slug ?? null, meta: { cta: "whatsapp", studio: shop.studio } });
+    const message = conciergePrefill({
+      lang: i18n.language,
+      studio: shop.studio,
+      service: serviceName,
+      duration: Number(service.duration) || null,
+      price: Number(service.price) || null,
+      unclaimed: true,
+    });
+    logWhatsappRequest({
+      partner_id: shop.partner_id,
+      slug: shop.slug || null,
+      studio_name: shop.studio,
+      service_name: serviceName,
+      price: service.price ?? null,
+      wa_number: MASSAGE_CLUB_WA,
+      message_text: message,
+    });
+    window.open(conciergeWhatsappUrl(message), "_blank", "noopener,noreferrer");
+  };
+
+  const scrollToStudios = () => {
+    trackEvent("type_page_cta_click", { slug: type?.slug ?? null, meta: { cta: "find_a_studio" } });
+    studiosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   if (!type) return <NotFound />;
+
 
   return (
     <div className="min-h-screen bg-[#FDFBF8]">
