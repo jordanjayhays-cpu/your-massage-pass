@@ -180,13 +180,8 @@ export default function MassageList() {
     navigate(`/massages/${m.id}`);
   };
 
-  const toggleFav = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+
+
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-background">
