@@ -12,6 +12,7 @@ import {
   Calendar as CalendarIcon, Check,
 } from "lucide-react";
 import PartnerLangPills from "@/app/components/PartnerLangPills";
+import { MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
 import { defaultPartnerLang, applyPartnerLang, type PartnerLang } from "@/app/lib/partnerLanguage";
 
 const MASSAGE_TYPES = ["Relax", "Therapeutic", "Swedish", "Deep Tissue", "Sports", "Thai", "Balinese", "Ayurvedic", "Lomi Lomi", "Hot Stone", "Aromatherapy", "Reflexology", "Shiatsu", "Kobido", "Craneo-Facial", "Lymphatic", "Prenatal", "Couples", "4 Hands", "Express", "Ritual", "Hammam", "Body", "Physiotherapy", "Facial", "Spa Day", "Other"];
@@ -1103,7 +1104,7 @@ function StudioSetupInner() {
 
           <div className="text-center pt-2">
             <a href="/for-studios" className="text-xs font-medium text-[#7A7068] hover:text-[#B85C38] hover:underline">
-              {t("partner.studioSetup.claimBadgeLabel")} · /for-studios
+              Terms for studios / Condiciones para centros
             </a>
           </div>
         </div>
