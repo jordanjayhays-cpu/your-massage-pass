@@ -562,7 +562,6 @@ export default function MassageList() {
             {t("app.massageList.studioCta")}
           </button>
         </div>
-        </div>
       </div>
 
 
