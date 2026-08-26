@@ -6,6 +6,7 @@ import { MobileFrame } from "./MobileFrame";
 import { supabase } from "@/lib/supabase";
 import { captureReferralFromUrl } from "@/lib/referral";
 import { captureSource } from "@/lib/attribution";
+import { migrateFavouritesToAccount } from "@/lib/favourites";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
@@ -14,7 +15,14 @@ export default function AppLayout() {
   useEffect(() => {
     captureReferralFromUrl();
     captureSource();
+    // Any favourites saved while logged out follow the visitor into the account.
+    void migrateFavouritesToAccount();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") void migrateFavouritesToAccount();
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
+
 
 
   // Sync preferred language from the signed-in user's profile (once per session).

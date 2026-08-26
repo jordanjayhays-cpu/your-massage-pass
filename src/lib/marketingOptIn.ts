@@ -66,3 +66,37 @@ export async function submitQuizLead(email: string, resultSlug: string): Promise
   trackEvent("quiz_email_captured", { meta: { result_slug: resultSlug } });
   return true;
 }
+
+/**
+ * Signed-in variant of the quiz capture: keeps the match on the profile and
+ * still records the lead so the founder dashboard sees one funnel.
+ */
+export async function saveQuizResultToProfile(
+  userId: string,
+  email: string | null,
+  resultSlug: string,
+): Promise<boolean> {
+  let ok = false;
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ quiz_result_slug: resultSlug, quiz_result_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (!error) ok = true;
+  } catch {
+    /* column may not exist yet — the lead row below is the fallback */
+  }
+  try {
+    const clean = (email || "").trim().toLowerCase();
+    if (clean) {
+      const { error } = await supabase
+        .from("quiz_leads")
+        .insert({ email: clean, result_slug: resultSlug });
+      if (!error) ok = true;
+    }
+  } catch {
+    /* ignore */
+  }
+  trackEvent("quiz_email_captured", { meta: { result_slug: resultSlug, has_account: true } });
+  return ok;
+}

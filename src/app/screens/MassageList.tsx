@@ -21,6 +21,8 @@ import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl } 
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import CompareToggle from "../components/CompareToggle";
 import CompareBar from "../components/CompareBar";
+import { useFavouriteAction } from "../components/FavouriteSignupSheet";
+import { favouriteKey } from "@/lib/favourites";
 
 
 
@@ -35,7 +37,8 @@ export default function MassageList() {
   const [shopsLoading, setShopsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isPartner, setIsPartner] = useState(false);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const { favourites, isFavourite, toggle: toggleFavourite, sheet: favouriteSheet } = useFavouriteAction();
+  const [savedOnly, setSavedOnly] = useState(false);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => savedLocationResult()?.loc ?? null);
   const [visibleCount, setVisibleCount] = useState(8);
   const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
@@ -123,7 +126,8 @@ export default function MassageList() {
           (m as any).lat >= areaBounds.south &&
           (m as any).lng <= areaBounds.east &&
           (m as any).lng >= areaBounds.west);
-      return matchesQ && matchesType && matchesArea;
+      const matchesSaved = !savedOnly || isFavourite(favouriteKey(m as any));
+      return matchesQ && matchesType && matchesArea && matchesSaved;
     })
 
     .map((m) => ({
@@ -176,13 +180,8 @@ export default function MassageList() {
     navigate(`/massages/${m.id}`);
   };
 
-  const toggleFav = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+
+
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-background">
@@ -370,6 +369,51 @@ export default function MassageList() {
           </div>
         </div>
 
+        {/* All / Saved tabs, so the saved list has somewhere to live */}
+        <div className="flex items-center gap-2 mb-4" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={!savedOnly}
+            onClick={() => { setSavedOnly(false); setVisibleCount(8); }}
+            className={cn(
+              "h-9 px-4 rounded-full text-xs font-semibold border transition",
+              !savedOnly ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/50",
+            )}
+          >
+            {lang === "es" ? "Todos" : "All"}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={savedOnly}
+            onClick={() => { setSavedOnly(true); setVisibleCount(8); }}
+            className={cn(
+              "h-9 px-4 rounded-full text-xs font-semibold border transition flex items-center gap-1.5",
+              savedOnly ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border hover:border-primary/50",
+            )}
+          >
+            <Heart className={cn("h-3 w-3", savedOnly ? "fill-current" : "")} />
+            {lang === "es" ? "Guardados" : "Saved"}
+            {favourites.length > 0 && <span className="opacity-80">({favourites.length})</span>}
+          </button>
+        </div>
+
+        {savedOnly && favourites.length === 0 && (
+          <div className="rounded-3xl border border-border/70 bg-secondary/40 p-5 mb-4">
+            <p className="text-sm font-semibold text-foreground">
+              {lang === "es" ? "Aún no has guardado estudios" : "No saved studios yet"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lang === "es"
+                ? "Toca el corazón en cualquier estudio para guardarlo aquí."
+                : "Tap the heart on any studio to keep it here."}
+            </p>
+          </div>
+        )}
+
+
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
           {shopsLoading ? (
             <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
@@ -379,7 +423,7 @@ export default function MassageList() {
 
             <>
               {filtered.slice(0, visibleCount).map((m, idx) => {
-                const isFav = favorites.has(m.id);
+                const isFav = isFavourite(favouriteKey(m as any));
                 const isSelected = selectedStudio?.id === m.id || (!selectedStudio && idx === 0);
                 const mKey = studioKey(m);
                 const isHovered = hoverKey != null && hoverKey === mKey;
@@ -407,7 +451,7 @@ export default function MassageList() {
                           <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
                         )}
                         <button
-                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFav(m.id); }}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavourite(m as any); }}
                           aria-label={t("app.massageList.favorite")}
                           className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-background/95 flex items-center justify-center shadow-soft hover:scale-105 transition"
                         >
@@ -527,6 +571,7 @@ export default function MassageList() {
 
 
       <CompareBar className="pb-[86px]" />
+      {favouriteSheet}
     </div>
   );
 }

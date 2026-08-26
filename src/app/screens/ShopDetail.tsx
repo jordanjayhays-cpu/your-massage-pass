@@ -15,6 +15,8 @@ import {
   Compass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useFavouriteAction } from "../components/FavouriteSignupSheet";
+import { favouriteKey } from "@/lib/favourites";
 import { MASSAGES, MADRID_CENTER } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
@@ -34,7 +36,7 @@ export default function ShopDetail() {
   const { id } = useParams();
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fav, setFav] = useState(false);
+  const { isFavourite, toggle: toggleFavourite, sheet: favouriteSheet } = useFavouriteAction();
   const [waTapped, setWaTapped] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
@@ -200,11 +202,11 @@ export default function ShopDetail() {
             <Share2 className="h-4 w-4 text-foreground" />
           </button>
           <button
-            onClick={() => setFav((v) => !v)}
+            onClick={() => toggleFavourite(massage as any)}
             aria-label={t("favorite")}
             className="h-11 w-11 rounded-full bg-card/95 backdrop-blur flex items-center justify-center shadow-soft border border-border/60 hover:bg-card transition"
           >
-            <Heart className={`h-4 w-4 ${fav ? "fill-primary text-primary" : "text-foreground"}`} />
+            <Heart className={`h-4 w-4 ${isFavourite(favouriteKey(massage as any)) ? "fill-primary text-primary" : "text-foreground"}`} />
           </button>
         </div>
       </div>
@@ -404,6 +406,7 @@ export default function ShopDetail() {
           </div>
         </div>
       </div>
+      {favouriteSheet}
     </div>
   );
 }
