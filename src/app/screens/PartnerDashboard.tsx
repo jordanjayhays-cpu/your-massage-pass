@@ -178,6 +178,12 @@ export default function PartnerDashboard() {
               </div>
             </div>
             <div className="flex gap-2 items-center">
+              <Link
+                to="/for-studios"
+                className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
+              >
+                For studios
+              </Link>
               <button
                 onClick={() => window.open("/portal-tour.html", "_blank", "noopener,noreferrer")}
                 className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
