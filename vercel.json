@@ -30,6 +30,10 @@
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/booking-action"
     },
     {
+      "source": "/p/:token",
+      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/pick?t=:token"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

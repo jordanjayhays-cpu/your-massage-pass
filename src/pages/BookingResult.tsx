@@ -36,7 +36,8 @@ type Outcome =
   | "invalid"
   | "completed"
   | "noshow"
-  | "hours-confirmed";
+  | "hours-confirmed"
+  | "picked";
 
 const KNOWN: Outcome[] = [
   "confirmed",
@@ -50,6 +51,7 @@ const KNOWN: Outcome[] = [
   "completed",
   "noshow",
   "hours-confirmed",
+  "picked",
 ];
 
 const STUDIO_FACING: Outcome[] = [
