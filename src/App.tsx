@@ -52,6 +52,8 @@ import Review from "./pages/Review";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ForStudios from "./pages/ForStudios";
+import Request from "./pages/Request";
+import Notify from "./pages/Notify";
 import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
 import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
 import MassagePricesMadridStudy from "./pages/guides/MassagePricesMadridStudy";
@@ -103,6 +105,10 @@ const App = () => (
           <Route path="/review" element={<Review />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+
+          {/* Public lead-capture pages shared on WhatsApp */}
+          <Route path="/request" element={<Request />} />
+          <Route path="/notify" element={<Notify />} />
 
           {/* SEO guide pages (static paths win over the /:studioId dynamic route) */}
           <Route path="/massage-in-english-madrid" element={<MassageInEnglishMadrid />} />
