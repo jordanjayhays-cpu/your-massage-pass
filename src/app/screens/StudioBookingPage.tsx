@@ -785,11 +785,6 @@ export default function StudioBookingPage() {
       return siteLang === "es" ? `${day} a las ${tm}` : `${day} at ${tm}`;
     };
     const hoWhen1 = exactWhen(hoDate, hoTime);
-    const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
-    const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
-    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
-    const hoPhoneDigits = digitsOnly(hoPhone);
-    const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoPhoneDigits.length >= 9 && hoEmailValid;
     // One-line reminder of the choice, kept visible in the sticky bar.
     const hoSummaryLine = hoService
       ? [
@@ -798,18 +793,24 @@ export default function StudioBookingPage() {
           hasPrice ? `€${hoPrice}` : null,
         ].filter(Boolean).join(" · ")
       : null;
-    const waMsg = conciergePrefill({
-      lang: siteLang,
-      studio: partner.business_name,
-      service: hoService ? servicePrimaryName(hoService) : null,
-      duration: Number((hoService as any)?.duration) || null,
-      price: hasPrice ? hoPrice : null,
-      when1: hoWhen1,
-      when2: hoWhen2,
-      name: hoFullName || null,
-      languages: spokenLangs,
-      unclaimed: true,
-    });
+    // Concierge message from the client to Massage Club, always in English and
+    // composed entirely from their picks, so it arrives complete with no typing.
+    const waMsg = (() => {
+      const svc = hoService
+        ? `${servicePrimaryName(hoService)}${Number((hoService as any)?.duration) > 0 ? ` ${Number((hoService as any).duration)} min` : ""}`
+        : "a massage";
+      let msg = `Hi, I'd like to book: ${svc} at ${partner.business_name}.`;
+      const when = hoWhen1;
+      if (when) msg += ` ${when} if possible.`;
+      msg += " (via Massage Club)";
+      return msg;
+    })();
+    // Scroll the visitor to the services menu and flash it briefly.
+    const scrollToServices = () => {
+      document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setSvcFlash(true);
+      window.setTimeout(() => setSvcFlash(false), 1600);
+    };
 
 
 
