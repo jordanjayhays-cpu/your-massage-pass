@@ -160,18 +160,18 @@ export default function Notify() {
                       <Label htmlFor="budget" className="text-[15px]">
                         Presupuesto <span className="block text-xs font-normal text-muted-foreground mt-0.5">Budget</span>
                       </Label>
-                      <Select value={budget} onValueChange={setBudget}>
-                        <SelectTrigger id="budget" className="h-12 text-base md:text-sm rounded-xl">
-                          <SelectValue placeholder="Sin preferencia / No preference" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BUDGET_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <select
+                        id="budget"
+                        value={budget}
+                        onChange={(e) => setBudget(e.target.value)}
+                        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base md:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        {BUDGET_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="space-y-2">
