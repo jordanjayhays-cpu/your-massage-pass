@@ -197,6 +197,13 @@ export default function BookingResult() {
       body = "Gracias — tus reservas ya siguen tu horario real. Puedes ajustarlo cuando quieras desde tu portal.";
       bodyEn = "Thanks — your bookings now follow your real hours. You can adjust them any time from your portal.";
       break;
+    case "picked":
+      icon = "✅";
+      titleEs = "Great choice!";
+      titleEn = "Great choice!";
+      body = `We're confirming your exact time at ${studio} right now. Watch WhatsApp — you'll have 2-3 time slots to pick from shortly, usually within the hour.`;
+      bodyEn = "You pay the studio directly. No booking fee.";
+      break;
     case "error":
       icon = "⚠️";
       titleEs = "No se pudo completar la acción";
