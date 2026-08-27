@@ -35,7 +35,7 @@ const uuidOrNull = (v?: string | null): string | null =>
  * Returns a promise so callers can await the insert before opening the wa.me link.
  * Never throws: the promise always resolves, even on error.
  */
-export function logWhatsappRequest(row: WhatsappRequestLog): Promise<void> {
+export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<void> {
   try {
     const payload = {
       partner_id: uuidOrNull(row.partner_id ?? null),
@@ -55,15 +55,8 @@ export function logWhatsappRequest(row: WhatsappRequestLog): Promise<void> {
       wa_number: clean(row.wa_number),
       message_text: clean(row.message_text),
     };
-    return supabase
-      .from("whatsapp_requests")
-      .insert(payload as any)
-      .then(
-        () => undefined,
-        () => undefined,
-      );
+    await supabase.from("whatsapp_requests").insert(payload as any);
   } catch {
     // Logging must never break the handoff.
-    return Promise.resolve();
   }
 }
