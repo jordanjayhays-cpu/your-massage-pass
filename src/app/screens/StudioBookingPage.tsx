@@ -846,6 +846,8 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
+        day3: hoAlt2Date || null,
+        time3: hoAlt2Time || null,
         first_name: hoName.trim() || null,
         contact_email: hoEmailValid ? hoEmail.trim() : null,
         client_phone: hoPhoneValid ? hoPhone.trim() : null,
