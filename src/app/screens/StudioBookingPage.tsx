@@ -827,14 +827,15 @@ export default function StudioBookingPage() {
         path: window.location.pathname,
         slug: partner.slug || partner.id,
         meta: {
-          filled: hasService || hasDate || !!hoTime || !!hoName.trim(),
+          filled: hasService || hasDate || !!hoTime,
           service: hasService,
           date: hasDate,
           price_shown: hasPrice,
           languages: spokenLangs,
         },
       });
-      // Fire and forget: never blocks the WhatsApp link.
+      // Fire and forget: never blocks the WhatsApp link. Name, email and phone
+      // stay null on purpose — WhatsApp gives us those when they send.
       logWhatsappRequest({
         partner_id: partner.id,
         slug: partner.slug || null,
@@ -845,18 +846,14 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
-        first_name: hoFullName || null,
-        contact_email: hoEmail.trim() || null,
-        client_phone: hoPhoneDigits || null,
+        first_name: null,
+        contact_email: null,
+        client_phone: null,
         languages: spokenLangs.join(", "),
         user_id: userId,
         wa_number: waNumber,
         message_text: waMsg,
       });
-      // Fire and forget: passwordless account, never blocks the WhatsApp handoff.
-      if (!userId && createAccount && hoEmail.trim()) {
-        requestAccountSignup({ email: hoEmail.trim(), name: hoFullName, lang: siteLang });
-      }
     };
 
     const waLink = conciergeWhatsappUrl(waMsg);
