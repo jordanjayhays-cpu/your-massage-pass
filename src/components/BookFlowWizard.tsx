@@ -206,11 +206,14 @@ export default function BookFlowWizard({
   lang,
   showBrand = true,
   scrollTopOnStep = true,
+  preselect = null,
 }: {
   source: string;
   lang: PageLang;
   showBrand?: boolean;
   scrollTopOnStep?: boolean;
+  /** Preselect a massage in step 1 from outside. Bump `nonce` to re-apply. */
+  preselect?: { value: string; nonce: number } | null;
 }) {
   const t = BOOK_FLOW_COPY[lang];
 
@@ -252,6 +255,14 @@ export default function BookFlowWizard({
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
+
+  useEffect(() => {
+    if (!preselect) return;
+    setMassage(preselect.value);
+    setStep(1);
+    setHint(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselect?.nonce]);
 
   const timeChips = [t.morning, t.afternoon, t.evening, t.flexible];
   const areas = [...AREAS_BASE, t.other];
@@ -392,7 +403,10 @@ export default function BookFlowWizard({
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s1Title}</h2>
           <div ref={massageRef} className="mt-4 grid gap-3 sm:grid-cols-2">
-            {t.massages.map((m) => {
+            {(t.massages.includes(massage as never) || !massage
+              ? t.massages
+              : [...t.massages, massage]
+            ).map((m) => {
               const active = massage === m;
               return (
                 <button
