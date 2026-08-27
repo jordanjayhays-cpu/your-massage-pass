@@ -1008,6 +1008,15 @@ export default function StudioBookingPage() {
                   />
                 )}
                 {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
+                {hoStep === 3 && (
+                  <StickyContinue
+                    ready={hoDetailsReady}
+                    onNext={() => hoGo(4)}
+                    summary={hoSummaryLine}
+                    note={hoDetailsReady ? undefined : "Add your name and a way to reach you"}
+                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre y una forma de contacto"}
+                  />
+                )}
 
 
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
