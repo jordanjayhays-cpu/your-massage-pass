@@ -110,6 +110,8 @@ const App = () => (
 
           {/* Public lead-capture pages shared on WhatsApp */}
           <Route path="/book" element={<BookFlow />} />
+          <Route path="/fb" element={<FbLanding />} />
+
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
