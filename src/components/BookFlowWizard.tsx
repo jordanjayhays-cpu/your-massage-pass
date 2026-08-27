@@ -394,17 +394,25 @@ export default function BookFlowWizard({
   };
 
   if (status === "success") {
+    const slotList = [whenValue, when2Value, when3Value].filter(Boolean);
+    const slotsText = slotList.join(lang === "es" ? " o " : " or ");
+    const waText =
+      lang === "es"
+        ? `Hola, soy ${name.trim()}. Quiero reservar: ${wantValue} en ${areaValue}. Me va bien ${slotsText}.`
+        : `Hi, I'm ${name.trim()}. I'd like to book a ${wantValue} massage in ${areaValue}. I can do ${slotsText}.`;
+    const waLink = `https://wa.me/34612474827?text=${encodeURIComponent(waText)}`;
+    const fallbackContact = email.trim() || phone.trim();
+
     return (
       <div ref={rootRef}>
         <div className="text-center">
-          <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
           <h2 className="font-display text-3xl text-foreground mt-4">{t.successTitle}</h2>
           <p className="text-base text-muted-foreground mt-3 leading-snug">{t.successSub}</p>
         </div>
         <div className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
           {[
             [t.sumMassage, wantValue],
-            [t.sumWhen, [whenValue, when2Value, when3Value].filter(Boolean).join(" · ")],
+            [t.sumWhen, slotList.join(" · ")],
             [t.sumWhere, areaValue],
           ].map(([k, v]) => (
             <div key={k} className="flex items-start justify-between gap-4">
@@ -413,6 +421,20 @@ export default function BookFlowWizard({
             </div>
           ))}
         </div>
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackEvent("wizard_whatsapp_click", { source, lang })}
+          className="mt-6 w-full h-14 rounded-full bg-[#25D366] text-white text-base font-semibold shadow-soft hover:bg-[#128C7E] transition inline-flex items-center justify-center gap-2"
+        >
+          <MessageCircle className="h-5 w-5 fill-current" /> {t.sendWhatsApp}
+        </a>
+        {fallbackContact && (
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            {t.noWhatsApp.replace("{contact}", fallbackContact)}
+          </p>
+        )}
       </div>
     );
   }
