@@ -260,7 +260,7 @@ export default function Request() {
                     type="submit"
                     className="w-full h-12 text-base rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                     loading={status === "loading"}
-                    disabled={!canSubmit}
+                    disabled={status === "loading"}
                   >
                     {status === "loading" ? "Enviando…" : "Enviar / Send"}
                   </Button>
