@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
+import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill, digitsOnly } from "@/app/lib/whatsapp";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
@@ -122,8 +122,9 @@ export default function StudioBookingPage() {
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoName, setHoName] = useState("");
   const [hoLastName, setHoLastName] = useState("");
-  // Required email on the handoff, so we can follow up after the WhatsApp booking.
+  // Required email + phone on the handoff, so we can follow up after the WhatsApp booking.
   const [hoEmail, setHoEmail] = useState("");
+  const [hoPhone, setHoPhone] = useState("");
 
   // Passwordless account creation, offered to visitors who are not signed in.
   const [createAccount, setCreateAccount] = useState(true);
@@ -310,7 +311,9 @@ export default function StudioBookingPage() {
       setHoEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
 
-      setPhone(prev => prev || user.phone || user.user_metadata?.phone || "");
+      const userPhone = user.phone || user.user_metadata?.phone || "";
+      setPhone(prev => prev || userPhone);
+      setHoPhone(prev => prev || userPhone);
 
       // select("*") so one renamed column can never wipe out the whole pre-fill.
       const { data: prof } = await supabase
@@ -325,6 +328,7 @@ export default function StudioBookingPage() {
       setEmail(prev => prev || p.email || "");
       setHoEmail(prev => prev || p.email || "");
       setPhone(prev => prev || p.phone || "");
+      setHoPhone(prev => prev || p.phone || "");
       setProfileAllergies(p.allergies || "");
       setProfileHealthNotes(p.health_notes || "");
       // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
@@ -787,7 +791,8 @@ export default function StudioBookingPage() {
     const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
     const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
     const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
-    const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoEmailValid;
+    const hoPhoneDigits = digitsOnly(hoPhone);
+    const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoPhoneDigits.length >= 9 && hoEmailValid;
     // One-line reminder of the choice, kept visible in the sticky bar.
     const hoSummaryLine = hoService
       ? [
@@ -844,6 +849,7 @@ export default function StudioBookingPage() {
         time2: hoAltTime || null,
         first_name: hoFullName || null,
         contact_email: hoEmail.trim() || null,
+        client_phone: hoPhoneDigits || null,
         languages: spokenLangs.join(", "),
         user_id: userId,
         wa_number: waNumber,
@@ -1014,8 +1020,8 @@ export default function StudioBookingPage() {
                     ready={hoDetailsReady}
                     onNext={() => hoGo(4)}
                     summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : "Add your first name, last name and email to continue"}
-                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido y email para continuar"}
+                    note={hoDetailsReady ? undefined : "Add your first name, last name, phone and email to continue"}
+                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido, teléfono y email para continuar"}
                   />
                 )}
 
