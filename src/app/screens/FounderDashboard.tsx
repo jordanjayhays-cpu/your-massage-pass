@@ -12,6 +12,8 @@ const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9.
 const FOUNDER_EMAILS = [
   "jordan.hays@student.ie.edu",
   "jordanjayhays@gmail.com",
+  "jordan@massageclub.io",
+  "support@massageclub.io",
 ];
 
 type Booking = {
