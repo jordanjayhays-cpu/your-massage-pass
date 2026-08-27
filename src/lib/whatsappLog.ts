@@ -10,6 +10,8 @@ export type WhatsappRequestLog = {
   time1?: string | null;
   day2?: string | null;
   time2?: string | null;
+  day3?: string | null;
+  time3?: string | null;
   first_name?: string | null;
   contact_email?: string | null;
   client_phone?: string | null;
@@ -47,6 +49,8 @@ export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<void>
       time1: clean(row.time1),
       day2: clean(row.day2),
       time2: clean(row.time2),
+      day3: clean(row.day3),
+      time3: clean(row.time3),
       first_name: clean(row.first_name),
       contact_email: clean(row.contact_email),
       client_phone: clean(row.client_phone),
