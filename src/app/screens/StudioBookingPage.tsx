@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill, digitsOnly } from "@/app/lib/whatsapp";
+import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
@@ -56,8 +56,7 @@ const BOOKING_STEPS = [
 const HANDOFF_STEPS = [
   { label: "Service", labelEs: "Servicio" },
   { label: "Day and time", labelEs: "Día y hora" },
-  { label: "Your info", labelEs: "Tus datos" },
-  { label: "Review", labelEs: "Revisar" },
+  { label: "WhatsApp", labelEs: "WhatsApp" },
 ];
 const CONVERSATION_LABELS: Record<string, string> = {
   silence: "Silence",
@@ -120,11 +119,9 @@ export default function StudioBookingPage() {
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
-  const [hoName, setHoName] = useState("");
-  const [hoLastName, setHoLastName] = useState("");
-  // Required email + phone on the handoff, so we can follow up after the WhatsApp booking.
-  const [hoEmail, setHoEmail] = useState("");
-  const [hoPhone, setHoPhone] = useState("");
+  // No contact form on the unclaimed handoff: WhatsApp gives us name + number.
+  // Brief highlight on the services menu when a CTA scrolls the visitor to it.
+  const [svcFlash, setSvcFlash] = useState(false);
 
   // Passwordless account creation, offered to visitors who are not signed in.
   const [createAccount, setCreateAccount] = useState(true);
@@ -308,12 +305,10 @@ export default function StudioBookingPage() {
 
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
-      setHoEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
 
       const userPhone = user.phone || user.user_metadata?.phone || "";
       setPhone(prev => prev || userPhone);
-      setHoPhone(prev => prev || userPhone);
 
       // select("*") so one renamed column can never wipe out the whole pre-fill.
       const { data: prof } = await supabase
@@ -326,9 +321,7 @@ export default function StudioBookingPage() {
       setCustomerProfile(p);
       setName(prev => prev || p.full_name || "");
       setEmail(prev => prev || p.email || "");
-      setHoEmail(prev => prev || p.email || "");
       setPhone(prev => prev || p.phone || "");
-      setHoPhone(prev => prev || p.phone || "");
       setProfileAllergies(p.allergies || "");
       setProfileHealthNotes(p.health_notes || "");
       // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
@@ -788,11 +781,6 @@ export default function StudioBookingPage() {
       return siteLang === "es" ? `${day} a las ${tm}` : `${day} at ${tm}`;
     };
     const hoWhen1 = exactWhen(hoDate, hoTime);
-    const hoWhen2 = exactWhen(hoAltDate, hoAltTime);
-    const hoFullName = [hoName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
-    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
-    const hoPhoneDigits = digitsOnly(hoPhone);
-    const hoDetailsReady = !!hoName.trim() && !!hoLastName.trim() && hoPhoneDigits.length >= 9 && hoEmailValid;
     // One-line reminder of the choice, kept visible in the sticky bar.
     const hoSummaryLine = hoService
       ? [
@@ -801,18 +789,24 @@ export default function StudioBookingPage() {
           hasPrice ? `€${hoPrice}` : null,
         ].filter(Boolean).join(" · ")
       : null;
-    const waMsg = conciergePrefill({
-      lang: siteLang,
-      studio: partner.business_name,
-      service: hoService ? servicePrimaryName(hoService) : null,
-      duration: Number((hoService as any)?.duration) || null,
-      price: hasPrice ? hoPrice : null,
-      when1: hoWhen1,
-      when2: hoWhen2,
-      name: hoFullName || null,
-      languages: spokenLangs,
-      unclaimed: true,
-    });
+    // Concierge message from the client to Massage Club, always in English and
+    // composed entirely from their picks, so it arrives complete with no typing.
+    const waMsg = (() => {
+      const svc = hoService
+        ? `${servicePrimaryName(hoService)}${Number((hoService as any)?.duration) > 0 ? ` ${Number((hoService as any).duration)} min` : ""}`
+        : "a massage";
+      let msg = `Hi, I'd like to book: ${svc} at ${partner.business_name}.`;
+      const when = hoWhen1;
+      if (when) msg += ` ${when} if possible.`;
+      msg += " (via Massage Club)";
+      return msg;
+    })();
+    // Scroll the visitor to the services menu and flash it briefly.
+    const scrollToServices = () => {
+      document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setSvcFlash(true);
+      window.setTimeout(() => setSvcFlash(false), 1600);
+    };
 
 
 
@@ -829,14 +823,15 @@ export default function StudioBookingPage() {
         path: window.location.pathname,
         slug: partner.slug || partner.id,
         meta: {
-          filled: hasService || hasDate || !!hoTime || !!hoName.trim(),
+          filled: hasService || hasDate || !!hoTime,
           service: hasService,
           date: hasDate,
           price_shown: hasPrice,
           languages: spokenLangs,
         },
       });
-      // Fire and forget: never blocks the WhatsApp link.
+      // Fire and forget: never blocks the WhatsApp link. Name, email and phone
+      // stay null on purpose — WhatsApp gives us those when they send.
       logWhatsappRequest({
         partner_id: partner.id,
         slug: partner.slug || null,
@@ -847,18 +842,14 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
-        first_name: hoFullName || null,
-        contact_email: hoEmail.trim() || null,
-        client_phone: hoPhoneDigits || null,
+        first_name: null,
+        contact_email: null,
+        client_phone: null,
         languages: spokenLangs.join(", "),
         user_id: userId,
         wa_number: waNumber,
         message_text: waMsg,
       });
-      // Fire and forget: passwordless account, never blocks the WhatsApp handoff.
-      if (!userId && createAccount && hoEmail.trim()) {
-        requestAccountSignup({ email: hoEmail.trim(), name: hoFullName, lang: siteLang });
-      }
     };
 
     const waLink = conciergeWhatsappUrl(waMsg);
@@ -937,7 +928,7 @@ export default function StudioBookingPage() {
               type="button"
               onClick={() => {
                 if (hoServiceId) { hoGo(2); return; }
-                document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                scrollToServices();
               }}
               className="w-full min-[900px]:w-auto inline-flex flex-col items-center justify-center min-h-[52px] px-7 rounded-full font-semibold text-white motion-safe:transition hover:opacity-90"
               style={{ background: "#B85C38" }}
@@ -955,7 +946,8 @@ export default function StudioBookingPage() {
               <div id="mc-services-menu" className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
-                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
+                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3 motion-safe:transition-shadow"
+                  style={{ background: "#FAF6F1", boxShadow: svcFlash ? "0 0 0 3px #B85C38" : "0 0 0 0 rgba(184,92,56,0)" }}>
 
                   {profile.services.map((s: any) => {
                     const selected = hoServiceId === s.id;
@@ -1014,16 +1006,7 @@ export default function StudioBookingPage() {
                     noteEs={hoServiceId ? undefined : "Elige un servicio para continuar"}
                   />
                 )}
-                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} summary={hoSummaryLine} />}
-                {hoStep === 3 && (
-                  <StickyContinue
-                    ready={hoDetailsReady}
-                    onNext={() => hoGo(4)}
-                    summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : "Add your first name, last name, phone and email to continue"}
-                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido, teléfono y email para continuar"}
-                  />
-                )}
+                {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
 
 
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
@@ -1071,13 +1054,12 @@ export default function StudioBookingPage() {
 
                       <button
                         type="button"
-                        onClick={() => hoGo(2)}
-                        disabled={!hoServiceId}
-                        className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition disabled:opacity-40"
+                        onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
+                        className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition"
                         style={{ background: "#B85C38" }}
                       >
-                        Request via WhatsApp
-                        <span className="block text-xs font-normal opacity-90">Solicitar por WhatsApp</span>
+                        Continue
+                        <span className="block text-xs font-normal opacity-90">Continuar</span>
                       </button>
                     </div>
 
@@ -1119,186 +1101,53 @@ export default function StudioBookingPage() {
                       )}
                       <WizardNav
                         onBack={() => hoGo(1)}
-                        onNext={() => hoGo(3)}
-                        disabled={!hoDate || !hoTime}
-                        hint="Pick a day and a time to continue"
-                        hintEs="Elige un día y una hora para continuar"
+                        skip={() => hoGo(3)}
                       />
                     </div>
                   )}
 
-                  {/* STEP 3: your info */}
-                  {hoStep === 3 && (
-                    <div className="space-y-4 min-[900px]:space-y-5">
-                      <label className="block">
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefName")}</span>
-                        <input type="text" autoComplete="given-name" value={hoName} onChange={(e) => setHoName(e.target.value)}
-                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                      </label>
-                      <label className="block">
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          Last name <span className="opacity-80">/ Apellido</span>
-                        </span>
-                        <input type="text" autoComplete="family-name" value={hoLastName} onChange={(e) => setHoLastName(e.target.value)}
-                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
-                      </label>
-                      <label className="block">
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          WhatsApp / Teléfono
-                        </span>
-                        <input
-                          type="tel"
-                          inputMode="tel"
-                          autoComplete="tel"
-                          value={hoPhone}
-                          onChange={(e) => setHoPhone(e.target.value)}
-                          placeholder="WhatsApp / Teléfono"
-                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base"
-                          style={{ borderColor: hoPhone.trim() && hoPhoneDigits.length < 9 ? "#C4622D" : "#E6DCCF", color: "#2b2b2b" }}
-                        />
-                        {hoPhone.trim() && hoPhoneDigits.length < 9 && (
-                          <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#C4622D" }}>
-                            Enter a valid phone number <span className="opacity-80">/ Introduce un teléfono válido</span>
-                          </span>
-                        )}
-                        <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
-                          Para confirmarte la hora por WhatsApp.
-                          <span className="block">So we can confirm your time on WhatsApp.</span>
-                        </span>
-                      </label>
-                      <label className="block">
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email</span>
-                        <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
-                          onChange={(e) => setHoEmail(e.target.value)}
-                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base"
-                          style={{ borderColor: hoEmail.trim() && !hoEmailValid ? "#C4622D" : "#E6DCCF", color: "#2b2b2b" }} />
-                        {hoEmail.trim() && !hoEmailValid && (
-                          <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#C4622D" }}>
-                            Enter a valid email <span className="opacity-80">/ Introduce un email válido</span>
-                          </span>
-                        )}
-                        <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
-                          So we can check everything went well with your booking.
-                          <span className="block">Para comprobar que todo ha ido bien con tu reserva.</span>
-                        </span>
-                      </label>
-
-                      {!userId && !!hoEmail.trim() && (
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input type="checkbox" checked={createAccount}
-                            onChange={(e) => setCreateAccount(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 min-[900px]:h-5 min-[900px]:w-5 accent-[#C4622D]" />
-                          <span className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5a4736" }}>
-                            Create my free Massage Club account
-                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
-                              Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
-                            </span>
-                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
-                              Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
-                            </span>
-                          </span>
-                        </label>
-                      )}
-
-                      <div>
-                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>{t("app.handoff.prefLanguages")}</span>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5 min-[900px]:gap-2">
-                          {spokenLangs.map((code) => (
-                            <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                              className="inline-flex items-center gap-1.5 h-7 min-[900px]:h-8 pl-2 min-[900px]:pl-2.5 pr-1.5 min-[900px]:pr-2 rounded-full border text-[12px] min-[900px]:text-sm"
-                              style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#5a4736" }}>
-                              <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                className="w-4 h-3 min-[900px]:w-5 min-[900px]:h-4 rounded-[2px] object-cover" loading="lazy" />
-                              {SPOKEN_LANG_NATIVE[code]}
-                              <span aria-hidden style={{ color: "#9E9387" }}>×</span>
-                            </button>
-                          ))}
-                          <button type="button" onClick={() => setLangPickerOpen(o => !o)}
-                            className="inline-flex items-center h-7 min-[900px]:h-8 px-2.5 min-[900px]:px-3 rounded-full border text-[12px] min-[900px]:text-sm"
-                            style={{ borderColor: "#E6DCCF", color: "#7A7068" }}>
-                            + {t("app.handoff.prefLanguagesAdd")}
-                          </button>
-                        </div>
-                        {langPickerOpen && (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5 min-[900px]:gap-2">
-                            {SPOKEN_LANGS.filter(c => !spokenLangs.includes(c)).map((code) => (
-                              <button key={code} type="button" onClick={() => toggleSpokenLang(code)}
-                                className="inline-flex items-center gap-1.5 h-7 min-[900px]:h-8 px-2.5 min-[900px]:px-3 rounded-full border text-[12px] min-[900px]:text-sm bg-white"
-                                style={{ borderColor: "#E6DCCF", color: "#5a4736" }}>
-                                <img src={`https://flagcdn.com/w40/${SPOKEN_LANG_FLAG[code]}.png`} alt="" aria-hidden
-                                  className="w-4 h-3 min-[900px]:w-5 min-[900px]:h-4 rounded-[2px] object-cover" loading="lazy" />
-                                {SPOKEN_LANG_NATIVE[code]}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{t("app.handoff.prefOptional")}</p>
-                      <div className="rounded-xl p-3 min-[900px]:p-4 text-left" style={{ background: "#FAF6F1" }}>
-                        <p className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5a4736" }}>
-                          {partner.business_name} is not registered with Massage Club yet, so we book this one by hand. Send us the message and we will contact the studio and confirm your time with you, usually within a few hours.
-                        </p>
-                        <p className="text-[11px] min-[900px]:text-xs leading-snug mt-1" style={{ color: "#7A7068" }}>
-                          {partner.business_name} todavía no está registrado en Massage Club, así que esta reserva la hacemos a mano. Envíanos el mensaje y contactamos con el estudio para confirmarte la hora, normalmente en unas horas.
-                        </p>
-                      </div>
-                      <div className="pt-2 min-[900px]:pt-3">
-                        <button
-                          type="button"
-                          onClick={() => hoGo(4)}
-                          disabled={!hoDetailsReady}
-                          aria-disabled={!hoDetailsReady}
-                          className={`w-full min-h-[52px] min-[900px]:h-14 rounded-2xl font-semibold flex flex-col items-center justify-center leading-tight motion-safe:transition ${
-                            hoDetailsReady ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
-                          }`}
-                        >
-                          <span className="min-[900px]:text-lg">Continue</span>
-                          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">Continuar</span>
-                        </button>
-                        {!hoDetailsReady && (
-                          <p className="mt-2 text-xs min-[900px]:text-sm text-center" style={{ color: "#8a7460" }}>
-                            Add your first name, last name and email to continue
-                            <span className="block">Añade tu nombre, apellido y email para continuar</span>
-                          </p>
-                        )}
-                      </div>
-                      <WizardNav onBack={() => hoGo(2)} />
-
-                    </div>
-                  )}
-
-                  {/* STEP 4: review and send */}
-                  {hoStep === 4 && !waTapped && (
+                  {/* STEP 3: review and send — the WhatsApp button is never disabled */}
+                  {hoStep === 3 && !waTapped && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
-                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
-                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
+                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Any day" />
+                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Any time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
-                        <SummaryRow label="Name" labelEs="Nombre" value={hoFullName || null} placeholder="Not given" />
-                        <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
-                      <a
-                        href={waLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={trackWhatsappIntent}
-                        className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
-                        style={{ background: "#B85C38", color: "#fff" }}
-                      >
-                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
-                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
-                      </a>
+                      {hoServiceId ? (
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={trackWhatsappIntent}
+                          className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
+                          style={{ background: "#B85C38", color: "#fff" }}
+                        >
+                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Request via WhatsApp</span>
+                          <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar por WhatsApp</span>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={scrollToServices}
+                          className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
+                          style={{ background: "#B85C38", color: "#fff" }}
+                        >
+                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Pick a massage</span>
+                          <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Elige un masaje</span>
+                        </button>
+                      )}
                       <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
                   )}
 
-                  {/* STEP 4: confirmation after WhatsApp is opened */}
-                  {hoStep === 4 && waTapped && (
+                  {/* STEP 3: confirmation after WhatsApp is opened */}
+                  {hoStep === 3 && waTapped && (
                     <div className="space-y-4 min-[900px]:space-y-5 text-center">
                       <div className="mx-auto flex h-14 w-14 min-[900px]:h-16 min-[900px]:w-16 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
@@ -1327,7 +1176,7 @@ export default function StudioBookingPage() {
                         Studios already on Massage Club confirm instantly.
                         <span className="block">Los estudios que ya están en Massage Club confirman al instante.</span>
                       </p>
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
