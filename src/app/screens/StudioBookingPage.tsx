@@ -56,8 +56,7 @@ const BOOKING_STEPS = [
 const HANDOFF_STEPS = [
   { label: "Service", labelEs: "Servicio" },
   { label: "Day and time", labelEs: "Día y hora" },
-  { label: "Your info", labelEs: "Tus datos" },
-  { label: "Review", labelEs: "Revisar" },
+  { label: "WhatsApp", labelEs: "WhatsApp" },
 ];
 const CONVERSATION_LABELS: Record<string, string> = {
   silence: "Silence",
@@ -120,11 +119,9 @@ export default function StudioBookingPage() {
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
-  const [hoName, setHoName] = useState("");
-  const [hoLastName, setHoLastName] = useState("");
-  // Required email + phone on the handoff, so we can follow up after the WhatsApp booking.
-  const [hoEmail, setHoEmail] = useState("");
-  const [hoPhone, setHoPhone] = useState("");
+  // No contact form on the unclaimed handoff: WhatsApp gives us name + number.
+  // Brief highlight on the services menu when a CTA scrolls the visitor to it.
+  const [svcFlash, setSvcFlash] = useState(false);
 
   // Passwordless account creation, offered to visitors who are not signed in.
   const [createAccount, setCreateAccount] = useState(true);
