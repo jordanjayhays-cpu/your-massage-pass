@@ -4,52 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import BookFlowWizard, { useBookFlowLang } from "@/components/BookFlowWizard";
 import { trackEvent } from "@/lib/siteVisit";
-import { MessageCircle } from "lucide-react";
-
-const WA_BASE = "https://wa.me/34612474827?text=";
-
-// Massage chip options per language. `kind` drives the message template.
-const MASSAGE_CHIPS = {
-  en: [
-    { kind: "relaxing", label: "Relaxing" },
-    { kind: "deep", label: "Deep tissue" },
-    { kind: "thai", label: "Thai" },
-    { kind: "sports", label: "Sports" },
-    { kind: "unsure", label: "Not sure" },
-  ],
-  es: [
-    { kind: "relaxing", label: "Relajante" },
-    { kind: "deep", label: "Descontracturante" },
-    { kind: "thai", label: "Tailandés" },
-    { kind: "sports", label: "Deportivo" },
-    { kind: "unsure", label: "No lo sé" },
-  ],
-} as const;
-
-const TYPE_WORDS: Record<string, { en: string; es: string }> = {
-  relaxing: { en: "a relaxing massage", es: "un masaje relajante" },
-  deep: { en: "a deep tissue massage", es: "un masaje descontracturante" },
-  thai: { en: "a thai massage", es: "un masaje tailandés" },
-  sports: { en: "a sports massage", es: "un masaje deportivo" },
-};
-
-function buildWaText(lang: "en" | "es", kind: string, area: string): string {
-  const cleanArea = area.trim();
-  if (kind === "unsure") {
-    return lang === "es"
-      ? "Hola, quiero reservar un masaje pero no sé qué tipo. Os he visto en Facebook."
-      : "Hi, I'd like to book a massage but I'm not sure which type. I saw you on Facebook.";
-  }
-  const typeWord = TYPE_WORDS[kind]?.[lang] ?? TYPE_WORDS.relaxing[lang];
-  if (cleanArea) {
-    return lang === "es"
-      ? `Hola, quiero reservar ${typeWord} en ${cleanArea}. Os he visto en Facebook.`
-      : `Hi, I'd like to book ${typeWord} in ${cleanArea}. I saw you on Facebook.`;
-  }
-  return lang === "es"
-    ? `Hola, quiero reservar ${typeWord}. Os he visto en Facebook.`
-    : `Hi, I'd like to book ${typeWord}. I saw you on Facebook.`;
-}
+import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 
 const COPY = {
   en: {
@@ -116,10 +71,6 @@ export default function FbLanding() {
   const location = useLocation();
   const bookingRef = useRef<HTMLDivElement>(null);
   const logged = useRef(false);
-  const [waOpen, setWaOpen] = useState(false);
-  const [waType, setWaType] = useState<string | null>(null);
-  const [waArea, setWaArea] = useState("");
-  const [waAreaUnsure, setWaAreaUnsure] = useState(false);
 
   useEffect(() => {
     if (logged.current) return;
@@ -209,84 +160,13 @@ export default function FbLanding() {
 
         {/* 5. WhatsApp fallback: two quick questions, then open WhatsApp */}
         <footer className="mt-14 border-t border-border pt-8">
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setWaOpen((v) => !v)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-border bg-card text-base font-semibold text-foreground hover:border-primary/50 transition"
-              aria-expanded={waOpen}
-            >
-              <MessageCircle className="h-5 w-5 text-primary" />
-              {t.footerLead}
-            </button>
-          </div>
-
-          {waOpen && (
-            <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-soft text-left">
-              <p className="text-sm font-semibold text-foreground">{t.waQ1}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {MASSAGE_CHIPS[lang].map((c) => (
-                  <button
-                    key={c.kind}
-                    type="button"
-                    onClick={() => setWaType(c.kind)}
-                    className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
-                      waType === c.kind
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background text-foreground hover:border-primary/50"
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-4 text-sm font-semibold text-foreground">{t.waQ2}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={waArea}
-                  disabled={waAreaUnsure}
-                  onChange={(e) => {
-                    setWaArea(e.target.value);
-                    setWaAreaUnsure(false);
-                  }}
-                  placeholder={t.waAreaPlaceholder}
-                  className="flex-1 min-w-0 h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWaAreaUnsure((v) => !v);
-                    if (!waAreaUnsure) setWaArea("");
-                  }}
-                  className={`shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition ${
-                    waAreaUnsure
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground hover:border-primary/50"
-                  }`}
-                >
-                  {t.waAreaUnsure}
-                </button>
-              </div>
-
-              <button
-                type="button"
-                disabled={!waType}
-                onClick={() => {
-                  const area = waAreaUnsure ? "" : waArea;
-                  trackEvent("wa_prefill", {
-                    meta: { source: "fb", lang, massage_type: waType, area: area || null },
-                  });
-                  window.open(WA_BASE + encodeURIComponent(buildWaText(lang, waType!, area)), "_blank", "noopener,noreferrer");
-                }}
-                className="mt-4 w-full h-12 rounded-full bg-[#25D366] text-white text-base font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-              >
-                <MessageCircle className="h-5 w-5" />
-                {t.waOpen}
-              </button>
-            </div>
-          )}
+          <WhatsAppAskButton
+            source="fb"
+            lang={lang}
+            label={t.footerLead}
+            note={lang === "es" ? "Os he visto en Facebook." : "I saw you on Facebook."}
+            className="text-center"
+          />
 
           <p className="mt-6 text-xs text-muted-foreground text-center">{t.footer}</p>
         </footer>
