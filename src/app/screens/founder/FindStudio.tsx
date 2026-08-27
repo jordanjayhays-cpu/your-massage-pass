@@ -116,12 +116,12 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
     setPaste(raw);
     if (!raw.trim()) return;
     const p = parsePaste(raw, areas);
-    if (p.type) setType(p.type);
-    if (p.area) setArea(p.area);
-    if (p.when) {
-      setWhen(p.when.slice(0, 120));
-      setWant(p.when.slice(0, 200));
+    if (p.type) {
+      setType(p.type);
+      setWant(`un masaje ${p.type.toLowerCase()}`);
     }
+    if (p.area) setArea(p.area);
+    if (p.when) setWhen(p.when.slice(0, 120));
   };
 
   useEffect(() => {
