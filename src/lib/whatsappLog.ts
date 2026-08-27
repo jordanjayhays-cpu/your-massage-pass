@@ -31,10 +31,11 @@ const uuidOrNull = (v?: string | null): string | null =>
   v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null;
 
 /**
- * Fire and forget log of a WhatsApp handoff.
- * Never throws and never blocks: the wa.me link opens regardless.
+ * Log a WhatsApp handoff to whatsapp_requests.
+ * Returns a promise so callers can await the insert before opening the wa.me link.
+ * Never throws: the promise always resolves, even on error.
  */
-export function logWhatsappRequest(row: WhatsappRequestLog): void {
+export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<void> {
   try {
     const payload = {
       partner_id: uuidOrNull(row.partner_id ?? null),
@@ -48,18 +49,13 @@ export function logWhatsappRequest(row: WhatsappRequestLog): void {
       time2: clean(row.time2),
       first_name: clean(row.first_name),
       contact_email: clean(row.contact_email),
+      client_phone: clean(row.client_phone),
       languages: clean(row.languages),
       user_id: uuidOrNull(row.user_id ?? null),
       wa_number: clean(row.wa_number),
       message_text: clean(row.message_text),
     };
-    void supabase
-      .from("whatsapp_requests")
-      .insert(payload as any)
-      .then(
-        () => undefined,
-        () => undefined,
-      );
+    await supabase.from("whatsapp_requests").insert(payload as any);
   } catch {
     // Logging must never break the handoff.
   }

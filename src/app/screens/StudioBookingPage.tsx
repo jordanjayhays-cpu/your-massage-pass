@@ -56,6 +56,7 @@ const BOOKING_STEPS = [
 const HANDOFF_STEPS = [
   { label: "Service", labelEs: "Servicio" },
   { label: "Day and time", labelEs: "Día y hora" },
+  { label: "Your details", labelEs: "Tus datos" },
   { label: "WhatsApp", labelEs: "WhatsApp" },
 ];
 const CONVERSATION_LABELS: Record<string, string> = {
@@ -119,9 +120,9 @@ export default function StudioBookingPage() {
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
-  // No contact form on the unclaimed handoff: WhatsApp gives us name + number.
-  // Brief highlight on the services menu when a CTA scrolls the visitor to it.
-  const [svcFlash, setSvcFlash] = useState(false);
+  const [hoName, setHoName] = useState("");
+  const [hoEmail, setHoEmail] = useState("");
+  const [hoPhone, setHoPhone] = useState("");
 
   // Passwordless account creation, offered to visitors who are not signed in.
   const [createAccount, setCreateAccount] = useState(true);
@@ -801,16 +802,16 @@ export default function StudioBookingPage() {
       msg += " (via Massage Club)";
       return msg;
     })();
-    // Scroll the visitor to the services menu and flash it briefly.
+    // Scroll the visitor to the services menu when a CTA needs to point them back.
     const scrollToServices = () => {
       document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setSvcFlash(true);
-      window.setTimeout(() => setSvcFlash(false), 1600);
     };
 
+    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
+    const hoPhoneValid = /^\+?[\d\s]{9,}$/.test(hoPhone.trim().replace(/\s/g, ""));
+    const hoDetailsReady = !!(hoName.trim() && (hoEmailValid || hoPhoneValid));
 
-
-    const trackWhatsappIntent = () => {
+    const trackWhatsappIntent = async () => {
       if (waLoggedRef.current) return;
       waLoggedRef.current = true;
       setWaTapped(true);
@@ -830,9 +831,9 @@ export default function StudioBookingPage() {
           languages: spokenLangs,
         },
       });
-      // Fire and forget: never blocks the WhatsApp link. Name, email and phone
-      // stay null on purpose — WhatsApp gives us those when they send.
-      logWhatsappRequest({
+      // Log the lead BEFORE the WhatsApp link opens, so we keep the record even
+      // if the visitor never sends the message.
+      await logWhatsappRequest({
         partner_id: partner.id,
         slug: partner.slug || null,
         studio_name: partner.business_name,
@@ -842,9 +843,9 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
-        first_name: null,
-        contact_email: null,
-        client_phone: null,
+        first_name: hoName.trim() || null,
+        contact_email: hoEmailValid ? hoEmail.trim() : null,
+        client_phone: hoPhoneValid ? hoPhone.trim() : null,
         languages: spokenLangs.join(", "),
         user_id: userId,
         wa_number: waNumber,
@@ -946,8 +947,8 @@ export default function StudioBookingPage() {
               <div id="mc-services-menu" className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
-                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3 motion-safe:transition-shadow"
-                  style={{ background: "#FAF6F1", boxShadow: svcFlash ? "0 0 0 3px #B85C38" : "0 0 0 0 rgba(184,92,56,0)" }}>
+                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3"
+                  style={{ background: "#FAF6F1" }}>
 
                   {profile.services.map((s: any) => {
                     const selected = hoServiceId === s.id;
@@ -1007,6 +1008,15 @@ export default function StudioBookingPage() {
                   />
                 )}
                 {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
+                {hoStep === 3 && (
+                  <StickyContinue
+                    ready={hoDetailsReady}
+                    onNext={() => hoGo(4)}
+                    summary={hoSummaryLine}
+                    note={hoDetailsReady ? undefined : "Add your name and a way to reach you"}
+                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre y una forma de contacto"}
+                  />
+                )}
 
 
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
@@ -1106,28 +1116,86 @@ export default function StudioBookingPage() {
                     </div>
                   )}
 
-                  {/* STEP 3: review and send — the WhatsApp button is never disabled */}
-                  {hoStep === 3 && !waTapped && (
+                  {/* STEP 3: your details */}
+                  {hoStep === 3 && (
+                    <div className="space-y-3 min-[900px]:space-y-4">
+                      <input
+                        value={hoName}
+                        onChange={(e) => setHoName(e.target.value)}
+                        placeholder="Your name / Tu nombre"
+                        className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                      />
+                      <div>
+                        <input
+                          value={hoPhone}
+                          onChange={(e) => setHoPhone(e.target.value)}
+                          placeholder="WhatsApp / Teléfono"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                        />
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          Para confirmarte la hora por WhatsApp.
+                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
+                        </p>
+                      </div>
+                      <input
+                        value={hoEmail}
+                        onChange={(e) => setHoEmail(e.target.value)}
+                        placeholder="Email (optional) / Email (opcional)"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
+                          hoEmail.trim() && !hoEmailValid ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`}
+                      />
+                      {!hoDetailsReady && (
+                        <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          Add your name and a WhatsApp or email so we can follow up.
+                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>Añade tu nombre y un WhatsApp o email para poder contactarte.</span>
+                        </p>
+                      )}
+                      <WizardNav
+                        onBack={() => hoGo(2)}
+                        onNext={() => hoGo(4)}
+                        disabled={!hoDetailsReady}
+                        hint="Add your name and a way to reach you"
+                        hintEs="Añade tu nombre y una forma de contacto"
+                      />
+                    </div>
+                  )}
+
+                  {/* STEP 4: review and send */}
+                  {hoStep === 4 && !waTapped && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
                         <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Any day" />
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Any time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
+                        <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not provided" />
+                        <SummaryRow label="Contact" labelEs="Contacto" value={[hoPhone.trim(), hoEmail.trim()].filter(Boolean).join(" · ") || null} placeholder="Not provided" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
                       {hoServiceId ? (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={trackWhatsappIntent}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            // Open a blank tab synchronously while the user gesture is active,
+                            // then log the lead and point the tab at WhatsApp.
+                            const win = window.open("about:blank", "_blank");
+                            await trackWhatsappIntent();
+                            if (win) win.location.href = waLink;
+                            else window.location.href = waLink;
+                          }}
                           className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                           style={{ background: "#B85C38", color: "#fff" }}
                         >
                           <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Request via WhatsApp</span>
                           <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar por WhatsApp</span>
-                        </a>
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -1140,14 +1208,14 @@ export default function StudioBookingPage() {
                         </button>
                       )}
                       <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
                   )}
 
-                  {/* STEP 3: confirmation after WhatsApp is opened */}
-                  {hoStep === 3 && waTapped && (
+                  {/* STEP 4: confirmation after WhatsApp is opened */}
+                  {hoStep === 4 && waTapped && (
                     <div className="space-y-4 min-[900px]:space-y-5 text-center">
                       <div className="mx-auto flex h-14 w-14 min-[900px]:h-16 min-[900px]:w-16 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
@@ -1176,7 +1244,7 @@ export default function StudioBookingPage() {
                         Studios already on Massage Club confirm instantly.
                         <span className="block">Los estudios que ya están en Massage Club confirman al instante.</span>
                       </p>
-                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
