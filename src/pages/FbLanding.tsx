@@ -100,7 +100,6 @@ export default function FbLanding() {
           >
             {t.cta}
           </button>
-          <p className="mt-3 text-sm text-muted-foreground text-center">{t.priceLine}</p>
         </section>
 
         {/* 2. Booking wizard */}
