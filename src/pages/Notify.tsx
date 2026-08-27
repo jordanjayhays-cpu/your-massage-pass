@@ -11,11 +11,11 @@ const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lea
 const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
 
 const BUDGET_OPTIONS = [
-  { value: "", label: "Sin preferencia / No preference" },
-  { value: "Hasta 40€", label: "Hasta 40€" },
-  { value: "40–60€", label: "40–60€" },
-  { value: "60–90€", label: "60–90€" },
-  { value: "Más de 90€", label: "Más de 90€" },
+  { value: "", label: "No preference" },
+  { value: "Under €40", label: "Under €40" },
+  { value: "€40–60", label: "€40–60" },
+  { value: "€60–90", label: "€60–90" },
+  { value: "Over €90", label: "Over €90" },
 ];
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -36,7 +36,7 @@ export default function Notify() {
     setValidationMsg("");
 
     if (!phone.trim() && !email.trim()) {
-      setValidationMsg("Necesitamos un WhatsApp o un email / We need a WhatsApp or email to reach you");
+      setValidationMsg("We need a WhatsApp or email to reach you");
       return;
     }
 
@@ -72,8 +72,8 @@ export default function Notify() {
   return (
     <>
       <Helmet>
-        <title>Avísame cuando haya plaza · Massage Club</title>
-        <meta name="description" content="Te avisamos cuando tengamos un masaje que encaje contigo. Sin spam, sin compromiso." />
+        <title>Get notified · Massage Club</title>
+        <meta name="description" content="Tell us what massage you are after and we will message you when we find a slot that fits." />
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -103,12 +103,9 @@ export default function Notify() {
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">
-                    ¡Hecho!
+                    Done.
                   </h1>
                   <p className="text-[15px] text-muted-foreground">
-                    Te escribimos cuando tengamos algo bueno cerca de ti.
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
                     We'll message you when we have something good near you.
                   </p>
                 </div>
@@ -116,34 +113,33 @@ export default function Notify() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="text-center mb-2">
                     <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">
-                      Te avisamos cuando tengamos algo para ti
+                      We'll tell you when we have something for you
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                      Dinos qué buscas y te escribimos cuando encontremos un hueco que encaje.
+                      Tell us what you're after and we'll message you when we find a slot that fits.
                     </p>
                     <p className="text-xs text-muted-foreground/80 mt-0.5">
-                      Tell us what you're after and we'll message you when we find a slot that fits.
+                      No spam, no commitment.
                     </p>
                   </div>
 
                   <div className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="want" className="text-[15px]">
-                        Qué masaje te interesa
-                        <span className="block text-xs font-normal text-muted-foreground mt-0.5">What massage</span>
+                        What massage
                       </Label>
                       <Input
                         id="want"
                         value={want}
                         onChange={(e) => setWant(e.target.value)}
-                        placeholder="Descontracturante, tailandés, relajante…"
+                        placeholder="Deep tissue, Thai, relaxing…"
                         className="h-12 text-base md:text-sm rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="area" className="text-[15px]">
-                        Zona <span className="block text-xs font-normal text-muted-foreground mt-0.5">Area</span>
+                        Area
                       </Label>
                       <Input
                         id="area"
@@ -156,7 +152,7 @@ export default function Notify() {
 
                     <div className="space-y-2">
                       <Label htmlFor="budget" className="text-[15px]">
-                        Presupuesto <span className="block text-xs font-normal text-muted-foreground mt-0.5">Budget</span>
+                        Budget
                       </Label>
                       <select
                         id="budget"
@@ -174,7 +170,7 @@ export default function Notify() {
 
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-[15px]">
-                        Nombre <span className="block text-xs font-normal text-muted-foreground mt-0.5">Name</span>
+                        Name
                       </Label>
                       <Input
                         id="name"
@@ -203,21 +199,21 @@ export default function Notify() {
 
                       <div className="space-y-2">
                         <Label htmlFor="email" className="text-[15px]">
-                          O email <span className="block text-xs font-normal text-muted-foreground mt-0.5">Or email</span>
+                          Or email
                         </Label>
                         <Input
                           id="email"
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="tu@email.com"
+                          placeholder="you@email.com"
                           className="h-12 text-base md:text-sm rounded-xl"
                         />
                       </div>
                     </div>
 
                     <p className="text-xs text-muted-foreground -mt-2">
-                      Con uno de los dos vale. <span className="opacity-70">/ Either one is enough.</span>
+                      Either one is enough.
                     </p>
                   </div>
 
@@ -231,10 +227,9 @@ export default function Notify() {
                   {status === "error" && (
                     <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
                       <p className="font-medium mb-1">
-                        No se pudo enviar. Escríbenos por WhatsApp al +34 612 474 827.
+                        Could not send. Message us on WhatsApp at +34 612 474 827.
                       </p>
                       <p className="opacity-90">
-                        Could not send.{" "}
                         <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer" className="underline">
                           Message us on WhatsApp
                         </a>{" "}
@@ -250,11 +245,11 @@ export default function Notify() {
                     loading={status === "loading"}
                     disabled={status === "loading"}
                   >
-                    {status === "loading" ? "Enviando…" : "Avisadme / Keep me posted"}
+                    {status === "loading" ? "Sending…" : "Keep me posted"}
                   </Button>
 
                   <p className="text-center text-xs text-muted-foreground">
-                    Puedes decirnos que paremos cuando quieras. <span className="opacity-70">/ You can tell us to stop any time.</span>
+                    You can tell us to stop any time.
                   </p>
                 </form>
               )}
