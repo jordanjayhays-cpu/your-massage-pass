@@ -1010,16 +1010,7 @@ export default function StudioBookingPage() {
                     noteEs={hoServiceId ? undefined : "Elige un servicio para continuar"}
                   />
                 )}
-                {hoStep === 2 && <StickyContinue ready={!!hoDate && !!hoTime} onNext={() => hoGo(3)} summary={hoSummaryLine} />}
-                {hoStep === 3 && (
-                  <StickyContinue
-                    ready={hoDetailsReady}
-                    onNext={() => hoGo(4)}
-                    summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : "Add your first name, last name, phone and email to continue"}
-                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre, apellido, teléfono y email para continuar"}
-                  />
-                )}
+                {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
 
 
                 <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
@@ -1067,13 +1058,12 @@ export default function StudioBookingPage() {
 
                       <button
                         type="button"
-                        onClick={() => hoGo(2)}
-                        disabled={!hoServiceId}
-                        className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition disabled:opacity-40"
+                        onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
+                        className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition"
                         style={{ background: "#B85C38" }}
                       >
-                        Request via WhatsApp
-                        <span className="block text-xs font-normal opacity-90">Solicitar por WhatsApp</span>
+                        Continue
+                        <span className="block text-xs font-normal opacity-90">Continuar</span>
                       </button>
                     </div>
 
