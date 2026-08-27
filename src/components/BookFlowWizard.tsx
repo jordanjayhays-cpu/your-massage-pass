@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, CheckCircle2, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin, MessageCircle } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
@@ -67,9 +67,10 @@ export const BOOK_FLOW_COPY = {
     submit: "Request my massage",
     sending: "Sending...",
     sendError: "Could not send. Message us on WhatsApp at +34 612 474 827.",
-    successTitle: "Request received!",
-    successSub:
-      "We're confirming your time with the studio. You'll hear from us on WhatsApp shortly - usually within the hour, always the same day.",
+    successTitle: "Almost done - send it to us",
+    successSub: "Tap send in WhatsApp and we'll confirm your time with the studio.",
+    sendWhatsApp: "Send my request on WhatsApp",
+    noWhatsApp: "No WhatsApp? We'll reply to {contact}.",
     sumMassage: "Massage",
     sumWhen: "When",
     sumWhere: "Where",
@@ -133,9 +134,10 @@ export const BOOK_FLOW_COPY = {
     submit: "Pedir mi masaje",
     sending: "Enviando...",
     sendError: "No se pudo enviar. Escríbenos por WhatsApp al +34 612 474 827.",
-    successTitle: "¡Solicitud recibida!",
-    successSub:
-      "Estamos confirmando tu hora con el centro. Te escribimos por WhatsApp en breve - normalmente en menos de una hora, siempre el mismo día.",
+    successTitle: "Casi listo - envíanoslo",
+    successSub: "Dale a enviar en WhatsApp y confirmamos tu hora con el centro.",
+    sendWhatsApp: "Enviar mi solicitud por WhatsApp",
+    noWhatsApp: "¿No tienes WhatsApp? Te respondemos a {contact}.",
     sumMassage: "Masaje",
     sumWhen: "Cuándo",
     sumWhere: "Dónde",
@@ -392,17 +394,25 @@ export default function BookFlowWizard({
   };
 
   if (status === "success") {
+    const slotList = [whenValue, when2Value, when3Value].filter(Boolean);
+    const slotsText = slotList.join(lang === "es" ? " o " : " or ");
+    const waText =
+      lang === "es"
+        ? `Hola, soy ${name.trim()}. Quiero reservar: ${wantValue} en ${areaValue}. Me va bien ${slotsText}.`
+        : `Hi, I'm ${name.trim()}. I'd like to book a ${wantValue} massage in ${areaValue}. I can do ${slotsText}.`;
+    const waLink = `https://wa.me/34612474827?text=${encodeURIComponent(waText)}`;
+    const fallbackContact = email.trim() || phone.trim();
+
     return (
       <div ref={rootRef}>
         <div className="text-center">
-          <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
           <h2 className="font-display text-3xl text-foreground mt-4">{t.successTitle}</h2>
           <p className="text-base text-muted-foreground mt-3 leading-snug">{t.successSub}</p>
         </div>
         <div className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
           {[
             [t.sumMassage, wantValue],
-            [t.sumWhen, [whenValue, when2Value, when3Value].filter(Boolean).join(" · ")],
+            [t.sumWhen, slotList.join(" · ")],
             [t.sumWhere, areaValue],
           ].map(([k, v]) => (
             <div key={k} className="flex items-start justify-between gap-4">
@@ -411,6 +421,20 @@ export default function BookFlowWizard({
             </div>
           ))}
         </div>
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => trackEvent("wizard_whatsapp_click", { meta: { source, lang } })}
+          className="mt-6 w-full h-14 rounded-full bg-[#25D366] text-white text-base font-semibold shadow-soft hover:bg-[#128C7E] transition inline-flex items-center justify-center gap-2"
+        >
+          <MessageCircle className="h-5 w-5 fill-current" /> {t.sendWhatsApp}
+        </a>
+        {fallbackContact && (
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            {t.noWhatsApp.replace("{contact}", fallbackContact)}
+          </p>
+        )}
       </div>
     );
   }
