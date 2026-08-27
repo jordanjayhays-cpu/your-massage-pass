@@ -1,42 +1,101 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
 
-const BUDGET_OPTIONS = [
-  { value: "", label: "No preference" },
-  { value: "Under €40", label: "Under €40" },
-  { value: "€40–60", label: "€40–60" },
-  { value: "€60–90", label: "€60–90" },
-  { value: "Over €90", label: "Over €90" },
-];
+const COPY = {
+  en: {
+    title: "Join Massage Club",
+    sub: "Free. We'll message you when we find massages worth booking in Madrid.",
+    name: "Name",
+    email: "Email",
+    whatsapp: "WhatsApp",
+    contactHelper: "Either one is enough.",
+    consentLabel: "Yes, Massage Club can message me about massages and offers in Madrid.",
+    consentNotePre: "You can unsubscribe any time. We never sell your details. ",
+    privacy: "Privacy",
+    consentError: "Please tick this so we can message you.",
+    contactError: "We need a WhatsApp or email to reach you",
+    submit: "Join",
+    submitting: "Joining…",
+    successTitle: "You're in.",
+    successSub: "We'll be in touch when we have something good for you.",
+    sendError: "Could not send. Message us at +34 612 474 827.",
+  },
+  es: {
+    title: "Únete a Massage Club",
+    sub: "Gratis. Te escribimos cuando encontremos masajes que merezcan la pena en Madrid.",
+    name: "Nombre",
+    email: "Email",
+    whatsapp: "WhatsApp",
+    contactHelper: "Con uno de los dos vale.",
+    consentLabel: "Sí, Massage Club puede escribirme sobre masajes y ofertas en Madrid.",
+    consentNotePre: "Puedes darte de baja cuando quieras. Nunca vendemos tus datos. ",
+    privacy: "Privacidad",
+    consentError: "Marca esto para que podamos escribirte.",
+    contactError: "Necesitamos un WhatsApp o email para escribirte",
+    submit: "Únete",
+    submitting: "Entrando…",
+    successTitle: "¡Ya estás dentro!",
+    successSub: "Te escribimos cuando tengamos algo bueno para ti.",
+    sendError: "No se pudo enviar. Escríbenos al +34 612 474 827.",
+  },
+} as const;
 
+type PageLang = keyof typeof COPY;
 type Status = "idle" | "loading" | "success" | "error";
 
 export default function Notify() {
-  const [want, setWant] = useState("");
-  const [area, setArea] = useState("");
-  const [budget, setBudget] = useState("");
+  const { i18n } = useTranslation();
+  const resolved = (i18n.resolvedLanguage || "en").slice(0, 2);
+  const lang: PageLang = resolved === "es" ? "es" : "en";
+  const t = COPY[lang];
+
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [validationMsg, setValidationMsg] = useState("");
+  const [consentError, setConsentError] = useState(false);
+  const [contactError, setContactError] = useState(false);
+
+  // Restore persisted page language (default English) and keep <html lang> + mc_lang in sync.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mc_lang");
+      if ((saved === "en" || saved === "es") && saved !== resolved) {
+        i18n.changeLanguage(saved);
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    try { localStorage.setItem("mc_lang", lang); } catch { /* ignore */ }
+  }, [lang]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setValidationMsg("");
+    setContactError(false);
+    setConsentError(false);
 
     if (!phone.trim() && !email.trim()) {
-      setValidationMsg("We need a WhatsApp or email to reach you");
+      setContactError(true);
+      return;
+    }
+    if (!consent) {
+      setConsentError(true);
       return;
     }
 
@@ -47,33 +106,31 @@ export default function Notify() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "waitlist",
-          want: want.trim() || undefined,
-          area: area.trim() || undefined,
-          budget: budget || undefined,
           name: name.trim() || undefined,
-          phone: phone.trim() || undefined,
           email: email.trim() || undefined,
-          source: "web-notify",
+          phone: phone.trim() || undefined,
+          lang,
+          consent: true,
+          consent_text: t.consentLabel,
+          source: "join",
         }),
       });
-      const data = await res.json().catch(() => ({ ok: false, error: "Unknown error" }));
+      const data = await res.json().catch(() => ({ ok: false }));
       if (res.ok && data.ok) {
         setStatus("success");
       } else {
         setStatus("error");
-        setErrorMsg(data.error || "Could not send");
       }
-    } catch (err) {
+    } catch {
       setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : "Network error");
     }
   };
 
   return (
     <>
       <Helmet>
-        <title>Get notified · Massage Club</title>
-        <meta name="description" content="Tell us what massage you are after and we will message you when we find a slot that fits." />
+        <title>Join Massage Club</title>
+        <meta name="description" content="Free. We'll message you when we find massages worth booking in Madrid." />
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -92,6 +149,7 @@ export default function Notify() {
               Massage Club
             </span>
           </Link>
+          <LanguageFlagToggle />
         </header>
 
         <main className="max-w-xl mx-auto px-4 py-6 md:py-10">
@@ -103,139 +161,116 @@ export default function Notify() {
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">
-                    Done.
+                    {t.successTitle}
                   </h1>
                   <p className="text-[15px] text-muted-foreground">
-                    We'll message you when we have something good near you.
+                    {t.successSub}
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="text-center mb-2">
                     <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">
-                      We'll tell you when we have something for you
+                      {t.title}
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                      Tell us what you're after and we'll message you when we find a slot that fits.
-                    </p>
-                    <p className="text-xs text-muted-foreground/80 mt-0.5">
-                      No spam, no commitment.
+                      {t.sub}
                     </p>
                   </div>
 
                   <div className="space-y-5">
                     <div className="space-y-2">
-                      <Label htmlFor="want" className="text-[15px]">
-                        What massage
-                      </Label>
-                      <Input
-                        id="want"
-                        value={want}
-                        onChange={(e) => setWant(e.target.value)}
-                        placeholder="Deep tissue, Thai, relaxing…"
-                        className="h-12 text-base md:text-sm rounded-xl"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="area" className="text-[15px]">
-                        Area
-                      </Label>
-                      <Input
-                        id="area"
-                        value={area}
-                        onChange={(e) => setArea(e.target.value)}
-                        placeholder="Chamberí"
-                        className="h-12 text-base md:text-sm rounded-xl"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="budget" className="text-[15px]">
-                        Budget
-                      </Label>
-                      <select
-                        id="budget"
-                        value={budget}
-                        onChange={(e) => setBudget(e.target.value)}
-                        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base md:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        {BUDGET_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
                       <Label htmlFor="name" className="text-[15px]">
-                        Name
+                        {t.name}
                       </Label>
                       <Input
                         id="name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder=""
                         className="h-12 text-base md:text-sm rounded-xl"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-[15px]">
-                          WhatsApp
-                        </Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          inputMode="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="+34 600 000 000"
-                          className="h-12 text-base md:text-sm rounded-xl"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-[15px]">
+                        {t.email}
+                      </Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        inputMode="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-12 text-base md:text-sm rounded-xl"
+                      />
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-[15px]">
-                          Or email
-                        </Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="you@email.com"
-                          className="h-12 text-base md:text-sm rounded-xl"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-[15px]">
+                        {t.whatsapp}
+                      </Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        inputMode="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+34 600 000 000"
+                        className="h-12 text-base md:text-sm rounded-xl"
+                      />
                     </div>
 
                     <p className="text-xs text-muted-foreground -mt-2">
-                      Either one is enough.
+                      {t.contactHelper}
                     </p>
-                  </div>
 
-                  {validationMsg && (
-                    <div className="flex items-start gap-2 text-sm text-destructive">
-                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                      {validationMsg}
+                    {contactError && (
+                      <div className="flex items-start gap-2 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                        {t.contactError}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id="consent"
+                          checked={consent}
+                          onCheckedChange={(checked) => {
+                            setConsent(checked === true);
+                            if (checked) setConsentError(false);
+                          }}
+                          className="mt-0.5 h-5 w-5"
+                          aria-invalid={consentError}
+                        />
+                        <Label htmlFor="consent" className="text-sm font-normal leading-snug cursor-pointer">
+                          {t.consentLabel}
+                        </Label>
+                      </div>
+                      {consentError && (
+                        <div className="flex items-start gap-2 text-sm text-destructive">
+                          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                          {t.consentError}
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground pl-8">
+                        {t.consentNotePre}
+                        <Link to="/privacy" className="underline hover:text-foreground">
+                          {t.privacy}
+                        </Link>
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   {status === "error" && (
                     <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
-                      <p className="font-medium mb-1">
-                        Could not send. Message us on WhatsApp at +34 612 474 827.
-                      </p>
+                      <p className="font-medium mb-1">{t.sendError}</p>
                       <p className="opacity-90">
                         <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer" className="underline">
-                          Message us on WhatsApp
+                          WhatsApp
                         </a>{" "}
-                        at +34 612 474 827.
+                        +34 612 474 827
                       </p>
-                      {errorMsg && <p className="mt-2 text-xs opacity-80">{errorMsg}</p>}
                     </div>
                   )}
 
@@ -245,12 +280,8 @@ export default function Notify() {
                     loading={status === "loading"}
                     disabled={status === "loading"}
                   >
-                    {status === "loading" ? "Sending…" : "Keep me posted"}
+                    {status === "loading" ? t.submitting : t.submit}
                   </Button>
-
-                  <p className="text-center text-xs text-muted-foreground">
-                    You can tell us to stop any time.
-                  </p>
                 </form>
               )}
             </CardContent>
