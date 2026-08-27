@@ -56,6 +56,7 @@ const BOOKING_STEPS = [
 const HANDOFF_STEPS = [
   { label: "Service", labelEs: "Servicio" },
   { label: "Day and time", labelEs: "Día y hora" },
+  { label: "Your details", labelEs: "Tus datos" },
   { label: "WhatsApp", labelEs: "WhatsApp" },
 ];
 const CONVERSATION_LABELS: Record<string, string> = {
