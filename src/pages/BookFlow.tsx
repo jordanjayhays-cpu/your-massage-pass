@@ -431,26 +431,49 @@ export default function BookFlow() {
         {step === 2 && (
           <section className="mt-5">
             <h1 className="font-display text-2xl md:text-3xl text-foreground">{t.s2Title}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{t.s2Helper}</p>
 
-            <div ref={dayRef} className="mt-4">
-              <p className="text-sm text-muted-foreground">{t.dayLabel}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {dayChips.map((d) => (
-                  <Chip key={d} active={day === d} onClick={() => { setDay(d); setHint(null); }}>{d}</Chip>
-                ))}
-              </div>
-            </div>
+            {([
+              [day, setDay, time, setTime],
+              [day2, setDay2, time2, setTime2],
+              [day3, setDay3, time3, setTime3],
+            ] as const).slice(0, slots).map(([dVal, setD, tVal, setT], idx) => (
+              <div key={idx} className={idx === 0 ? "" : "mt-8 pt-6 border-t border-border"}>
+                {idx > 0 && (
+                  <p className="text-xs font-bold tracking-wider uppercase text-primary">{t.option} {idx + 1}</p>
+                )}
+                <div ref={idx === 0 ? dayRef : undefined} className="mt-4">
+                  <p className="text-sm text-muted-foreground">{t.dayLabel}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {dayChips.map((d) => (
+                      <Chip key={d} active={dVal === d} onClick={() => { setD(d); setHint(null); }}>{d}</Chip>
+                    ))}
+                  </div>
+                </div>
 
-            <div ref={timeRef} className="mt-6">
-              <p className="text-sm text-muted-foreground">{t.timeLabel}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {timeChips.map((x) => (
-                  <Chip key={x} active={time === x} onClick={() => { setTime(x); setHint(null); }}>{x}</Chip>
-                ))}
+                <div ref={idx === 0 ? timeRef : undefined} className="mt-6">
+                  <p className="text-sm text-muted-foreground">{t.timeLabel}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {timeChips.map((x) => (
+                      <Chip key={x} active={tVal === x} onClick={() => { setT(x); setHint(null); }}>{x}</Chip>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
+
+            {slots < 3 && day && time && (
+              <button
+                type="button"
+                onClick={() => setSlots((n) => Math.min(3, n + 1))}
+                className="mt-6 text-base font-semibold text-primary underline underline-offset-4"
+              >
+                {t.addTime}
+              </button>
+            )}
           </section>
         )}
+
 
         {step === 3 && (
           <section className="mt-5">
