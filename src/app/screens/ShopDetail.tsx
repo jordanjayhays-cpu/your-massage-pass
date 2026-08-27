@@ -38,7 +38,6 @@ export default function ShopDetail() {
   const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
   const [loading, setLoading] = useState(true);
   const { isFavourite, toggle: toggleFavourite, sheet: favouriteSheet } = useFavouriteAction();
-  const [waTapped, setWaTapped] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
   const waLoggedRef = useRef(false);
@@ -156,7 +155,7 @@ export default function ShopDetail() {
   const district = m.district ?? "";
   const address = m.address ?? m.location ?? t("default_address");
   const phone = m.phone as string | undefined;
-  const waNumber = resolveWhatsappNumber(m);
+
   // Concierge model: client CTAs open a chat with Massage Club, not the studio.
   const waMessage = conciergePrefill({ lang: i18n.language, studio: m.studio });
 
