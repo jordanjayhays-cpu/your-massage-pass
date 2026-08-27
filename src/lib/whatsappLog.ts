@@ -12,6 +12,7 @@ export type WhatsappRequestLog = {
   time2?: string | null;
   first_name?: string | null;
   contact_email?: string | null;
+  client_phone?: string | null;
   /** Comma separated list of languages the visitor speaks. */
   languages?: string | null;
   user_id?: string | null;
