@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import FounderAgentChat from "./FounderAgentChat";
 import StudioPipeline from "./founder/StudioPipeline";
 import ConciergeTab from "./founder/ConciergeTab";
+import FindStudio from "./founder/FindStudio";
 import BookingWaButtons from "./founder/BookingWaButtons";
 
 
@@ -220,7 +221,7 @@ export default function FounderDashboard() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [tab, setTab] = useState<"overview" | "concierge">("overview");
+  const [tab, setTab] = useState<"overview" | "concierge" | "find a studio">("overview");
 
 
   const [profileCount, setProfileCount] = useState<number | null>(null);
@@ -539,7 +540,7 @@ export default function FounderDashboard() {
         </div>
 
         <div className="flex gap-2 mb-6">
-          {(["overview", "concierge"] as const).map((t) => (
+          {(["overview", "concierge", "find a studio"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -556,6 +557,8 @@ export default function FounderDashboard() {
         </div>
 
         {tab === "concierge" && <ConciergeTab refreshTick={refreshTick} />}
+
+        {tab === "find a studio" && <FindStudio refreshTick={refreshTick} />}
 
         {tab === "overview" && (
         <>
