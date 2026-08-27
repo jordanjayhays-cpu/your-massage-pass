@@ -31,8 +31,6 @@ export default function Notify() {
   const [errorMsg, setErrorMsg] = useState("");
   const [validationMsg, setValidationMsg] = useState("");
 
-  const canSubmit = phone.trim() || email.trim();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationMsg("");
