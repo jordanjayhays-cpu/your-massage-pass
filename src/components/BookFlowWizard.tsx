@@ -307,6 +307,51 @@ export default function BookFlowWizard({
 
   const areaValue = area === t.other ? areaOther.trim() || t.other : area;
   const wantValue = specific.trim() ? `${massage} + ${specific.trim()}` : massage;
+
+  const mapAreaNameToOption = (name: string): string => {
+    if (name === "Argüelles") return "Argüelles/Moncloa";
+    return name;
+  };
+
+  const handleUseLocation = () => {
+    setLocationDenied(false);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      trackEvent("locate_denied");
+      setLocationDenied(true);
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        trackEvent("locate_granted");
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
+        let nearest = MADRID_AREAS[0];
+        let bestKm = Infinity;
+        for (const a of MADRID_AREAS) {
+          const km = haversineKm(userLat, userLng, a.lat, a.lng);
+          if (km < bestKm) {
+            bestKm = km;
+            nearest = a;
+          }
+        }
+        const option = mapAreaNameToOption(nearest.name);
+        if (areas.includes(option)) {
+          setArea(option);
+        } else if (areas.includes(nearest.name)) {
+          setArea(nearest.name);
+        }
+        setHint(null);
+      },
+      () => {
+        setLocating(false);
+        trackEvent("locate_denied");
+        setLocationDenied(true);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  };
   const whenValue = `${day} ${time}`.trim();
   const when2Value = `${day2} ${time2}`.trim();
   const when3Value = `${day3} ${time3}`.trim();
