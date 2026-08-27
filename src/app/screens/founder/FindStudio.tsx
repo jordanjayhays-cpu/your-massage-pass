@@ -37,6 +37,7 @@ export function relayMessage(want: string, when: string): string {
 
 const norm = (s?: string | null) => (s || "").toLowerCase().trim();
 const stripAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+// (range above = combining diacriticals U+0300–U+036F)
 
 const TYPE_KEYWORDS: Array<[string, string[]]> = [
   ["Deep Tissue", ["deep tissue", "descontracturante"]],
