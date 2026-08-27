@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, MapPin } from "lucide-react";
+import { trackEvent } from "@/lib/siteVisit";
+import { MADRID_AREAS } from "@/lib/locationConsent";
+import { haversineKm } from "@/lib/nearestStudios";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 
