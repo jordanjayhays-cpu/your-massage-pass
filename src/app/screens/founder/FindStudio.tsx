@@ -108,7 +108,20 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
   const [when, setWhen] = useState<string>(saved.when || "");
   const [area, setArea] = useState<string>(saved.area || "");
   const [type, setType] = useState<string>(saved.type || "");
+  const [paste, setPaste] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const applyPaste = (raw: string) => {
+    setPaste(raw);
+    if (!raw.trim()) return;
+    const p = parsePaste(raw, areas);
+    if (p.type) setType(p.type);
+    if (p.area) setArea(p.area);
+    if (p.when) {
+      setWhen(p.when.slice(0, 120));
+      setWant(p.when.slice(0, 200));
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify({ want, when, area, type }));
