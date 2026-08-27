@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, MapPin } from "lucide-react";
+import { trackEvent } from "@/lib/siteVisit";
+import { MADRID_AREAS } from "@/lib/locationConsent";
+import { haversineKm } from "@/lib/nearestStudios";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 
@@ -51,6 +54,9 @@ export const BOOK_FLOW_COPY = {
     otherPh: "Which area or address?",
     areaPlaceholder: "Choose an area",
     other: "Somewhere else",
+    useLocation: "Use my location",
+    locating: "Locating you...",
+    locationDenied: "No problem, pick your area below",
     s4Title: "Your details",
     name: "Name",
     whatsapp: "WhatsApp",
@@ -114,6 +120,9 @@ export const BOOK_FLOW_COPY = {
     otherPh: "¿Qué zona o dirección?",
     areaPlaceholder: "Elige una zona",
     other: "Otra zona",
+    useLocation: "Usar mi ubicación",
+    locating: "Localizándote...",
+    locationDenied: "Sin problema, elige tu zona abajo",
     s4Title: "Tus datos",
     name: "Nombre",
     whatsapp: "WhatsApp",
@@ -233,6 +242,8 @@ export default function BookFlowWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [hint, setHint] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -296,6 +307,51 @@ export default function BookFlowWizard({
 
   const areaValue = area === t.other ? areaOther.trim() || t.other : area;
   const wantValue = specific.trim() ? `${massage} + ${specific.trim()}` : massage;
+
+  const mapAreaNameToOption = (name: string): string => {
+    if (name === "Argüelles") return "Argüelles/Moncloa";
+    return name;
+  };
+
+  const handleUseLocation = () => {
+    setLocationDenied(false);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      trackEvent("locate_denied");
+      setLocationDenied(true);
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        trackEvent("locate_granted");
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
+        let nearest = MADRID_AREAS[0];
+        let bestKm = Infinity;
+        for (const a of MADRID_AREAS) {
+          const km = haversineKm(userLat, userLng, a.lat, a.lng);
+          if (km < bestKm) {
+            bestKm = km;
+            nearest = a;
+          }
+        }
+        const option = mapAreaNameToOption(nearest.name);
+        if (areas.includes(option)) {
+          setArea(option);
+        } else if (areas.includes(nearest.name)) {
+          setArea(nearest.name);
+        }
+        setHint(null);
+      },
+      () => {
+        setLocating(false);
+        trackEvent("locate_denied");
+        setLocationDenied(true);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  };
   const whenValue = `${day} ${time}`.trim();
   const when2Value = `${day2} ${time2}`.trim();
   const when3Value = `${day3} ${time3}`.trim();
@@ -488,28 +544,52 @@ export default function BookFlowWizard({
       {step === 3 && (
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s3Title}</h2>
-          <div ref={areaRef} className="mt-4">
-            <Label htmlFor="area" className="text-sm text-foreground">{t.s3Label}</Label>
-            <select
-              id="area"
-              value={area}
-              onChange={(e) => { setArea(e.target.value); setHint(null); }}
-              className="mt-1.5 w-full h-12 rounded-xl border border-border bg-card px-3 text-base text-foreground"
+          <div ref={areaRef} className="mt-4 space-y-3">
+            <button
+              type="button"
+              onClick={handleUseLocation}
+              disabled={locating}
+              className="w-full h-12 rounded-xl border border-border bg-card text-foreground font-semibold inline-flex items-center justify-center gap-2 hover:border-primary/50 transition disabled:opacity-70"
             >
-              <option value="">{t.areaPlaceholder}</option>
-              {areas.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
+              {locating ? (
+                <>
+                  <span className="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  {t.locating}
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-4 w-4 text-primary" /> {t.useLocation}
+                </>
+              )}
+            </button>
+
+            {locationDenied && (
+              <p className="text-sm text-muted-foreground">{t.locationDenied}</p>
+            )}
+
+            <div>
+              <Label htmlFor="area" className="text-sm text-foreground">{t.s3Label}</Label>
+              <select
+                id="area"
+                value={area}
+                onChange={(e) => { setArea(e.target.value); setHint(null); setLocationDenied(false); }}
+                className="mt-1.5 w-full h-12 rounded-xl border border-border bg-card px-3 text-base text-foreground"
+              >
+                <option value="">{t.areaPlaceholder}</option>
+                {areas.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
             {area === t.other && (
               <Input
                 value={areaOther}
                 onChange={(e) => setAreaOther(e.target.value)}
                 placeholder={t.otherPh}
-                className="mt-3 h-12 text-base"
+                className="h-12 text-base"
               />
             )}
-            <p className="mt-2 text-sm text-muted-foreground">{t.s3Helper}</p>
+            <p className="text-sm text-muted-foreground">{t.s3Helper}</p>
           </div>
         </section>
       )}
