@@ -36,6 +36,65 @@ export function relayMessage(want: string, when: string): string {
 }
 
 const norm = (s?: string | null) => (s || "").toLowerCase().trim();
+const stripAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+const TYPE_KEYWORDS: Array<[string, string[]]> = [
+  ["Deep Tissue", ["deep tissue", "descontracturante"]],
+  ["Relax", ["relax", "relajante", "relajacion", "relajación"]],
+  ["Thai", ["thai", "tailandes", "tailandés"]],
+  ["Sports", ["sport", "deportivo"]],
+  ["Hot Stone", ["hot stone", "piedras"]],
+  ["Shiatsu", ["shiatsu"]],
+  ["Balinese", ["balinese", "balines", "balinés"]],
+  ["Couples", ["couples", "pareja", "parejas"]],
+  ["Prenatal", ["prenatal", "embarazada", "embarazo"]],
+  ["Reflexology", ["reflexology", "reflexologia", "reflexología"]],
+  ["Lymphatic", ["lymphatic", "linfatico", "linfático", "drenaje"]],
+  ["Kobido", ["kobido"]],
+];
+
+function parsePaste(raw: string, areaList: string[]): { type: string; area: string; when: string } {
+  const words = stripAccents(raw.toLowerCase()).replace(/[.,;:!?]/g, " ").split(/\s+/).filter(Boolean);
+  let type = "";
+  let area = "";
+  const used = new Set<number>();
+
+  // multi-word type phrases first (check consecutive pairs)
+  outer:
+  for (const [chip, kws] of TYPE_KEYWORDS) {
+    for (const kw of kws) {
+      const kwWords = stripAccents(kw.toLowerCase()).split(/\s+/);
+      if (kwWords.length > 1) {
+        for (let i = 0; i + kwWords.length <= words.length; i++) {
+          if (kwWords.every((w, j) => words[i + j] === w)) {
+            type = chip;
+            kwWords.forEach((_, j) => used.add(i + j));
+            break outer;
+          }
+        }
+      } else {
+        const idx = words.findIndex((w) => w === kwWords[0]);
+        if (idx >= 0) { type = chip; used.add(idx); break outer; }
+      }
+    }
+  }
+
+  // area match (accent-insensitive, whole-word)
+  for (const a of areaList) {
+    const aWords = stripAccents(a.toLowerCase()).split(/\s+/).filter(Boolean);
+    for (let i = 0; i + aWords.length <= words.length; i++) {
+      if (aWords.every((w, j) => words[i + j] === w)) {
+        area = a;
+        aWords.forEach((_, j) => used.add(i + j));
+        i = words.length;
+        break;
+      }
+    }
+  }
+
+  const when = words.filter((_, i) => !used.has(i)).join(" ");
+  return { type, area, when };
+}
 
 export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
   const [partners, setPartners] = useState<P[]>([]);
