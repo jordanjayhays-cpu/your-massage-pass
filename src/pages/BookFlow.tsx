@@ -213,7 +213,7 @@ export default function BookFlow() {
   const contactRef = useRef<HTMLDivElement>(null);
 
   const dayChips = useMemo(() => {
-    const out = [t.today, t.tomorrow];
+    const out: string[] = [t.today, t.tomorrow];
     const now = new Date();
     for (let i = 2; i <= 6; i++) {
       const d = new Date(now);
