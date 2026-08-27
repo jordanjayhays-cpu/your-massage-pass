@@ -134,6 +134,9 @@ export default function StudioBookingPage() {
   const [waTapped, setWaTapped] = useState(false);
   const [askWaTapped, setAskWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
+  const [alt2Open, setAlt2Open] = useState(false);
+  const [hoAlt2Date, setHoAlt2Date] = useState("");
+  const [hoAlt2Time, setHoAlt2Time] = useState("");
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
