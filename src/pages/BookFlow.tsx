@@ -37,6 +37,9 @@ const COPY = {
     s2MissTime: "Pick a time of day to continue.",
     dayLabel: "Which day",
     timeLabel: "Time of day",
+    s2Helper: "The more times you give us, the faster we confirm with the studio.",
+    addTime: "+ Add another time (recommended)",
+    option: "Option",
     today: "Today",
     tomorrow: "Tomorrow",
     flexible: "Flexible",
@@ -97,6 +100,9 @@ const COPY = {
     s2MissTime: "Elige una franja horaria para continuar.",
     dayLabel: "Qué día",
     timeLabel: "Franja horaria",
+    s2Helper: "Cuantas más horas nos des, antes te confirmamos con el centro.",
+    addTime: "+ Añadir otra hora (recomendado)",
+    option: "Opción",
     today: "Hoy",
     tomorrow: "Mañana",
     flexible: "Flexible",
@@ -197,6 +203,11 @@ export default function BookFlow() {
   const [specific, setSpecific] = useState("");
   const [day, setDay] = useState("");
   const [time, setTime] = useState("");
+  const [day2, setDay2] = useState("");
+  const [time2, setTime2] = useState("");
+  const [day3, setDay3] = useState("");
+  const [time3, setTime3] = useState("");
+  const [slots, setSlots] = useState(1);
   const [area, setArea] = useState("");
   const [areaOther, setAreaOther] = useState("");
   const [name, setName] = useState("");
@@ -253,6 +264,8 @@ export default function BookFlow() {
   const areaValue = area === t.other ? areaOther.trim() || t.other : area;
   const wantValue = specific.trim() ? `${massage} + ${specific.trim()}` : massage;
   const whenValue = `${day} ${time}`.trim();
+  const when2Value = `${day2} ${time2}`.trim();
+  const when3Value = `${day3} ${time3}`.trim();
 
   const submit = async () => {
     setHint(null);
@@ -267,6 +280,8 @@ export default function BookFlow() {
         body: JSON.stringify({
           want: wantValue,
           when: whenValue,
+          when2: when2Value || undefined,
+          when3: when3Value || undefined,
           area: areaValue,
           name: name.trim(),
           phone: phone.trim(),
@@ -320,7 +335,7 @@ export default function BookFlow() {
           <div className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
             {[
               [t.sumMassage, wantValue],
-              [t.sumWhen, whenValue],
+              [t.sumWhen, [whenValue, when2Value, when3Value].filter(Boolean).join(" · ")],
               [t.sumWhere, areaValue],
             ].map(([k, v]) => (
               <div key={k} className="flex items-start justify-between gap-4">
