@@ -25,7 +25,7 @@ import { googleReviewUrl } from "../lib/googleReview";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { clarityEvent } from "@/lib/clarity";
-import { resolveWhatsappNumber, telHref, conciergePrefill, MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
+import { telHref, conciergePrefill, MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
