@@ -1143,6 +1143,30 @@ export default function StudioBookingPage() {
                           className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }} />
                       </label>
                       <label className="block">
+                        <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          WhatsApp / Teléfono
+                        </span>
+                        <input
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={hoPhone}
+                          onChange={(e) => setHoPhone(e.target.value)}
+                          placeholder="WhatsApp / Teléfono"
+                          className="mt-1 w-full h-11 min-[900px]:h-14 px-3 min-[900px]:px-4 rounded-xl border bg-white text-sm min-[900px]:text-base"
+                          style={{ borderColor: hoPhone.trim() && hoPhoneDigits.length < 9 ? "#C4622D" : "#E6DCCF", color: "#2b2b2b" }}
+                        />
+                        {hoPhone.trim() && hoPhoneDigits.length < 9 && (
+                          <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#C4622D" }}>
+                            Enter a valid phone number <span className="opacity-80">/ Introduce un teléfono válido</span>
+                          </span>
+                        )}
+                        <span className="block text-[11px] min-[900px]:text-xs mt-1" style={{ color: "#9E9387" }}>
+                          Para confirmarte la hora por WhatsApp.
+                          <span className="block">So we can confirm your time on WhatsApp.</span>
+                        </span>
+                      </label>
+                      <label className="block">
                         <span className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>Email</span>
                         <input type="email" inputMode="email" autoComplete="email" value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
