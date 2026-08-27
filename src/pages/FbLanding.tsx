@@ -14,8 +14,6 @@ const COPY = {
     h1: "A massage in Madrid, booked for you in English.",
     sub: "Tell us what you want and when. We confirm your time with the studio. You pay at the studio, no booking fee.",
     cta: "Book my massage",
-    priceLine:
-      "Real prices: relaxing 60 min from €45, deep tissue from €60, Thai from €60. You pay at the studio.",
     howTitle: "How it works",
     how: [
       "Tell us what you want and when.",
