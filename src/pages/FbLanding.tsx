@@ -116,6 +116,10 @@ export default function FbLanding() {
   const location = useLocation();
   const bookingRef = useRef<HTMLDivElement>(null);
   const logged = useRef(false);
+  const [waOpen, setWaOpen] = useState(false);
+  const [waType, setWaType] = useState<string | null>(null);
+  const [waArea, setWaArea] = useState("");
+  const [waAreaUnsure, setWaAreaUnsure] = useState(false);
 
   useEffect(() => {
     if (logged.current) return;
@@ -203,18 +207,88 @@ export default function FbLanding() {
           <p className="mt-4 text-sm text-muted-foreground">{t.trust}</p>
         </section>
 
-        {/* 5. WhatsApp fallback */}
-        <footer className="mt-14 border-t border-border pt-8 text-center">
-          <a
-            href={WA_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 h-13 px-6 py-3 rounded-full border border-border bg-card text-base font-semibold text-foreground hover:border-primary/50 transition"
-          >
-            <MessageCircle className="h-5 w-5 text-primary" />
-            {t.footerLead}
-          </a>
-          <p className="mt-6 text-xs text-muted-foreground">{t.footer}</p>
+        {/* 5. WhatsApp fallback: two quick questions, then open WhatsApp */}
+        <footer className="mt-14 border-t border-border pt-8">
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setWaOpen((v) => !v)}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-border bg-card text-base font-semibold text-foreground hover:border-primary/50 transition"
+              aria-expanded={waOpen}
+            >
+              <MessageCircle className="h-5 w-5 text-primary" />
+              {t.footerLead}
+            </button>
+          </div>
+
+          {waOpen && (
+            <div className="mt-5 rounded-2xl border border-border bg-card p-4 shadow-soft text-left">
+              <p className="text-sm font-semibold text-foreground">{t.waQ1}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {MASSAGE_CHIPS[lang].map((c) => (
+                  <button
+                    key={c.kind}
+                    type="button"
+                    onClick={() => setWaType(c.kind)}
+                    className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
+                      waType === c.kind
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="mt-4 text-sm font-semibold text-foreground">{t.waQ2}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={waArea}
+                  disabled={waAreaUnsure}
+                  onChange={(e) => {
+                    setWaArea(e.target.value);
+                    setWaAreaUnsure(false);
+                  }}
+                  placeholder={t.waAreaPlaceholder}
+                  className="flex-1 min-w-0 h-11 rounded-xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWaAreaUnsure((v) => !v);
+                    if (!waAreaUnsure) setWaArea("");
+                  }}
+                  className={`shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition ${
+                    waAreaUnsure
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {t.waAreaUnsure}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                disabled={!waType}
+                onClick={() => {
+                  const area = waAreaUnsure ? "" : waArea;
+                  trackEvent("wa_prefill", {
+                    meta: { source: "fb", lang, massage_type: waType, area: area || null },
+                  });
+                  window.open(WA_BASE + encodeURIComponent(buildWaText(lang, waType!, area)), "_blank", "noopener,noreferrer");
+                }}
+                className="mt-4 w-full h-12 rounded-full bg-[#25D366] text-white text-base font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="h-5 w-5" />
+                {t.waOpen}
+              </button>
+            </div>
+          )}
+
+          <p className="mt-6 text-xs text-muted-foreground text-center">{t.footer}</p>
         </footer>
       </main>
     </div>
