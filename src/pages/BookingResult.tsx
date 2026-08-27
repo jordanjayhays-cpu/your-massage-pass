@@ -65,6 +65,8 @@ const STUDIO_FACING: Outcome[] = [
   "already-declined",
   "completed",
   "noshow",
+  "studio-ok",
+  "studio-none",
 ];
 
 function looksLikePhone(input: string): boolean {
