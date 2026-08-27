@@ -9,12 +9,7 @@ import BookingWaButtons from "./founder/BookingWaButtons";
 
 
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@400;500;600&display=swap";
-const FOUNDER_EMAILS = [
-  "jordan.hays@student.ie.edu",
-  "jordanjayhays@gmail.com",
-  "jordan@massageclub.io",
-  "support@massageclub.io",
-];
+const FOUNDER_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com"];
 
 type Booking = {
   id: number | string;
@@ -263,7 +258,10 @@ export default function FounderDashboard() {
   }, []);
 
   const email = session?.user?.email;
-  const isFounder = !!email && FOUNDER_EMAILS.includes(email.toLowerCase());
+  const isFounder = !!email && (
+    email.toLowerCase().endsWith("@massageclub.io") ||
+    FOUNDER_EMAILS.includes(email.toLowerCase())
+  );
 
   useEffect(() => {
     if (!isFounder) return;
