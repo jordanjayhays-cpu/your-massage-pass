@@ -36,6 +36,66 @@ export function relayMessage(want: string, when: string): string {
 }
 
 const norm = (s?: string | null) => (s || "").toLowerCase().trim();
+const stripAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+// (range above = combining diacriticals U+0300–U+036F)
+
+const TYPE_KEYWORDS: Array<[string, string[]]> = [
+  ["Deep Tissue", ["deep tissue", "descontracturante"]],
+  ["Relax", ["relax", "relajante", "relajacion", "relajación"]],
+  ["Thai", ["thai", "tailandes", "tailandés"]],
+  ["Sports", ["sport", "deportivo"]],
+  ["Hot Stone", ["hot stone", "piedras"]],
+  ["Shiatsu", ["shiatsu"]],
+  ["Balinese", ["balinese", "balines", "balinés"]],
+  ["Couples", ["couples", "pareja", "parejas"]],
+  ["Prenatal", ["prenatal", "embarazada", "embarazo"]],
+  ["Reflexology", ["reflexology", "reflexologia", "reflexología"]],
+  ["Lymphatic", ["lymphatic", "linfatico", "linfático", "drenaje"]],
+  ["Kobido", ["kobido"]],
+];
+
+function parsePaste(raw: string, areaList: string[]): { type: string; area: string; when: string } {
+  const words = stripAccents(raw.toLowerCase()).replace(/[.,;:!?]/g, " ").split(/\s+/).filter(Boolean);
+  let type = "";
+  let area = "";
+  const used = new Set<number>();
+
+  // multi-word type phrases first (check consecutive pairs)
+  outer:
+  for (const [chip, kws] of TYPE_KEYWORDS) {
+    for (const kw of kws) {
+      const kwWords = stripAccents(kw.toLowerCase()).split(/\s+/);
+      if (kwWords.length > 1) {
+        for (let i = 0; i + kwWords.length <= words.length; i++) {
+          if (kwWords.every((w, j) => words[i + j] === w)) {
+            type = chip;
+            kwWords.forEach((_, j) => used.add(i + j));
+            break outer;
+          }
+        }
+      } else {
+        const idx = words.findIndex((w) => w === kwWords[0]);
+        if (idx >= 0) { type = chip; used.add(idx); break outer; }
+      }
+    }
+  }
+
+  // area match (accent-insensitive, whole-word)
+  for (const a of areaList) {
+    const aWords = stripAccents(a.toLowerCase()).split(/\s+/).filter(Boolean);
+    for (let i = 0; i + aWords.length <= words.length; i++) {
+      if (aWords.every((w, j) => words[i + j] === w)) {
+        area = a;
+        aWords.forEach((_, j) => used.add(i + j));
+        i = words.length;
+        break;
+      }
+    }
+  }
+
+  const when = words.filter((_, i) => !used.has(i)).join(" ");
+  return { type, area, when };
+}
 
 export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
   const [partners, setPartners] = useState<P[]>([]);
@@ -49,7 +109,20 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
   const [when, setWhen] = useState<string>(saved.when || "");
   const [area, setArea] = useState<string>(saved.area || "");
   const [type, setType] = useState<string>(saved.type || "");
+  const [paste, setPaste] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const applyPaste = (raw: string) => {
+    setPaste(raw);
+    if (!raw.trim()) return;
+    const p = parsePaste(raw, areas);
+    if (p.type) setType(p.type);
+    if (p.area) setArea(p.area);
+    if (p.when) {
+      setWhen(p.when.slice(0, 120));
+      setWant(p.when.slice(0, 200));
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify({ want, when, area, type }));
@@ -122,7 +195,7 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
       const rating = p.google_rating != null ? `⭐${p.google_rating}` : "⭐—";
       return `${nums[i]} ${p.business_name || "Studio"} · ${areaLabel} · ${rating} · ${cheapest?.type || cheapest?.name || "Massage"} ${cheapest?.duration || 60} min · €${cheapest?.price ?? "—"}`;
     });
-    const text = `${lines.join("\n")}\n\nReply 1, 2 or 3 and I'll confirm your time with them.`;
+    const text = `Three good options:\n${lines.join("\n")}\n\nReply 1, 2 or 3 and I'll confirm your time with them. You pay at the studio — no fee.`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -136,6 +209,13 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
     <div>
       <div className="sticky top-0 z-20 -mx-1 px-1 pt-1 pb-3" style={{ background: "linear-gradient(180deg,#F7F4F0 70%,rgba(247,244,240,0))" }}>
         <div className="rounded-3xl bg-white border border-[#E5DDD3] p-4 space-y-3">
+          <textarea
+            className="w-full px-3 py-2.5 rounded-2xl border border-[#E5DDD3] bg-[#F7F4F0] text-sm outline-none resize-none"
+            rows={2}
+            placeholder='Paste what the customer said (e.g. "deep tissue tomorrow evening chamberi")'
+            value={paste}
+            onChange={(e) => applyPaste(e.target.value.slice(0, 300))}
+          />
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={input} placeholder="What they want (deep tissue 60 min)" value={want} onChange={(e) => setWant(e.target.value.slice(0, 200))} />
             <input className={input} placeholder="When (saturday evening)" value={when} onChange={(e) => setWhen(e.target.value.slice(0, 120))} />
