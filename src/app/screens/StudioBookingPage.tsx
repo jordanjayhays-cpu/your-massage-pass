@@ -1105,16 +1105,8 @@ export default function StudioBookingPage() {
                       )}
                       <WizardNav
                         onBack={() => hoGo(1)}
-                        onNext={() => hoGo(3)}
+                        skip={() => hoGo(3)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => hoGo(3)}
-                        className="w-full text-center text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
-                        style={{ color: "#8a7460" }}
-                      >
-                        Skip <span className="font-normal">/ Saltar</span>
-                      </button>
                     </div>
                   )}
 
