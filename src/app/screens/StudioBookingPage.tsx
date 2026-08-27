@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
 import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
+import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
@@ -2058,16 +2059,16 @@ export default function StudioBookingPage() {
           <div className="min-[900px]:col-span-2 space-y-5">
             {/* Contact footer */}
             <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
-              {(() => {
-                const contactWa = conciergeWhatsappUrl(
-                  conciergePrefill({ lang: siteLang, studio: partner.business_name, languages: spokenLangs })
-                );
-                return (
-                  <a href={contactWa} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-sm hover:text-[#25D366]">
+              <WhatsAppAskButton
+                source="studio-page-footer"
+                studioName={partner.business_name}
+                meta={{ slug: partner.slug || partner.id }}
+                renderTrigger={({ open }) => (
+                  <button type="button" onClick={open} className="flex items-center gap-1 text-sm hover:text-[#25D366]">
                     <MessageCircle size={14} /> WhatsApp
-                  </a>
-                );
-              })()}
+                  </button>
+                )}
+              />
 
               {partner.phone && (
                 <a href={telHref(partner.phone) || undefined} className="flex items-center gap-1 text-sm hover:text-gray-600">
