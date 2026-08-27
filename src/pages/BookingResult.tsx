@@ -37,7 +37,9 @@ type Outcome =
   | "completed"
   | "noshow"
   | "hours-confirmed"
-  | "picked";
+  | "picked"
+  | "studio-ok"
+  | "studio-none";
 
 const KNOWN: Outcome[] = [
   "confirmed",
@@ -52,6 +54,8 @@ const KNOWN: Outcome[] = [
   "noshow",
   "hours-confirmed",
   "picked",
+  "studio-ok",
+  "studio-none",
 ];
 
 const STUDIO_FACING: Outcome[] = [
@@ -61,6 +65,8 @@ const STUDIO_FACING: Outcome[] = [
   "already-declined",
   "completed",
   "noshow",
+  "studio-ok",
+  "studio-none",
 ];
 
 function looksLikePhone(input: string): boolean {
@@ -203,6 +209,20 @@ export default function BookingResult() {
       titleEn = "Great choice!";
       body = `We're confirming your exact time at ${studio} right now. Watch WhatsApp — you'll have 2-3 time slots to pick from shortly, usually within the hour.`;
       bodyEn = "You pay the studio directly. No booking fee.";
+      break;
+    case "studio-ok":
+      icon = "✅";
+      titleEs = "¡Confirmado!";
+      titleEn = "Confirmed";
+      body = "El cliente ha recibido la confirmación automáticamente. Gracias — nos vemos pronto.";
+      bodyEn = "The client has been sent their confirmation automatically. Thank you.";
+      break;
+    case "studio-none":
+      icon = "👍";
+      titleEs = "Entendido";
+      titleEn = "Understood";
+      body = "Hemos avisado al equipo y buscaremos otra hora con el cliente. Gracias por responder.";
+      bodyEn = "We've told the team and will find another time with the client. Thanks for replying.";
       break;
     case "error":
       icon = "⚠️";

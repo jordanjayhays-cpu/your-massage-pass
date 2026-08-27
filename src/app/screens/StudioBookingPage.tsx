@@ -134,6 +134,9 @@ export default function StudioBookingPage() {
   const [waTapped, setWaTapped] = useState(false);
   const [askWaTapped, setAskWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
+  const [alt2Open, setAlt2Open] = useState(false);
+  const [hoAlt2Date, setHoAlt2Date] = useState("");
+  const [hoAlt2Time, setHoAlt2Time] = useState("");
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const serviceRef = useRef<HTMLDivElement | null>(null);
@@ -843,6 +846,8 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
+        day3: hoAlt2Date || null,
+        time3: hoAlt2Time || null,
         first_name: hoName.trim() || null,
         contact_email: hoEmailValid ? hoEmail.trim() : null,
         client_phone: hoPhoneValid ? hoPhone.trim() : null,
@@ -1078,6 +1083,14 @@ export default function StudioBookingPage() {
                   {/* STEP 2: day and time */}
                   {hoStep === 2 && (
                     <div className="space-y-3 min-[900px]:space-y-4">
+                      <div className="rounded-2xl px-3 py-2.5" style={{ background: "#F4EEE6" }}>
+                        <p className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5C5349" }}>
+                          This studio isn't on Massage Club yet, so we'll contact them for you. Pick 2-3 times that could work — the more you give us, the faster we confirm.
+                        </p>
+                        <p className="mt-1 text-xs min-[900px]:text-sm leading-snug" style={{ color: "#9E9387" }}>
+                          Este centro todavía no está en Massage Club, así que contactamos con ellos por ti. Elige 2-3 horas que te vengan bien — cuantas más nos des, antes te confirmamos.
+                        </p>
+                      </div>
                       <div>
                         <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
                         <div className="mt-1.5">
@@ -1101,13 +1114,37 @@ export default function StudioBookingPage() {
                           <span className="block text-xs min-[900px]:text-sm font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
                         </button>
                       ) : (
-                        <div>
-                          <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                          <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
-                            <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
-                            <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                        <>
+                          <div>
+                            <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                            <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
+                              <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
+                              <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                            </div>
                           </div>
-                        </div>
+                          {!alt2Open ? (
+                            <button
+                              type="button"
+                              onClick={() => setAlt2Open(true)}
+                              className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
+                              style={{ color: "#B85C38" }}
+                            >
+                              + Add a third choice
+                              <span className="block text-xs min-[900px]:text-sm font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una tercera opción</span>
+                            </button>
+                          ) : (
+                            <div>
+                              <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>
+                                Third choice
+                                <span className="ml-1" style={{ color: "#9E9387" }}>/ Tercera opción</span>
+                              </span>
+                              <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
+                                <DayStrip value={hoAlt2Date} onChange={setHoAlt2Date} label="Third choice" />
+                                <TimePills value={hoAlt2Time} onChange={setHoAlt2Time} label="Third choice" />
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                       <WizardNav
                         onBack={() => hoGo(1)}
