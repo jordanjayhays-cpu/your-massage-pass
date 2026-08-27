@@ -305,12 +305,10 @@ export default function StudioBookingPage() {
 
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
-      setHoEmail(prev => prev || user.email || "");
       setName(prev => prev || fullName);
 
       const userPhone = user.phone || user.user_metadata?.phone || "";
       setPhone(prev => prev || userPhone);
-      setHoPhone(prev => prev || userPhone);
 
       // select("*") so one renamed column can never wipe out the whole pre-fill.
       const { data: prof } = await supabase
@@ -323,9 +321,7 @@ export default function StudioBookingPage() {
       setCustomerProfile(p);
       setName(prev => prev || p.full_name || "");
       setEmail(prev => prev || p.email || "");
-      setHoEmail(prev => prev || p.email || "");
       setPhone(prev => prev || p.phone || "");
-      setHoPhone(prev => prev || p.phone || "");
       setProfileAllergies(p.allergies || "");
       setProfileHealthNotes(p.health_notes || "");
       // Only auto-apply massage prefs when NOT rebooking (rebook effect wins).
