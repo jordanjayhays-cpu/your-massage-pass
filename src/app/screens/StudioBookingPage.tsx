@@ -1110,38 +1110,48 @@ export default function StudioBookingPage() {
                     </div>
                   )}
 
-                  {/* STEP 4: review and send */}
-                  {hoStep === 4 && !waTapped && (
+                  {/* STEP 3: review and send — the WhatsApp button is never disabled */}
+                  {hoStep === 3 && !waTapped && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
-                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Pick a day" />
-                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Pick a time" />
+                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Any day" />
+                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Any time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
-                        <SummaryRow label="Name" labelEs="Nombre" value={hoFullName || null} placeholder="Not given" />
-                        <SummaryRow label="Languages" labelEs="Idiomas" value={spokenLangs.map(c => SPOKEN_LANG_NATIVE[c]).join(", ") || null} placeholder="Not set" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
-                      <a
-                        href={waLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={trackWhatsappIntent}
-                        className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
-                        style={{ background: "#B85C38", color: "#fff" }}
-                      >
-                        <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {t("app.handoff.bookWhatsapp")}</span>
-                        <span className="text-xs min-[900px]:text-sm font-normal opacity-90">{t("app.handoff.bookWhatsappSub")}</span>
-                      </a>
+                      {hoServiceId ? (
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={trackWhatsappIntent}
+                          className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
+                          style={{ background: "#B85C38", color: "#fff" }}
+                        >
+                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Request via WhatsApp</span>
+                          <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar por WhatsApp</span>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={scrollToServices}
+                          className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
+                          style={{ background: "#B85C38", color: "#fff" }}
+                        >
+                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Pick a massage</span>
+                          <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Elige un masaje</span>
+                        </button>
+                      )}
                       <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
                   )}
 
-                  {/* STEP 4: confirmation after WhatsApp is opened */}
-                  {hoStep === 4 && waTapped && (
+                  {/* STEP 3: confirmation after WhatsApp is opened */}
+                  {hoStep === 3 && waTapped && (
                     <div className="space-y-4 min-[900px]:space-y-5 text-center">
                       <div className="mx-auto flex h-14 w-14 min-[900px]:h-16 min-[900px]:w-16 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
