@@ -947,8 +947,8 @@ export default function StudioBookingPage() {
               <div id="mc-services-menu" className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
-                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3 motion-safe:transition-shadow"
-                  style={{ background: "#FAF6F1", boxShadow: svcFlash ? "0 0 0 3px #B85C38" : "0 0 0 0 rgba(184,92,56,0)" }}>
+                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3"
+                  style={{ background: "#FAF6F1" }}>
 
                   {profile.services.map((s: any) => {
                     const selected = hoServiceId === s.id;
