@@ -802,16 +802,16 @@ export default function StudioBookingPage() {
       msg += " (via Massage Club)";
       return msg;
     })();
-    // Scroll the visitor to the services menu and flash it briefly.
+    // Scroll the visitor to the services menu when a CTA needs to point them back.
     const scrollToServices = () => {
       document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setSvcFlash(true);
-      window.setTimeout(() => setSvcFlash(false), 1600);
     };
 
+    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
+    const hoPhoneValid = /^\+?[\d\s]{9,}$/.test(hoPhone.trim().replace(/\s/g, ""));
+    const hoDetailsReady = !!(hoName.trim() && (hoEmailValid || hoPhoneValid));
 
-
-    const trackWhatsappIntent = () => {
+    const trackWhatsappIntent = async () => {
       if (waLoggedRef.current) return;
       waLoggedRef.current = true;
       setWaTapped(true);
@@ -831,9 +831,9 @@ export default function StudioBookingPage() {
           languages: spokenLangs,
         },
       });
-      // Fire and forget: never blocks the WhatsApp link. Name, email and phone
-      // stay null on purpose — WhatsApp gives us those when they send.
-      logWhatsappRequest({
+      // Log the lead BEFORE the WhatsApp link opens, so we keep the record even
+      // if the visitor never sends the message.
+      await logWhatsappRequest({
         partner_id: partner.id,
         slug: partner.slug || null,
         studio_name: partner.business_name,
@@ -843,9 +843,9 @@ export default function StudioBookingPage() {
         time1: hoTime || null,
         day2: hoAltDate || null,
         time2: hoAltTime || null,
-        first_name: null,
-        contact_email: null,
-        client_phone: null,
+        first_name: hoName.trim() || null,
+        contact_email: hoEmailValid ? hoEmail.trim() : null,
+        client_phone: hoPhoneValid ? hoPhone.trim() : null,
         languages: spokenLangs.join(", "),
         user_id: userId,
         wa_number: waNumber,
