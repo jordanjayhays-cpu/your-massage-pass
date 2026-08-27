@@ -544,28 +544,52 @@ export default function BookFlowWizard({
       {step === 3 && (
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s3Title}</h2>
-          <div ref={areaRef} className="mt-4">
-            <Label htmlFor="area" className="text-sm text-foreground">{t.s3Label}</Label>
-            <select
-              id="area"
-              value={area}
-              onChange={(e) => { setArea(e.target.value); setHint(null); }}
-              className="mt-1.5 w-full h-12 rounded-xl border border-border bg-card px-3 text-base text-foreground"
+          <div ref={areaRef} className="mt-4 space-y-3">
+            <button
+              type="button"
+              onClick={handleUseLocation}
+              disabled={locating}
+              className="w-full h-12 rounded-xl border border-border bg-card text-foreground font-semibold inline-flex items-center justify-center gap-2 hover:border-primary/50 transition disabled:opacity-70"
             >
-              <option value="">{t.areaPlaceholder}</option>
-              {areas.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
+              {locating ? (
+                <>
+                  <span className="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  {t.locating}
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-4 w-4 text-primary" /> {t.useLocation}
+                </>
+              )}
+            </button>
+
+            {locationDenied && (
+              <p className="text-sm text-muted-foreground">{t.locationDenied}</p>
+            )}
+
+            <div>
+              <Label htmlFor="area" className="text-sm text-foreground">{t.s3Label}</Label>
+              <select
+                id="area"
+                value={area}
+                onChange={(e) => { setArea(e.target.value); setHint(null); setLocationDenied(false); }}
+                className="mt-1.5 w-full h-12 rounded-xl border border-border bg-card px-3 text-base text-foreground"
+              >
+                <option value="">{t.areaPlaceholder}</option>
+                {areas.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
             {area === t.other && (
               <Input
                 value={areaOther}
                 onChange={(e) => setAreaOther(e.target.value)}
                 placeholder={t.otherPh}
-                className="mt-3 h-12 text-base"
+                className="h-12 text-base"
               />
             )}
-            <p className="mt-2 text-sm text-muted-foreground">{t.s3Helper}</p>
+            <p className="text-sm text-muted-foreground">{t.s3Helper}</p>
           </div>
         </section>
       )}
