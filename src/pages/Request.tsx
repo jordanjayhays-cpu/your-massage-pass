@@ -25,8 +25,6 @@ export default function Request() {
   const [errorMsg, setErrorMsg] = useState("");
   const [validationMsg, setValidationMsg] = useState("");
 
-  const canSubmit = want.trim() && (phone.trim() || email.trim());
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationMsg("");
