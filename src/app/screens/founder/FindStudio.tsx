@@ -208,6 +208,13 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
     <div>
       <div className="sticky top-0 z-20 -mx-1 px-1 pt-1 pb-3" style={{ background: "linear-gradient(180deg,#F7F4F0 70%,rgba(247,244,240,0))" }}>
         <div className="rounded-3xl bg-white border border-[#E5DDD3] p-4 space-y-3">
+          <textarea
+            className="w-full px-3 py-2.5 rounded-2xl border border-[#E5DDD3] bg-[#F7F4F0] text-sm outline-none resize-none"
+            rows={2}
+            placeholder='Paste what the customer said (e.g. "deep tissue tomorrow evening chamberi")'
+            value={paste}
+            onChange={(e) => applyPaste(e.target.value.slice(0, 300))}
+          />
           <div className="grid gap-3 sm:grid-cols-3">
             <input className={input} placeholder="What they want (deep tissue 60 min)" value={want} onChange={(e) => setWant(e.target.value.slice(0, 200))} />
             <input className={input} placeholder="When (saturday evening)" value={when} onChange={(e) => setWhen(e.target.value.slice(0, 120))} />
