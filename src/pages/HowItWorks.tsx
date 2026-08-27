@@ -4,9 +4,9 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { MessageSquare, CalendarCheck, Banknote, ChevronRight } from "lucide-react";
 
-const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
 
 const COPY = {
   en: {
@@ -169,15 +169,7 @@ export default function HowItWorks() {
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Link>
             </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full h-12 text-base rounded-xl border-border hover:bg-accent"
-            >
-              <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer">
-                {t.whatsapp}
-              </a>
-            </Button>
+            <WhatsAppAskButton source="how-it-works" lang={lang} label={t.whatsapp} />
           </div>
 
           {/* FAQ */}
