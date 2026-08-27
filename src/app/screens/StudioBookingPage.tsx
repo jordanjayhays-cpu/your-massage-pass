@@ -1183,8 +1183,12 @@ export default function StudioBookingPage() {
                         <button
                           type="button"
                           onClick={async () => {
+                            // Open a blank tab synchronously while the user gesture is active,
+                            // then log the lead and point the tab at WhatsApp.
+                            const win = window.open("about:blank", "_blank");
                             await trackWhatsappIntent();
-                            window.open(waLink, "_blank", "noopener,noreferrer");
+                            if (win) win.location.href = waLink;
+                            else window.location.href = waLink;
                           }}
                           className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                           style={{ background: "#B85C38", color: "#fff" }}
