@@ -14,8 +14,6 @@ const COPY = {
     h1: "A massage in Madrid, booked for you in English.",
     sub: "Tell us what you want and when. We confirm your time with the studio. You pay at the studio, no booking fee.",
     cta: "Book my massage",
-    priceLine:
-      "Real prices: relaxing 60 min from €45, deep tissue from €60, Thai from €60. You pay at the studio.",
     howTitle: "How it works",
     how: [
       "Tell us what you want and when.",
@@ -33,8 +31,6 @@ const COPY = {
     h1: "Un masaje en Madrid, reservado por ti en inglés.",
     sub: "Dinos qué quieres y cuándo. Confirmamos tu hora con el centro. Pagas en el centro, sin gastos de reserva.",
     cta: "Reservar mi masaje",
-    priceLine:
-      "Precios reales: relajante 60 min desde 45 €, descontracturante desde 60 €, tailandés desde 60 €. Pagas en el centro.",
     howTitle: "Cómo funciona",
     how: [
       "Dinos qué quieres y cuándo.",
@@ -104,7 +100,6 @@ export default function FbLanding() {
           >
             {t.cta}
           </button>
-          <p className="mt-3 text-sm text-muted-foreground text-center">{t.priceLine}</p>
         </section>
 
         {/* 2. Booking wizard */}
