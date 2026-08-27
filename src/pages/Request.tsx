@@ -136,7 +136,6 @@ export default function Request() {
                         onChange={(e) => setWant(e.target.value)}
                         placeholder="Descontracturante, o simplemente: me duele la espalda"
                         className="text-base md:text-sm min-h-[88px] rounded-xl"
-                        required
                       />
                       <p className="text-xs text-muted-foreground">
                         Si no lo sabes, dinos qué te molesta. <span className="opacity-70">/ If you're not sure, just say what hurts.</span>
