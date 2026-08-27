@@ -932,7 +932,7 @@ export default function StudioBookingPage() {
               type="button"
               onClick={() => {
                 if (hoServiceId) { hoGo(2); return; }
-                document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                scrollToServices();
               }}
               className="w-full min-[900px]:w-auto inline-flex flex-col items-center justify-center min-h-[52px] px-7 rounded-full font-semibold text-white motion-safe:transition hover:opacity-90"
               style={{ background: "#B85C38" }}
@@ -950,7 +950,8 @@ export default function StudioBookingPage() {
               <div id="mc-services-menu" className="mt-6 text-left">
                 <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
                 {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
-                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3" style={{ background: "#FAF6F1" }}>
+                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3 motion-safe:transition-shadow"
+                  style={{ background: "#FAF6F1", boxShadow: svcFlash ? "0 0 0 3px #B85C38" : "0 0 0 0 rgba(184,92,56,0)" }}>
 
                   {profile.services.map((s: any) => {
                     const selected = hoServiceId === s.id;
