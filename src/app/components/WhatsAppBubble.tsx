@@ -61,22 +61,6 @@ export default function WhatsAppBubble() {
     ? "bottom-[calc(84px+env(safe-area-inset-bottom))]"
     : "bottom-[calc(20px+env(safe-area-inset-bottom))]";
 
-  const onTap = (e: React.MouseEvent) => {
-    trackEvent("wa_bubble_tap", { meta: { path: pathname, studio: studio ?? null } });
-    let firstTap = false;
-    try {
-      firstTap = sessionStorage.getItem(TOOLTIP_SEEN_KEY) !== "1";
-      if (firstTap) sessionStorage.setItem(TOOLTIP_SEEN_KEY, "1");
-    } catch { /* private mode: just open */ }
-    if (!firstTap) return; // let the anchor open WhatsApp normally
-    e.preventDefault();
-    setShowHint(true);
-    timer.current = window.setTimeout(() => {
-      setShowHint(false);
-      open();
-    }, 3000);
-  };
-
   return (
     <div className={`fixed right-4 z-50 flex items-center gap-2 ${bottomClass}`}>
       {showHint && (
