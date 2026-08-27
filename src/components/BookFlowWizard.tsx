@@ -242,6 +242,8 @@ export default function BookFlowWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [hint, setHint] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const rootRef = useRef<HTMLDivElement>(null);
