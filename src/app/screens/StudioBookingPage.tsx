@@ -1116,8 +1116,59 @@ export default function StudioBookingPage() {
                     </div>
                   )}
 
-                  {/* STEP 3: review and send — the WhatsApp button is never disabled */}
-                  {hoStep === 3 && !waTapped && (
+                  {/* STEP 3: your details */}
+                  {hoStep === 3 && (
+                    <div className="space-y-3 min-[900px]:space-y-4">
+                      <input
+                        value={hoName}
+                        onChange={(e) => setHoName(e.target.value)}
+                        placeholder="Your name / Tu nombre"
+                        className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                      />
+                      <div>
+                        <input
+                          value={hoPhone}
+                          onChange={(e) => setHoPhone(e.target.value)}
+                          placeholder="WhatsApp / Teléfono"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                        />
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          Para confirmarte la hora por WhatsApp.
+                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
+                        </p>
+                      </div>
+                      <input
+                        value={hoEmail}
+                        onChange={(e) => setHoEmail(e.target.value)}
+                        placeholder="Email (optional) / Email (opcional)"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
+                          hoEmail.trim() && !hoEmailValid ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`}
+                      />
+                      {!hoDetailsReady && (
+                        <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                          Add your name and a WhatsApp or email so we can follow up.
+                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>Añade tu nombre y un WhatsApp o email para poder contactarte.</span>
+                        </p>
+                      )}
+                      <WizardNav
+                        onBack={() => hoGo(2)}
+                        onNext={() => hoGo(4)}
+                        disabled={!hoDetailsReady}
+                        hint="Add your name and a way to reach you"
+                        hintEs="Añade tu nombre y una forma de contacto"
+                      />
+                    </div>
+                  )}
+
+                  {/* STEP 4: review and send */}
+                  {hoStep === 4 && !waTapped && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
                         <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
