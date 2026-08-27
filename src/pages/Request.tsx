@@ -30,11 +30,11 @@ export default function Request() {
     setValidationMsg("");
 
     if (!want.trim()) {
-      setValidationMsg("Dinos qué masaje quieres / Please tell us what massage you want");
+      setValidationMsg("Please tell us what massage you want");
       return;
     }
     if (!phone.trim() && !email.trim()) {
-      setValidationMsg("Necesitamos un WhatsApp o un email / We need a WhatsApp or email to reach you");
+      setValidationMsg("We need a WhatsApp or email to reach you");
       return;
     }
 
@@ -70,8 +70,8 @@ export default function Request() {
   return (
     <>
       <Helmet>
-        <title>Reserva un masaje · Massage Club</title>
-        <meta name="description" content="Dinos qué masaje quieres y te lo reservamos. Sin comisión, pagas directamente en el centro." />
+        <title>Request a massage · Massage Club</title>
+        <meta name="description" content="Tell us what massage you want and we will book it for you. No booking fee, you pay the studio directly." />
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -101,12 +101,9 @@ export default function Request() {
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">
-                    ¡Recibido!
+                    Got it.
                   </h1>
                   <p className="text-[15px] text-muted-foreground">
-                    Te escribimos en breve con opciones y precios reales.
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
                     We'll come back shortly with options and real prices.
                   </p>
                 </div>
@@ -114,50 +111,46 @@ export default function Request() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="text-center mb-2">
                     <h1 className="font-display text-2xl md:text-3xl font-semibold text-foreground mb-2">
-                      Dinos qué quieres. Te lo reservamos.
+                      Tell us what you want. We book it.
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                      Sin comisión, pagas directamente en el centro.
-                    </p>
-                    <p className="text-xs text-muted-foreground/80 mt-0.5">
-                      No booking fee, you pay the studio directly.
+                      No booking fee. You pay the studio directly.
                     </p>
                   </div>
 
                   <div className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="want" className="text-[15px]">
-                        Qué masaje quieres <span className="text-destructive">*</span>
-                        <span className="block text-xs font-normal text-muted-foreground mt-0.5">What massage</span>
+                        What massage <span className="text-destructive">*</span>
                       </Label>
                       <Textarea
                         id="want"
                         value={want}
                         onChange={(e) => setWant(e.target.value)}
-                        placeholder="Descontracturante, o simplemente: me duele la espalda"
+                        placeholder="Deep tissue, or just: my back hurts"
                         className="text-base md:text-sm min-h-[88px] rounded-xl"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Si no lo sabes, dinos qué te molesta. <span className="opacity-70">/ If you're not sure, just say what hurts.</span>
+                        If you're not sure, just tell us what hurts.
                       </p>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="when" className="text-[15px]">
-                        Cuándo <span className="block text-xs font-normal text-muted-foreground mt-0.5">When</span>
+                        When
                       </Label>
                       <Input
                         id="when"
                         value={when}
                         onChange={(e) => setWhen(e.target.value)}
-                        placeholder="Mañana por la tarde"
+                        placeholder="Tomorrow evening"
                         className="h-12 text-base md:text-sm rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="area" className="text-[15px]">
-                        Zona <span className="block text-xs font-normal text-muted-foreground mt-0.5">Area</span>
+                        Area
                       </Label>
                       <Input
                         id="area"
@@ -170,7 +163,7 @@ export default function Request() {
 
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-[15px]">
-                        Nombre <span className="block text-xs font-normal text-muted-foreground mt-0.5">Name</span>
+                        Name
                       </Label>
                       <Input
                         id="name"
@@ -199,32 +192,32 @@ export default function Request() {
 
                       <div className="space-y-2">
                         <Label htmlFor="email" className="text-[15px]">
-                          O email <span className="block text-xs font-normal text-muted-foreground mt-0.5">Or email</span>
+                          Or email
                         </Label>
                         <Input
                           id="email"
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="tu@email.com"
+                          placeholder="you@email.com"
                           className="h-12 text-base md:text-sm rounded-xl"
                         />
                       </div>
                     </div>
 
                     <p className="text-xs text-muted-foreground -mt-2">
-                      Con uno de los dos vale. Te escribimos con opciones y precios. <span className="opacity-70">/ Either one is enough. We'll come back with options and prices.</span>
+                      Either one is enough. We'll come back with options and prices.
                     </p>
 
                     <div className="space-y-2">
                       <Label htmlFor="notes" className="text-[15px]">
-                        Notas <span className="block text-xs font-normal text-muted-foreground mt-0.5">Notes</span>
+                        Notes
                       </Label>
                       <Textarea
                         id="notes"
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Alergias, preferencias de presión, anything else"
+                        placeholder="Allergies, pressure preference, anything else"
                         className="text-base md:text-sm min-h-[80px] rounded-xl"
                       />
                     </div>
@@ -240,10 +233,9 @@ export default function Request() {
                   {status === "error" && (
                     <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
                       <p className="font-medium mb-1">
-                        No se pudo enviar. Escríbenos por WhatsApp al +34 612 474 827.
+                        Could not send. Message us on WhatsApp at +34 612 474 827.
                       </p>
                       <p className="opacity-90">
-                        Could not send.{" "}
                         <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer" className="underline">
                           Message us on WhatsApp
                         </a>{" "}
@@ -259,7 +251,7 @@ export default function Request() {
                     loading={status === "loading"}
                     disabled={status === "loading"}
                   >
-                    {status === "loading" ? "Enviando…" : "Enviar / Send"}
+                    {status === "loading" ? "Sending…" : "Send"}
                   </Button>
                 </form>
               )}
