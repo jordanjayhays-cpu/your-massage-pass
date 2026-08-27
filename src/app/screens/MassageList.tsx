@@ -202,6 +202,21 @@ export default function MassageList() {
         </div>
       </div>
 
+      {/* Concierge shortcut */}
+      <div className="px-5 pt-4">
+        <Link
+          to="/book"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-secondary/50 px-4 py-3 text-sm text-foreground hover:border-primary transition"
+        >
+          <span>
+            {i18n.language?.startsWith("es")
+              ? "Sáltate la búsqueda — dinos qué quieres y te lo reservamos."
+              : "Skip the browsing — tell us what you want and we'll book it."}
+          </span>
+          <span aria-hidden className="text-primary">→</span>
+        </Link>
+      </div>
+
       {/* Search */}
       <div className="px-5 pt-5">
         <div className="relative">

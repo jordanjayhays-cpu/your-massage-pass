@@ -53,6 +53,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ForStudios from "./pages/ForStudios";
 import Request from "./pages/Request";
+import BookFlow from "./pages/BookFlow";
 import Notify from "./pages/Notify";
 import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
 import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
@@ -107,6 +108,7 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
 
           {/* Public lead-capture pages shared on WhatsApp */}
+          <Route path="/book" element={<BookFlow />} />
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
 
