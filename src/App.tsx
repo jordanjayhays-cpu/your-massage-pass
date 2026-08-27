@@ -54,6 +54,7 @@ import Terms from "./pages/Terms";
 import ForStudios from "./pages/ForStudios";
 import Request from "./pages/Request";
 import BookFlow from "./pages/BookFlow";
+import HowItWorks from "./pages/HowItWorks";
 import Notify from "./pages/Notify";
 import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
 import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
@@ -111,6 +112,7 @@ const App = () => (
           <Route path="/book" element={<BookFlow />} />
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
 
           {/* SEO guide pages (static paths win over the /:studioId dynamic route) */}
           <Route path="/massage-in-english-madrid" element={<MassageInEnglishMadrid />} />
