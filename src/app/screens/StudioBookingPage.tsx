@@ -1175,20 +1175,23 @@ export default function StudioBookingPage() {
                         <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Any day" />
                         <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Any time" />
                         <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
+                        <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not provided" />
+                        <SummaryRow label="Contact" labelEs="Contacto" value={[hoPhone.trim(), hoEmail.trim()].filter(Boolean).join(" · ") || null} placeholder="Not provided" />
                         <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
                       </div>
                       {hoServiceId ? (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={trackWhatsappIntent}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await trackWhatsappIntent();
+                            window.open(waLink, "_blank", "noopener,noreferrer");
+                          }}
                           className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                           style={{ background: "#B85C38", color: "#fff" }}
                         >
                           <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Request via WhatsApp</span>
                           <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar por WhatsApp</span>
-                        </a>
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -1201,14 +1204,14 @@ export default function StudioBookingPage() {
                         </button>
                       )}
                       <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
                   )}
 
-                  {/* STEP 3: confirmation after WhatsApp is opened */}
-                  {hoStep === 3 && waTapped && (
+                  {/* STEP 4: confirmation after WhatsApp is opened */}
+                  {hoStep === 4 && waTapped && (
                     <div className="space-y-4 min-[900px]:space-y-5 text-center">
                       <div className="mx-auto flex h-14 w-14 min-[900px]:h-16 min-[900px]:w-16 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
@@ -1237,7 +1240,7 @@ export default function StudioBookingPage() {
                         Studios already on Massage Club confirm instantly.
                         <span className="block">Los estudios que ya están en Massage Club confirman al instante.</span>
                       </p>
-                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
