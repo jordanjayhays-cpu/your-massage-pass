@@ -120,9 +120,9 @@ export default function StudioBookingPage() {
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
-  // No contact form on the unclaimed handoff: WhatsApp gives us name + number.
-  // Brief highlight on the services menu when a CTA scrolls the visitor to it.
-  const [svcFlash, setSvcFlash] = useState(false);
+  const [hoName, setHoName] = useState("");
+  const [hoEmail, setHoEmail] = useState("");
+  const [hoPhone, setHoPhone] = useState("");
 
   // Passwordless account creation, offered to visitors who are not signed in.
   const [createAccount, setCreateAccount] = useState(true);
