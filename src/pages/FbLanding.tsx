@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -6,7 +6,50 @@ import BookFlowWizard, { useBookFlowLang } from "@/components/BookFlowWizard";
 import { trackEvent } from "@/lib/siteVisit";
 import { MessageCircle } from "lucide-react";
 
-const WA_LINK = "https://wa.me/34612474827?text=" + encodeURIComponent("Hi, I'd like to book a massage.");
+const WA_BASE = "https://wa.me/34612474827?text=";
+
+// Massage chip options per language. `kind` drives the message template.
+const MASSAGE_CHIPS = {
+  en: [
+    { kind: "relaxing", label: "Relaxing" },
+    { kind: "deep", label: "Deep tissue" },
+    { kind: "thai", label: "Thai" },
+    { kind: "sports", label: "Sports" },
+    { kind: "unsure", label: "Not sure" },
+  ],
+  es: [
+    { kind: "relaxing", label: "Relajante" },
+    { kind: "deep", label: "Descontracturante" },
+    { kind: "thai", label: "Tailandés" },
+    { kind: "sports", label: "Deportivo" },
+    { kind: "unsure", label: "No lo sé" },
+  ],
+} as const;
+
+const TYPE_WORDS: Record<string, { en: string; es: string }> = {
+  relaxing: { en: "a relaxing massage", es: "un masaje relajante" },
+  deep: { en: "a deep tissue massage", es: "un masaje descontracturante" },
+  thai: { en: "a thai massage", es: "un masaje tailandés" },
+  sports: { en: "a sports massage", es: "un masaje deportivo" },
+};
+
+function buildWaText(lang: "en" | "es", kind: string, area: string): string {
+  const cleanArea = area.trim();
+  if (kind === "unsure") {
+    return lang === "es"
+      ? "Hola, quiero reservar un masaje pero no sé qué tipo. Os he visto en Facebook."
+      : "Hi, I'd like to book a massage but I'm not sure which type. I saw you on Facebook.";
+  }
+  const typeWord = TYPE_WORDS[kind]?.[lang] ?? TYPE_WORDS.relaxing[lang];
+  if (cleanArea) {
+    return lang === "es"
+      ? `Hola, quiero reservar ${typeWord} en ${cleanArea}. Os he visto en Facebook.`
+      : `Hi, I'd like to book ${typeWord} in ${cleanArea}. I saw you on Facebook.`;
+  }
+  return lang === "es"
+    ? `Hola, quiero reservar ${typeWord}. Os he visto en Facebook.`
+    : `Hi, I'd like to book ${typeWord}. I saw you on Facebook.`;
+}
 
 const COPY = {
   en: {
