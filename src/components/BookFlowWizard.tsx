@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, CheckCircle2, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, MapPin, MessageCircle } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
@@ -67,9 +67,10 @@ export const BOOK_FLOW_COPY = {
     submit: "Request my massage",
     sending: "Sending...",
     sendError: "Could not send. Message us on WhatsApp at +34 612 474 827.",
-    successTitle: "Request received!",
-    successSub:
-      "We're confirming your time with the studio. You'll hear from us on WhatsApp shortly - usually within the hour, always the same day.",
+    successTitle: "Almost done - send it to us",
+    successSub: "Tap send in WhatsApp and we'll confirm your time with the studio.",
+    sendWhatsApp: "Send my request on WhatsApp",
+    noWhatsApp: "No WhatsApp? We'll reply to {contact}.",
     sumMassage: "Massage",
     sumWhen: "When",
     sumWhere: "Where",
@@ -133,9 +134,10 @@ export const BOOK_FLOW_COPY = {
     submit: "Pedir mi masaje",
     sending: "Enviando...",
     sendError: "No se pudo enviar. Escríbenos por WhatsApp al +34 612 474 827.",
-    successTitle: "¡Solicitud recibida!",
-    successSub:
-      "Estamos confirmando tu hora con el centro. Te escribimos por WhatsApp en breve - normalmente en menos de una hora, siempre el mismo día.",
+    successTitle: "Casi listo - envíanoslo",
+    successSub: "Dale a enviar en WhatsApp y confirmamos tu hora con el centro.",
+    sendWhatsApp: "Enviar mi solicitud por WhatsApp",
+    noWhatsApp: "¿No tienes WhatsApp? Te respondemos a {contact}."
     sumMassage: "Masaje",
     sumWhen: "Cuándo",
     sumWhere: "Dónde",
