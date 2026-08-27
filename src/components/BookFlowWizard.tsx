@@ -137,7 +137,7 @@ export const BOOK_FLOW_COPY = {
     successTitle: "Casi listo - envíanoslo",
     successSub: "Dale a enviar en WhatsApp y confirmamos tu hora con el centro.",
     sendWhatsApp: "Enviar mi solicitud por WhatsApp",
-    noWhatsApp: "¿No tienes WhatsApp? Te respondemos a {contact}."
+    noWhatsApp: "¿No tienes WhatsApp? Te respondemos a {contact}.",
     sumMassage: "Masaje",
     sumWhen: "Cuándo",
     sumWhere: "Dónde",
