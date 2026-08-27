@@ -31,8 +31,6 @@ const COPY = {
     h1: "Un masaje en Madrid, reservado por ti en inglés.",
     sub: "Dinos qué quieres y cuándo. Confirmamos tu hora con el centro. Pagas en el centro, sin gastos de reserva.",
     cta: "Reservar mi masaje",
-    priceLine:
-      "Precios reales: relajante 60 min desde 45 €, descontracturante desde 60 €, tailandés desde 60 €. Pagas en el centro.",
     howTitle: "Cómo funciona",
     how: [
       "Dinos qué quieres y cuándo.",
