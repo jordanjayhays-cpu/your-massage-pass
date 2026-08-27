@@ -194,7 +194,7 @@ export default function FindStudio({ refreshTick }: { refreshTick?: number }) {
       const rating = p.google_rating != null ? `⭐${p.google_rating}` : "⭐—";
       return `${nums[i]} ${p.business_name || "Studio"} · ${areaLabel} · ${rating} · ${cheapest?.type || cheapest?.name || "Massage"} ${cheapest?.duration || 60} min · €${cheapest?.price ?? "—"}`;
     });
-    const text = `${lines.join("\n")}\n\nReply 1, 2 or 3 and I'll confirm your time with them.`;
+    const text = `Three good options:\n${lines.join("\n")}\n\nReply 1, 2 or 3 and I'll confirm your time with them. You pay at the studio — no fee.`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
