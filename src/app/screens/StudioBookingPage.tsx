@@ -1180,7 +1180,7 @@ export default function StudioBookingPage() {
                         Studios already on Massage Club confirm instantly.
                         <span className="block">Los estudios que ya están en Massage Club confirman al instante.</span>
                       </p>
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
+                      <button type="button" onClick={() => hoGo(2)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
                         Back <span className="font-normal">/ Atrás</span>
                       </button>
                     </div>
