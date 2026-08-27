@@ -73,6 +73,11 @@ const COPY = {
     ],
     trust: "50+ Madrid studios listed with real prices.",
     footerLead: "Prefer to chat? Message us on WhatsApp",
+    waQ1: "What massage do you want?",
+    waQ2: "What area are you in?",
+    waAreaPlaceholder: "e.g. Chamberi, Sol, Parla",
+    waAreaUnsure: "Not sure",
+    waOpen: "Open WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
   },
   es: {
@@ -96,6 +101,11 @@ const COPY = {
     ],
     trust: "Más de 50 centros de Madrid con precios reales.",
     footerLead: "¿Prefieres escribirnos? Mándanos un WhatsApp",
+    waQ1: "¿Qué masaje quieres?",
+    waQ2: "¿En qué zona estás?",
+    waAreaPlaceholder: "p. ej. Chamberí, Sol, Parla",
+    waAreaUnsure: "No lo sé",
+    waOpen: "Abrir WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
   },
 } as const;
