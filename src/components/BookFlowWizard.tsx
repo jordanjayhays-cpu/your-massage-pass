@@ -488,6 +488,7 @@ export default function BookFlowWizard({
             [t.sumPeople, people],
             [t.sumWhen, slotList.join(" · ")],
             [t.sumWhere, areaValue],
+            [t.name, name],
           ].map(([k, v]) => (
             <div key={k} className="flex items-start justify-between gap-4">
               <span className="text-sm text-muted-foreground">{k}</span>
