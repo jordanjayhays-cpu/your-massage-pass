@@ -70,6 +70,9 @@ export const BOOK_FLOW_COPY = {
     submit: "Request my massage",
     sending: "Sending...",
     sendError: "Could not send. Message us on WhatsApp at +34 612 474 827.",
+    promiseTitle: "We are checking with the studio now",
+    promiseBody:
+      "You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.",
     successTitle: "Almost done - send it to us",
     successSub: "Tap send in WhatsApp and we'll confirm your time with the studio.",
     sendWhatsApp: "Send my request on WhatsApp",
