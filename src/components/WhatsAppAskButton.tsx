@@ -136,7 +136,7 @@ export default function WhatsAppAskButton({
 }: WhatsAppAskButtonProps) {
   const detected = useAskLang();
   const lang = langProp ?? detected;
-  const t = LABELS[lang];
+  const t = LABELS[lang] ?? LABELS.en;
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<string | null>(null);
   const [area, setArea] = useState("");
@@ -165,7 +165,7 @@ export default function WhatsAppAskButton({
     <div className="rounded-2xl border border-border bg-card p-4 shadow-soft text-left">
       <p className="text-sm font-semibold text-foreground">{t.q1}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        {MASSAGE_CHIPS[lang].map((c) => (
+        {(MASSAGE_CHIPS[lang] ?? MASSAGE_CHIPS.en).map((c) => (
           <button
             key={c.kind}
             type="button"

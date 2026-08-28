@@ -59,7 +59,7 @@ export default function Notify() {
   const { i18n } = useTranslation();
   const resolved = (i18n.resolvedLanguage || "en").slice(0, 2);
   const lang: PageLang = resolved === "es" ? "es" : "en";
-  const t = COPY[lang];
+  const t = COPY[lang] ?? COPY.en;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

@@ -45,7 +45,7 @@ const COPY = {
 
 export default function FbLanding() {
   const lang = useBookFlowLang();
-  const t = COPY[lang];
+  const t = COPY[lang] ?? COPY.en;
   const location = useLocation();
   const bookingRef = useRef<HTMLDivElement>(null);
   const logged = useRef(false);

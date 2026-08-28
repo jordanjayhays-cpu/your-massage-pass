@@ -226,7 +226,7 @@ export default function BookFlowWizard({
   /** Preselect a massage in step 1 from outside. Bump `nonce` to re-apply. */
   preselect?: { value: string; nonce: number } | null;
 }) {
-  const t = BOOK_FLOW_COPY[lang];
+  const t = BOOK_FLOW_COPY[lang] ?? BOOK_FLOW_COPY.en;
 
   const [step, setStep] = useState(1);
   const [massage, setMassage] = useState("");
