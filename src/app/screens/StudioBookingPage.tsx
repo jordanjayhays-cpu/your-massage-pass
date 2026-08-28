@@ -87,6 +87,13 @@ export default function StudioBookingPage() {
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<string | null>(null);
+  // Extra time options: the concierge confirms far faster with 2-3 choices.
+  const [altDate2, setAltDate2] = useState<Date | null>(null);
+  const [altTime2, setAltTime2] = useState<string | null>(null);
+  const [altDate3, setAltDate3] = useState<Date | null>(null);
+  const [altTime3, setAltTime3] = useState<string | null>(null);
+  const [alt2Shown, setAlt2Shown] = useState(false);
+  const [alt3Shown, setAlt3Shown] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
