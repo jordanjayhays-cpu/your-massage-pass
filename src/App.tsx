@@ -142,7 +142,9 @@ const App = () => (
           <Route path="/studio" element={<Redirect to="/studios" />} />
           <Route path="/massages" element={<Redirect to="/studios" />} />
           <Route path="/booking" element={<Redirect to="/book" />} />
-          <Route path="/start/" element={<Redirect to="/start" />} />
+          {/* NOTE: no "/start/" route - React Router treats it as "/start", so a
+              redirect there loops forever and renders a blank page. */}
+
 
 
           <Route path="/request" element={<Request />} />
