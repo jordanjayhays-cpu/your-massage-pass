@@ -44,7 +44,7 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PRESSURE_LEVELS = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
-const PEOPLE_OPTIONS = ["1", "2", "3", "4", "5+"];
+const PEOPLE_OPTIONS = ["2", "3", "4", "5+"];
 
 // Fixed options for the unclaimed-studio handoff, where real availability is unknown.
 const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
@@ -113,6 +113,7 @@ export default function StudioBookingPage() {
   const [addonNames, setAddonNames] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [people, setPeople] = useState("1");
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [conversationPref, setConversationPref] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
@@ -142,6 +143,7 @@ export default function StudioBookingPage() {
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoPeople, setHoPeople] = useState("1");
+  const [hoPeopleOpen, setHoPeopleOpen] = useState(false);
   const [hoNotes, setHoNotes] = useState("");
   const [hoFirstName, setHoFirstName] = useState("");
   const [hoLastName, setHoLastName] = useState("");
