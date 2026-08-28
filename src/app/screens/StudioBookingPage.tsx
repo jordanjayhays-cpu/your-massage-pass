@@ -2155,34 +2155,39 @@ export default function StudioBookingPage() {
                 <Section step="4" title="Your details" titleEs="Tus datos">
                   <div className="space-y-2 min-[900px]:space-y-3">
                     <div className="pb-1">
-                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-sm">
-                        How many people? <span className="font-normal text-gray-400">/ ¿Cuántas personas?</span>
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {PEOPLE_OPTIONS.map((n) => {
-                          const on = people === n;
-                          return (
-                            <button
-                              key={n}
-                              type="button"
-                              aria-pressed={on}
-                              onClick={() => setPeople(n)}
-                              className={`h-11 min-w-[2.75rem] px-4 rounded-xl border text-sm min-[900px]:text-base font-medium ${
-                                on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-200 bg-white text-gray-600"
-                              }`}
-                            >
-                              {n}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {people !== "1" && (
-                        <p className="mt-2 text-xs min-[900px]:text-sm text-gray-500">
-                          We will check the studio can take your group at the same time.
-                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
-                            Confirmamos con el centro que pueden atender a todo el grupo a la vez.
-                          </span>
-                        </p>
+                      {!peopleOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setPeopleOpen(true)}
+                          className="text-xs text-gray-400 hover:text-gray-500 transition-colors"
+                        >
+                          Booking for more than one person? / ¿Reservas para más de una persona?
+                        </button>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {PEOPLE_OPTIONS.map((n) => {
+                            const on = people === n;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => setPeople(n)}
+                                className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium ${
+                                  on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-200 bg-white text-gray-600"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                          <p className="w-full mt-1 text-xs text-gray-400">
+                            We will check the studio can take your group at the same time.
+                            <span className="block text-[11px] text-gray-400">
+                              Confirmamos con el centro que pueden atender a todo el grupo a la vez.
+                            </span>
+                          </p>
+                        </div>
                       )}
                     </div>
                     <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
