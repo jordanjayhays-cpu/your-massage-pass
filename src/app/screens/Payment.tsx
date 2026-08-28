@@ -17,6 +17,7 @@ import {
 } from "@/lib/referral";
 import { getStoredUser } from "./Login";
 import { useTranslation } from "react-i18next";
+import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 
 
 const COMMISSION_RATE = 0.10; // 10% commission
@@ -37,11 +38,18 @@ export default function Payment() {
   const [applyCredit, setApplyCredit] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const stored = getStoredUser();
-  const [contact, setContact] = useState({
-    name: stored?.name ?? "Guest",
-    email: stored?.email ?? "guest@massageclub.io",
-    phone: "",
-  });
+  const storedFirst = (stored?.name ?? "").trim().split(" ")[0] ?? "";
+  const storedLast = (stored?.name ?? "").trim().split(" ").slice(1).join(" ");
+  const [firstName, setFirstName] = useState(storedFirst);
+  const [lastName, setLastName] = useState(storedLast);
+  const [email, setEmail] = useState(stored?.email ?? "");
+  const [phone, setPhone] = useState("");
+  const contact = {
+    name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+    email: email.trim(),
+    phone: phone.trim(),
+  };
+
 
 
   // Fetch studio access instructions when we have a partner_id
@@ -70,18 +78,23 @@ export default function Payment() {
         .maybeSingle();
       setProfile(p);
       const meta: any = user.user_metadata ?? {};
-      const fullName =
+      const fullName = (
         p?.full_name ||
         [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim() ||
         meta.full_name ||
         meta.name ||
         stored?.name ||
-        "Guest";
-      setContact({
-        name: fullName,
-        email: user.email || stored?.email || "guest@massageclub.io",
-        phone: p?.phone ?? "",
-      });
+        ""
+      ).trim();
+      const parts = fullName.split(" ").filter(Boolean);
+      if (parts.length) {
+        setFirstName((v) => v.trim() || parts[0]);
+        setLastName((v) => v.trim() || parts.slice(1).join(" "));
+      }
+      const prefillEmail = user.email || stored?.email || "";
+      if (prefillEmail) setEmail((v) => v.trim() || prefillEmail);
+      if (p?.phone) setPhone((v) => v.trim() || p.phone);
+
 
       // Load available referral credit (€5 each)
       const credits = await getUnusedCredits(user.id);
@@ -110,7 +123,14 @@ export default function Payment() {
   const creditToApply = applyCredit && availableCreditCents >= 500 ? 5 : 0;
   const dueToday = Math.max(0, addOnPrice - creditToApply);
 
+  const cc = CONTACT_COPY[(i18n.language || "en").slice(0, 2) === "es" ? "es" : "en"];
+  const contactCheck = contactOk(phone, email);
+  const nameComplete = !!firstName.trim() && !!lastName.trim();
+  const canConfirm = nameComplete && contactCheck.ok;
+
   const handleConfirm = async () => {
+    if (!canConfirm) return;
+
     setLoading(true);
     try {
       const noteParts: string[] = [];
@@ -387,7 +407,64 @@ export default function Payment() {
           </div>
         </div>
 
-        {/* Referral credit */}
+        {/* Your details - required so we can always reach the customer */}
+        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+          <p className="text-sm font-semibold text-foreground">
+            {cc === CONTACT_COPY.es ? "Tus datos" : "Your details"}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder={cc === CONTACT_COPY.es ? "Nombre" : "First name"}
+              autoComplete="given-name"
+              className="w-full h-12 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary"
+            />
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder={cc === CONTACT_COPY.es ? "Apellido" : "Last name"}
+              autoComplete="family-name"
+              className="w-full h-12 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary"
+            />
+          </div>
+          <div>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              aria-invalid={contactCheck.emailValid === false}
+              className={`w-full h-12 px-4 rounded-xl border bg-background text-sm focus:outline-none focus:border-primary ${
+                contactCheck.emailValid === false ? "border-2 border-destructive" : "border-border"
+              }`}
+            />
+            {contactCheck.emailValid === false && (
+              <p className="mt-1.5 text-xs text-destructive">{cc.badEmail}</p>
+            )}
+          </div>
+          <div>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="WhatsApp / +34 600 123 456"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              aria-invalid={contactCheck.phoneValid === false}
+              className={`w-full h-12 px-4 rounded-xl border bg-background text-sm focus:outline-none focus:border-primary ${
+                contactCheck.phoneValid === false ? "border-2 border-destructive" : "border-border"
+              }`}
+            />
+            {contactCheck.phoneValid === false && (
+              <p className="mt-1.5 text-xs text-destructive">{cc.badPhone}</p>
+            )}
+          </div>
+          {!canConfirm && <p className="text-xs text-muted-foreground">{cc.needContact}</p>}
+        </div>
+
         {/* Marketing opt-in */}
         <label className="rounded-2xl border border-border p-4 flex items-start gap-3 cursor-pointer">
           <input
@@ -451,11 +528,12 @@ export default function Payment() {
       <div className="px-6 py-4 border-t border-border bg-card">
         <Button
           onClick={handleConfirm}
-          disabled={loading}
-          className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant"
+          disabled={loading || !canConfirm}
+          className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90 shadow-elegant disabled:opacity-50"
         >
           {loading ? t("app.payment.main.actions.confirming") : t("app.payment.main.actions.confirm")}
         </Button>
+        {!canConfirm && <p className="mt-2 text-center text-xs text-muted-foreground">{cc.needContact}</p>}
       </div>
     </div>
   );

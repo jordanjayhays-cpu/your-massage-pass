@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowRight, MapPin, MessageCircle } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
+import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
+
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 
@@ -245,6 +247,8 @@ export default function BookFlowWizard({
   preselect?: { value: string; nonce: number } | null;
 }) {
   const t = BOOK_FLOW_COPY[lang] ?? BOOK_FLOW_COPY.en;
+  const cc = CONTACT_COPY[lang as "en" | "es"] ?? CONTACT_COPY.en;
+
 
   const [step, setStep] = useState(1);
   const [massage, setMassage] = useState("");
@@ -339,6 +343,12 @@ export default function BookFlowWizard({
   const timeChips = [t.morning, t.afternoon, t.evening, t.flexible];
   const areas = [...AREAS_BASE, t.other];
 
+  const contact = contactOk(phone, email);
+  const nameComplete = !!firstName.trim() && !!lastName.trim();
+  const canSubmit = nameComplete && contact.ok;
+
+
+
   const fail = (msg: string, ref: React.RefObject<HTMLDivElement>) => {
     setHint(msg);
     ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -422,7 +432,10 @@ export default function BookFlowWizard({
   const submit = async () => {
     setHint(null);
     if (!firstName.trim() || !lastName.trim()) return fail(t.missName, nameRef);
-    if (!phone.trim() && !email.trim()) return fail(t.missContact, contactRef);
+    if (contact.phoneValid === false) return fail(cc.badPhone, contactRef);
+    if (contact.emailValid === false) return fail(cc.badEmail, contactRef);
+    if (!contact.ok) return fail(cc.needContact, contactRef);
+
 
     setStatus("loading");
     try {
@@ -736,13 +749,36 @@ export default function BookFlowWizard({
             <div ref={contactRef} className="space-y-4">
               <div>
                 <Label htmlFor="bf-phone" className="text-sm text-foreground">{t.whatsapp}</Label>
-                <Input id="bf-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 h-12 text-base" />
+                <Input
+                  id="bf-phone"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="+34 600 123 456"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  aria-invalid={contact.phoneValid === false}
+                  className={`mt-1.5 h-12 text-base ${contact.phoneValid === false ? "border-2 border-destructive" : ""}`}
+                />
+                {contact.phoneValid === false && (
+                  <p className="mt-1.5 text-sm text-destructive">{cc.badPhone}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="bf-email" className="text-sm text-foreground">{t.email}</Label>
-                <Input id="bf-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-12 text-base" />
+                <Input
+                  id="bf-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={contact.emailValid === false}
+                  className={`mt-1.5 h-12 text-base ${contact.emailValid === false ? "border-2 border-destructive" : ""}`}
+                />
+                {contact.emailValid === false && (
+                  <p className="mt-1.5 text-sm text-destructive">{cc.badEmail}</p>
+                )}
               </div>
             </div>
+
           </div>
         </section>
       )}
@@ -764,15 +800,21 @@ export default function BookFlowWizard({
             {t.continue} <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={submit}
-            disabled={status === "loading"}
-            className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-70"
-          >
-            {status === "loading" ? t.sending : t.submit}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={status === "loading" || !canSubmit}
+              className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {status === "loading" ? t.sending : t.submit}
+            </button>
+            {!canSubmit && (
+              <p className="mt-2 text-center text-sm text-muted-foreground">{cc.needContact}</p>
+            )}
+          </>
         )}
+
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
+import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -944,9 +945,11 @@ export default function StudioBookingPage() {
       document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
-    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
-    const hoPhoneValid = /^\+?[\d\s]{9,}$/.test(hoPhone.trim().replace(/\s/g, ""));
-    const hoDetailsReady = !!(hoNameComplete && (hoEmailValid || hoPhoneValid));
+    const hoContact = contactOk(hoPhone, hoEmail);
+    const hoEmailValid = hoContact.emailValid === true;
+    const hoPhoneValid = hoContact.phoneValid === true;
+    const hoDetailsReady = !!(hoNameComplete && hoContact.ok);
+
 
     const trackWhatsappIntent = async () => {
       if (waLoggedRef.current) return;
@@ -1342,29 +1345,49 @@ export default function StudioBookingPage() {
                         <input
                           value={hoPhone}
                           onChange={(e) => setHoPhone(e.target.value)}
-                          placeholder="WhatsApp / Teléfono"
+                          placeholder="WhatsApp / Teléfono (+34 600 123 456)"
                           type="tel"
                           inputMode="tel"
                           autoComplete="tel"
-                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                          aria-invalid={hoContact.phoneValid === false}
+                          className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
+                            hoContact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                          }`}
                         />
-                        <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          Para confirmarte la hora por WhatsApp.
-                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
-                        </p>
+                        {hoContact.phoneValid === false ? (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
+                            {CONTACT_COPY.en.badPhone}
+                            <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badPhone}</span>
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                            Para confirmarte la hora por WhatsApp.
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
+                          </p>
+                        )}
                       </div>
-                      <input
-                        value={hoEmail}
-                        onChange={(e) => setHoEmail(e.target.value)}
-                        placeholder="Email (optional) / Email (opcional)"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
-                          hoEmail.trim() && !hoEmailValid ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                        }`}
-                      />
                       <div>
+                        <input
+                          value={hoEmail}
+                          onChange={(e) => setHoEmail(e.target.value)}
+                          placeholder="Email"
+                          type="email"
+                          inputMode="email"
+                          autoComplete="email"
+                          aria-invalid={hoContact.emailValid === false}
+                          className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
+                            hoContact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                          }`}
+                        />
+                        {hoContact.emailValid === false && (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
+                            {CONTACT_COPY.en.badEmail}
+                            <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badEmail}</span>
+                          </p>
+                        )}
+                      </div>
+                      <div>
+
                         <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
                           Anything else we should know? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Algo más que debamos saber?</span>
                         </p>
@@ -1377,10 +1400,11 @@ export default function StudioBookingPage() {
                       </div>
                       {!hoDetailsReady && (
                         <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          Add your name and a WhatsApp or email so we can follow up.
-                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>Añade tu nombre y un WhatsApp o email para poder contactarte.</span>
+                          {CONTACT_COPY.en.needContact}
+                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{CONTACT_COPY.es.needContact}</span>
                         </p>
                       )}
+
                       <WizardNav
                         onBack={() => hoGo(2)}
                         onNext={() => hoGo(4)}
@@ -1503,11 +1527,12 @@ export default function StudioBookingPage() {
   }
 
 
-  // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
-  // Email is required: every confirmation and reminder is sent by email.
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
-  const hasContact = emailValid;
+  // Name plus at least one valid way to reach them (WhatsApp number OR email).
+  const contact = contactOk(phone, email);
+  const emailValid = contact.emailValid === true;
+  const hasContact = contact.ok;
   const canBook = !!(service && date && time && nameComplete && hasContact);
+
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
 
@@ -1529,11 +1554,21 @@ export default function StudioBookingPage() {
       nameRef.current?.focus();
       return;
     }
-    if (!hasContact) {
-      setStepError({ en: "Add a valid email so we can send your confirmation", es: "Añade un email válido para enviarte la confirmación" });
+    if (contact.phoneValid === false) {
+      setStepError({ en: CONTACT_COPY.en.badPhone, es: CONTACT_COPY.es.badPhone });
+      return;
+    }
+    if (contact.emailValid === false) {
+      setStepError({ en: CONTACT_COPY.en.badEmail, es: CONTACT_COPY.es.badEmail });
       emailRef.current?.focus();
       return;
     }
+    if (!hasContact) {
+      setStepError({ en: CONTACT_COPY.en.needContact, es: CONTACT_COPY.es.needContact });
+      emailRef.current?.focus();
+      return;
+    }
+
     goStep(5);
   };
 
@@ -2154,17 +2189,37 @@ export default function StudioBookingPage() {
                           stepError && !lastName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
                     </div>
-                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
-                      aria-invalid={!!email.trim() && !emailValid}
-                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        (stepError && !hasContact) || (!!email.trim() && !emailValid) ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                      }`} />
-                    <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                      className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D]" />
+                    <div>
+                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
+                        aria-invalid={contact.emailValid === false}
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
+                          contact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`} />
+                      {contact.emailValid === false && (
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
+                          {CONTACT_COPY.en.badEmail}
+                          <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badEmail}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="WhatsApp / Phone (+34 600 123 456)" type="tel" inputMode="tel" autoComplete="tel"
+                        aria-invalid={contact.phoneValid === false}
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
+                          contact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`} />
+                      {contact.phoneValid === false && (
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
+                          {CONTACT_COPY.en.badPhone}
+                          <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badPhone}</span>
+                        </p>
+                      )}
+                    </div>
                     <p className="text-xs min-[900px]:text-sm text-gray-400">
-                      Your confirmation and reminders go to your email.
-                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Tu confirmación y los recordatorios llegan a tu email.</span>
+                      Give us an email or a WhatsApp number so we can reach you.
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Déjanos un email o un WhatsApp para poder contactarte.</span>
                     </p>
+
 
                     {!userId && !!email.trim() && (
                       <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
@@ -2197,9 +2252,10 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!nameComplete || !hasContact}
-                  hint="Add your first and last name and a valid email, that is where your confirmation goes"
-                  hintEs="Añade tu nombre y un email válido, ahí te llega la confirmación"
+                  hint={CONTACT_COPY.en.needContact}
+                  hintEs={CONTACT_COPY.es.needContact}
                 />
+
               </div>
             )}
 
