@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LocationAskProvider } from "@/lib/locationConsent";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,6 +46,17 @@ import Welcome from "./pages/Welcome";
 import Compare from "./pages/Compare";
 import MassageTypePage from "./pages/MassageTypePage";
 import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
+
+/**
+ * Permanent redirect from the old /fb route to /start, preserving query
+ * params and hash so existing ad links keep working.
+ */
+function FbRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`/start${search}${hash}`} replace />;
+}
+
+
 
 
 import Review from "./pages/Review";
@@ -112,7 +123,9 @@ const App = () => (
 
           {/* Public lead-capture pages shared on WhatsApp */}
           <Route path="/book" element={<BookFlow />} />
-          <Route path="/fb" element={<FbLanding />} />
+          <Route path="/start" element={<FbLanding />} />
+          <Route path="/fb" element={<FbRedirect />} />
+
 
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
