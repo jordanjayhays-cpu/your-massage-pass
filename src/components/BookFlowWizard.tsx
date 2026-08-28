@@ -432,7 +432,10 @@ export default function BookFlowWizard({
   const submit = async () => {
     setHint(null);
     if (!firstName.trim() || !lastName.trim()) return fail(t.missName, nameRef);
-    if (!phone.trim() && !email.trim()) return fail(t.missContact, contactRef);
+    if (contact.phoneValid === false) return fail(cc.badPhone, contactRef);
+    if (contact.emailValid === false) return fail(cc.badEmail, contactRef);
+    if (!contact.ok) return fail(cc.needContact, contactRef);
+
 
     setStatus("loading");
     try {
