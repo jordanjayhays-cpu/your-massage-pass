@@ -44,7 +44,7 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PRESSURE_LEVELS = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
-const PEOPLE_OPTIONS = ["1", "2", "3", "4", "5+"];
+const PEOPLE_OPTIONS = ["2", "3", "4", "5+"];
 
 // Fixed options for the unclaimed-studio handoff, where real availability is unknown.
 const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
@@ -113,6 +113,7 @@ export default function StudioBookingPage() {
   const [addonNames, setAddonNames] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [people, setPeople] = useState("1");
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [conversationPref, setConversationPref] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
@@ -142,6 +143,7 @@ export default function StudioBookingPage() {
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoPeople, setHoPeople] = useState("1");
+  const [hoPeopleOpen, setHoPeopleOpen] = useState(false);
   const [hoNotes, setHoNotes] = useState("");
   const [hoFirstName, setHoFirstName] = useState("");
   const [hoLastName, setHoLastName] = useState("");
@@ -1295,34 +1297,40 @@ export default function StudioBookingPage() {
                   {hoStep === 3 && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div>
-                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
-                          How many people? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Cuántas personas?</span>
-                        </p>
-                        <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
-                          {PEOPLE_OPTIONS.map((n) => {
-                            const on = hoPeople === n;
-                            return (
-                              <button
-                                key={n}
-                                type="button"
-                                aria-pressed={on}
-                                onClick={() => setHoPeople(n)}
-                                className={`h-11 min-w-[2.75rem] px-4 rounded-xl border text-sm min-[900px]:text-base font-medium ${
-                                  on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-200 bg-white text-gray-600"
-                                }`}
-                              >
-                                {n}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {hoPeople !== "1" && (
-                          <p className="mt-2 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                            We will check the studio can take your group at the same time.
-                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
-                              Confirmamos con el centro que pueden atender a todo el grupo a la vez.
-                            </span>
-                          </p>
+                        {!hoPeopleOpen ? (
+                          <button
+                            type="button"
+                            onClick={() => setHoPeopleOpen(true)}
+                            className="text-xs hover:opacity-80 transition-opacity"
+                            style={{ color: "#9E9387" }}
+                          >
+                            Booking for more than one person? / ¿Reservas para más de una persona?
+                          </button>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
+                            {PEOPLE_OPTIONS.map((n) => {
+                              const on = hoPeople === n;
+                              return (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  aria-pressed={on}
+                                  onClick={() => setHoPeople(n)}
+                                  className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium ${
+                                    on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-200 bg-white text-gray-600"
+                                  }`}
+                                >
+                                  {n}
+                                </button>
+                              );
+                            })}
+                            <p className="w-full mt-1 text-xs" style={{ color: "#9E9387" }}>
+                              We will check the studio can take your group at the same time.
+                              <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                                Confirmamos con el centro que pueden atender a todo el grupo a la vez.
+                              </span>
+                            </p>
+                          </div>
                         )}
                       </div>
                       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
@@ -2147,34 +2155,39 @@ export default function StudioBookingPage() {
                 <Section step="4" title="Your details" titleEs="Tus datos">
                   <div className="space-y-2 min-[900px]:space-y-3">
                     <div className="pb-1">
-                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-sm">
-                        How many people? <span className="font-normal text-gray-400">/ ¿Cuántas personas?</span>
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {PEOPLE_OPTIONS.map((n) => {
-                          const on = people === n;
-                          return (
-                            <button
-                              key={n}
-                              type="button"
-                              aria-pressed={on}
-                              onClick={() => setPeople(n)}
-                              className={`h-11 min-w-[2.75rem] px-4 rounded-xl border text-sm min-[900px]:text-base font-medium ${
-                                on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-200 bg-white text-gray-600"
-                              }`}
-                            >
-                              {n}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {people !== "1" && (
-                        <p className="mt-2 text-xs min-[900px]:text-sm text-gray-500">
-                          We will check the studio can take your group at the same time.
-                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
-                            Confirmamos con el centro que pueden atender a todo el grupo a la vez.
-                          </span>
-                        </p>
+                      {!peopleOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setPeopleOpen(true)}
+                          className="text-xs text-gray-400 hover:text-gray-500 transition-colors"
+                        >
+                          Booking for more than one person? / ¿Reservas para más de una persona?
+                        </button>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {PEOPLE_OPTIONS.map((n) => {
+                            const on = people === n;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => setPeople(n)}
+                                className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium ${
+                                  on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-200 bg-white text-gray-600"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                          <p className="w-full mt-1 text-xs text-gray-400">
+                            We will check the studio can take your group at the same time.
+                            <span className="block text-[11px] text-gray-400">
+                              Confirmamos con el centro que pueden atender a todo el grupo a la vez.
+                            </span>
+                          </p>
+                        </div>
                       )}
                     </div>
                     <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
