@@ -1344,29 +1344,49 @@ export default function StudioBookingPage() {
                         <input
                           value={hoPhone}
                           onChange={(e) => setHoPhone(e.target.value)}
-                          placeholder="WhatsApp / Teléfono"
+                          placeholder="WhatsApp / Teléfono (+34 600 123 456)"
                           type="tel"
                           inputMode="tel"
                           autoComplete="tel"
-                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                          aria-invalid={hoContact.phoneValid === false}
+                          className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
+                            hoContact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                          }`}
                         />
-                        <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          Para confirmarte la hora por WhatsApp.
-                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
-                        </p>
+                        {hoContact.phoneValid === false ? (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
+                            {CONTACT_COPY.en.badPhone}
+                            <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badPhone}</span>
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                            Para confirmarte la hora por WhatsApp.
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
+                          </p>
+                        )}
                       </div>
-                      <input
-                        value={hoEmail}
-                        onChange={(e) => setHoEmail(e.target.value)}
-                        placeholder="Email (optional) / Email (opcional)"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
-                          hoEmail.trim() && !hoEmailValid ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                        }`}
-                      />
                       <div>
+                        <input
+                          value={hoEmail}
+                          onChange={(e) => setHoEmail(e.target.value)}
+                          placeholder="Email"
+                          type="email"
+                          inputMode="email"
+                          autoComplete="email"
+                          aria-invalid={hoContact.emailValid === false}
+                          className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
+                            hoContact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                          }`}
+                        />
+                        {hoContact.emailValid === false && (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
+                            {CONTACT_COPY.en.badEmail}
+                            <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badEmail}</span>
+                          </p>
+                        )}
+                      </div>
+                      <div>
+
                         <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
                           Anything else we should know? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Algo más que debamos saber?</span>
                         </p>
