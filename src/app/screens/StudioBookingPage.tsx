@@ -1422,15 +1422,15 @@ export default function StudioBookingPage() {
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
                       </div>
                       <div>
-                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>We are on it</h3>
-                        <p className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>Nos ponemos con ello</p>
+                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>We are checking with the studio now</h3>
+                        <p className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>Estamos confirmando con el centro</p>
                       </div>
                       <div className="rounded-xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
                         <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
-                          Your request is with us. Because {partner.business_name} is not on Massage Club yet, we contact them directly and come back to you on WhatsApp with the confirmed time. Nothing is booked until we confirm.
+                          You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.
                         </p>
                         <p className="text-xs min-[900px]:text-sm leading-snug mt-2" style={{ color: "#7A7068" }}>
-                          Tenemos tu solicitud. Como {partner.business_name} todavía no está en Massage Club, contactamos con ellos directamente y te confirmamos la hora por WhatsApp. No hay nada reservado hasta que te confirmemos.
+                          Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
                         </p>
                       </div>
                       <Link
