@@ -944,9 +944,11 @@ export default function StudioBookingPage() {
       document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
-    const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
-    const hoPhoneValid = /^\+?[\d\s]{9,}$/.test(hoPhone.trim().replace(/\s/g, ""));
-    const hoDetailsReady = !!(hoNameComplete && (hoEmailValid || hoPhoneValid));
+    const hoContact = contactOk(hoPhone, hoEmail);
+    const hoEmailValid = hoContact.emailValid === true;
+    const hoPhoneValid = hoContact.phoneValid === true;
+    const hoDetailsReady = !!(hoNameComplete && hoContact.ok);
+
 
     const trackWhatsappIntent = async () => {
       if (waLoggedRef.current) return;
