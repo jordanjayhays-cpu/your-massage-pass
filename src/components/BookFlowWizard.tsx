@@ -749,13 +749,36 @@ export default function BookFlowWizard({
             <div ref={contactRef} className="space-y-4">
               <div>
                 <Label htmlFor="bf-phone" className="text-sm text-foreground">{t.whatsapp}</Label>
-                <Input id="bf-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 h-12 text-base" />
+                <Input
+                  id="bf-phone"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="+34 600 123 456"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  aria-invalid={contact.phoneValid === false}
+                  className={`mt-1.5 h-12 text-base ${contact.phoneValid === false ? "border-2 border-destructive" : ""}`}
+                />
+                {contact.phoneValid === false && (
+                  <p className="mt-1.5 text-sm text-destructive">{cc.badPhone}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="bf-email" className="text-sm text-foreground">{t.email}</Label>
-                <Input id="bf-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-12 text-base" />
+                <Input
+                  id="bf-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={contact.emailValid === false}
+                  className={`mt-1.5 h-12 text-base ${contact.emailValid === false ? "border-2 border-destructive" : ""}`}
+                />
+                {contact.emailValid === false && (
+                  <p className="mt-1.5 text-sm text-destructive">{cc.badEmail}</p>
+                )}
               </div>
             </div>
+
           </div>
         </section>
       )}
