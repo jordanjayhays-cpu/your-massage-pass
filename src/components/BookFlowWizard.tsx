@@ -392,9 +392,9 @@ export default function BookFlowWizard({
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   };
-  const whenValue = `${day} ${time}`.trim();
-  const when2Value = `${day2} ${time2}`.trim();
-  const when3Value = `${day3} ${time3}`.trim();
+  const whenValue = prettySlot(day, time);
+  const when2Value = prettySlot(day2, time2);
+  const when3Value = prettySlot(day3, time3);
 
   const submit = async () => {
     setHint(null);
@@ -408,9 +408,16 @@ export default function BookFlowWizard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           want: wantValue,
+          day1: day ? isoForDay(day) : undefined,
+          time1: time || undefined,
+          day2: day2 ? isoForDay(day2) : undefined,
+          time2: time2 || undefined,
+          day3: day3 ? isoForDay(day3) : undefined,
+          time3: time3 || undefined,
           when: whenValue,
           when2: when2Value || undefined,
           when3: when3Value || undefined,
+
           area: areaValue,
           name: name.trim(),
           phone: phone.trim(),
