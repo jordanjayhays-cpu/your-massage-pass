@@ -2251,9 +2251,10 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!nameComplete || !hasContact}
-                  hint="Add your first and last name and a valid email, that is where your confirmation goes"
-                  hintEs="Añade tu nombre y un email válido, ahí te llega la confirmación"
+                  hint={CONTACT_COPY.en.needContact}
+                  hintEs={CONTACT_COPY.es.needContact}
                 />
+
               </div>
             )}
 
