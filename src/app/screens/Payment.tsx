@@ -37,11 +37,18 @@ export default function Payment() {
   const [applyCredit, setApplyCredit] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const stored = getStoredUser();
-  const [contact, setContact] = useState({
-    name: stored?.name ?? "Guest",
-    email: stored?.email ?? "guest@massageclub.io",
-    phone: "",
-  });
+  const storedFirst = (stored?.name ?? "").trim().split(" ")[0] ?? "";
+  const storedLast = (stored?.name ?? "").trim().split(" ").slice(1).join(" ");
+  const [firstName, setFirstName] = useState(storedFirst);
+  const [lastName, setLastName] = useState(storedLast);
+  const [email, setEmail] = useState(stored?.email ?? "");
+  const [phone, setPhone] = useState("");
+  const contact = {
+    name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+    email: email.trim(),
+    phone: phone.trim(),
+  };
+
 
 
   // Fetch studio access instructions when we have a partner_id
