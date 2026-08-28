@@ -257,6 +257,12 @@ const App = () => (
           <Route path="/for-studios" element={<ForStudios />} />
           <Route path="/para-estudios" element={<ForStudios />} />
 
+          {/* Common near-miss redirects - keep them above the /:studioId catch-all */}
+          <Route path="/studio" element={<Redirect to="/studios" />} />
+          <Route path="/massages" element={<Redirect to="/studios" />} />
+          <Route path="/booking" element={<Redirect to="/book" />} />
+          <Route path="/start/" element={<Redirect to="/start" />} />
+
           {/* Canonical studio URL on every host: /{slug} */}
           <Route path="/:studioId" element={<StudioBookingPage />} />
 
