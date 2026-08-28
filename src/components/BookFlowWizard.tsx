@@ -343,6 +343,12 @@ export default function BookFlowWizard({
   const timeChips = [t.morning, t.afternoon, t.evening, t.flexible];
   const areas = [...AREAS_BASE, t.other];
 
+  const contact = contactOk(phone, email);
+  const nameComplete = !!firstName.trim() && !!lastName.trim();
+  const canSubmit = nameComplete && contact.ok;
+
+
+
   const fail = (msg: string, ref: React.RefObject<HTMLDivElement>) => {
     setHint(msg);
     ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
