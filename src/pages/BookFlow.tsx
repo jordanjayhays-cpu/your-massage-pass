@@ -5,7 +5,7 @@ import BookFlowWizard, { BOOK_FLOW_COPY, useBookFlowLang } from "@/components/Bo
 
 export default function BookFlow() {
   const lang = useBookFlowLang();
-  const t = BOOK_FLOW_COPY[lang];
+  const t = BOOK_FLOW_COPY[lang] ?? BOOK_FLOW_COPY.en;
 
   return (
     <div className="min-h-screen bg-background">
