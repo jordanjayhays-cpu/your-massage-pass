@@ -143,6 +143,9 @@ export const BOOK_FLOW_COPY = {
     submit: "Pedir mi masaje",
     sending: "Enviando...",
     sendError: "No se pudo enviar. Escríbenos por WhatsApp al +34 612 474 827.",
+    promiseTitle: "Estamos confirmando con el centro",
+    promiseBody:
+      "Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.",
     successTitle: "Casi listo - envíanoslo",
     successSub: "Dale a enviar en WhatsApp y confirmamos tu hora con el centro.",
     sendWhatsApp: "Enviar mi solicitud por WhatsApp",
@@ -466,8 +469,10 @@ export default function BookFlowWizard({
     return (
       <div ref={rootRef}>
         <div className="text-center">
-          <h2 className="font-display text-3xl text-foreground mt-4">{t.successTitle}</h2>
-          <p className="text-base text-muted-foreground mt-3 leading-snug">{t.successSub}</p>
+          <h2 className="font-display text-3xl text-foreground mt-4">{t.promiseTitle}</h2>
+          <p className="text-base text-muted-foreground mt-3 leading-snug">{t.promiseBody}</p>
+          <p className="mt-4 text-base font-semibold text-foreground">{t.successTitle}</p>
+          <p className="text-sm text-muted-foreground mt-1 leading-snug">{t.successSub}</p>
         </div>
         <div className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
           {[
