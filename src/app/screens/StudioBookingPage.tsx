@@ -498,9 +498,17 @@ export default function StudioBookingPage() {
     date ? capacityFor(date.getDay(), t) - (slotCounts.get(`${isoDate(date)}__${t}`) || 0) : 0;
 
   // Only show a time while at least one therapist is still free for it.
-  const times = date
-    ? (slotsByDay[date.getDay()] || []).filter(t => remainingFor(t) > 0)
-    : [];
+  const timesFor = (d: Date | null) =>
+    d
+      ? (slotsByDay[d.getDay()] || []).filter(
+          t => capacityFor(d.getDay(), t) - (slotCounts.get(`${isoDate(d)}__${t}`) || 0) > 0,
+        )
+      : [];
+  const times = timesFor(date);
+  const prettyDayOf = (d: Date | null) =>
+    d ? `${DAY_LABELS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : null;
+
+
 
 
   const addons = profile?.addons ?? [];
