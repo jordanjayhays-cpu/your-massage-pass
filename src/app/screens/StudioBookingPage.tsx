@@ -14,6 +14,7 @@ import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
+import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
