@@ -1913,6 +1913,40 @@ export default function StudioBookingPage() {
                       )}
                     </div>
                   )}
+                  {date && time && (
+                    <div className="mt-5">
+                      {!alt2Shown ? (
+                        <button
+                          type="button"
+                          onClick={() => setAlt2Shown(true)}
+                          className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2 text-[#C4622D]"
+                        >
+                          + Add another time (recommended)
+                          <span className="block text-xs min-[900px]:text-sm font-normal no-underline text-[#8a7460]">
+                            Añadir otra hora (recomendado)
+                          </span>
+                        </button>
+                      ) : (
+                        <>
+                          {renderAltSlot(altDate2, setAltDate2, altTime2, setAltTime2, "Second choice", "Segunda opción")}
+                          {!alt3Shown ? (
+                            <button
+                              type="button"
+                              onClick={() => setAlt3Shown(true)}
+                              className="mt-4 text-sm min-[900px]:text-base font-semibold underline underline-offset-2 text-[#C4622D]"
+                            >
+                              + Add a third time
+                              <span className="block text-xs min-[900px]:text-sm font-normal no-underline text-[#8a7460]">
+                                Añadir una tercera hora
+                              </span>
+                            </button>
+                          ) : (
+                            renderAltSlot(altDate3, setAltDate3, altTime3, setAltTime3, "Third choice", "Tercera opción")
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </Section>
                 <WizardNav
                   onBack={() => goStep(1)}
