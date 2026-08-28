@@ -259,7 +259,9 @@ export default function BookFlowWizard({
   const [slots, setSlots] = useState(1);
   const [area, setArea] = useState("");
   const [areaOther, setAreaOther] = useState("");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [hint, setHint] = useState<string | null>(null);
@@ -419,7 +421,7 @@ export default function BookFlowWizard({
 
   const submit = async () => {
     setHint(null);
-    if (!name.trim()) return fail(t.missName, nameRef);
+    if (!firstName.trim() || !lastName.trim()) return fail(t.missName, nameRef);
     if (!phone.trim() && !email.trim()) return fail(t.missContact, contactRef);
 
     setStatus("loading");
@@ -441,7 +443,9 @@ export default function BookFlowWizard({
 
           area: areaValue,
           people,
-          name: name.trim(),
+          name: name,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
           phone: phone.trim(),
           email: email.trim(),
           lang,
@@ -465,8 +469,8 @@ export default function BookFlowWizard({
     const slotsText = slotList.join(lang === "es" ? " o " : " or ");
     const waText =
       lang === "es"
-        ? `Hola, soy ${name.trim()}. Quiero reservar: ${baseWant}${isGroup ? ` para ${people} personas` : ""} en ${areaValue}. Me va bien ${slotsText}.`
-        : `Hi, I'm ${name.trim()}. I'd like to book a ${baseWant} massage${isGroup ? ` for ${people} people` : ""} in ${areaValue}. I can do ${slotsText}.`;
+        ? `Hola, soy ${name}. Quiero reservar: ${baseWant}${isGroup ? ` para ${people} personas` : ""} en ${areaValue}. Me va bien ${slotsText}.`
+        : `Hi, I'm ${name}. I'd like to book a ${baseWant} massage${isGroup ? ` for ${people} people` : ""} in ${areaValue}. I can do ${slotsText}.`;
     const waLink = `https://wa.me/34612474827?text=${encodeURIComponent(waText)}`;
     const fallbackContact = email.trim() || phone.trim();
 
@@ -718,9 +722,15 @@ export default function BookFlowWizard({
                 <p className="mt-2 text-sm text-muted-foreground">{t.peopleHelp}</p>
               )}
             </div>
-            <div ref={nameRef}>
-              <Label htmlFor="bf-name" className="text-sm text-foreground">{t.name}</Label>
-              <Input id="bf-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-12 text-base" />
+            <div ref={nameRef} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bf-first-name" className="text-sm text-foreground">{t.firstName}</Label>
+                <Input id="bf-first-name" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="mt-1.5 h-12 text-base" />
+              </div>
+              <div>
+                <Label htmlFor="bf-last-name" className="text-sm text-foreground">{t.lastName}</Label>
+                <Input id="bf-last-name" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className="mt-1.5 h-12 text-base" />
+              </div>
             </div>
             <div ref={contactRef} className="space-y-4">
               <div>
