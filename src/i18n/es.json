@@ -197,6 +197,11 @@
     },
     "shopDetail": {
       "not_found": "No encontrado.",
+      "notFoundTitle": "No hemos encontrado esa página",
+      "notFoundSub": "El enlace puede estar antiguo o el estudio haber cambiado.",
+      "bookMassage": "Reservar un masaje",
+      "browseStudios": "Ver estudios",
+      "chatWhatsapp": "Hablar por WhatsApp",
       "back": "Volver",
       "default_address": "Madrid, España",
       "default_description": "Presión intensa para aliviar la tensión crónica.",

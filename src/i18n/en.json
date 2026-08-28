@@ -197,6 +197,11 @@
     },
     "shopDetail": {
       "not_found": "Not found.",
+      "notFoundTitle": "We could not find that page",
+      "notFoundSub": "The link may be old or the studio may have moved.",
+      "bookMassage": "Book a massage",
+      "browseStudios": "Browse studios",
+      "chatWhatsapp": "Chat on WhatsApp",
       "back": "Back",
       "default_address": "Madrid, Spain",
       "default_description": "Intensive pressure to relieve chronic tension.",

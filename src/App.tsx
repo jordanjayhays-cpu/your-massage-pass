@@ -56,6 +56,18 @@ function FbRedirect() {
   return <Navigate to={`/start${search}${hash}`} replace />;
 }
 
+/**
+ * Generic permanent redirect that preserves query params and hash.
+ * Used for common singular/plural and trailing-slash near-misses.
+ */
+function Redirect({ to }: { to: string }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+}
+
+
+
+
 
 
 
@@ -125,6 +137,12 @@ const App = () => (
           <Route path="/book" element={<BookFlow />} />
           <Route path="/start" element={<FbLanding />} />
           <Route path="/fb" element={<FbRedirect />} />
+
+          {/* Common near-miss redirects - keep them before the /:studioId catch-all */}
+          <Route path="/studio" element={<Redirect to="/studios" />} />
+          <Route path="/massages" element={<Redirect to="/studios" />} />
+          <Route path="/booking" element={<Redirect to="/book" />} />
+          <Route path="/start/" element={<Redirect to="/start" />} />
 
 
           <Route path="/request" element={<Request />} />
