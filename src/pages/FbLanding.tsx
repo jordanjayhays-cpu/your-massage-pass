@@ -108,7 +108,7 @@ export default function FbLanding() {
 
         {/* 2. Booking wizard */}
         <section ref={bookingRef} className="mt-12 scroll-mt-20">
-          <BookFlowWizard source="fb" lang={lang} showBrand={false} scrollTopOnStep={false} />
+          <BookFlowWizard source={source} lang={lang} showBrand={false} scrollTopOnStep={false} />
         </section>
 
         {/* 3. How it works */}
@@ -130,10 +130,22 @@ export default function FbLanding() {
         {/* 4. WhatsApp fallback */}
         <footer className="mt-14 border-t border-border pt-8">
           <WhatsAppAskButton
-            source="fb"
+            source={source}
             lang={lang}
             label={t.footerLead}
-            note={lang === "es" ? "Os he visto en Facebook." : "I saw you on Facebook."}
+            note={
+              srcParam === "google"
+                ? lang === "es"
+                  ? "Os he visto en Google."
+                  : "I saw you on Google."
+                : srcParam === "fb"
+                  ? lang === "es"
+                    ? "Os he visto en Facebook."
+                    : "I saw you on Facebook."
+                  : lang === "es"
+                    ? "Os he visto en Massage Club."
+                    : "I saw you on Massage Club."
+            }
             className="text-center"
           />
 
