@@ -1853,6 +1853,14 @@ export default function StudioBookingPage() {
             {step === 2 && (
               <div ref={dateRef} className="min-w-0">
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
+                  <div className="mb-4 rounded-xl px-3 py-2.5 bg-[#F4EEE6]">
+                    <p className="text-xs min-[900px]:text-sm leading-snug text-[#5C5349]">
+                      The more times you give us, the faster we confirm.
+                    </p>
+                    <p className="mt-0.5 text-xs min-[900px]:text-sm leading-snug text-[#9E9387]">
+                      Cuantas más horas nos des, antes te confirmamos.
+                    </p>
+                  </div>
                   {openDates.length === 0 ? (
                     <div className="text-sm min-[900px]:text-base text-gray-500">
                       <p>Este estudio todavía no ha publicado horarios. Pídelo por WhatsApp y lo organizamos.</p>
