@@ -750,11 +750,11 @@ export default function StudioBookingPage() {
             <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>TU CITA EN</div>
             <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
-            <p className="text-base font-semibold mb-6" style={{ color: "#3d2b1f" }}>
+            <p className="text-base font-semibold mb-3" style={{ color: "#3d2b1f" }}>
               {isClaimed && !instantConfirm ? (
                 <>
-                  ¡Solicitud enviada! 🎉
-                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>Request sent, the studio will confirm by email.</span>
+                  Estamos confirmando con el centro
+                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>We are checking with the studio now</span>
                 </>
               ) : (
                 <>
@@ -763,6 +763,14 @@ export default function StudioBookingPage() {
                 </>
               )}
             </p>
+            {isClaimed && !instantConfirm && (
+              <p className="text-sm mb-6 leading-snug" style={{ color: "#5a4736" }}>
+                Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
+                <span className="block mt-1" style={{ color: "#8a7460" }}>
+                  You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.
+                </span>
+              </p>
+            )}
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
                 {servicePrimaryName(service)} · {service?.duration} min · {total}€
