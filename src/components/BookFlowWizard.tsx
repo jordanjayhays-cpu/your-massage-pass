@@ -247,6 +247,8 @@ export default function BookFlowWizard({
   preselect?: { value: string; nonce: number } | null;
 }) {
   const t = BOOK_FLOW_COPY[lang] ?? BOOK_FLOW_COPY.en;
+  const cc = CONTACT_COPY[lang as "en" | "es"] ?? CONTACT_COPY.en;
+
 
   const [step, setStep] = useState(1);
   const [massage, setMassage] = useState("");
