@@ -543,10 +543,46 @@ export default function StudioBookingPage() {
   }
 
   if (!profile) {
+    const askLang = (i18n.language || "en").slice(0, 2) === "es" ? "es" : "en";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a0709] text-white p-8 text-center">
-        <p className="text-lg font-semibold">Studio not found</p>
-        <p className="text-white/60 text-sm mt-1">This booking link may be inactive.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a0709] text-white p-6 text-center">
+        <div className="max-w-md w-full space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">{t("app.shopDetail.notFoundTitle")}</h1>
+            <p className="text-white/60 text-sm">{t("app.shopDetail.notFoundSub")}</p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              to="/book"
+              className="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-full bg-white text-[#1a0709] font-semibold hover:bg-white/90 transition"
+            >
+              {t("app.shopDetail.bookMassage")}
+            </Link>
+            <Link
+              to="/studios"
+              className="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition"
+            >
+              {t("app.shopDetail.browseStudios")}
+            </Link>
+          </div>
+
+          <WhatsAppAskButton
+            source="not-found"
+            lang={askLang}
+            label={t("app.shopDetail.chatWhatsapp")}
+            renderTrigger={({ open }) => (
+              <button
+                type="button"
+                onClick={open}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition"
+              >
+                <MessageCircle className="h-5 w-5" />
+                {t("app.shopDetail.chatWhatsapp")}
+              </button>
+            )}
+          />
+        </div>
       </div>
     );
   }
