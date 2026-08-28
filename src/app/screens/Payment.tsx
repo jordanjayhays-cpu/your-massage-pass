@@ -122,7 +122,14 @@ export default function Payment() {
   const creditToApply = applyCredit && availableCreditCents >= 500 ? 5 : 0;
   const dueToday = Math.max(0, addOnPrice - creditToApply);
 
+  const cc = CONTACT_COPY[(i18n.language || "en").slice(0, 2) === "es" ? "es" : "en"];
+  const contactCheck = contactOk(phone, email);
+  const nameComplete = !!firstName.trim() && !!lastName.trim();
+  const canConfirm = nameComplete && contactCheck.ok;
+
   const handleConfirm = async () => {
+    if (!canConfirm) return;
+
     setLoading(true);
     try {
       const noteParts: string[] = [];
