@@ -61,6 +61,7 @@ export const BOOK_FLOW_COPY = {
     locationDenied: "No problem, pick your area below",
     s4Title: "Your details",
     peopleLabel: "How many people?",
+    peopleLink: "Booking for more than one person?",
     peopleHelp: "We will check the studio can take your group at the same time.",
     sumPeople: "People",
     name: "Name",
@@ -136,6 +137,7 @@ export const BOOK_FLOW_COPY = {
     locationDenied: "Sin problema, elige tu zona abajo",
     s4Title: "Tus datos",
     peopleLabel: "¿Cuántas personas?",
+    peopleLink: "¿Reservas para más de una persona?",
     peopleHelp: "Confirmamos con el centro que pueden atender a todo el grupo a la vez.",
     sumPeople: "Personas",
     name: "Nombre",
@@ -166,7 +168,7 @@ export const BOOK_FLOW_COPY = {
   },
 } as const;
 
-const PEOPLE_OPTIONS = ["1", "2", "3", "4", "5+"];
+const PEOPLE_OPTIONS = ["2", "3", "4", "5+"];
 
 const AREAS_BASE = [
   "Centro",
@@ -254,6 +256,7 @@ export default function BookFlowWizard({
   const [massage, setMassage] = useState("");
   const [specific, setSpecific] = useState("");
   const [people, setPeople] = useState("1");
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [day, setDay] = useState("");
   const [time, setTime] = useState("");
   const [day2, setDay2] = useState("");
@@ -498,7 +501,7 @@ export default function BookFlowWizard({
         <div className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
           {[
             [t.sumMassage, baseWant],
-            [t.sumPeople, people],
+            ...(isGroup ? [[t.sumPeople, people]] : []),
             [t.sumWhen, slotList.join(" · ")],
             [t.sumWhere, areaValue],
             [t.name, name],
@@ -711,29 +714,36 @@ export default function BookFlowWizard({
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s4Title}</h2>
           <div className="mt-4 space-y-4">
             <div>
-              <Label className="text-sm text-foreground">{t.peopleLabel}</Label>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {PEOPLE_OPTIONS.map((n) => {
-                  const active = people === n;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setPeople(n)}
-                      className={`h-12 min-w-[3rem] px-4 rounded-xl border text-base font-medium transition ${
-                        active
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
-              </div>
-              {isGroup && (
-                <p className="mt-2 text-sm text-muted-foreground">{t.peopleHelp}</p>
+              {!peopleOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setPeopleOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {t.peopleLink}
+                </button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  {PEOPLE_OPTIONS.map((n) => {
+                    const active = people === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setPeople(n)}
+                        className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium transition ${
+                          active
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                  <p className="w-full mt-1 text-xs text-muted-foreground">{t.peopleHelp}</p>
+                </div>
               )}
             </div>
             <div ref={nameRef} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
