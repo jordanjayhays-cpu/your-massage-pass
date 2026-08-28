@@ -1553,11 +1553,21 @@ export default function StudioBookingPage() {
       nameRef.current?.focus();
       return;
     }
-    if (!hasContact) {
-      setStepError({ en: "Add a valid email so we can send your confirmation", es: "Añade un email válido para enviarte la confirmación" });
+    if (contact.phoneValid === false) {
+      setStepError({ en: CONTACT_COPY.en.badPhone, es: CONTACT_COPY.es.badPhone });
+      return;
+    }
+    if (contact.emailValid === false) {
+      setStepError({ en: CONTACT_COPY.en.badEmail, es: CONTACT_COPY.es.badEmail });
       emailRef.current?.focus();
       return;
     }
+    if (!hasContact) {
+      setStepError({ en: CONTACT_COPY.en.needContact, es: CONTACT_COPY.es.needContact });
+      emailRef.current?.focus();
+      return;
+    }
+
     goStep(5);
   };
 
