@@ -1526,11 +1526,12 @@ export default function StudioBookingPage() {
   }
 
 
-  // Name plus at least one way to reach them (phone OR email). Phone alone is fine.
-  // Email is required: every confirmation and reminder is sent by email.
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
-  const hasContact = emailValid;
+  // Name plus at least one valid way to reach them (WhatsApp number OR email).
+  const contact = contactOk(phone, email);
+  const emailValid = contact.emailValid === true;
+  const hasContact = contact.ok;
   const canBook = !!(service && date && time && nameComplete && hasContact);
+
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
 
