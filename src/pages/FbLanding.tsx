@@ -54,8 +54,9 @@ export default function FbLanding() {
     if (logged.current) return;
     logged.current = true;
     const params = new URLSearchParams(window.location.search);
-    trackEvent("landing_fb", {
+    trackEvent("landing_start", {
       meta: {
+        src: params.get("src"),
         source: params.get("utm_source"),
         medium: params.get("utm_medium"),
         campaign: params.get("utm_campaign"),
@@ -73,7 +74,7 @@ export default function FbLanding() {
       <Helmet>
         <title>{t.seoTitle}</title>
         <meta name="description" content={t.seoDesc} />
-        <link rel="canonical" href="https://book.massageclub.io/fb" />
+        <link rel="canonical" href="https://book.massageclub.io/start" />
       </Helmet>
 
       <header className="border-b border-border/60 bg-background/90 backdrop-blur sticky top-0 z-20">
