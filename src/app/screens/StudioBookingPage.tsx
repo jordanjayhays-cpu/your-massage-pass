@@ -2188,17 +2188,37 @@ export default function StudioBookingPage() {
                           stepError && !lastName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
                     </div>
-                    <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
-                      aria-invalid={!!email.trim() && !emailValid}
-                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        (stepError && !hasContact) || (!!email.trim() && !emailValid) ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                      }`} />
-                    <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="Phone / WhatsApp (optional)" type="tel"
-                      className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D]" />
+                    <div>
+                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
+                        aria-invalid={contact.emailValid === false}
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
+                          contact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`} />
+                      {contact.emailValid === false && (
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
+                          {CONTACT_COPY.en.badEmail}
+                          <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badEmail}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="WhatsApp / Phone (+34 600 123 456)" type="tel" inputMode="tel" autoComplete="tel"
+                        aria-invalid={contact.phoneValid === false}
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
+                          contact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`} />
+                      {contact.phoneValid === false && (
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
+                          {CONTACT_COPY.en.badPhone}
+                          <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badPhone}</span>
+                        </p>
+                      )}
+                    </div>
                     <p className="text-xs min-[900px]:text-sm text-gray-400">
-                      Your confirmation and reminders go to your email.
-                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Tu confirmación y los recordatorios llegan a tu email.</span>
+                      Give us an email or a WhatsApp number so we can reach you.
+                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Déjanos un email o un WhatsApp para poder contactarte.</span>
                     </p>
+
 
                     {!userId && !!email.trim() && (
                       <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
