@@ -1399,10 +1399,11 @@ export default function StudioBookingPage() {
                       </div>
                       {!hoDetailsReady && (
                         <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          Add your name and a WhatsApp or email so we can follow up.
-                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>Añade tu nombre y un WhatsApp o email para poder contactarte.</span>
+                          {CONTACT_COPY.en.needContact}
+                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{CONTACT_COPY.es.needContact}</span>
                         </p>
                       )}
+
                       <WizardNav
                         onBack={() => hoGo(2)}
                         onNext={() => hoGo(4)}
