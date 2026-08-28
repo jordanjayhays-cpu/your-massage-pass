@@ -1297,34 +1297,40 @@ export default function StudioBookingPage() {
                   {hoStep === 3 && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div>
-                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
-                          How many people? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Cuántas personas?</span>
-                        </p>
-                        <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
-                          {PEOPLE_OPTIONS.map((n) => {
-                            const on = hoPeople === n;
-                            return (
-                              <button
-                                key={n}
-                                type="button"
-                                aria-pressed={on}
-                                onClick={() => setHoPeople(n)}
-                                className={`h-11 min-w-[2.75rem] px-4 rounded-xl border text-sm min-[900px]:text-base font-medium ${
-                                  on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-200 bg-white text-gray-600"
-                                }`}
-                              >
-                                {n}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {hoPeople !== "1" && (
-                          <p className="mt-2 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                            We will check the studio can take your group at the same time.
-                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
-                              Confirmamos con el centro que pueden atender a todo el grupo a la vez.
-                            </span>
-                          </p>
+                        {!hoPeopleOpen ? (
+                          <button
+                            type="button"
+                            onClick={() => setHoPeopleOpen(true)}
+                            className="text-xs hover:opacity-80 transition-opacity"
+                            style={{ color: "#9E9387" }}
+                          >
+                            Booking for more than one person? / ¿Reservas para más de una persona?
+                          </button>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
+                            {PEOPLE_OPTIONS.map((n) => {
+                              const on = hoPeople === n;
+                              return (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  aria-pressed={on}
+                                  onClick={() => setHoPeople(n)}
+                                  className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium ${
+                                    on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-200 bg-white text-gray-600"
+                                  }`}
+                                >
+                                  {n}
+                                </button>
+                              );
+                            })}
+                            <p className="w-full mt-1 text-xs" style={{ color: "#9E9387" }}>
+                              We will check the studio can take your group at the same time.
+                              <span className="block text-[11px]" style={{ color: "#9E9387" }}>
+                                Confirmamos con el centro que pueden atender a todo el grupo a la vez.
+                              </span>
+                            </p>
+                          </div>
                         )}
                       </div>
                       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
