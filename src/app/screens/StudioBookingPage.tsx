@@ -508,6 +508,61 @@ export default function StudioBookingPage() {
   const prettyDayOf = (d: Date | null) =>
     d ? `${DAY_LABELS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : null;
 
+  // Compact day + time picker used for the optional second and third choices.
+  const renderAltSlot = (
+    dVal: Date | null,
+    setD: (d: Date | null) => void,
+    tVal: string | null,
+    setT: (t: string | null) => void,
+    labelEn: string,
+    labelEs: string,
+  ) => (
+    <div className="mt-5">
+      <p className="text-xs min-[900px]:text-base font-semibold text-gray-500 mb-2">
+        {labelEn} <span className="font-normal text-gray-400">/ {labelEs}</span>
+      </p>
+      <div className="flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1">
+        {openDates.map(d => {
+          const active = dVal && isoDate(d) === isoDate(dVal);
+          return (
+            <button
+              key={isoDate(d)}
+              type="button"
+              onClick={() => { setD(d); setT(null); }}
+              className={`flex-shrink-0 w-14 min-[900px]:w-16 py-2 rounded-xl border-2 text-center transition ${
+                active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+              }`}
+            >
+              <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+              <div className="text-base font-bold leading-none mt-0.5">{d.getDate()}</div>
+              <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+            </button>
+          );
+        })}
+      </div>
+      {dVal && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {timesFor(dVal).length === 0 ? (
+            <p className="text-sm text-gray-400">Fully booked that day / Sin horas ese día</p>
+          ) : (
+            timesFor(dVal).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setT(t)}
+                className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                  tVal === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                }`}
+              >
+                {t}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+
 
 
 
