@@ -328,7 +328,7 @@ export default function StudioBookingPage() {
 
       const fullName = user.user_metadata?.full_name || user.user_metadata?.name || "";
       setEmail(prev => prev || user.email || "");
-      setName(prev => prev || fullName);
+      applyFullName(fullName);
 
       const userPhone = user.phone || user.user_metadata?.phone || "";
       setPhone(prev => prev || userPhone);
@@ -342,7 +342,7 @@ export default function StudioBookingPage() {
       if (!prof || cancelled) return;
       const p = prof as any;
       setCustomerProfile(p);
-      setName(prev => prev || p.full_name || "");
+      applyFullName(p.full_name || "");
       setEmail(prev => prev || p.email || "");
       setPhone(prev => prev || p.phone || "");
       setProfileAllergies(p.allergies || "");
@@ -416,7 +416,7 @@ export default function StudioBookingPage() {
         setAddonNames(prev.add_ons.filter((n: string) => availableAddons.has(n)));
       }
       if (prev.notes) setNotes(prev.notes);
-      if (prev.client_name) setName(prev.client_name);
+      if (prev.client_name) applyFullName(prev.client_name);
       if (prev.client_phone) setPhone(prev.client_phone);
       if (prev.client_email) setEmail(prev.client_email);
       if (stepParam === "2") {
@@ -940,7 +940,7 @@ export default function StudioBookingPage() {
 
     const hoEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(hoEmail.trim());
     const hoPhoneValid = /^\+?[\d\s]{9,}$/.test(hoPhone.trim().replace(/\s/g, ""));
-    const hoDetailsReady = !!(hoName.trim() && (hoEmailValid || hoPhoneValid));
+    const hoDetailsReady = !!(hoNameComplete && (hoEmailValid || hoPhoneValid));
 
     const trackWhatsappIntent = async () => {
       if (waLoggedRef.current) return;
@@ -976,7 +976,8 @@ export default function StudioBookingPage() {
         time2: hoAltTime || null,
         day3: hoAlt2Date || null,
         time3: hoAlt2Time || null,
-        first_name: hoName.trim() || null,
+        first_name: hoFirstName.trim() || null,
+        last_name: hoLastName.trim() || null,
         contact_email: hoEmailValid ? hoEmail.trim() : null,
         client_phone: hoPhoneValid ? hoPhone.trim() : null,
         languages: spokenLangs.join(", "),
@@ -1490,7 +1491,7 @@ export default function StudioBookingPage() {
   // Email is required: every confirmation and reminder is sent by email.
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   const hasContact = emailValid;
-  const canBook = !!(service && date && time && name.trim() && hasContact);
+  const canBook = !!(service && date && time && nameComplete && hasContact);
   const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
 
 
@@ -1507,8 +1508,8 @@ export default function StudioBookingPage() {
   };
 
   const submitDetailsStep = () => {
-    if (!name.trim()) {
-      setStepError({ en: "Add your name so the studio knows who is coming", es: "Añade tu nombre para que el estudio sepa quién viene" });
+    if (!nameComplete) {
+      setStepError({ en: "Add your first and last name so the studio knows who is coming", es: "Añade tu nombre y apellido para que el estudio sepa quién viene" });
       nameRef.current?.focus();
       return;
     }
@@ -1636,7 +1637,7 @@ export default function StudioBookingPage() {
       
       // Fire and forget: passwordless account for guests who opted in.
       if (!userId && createAccount && email.trim()) {
-        requestAccountSignup({ email: email.trim(), name: name.trim().split(" ")[0], lang: siteLang });
+        requestAccountSignup({ email: email.trim(), name: firstName.trim(), lang: siteLang });
       }
 
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
@@ -1750,7 +1751,7 @@ export default function StudioBookingPage() {
         {step === 2 && <StickyContinue ready={!!date && !!time} onNext={() => goStep(3)} />}
         {step === 3 && <StickyContinue ready onNext={() => goStep(4)} />}
         {step === 4 && (
-          <StickyContinue ready={!!name.trim() && hasContact} onNext={submitDetailsStep} />
+          <StickyContinue ready={nameComplete && hasContact} onNext={submitDetailsStep} />
         )}
         {step === 5 && (
           <StickyContinue
@@ -2172,8 +2173,8 @@ export default function StudioBookingPage() {
                 <WizardNav
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
-                  disabled={!name.trim() || !hasContact}
-                  hint="Add your name and a valid email, that is where your confirmation goes"
+                  disabled={!nameComplete || !hasContact}
+                  hint="Add your first and last name and a valid email, that is where your confirmation goes"
                   hintEs="Añade tu nombre y un email válido, ahí te llega la confirmación"
                 />
               </div>
@@ -2278,7 +2279,8 @@ export default function StudioBookingPage() {
                     time2: altTime2,
                     day3: prettyDayOf(altDate3),
                     time3: altTime3,
-                    first_name: name.trim() || null,
+                    first_name: firstName.trim() || null,
+                    last_name: lastName.trim() || null,
                     contact_email: email.trim() || null,
                     languages: spokenLangs.join(", "),
                     user_id: userId,
