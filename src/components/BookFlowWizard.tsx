@@ -256,18 +256,56 @@ export default function BookFlowWizard({
   const nameRef = useRef<HTMLDivElement>(null);
   const contactRef = useRef<HTMLDivElement>(null);
 
-  const dayChips = useMemo(() => {
-    const out: string[] = [t.today, t.tomorrow];
-    const now = new Date();
-    for (let i = 2; i <= 6; i++) {
-      const d = new Date(now);
-      d.setDate(now.getDate() + i);
-      out.push(`${t.weekdays[d.getDay()]} ${d.getDate()}`);
+  // Today in Europe/Madrid, as a local-noon Date so date maths stay stable.
+  const madridToday = useMemo(() => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const [y, m, d] = parts.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }, []);
+
+  const toIso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  const dayOptions = useMemo(() => {
+    const out: { label: string; iso: string }[] = [];
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(madridToday);
+      d.setDate(madridToday.getDate() + i);
+      const label = i === 0 ? t.today : i === 1 ? t.tomorrow : `${t.weekdays[d.getDay()]} ${d.getDate()}`;
+      out.push({ label, iso: toIso(d) });
     }
-    out.push(t.flexible);
+    out.push({ label: t.flexible, iso: "Flexible" });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, [lang, madridToday]);
+
+  const dayChips = useMemo(() => dayOptions.map((o) => o.label), [dayOptions]);
+
+  const isoForDay = (label: string) => dayOptions.find((o) => o.label === label)?.iso ?? "Flexible";
+
+  /** "Saturday 29 Aug" / "sábado 29 ago" - or "Flexible". */
+  const prettyDay = (label: string) => {
+    const iso = isoForDay(label);
+    if (iso === "Flexible") return t.flexible;
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Intl.DateTimeFormat(lang === "es" ? "es-ES" : "en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+    }).format(new Date(y, m - 1, d, 12));
+  };
+
+  const prettySlot = (dayLabel: string, timeLabel: string) => {
+    if (!dayLabel && !timeLabel) return "";
+    const parts = [dayLabel ? prettyDay(dayLabel) : "", timeLabel ? timeLabel.toLowerCase() : ""].filter(Boolean);
+    return parts.join(", ");
+  };
+
 
   useEffect(() => {
     if (!preselect) return;
