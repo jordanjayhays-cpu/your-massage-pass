@@ -1546,7 +1546,12 @@ export default function StudioBookingPage() {
         pressure,
         focus_areas: focusAreas,
         add_ons: addonNames,
-        notes: [people !== "1" ? `Personas: ${people}` : null, notes.trim() || null].filter(Boolean).join(" - ") || null,
+        notes: [
+          people !== "1" ? `Personas: ${people}` : null,
+          altDate2 && altTime2 ? `Alt 2: ${prettyDayOf(altDate2)} ${altTime2}` : null,
+          altDate3 && altTime3 ? `Alt 3: ${prettyDayOf(altDate3)} ${altTime3}` : null,
+          notes.trim() || null,
+        ].filter(Boolean).join(" - ") || null,
         allergies: profileAllergies || null,
         health_notes: profileHealthNotes || null,
         status: "pending",
