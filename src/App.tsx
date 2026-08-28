@@ -56,6 +56,18 @@ function FbRedirect() {
   return <Navigate to={`/start${search}${hash}`} replace />;
 }
 
+/**
+ * Generic permanent redirect that preserves query params and hash.
+ * Used for common singular/plural and trailing-slash near-misses.
+ */
+function Redirect({ to }: { to: string }) {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+}
+
+
+
+
 
 
 
