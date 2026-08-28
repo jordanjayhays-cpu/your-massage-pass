@@ -13,6 +13,7 @@ export type WhatsappRequestLog = {
   day3?: string | null;
   time3?: string | null;
   first_name?: string | null;
+  last_name?: string | null;
   contact_email?: string | null;
   client_phone?: string | null;
   /** Comma separated list of languages the visitor speaks. */
@@ -52,6 +53,7 @@ export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<void>
       day3: clean(row.day3),
       time3: clean(row.time3),
       first_name: clean(row.first_name),
+      last_name: clean(row.last_name),
       contact_email: clean(row.contact_email),
       client_phone: clean(row.client_phone),
       languages: clean(row.languages),

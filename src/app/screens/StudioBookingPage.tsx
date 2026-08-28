@@ -98,6 +98,12 @@ export default function StudioBookingPage() {
   const [lastName, setLastName] = useState("");
   const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
   const nameComplete = !!(firstName.trim() && lastName.trim());
+  const applyFullName = (full: string) => {
+    const parts = (full || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return;
+    setFirstName(prev => prev || parts[0]);
+    setLastName(prev => prev || parts.slice(1).join(" "));
+  };
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   // Customize
@@ -1316,12 +1322,22 @@ export default function StudioBookingPage() {
                           </p>
                         )}
                       </div>
-                      <input
-                        value={hoName}
-                        onChange={(e) => setHoName(e.target.value)}
-                        placeholder="Your name / Tu nombre"
-                        className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
-                      />
+                      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+                        <input
+                          value={hoFirstName}
+                          onChange={(e) => setHoFirstName(e.target.value)}
+                          placeholder="First name / Nombre"
+                          autoComplete="given-name"
+                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                        />
+                        <input
+                          value={hoLastName}
+                          onChange={(e) => setHoLastName(e.target.value)}
+                          placeholder="Last name / Apellido"
+                          autoComplete="family-name"
+                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
+                        />
+                      </div>
                       <div>
                         <input
                           value={hoPhone}
@@ -2126,11 +2142,18 @@ export default function StudioBookingPage() {
                         </p>
                       )}
                     </div>
-                    <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setStepError(null); }} placeholder="Your name / Tu nombre"
-                      aria-invalid={!!stepError && !name.trim()}
-                      className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                        stepError && !name.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                      }`} />
+                    <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+                      <input ref={nameRef} value={firstName} onChange={e => { setFirstName(e.target.value); setStepError(null); }} placeholder="First name / Nombre" autoComplete="given-name"
+                        aria-invalid={!!stepError && !firstName.trim()}
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
+                          stepError && !firstName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`} />
+                      <input value={lastName} onChange={e => { setLastName(e.target.value); setStepError(null); }} placeholder="Last name / Apellido" autoComplete="family-name"
+                        aria-invalid={!!stepError && !lastName.trim()}
+                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
+                          stepError && !lastName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                        }`} />
+                    </div>
                     <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
                       aria-invalid={!!email.trim() && !emailValid}
                       className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
