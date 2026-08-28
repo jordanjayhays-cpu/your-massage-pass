@@ -138,6 +138,12 @@ const App = () => (
           <Route path="/start" element={<FbLanding />} />
           <Route path="/fb" element={<FbRedirect />} />
 
+          {/* Common near-miss redirects - keep them before the /:studioId catch-all */}
+          <Route path="/studio" element={<Redirect to="/studios" />} />
+          <Route path="/massages" element={<Redirect to="/studios" />} />
+          <Route path="/booking" element={<Redirect to="/book" />} />
+          <Route path="/start/" element={<Redirect to="/start" />} />
+
 
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
