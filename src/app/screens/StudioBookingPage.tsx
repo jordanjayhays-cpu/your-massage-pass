@@ -94,7 +94,10 @@ export default function StudioBookingPage() {
   const [altTime3, setAltTime3] = useState<string | null>(null);
   const [alt2Shown, setAlt2Shown] = useState(false);
   const [alt3Shown, setAlt3Shown] = useState(false);
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
+  const nameComplete = !!(firstName.trim() && lastName.trim());
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   // Customize
@@ -133,7 +136,10 @@ export default function StudioBookingPage() {
   const [hoServiceId, setHoServiceId] = useState<string>("");
   const [hoPeople, setHoPeople] = useState("1");
   const [hoNotes, setHoNotes] = useState("");
-  const [hoName, setHoName] = useState("");
+  const [hoFirstName, setHoFirstName] = useState("");
+  const [hoLastName, setHoLastName] = useState("");
+  const hoName = [hoFirstName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
+  const hoNameComplete = !!(hoFirstName.trim() && hoLastName.trim());
   const [hoEmail, setHoEmail] = useState("");
   const [hoPhone, setHoPhone] = useState("");
 
