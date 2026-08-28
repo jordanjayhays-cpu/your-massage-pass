@@ -58,6 +58,9 @@ export const BOOK_FLOW_COPY = {
     locating: "Locating you...",
     locationDenied: "No problem, pick your area below",
     s4Title: "Your details",
+    peopleLabel: "How many people?",
+    peopleHelp: "We will check the studio can take your group at the same time.",
+    sumPeople: "People",
     name: "Name",
     whatsapp: "WhatsApp",
     email: "Email",
@@ -125,6 +128,9 @@ export const BOOK_FLOW_COPY = {
     locating: "Localizándote...",
     locationDenied: "Sin problema, elige tu zona abajo",
     s4Title: "Tus datos",
+    peopleLabel: "¿Cuántas personas?",
+    peopleHelp: "Confirmamos con el centro que pueden atender a todo el grupo a la vez.",
+    sumPeople: "Personas",
     name: "Nombre",
     whatsapp: "WhatsApp",
     email: "Email",
@@ -147,6 +153,8 @@ export const BOOK_FLOW_COPY = {
     weekdays: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
   },
 } as const;
+
+const PEOPLE_OPTIONS = ["1", "2", "3", "4", "5+"];
 
 const AREAS_BASE = [
   "Centro",
@@ -231,6 +239,7 @@ export default function BookFlowWizard({
   const [step, setStep] = useState(1);
   const [massage, setMassage] = useState("");
   const [specific, setSpecific] = useState("");
+  const [people, setPeople] = useState("1");
   const [day, setDay] = useState("");
   const [time, setTime] = useState("");
   const [day2, setDay2] = useState("");
@@ -346,7 +355,9 @@ export default function BookFlowWizard({
   };
 
   const areaValue = area === t.other ? areaOther.trim() || t.other : area;
-  const wantValue = specific.trim() ? `${massage} + ${specific.trim()}` : massage;
+  const baseWant = specific.trim() ? `${massage} + ${specific.trim()}` : massage;
+  const isGroup = people !== "1";
+  const wantValue = isGroup ? `${baseWant} - Personas: ${people}` : baseWant;
 
   const mapAreaNameToOption = (name: string): string => {
     if (name === "Argüelles") return "Argüelles/Moncloa";
@@ -419,6 +430,7 @@ export default function BookFlowWizard({
           when3: when3Value || undefined,
 
           area: areaValue,
+          people,
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
@@ -443,8 +455,8 @@ export default function BookFlowWizard({
     const slotsText = slotList.join(lang === "es" ? " o " : " or ");
     const waText =
       lang === "es"
-        ? `Hola, soy ${name.trim()}. Quiero reservar: ${wantValue} en ${areaValue}. Me va bien ${slotsText}.`
-        : `Hi, I'm ${name.trim()}. I'd like to book a ${wantValue} massage in ${areaValue}. I can do ${slotsText}.`;
+        ? `Hola, soy ${name.trim()}. Quiero reservar: ${baseWant}${isGroup ? ` para ${people} personas` : ""} en ${areaValue}. Me va bien ${slotsText}.`
+        : `Hi, I'm ${name.trim()}. I'd like to book a ${baseWant} massage${isGroup ? ` for ${people} people` : ""} in ${areaValue}. I can do ${slotsText}.`;
     const waLink = `https://wa.me/34612474827?text=${encodeURIComponent(waText)}`;
     const fallbackContact = email.trim() || phone.trim();
 
@@ -456,7 +468,8 @@ export default function BookFlowWizard({
         </div>
         <div className="mt-8 rounded-3xl border border-border bg-card p-5 shadow-soft space-y-3">
           {[
-            [t.sumMassage, wantValue],
+            [t.sumMassage, baseWant],
+            [t.sumPeople, people],
             [t.sumWhen, slotList.join(" · ")],
             [t.sumWhere, areaValue],
           ].map(([k, v]) => (
@@ -667,6 +680,32 @@ export default function BookFlowWizard({
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s4Title}</h2>
           <div className="mt-4 space-y-4">
+            <div>
+              <Label className="text-sm text-foreground">{t.peopleLabel}</Label>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {PEOPLE_OPTIONS.map((n) => {
+                  const active = people === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setPeople(n)}
+                      className={`h-12 min-w-[3rem] px-4 rounded-xl border text-base font-medium transition ${
+                        active
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+              {isGroup && (
+                <p className="mt-2 text-sm text-muted-foreground">{t.peopleHelp}</p>
+              )}
+            </div>
             <div ref={nameRef}>
               <Label htmlFor="bf-name" className="text-sm text-foreground">{t.name}</Label>
               <Input id="bf-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-12 text-base" />

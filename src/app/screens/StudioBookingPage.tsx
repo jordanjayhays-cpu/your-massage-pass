@@ -43,6 +43,8 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PRESSURE_LEVELS = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
+const PEOPLE_OPTIONS = ["1", "2", "3", "4", "5+"];
+
 // Fixed options for the unclaimed-studio handoff, where real availability is unknown.
 const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
 
@@ -93,6 +95,7 @@ export default function StudioBookingPage() {
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [addonNames, setAddonNames] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [people, setPeople] = useState("1");
   const [conversationPref, setConversationPref] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ ref: string } | null>(null);
@@ -121,6 +124,8 @@ export default function StudioBookingPage() {
   const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
   // Unclaimed-studio WhatsApp handoff preferences (lightweight, no account)
   const [hoServiceId, setHoServiceId] = useState<string>("");
+  const [hoPeople, setHoPeople] = useState("1");
+  const [hoNotes, setHoNotes] = useState("");
   const [hoName, setHoName] = useState("");
   const [hoEmail, setHoEmail] = useState("");
   const [hoPhone, setHoPhone] = useState("");
@@ -836,9 +841,11 @@ export default function StudioBookingPage() {
       const svc = hoService
         ? `${servicePrimaryName(hoService)}${Number((hoService as any)?.duration) > 0 ? ` ${Number((hoService as any).duration)} min` : ""}`
         : "a massage";
-      let msg = `Hi, I'd like to book: ${svc} at ${partner.business_name}.`;
+      let msg = `Hi, I'd like to book: ${svc}${hoPeople !== "1" ? ` for ${hoPeople} people` : ""} at ${partner.business_name}.`;
       const when = hoWhen1;
       if (when) msg += ` ${when} if possible.`;
+      if (hoPeople !== "1") msg += ` Personas: ${hoPeople}.`;
+      if (hoNotes.trim()) msg += ` Notes: ${hoNotes.trim()}.`;
       msg += " (via Massage Club)";
       return msg;
     })();
@@ -1193,6 +1200,37 @@ export default function StudioBookingPage() {
                   {/* STEP 3: your details */}
                   {hoStep === 3 && (
                     <div className="space-y-3 min-[900px]:space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
+                          How many people? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Cuántas personas?</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
+                          {PEOPLE_OPTIONS.map((n) => {
+                            const on = hoPeople === n;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => setHoPeople(n)}
+                                className={`h-11 min-w-[2.75rem] px-4 rounded-xl border text-sm min-[900px]:text-base font-medium ${
+                                  on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-200 bg-white text-gray-600"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {hoPeople !== "1" && (
+                          <p className="mt-2 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                            We will check the studio can take your group at the same time.
+                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>
+                              Confirmamos con el centro que pueden atender a todo el grupo a la vez.
+                            </span>
+                          </p>
+                        )}
+                      </div>
                       <input
                         value={hoName}
                         onChange={(e) => setHoName(e.target.value)}
@@ -1225,6 +1263,17 @@ export default function StudioBookingPage() {
                           hoEmail.trim() && !hoEmailValid ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`}
                       />
+                      <div>
+                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
+                          Anything else we should know? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Algo más que debamos saber?</span>
+                        </p>
+                        <textarea
+                          value={hoNotes}
+                          onChange={(e) => setHoNotes(e.target.value)}
+                          placeholder="Optional / Opcional"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] resize-none h-20 min-[900px]:h-24"
+                        />
+                      </div>
                       {!hoDetailsReady && (
                         <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
                           Add your name and a WhatsApp or email so we can follow up.
@@ -1427,7 +1476,7 @@ export default function StudioBookingPage() {
         pressure,
         focus_areas: focusAreas,
         add_ons: addonNames,
-        notes: notes.trim() || null,
+        notes: [people !== "1" ? `Personas: ${people}` : null, notes.trim() || null].filter(Boolean).join(" - ") || null,
         allergies: profileAllergies || null,
         health_notes: profileHealthNotes || null,
         status: "pending",
@@ -1912,6 +1961,37 @@ export default function StudioBookingPage() {
               <div>
                 <Section step="4" title="Your details" titleEs="Tus datos">
                   <div className="space-y-2 min-[900px]:space-y-3">
+                    <div className="pb-1">
+                      <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-sm">
+                        How many people? <span className="font-normal text-gray-400">/ ¿Cuántas personas?</span>
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {PEOPLE_OPTIONS.map((n) => {
+                          const on = people === n;
+                          return (
+                            <button
+                              key={n}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() => setPeople(n)}
+                              className={`h-11 min-w-[2.75rem] px-4 rounded-xl border text-sm min-[900px]:text-base font-medium ${
+                                on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-200 bg-white text-gray-600"
+                              }`}
+                            >
+                              {n}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {people !== "1" && (
+                        <p className="mt-2 text-xs min-[900px]:text-sm text-gray-500">
+                          We will check the studio can take your group at the same time.
+                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
+                            Confirmamos con el centro que pueden atender a todo el grupo a la vez.
+                          </span>
+                        </p>
+                      )}
+                    </div>
                     <input ref={nameRef} value={name} onChange={e => { setName(e.target.value); setStepError(null); }} placeholder="Your name / Tu nombre"
                       aria-invalid={!!stepError && !name.trim()}
                       className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
