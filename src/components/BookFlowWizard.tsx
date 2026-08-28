@@ -800,15 +800,21 @@ export default function BookFlowWizard({
             {t.continue} <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={submit}
-            disabled={status === "loading"}
-            className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-70"
-          >
-            {status === "loading" ? t.sending : t.submit}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={status === "loading" || !canSubmit}
+              className="w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {status === "loading" ? t.sending : t.submit}
+            </button>
+            {!canSubmit && (
+              <p className="mt-2 text-center text-sm text-muted-foreground">{cc.needContact}</p>
+            )}
+          </>
         )}
+
       </div>
     </div>
   );
