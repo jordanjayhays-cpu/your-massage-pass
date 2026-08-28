@@ -50,13 +50,16 @@ export default function FbLanding() {
   const bookingRef = useRef<HTMLDivElement>(null);
   const logged = useRef(false);
 
+  const params = new URLSearchParams(location.search);
+  const srcParam = params.get("src");
+  const source = srcParam || "direct";
+
   useEffect(() => {
     if (logged.current) return;
     logged.current = true;
-    const params = new URLSearchParams(window.location.search);
     trackEvent("landing_start", {
       meta: {
-        src: params.get("src"),
+        src: srcParam,
         source: params.get("utm_source"),
         medium: params.get("utm_medium"),
         campaign: params.get("utm_campaign"),
