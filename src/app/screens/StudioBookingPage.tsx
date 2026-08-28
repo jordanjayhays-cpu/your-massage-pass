@@ -87,6 +87,13 @@ export default function StudioBookingPage() {
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<string | null>(null);
+  // Extra time options: the concierge confirms far faster with 2-3 choices.
+  const [altDate2, setAltDate2] = useState<Date | null>(null);
+  const [altTime2, setAltTime2] = useState<string | null>(null);
+  const [altDate3, setAltDate3] = useState<Date | null>(null);
+  const [altTime3, setAltTime3] = useState<string | null>(null);
+  const [alt2Shown, setAlt2Shown] = useState(false);
+  const [alt3Shown, setAlt3Shown] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -491,9 +498,72 @@ export default function StudioBookingPage() {
     date ? capacityFor(date.getDay(), t) - (slotCounts.get(`${isoDate(date)}__${t}`) || 0) : 0;
 
   // Only show a time while at least one therapist is still free for it.
-  const times = date
-    ? (slotsByDay[date.getDay()] || []).filter(t => remainingFor(t) > 0)
-    : [];
+  const timesFor = (d: Date | null) =>
+    d
+      ? (slotsByDay[d.getDay()] || []).filter(
+          t => capacityFor(d.getDay(), t) - (slotCounts.get(`${isoDate(d)}__${t}`) || 0) > 0,
+        )
+      : [];
+  const times = timesFor(date);
+  const prettyDayOf = (d: Date | null) =>
+    d ? `${DAY_LABELS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : null;
+
+  // Compact day + time picker used for the optional second and third choices.
+  const renderAltSlot = (
+    dVal: Date | null,
+    setD: (d: Date | null) => void,
+    tVal: string | null,
+    setT: (t: string | null) => void,
+    labelEn: string,
+    labelEs: string,
+  ) => (
+    <div className="mt-5">
+      <p className="text-xs min-[900px]:text-base font-semibold text-gray-500 mb-2">
+        {labelEn} <span className="font-normal text-gray-400">/ {labelEs}</span>
+      </p>
+      <div className="flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1">
+        {openDates.map(d => {
+          const active = dVal && isoDate(d) === isoDate(dVal);
+          return (
+            <button
+              key={isoDate(d)}
+              type="button"
+              onClick={() => { setD(d); setT(null); }}
+              className={`flex-shrink-0 w-14 min-[900px]:w-16 py-2 rounded-xl border-2 text-center transition ${
+                active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+              }`}
+            >
+              <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+              <div className="text-base font-bold leading-none mt-0.5">{d.getDate()}</div>
+              <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+            </button>
+          );
+        })}
+      </div>
+      {dVal && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {timesFor(dVal).length === 0 ? (
+            <p className="text-sm text-gray-400">Fully booked that day / Sin horas ese día</p>
+          ) : (
+            timesFor(dVal).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setT(t)}
+                className={`px-4 py-2 rounded-full border-2 text-sm font-medium motion-safe:transition ${
+                  tVal === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
+                }`}
+              >
+                {t}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+
 
 
   const addons = profile?.addons ?? [];
@@ -680,11 +750,11 @@ export default function StudioBookingPage() {
             <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>TU CITA EN</div>
             <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
-            <p className="text-base font-semibold mb-6" style={{ color: "#3d2b1f" }}>
+            <p className="text-base font-semibold mb-3" style={{ color: "#3d2b1f" }}>
               {isClaimed && !instantConfirm ? (
                 <>
-                  ¡Solicitud enviada! 🎉
-                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>Request sent, the studio will confirm by email.</span>
+                  Estamos confirmando con el centro
+                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>We are checking with the studio now</span>
                 </>
               ) : (
                 <>
@@ -693,6 +763,14 @@ export default function StudioBookingPage() {
                 </>
               )}
             </p>
+            {isClaimed && !instantConfirm && (
+              <p className="text-sm mb-6 leading-snug" style={{ color: "#5a4736" }}>
+                Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
+                <span className="block mt-1" style={{ color: "#8a7460" }}>
+                  You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.
+                </span>
+              </p>
+            )}
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
                 {servicePrimaryName(service)} · {service?.duration} min · {total}€
@@ -1344,15 +1422,15 @@ export default function StudioBookingPage() {
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
                       </div>
                       <div>
-                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>We are on it</h3>
-                        <p className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>Nos ponemos con ello</p>
+                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>We are checking with the studio now</h3>
+                        <p className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>Estamos confirmando con el centro</p>
                       </div>
                       <div className="rounded-xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
                         <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
-                          Your request is with us. Because {partner.business_name} is not on Massage Club yet, we contact them directly and come back to you on WhatsApp with the confirmed time. Nothing is booked until we confirm.
+                          You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.
                         </p>
                         <p className="text-xs min-[900px]:text-sm leading-snug mt-2" style={{ color: "#7A7068" }}>
-                          Tenemos tu solicitud. Como {partner.business_name} todavía no está en Massage Club, contactamos con ellos directamente y te confirmamos la hora por WhatsApp. No hay nada reservado hasta que te confirmemos.
+                          Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
                         </p>
                       </div>
                       <Link
@@ -1476,7 +1554,12 @@ export default function StudioBookingPage() {
         pressure,
         focus_areas: focusAreas,
         add_ons: addonNames,
-        notes: [people !== "1" ? `Personas: ${people}` : null, notes.trim() || null].filter(Boolean).join(" - ") || null,
+        notes: [
+          people !== "1" ? `Personas: ${people}` : null,
+          altDate2 && altTime2 ? `Alt 2: ${prettyDayOf(altDate2)} ${altTime2}` : null,
+          altDate3 && altTime3 ? `Alt 3: ${prettyDayOf(altDate3)} ${altTime3}` : null,
+          notes.trim() || null,
+        ].filter(Boolean).join(" - ") || null,
         allergies: profileAllergies || null,
         health_notes: profileHealthNotes || null,
         status: "pending",
@@ -1591,6 +1674,8 @@ export default function StudioBookingPage() {
     duration: (service as any)?.duration ?? null,
     price: (service as any)?.price ?? null,
     when1: [esLongDate(date), time ? `a las ${time}` : ""].filter(Boolean).join(" ") || null,
+    when2:
+      [esLongDate(altDate2), altTime2 ? `a las ${altTime2}` : ""].filter(Boolean).join(" ") || null,
     name: name || null,
     languages: spokenLangs,
   });
@@ -1783,6 +1868,14 @@ export default function StudioBookingPage() {
             {step === 2 && (
               <div ref={dateRef} className="min-w-0">
                 <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
+                  <div className="mb-4 rounded-xl px-3 py-2.5 bg-[#F4EEE6]">
+                    <p className="text-xs min-[900px]:text-sm leading-snug text-[#5C5349]">
+                      The more times you give us, the faster we confirm.
+                    </p>
+                    <p className="mt-0.5 text-xs min-[900px]:text-sm leading-snug text-[#9E9387]">
+                      Cuantas más horas nos des, antes te confirmamos.
+                    </p>
+                  </div>
                   {openDates.length === 0 ? (
                     <div className="text-sm min-[900px]:text-base text-gray-500">
                       <p>Este estudio todavía no ha publicado horarios. Pídelo por WhatsApp y lo organizamos.</p>
@@ -1832,6 +1925,40 @@ export default function StudioBookingPage() {
                             );
                           })}
                         </div>
+                      )}
+                    </div>
+                  )}
+                  {date && time && (
+                    <div className="mt-5">
+                      {!alt2Shown ? (
+                        <button
+                          type="button"
+                          onClick={() => setAlt2Shown(true)}
+                          className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2 text-[#C4622D]"
+                        >
+                          + Add another time (recommended)
+                          <span className="block text-xs min-[900px]:text-sm font-normal no-underline text-[#8a7460]">
+                            Añadir otra hora (recomendado)
+                          </span>
+                        </button>
+                      ) : (
+                        <>
+                          {renderAltSlot(altDate2, setAltDate2, altTime2, setAltTime2, "Second choice", "Segunda opción")}
+                          {!alt3Shown ? (
+                            <button
+                              type="button"
+                              onClick={() => setAlt3Shown(true)}
+                              className="mt-4 text-sm min-[900px]:text-base font-semibold underline underline-offset-2 text-[#C4622D]"
+                            >
+                              + Add a third time
+                              <span className="block text-xs min-[900px]:text-sm font-normal no-underline text-[#8a7460]">
+                                Añadir una tercera hora
+                              </span>
+                            </button>
+                          ) : (
+                            renderAltSlot(altDate3, setAltDate3, altTime3, setAltTime3, "Third choice", "Tercera opción")
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -2141,6 +2268,10 @@ export default function StudioBookingPage() {
                     price: service && total > 0 ? total : null,
                     day1: prettyDay,
                     time1: time,
+                    day2: prettyDayOf(altDate2),
+                    time2: altTime2,
+                    day3: prettyDayOf(altDate3),
+                    time3: altTime3,
                     first_name: name.trim() || null,
                     contact_email: email.trim() || null,
                     languages: spokenLangs.join(", "),
