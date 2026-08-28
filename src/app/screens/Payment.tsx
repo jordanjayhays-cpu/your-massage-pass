@@ -77,18 +77,23 @@ export default function Payment() {
         .maybeSingle();
       setProfile(p);
       const meta: any = user.user_metadata ?? {};
-      const fullName =
+      const fullName = (
         p?.full_name ||
         [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim() ||
         meta.full_name ||
         meta.name ||
         stored?.name ||
-        "Guest";
-      setContact({
-        name: fullName,
-        email: user.email || stored?.email || "guest@massageclub.io",
-        phone: p?.phone ?? "",
-      });
+        ""
+      ).trim();
+      const parts = fullName.split(" ").filter(Boolean);
+      if (parts.length) {
+        setFirstName((v) => v.trim() || parts[0]);
+        setLastName((v) => v.trim() || parts.slice(1).join(" "));
+      }
+      const prefillEmail = user.email || stored?.email || "";
+      if (prefillEmail) setEmail((v) => v.trim() || prefillEmail);
+      if (p?.phone) setPhone((v) => v.trim() || p.phone);
+
 
       // Load available referral credit (€5 each)
       const credits = await getUnusedCredits(user.id);
