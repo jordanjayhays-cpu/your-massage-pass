@@ -392,6 +392,17 @@ export default function BookFlowWizard({
     return name;
   };
 
+  // Funnel: each step becoming visible, with whatever they have chosen so far.
+  useEffect(() => {
+    trackFunnel(`wizard_step_${step}`, {
+      source,
+      lang,
+      massage: massage || null,
+      area: area ? areaValue : null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const handleUseLocation = () => {
     setLocationDenied(false);
     if (typeof navigator === "undefined" || !navigator.geolocation) {
