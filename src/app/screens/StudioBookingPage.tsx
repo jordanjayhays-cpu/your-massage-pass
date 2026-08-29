@@ -25,6 +25,7 @@ import { markStudioVisited } from "@/lib/visitedStudios";
 import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 import { DealsConfirmationLine } from "@/components/DealsLink";
+import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
 
 
