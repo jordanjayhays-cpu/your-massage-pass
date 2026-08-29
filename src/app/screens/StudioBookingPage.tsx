@@ -10,6 +10,7 @@ import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
+import { trackFunnel } from "@/lib/funnel";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
@@ -976,6 +977,12 @@ export default function StudioBookingPage() {
       setWaTapped(true);
       clarityEvent("whatsapp_click");
       trackEvent("wa_click", { slug: partner.slug || partner.id });
+      trackFunnel("wizard_wa_handoff", {
+        flow: "studio-handoff",
+        studio: partner.slug || partner.id,
+        massage: hoService ? servicePrimaryName(hoService) : null,
+        area: (partner as any).district || null,
+      }, partner.slug || partner.id);
       const hasService = !!hoService;
       const hasDate = !!hoDate;
       sendTrack({
@@ -1565,8 +1572,8 @@ export default function StudioBookingPage() {
 
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
-    // A step completes whenever we move forward from it.
-    if (n > step) trackEvent(`wizard_step_${n}`, { slug: partner?.slug || studioId, meta: { step: BOOKING_STEPS[step - 1]?.label ?? String(step) } });
+    // Step-shown events fire from the effect above; this only records progress.
+    if (n > step) trackFunnel("wizard_step_completed", { flow: "studio", from: BOOKING_STEPS[step - 1]?.label ?? String(step), to: n }, partner?.slug || studioId);
     setStep(n);
     setMaxStep(m => Math.max(m, n));
     setStepError(null);
@@ -1601,6 +1608,13 @@ export default function StudioBookingPage() {
   const handleBook = async () => {
     if (!canBook) return;
     trackEvent("booking_submitted", { slug: partner?.slug || studioId });
+    trackFunnel("wizard_submit_attempt", {
+      flow: "studio",
+      studio: partner?.slug || studioId,
+      massage: service ? servicePrimaryName(service) : null,
+      area: (partner as any)?.district || null,
+      people,
+    }, partner?.slug || studioId);
     setSubmitting(true);
     setError("");
     const comfortPrefs = {
@@ -1716,10 +1730,24 @@ export default function StudioBookingPage() {
         requestAccountSignup({ email: email.trim(), name: firstName.trim(), lang: siteLang });
       }
 
+      trackFunnel("wizard_submit_ok", {
+        flow: "studio",
+        studio: partner?.slug || studioId,
+        massage: service ? servicePrimaryName(service) : null,
+        area: (partner as any)?.district || null,
+        request_id: data?.id ?? null,
+      }, partner?.slug || studioId);
       setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
 
     } catch (e: any) {
       const msg = String(e?.message || "");
+      trackFunnel("wizard_submit_error", {
+        flow: "studio",
+        studio: partner?.slug || studioId,
+        massage: service ? servicePrimaryName(service) : null,
+        area: (partner as any)?.district || null,
+        error: (msg || "unknown_error").slice(0, 200),
+      }, partner?.slug || studioId);
       if (/fully booked/i.test(msg)) {
         // Refresh slot counts from the server so the UI reflects reality.
         try {
@@ -1969,7 +1997,7 @@ export default function StudioBookingPage() {
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
-                          <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); scrollIntoViewGently(e.currentTarget); }}
+                          <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); trackFunnel("wizard_day_selected", { flow: "studio", day: isoDate(d), massage: service ? servicePrimaryName(service) : null, area: (partner as any)?.district || null }, partner?.slug || studioId); scrollIntoViewGently(e.currentTarget); }}
                             className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition snap-start ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
@@ -1994,7 +2022,7 @@ export default function StudioBookingPage() {
                             const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
                             const lowStock = cap > 1 && left < cap;
                             return (
-                              <button key={t} onClick={() => setTime(t)}
+                              <button key={t} onClick={() => { setTime(t); trackFunnel("wizard_time_selected", { flow: "studio", time: t, massage: service ? servicePrimaryName(service) : null, area: (partner as any)?.district || null }, partner?.slug || studioId); }}
                                 className={`px-4 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition ${
                                   time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                                 }`}>
@@ -2370,6 +2398,12 @@ export default function StudioBookingPage() {
                   setAskWaTapped(true);
                   clarityEvent("whatsapp_click");
                   trackEvent("wa_click", { slug: partner.slug || partner.id });
+                  trackFunnel("wizard_wa_handoff", {
+                    flow: "studio",
+                    studio: partner.slug || partner.id,
+                    massage: service ? servicePrimaryName(service) : null,
+                    area: (partner as any).district || null,
+                  }, partner.slug || partner.id);
                   sendTrack({
                     event: "whatsapp_click",
                     path: window.location.pathname,
@@ -2423,6 +2457,7 @@ export default function StudioBookingPage() {
           <div className="min-[900px]:col-span-2 space-y-5">
             <ExitCaptureBlock
               source="studio-exit"
+              step={step}
               want={(() => {
                 const svc = service || profile?.services.find((s) => s.id === hoServiceId) || null;
                 return svc ? servicePrimaryName(svc) : null;
