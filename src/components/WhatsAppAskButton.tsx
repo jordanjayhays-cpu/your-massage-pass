@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { MessageCircle } from "lucide-react";
 import { conciergeWhatsappUrl } from "@/app/lib/whatsapp";
 import { trackEvent } from "@/lib/siteVisit";
+import { useFlowLang, type FlowLang } from "@/lib/flowLang";
 
 /**
  * The one customer-facing "WhatsApp us" control.
@@ -13,9 +13,10 @@ import { trackEvent } from "@/lib/siteVisit";
  * Spanish relay links.
  */
 
-export type AskLang = "en" | "es";
+/** @deprecated use FlowLang */
+export type AskLang = FlowLang;
 
-const MASSAGE_CHIPS: Record<AskLang, ReadonlyArray<{ kind: string; label: string }>> = {
+const MASSAGE_CHIPS: Record<FlowLang, ReadonlyArray<{ kind: string; label: string }>> = {
   en: [
     { kind: "relaxing", label: "Relaxing" },
     { kind: "deep", label: "Deep tissue" },
@@ -30,16 +31,63 @@ const MASSAGE_CHIPS: Record<AskLang, ReadonlyArray<{ kind: string; label: string
     { kind: "sports", label: "Deportivo" },
     { kind: "unsure", label: "No lo sé" },
   ],
+  fr: [
+    { kind: "relaxing", label: "Relaxant" },
+    { kind: "deep", label: "Tissus profonds" },
+    { kind: "thai", label: "Thaï" },
+    { kind: "sports", label: "Sportif" },
+    { kind: "unsure", label: "Je ne sais pas" },
+  ],
+  de: [
+    { kind: "relaxing", label: "Entspannend" },
+    { kind: "deep", label: "Tiefengewebe" },
+    { kind: "thai", label: "Thai" },
+    { kind: "sports", label: "Sport" },
+    { kind: "unsure", label: "Nicht sicher" },
+  ],
+  it: [
+    { kind: "relaxing", label: "Rilassante" },
+    { kind: "deep", label: "Tessuti profondi" },
+    { kind: "thai", label: "Thailandese" },
+    { kind: "sports", label: "Sportivo" },
+    { kind: "unsure", label: "Non sono sicuro" },
+  ],
+  pt: [
+    { kind: "relaxing", label: "Relaxante" },
+    { kind: "deep", label: "Tecidos profundos" },
+    { kind: "thai", label: "Tailandesa" },
+    { kind: "sports", label: "Desportiva" },
+    { kind: "unsure", label: "Não sei" },
+  ],
+  zh: [
+    { kind: "relaxing", label: "放松按摩" },
+    { kind: "deep", label: "深层组织按摩" },
+    { kind: "thai", label: "泰式按摩" },
+    { kind: "sports", label: "运动按摩" },
+    { kind: "unsure", label: "不确定" },
+  ],
 };
 
-const TYPE_WORDS: Record<string, Record<AskLang, string>> = {
-  relaxing: { en: "a relaxing massage", es: "un masaje relajante" },
-  deep: { en: "a deep tissue massage", es: "un masaje descontracturante" },
-  thai: { en: "a thai massage", es: "un masaje tailandés" },
-  sports: { en: "a sports massage", es: "un masaje deportivo" },
+const TYPE_WORDS: Record<string, Record<FlowLang, string>> = {
+  relaxing: {
+    en: "a relaxing massage", es: "un masaje relajante", fr: "un massage relaxant",
+    de: "eine Entspannungsmassage", it: "un massaggio rilassante", pt: "uma massagem relaxante", zh: "放松按摩",
+  },
+  deep: {
+    en: "a deep tissue massage", es: "un masaje descontracturante", fr: "un massage tissus profonds",
+    de: "eine Tiefengewebsmassage", it: "un massaggio ai tessuti profondi", pt: "uma massagem de tecidos profundos", zh: "深层组织按摩",
+  },
+  thai: {
+    en: "a thai massage", es: "un masaje tailandés", fr: "un massage thaï",
+    de: "eine Thai-Massage", it: "un massaggio thailandese", pt: "uma massagem tailandesa", zh: "泰式按摩",
+  },
+  sports: {
+    en: "a sports massage", es: "un masaje deportivo", fr: "un massage sportif",
+    de: "eine Sportmassage", it: "un massaggio sportivo", pt: "uma massagem desportiva", zh: "运动按摩",
+  },
 };
 
-const LABELS: Record<AskLang, {
+const LABELS: Record<FlowLang, {
   trigger: string; q1: string; q2: string; areaPlaceholder: string; unsure: string; open: string;
 }> = {
   en: {
@@ -58,11 +106,51 @@ const LABELS: Record<AskLang, {
     unsure: "No lo sé",
     open: "Abrir WhatsApp",
   },
+  fr: {
+    trigger: "Vous préférez discuter ? Écrivez-nous sur WhatsApp",
+    q1: "Quel massage souhaitez-vous ?",
+    q2: "Dans quel quartier êtes-vous ?",
+    areaPlaceholder: "ex. Chamberi, Sol, Parla",
+    unsure: "Je ne sais pas",
+    open: "Ouvrir WhatsApp",
+  },
+  de: {
+    trigger: "Lieber chatten? Schreib uns auf WhatsApp",
+    q1: "Welche Massage möchtest du?",
+    q2: "In welchem Viertel bist du?",
+    areaPlaceholder: "z. B. Chamberi, Sol, Parla",
+    unsure: "Nicht sicher",
+    open: "WhatsApp öffnen",
+  },
+  it: {
+    trigger: "Preferisci chattare? Scrivici su WhatsApp",
+    q1: "Che massaggio vuoi?",
+    q2: "In che zona ti trovi?",
+    areaPlaceholder: "es. Chamberi, Sol, Parla",
+    unsure: "Non sono sicuro",
+    open: "Apri WhatsApp",
+  },
+  pt: {
+    trigger: "Prefere conversar? Escreve-nos no WhatsApp",
+    q1: "Que massagem queres?",
+    q2: "Em que zona estás?",
+    areaPlaceholder: "ex. Chamberi, Sol, Parla",
+    unsure: "Não sei",
+    open: "Abrir WhatsApp",
+  },
+  zh: {
+    trigger: "更喜欢聊天？在 WhatsApp 上给我们留言",
+    q1: "您想要哪种按摩？",
+    q2: "您在哪个区域？",
+    areaPlaceholder: "例如 Chamberi、Sol、Parla",
+    unsure: "不确定",
+    open: "打开 WhatsApp",
+  },
 };
 
 /** Prefilled WhatsApp text built from the two answers. */
 export function buildAskText(
-  lang: AskLang,
+  lang: FlowLang,
   kind: string,
   area: string,
   studioName?: string | null,
@@ -70,39 +158,37 @@ export function buildAskText(
 ): string {
   const suffix = note ? ` ${note}` : "";
   const studio = (studioName || "").trim();
+  const es = lang === "es";
   if (kind === "unsure") {
     const base = studio
-      ? lang === "es"
+      ? es
         ? `Hola, quiero reservar un masaje en ${studio} pero no sé qué tipo.`
         : `Hi, I'd like to book a massage at ${studio} but I'm not sure which type.`
-      : lang === "es"
+      : es
         ? "Hola, quiero reservar un masaje pero no sé qué tipo."
         : "Hi, I'd like to book a massage but I'm not sure which type.";
     return base + suffix;
   }
   const typeWord = TYPE_WORDS[kind]?.[lang] ?? TYPE_WORDS.relaxing[lang];
   if (studio) {
-    return (lang === "es"
+    return (es
       ? `Hola, quiero reservar ${typeWord} en ${studio}.`
       : `Hi, I'd like to book ${typeWord} at ${studio}.`) + suffix;
   }
   const cleanArea = area.trim();
   if (cleanArea) {
-    return (lang === "es"
+    return (es
       ? `Hola, quiero reservar ${typeWord} en ${cleanArea}.`
       : `Hi, I'd like to book ${typeWord} in ${cleanArea}.`) + suffix;
   }
-  return (lang === "es"
+  return (es
     ? `Hola, quiero reservar ${typeWord}.`
     : `Hi, I'd like to book ${typeWord}.`) + suffix;
 }
 
 /** Page language, resolved from i18n (mc_lang is kept in sync elsewhere). */
-export function useAskLang(): AskLang {
-  const { i18n } = useTranslation();
-  return (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2).toLowerCase() === "es"
-    ? "es"
-    : "en";
+export function useAskLang(): FlowLang {
+  return useFlowLang();
 }
 
 export type WhatsAppAskButtonProps = {
@@ -112,7 +198,7 @@ export type WhatsAppAskButtonProps = {
   studioName?: string | null;
   /** Optional extra sentence appended to the prefill, e.g. "I saw you on Facebook." */
   note?: string;
-  lang?: AskLang;
+  lang?: FlowLang;
   label?: string;
   className?: string;
   /** Render the questions in a fixed bottom sheet instead of inline. */
