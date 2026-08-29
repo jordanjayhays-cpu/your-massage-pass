@@ -23,6 +23,7 @@ import CompareToggle from "../components/CompareToggle";
 import CompareBar from "../components/CompareBar";
 import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
+import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 
 
 
