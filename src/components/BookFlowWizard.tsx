@@ -450,6 +450,7 @@ export default function BookFlowWizard({
 
   const submit = async () => {
     setHint(null);
+    trackFunnel("wizard_submit_attempt", { source, lang, massage: massage || null, area: areaValue || null, people });
     if (!firstName.trim() || !lastName.trim()) return fail(t.missName, nameRef);
     if (contact.phoneValid === false) return fail(cc.badPhone, contactRef);
     if (contact.emailValid === false) return fail(cc.badEmail, contactRef);
