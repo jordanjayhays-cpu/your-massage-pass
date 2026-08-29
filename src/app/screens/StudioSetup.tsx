@@ -952,7 +952,7 @@ function StudioSetupInner() {
 
   const openOptionalSetup = () => { setClaimAdvanced(true); setStep(1); window.scrollTo({ top: 0 }); };
 
-  const helpWaHref = `https://wa.me/${MASSAGE_CLUB_WA}?text=${encodeURIComponent(
+  const helpWaHref = `https://wa.me/${PARTNER_SUPPORT_WA}?text=${encodeURIComponent(
     `Hola Jordan, soy de ${sourceData?.business_name || "mi estudio"}. ¿Me lo configuráis vosotros?`
   )}`;
 
