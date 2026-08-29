@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
-const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
+const SUPPORT_WHATSAPP = "https://wa.me/34613977900";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -233,13 +233,13 @@ export default function Request() {
                   {status === "error" && (
                     <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
                       <p className="font-medium mb-1">
-                        Could not send. Message us on WhatsApp at +34 612 474 827.
+                        Could not send. Message us on WhatsApp at +34 613 97 79 00.
                       </p>
                       <p className="opacity-90">
                         <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer" className="underline">
                           Message us on WhatsApp
                         </a>{" "}
-                        at +34 612 474 827.
+                        at +34 613 97 79 00.
                       </p>
                       {errorMsg && <p className="mt-2 text-xs opacity-80">{errorMsg}</p>}
                     </div>
