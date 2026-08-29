@@ -305,7 +305,7 @@ export default function Payment() {
             <a
               href={waLink}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="mt-4 inline-flex items-center justify-center gap-2 w-full h-12 rounded-full text-white font-semibold shadow-elegant hover:opacity-90 transition"
               style={{ backgroundColor: "#25D366" }}
             >

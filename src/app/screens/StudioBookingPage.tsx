@@ -849,7 +849,7 @@ export default function StudioBookingPage() {
                     </a>
                   )}
                   {waLink ? (
-                    <a href={waLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                    <a href={waLink} target="_blank" rel="noopener noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
                       <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
                       <span className="text-xs font-normal opacity-80">Escríbenos por WhatsApp y te lo organizamos</span>
                     </a>
@@ -1507,7 +1507,9 @@ export default function StudioBookingPage() {
                             const win = window.open("about:blank", "_blank");
                             await trackWhatsappIntent();
                             if (win) win.location.href = waLink;
-                            else window.location.href = waLink;
+                            // Popup blocked: try a direct new-tab open; never navigate this
+                            // frame to wa.me (X-Frame-Options blocks it in embeds).
+                            else window.open(waLink, "_blank", "noopener,noreferrer");
                           }}
                           className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                           style={{ background: "#B85C38", color: "#fff" }}
