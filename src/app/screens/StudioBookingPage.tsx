@@ -2409,7 +2409,10 @@ export default function StudioBookingPage() {
           <div className="min-[900px]:col-span-2 space-y-5">
             <ExitCaptureBlock
               source="studio-exit"
-              want={service ? servicePrimaryName(service) : hoService ? servicePrimaryName(hoService) : null}
+              want={(() => {
+                const svc = service || profile?.services.find((s) => s.id === hoServiceId) || null;
+                return svc ? servicePrimaryName(svc) : null;
+              })()}
               area={(partner as any).district || null}
             />
             {/* Contact footer */}
