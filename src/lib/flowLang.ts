@@ -22,6 +22,7 @@ export function useFlowLang(): FlowLang {
 /** Copy tables are keyed by language; this always returns a usable entry. */
 export type CopyMap<T> = Record<FlowLang, T>;
 
-export function pickCopy<T>(map: Partial<CopyMap<T>> & { en: T }, lang: string | undefined): T {
-  return map[toFlowLang(lang)] ?? map.en;
+export function pickCopy<M extends { en: unknown }>(map: M, lang: string | undefined | null): M[keyof M] {
+  const entry = (map as Record<string, unknown>)[toFlowLang(lang)];
+  return (entry ?? map.en) as M[keyof M];
 }
