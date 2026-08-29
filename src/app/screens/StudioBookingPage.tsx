@@ -134,7 +134,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "Add your name and a way to reach you",
     reachYouWa: "So we can confirm your time on WhatsApp.",
     service: "Service", day: "Day", secondChoice: "Second choice", name: "Name", contact: "Contact", price: "Price",
-    pickAService: "Pick a service", anyDay: "Any day", anyTime: "Any time", none: "None", notProvided: "Not provided",
+    pickAService: "Pick a service", anyDay: "Any day", anyTime: "Any time", none: "None", notProvided: "Not provided", time: "Time",
     askStudio: "Ask the studio", requestWhatsapp: "Request via WhatsApp", pickAMassage: "Pick a massage",
     back: "Back", waReassuranceStudios: "Studios already on Massage Club confirm instantly.", browseOtherStudios: "Browse other studios",
     callStudioLabel: "Call the studio",
@@ -192,7 +192,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "Añade tu nombre y una forma de contacto",
     reachYouWa: "Para confirmarte la hora por WhatsApp.",
     service: "Servicio", day: "Día", secondChoice: "Segunda opción", name: "Nombre", contact: "Contacto", price: "Precio",
-    pickAService: "Elige un servicio", anyDay: "Cualquier día", anyTime: "Cualquier hora", none: "Ninguno", notProvided: "No indicado",
+    pickAService: "Elige un servicio", anyDay: "Cualquier día", anyTime: "Cualquier hora", none: "Ninguno", notProvided: "No indicado", time: "Hora",
     askStudio: "Pregunta al estudio", requestWhatsapp: "Solicitar por WhatsApp", pickAMassage: "Elige un masaje",
     back: "Atrás", waReassuranceStudios: "Los estudios que ya están en Massage Club confirman al instante.", browseOtherStudios: "Ver otros estudios",
     callStudioLabel: "Llamar al estudio",
@@ -250,7 +250,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "Ajoutez votre nom et un moyen de vous contacter",
     reachYouWa: "Pour vous confirmer l'heure sur WhatsApp.",
     service: "Service", day: "Jour", secondChoice: "Second choix", name: "Nom", contact: "Contact", price: "Prix",
-    pickAService: "Choisissez un service", anyDay: "N'importe quel jour", anyTime: "N'importe quelle heure", none: "Aucun", notProvided: "Non fourni",
+    pickAService: "Choisissez un service", anyDay: "N'importe quel jour", anyTime: "N'importe quelle heure", none: "Aucun", notProvided: "Non fourni", time: "Heure",
     askStudio: "Demander au centre", requestWhatsapp: "Demander via WhatsApp", pickAMassage: "Choisir un massage",
     back: "Retour", waReassuranceStudios: "Les centres déjà sur Massage Club confirment instantanément.", browseOtherStudios: "Voir d'autres centres",
     callStudioLabel: "Appeler le centre",
@@ -308,7 +308,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "Füge deinen Namen und eine Kontaktmöglichkeit hinzu",
     reachYouWa: "Damit wir deine Zeit per WhatsApp bestätigen können.",
     service: "Service", day: "Tag", secondChoice: "Zweite Wahl", name: "Name", contact: "Kontakt", price: "Preis",
-    pickAService: "Service wählen", anyDay: "Egal welcher Tag", anyTime: "Egal welche Zeit", none: "Keine", notProvided: "Nicht angegeben",
+    pickAService: "Service wählen", anyDay: "Egal welcher Tag", anyTime: "Egal welche Zeit", none: "Keine", notProvided: "Nicht angegeben", time: "Uhrzeit",
     askStudio: "Beim Studio nachfragen", requestWhatsapp: "Über WhatsApp anfragen", pickAMassage: "Massage wählen",
     back: "Zurück", waReassuranceStudios: "Studios, die schon bei Massage Club sind, bestätigen sofort.", browseOtherStudios: "Andere Studios ansehen",
     callStudioLabel: "Studio anrufen",
@@ -366,7 +366,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "Aggiungi il tuo nome e un modo per contattarti",
     reachYouWa: "Per confermarti l'orario su WhatsApp.",
     service: "Servizio", day: "Giorno", secondChoice: "Seconda scelta", name: "Nome", contact: "Contatto", price: "Prezzo",
-    pickAService: "Scegli un servizio", anyDay: "Qualsiasi giorno", anyTime: "Qualsiasi orario", none: "Nessuno", notProvided: "Non fornito",
+    pickAService: "Scegli un servizio", anyDay: "Qualsiasi giorno", anyTime: "Qualsiasi orario", none: "Nessuno", notProvided: "Non fornito", time: "Ora",
     askStudio: "Chiedi al centro", requestWhatsapp: "Richiedi via WhatsApp", pickAMassage: "Scegli un massaggio",
     back: "Indietro", waReassuranceStudios: "I centri già su Massage Club confermano all'istante.", browseOtherStudios: "Guarda altri centri",
     callStudioLabel: "Chiama il centro",
@@ -424,7 +424,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "Adiciona o teu nome e uma forma de contacto",
     reachYouWa: "Para te confirmarmos a hora pelo WhatsApp.",
     service: "Serviço", day: "Dia", secondChoice: "Segunda opção", name: "Nome", contact: "Contacto", price: "Preço",
-    pickAService: "Escolhe um serviço", anyDay: "Qualquer dia", anyTime: "Qualquer hora", none: "Nenhum", notProvided: "Não fornecido",
+    pickAService: "Escolhe um serviço", anyDay: "Qualquer dia", anyTime: "Qualquer hora", none: "Nenhum", notProvided: "Não fornecido", time: "Hora",
     askStudio: "Perguntar ao estúdio", requestWhatsapp: "Pedir via WhatsApp", pickAMassage: "Escolher uma massagem",
     back: "Voltar", waReassuranceStudios: "Os estúdios já no Massage Club confirmam instantaneamente.", browseOtherStudios: "Ver outros estúdios",
     callStudioLabel: "Ligar ao estúdio",
@@ -482,7 +482,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     needContact: "请添加您的姓名和联系方式",
     reachYouWa: "以便我们通过WhatsApp确认您的时间。",
     service: "服务", day: "日期", secondChoice: "第二选择", name: "姓名", contact: "联系方式", price: "价格",
-    pickAService: "选择一项服务", anyDay: "任意日期", anyTime: "任意时间", none: "无", notProvided: "未提供",
+    pickAService: "选择一项服务", anyDay: "任意日期", anyTime: "任意时间", none: "无", notProvided: "未提供", time: "时间",
     askStudio: "询问门店", requestWhatsapp: "通过WhatsApp请求", pickAMassage: "选择一项按摩",
     back: "返回", waReassuranceStudios: "已加入Massage Club的门店可即时确认。", browseOtherStudios: "浏览其他门店",
     callStudioLabel: "致电门店",
@@ -530,6 +530,7 @@ const monShort = (d: Date, lang: FlowLang) =>
 export default function StudioBookingPage() {
   const { t, i18n } = useTranslation();
   const lang = useFlowLang();
+  const c = pickCopy(PAGE_COPY, lang);
   const { studioId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
@@ -1001,12 +1002,11 @@ export default function StudioBookingPage() {
     setD: (d: Date | null) => void,
     tVal: string | null,
     setT: (t: string | null) => void,
-    labelEn: string,
-    labelEs: string,
+    label: string,
   ) => (
     <div className="mt-5">
       <p className="text-xs min-[900px]:text-base font-semibold text-gray-500 mb-2">
-        {labelEn} <span className="font-normal text-gray-400">/ {labelEs}</span>
+        {label}
       </p>
       <div className="flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1">
         {openDates.map(d => {
@@ -1662,8 +1662,7 @@ export default function StudioBookingPage() {
                     ready={!!hoServiceId}
                     onNext={() => hoGo(2)}
                     summary={hoSummaryLine}
-                    note={hoServiceId ? undefined : "Pick a service to continue"}
-                    noteEs={hoServiceId ? undefined : "Elige un servicio para continuar"}
+                    note={hoServiceId ? undefined : c.chooseServiceContinue}
                   />
                 )}
                 {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
@@ -1672,8 +1671,7 @@ export default function StudioBookingPage() {
                     ready={hoDetailsReady}
                     onNext={() => hoGo(4)}
                     summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : "Add your name and a way to reach you"}
-                    noteEs={hoDetailsReady ? undefined : "Añade tu nombre y una forma de contacto"}
+                    note={hoDetailsReady ? undefined : CONTACT_COPY[lang].needContact}
                   />
                 )}
 
@@ -1931,8 +1929,7 @@ export default function StudioBookingPage() {
                         onBack={() => hoGo(2)}
                         onNext={() => hoGo(4)}
                         disabled={!hoDetailsReady}
-                        hint="Add your name and a way to reach you"
-                        hintEs="Añade tu nombre y una forma de contacto"
+                        hint={CONTACT_COPY[lang].needContact}
                       />
                     </div>
                   )}
@@ -1941,13 +1938,13 @@ export default function StudioBookingPage() {
                   {hoStep === 4 && !waTapped && (
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
-                        <SummaryRow label="Service" labelEs="Servicio" value={hoService ? servicePrimaryName(hoService) : null} placeholder="Pick a service" />
-                        <SummaryRow label="Day" labelEs="Día" value={hoDate ? esDate(hoDate) : null} placeholder="Any day" />
-                        <SummaryRow label="Time" labelEs="Hora" value={hoTime || null} placeholder="Any time" />
-                        <SummaryRow label="Second choice" labelEs="Segunda opción" value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder="None" />
-                        <SummaryRow label="Name" labelEs="Nombre" value={hoName.trim() || null} placeholder="Not provided" />
-                        <SummaryRow label="Contact" labelEs="Contacto" value={[hoPhone.trim(), hoEmail.trim()].filter(Boolean).join(" · ") || null} placeholder="Not provided" />
-                        <SummaryRow label="Price" labelEs="Precio" value={hasPrice ? `€${hoPrice}` : null} placeholder="Ask the studio" />
+                        <SummaryRow label={c.service} value={hoService ? servicePrimaryName(hoService) : null} placeholder={c.pickAService} />
+                        <SummaryRow label={c.day} value={hoDate ? esDate(hoDate) : null} placeholder={c.anyDay} />
+                        <SummaryRow label={c.time} value={hoTime || null} placeholder={c.anyTime} />
+                        <SummaryRow label={c.secondChoice} value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder={c.none} />
+                        <SummaryRow label={c.name} value={hoName.trim() || null} placeholder={c.notProvided} />
+                        <SummaryRow label={c.contact} value={[hoPhone.trim(), hoEmail.trim()].filter(Boolean).join(" · ") || null} placeholder={c.notProvided} />
+                        <SummaryRow label={c.price} value={hasPrice ? `€${hoPrice}` : null} placeholder={c.askStudio} />
                       </div>
                       {hoServiceId ? (
                         <button
@@ -2371,11 +2368,9 @@ export default function StudioBookingPage() {
             ready={canBook}
             busy={submitting}
             onNext={handleBook}
-            label={instantConfirm ? `Book now · €${total}` : `Request booking · €${total}`}
-            labelEs={instantConfirm ? "Reservar ahora" : "Solicitar reserva"}
-            badge={instantConfirm ? { text: "Instant confirmation", textEs: "Confirmación al instante" } : undefined}
-            note="Free to book · Pay at the studio · No card needed"
-            noteEs="Reserva gratis · Paga en el estudio · Sin tarjeta"
+            label={`${instantConfirm ? c.bookNow : c.requestBooking} · €${total}`}
+            badge={instantConfirm ? { text: c.instantConfirmation } : undefined}
+            note={c.freeToBook}
           />
         )}
 
@@ -2401,7 +2396,7 @@ export default function StudioBookingPage() {
             {/* STEP 1: service */}
             {step === 1 && (
               <div ref={serviceRef}>
-                <Section step="1" title="Choose a service" titleEs="Elige un servicio">
+                <Section step="1" title={c.chooseService}>
                   {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4 min-[900px]:mb-5">{partner.description}</p>}
                   <StudioGallery items={partner.gallery || []} />
                   {!rebookId && (
@@ -2479,8 +2474,7 @@ export default function StudioBookingPage() {
                 <WizardNav
                   onNext={() => goStep(2)}
                   disabled={!service}
-                  hint="Choose a service to continue"
-                  hintEs="Elige un servicio para continuar"
+                  hint={c.chooseServiceContinue}
                 />
               </div>
             )}
@@ -2488,7 +2482,7 @@ export default function StudioBookingPage() {
             {/* STEP 2: day and time */}
             {step === 2 && (
               <div ref={dateRef} className="min-w-0">
-                <Section step="2" title="Pick a day and time" titleEs="Elige día y hora">
+                <Section step="2" title={c.pickDayTime}>
                   <div className="mb-4 rounded-xl px-3 py-2.5 bg-[#F4EEE6]">
                     <p className="text-xs min-[900px]:text-sm leading-snug text-[#5C5349]">
                       The more times you give us, the faster we confirm.
@@ -2564,7 +2558,7 @@ export default function StudioBookingPage() {
                         </button>
                       ) : (
                         <>
-                          {renderAltSlot(altDate2, setAltDate2, altTime2, setAltTime2, "Second choice", "Segunda opción")}
+                          {renderAltSlot(altDate2, setAltDate2, altTime2, setAltTime2, c.secondChoice)}
                           {!alt3Shown ? (
                             <button
                               type="button"
@@ -2577,7 +2571,7 @@ export default function StudioBookingPage() {
                               </span>
                             </button>
                           ) : (
-                            renderAltSlot(altDate3, setAltDate3, altTime3, setAltTime3, "Third choice", "Tercera opción")
+                            renderAltSlot(altDate3, setAltDate3, altTime3, setAltTime3, c.thirdChoice)
                           )}
                         </>
                       )}
@@ -2588,8 +2582,7 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(1)}
                   onNext={() => goStep(3)}
                   disabled={!date || !time}
-                  hint="Pick a day and a time to continue"
-                  hintEs="Elige un día y una hora para continuar"
+                  hint={c.pickDayTime}
                 />
               </div>
             )}
@@ -2597,7 +2590,7 @@ export default function StudioBookingPage() {
             {/* STEP 3: customize */}
             {step === 3 && (
               <div>
-                <Section step="3" title="Customize your session" titleEs="Personaliza tu sesión">
+                <Section step="3" title={c.customizeSession}>
                   <p className="text-sm min-[900px]:text-base text-gray-500 mb-4 min-[900px]:mb-5">
                     Optional, but it helps your therapist get it right.
                     <span className="block text-xs min-[900px]:text-sm text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
@@ -2726,7 +2719,7 @@ export default function StudioBookingPage() {
             {/* STEP 4: your details */}
             {step === 4 && (
               <div>
-                <Section step="4" title="Your details" titleEs="Tus datos">
+                <Section step="4" title={c.yourDetails}>
                   <div className="space-y-2 min-[900px]:space-y-3">
                     <div className="pb-1">
                       {!peopleOpen ? (
@@ -2839,8 +2832,7 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!nameComplete || !hasContact}
-                  hint={CONTACT_COPY.en.needContact}
-                  hintEs={CONTACT_COPY.es.needContact}
+                  hint={CONTACT_COPY[lang].needContact}
                 />
 
               </div>
@@ -2849,19 +2841,19 @@ export default function StudioBookingPage() {
             {/* STEP 5: confirm */}
             {step === 5 && (
               <div>
-                <Section step="5" title="Review and confirm" titleEs="Revisa y confirma">
+                <Section step="5" title={c.reviewConfirm}>
                   <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
-                    <SummaryRow label="Service" labelEs="Servicio" value={serviceSummary} placeholder="Pick a service" onChange={() => goStep(1)} />
-                    <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" onChange={() => goStep(2)} />
-                    <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" onChange={() => goStep(2)} />
-                    <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" onChange={() => goStep(3)} />
-                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? pickCopy(CONVERSATION_LABEL_COPY, lang)[conversationPref] || conversationPref : null} placeholder="Not set" onChange={() => goStep(3)} />
-                    <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" onChange={() => goStep(3)} />
-                    <SummaryRow label="Add-ons" labelEs="Extras" value={addonSummary} placeholder="None" onChange={() => goStep(3)} />
-                    <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" onChange={() => goStep(3)} />
-                    <SummaryRow label="Name" labelEs="Nombre" value={name.trim() || null} placeholder="Add your name" onChange={() => goStep(4)} />
-                    <SummaryRow label="Contact" labelEs="Contacto" value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder="Add a contact" onChange={() => goStep(4)} />
-                    <SummaryRow label="Price" labelEs="Precio" value={total > 0 ? `€${total}` : null} placeholder="Pick a service" />
+                    <SummaryRow label={c.service} value={serviceSummary} placeholder={c.pickAService} onChange={() => goStep(1)} />
+                    <SummaryRow label={c.day} value={prettyDay} placeholder={c.pickDay} onChange={() => goStep(2)} />
+                    <SummaryRow label={c.time} value={time} placeholder={c.pickTime} onChange={() => goStep(2)} />
+                    <SummaryRow label={c.pressure} value={pressure || null} placeholder={c.notSet} onChange={() => goStep(3)} />
+                    <SummaryRow label={c.comfort} value={conversationPref ? pickCopy(CONVERSATION_LABEL_COPY, lang)[conversationPref] || conversationPref : null} placeholder={c.notSet} onChange={() => goStep(3)} />
+                    <SummaryRow label={c.focusAreas} value={focusAreas.length ? focusAreas.map(f => pickCopy(FOCUS_AREA_LABEL_COPY, lang)[f] || f).join(", ") : null} placeholder={c.none} onChange={() => goStep(3)} />
+                    <SummaryRow label={c.addOns} value={addonSummary} placeholder={c.none} onChange={() => goStep(3)} />
+                    <SummaryRow label={c.notes} value={notes.trim() || null} placeholder={c.none} onChange={() => goStep(3)} />
+                    <SummaryRow label={c.name} value={name.trim() || null} placeholder={c.addYourName} onChange={() => goStep(4)} />
+                    <SummaryRow label={c.contact} value={[email.trim(), phone.trim()].filter(Boolean).join(" · ") || null} placeholder={c.addContact} onChange={() => goStep(4)} />
+                    <SummaryRow label={c.price} value={total > 0 ? `€${total}` : null} placeholder={c.pickAService} />
                   </div>
 
                   {error && <p className="mt-3 text-sm min-[900px]:text-base text-red-500 bg-red-50 p-3 rounded-xl">{error}</p>}
@@ -2911,10 +2903,10 @@ export default function StudioBookingPage() {
               <p className="text-xs min-[900px]:text-sm font-bold uppercase tracking-[2px] text-[#C4622D] mb-1 min-[900px]:mb-2">
                 Your booking <span className="font-normal text-[#B3A597]">/ Tu reserva</span>
               </p>
-              <SummaryRow label="Service" labelEs="Servicio" value={service ? servicePrimaryName(service) : null} placeholder="Pick a service" />
-              <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" />
-              <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" />
-              <SummaryRow label="Price" labelEs="Precio" value={service && total > 0 ? `€${total}` : null} placeholder="Pick a service" />
+              <SummaryRow label={c.service} value={service ? servicePrimaryName(service) : null} placeholder={c.pickAService} />
+              <SummaryRow label={c.day} value={prettyDay} placeholder={c.pickDay} />
+              <SummaryRow label={c.time} value={time} placeholder={c.pickTime} />
+              <SummaryRow label={c.price} value={service && total > 0 ? `€${total}` : null} placeholder={c.pickAService} />
             </div>
             {bookingWaHref && (
               <a
