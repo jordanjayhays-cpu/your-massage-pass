@@ -319,7 +319,7 @@ export default function Review() {
   }
   if (done) {
     return (
-      <div className="min-h-[100dvh] bg-[#FAF6F0] flex flex-col items-center justify-center px-6 text-center animate-fade-in">
+      <div className="min-h-[100dvh] bg-[#FAF6F0] flex flex-col items-center justify-center px-6 text-center animate-wizard-in-right">
         <div className="max-w-sm w-full">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#B85C38]/10">
             <Sparkles className="text-[#B85C38]" size={28} />
@@ -372,8 +372,7 @@ export default function Review() {
       <main className="flex-1 overflow-hidden px-6">
         <div
           key={step}
-          className={dir === 1 ? "animate-enter" : "animate-fade-in"}
-          style={{ animationDuration: "260ms" }}
+          className={dir === 1 ? "animate-wizard-in-right" : "animate-wizard-in-left"}
         >
           <div className="mx-auto w-full max-w-md pt-8 min-[720px]:pt-16 pb-40">
             {step === 1 && (
