@@ -54,8 +54,8 @@ export function studioWhatsappUrl(number?: string | null, message = ""): string 
  * Every CLIENT-facing WhatsApp CTA opens a chat with Massage Club, never with
  * the studio. We arrange the booking on the client's behalf.
  */
-export const MASSAGE_CLUB_WA = "34612474827";
-export const MASSAGE_CLUB_WA_DISPLAY = "+34 612 474 827";
+export const MASSAGE_CLUB_WA = "34613977900";
+export const MASSAGE_CLUB_WA_DISPLAY = "+34 613 97 79 00";
 
 /** wa.me link to the Massage Club concierge number. Always returns a link. */
 export function conciergeWhatsappUrl(message = ""): string {

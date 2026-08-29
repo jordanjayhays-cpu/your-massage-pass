@@ -12,7 +12,7 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 import { trackFunnel } from "@/lib/funnel";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
-const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
+const SUPPORT_WHATSAPP = "https://wa.me/34613977900";
 
 const COPY = {
   en: {
@@ -35,7 +35,7 @@ const COPY = {
     submitting: "Joining…",
     successTitle: "You're in.",
     successSub: "We'll be in touch when we have something good for you.",
-    sendError: "Could not send. Message us at +34 612 474 827.",
+    sendError: "Could not send. Message us at +34 613 97 79 00.",
   },
   es: {
     title: "Únete a Massage Club",
@@ -57,7 +57,7 @@ const COPY = {
     submitting: "Entrando…",
     successTitle: "¡Ya estás dentro!",
     successSub: "Te escribimos cuando tengamos algo bueno para ti.",
-    sendError: "No se pudo enviar. Escríbenos al +34 612 474 827.",
+    sendError: "No se pudo enviar. Escríbenos al +34 613 97 79 00.",
   },
 } as const;
 
@@ -355,7 +355,7 @@ export default function Notify() {
                         <a href={SUPPORT_WHATSAPP} target="_blank" rel="noopener noreferrer" className="underline">
                           WhatsApp
                         </a>{" "}
-                        +34 612 474 827
+                        +34 613 97 79 00
                       </p>
                     </div>
                   )}

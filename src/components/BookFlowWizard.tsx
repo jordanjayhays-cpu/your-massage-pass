@@ -81,7 +81,7 @@ export const BOOK_FLOW_COPY = {
     consent: "By booking you agree we can contact you about this request.",
     submit: "Request my massage",
     sending: "Sending...",
-    sendError: "Could not send. Message us on WhatsApp at +34 612 474 827.",
+    sendError: "Could not send. Message us on WhatsApp at +34 613 97 79 00.",
     promiseTitle: "We are checking with the studio now",
     promiseBody:
       "You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.",
@@ -157,7 +157,7 @@ export const BOOK_FLOW_COPY = {
     consent: "Al reservar aceptas que te contactemos sobre esta solicitud.",
     submit: "Pedir mi masaje",
     sending: "Enviando...",
-    sendError: "No se pudo enviar. Escríbenos por WhatsApp al +34 612 474 827.",
+    sendError: "No se pudo enviar. Escríbenos por WhatsApp al +34 613 97 79 00.",
     promiseTitle: "Estamos confirmando con el centro",
     promiseBody:
       "Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.",
@@ -582,7 +582,7 @@ export default function BookFlowWizard({
       lang === "es"
         ? `Hola, soy ${name}. Quiero reservar: ${baseWant}${isGroup ? ` para ${people} personas` : ""} en ${areaValue}. Me va bien ${slotsText}.`
         : `Hi, I'm ${name}. I'd like to book a ${baseWant} massage${isGroup ? ` for ${people} people` : ""} in ${areaValue}. I can do ${slotsText}.`;
-    const waLink = `https://wa.me/34612474827?text=${encodeURIComponent(waText)}`;
+    const waLink = `https://wa.me/34613977900?text=${encodeURIComponent(waText)}`;
     const fallbackContact = email.trim() || phone.trim();
 
     return (
