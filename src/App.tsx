@@ -199,6 +199,8 @@ const App = () => (
             <Route path="massages/:id" element={<ShopDetail />} />
             {/* Legacy calendar/customize/payment flow removed: customers book on
                 the studio's own page. Components stay for internal use only. */}
+            <Route path="booking/:id/*" element={<Navigate to="/studios" replace />} />
+
 
             <Route path="discovery" element={<Discovery />} />
             <Route path="discovery/quiz" element={<Quiz />} />
