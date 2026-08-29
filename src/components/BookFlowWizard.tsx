@@ -429,8 +429,10 @@ export default function BookFlowWizard({
         const option = mapAreaNameToOption(nearest.name);
         if (areas.includes(option)) {
           setArea(option);
+          trackFunnel("wizard_area_selected", { area: option, via: "geolocation", massage: massage || null, source });
         } else if (areas.includes(nearest.name)) {
           setArea(nearest.name);
+          trackFunnel("wizard_area_selected", { area: nearest.name, via: "geolocation", massage: massage || null, source });
         }
         setHint(null);
       },
