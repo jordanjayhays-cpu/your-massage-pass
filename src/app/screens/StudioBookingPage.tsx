@@ -2335,13 +2335,13 @@ export default function StudioBookingPage() {
         {/* Mobile: slim running summary under the stepper */}
         <div className="min-[900px]:hidden sticky top-0 z-20 -mx-5 mt-2 px-5 py-2 bg-[#FAF6F1]/95 backdrop-blur border-y border-[#EADFD2]">
           <p className="text-xs truncate">
-            <span className={service ? "font-semibold text-gray-800" : "text-gray-400"}>{service ? servicePrimaryName(service) : "Pick a service"}</span>
+            <span className={service ? "font-semibold text-gray-800" : "text-gray-400"}>{service ? servicePrimaryName(service) : c.pickService}</span>
             <span className="text-gray-300"> · </span>
-            <span className={prettyDay ? "font-semibold text-gray-800" : "text-gray-400"}>{prettyDay || "Pick a day"}</span>
+            <span className={prettyDay ? "font-semibold text-gray-800" : "text-gray-400"}>{prettyDay || c.pickDay}</span>
             <span className="text-gray-300"> · </span>
-            <span className={time ? "font-semibold text-gray-800" : "text-gray-400"}>{time || "Pick a time"}</span>
+            <span className={time ? "font-semibold text-gray-800" : "text-gray-400"}>{time || c.pickTime}</span>
             <span className="text-gray-300"> · </span>
-            <span className={service && total > 0 ? "font-semibold text-[#C4622D]" : "text-gray-400"}>{service && total > 0 ? `€${total}` : "Price"}</span>
+            <span className={service && total > 0 ? "font-semibold text-[#C4622D]" : "text-gray-400"}>{service && total > 0 ? `€${total}` : c.priceLabel}</span>
           </p>
         </div>
 
