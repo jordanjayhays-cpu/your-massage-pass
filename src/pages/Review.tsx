@@ -37,6 +37,7 @@ type FetchResp = {
     tags?: string[] | null;
     private_note?: string | null;
     display_name?: string | null;
+    custom_tag?: string | null;
   } | null;
 };
 
@@ -63,8 +64,11 @@ const COPY = {
     s4: "How was the atmosphere?",
     starsSub: "Tap a star",
     s5good: "What stood out?",
-    s5bad: "What went wrong?",
+    s5bad: "What could have been better?",
     s5sub: "Tap any that apply",
+    other: "Other",
+    otherPh: "Tell us in a word or two",
+
     s6: "Share your experience",
     s6sub: "This appears on the studio's page.",
     s6ph: "What would you tell a friend about this massage?",
@@ -73,7 +77,7 @@ const COPY = {
     s7: "Anything just for us?",
     s7sub: "Just for Massage Club. The studio never sees this.",
     s7ph: "Anything you would rather not say publicly",
-    s8: "Would you go back?",
+    s8: (studio: string) => `Would you go back to ${studio}?`,
     yes: "Yes",
     no: "No",
     thanksTitle: "Thank you",
@@ -103,8 +107,11 @@ const COPY = {
     s4: "¿Qué tal el ambiente?",
     starsSub: "Toca una estrella",
     s5good: "¿Qué destacarías?",
-    s5bad: "¿Qué falló?",
+    s5bad: "¿Qué se podría mejorar?",
     s5sub: "Toca lo que aplique",
+    other: "Otro",
+    otherPh: "Cuéntanoslo en pocas palabras",
+
     s6: "Cuenta tu experiencia",
     s6sub: "Se muestra en la página del estudio.",
     s6ph: "¿Qué le contarías a un amigo sobre este masaje?",
@@ -113,7 +120,7 @@ const COPY = {
     s7: "¿Algo solo para nosotros?",
     s7sub: "Solo para Massage Club. El estudio nunca lo ve.",
     s7ph: "Algo que prefieras no decir en público",
-    s8: "¿Volverías?",
+    s8: (studio: string) => `¿Volverías a ${studio}?`,
     yes: "Sí",
     no: "No",
     thanksTitle: "Gracias",
@@ -170,6 +177,8 @@ export default function Review() {
   const [cleanliness, setCleanliness] = useState(0);
   const [ambience, setAmbience] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
+  const [customTag, setCustomTag] = useState("");
+  const [otherOn, setOtherOn] = useState(false);
   const [comment, setComment] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [privateNote, setPrivateNote] = useState("");
@@ -200,6 +209,7 @@ export default function Review() {
           if (rev.cleanliness) setCleanliness(Number(rev.cleanliness));
           if (rev.ambience) setAmbience(Number(rev.ambience));
           if (Array.isArray(rev.tags)) setTags(rev.tags.filter(Boolean));
+          if (rev.custom_tag) { setCustomTag(String(rev.custom_tag)); setOtherOn(true); }
           if (rev.comment) setComment(rev.comment);
           if (rev.private_note) setPrivateNote(rev.private_note);
           if (rev.display_name) setDisplayName(rev.display_name);
@@ -223,6 +233,7 @@ export default function Review() {
       cleanliness: cleanliness || null,
       ambience: ambience || null,
       tags,
+      custom_tag: customTag.trim() || null,
       comment: comment.trim() || null,
       display_name: displayName.trim() || null,
       private_note: privateNote.trim() || null,
@@ -457,7 +468,25 @@ export default function Review() {
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => setOtherOn((v) => !v)}
+                    className={`rounded-full border px-4 py-3 text-[15px] font-medium transition ${
+                      otherOn ? "border-[#B85C38] bg-[#B85C38] text-white" : "border-[#E7DCCE] bg-white text-[#3D2B1F]"
+                    }`}
+                  >
+                    {t.other}
+                  </button>
                 </div>
+                {otherOn && (
+                  <input
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value.slice(0, 60))}
+                    placeholder={t.otherPh}
+                    maxLength={60}
+                    className="mt-4 w-full rounded-2xl border border-[#E7DCCE] bg-white px-4 py-3 text-[15px] text-[#3D2B1F] outline-none focus:border-[#B85C38]"
+                  />
+                )}
               </>
             )}
 
@@ -501,7 +530,7 @@ export default function Review() {
 
             {step === 8 && (
               <>
-                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s8}</h1>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s8(studio)}</h1>
                 <div className="mt-8 grid grid-cols-2 gap-3">
                   {[{ v: true, l: t.yes }, { v: false, l: t.no }].map((o) => {
                     const on = wouldReturn === o.v;

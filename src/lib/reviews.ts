@@ -51,6 +51,7 @@ export type PublicReview = {
   partner_id: string;
   rating: number;
   tags: string[] | null;
+  custom_tag: string | null;
   comment: string | null;
   display_name: string | null;
   would_return: boolean | null;
@@ -61,7 +62,7 @@ export type PublicReview = {
 };
 
 const PUBLIC_COLUMNS =
-  "id,partner_id,rating,tags,comment,display_name,would_return,cleanliness,ambience,pressure_feedback,created_at";
+  "id,partner_id,rating,tags,custom_tag,comment,display_name,would_return,cleanliness,ambience,pressure_feedback,created_at";
 
 /**
  * Published reviews for one studio, newest first.

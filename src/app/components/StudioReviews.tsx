@@ -169,13 +169,18 @@ export default function StudioReviews({
                 {r.comment?.trim() && (
                   <p className="mt-2 text-sm leading-relaxed text-[#4A443D] whitespace-pre-line">{r.comment.trim()}</p>
                 )}
-                {(r.tags ?? []).length > 0 && (
+                {((r.tags ?? []).length > 0 || r.custom_tag?.trim()) && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {(r.tags ?? []).map((t) => (
                       <span key={t} className="rounded-full bg-[#F6EFE6] px-2.5 py-0.5 text-[11px] text-[#5C5349]">
                         {reviewTagLabel(t, lang)}
                       </span>
                     ))}
+                    {r.custom_tag?.trim() && (
+                      <span className="rounded-full bg-[#F6EFE6] px-2.5 py-0.5 text-[11px] text-[#5C5349]">
+                        {r.custom_tag.trim()}
+                      </span>
+                    )}
                   </div>
                 )}
                 <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[#7A9A6A]">
