@@ -131,7 +131,7 @@ export default function StudioReviews({
                   <Stars n={Math.round(Number(r.rating))} />
                 </div>
                 {r.comment?.trim() && (
-                  <p className="mt-2 text-sm leading-relaxed text-[#4A4views] text-[#4A443D] whitespace-pre-line">{r.comment.trim()}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#4A443D] whitespace-pre-line">{r.comment.trim()}</p>
                 )}
                 {(r.tags ?? []).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
