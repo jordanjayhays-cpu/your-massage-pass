@@ -1,7 +1,9 @@
 -- Public, read-only access to verified reviews.
--- Anonymous visitors must never read client_email, private_note, pressure_feedback,
--- user_id or booking_id, so they never touch public.reviews directly. They read a
--- view that exposes ONLY the public columns of published rows.
+-- Anonymous visitors must never read client_email, private_note, user_id or
+-- booking_id, so they never touch public.reviews directly. They read a view that
+-- exposes ONLY the public columns of published rows. Category scores
+-- (cleanliness, ambience, pressure_feedback) are exposed for the aggregate bars
+-- on the studio page; the UI never renders them per review card.
 
 -- 1. The view (owner rights, so the base-table RLS on reviews stays closed).
 create or replace view public.public_reviews as
@@ -13,6 +15,9 @@ create or replace view public.public_reviews as
     r.comment,
     r.display_name,
     r.would_return,
+    r.cleanliness,
+    r.ambience,
+    r.pressure_feedback,
     r.created_at
   from public.reviews r
   where r.published is true
