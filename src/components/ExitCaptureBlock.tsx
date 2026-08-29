@@ -31,6 +31,8 @@ type Props = {
   source: string;
   want?: string | null;
   area?: string | null;
+  /** Which step of the flow this block is rendered under, for funnel meta. */
+  step?: number | string | null;
   className?: string;
 };
 
@@ -39,13 +41,20 @@ type Props = {
  * Sits below the main action, never interrupts. Carries across whatever
  * preferences they have already told us (want / area).
  */
-export default function ExitCaptureBlock({ source, want, area, className = "" }: Props) {
+export default function ExitCaptureBlock({ source, want, area, step = null, className = "" }: Props) {
   const { i18n } = useTranslation();
   const lang = (i18n.resolvedLanguage || "en").slice(0, 2) === "es" ? "es" : "en";
   const t = COPY[lang];
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
   const [invalid, setInvalid] = useState(false);
+
+  // Funnel: the "not ready to book" prompt became visible.
+  useEffect(() => {
+    trackFunnel("deals_prompt_shown", { source, step, want: want || null, area: area || null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, step]);
+
 
   const submit = async () => {
     const clean = email.trim().toLowerCase();
