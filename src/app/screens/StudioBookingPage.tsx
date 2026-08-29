@@ -111,6 +111,415 @@ const CONVERSATION_LABEL_COPY: Record<FlowLang, Record<string, string>> = {
   zh: { silence: "安静", minimal: "简单聊聊", chatty: "喜欢聊天" },
 };
 
+const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
+  en: {
+    showDistance: "Show distance", directions: "Directions",
+    yourAppointmentAt: "Your appointment at", checkingWithStudio: "We are checking with the studio now",
+    bookingDone: "You're booked!", waitTime: "You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.",
+    addToCalendar: "Add to my calendar", waSetItUp: "WhatsApp us and we set it up", visitWebsite: "Visit their website",
+    timeConfirmedPay: "Your time is confirmed. You pay at the studio, no card needed.",
+    studioConfirmsPay: "The studio usually confirms within a few hours and you will get an email. You pay at the studio, no card needed.",
+    almostDone: "Almost done. WhatsApp us and we set it up.",
+    footerCredit: "Massage Club · Madrid · book.massageclub.io",
+    notOnClub: "This studio isn't on Massage Club yet. We can still set up your booking for you.",
+    howWeBook: "This is how we book it for you",
+    bookMassage: "Book a massage", pickServiceFirst: "Pick a service below first",
+    servicesLabel: "Services", takeQuiz: "Not sure which massage? Take the 60 second quiz",
+    chooseServiceContinue: "Choose a service to continue", continueLabel: "Continue",
+    contactStep: "This studio isn't on Massage Club yet, so we'll contact them for you. Pick 2-3 times that could work - the more you give us, the faster we confirm.",
+    addSecondChoice: "+ Add a second choice", addThirdChoice: "+ Add a third choice", thirdChoice: "Third choice",
+    moreThanOne: "Booking for more than one person?", groupCheck: "We will check the studio can take your group at the same time.",
+    firstName: "First name", lastName: "Last name", waPhone: "WhatsApp / Phone (+34 600 123 456)", email: "Email",
+    anythingElse: "Anything else we should know?", optional: "Optional",
+    needContact: "Add your name and a way to reach you",
+    reachYouWa: "So we can confirm your time on WhatsApp.",
+    service: "Service", day: "Day", secondChoice: "Second choice", name: "Name", contact: "Contact", price: "Price",
+    pickAService: "Pick a service", anyDay: "Any day", anyTime: "Any time", none: "None", notProvided: "Not provided",
+    askStudio: "Ask the studio", requestWhatsapp: "Request via WhatsApp", pickAMassage: "Pick a massage",
+    back: "Back", waReassuranceStudios: "Studios already on Massage Club confirm instantly.", browseOtherStudios: "Browse other studios",
+    callStudioLabel: "Call the studio",
+    chooseService: "Choose a service", pickDayTime: "Pick a day and time", customizeSession: "Customize your session",
+    yourDetails: "Your details", reviewConfirm: "Review and confirm",
+    noServicesYet: "No services listed yet.", yourUsualBooking: "Your usual booking", change: "Change",
+    notSureQuiz: "Not sure which massage? Take the 60 second quiz",
+    hoursNotPublished: "This studio has not published its hours yet. Ask on WhatsApp and we will arrange it.",
+    timesLabel: "Times", fullyBooked: "Fully booked that day. Try another date.", left: "left",
+    addAnotherTime: "+ Add another time (recommended)",
+    optionalHelps: "Optional, but it helps your therapist get it right.",
+    prefilledProfile: "Prefilled from your profile", startBlank: "Start blank",
+    pickMassageFirst: "Pick a massage first to choose these options.", chooseMassage: "Choose a massage",
+    comfort: "Comfort", pressure: "Pressure", focusAreas: "Focus areas", makeItYours: "Make it yours",
+    extrasNote: "Extras this studio offers. Added to your total.", notesForTherapist: "Notes for your therapist",
+    notesPlaceholder: "Anything we should know? Injuries, allergies, preferences.",
+    giveContact: "Give us an email or a WhatsApp number so we can reach you.",
+    createAccount: "Create my free Massage Club account",
+    createAccountSub: "Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.",
+    notSet: "Not set", addOns: "Add-ons", notes: "Notes", addYourName: "Add your name", addContact: "Add a contact",
+    firstMassage: "First massage? Draping is always used, you choose the pressure, and you can stop anytime.",
+    readFirstTimer: "Read the first-timer guide",
+    confirmedRightAway: "Your time is confirmed right away. You pay at the studio.",
+    studioConfirms: "The studio confirms your time. You pay at the studio.",
+    yourBooking: "Your booking", call: "Call", poweredBy: "Powered by Massage Club",
+    forStudios: "For studios", privacy: "Privacy Policy", terms: "Terms",
+    bookNow: "Book now", requestBooking: "Request booking", instantConfirmation: "Instant confirmation",
+    freeToBook: "Free to book · Pay at the studio · No card needed",
+    booking: "Booking", skipStep: "Skip this step",
+    addNameContact: "Add your first and last name so the studio knows who is coming",
+    slotFilled: "That time just filled up, pick another",
+    somethingWrong: "Something went wrong. Please try again.",
+    bookYourMassage: "Book your massage",
+    pickService: "Pick a service", pickDay: "Pick a day", pickTime: "Pick a time", priceLabel: "Price",
+  },
+  es: {
+    showDistance: "Ver distancia", directions: "Cómo llegar",
+    yourAppointmentAt: "Tu cita en", checkingWithStudio: "Estamos confirmando con el centro",
+    bookingDone: "¡Tu reserva está hecha! 🎉", waitTime: "Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.",
+    addToCalendar: "Añadir a mi calendario", waSetItUp: "Escríbenos por WhatsApp y te lo organizamos", visitWebsite: "Ver su web",
+    timeConfirmedPay: "Tu hora está confirmada. Pagas en el estudio, sin tarjeta.",
+    studioConfirmsPay: "El estudio suele confirmar en unas horas y te avisamos por email. Pagas en el estudio, sin tarjeta.",
+    almostDone: "Casi listo. Escríbenos por WhatsApp y te lo organizamos.",
+    footerCredit: "Massage Club · Madrid · book.massageclub.io",
+    notOnClub: "Este estudio todavía no está en Massage Club. Aun así te organizamos la reserva.",
+    howWeBook: "Así te lo reservamos",
+    bookMassage: "Reserva un masaje", pickServiceFirst: "Elige antes un servicio",
+    servicesLabel: "Servicios", takeQuiz: "¿No sabes cuál elegir? Haz el test",
+    chooseServiceContinue: "Elige un servicio para continuar", continueLabel: "Continuar",
+    contactStep: "Este centro todavía no está en Massage Club, así que contactamos con ellos por ti. Elige 2-3 horas que te vengan bien - cuantas más nos des, antes te confirmamos.",
+    addSecondChoice: "+ Añadir una segunda opción", addThirdChoice: "+ Añadir una tercera opción", thirdChoice: "Tercera opción",
+    moreThanOne: "¿Reservas para más de una persona?", groupCheck: "Confirmamos con el centro que pueden atender a todo el grupo a la vez.",
+    firstName: "Nombre", lastName: "Apellido", waPhone: "WhatsApp / Teléfono (+34 600 123 456)", email: "Email",
+    anythingElse: "¿Algo más que debamos saber?", optional: "Opcional",
+    needContact: "Añade tu nombre y una forma de contacto",
+    reachYouWa: "Para confirmarte la hora por WhatsApp.",
+    service: "Servicio", day: "Día", secondChoice: "Segunda opción", name: "Nombre", contact: "Contacto", price: "Precio",
+    pickAService: "Elige un servicio", anyDay: "Cualquier día", anyTime: "Cualquier hora", none: "Ninguno", notProvided: "No indicado",
+    askStudio: "Pregunta al estudio", requestWhatsapp: "Solicitar por WhatsApp", pickAMassage: "Elige un masaje",
+    back: "Atrás", waReassuranceStudios: "Los estudios que ya están en Massage Club confirman al instante.", browseOtherStudios: "Ver otros estudios",
+    callStudioLabel: "Llamar al estudio",
+    chooseService: "Elige un servicio", pickDayTime: "Elige día y hora", customizeSession: "Personaliza tu sesión",
+    yourDetails: "Tus datos", reviewConfirm: "Revisa y confirma",
+    noServicesYet: "Todavía no hay servicios publicados.", yourUsualBooking: "Tu reserva habitual", change: "Cambiar",
+    notSureQuiz: "¿No sabes cuál elegir? Haz el test",
+    hoursNotPublished: "Este estudio todavía no ha publicado horarios. Pídelo por WhatsApp y lo organizamos.",
+    timesLabel: "Horas", fullyBooked: "Ese día está completo. Prueba otra fecha.", left: "quedan",
+    addAnotherTime: "+ Añadir otra hora (recomendado)",
+    optionalHelps: "Opcional, pero ayuda a tu terapeuta a hacerlo bien.",
+    prefilledProfile: "Rellenado con tu perfil", startBlank: "Empezar de cero",
+    pickMassageFirst: "Elige antes un masaje para usar estas opciones.", chooseMassage: "Elegir masaje",
+    comfort: "Confort", pressure: "Presión", focusAreas: "Zonas", makeItYours: "Hazlo tuyo",
+    extrasNote: "Extras que ofrece este estudio. Se añaden a tu total.", notesForTherapist: "Notas para tu terapeuta",
+    notesPlaceholder: "¿Algo que debamos saber? Lesiones, alergias, preferencias.",
+    giveContact: "Déjanos un email o un WhatsApp para poder contactarte.",
+    createAccount: "Crear mi cuenta gratis de Massage Club",
+    createAccountSub: "Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.",
+    notSet: "Sin definir", addOns: "Extras", notes: "Notas", addYourName: "Añade tu nombre", addContact: "Añade un contacto",
+    firstMassage: "¿Primer masaje? Siempre se usa toalla, tú eliges la presión y puedes parar cuando quieras.",
+    readFirstTimer: "Lee la guía para principiantes",
+    confirmedRightAway: "Tu hora se confirma al instante. Pagas en el estudio.",
+    studioConfirms: "El estudio confirma tu hora. Pagas en el estudio.",
+    yourBooking: "Tu reserva", call: "Llamar", poweredBy: "Con la tecnología de Massage Club",
+    forStudios: "Para estudios", privacy: "Política de Privacidad", terms: "Términos",
+    bookNow: "Reservar ahora", requestBooking: "Solicitar reserva", instantConfirmation: "Confirmación al instante",
+    freeToBook: "Reserva gratis · Paga en el estudio · Sin tarjeta",
+    booking: "Reservando", skipStep: "Saltar",
+    addNameContact: "Añade tu nombre y apellido para que el estudio sepa quién viene",
+    slotFilled: "Esa hora se acaba de llenar, elige otra",
+    somethingWrong: "Algo ha ido mal. Inténtalo de nuevo.",
+    bookYourMassage: "Reserva tu masaje",
+    pickService: "Elige un servicio", pickDay: "Elige un día", pickTime: "Elige una hora", priceLabel: "Precio",
+  },
+  fr: {
+    showDistance: "Voir la distance", directions: "Itinéraire",
+    yourAppointmentAt: "Votre rendez-vous à", checkingWithStudio: "Nous vérifions avec le centre",
+    bookingDone: "Votre réservation est faite ! 🎉", waitTime: "Nous vous répondrons en moins de 30 minutes avec votre heure confirmée. S'ils ne peuvent pas, nous vous envoyons d'autres centres à proximité.",
+    addToCalendar: "Ajouter à mon calendrier", waSetItUp: "Écrivez-nous sur WhatsApp et on s'occupe de tout", visitWebsite: "Voir leur site",
+    timeConfirmedPay: "Votre heure est confirmée. Vous payez sur place, sans carte.",
+    studioConfirmsPay: "Le centre confirme généralement en quelques heures et vous recevrez un email. Vous payez sur place, sans carte.",
+    almostDone: "Presque fini. Écrivez-nous sur WhatsApp et on s'occupe de tout.",
+    footerCredit: "Massage Club · Madrid · book.massageclub.io",
+    notOnClub: "Ce centre n'est pas encore sur Massage Club. On peut tout de même organiser votre réservation.",
+    howWeBook: "Voici comment on réserve pour vous",
+    bookMassage: "Réserver un massage", pickServiceFirst: "Choisissez d'abord un service",
+    servicesLabel: "Services", takeQuiz: "Vous ne savez pas quel massage choisir ? Faites le test de 60 secondes",
+    chooseServiceContinue: "Choisissez un service pour continuer", continueLabel: "Continuer",
+    contactStep: "Ce centre n'est pas encore sur Massage Club, donc on les contacte pour vous. Choisissez 2-3 horaires possibles - plus vous nous en donnez, plus vite on confirme.",
+    addSecondChoice: "+ Ajouter un second choix", addThirdChoice: "+ Ajouter un troisième choix", thirdChoice: "Troisième choix",
+    moreThanOne: "Vous réservez pour plusieurs personnes ?", groupCheck: "Nous vérifions que le centre peut recevoir tout le groupe en même temps.",
+    firstName: "Prénom", lastName: "Nom", waPhone: "WhatsApp / Téléphone (+34 600 123 456)", email: "Email",
+    anythingElse: "Autre chose à savoir ?", optional: "Facultatif",
+    needContact: "Ajoutez votre nom et un moyen de vous contacter",
+    reachYouWa: "Pour vous confirmer l'heure sur WhatsApp.",
+    service: "Service", day: "Jour", secondChoice: "Second choix", name: "Nom", contact: "Contact", price: "Prix",
+    pickAService: "Choisissez un service", anyDay: "N'importe quel jour", anyTime: "N'importe quelle heure", none: "Aucun", notProvided: "Non fourni",
+    askStudio: "Demander au centre", requestWhatsapp: "Demander via WhatsApp", pickAMassage: "Choisir un massage",
+    back: "Retour", waReassuranceStudios: "Les centres déjà sur Massage Club confirment instantanément.", browseOtherStudios: "Voir d'autres centres",
+    callStudioLabel: "Appeler le centre",
+    chooseService: "Choisir un service", pickDayTime: "Choisir un jour et une heure", customizeSession: "Personnalisez votre séance",
+    yourDetails: "Vos informations", reviewConfirm: "Vérifiez et confirmez",
+    noServicesYet: "Aucun service listé pour le moment.", yourUsualBooking: "Votre réservation habituelle", change: "Modifier",
+    notSureQuiz: "Vous ne savez pas quel massage choisir ? Faites le test de 60 secondes",
+    hoursNotPublished: "Ce centre n'a pas encore publié ses horaires. Demandez sur WhatsApp et on s'en occupe.",
+    timesLabel: "Horaires", fullyBooked: "Complet ce jour-là. Essayez une autre date.", left: "restant(s)",
+    addAnotherTime: "+ Ajouter un autre horaire (recommandé)",
+    optionalHelps: "Facultatif, mais ça aide votre thérapeute à bien faire.",
+    prefilledProfile: "Pré-rempli depuis votre profil", startBlank: "Recommencer à zéro",
+    pickMassageFirst: "Choisissez d'abord un massage pour utiliser ces options.", chooseMassage: "Choisir un massage",
+    comfort: "Confort", pressure: "Pression", focusAreas: "Zones à cibler", makeItYours: "Personnalisez",
+    extrasNote: "Extras proposés par ce centre. Ajoutés à votre total.", notesForTherapist: "Notes pour votre thérapeute",
+    notesPlaceholder: "Quelque chose à savoir ? Blessures, allergies, préférences.",
+    giveContact: "Laissez-nous un email ou un numéro WhatsApp pour vous contacter.",
+    createAccount: "Créer mon compte gratuit Massage Club",
+    createAccountSub: "Suivez votre réservation et réservez plus vite. On vous envoie un lien de connexion en un clic, sans mot de passe.",
+    notSet: "Non défini", addOns: "Extras", notes: "Notes", addYourName: "Ajoutez votre nom", addContact: "Ajoutez un contact",
+    firstMassage: "Premier massage ? Une serviette est toujours utilisée, vous choisissez la pression, et vous pouvez arrêter à tout moment.",
+    readFirstTimer: "Lire le guide pour débutants",
+    confirmedRightAway: "Votre heure est confirmée immédiatement. Vous payez sur place.",
+    studioConfirms: "Le centre confirme votre heure. Vous payez sur place.",
+    yourBooking: "Votre réservation", call: "Appeler", poweredBy: "Propulsé par Massage Club",
+    forStudios: "Pour les centres", privacy: "Politique de confidentialité", terms: "Conditions",
+    bookNow: "Réserver maintenant", requestBooking: "Demander une réservation", instantConfirmation: "Confirmation instantanée",
+    freeToBook: "Réservation gratuite · Paiement sur place · Sans carte",
+    booking: "Réservation en cours", skipStep: "Passer cette étape",
+    addNameContact: "Ajoutez votre prénom et votre nom pour que le centre sache qui vient",
+    slotFilled: "Cet horaire vient d'être pris, choisissez-en un autre",
+    somethingWrong: "Une erreur est survenue. Veuillez réessayer.",
+    bookYourMassage: "Réservez votre massage",
+    pickService: "Choisissez un service", pickDay: "Choisissez un jour", pickTime: "Choisissez une heure", priceLabel: "Prix",
+  },
+  de: {
+    showDistance: "Entfernung anzeigen", directions: "Wegbeschreibung",
+    yourAppointmentAt: "Dein Termin bei", checkingWithStudio: "Wir prüfen das gerade mit dem Studio",
+    bookingDone: "Deine Buchung ist fertig! 🎉", waitTime: "Wir melden uns innerhalb von 30 Minuten mit deiner bestätigten Zeit. Falls es nicht passt, schicken wir dir andere Studios in der Nähe.",
+    addToCalendar: "Zu meinem Kalender hinzufügen", waSetItUp: "Schreib uns auf WhatsApp, wir kümmern uns darum", visitWebsite: "Website besuchen",
+    timeConfirmedPay: "Deine Zeit ist bestätigt. Du zahlst im Studio, keine Karte nötig.",
+    studioConfirmsPay: "Das Studio bestätigt normalerweise innerhalb einiger Stunden und du bekommst eine E-Mail. Du zahlst im Studio, keine Karte nötig.",
+    almostDone: "Fast fertig. Schreib uns auf WhatsApp, wir kümmern uns darum.",
+    footerCredit: "Massage Club · Madrid · book.massageclub.io",
+    notOnClub: "Dieses Studio ist noch nicht bei Massage Club. Wir organisieren deine Buchung trotzdem.",
+    howWeBook: "So buchen wir das für dich",
+    bookMassage: "Massage buchen", pickServiceFirst: "Wähle zuerst einen Service",
+    servicesLabel: "Leistungen", takeQuiz: "Nicht sicher, welche Massage? Mach den 60-Sekunden-Test",
+    chooseServiceContinue: "Wähle einen Service, um fortzufahren", continueLabel: "Weiter",
+    contactStep: "Dieses Studio ist noch nicht bei Massage Club, deshalb kontaktieren wir es für dich. Wähle 2-3 Zeiten, die passen könnten - je mehr du uns gibst, desto schneller bestätigen wir.",
+    addSecondChoice: "+ Zweite Wahl hinzufügen", addThirdChoice: "+ Dritte Wahl hinzufügen", thirdChoice: "Dritte Wahl",
+    moreThanOne: "Buchst du für mehr als eine Person?", groupCheck: "Wir prüfen, ob das Studio deine Gruppe zur gleichen Zeit aufnehmen kann.",
+    firstName: "Vorname", lastName: "Nachname", waPhone: "WhatsApp / Telefon (+34 600 123 456)", email: "E-Mail",
+    anythingElse: "Sollten wir noch etwas wissen?", optional: "Optional",
+    needContact: "Füge deinen Namen und eine Kontaktmöglichkeit hinzu",
+    reachYouWa: "Damit wir deine Zeit per WhatsApp bestätigen können.",
+    service: "Service", day: "Tag", secondChoice: "Zweite Wahl", name: "Name", contact: "Kontakt", price: "Preis",
+    pickAService: "Service wählen", anyDay: "Egal welcher Tag", anyTime: "Egal welche Zeit", none: "Keine", notProvided: "Nicht angegeben",
+    askStudio: "Beim Studio nachfragen", requestWhatsapp: "Über WhatsApp anfragen", pickAMassage: "Massage wählen",
+    back: "Zurück", waReassuranceStudios: "Studios, die schon bei Massage Club sind, bestätigen sofort.", browseOtherStudios: "Andere Studios ansehen",
+    callStudioLabel: "Studio anrufen",
+    chooseService: "Service wählen", pickDayTime: "Tag und Uhrzeit wählen", customizeSession: "Passe deine Sitzung an",
+    yourDetails: "Deine Daten", reviewConfirm: "Überprüfen und bestätigen",
+    noServicesYet: "Noch keine Leistungen gelistet.", yourUsualBooking: "Deine übliche Buchung", change: "Ändern",
+    notSureQuiz: "Nicht sicher, welche Massage? Mach den 60-Sekunden-Test",
+    hoursNotPublished: "Dieses Studio hat seine Öffnungszeiten noch nicht veröffentlicht. Frag auf WhatsApp, wir organisieren es.",
+    timesLabel: "Zeiten", fullyBooked: "An diesem Tag ausgebucht. Versuch ein anderes Datum.", left: "übrig",
+    addAnotherTime: "+ Weitere Zeit hinzufügen (empfohlen)",
+    optionalHelps: "Optional, aber es hilft deinem Therapeuten, es richtig zu machen.",
+    prefilledProfile: "Aus deinem Profil vorausgefüllt", startBlank: "Neu anfangen",
+    pickMassageFirst: "Wähle zuerst eine Massage, um diese Optionen zu nutzen.", chooseMassage: "Massage wählen",
+    comfort: "Komfort", pressure: "Druck", focusAreas: "Problemzonen", makeItYours: "Mach es dir passend",
+    extrasNote: "Extras, die dieses Studio anbietet. Werden zu deinem Total addiert.", notesForTherapist: "Notizen für deinen Therapeuten",
+    notesPlaceholder: "Sollten wir etwas wissen? Verletzungen, Allergien, Vorlieben.",
+    giveContact: "Gib uns eine E-Mail oder eine WhatsApp-Nummer, damit wir dich erreichen können.",
+    createAccount: "Mein kostenloses Massage-Club-Konto erstellen",
+    createAccountSub: "Verfolge deine Buchung und buche schneller erneut. Wir schicken dir einen Ein-Klick-Login-Link, ohne Passwort.",
+    notSet: "Nicht festgelegt", addOns: "Extras", notes: "Notizen", addYourName: "Füge deinen Namen hinzu", addContact: "Füge einen Kontakt hinzu",
+    firstMassage: "Erste Massage? Es wird immer ein Handtuch verwendet, du wählst den Druck, und du kannst jederzeit aufhören.",
+    readFirstTimer: "Leitfaden für Erstbesucher lesen",
+    confirmedRightAway: "Deine Zeit wird sofort bestätigt. Du zahlst im Studio.",
+    studioConfirms: "Das Studio bestätigt deine Zeit. Du zahlst im Studio.",
+    yourBooking: "Deine Buchung", call: "Anrufen", poweredBy: "Unterstützt von Massage Club",
+    forStudios: "Für Studios", privacy: "Datenschutz", terms: "AGB",
+    bookNow: "Jetzt buchen", requestBooking: "Buchung anfragen", instantConfirmation: "Sofortige Bestätigung",
+    freeToBook: "Kostenlos buchen · Zahlung im Studio · Keine Karte nötig",
+    booking: "Wird gebucht", skipStep: "Diesen Schritt überspringen",
+    addNameContact: "Füge deinen Vor- und Nachnamen hinzu, damit das Studio weiß, wer kommt",
+    slotFilled: "Diese Zeit ist gerade vergeben worden, wähle eine andere",
+    somethingWrong: "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    bookYourMassage: "Buche deine Massage",
+    pickService: "Service wählen", pickDay: "Tag wählen", pickTime: "Zeit wählen", priceLabel: "Preis",
+  },
+  it: {
+    showDistance: "Mostra distanza", directions: "Indicazioni",
+    yourAppointmentAt: "Il tuo appuntamento da", checkingWithStudio: "Stiamo verificando con il centro",
+    bookingDone: "La tua prenotazione è fatta! 🎉", waitTime: "Ti risponderemo entro 30 minuti con l'orario confermato. Se non possono, ti mandiamo altri centri vicini.",
+    addToCalendar: "Aggiungi al mio calendario", waSetItUp: "Scrivici su WhatsApp e ci pensiamo noi", visitWebsite: "Visita il loro sito",
+    timeConfirmedPay: "Il tuo orario è confermato. Paghi al centro, senza carta.",
+    studioConfirmsPay: "Il centro di solito confirma in poche ore e riceverai un'email. Paghi al centro, senza carta.",
+    almostDone: "Quasi fatto. Scrivici su WhatsApp e ci pensiamo noi.",
+    footerCredit: "Massage Club · Madrid · book.massageclub.io",
+    notOnClub: "Questo centro non è ancora su Massage Club. Possiamo comunque organizzare la tua prenotazione.",
+    howWeBook: "Ecco come prenotiamo per te",
+    bookMassage: "Prenota un massaggio", pickServiceFirst: "Scegli prima un servizio",
+    servicesLabel: "Servizi", takeQuiz: "Non sai quale massaggio scegliere? Fai il test di 60 secondi",
+    chooseServiceContinue: "Scegli un servizio per continuare", continueLabel: "Continua",
+    contactStep: "Questo centro non è ancora su Massage Club, quindi lo contattiamo noi per te. Scegli 2-3 orari possibili - più ce ne dai, più velocemente confermiamo.",
+    addSecondChoice: "+ Aggiungi una seconda scelta", addThirdChoice: "+ Aggiungi una terza scelta", thirdChoice: "Terza scelta",
+    moreThanOne: "Prenoti per più di una persona?", groupCheck: "Verifichiamo che il centro possa accogliere tutto il gruppo insieme.",
+    firstName: "Nome", lastName: "Cognome", waPhone: "WhatsApp / Telefono (+34 600 123 456)", email: "Email",
+    anythingElse: "C'è altro che dovremmo sapere?", optional: "Facoltativo",
+    needContact: "Aggiungi il tuo nome e un modo per contattarti",
+    reachYouWa: "Per confermarti l'orario su WhatsApp.",
+    service: "Servizio", day: "Giorno", secondChoice: "Seconda scelta", name: "Nome", contact: "Contatto", price: "Prezzo",
+    pickAService: "Scegli un servizio", anyDay: "Qualsiasi giorno", anyTime: "Qualsiasi orario", none: "Nessuno", notProvided: "Non fornito",
+    askStudio: "Chiedi al centro", requestWhatsapp: "Richiedi via WhatsApp", pickAMassage: "Scegli un massaggio",
+    back: "Indietro", waReassuranceStudios: "I centri già su Massage Club confermano all'istante.", browseOtherStudios: "Guarda altri centri",
+    callStudioLabel: "Chiama il centro",
+    chooseService: "Scegli un servizio", pickDayTime: "Scegli giorno e ora", customizeSession: "Personalizza la tua sessione",
+    yourDetails: "I tuoi dati", reviewConfirm: "Rivedi e confirma",
+    noServicesYet: "Nessun servizio ancora elencato.", yourUsualBooking: "La tua prenotazione abituale", change: "Cambia",
+    notSureQuiz: "Non sai quale massaggio scegliere? Fai il test di 60 secondi",
+    hoursNotPublished: "Questo centro non ha ancora pubblicato gli orari. Chiedi su WhatsApp e lo organizziamo.",
+    timesLabel: "Orari", fullyBooked: "Completo quel giorno. Prova un'altra data.", left: "rimasti",
+    addAnotherTime: "+ Aggiungi un altro orario (consigliato)",
+    optionalHelps: "Facoltativo, ma aiuta il tuo terapeuta a fare le cose per bene.",
+    prefilledProfile: "Precompilato dal tuo profilo", startBlank: "Ricomincia da zero",
+    pickMassageFirst: "Scegli prima un massaggio per usare queste opzioni.", chooseMassage: "Scegli un massaggio",
+    comfort: "Comfort", pressure: "Pressione", focusAreas: "Zone da trattare", makeItYours: "Personalizzalo",
+    extrasNote: "Extra offerti da questo centro. Si aggiungono al tuo totale.", notesForTherapist: "Note per il tuo terapeuta",
+    notesPlaceholder: "C'è qualcosa che dovremmo sapere? Lesioni, allergie, preferenze.",
+    giveContact: "Lasciaci un'email o un numero WhatsApp per poterti contattare.",
+    createAccount: "Crea il mio account gratuito Massage Club",
+    createAccountSub: "Segui la tua prenotazione e prenota di nuovo più velocemente. Ti mandiamo un link di accesso con un tocco, senza password.",
+    notSet: "Non impostato", addOns: "Extra", notes: "Note", addYourName: "Aggiungi il tuo nome", addContact: "Aggiungi un contatto",
+    firstMassage: "Primo massaggio? Si usa sempre un telo, scegli tu la pressione e puoi fermarti quando vuoi.",
+    readFirstTimer: "Leggi la guida per principianti",
+    confirmedRightAway: "Il tuo orario è confermato subito. Paghi al centro.",
+    studioConfirms: "Il centro confirma il tuo orario. Paghi al centro.",
+    yourBooking: "La tua prenotazione", call: "Chiama", poweredBy: "Offerto da Massage Club",
+    forStudios: "Per i centri", privacy: "Informativa sulla privacy", terms: "Termini",
+    bookNow: "Prenota ora", requestBooking: "Richiedi prenotazione", instantConfirmation: "Confirma immediata",
+    freeToBook: "Prenotazione gratuita · Pagamento al centro · Senza carta",
+    booking: "Prenotazione in corso", skipStep: "Salta questo passaggio",
+    addNameContact: "Aggiungi nome e cognome così il centro sa chi arriva",
+    slotFilled: "Quell'orario si è appena riempito, scegline un altro",
+    somethingWrong: "Qualcosa è andato storto. Riprova.",
+    bookYourMassage: "Prenota il tuo massaggio",
+    pickService: "Scegli un servizio", pickDay: "Scegli un giorno", pickTime: "Scegli un orario", priceLabel: "Prezzo",
+  },
+  pt: {
+    showDistance: "Ver distância", directions: "Como chegar",
+    yourAppointmentAt: "A tua marcação em", checkingWithStudio: "Estamos a confirmar com o estúdio",
+    bookingDone: "A tua reserva está feita! 🎉", waitTime: "Respondemos-te em menos de 30 minutos com a hora confirmada. Se não conseguirem, enviamos-te outros estúdios próximos.",
+    addToCalendar: "Adicionar ao meu calendário", waSetItUp: "Escreve-nos no WhatsApp e organizamos tudo", visitWebsite: "Visitar o site",
+    timeConfirmedPay: "A tua hora está confirmada. Pagas no estúdio, sem cartão.",
+    studioConfirmsPay: "O estúdio normalmente confirma em algumas horas e receberás um email. Pagas no estúdio, sem cartão.",
+    almostDone: "Quase pronto. Escreve-nos no WhatsApp e organizamos tudo.",
+    footerCredit: "Massage Club · Madrid · book.massageclub.io",
+    notOnClub: "Este estúdio ainda não está no Massage Club. Ainda assim organizamos a tua reserva.",
+    howWeBook: "É assim que reservamos por ti",
+    bookMassage: "Reservar uma massagem", pickServiceFirst: "Escolhe primeiro um serviço",
+    servicesLabel: "Serviços", takeQuiz: "Não sabes qual massagem escolher? Faz o teste de 60 segundos",
+    chooseServiceContinue: "Escolhe um serviço para continuar", continueLabel: "Continuar",
+    contactStep: "Este estúdio ainda não está no Massage Club, por isso contactamo-lo por ti. Escolhe 2-3 horários possíveis - quanto mais nos deres, mais rápido confirmamos.",
+    addSecondChoice: "+ Adicionar uma segunda opção", addThirdChoice: "+ Adicionar uma terceira opção", thirdChoice: "Terceira opção",
+    moreThanOne: "Estás a reservar para mais de uma pessoa?", groupCheck: "Vamos confirmar que o estúdio pode receber o teu grupo todo ao mesmo tempo.",
+    firstName: "Nome próprio", lastName: "Sobrenome", waPhone: "WhatsApp / Telefone (+34 600 123 456)", email: "Email",
+    anythingElse: "Há mais alguma coisa que devamos saber?", optional: "Opcional",
+    needContact: "Adiciona o teu nome e uma forma de contacto",
+    reachYouWa: "Para te confirmarmos a hora pelo WhatsApp.",
+    service: "Serviço", day: "Dia", secondChoice: "Segunda opção", name: "Nome", contact: "Contacto", price: "Preço",
+    pickAService: "Escolhe um serviço", anyDay: "Qualquer dia", anyTime: "Qualquer hora", none: "Nenhum", notProvided: "Não fornecido",
+    askStudio: "Perguntar ao estúdio", requestWhatsapp: "Pedir via WhatsApp", pickAMassage: "Escolher uma massagem",
+    back: "Voltar", waReassuranceStudios: "Os estúdios já no Massage Club confirmam instantaneamente.", browseOtherStudios: "Ver outros estúdios",
+    callStudioLabel: "Ligar ao estúdio",
+    chooseService: "Escolhe um serviço", pickDayTime: "Escolhe dia e hora", customizeSession: "Personaliza a tua sessão",
+    yourDetails: "Os teus dados", reviewConfirm: "Revê e confirma",
+    noServicesYet: "Ainda não há serviços listados.", yourUsualBooking: "A tua reserva habitual", change: "Alterar",
+    notSureQuiz: "Não sabes qual massagem escolher? Faz o teste de 60 segundos",
+    hoursNotPublished: "Este estúdio ainda não publicou os horários. Pede pelo WhatsApp e organizamos.",
+    timesLabel: "Horas", fullyBooked: "Sem vagas nesse dia. Tenta outra data.", left: "restantes",
+    addAnotherTime: "+ Adicionar outra hora (recomendado)",
+    optionalHelps: "Opcional, mas ajuda o teu terapeuta a acertar.",
+    prefilledProfile: "Preenchido a partir do teu perfil", startBlank: "Começar do zero",
+    pickMassageFirst: "Escolhe primeiro uma massagem para usar estas opções.", chooseMassage: "Escolher massagem",
+    comfort: "Conforto", pressure: "Pressão", focusAreas: "Zonas a tratar", makeItYours: "Personaliza",
+    extrasNote: "Extras que este estúdio oferece. Somam-se ao teu total.", notesForTherapist: "Notas para o teu terapeuta",
+    notesPlaceholder: "Algo que devamos saber? Lesões, alergias, preferências.",
+    giveContact: "Deixa-nos um email ou um número de WhatsApp para te contactarmos.",
+    createAccount: "Criar a minha conta gratuita Massage Club",
+    createAccountSub: "Acompanha a tua reserva e reserva mais rápido. Enviamos-te um link de acesso de um toque, sem palavra-passe.",
+    notSet: "Não definido", addOns: "Extras", notes: "Notas", addYourName: "Adiciona o teu nome", addContact: "Adiciona um contacto",
+    firstMassage: "Primeira massagem? Usa-se sempre toalha, tu escolhes a pressão e podes parar quando quiseres.",
+    readFirstTimer: "Lê o guia para principiantes",
+    confirmedRightAway: "A tua hora é confirmada de imediato. Pagas no estúdio.",
+    studioConfirms: "O estúdio confirma a tua hora. Pagas no estúdio.",
+    yourBooking: "A tua reserva", call: "Ligar", poweredBy: "Com tecnologia Massage Club",
+    forStudios: "Para estúdios", privacy: "Política de Privacidade", terms: "Termos",
+    bookNow: "Reservar agora", requestBooking: "Pedir reserva", instantConfirmation: "Confirmação instantânea",
+    freeToBook: "Reserva grátis · Pagas no estúdio · Sem cartão",
+    booking: "A reservar", skipStep: "Saltar este passo",
+    addNameContact: "Adiciona o teu nome e sobrenome para o estúdio saber quem vem",
+    slotFilled: "Essa hora acabou de ficar ocupada, escolhe outra",
+    somethingWrong: "Algo correu mal. Tenta outra vez.",
+    bookYourMassage: "Reserva a tua massagem",
+    pickService: "Escolhe um serviço", pickDay: "Escolhe um dia", pickTime: "Escolhe uma hora", priceLabel: "Preço",
+  },
+  zh: {
+    showDistance: "显示距离", directions: "路线",
+    yourAppointmentAt: "您在以下门店的预约", checkingWithStudio: "我们正在与门店确认",
+    bookingDone: "预约成功！🎉", waitTime: "我们会在30分钟内告知您确认的时间。如果门店无法安排,我们会为您推荐附近其他门店。",
+    addToCalendar: "添加到我的日历", waSetItUp: "通过WhatsApp联系我们,我们会为您安排", visitWebsite: "访问他们的网站",
+    timeConfirmedPay: "您的时间已确认。到店付款,无需信用卡。",
+    studioConfirmsPay: "门店通常会在几小时内确认,并通过邮件通知您。到店付款,无需信用卡。",
+    almostDone: "快完成了。通过WhatsApp联系我们,我们会为您安排。",
+    footerCredit: "Massage Club · 马德里 · book.massageclub.io",
+    notOnClub: "该门店尚未加入Massage Club。我们仍然可以为您安排预约。",
+    howWeBook: "我们就是这样为您预约的",
+    bookMassage: "预约按摩", pickServiceFirst: "请先选择一项服务",
+    servicesLabel: "服务", takeQuiz: "不确定选哪种按摩?来做60秒测试",
+    chooseServiceContinue: "选择一项服务以继续", continueLabel: "继续",
+    contactStep: "该门店尚未加入Massage Club,所以我们会替您联系他们。请选择2-3个可能的时间 - 提供的选择越多,确认越快。",
+    addSecondChoice: "+ 添加第二选择", addThirdChoice: "+ 添加第三选择", thirdChoice: "第三选择",
+    moreThanOne: "为多人预约吗?", groupCheck: "我们会确认门店能否同时接待您的整个团队。",
+    firstName: "名字", lastName: "姓氏", waPhone: "WhatsApp / 电话 (+34 600 123 456)", email: "电子邮箱",
+    anythingElse: "还有什么我们需要知道的吗?", optional: "可选",
+    needContact: "请添加您的姓名和联系方式",
+    reachYouWa: "以便我们通过WhatsApp确认您的时间。",
+    service: "服务", day: "日期", secondChoice: "第二选择", name: "姓名", contact: "联系方式", price: "价格",
+    pickAService: "选择一项服务", anyDay: "任意日期", anyTime: "任意时间", none: "无", notProvided: "未提供",
+    askStudio: "询问门店", requestWhatsapp: "通过WhatsApp请求", pickAMassage: "选择一项按摩",
+    back: "返回", waReassuranceStudios: "已加入Massage Club的门店可即时确认。", browseOtherStudios: "浏览其他门店",
+    callStudioLabel: "致电门店",
+    chooseService: "选择服务", pickDayTime: "选择日期和时间", customizeSession: "个性化您的疗程",
+    yourDetails: "您的信息", reviewConfirm: "查看并确认",
+    noServicesYet: "暂无服务信息。", yourUsualBooking: "您的常用预约", change: "更改",
+    notSureQuiz: "不确定选哪种按摩?来做60秒测试",
+    hoursNotPublished: "该门店尚未公布营业时间。通过WhatsApp询问,我们会为您安排。",
+    timesLabel: "时间", fullyBooked: "该日已满,请尝试其他日期。", left: "剩余",
+    addAnotherTime: "+ 添加另一个时间(推荐)",
+    optionalHelps: "可选,但有助于治疗师更好地为您服务。",
+    prefilledProfile: "已根据您的资料预填", startBlank: "重新开始",
+    pickMassageFirst: "请先选择一项按摩以使用这些选项。", chooseMassage: "选择按摩",
+    comfort: "舒适度", pressure: "力度", focusAreas: "重点部位", makeItYours: "个性化选项",
+    extrasNote: "该门店提供的附加服务,会加到您的总价中。", notesForTherapist: "给治疗师的备注",
+    notesPlaceholder: "有什么我们需要知道的吗?伤病、过敏、偏好等。",
+    giveContact: "请留下邮箱或WhatsApp号码以便我们联系您。",
+    createAccount: "创建我的免费Massage Club账户",
+    createAccountSub: "追踪您的预约并更快地再次预约。我们会给您发送一个一键登录链接,无需密码。",
+    notSet: "未设置", addOns: "附加项目", notes: "备注", addYourName: "添加您的姓名", addContact: "添加联系方式",
+    firstMassage: "第一次按摩吗?始终会使用毛巾覆盖,您可以选择力度,并可随时暂停。",
+    readFirstTimer: "阅读新手指南",
+    confirmedRightAway: "您的预约会立即确认。到店付款。",
+    studioConfirms: "门店会确认您的时间。到店付款。",
+    yourBooking: "您的预约", call: "致电", poweredBy: "由Massage Club提供技术支持",
+    forStudios: "商家入驻", privacy: "隐私政策", terms: "条款",
+    bookNow: "立即预约", requestBooking: "申请预约", instantConfirmation: "即时确认",
+    freeToBook: "免费预约 · 到店付款 · 无需信用卡",
+    booking: "正在预约", skipStep: "跳过此步骤",
+    addNameContact: "请添加您的姓名,以便门店知道是谁来访",
+    slotFilled: "该时间刚被预订,请选择其他时间",
+    somethingWrong: "出了点问题,请重试。",
+    bookYourMassage: "预约您的按摩",
+    pickService: "选择服务", pickDay: "选择日期", pickTime: "选择时间", priceLabel: "价格",
+  },
+};
+
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -2646,14 +3055,13 @@ export default function StudioBookingPage() {
   );
 }
 
-function Section({ step, title, titleEs, children }: { step: string; title: string; titleEs?: string; children: React.ReactNode }) {
+function Section({ step, title, children }: { step: string; title: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3 min-[900px]:mb-4">
         <div className="h-6 w-6 min-[900px]:h-8 min-[900px]:w-8 rounded-full bg-[#C4622D] text-white flex items-center justify-center text-xs min-[900px]:text-sm font-bold flex-shrink-0">{step}</div>
         <div>
           <h2 className="font-display text-lg min-[900px]:text-[22px] leading-tight text-gray-900">{title}</h2>
-          {titleEs && <p className="text-xs min-[900px]:text-sm text-[#8a7460] leading-tight">{titleEs}</p>}
         </div>
       </div>
       {children}
@@ -2746,11 +3154,13 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, labelEs, busy, badge, note, noteEs, summary,
+  ready, onNext, label, busy, badge, note, summary,
 }: {
-  ready: boolean; onNext: () => void; label?: string; labelEs?: string; busy?: boolean;
-  badge?: { text: string; textEs: string }; note?: string; noteEs?: string; summary?: string | null;
+  ready: boolean; onNext: () => void; label?: string; busy?: boolean;
+  badge?: { text: string }; note?: string; summary?: string | null;
 }) {
+  const lang = useFlowLang();
+  const c = pickCopy(PAGE_COPY, lang);
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
@@ -2759,7 +3169,7 @@ function StickyContinue({
         )}
         {badge && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF3E7] border border-[#CBE0C4] px-3 py-1 text-[11px] font-semibold text-[#3F6B36]">
-            <Check size={12} strokeWidth={3} /> {badge.text} <span className="font-normal opacity-80">/ {badge.textEs}</span>
+            <Check size={12} strokeWidth={3} /> {badge.text}
           </span>
         )}
         <button
@@ -2771,13 +3181,11 @@ function StickyContinue({
             ready && !busy ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
           }`}
         >
-          <span className="min-[900px]:text-lg">{busy ? "Booking" : label || "Continue"}</span>
-          <span className="text-xs font-normal opacity-90 min-[900px]:text-sm">{busy ? "Reservando" : labelEs || "Continuar"}</span>
+          <span className="min-[900px]:text-lg">{busy ? c.booking : label || c.continueLabel}</span>
         </button>
         {note && (
           <p className="text-[11px] min-[900px]:text-xs text-center text-[#8a7460]">
             {note}
-            {noteEs && <span className="block text-[#B3A597]">{noteEs}</span>}
           </p>
         )}
       </div>
@@ -2853,34 +3261,33 @@ function Stepper({
  * The Continue button itself lives ONLY in the sticky bar, never inline.
  */
 function WizardNav({
-  onBack, disabled, hint, hintEs, skip,
+  onBack, disabled, hint, skip,
 }: {
   onBack?: () => void;
   onNext?: () => void;
   disabled?: boolean;
   label?: string;
-  labelEs?: string;
   hint?: string;
-  hintEs?: string;
   skip?: () => void;
 }) {
+  const lang = useFlowLang();
+  const c = pickCopy(PAGE_COPY, lang);
   return (
     <div className="pt-4 min-[900px]:pt-5 space-y-2 min-[900px]:space-y-3">
       {disabled && hint && (
         <p className="text-xs min-[900px]:text-sm text-center text-[#8a7460]">
           {hint}
-          {hintEs && <span className="block">{hintEs}</span>}
         </p>
       )}
       <div className="flex items-center justify-between">
         {onBack ? (
           <button type="button" onClick={onBack} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
-            Back <span className="font-normal">/ Atrás</span>
+            {c.back}
           </button>
         ) : <span />}
         {skip && (
           <button type="button" onClick={skip} className="text-sm min-[900px]:text-base font-semibold text-[#C4622D] underline underline-offset-2">
-            Skip this step <span className="font-normal">/ Saltar</span>
+            {c.skipStep}
           </button>
         )}
       </div>
@@ -2892,19 +3299,20 @@ function WizardNav({
 
 /** One line of the live booking summary. */
 function SummaryRow({
-  label, labelEs, value, placeholder, onChange,
+  label, value, placeholder, onChange,
 }: {
   label: string;
-  labelEs: string;
   value: string | null;
   placeholder: string;
-  /** When given, the row gets a small "Change / Cambiar" link back to that step. */
+  /** When given, the row gets a small "Change" link back to that step. */
   onChange?: () => void;
 }) {
+  const lang = useFlowLang();
+  const c = pickCopy(PAGE_COPY, lang);
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="text-xs min-[900px]:text-sm text-gray-400 flex-shrink-0">
-        {label} <span className="text-[10px] min-[900px]:text-xs text-gray-300">{labelEs}</span>
+        {label}
       </span>
       <span className="flex items-baseline gap-2 min-w-0 justify-end">
         <span className={`text-sm min-[900px]:text-base text-right ${value ? "font-semibold text-gray-900" : "text-gray-300"}`} style={{ overflowWrap: "anywhere" }}>
@@ -2916,7 +3324,7 @@ function SummaryRow({
             onClick={onChange}
             className="flex-shrink-0 text-[11px] min-[900px]:text-xs font-semibold text-[#C4622D] underline underline-offset-2"
           >
-            Change <span className="font-normal">/ Cambiar</span>
+            {c.change}
           </button>
         )}
       </span>
