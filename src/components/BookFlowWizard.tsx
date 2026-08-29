@@ -592,17 +592,7 @@ const AREAS_BASE = [
 ];
 
 export function useBookFlowLang(): PageLang {
-  const { i18n } = useTranslation();
-  const resolved = (i18n.resolvedLanguage || "en").slice(0, 2);
-  const lang: PageLang = resolved === "es" ? "es" : "en";
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("mc_lang");
-      if ((saved === "en" || saved === "es") && saved !== resolved) i18n.changeLanguage(saved);
-    } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const lang = useFlowLang();
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -763,7 +753,7 @@ export default function BookFlowWizard({
     for (let i = 0; i <= 6; i++) {
       const d = new Date(madridToday);
       d.setDate(madridToday.getDate() + i);
-      const label = i === 0 ? t.today : i === 1 ? t.tomorrow : `${t.weekdays[d.getDay()]} ${d.getDate()}`;
+      const label = i === 0 ? t.today : i === 1 ? t.tomorrow : shortDate(d, lang);
       out.push({ label, iso: toIso(d) });
     }
     out.push({ label: t.flexible, iso: "Flexible" });
@@ -780,7 +770,7 @@ export default function BookFlowWizard({
     const iso = isoForDay(label);
     if (iso === "Flexible") return t.flexible;
     const [y, m, d] = iso.split("-").map(Number);
-    return new Intl.DateTimeFormat(lang === "es" ? "es-ES" : "en-GB", {
+    return new Intl.DateTimeFormat(localeOf(lang), {
       weekday: "long",
       day: "numeric",
       month: "short",
@@ -977,11 +967,14 @@ export default function BookFlowWizard({
 
   if (status === "success") {
     const slotList = [whenValue, when2Value, when3Value].filter(Boolean);
-    const slotsText = slotList.join(lang === "es" ? " o " : " or ");
-    const waText =
-      lang === "es"
-        ? `Hola, soy ${name}. Quiero reservar: ${baseWant}${isGroup ? ` para ${people} personas` : ""} en ${areaValue}. Me va bien ${slotsText}.`
-        : `Hi, I'm ${name}. I'd like to book a ${baseWant} massage${isGroup ? ` for ${people} people` : ""} in ${areaValue}. I can do ${slotsText}.`;
+    const slotsText = slotList.join(t.or);
+    const peopleSuffix = isGroup ? t.waPeopleSuffix.replace("{people}", people) : "";
+    const waText = t.waMessage
+      .replace("{name}", name)
+      .replace("{want}", baseWant)
+      .replace("{people}", peopleSuffix)
+      .replace("{area}", areaValue)
+      .replace("{when}", slotsText);
     const waLink = `https://wa.me/34613977900?text=${encodeURIComponent(waText)}`;
     const fallbackContact = email.trim() || phone.trim();
 
@@ -1101,7 +1094,7 @@ export default function BookFlowWizard({
                   {m}
                   {sameAsLast === m && (
                     <span className="block mt-1 text-xs font-normal text-muted-foreground">
-                      {lang === "es" ? "como la última vez" : "same as last time"}
+                      {t.sameAsLast}
                     </span>
                   )}
                 </button>
