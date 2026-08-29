@@ -1,6 +1,7 @@
 import { Scale, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCompare, compareKey } from "@/lib/compare";
+import { useFlowLang } from "@/lib/flowLang";
 
 type Props = {
   studio: { slug?: string | null; partner_id?: string | null; id?: string | null; studio?: string | null; name?: string | null };
@@ -9,11 +10,23 @@ type Props = {
   size?: "sm" | "md";
 };
 
+const COPY = {
+  en: { compare: "Compare", limit: "You can compare up to 3 studios" },
+  es: { compare: "Comparar", limit: "Puedes comparar hasta 3 estudios" },
+  fr: { compare: "Comparer", limit: "Vous pouvez comparer jusqu'à 3 instituts" },
+  de: { compare: "Vergleichen", limit: "Du kannst bis zu 3 Studios vergleichen" },
+  it: { compare: "Confronta", limit: "Puoi confrontare fino a 3 centri" },
+  pt: { compare: "Comparar", limit: "Podes comparar até 3 estúdios" },
+  zh: { compare: "比较", limit: "最多可比较 3 家门店" },
+} as const;
+
 /**
  * Checkbox-like "Compare" toggle used on studio cards and map popups.
  * Never navigates: it only edits the compare selection.
  */
 export default function CompareToggle({ studio, className, size = "md" }: Props) {
+  const lang = useFlowLang();
+  const t = COPY[lang];
   const { has, isFull, toggle } = useCompare();
   const selected = has(studio);
   const disabled = !selected && isFull;
@@ -30,7 +43,7 @@ export default function CompareToggle({ studio, className, size = "md" }: Props)
         e.preventDefault();
         toggle(studio);
       }}
-      title={disabled ? "You can compare up to 3 studios / Puedes comparar hasta 3 estudios" : undefined}
+      title={disabled ? t.limit : undefined}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border transition",
         size === "sm" ? "h-7 px-2.5 text-[11px]" : "h-8 px-3 text-xs",
@@ -50,11 +63,7 @@ export default function CompareToggle({ studio, className, size = "md" }: Props)
       >
         {selected ? <Check className="h-3 w-3 text-primary" /> : <Scale className="h-2.5 w-2.5 text-muted-foreground" />}
       </span>
-      <span className="font-semibold">Compare</span>
-      {/* The Spanish gloss is dropped in the compact size so chips fit two per row. */}
-      {size !== "sm" && (
-        <span className={cn("font-normal", selected ? "text-primary-foreground/80" : "text-muted-foreground")}>· Comparar</span>
-      )}
+      <span className="font-semibold">{t.compare}</span>
     </button>
   );
 }
