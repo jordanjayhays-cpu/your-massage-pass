@@ -169,6 +169,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Something went wrong. Please try again.",
     bookYourMassage: "Book your massage",
     pickService: "Pick a service", pickDay: "Pick a day", pickTime: "Pick a time", priceLabel: "Price",
+    moreTimesFaster: "The more times you give us, the faster we confirm.",
   },
   es: {
     showDistance: "Ver distancia", directions: "Cómo llegar",
@@ -227,6 +228,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Algo ha ido mal. Inténtalo de nuevo.",
     bookYourMassage: "Reserva tu masaje",
     pickService: "Elige un servicio", pickDay: "Elige un día", pickTime: "Elige una hora", priceLabel: "Precio",
+    moreTimesFaster: "Cuantas más horas nos des, antes te confirmamos.",
   },
   fr: {
     showDistance: "Voir la distance", directions: "Itinéraire",
@@ -285,6 +287,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Une erreur est survenue. Veuillez réessayer.",
     bookYourMassage: "Réservez votre massage",
     pickService: "Choisissez un service", pickDay: "Choisissez un jour", pickTime: "Choisissez une heure", priceLabel: "Prix",
+    moreTimesFaster: "Plus vous nous donnez d'horaires, plus vite on confirme.",
   },
   de: {
     showDistance: "Entfernung anzeigen", directions: "Wegbeschreibung",
@@ -343,6 +346,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     bookYourMassage: "Buche deine Massage",
     pickService: "Service wählen", pickDay: "Tag wählen", pickTime: "Zeit wählen", priceLabel: "Preis",
+    moreTimesFaster: "Je mehr Zeiten du uns gibst, desto schneller bestätigen wir.",
   },
   it: {
     showDistance: "Mostra distanza", directions: "Indicazioni",
@@ -401,6 +405,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Qualcosa è andato storto. Riprova.",
     bookYourMassage: "Prenota il tuo massaggio",
     pickService: "Scegli un servizio", pickDay: "Scegli un giorno", pickTime: "Scegli un orario", priceLabel: "Prezzo",
+    moreTimesFaster: "Più orari ci dai, più velocemente confermiamo.",
   },
   pt: {
     showDistance: "Ver distância", directions: "Como chegar",
@@ -459,6 +464,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Algo correu mal. Tenta outra vez.",
     bookYourMassage: "Reserva a tua massagem",
     pickService: "Escolhe um serviço", pickDay: "Escolhe um dia", pickTime: "Escolhe uma hora", priceLabel: "Preço",
+    moreTimesFaster: "Quanto mais horários nos deres, mais rápido confirmamos.",
   },
   zh: {
     showDistance: "显示距离", directions: "路线",
@@ -517,6 +523,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "出了点问题,请重试。",
     bookYourMassage: "预约您的按摩",
     pickService: "选择服务", pickDay: "选择日期", pickTime: "选择时间", priceLabel: "价格",
+    moreTimesFaster: "你提供的时间越多，我们确认得越快。",
   },
 };
 
@@ -586,7 +593,7 @@ export default function StudioBookingPage() {
   // Step-by-step wizard state (claimed studios).
   const [step, setStep] = useState(1);
   const [maxStep, setMaxStep] = useState(1);
-  const [stepError, setStepError] = useState<{ en: string; es: string } | null>(null);
+  const [stepError, setStepError] = useState<string | null>(null);
   // Wizard state for the unclaimed-studio WhatsApp handoff.
   const [hoStep, setHoStep] = useState(1);
   // The handoff panel heading, so every step transition visibly moves the viewport.
@@ -1234,28 +1241,14 @@ export default function StudioBookingPage() {
             <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
           </div>
           <div className="px-6 py-7">
-            <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>TU CITA EN</div>
-            <div className="text-xs mb-5" style={{ color: "#8a7460" }}>Your appointment at</div>
+            <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>{c.yourAppointmentAt}</div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             <p className="text-base font-semibold mb-3" style={{ color: "#3d2b1f" }}>
-              {isClaimed && !instantConfirm ? (
-                <>
-                  Estamos confirmando con el centro
-                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>We are checking with the studio now</span>
-                </>
-              ) : (
-                <>
-                  ¡Tu reserva está hecha! 🎉
-                  <span className="block text-sm font-normal mt-0.5" style={{ color: "#8a7460" }}>You're booked!</span>
-                </>
-              )}
+              {isClaimed && !instantConfirm ? c.checkingWithStudio : c.bookingDone}
             </p>
             {isClaimed && !instantConfirm && (
               <p className="text-sm mb-6 leading-snug" style={{ color: "#5a4736" }}>
-                Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
-                <span className="block mt-1" style={{ color: "#8a7460" }}>
-                  You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.
-                </span>
+                {c.waitTime}
               </p>
             )}
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
@@ -1282,27 +1275,22 @@ export default function StudioBookingPage() {
               <>
                 {instantConfirm ? (
                   <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                    Tu hora está confirmada. Pagas en el estudio, sin tarjeta.
-                    <span className="block text-xs mt-0.5">Your time is confirmed. You pay at the studio, no card needed.</span>
+                    {c.timeConfirmedPay}
                   </p>
                 ) : (
                   <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                    El estudio suele confirmar en unas horas y te avisamos por email. Pagas en el estudio, sin tarjeta.
-                    <span className="block text-xs mt-0.5">
-                      The studio usually confirms within a few hours and you will get an email. You pay at the studio, no card needed.
-                    </span>
+                    {c.studioConfirmsPay}
                   </p>
                 )}
                 <div className="flex flex-col items-center gap-3 w-full">
                   {gcal && (
                     <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <CalendarDays size={18} /> Add to my calendar
+                      <CalendarDays size={18} /> {c.addToCalendar}
                     </a>
                   )}
                   {waLink ? (
                     <a href={waLink} target="_blank" rel="noopener noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
-                      <span className="text-xs font-normal opacity-80">Escríbenos por WhatsApp y te lo organizamos</span>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {c.waSetItUp}</span>
                     </a>
                   ) : null}
                 </div>
@@ -1310,25 +1298,23 @@ export default function StudioBookingPage() {
             ) : (
               <>
                 <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  Casi listo. Escríbenos por WhatsApp y te lo organizamos.
-                  <span className="block text-xs mt-0.5">Almost done. WhatsApp us and we set it up.</span>
+                  {c.almostDone}
                 </p>
                 <div className="flex flex-col items-center gap-3 w-full">
                   {unclaimedWaLink ? (
                     <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
-                      <span className="text-xs font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
+                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {c.waSetItUp}</span>
                     </a>
                   ) : null}
                   {websiteUrl && (
                     <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
-                      Ver su web / Visit their website
+                      {c.visitWebsite}
                     </a>
                   )}
 
                   {gcal && (
                     <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <CalendarDays size={18} /> Add to my calendar
+                      <CalendarDays size={18} /> {c.addToCalendar}
                     </a>
                   )}
                 </div>
@@ -1353,7 +1339,7 @@ export default function StudioBookingPage() {
             />
 
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
-              Massage Club · Madrid · book.massageclub.io
+              {c.footerCredit}
             </div>
           </div>
         </div>
@@ -1571,16 +1557,12 @@ export default function StudioBookingPage() {
               </p>
             ) : null}
             <p className="text-sm min-[900px]:text-base mb-5" style={{ color: "#5a4736" }}>
-              This studio isn't on Massage Club yet. We can still set up your booking for you.
-              <span className="block text-xs min-[900px]:text-sm mt-0.5" style={{ color: "#7A7068" }}>
-                Este estudio todavía no está en Massage Club. Aun así te organizamos la reserva.
-              </span>
+              {c.notOnClub}
             </p>
             <div className="mb-5">
-              <HowBookingWorksVideo size="sm" label="This is how we book it for you" />
+              <HowBookingWorksVideo size="sm" label={c.howWeBook} />
               <p className="mt-2 text-center text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                This is how we book it for you
-                <span className="block">Así te lo reservamos</span>
+                {c.howWeBook}
               </p>
             </div>
 
@@ -1593,18 +1575,17 @@ export default function StudioBookingPage() {
               className="w-full min-[900px]:w-auto inline-flex flex-col items-center justify-center min-h-[52px] px-7 rounded-full font-semibold text-white motion-safe:transition hover:opacity-90"
               style={{ background: "#B85C38" }}
             >
-              <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> Book a massage</span>
-              <span className="text-xs font-normal opacity-90">Reserva un masaje</span>
+              <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {c.bookMassage}</span>
             </button>
             {!hoServiceId && (
               <p className="text-xs mt-2" style={{ color: "#9E9387" }}>
-                Pick a service below first <span className="opacity-80">/ Elige antes un servicio</span>
+                {c.pickServiceFirst}
               </p>
             )}
 
             {profile.services.length > 0 && (
               <div id="mc-services-menu" className="mt-6 text-left">
-                <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>SERVICIOS / SERVICES</p>
+                <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{c.servicesLabel}</p>
                 {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
                 <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3"
                   style={{ background: "#FAF6F1" }}>
@@ -1691,8 +1672,7 @@ export default function StudioBookingPage() {
                       >
                         <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
                         <span className="min-w-0">
-                          <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>Not sure which massage? Take the 60 second quiz</span>
-                          <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>¿No sabes cuál elegir? Haz el test</span>
+                          <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>{c.takeQuiz}</span>
                         </span>
                       </Link>
 
@@ -1713,8 +1693,7 @@ export default function StudioBookingPage() {
                           </>
                         ) : (
                           <>
-                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#7A7068" }}>Choose a service to continue</span>
-                            <span className="block text-xs min-[900px]:text-sm" style={{ color: "#9E9387" }}>Elige un servicio para continuar</span>
+                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#7A7068" }}>{c.chooseServiceContinue}</span>
                           </>
                         )}
                       </div>
@@ -1725,8 +1704,7 @@ export default function StudioBookingPage() {
                         className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition"
                         style={{ background: "#B85C38" }}
                       >
-                        Continue
-                        <span className="block text-xs font-normal opacity-90">Continuar</span>
+                        {c.continueLabel}
                       </button>
                     </div>
 
@@ -1737,10 +1715,7 @@ export default function StudioBookingPage() {
                     <div className="space-y-3 min-[900px]:space-y-4">
                       <div className="rounded-2xl px-3 py-2.5" style={{ background: "#F4EEE6" }}>
                         <p className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5C5349" }}>
-                          This studio isn't on Massage Club yet, so we'll contact them for you. Pick 2-3 times that could work — the more you give us, the faster we confirm.
-                        </p>
-                        <p className="mt-1 text-xs min-[900px]:text-sm leading-snug" style={{ color: "#9E9387" }}>
-                          Este centro todavía no está en Massage Club, así que contactamos con ellos por ti. Elige 2-3 horas que te vengan bien — cuantas más nos des, antes te confirmamos.
+                          {c.contactStep}
                         </p>
                       </div>
                       <div>
@@ -1762,8 +1737,7 @@ export default function StudioBookingPage() {
                           className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
                           style={{ color: "#B85C38" }}
                         >
-                          + Add a second choice
-                          <span className="block text-xs min-[900px]:text-sm font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una segunda opción</span>
+                          {c.addSecondChoice}
                         </button>
                       ) : (
                         <>
@@ -1781,18 +1755,16 @@ export default function StudioBookingPage() {
                               className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
                               style={{ color: "#B85C38" }}
                             >
-                              + Add a third choice
-                              <span className="block text-xs min-[900px]:text-sm font-normal no-underline" style={{ color: "#8a7460" }}>Añadir una tercera opción</span>
+                              {c.addThirdChoice}
                             </button>
                           ) : (
                             <div>
                               <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>
-                                Third choice
-                                <span className="ml-1" style={{ color: "#9E9387" }}>/ Tercera opción</span>
+                                {c.thirdChoice}
                               </span>
                               <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
-                                <DayStrip value={hoAlt2Date} onChange={setHoAlt2Date} label="Third choice" />
-                                <TimePills value={hoAlt2Time} onChange={setHoAlt2Time} label="Third choice" />
+                                <DayStrip value={hoAlt2Date} onChange={setHoAlt2Date} label={c.thirdChoice} />
+                                <TimePills value={hoAlt2Time} onChange={setHoAlt2Time} label={c.thirdChoice} />
                               </div>
                             </div>
                           )}
@@ -1816,7 +1788,7 @@ export default function StudioBookingPage() {
                             className="text-xs hover:opacity-80 transition-opacity"
                             style={{ color: "#9E9387" }}
                           >
-                            Booking for more than one person? / ¿Reservas para más de una persona?
+                            {c.moreThanOne}
                           </button>
                         ) : (
                           <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
@@ -1837,10 +1809,7 @@ export default function StudioBookingPage() {
                               );
                             })}
                             <p className="w-full mt-1 text-xs" style={{ color: "#9E9387" }}>
-                              We will check the studio can take your group at the same time.
-                              <span className="block text-[11px]" style={{ color: "#9E9387" }}>
-                                Confirmamos con el centro que pueden atender a todo el grupo a la vez.
-                              </span>
+                              {c.groupCheck}
                             </p>
                           </div>
                         )}
@@ -1849,14 +1818,14 @@ export default function StudioBookingPage() {
                         <input
                           value={hoFirstName}
                           onChange={(e) => setHoFirstName(e.target.value)}
-                          placeholder="First name / Nombre"
+                          placeholder={c.firstName}
                           autoComplete="given-name"
                           className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
                         />
                         <input
                           value={hoLastName}
                           onChange={(e) => setHoLastName(e.target.value)}
-                          placeholder="Last name / Apellido"
+                          placeholder={c.lastName}
                           autoComplete="family-name"
                           className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
                         />
@@ -1865,7 +1834,7 @@ export default function StudioBookingPage() {
                         <input
                           value={hoPhone}
                           onChange={(e) => setHoPhone(e.target.value)}
-                          placeholder="WhatsApp / Teléfono (+34 600 123 456)"
+                          placeholder={c.waPhone}
                           type="tel"
                           inputMode="tel"
                           autoComplete="tel"
@@ -1876,13 +1845,11 @@ export default function StudioBookingPage() {
                         />
                         {hoContact.phoneValid === false ? (
                           <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
-                            {CONTACT_COPY.en.badPhone}
-                            <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badPhone}</span>
+                            {CONTACT_COPY[lang].badPhone}
                           </p>
                         ) : (
                           <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                            Para confirmarte la hora por WhatsApp.
-                            <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>So we can confirm your time on WhatsApp.</span>
+                            {c.reachYouWa}
                           </p>
                         )}
                       </div>
@@ -1890,7 +1857,7 @@ export default function StudioBookingPage() {
                         <input
                           value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
-                          placeholder="Email"
+                          placeholder={c.email}
                           type="email"
                           inputMode="email"
                           autoComplete="email"
@@ -1901,27 +1868,25 @@ export default function StudioBookingPage() {
                         />
                         {hoContact.emailValid === false && (
                           <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
-                            {CONTACT_COPY.en.badEmail}
-                            <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badEmail}</span>
+                            {CONTACT_COPY[lang].badEmail}
                           </p>
                         )}
                       </div>
                       <div>
 
                         <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
-                          Anything else we should know? <span className="font-normal" style={{ color: "#9E9387" }}>/ ¿Algo más que debamos saber?</span>
+                          {c.anythingElse}
                         </p>
                         <textarea
                           value={hoNotes}
                           onChange={(e) => setHoNotes(e.target.value)}
-                          placeholder="Optional / Opcional"
+                          placeholder={c.optional}
                           className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] resize-none h-20 min-[900px]:h-24"
                         />
                       </div>
                       {!hoDetailsReady && (
                         <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          {CONTACT_COPY.en.needContact}
-                          <span className="block text-[11px] min-[900px]:text-xs" style={{ color: "#9E9387" }}>{CONTACT_COPY.es.needContact}</span>
+                          {CONTACT_COPY[lang].needContact}
                         </p>
                       )}
 
@@ -1962,8 +1927,7 @@ export default function StudioBookingPage() {
                           className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                           style={{ background: "#B85C38", color: "#fff" }}
                         >
-                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Request via WhatsApp</span>
-                          <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Solicitar por WhatsApp</span>
+                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {c.requestWhatsapp}</span>
                         </button>
                       ) : (
                         <button
@@ -1972,13 +1936,12 @@ export default function StudioBookingPage() {
                           className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
                           style={{ background: "#B85C38", color: "#fff" }}
                         >
-                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> Pick a massage</span>
-                          <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Elige un masaje</span>
+                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {c.pickAMassage}</span>
                         </button>
                       )}
                       <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
                       <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
-                        Back <span className="font-normal">/ Atrás</span>
+                        {c.back}
                       </button>
                     </div>
                   )}
@@ -1990,15 +1953,11 @@ export default function StudioBookingPage() {
                         <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
                       </div>
                       <div>
-                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>We are checking with the studio now</h3>
-                        <p className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>Estamos confirmando con el centro</p>
+                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>{c.checkingWithStudio}</h3>
                       </div>
                       <div className="rounded-xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
                         <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
-                          You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.
-                        </p>
-                        <p className="text-xs min-[900px]:text-sm leading-snug mt-2" style={{ color: "#7A7068" }}>
-                          Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
+                          {c.waitTime}
                         </p>
                       </div>
                       <AccountOfferBlock
@@ -2014,15 +1973,13 @@ export default function StudioBookingPage() {
                         className="inline-flex flex-col items-center justify-center w-full h-12 min-[900px]:h-14 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition"
                         style={{ borderColor: "#B85C38", color: "#B85C38" }}
                       >
-                        <span className="inline-flex items-center gap-2">Browse other studios</span>
-                        <span className="text-xs font-normal opacity-90">Ver otros estudios</span>
+                        <span className="inline-flex items-center gap-2">{c.browseOtherStudios}</span>
                       </Link>
                       <p className="text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>
-                        Studios already on Massage Club confirm instantly.
-                        <span className="block">Los estudios que ya están en Massage Club confirman al instante.</span>
+                        {c.waReassuranceStudios}
                       </p>
                       <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
-                        Back <span className="font-normal">/ Atrás</span>
+                        {c.back}
                       </button>
                     </div>
                   )}
@@ -2047,7 +2004,7 @@ export default function StudioBookingPage() {
 
 
             <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
-              Massage Club · Madrid · book.massageclub.io
+              {c.footerCredit}
             </div>
           </div>
         </div>
@@ -2079,21 +2036,21 @@ export default function StudioBookingPage() {
 
   const submitDetailsStep = () => {
     if (!nameComplete) {
-      setStepError({ en: "Add your first and last name so the studio knows who is coming", es: "Añade tu nombre y apellido para que el estudio sepa quién viene" });
+      setStepError(c.addNameContact);
       nameRef.current?.focus();
       return;
     }
     if (contact.phoneValid === false) {
-      setStepError({ en: CONTACT_COPY.en.badPhone, es: CONTACT_COPY.es.badPhone });
+      setStepError(CONTACT_COPY[lang].badPhone);
       return;
     }
     if (contact.emailValid === false) {
-      setStepError({ en: CONTACT_COPY.en.badEmail, es: CONTACT_COPY.es.badEmail });
+      setStepError(CONTACT_COPY[lang].badEmail);
       emailRef.current?.focus();
       return;
     }
     if (!hasContact) {
-      setStepError({ en: CONTACT_COPY.en.needContact, es: CONTACT_COPY.es.needContact });
+      setStepError(CONTACT_COPY[lang].needContact);
       emailRef.current?.focus();
       return;
     }
@@ -2257,9 +2214,9 @@ export default function StudioBookingPage() {
           setSlotCounts(counts);
         } catch {}
         setTime("");
-        setError("Esa hora se acaba de llenar, elige otra / That time just filled up, pick another");
+        setError(c.slotFilled);
       } else {
-        setError(msg || "Something went wrong. Please try again.");
+        setError(msg || c.somethingWrong);
       }
     } finally {
       setSubmitting(false);
@@ -2427,8 +2384,7 @@ export default function StudioBookingPage() {
                       >
                         <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
                         <span className="min-w-0 text-left">
-                          <span className="block text-sm min-[900px]:text-base font-semibold text-[#C4622D]">Not sure which massage? Take the 60 second quiz</span>
-                          <span className="block text-xs min-[900px]:text-sm text-[#8a7460]">¿No sabes cuál elegir? Haz el test</span>
+                          <span className="block text-sm min-[900px]:text-base font-semibold text-[#C4622D]">{c.notSureQuiz}</span>
                         </span>
                       </Link>
                       {profile.services.map(s => (
@@ -2459,7 +2415,7 @@ export default function StudioBookingPage() {
                           </button>
                         </div>
                       ))}
-                      {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">No services listed yet.</p>}
+                      {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">{c.noServicesYet}</p>}
                     </div>
                   )}
 
@@ -2485,16 +2441,12 @@ export default function StudioBookingPage() {
                 <Section step="2" title={c.pickDayTime}>
                   <div className="mb-4 rounded-xl px-3 py-2.5 bg-[#F4EEE6]">
                     <p className="text-xs min-[900px]:text-sm leading-snug text-[#5C5349]">
-                      The more times you give us, the faster we confirm.
-                    </p>
-                    <p className="mt-0.5 text-xs min-[900px]:text-sm leading-snug text-[#9E9387]">
-                      Cuantas más horas nos des, antes te confirmamos.
+                      {c.moreTimesFaster}
                     </p>
                   </div>
                   {openDates.length === 0 ? (
                     <div className="text-sm min-[900px]:text-base text-gray-500">
-                      <p>Este estudio todavía no ha publicado horarios. Pídelo por WhatsApp y lo organizamos.</p>
-                      <p className="text-gray-400 mt-1">This studio has not published its hours yet. Ask on WhatsApp and we will arrange it.</p>
+                      <p>{c.hoursNotPublished}</p>
                     </div>
                   ) : (
                     <div className="relative flex gap-2 w-full min-w-0 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory" style={{ scrollPaddingLeft: "4px" }}>
@@ -2516,9 +2468,9 @@ export default function StudioBookingPage() {
                   )}
                   {date && (
                     <div ref={timeRef} className="mt-5">
-                      <p className="text-xs min-[900px]:text-xl font-semibold text-gray-500 mb-2 min-[900px]:mb-3">Times <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Horas</span></p>
+                      <p className="text-xs min-[900px]:text-xl font-semibold text-gray-500 mb-2 min-[900px]:mb-3">{c.timesLabel}</p>
                       {times.length === 0 ? (
-                        <p className="text-sm min-[900px]:text-base text-gray-400">Fully booked that day. Try another date.</p>
+                        <p className="text-sm min-[900px]:text-base text-gray-400">{c.fullyBooked}</p>
                       ) : (
                         <div className="flex flex-wrap gap-2 min-[900px]:gap-3">
                           {times.map(t => {
@@ -2533,7 +2485,7 @@ export default function StudioBookingPage() {
                                 {t}
                                 {lowStock && (
                                   <span className={`block text-[10px] min-[900px]:text-xs font-normal ${time === t ? "text-white/80" : "text-amber-600"}`}>
-                                    {left} left
+                                    {left} {c.left}
                                   </span>
                                 )}
                               </button>
@@ -2551,10 +2503,7 @@ export default function StudioBookingPage() {
                           onClick={() => setAlt2Shown(true)}
                           className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2 text-[#C4622D]"
                         >
-                          + Add another time (recommended)
-                          <span className="block text-xs min-[900px]:text-sm font-normal no-underline text-[#8a7460]">
-                            Añadir otra hora (recomendado)
-                          </span>
+                          {c.addAnotherTime}
                         </button>
                       ) : (
                         <>
@@ -2565,10 +2514,7 @@ export default function StudioBookingPage() {
                               onClick={() => setAlt3Shown(true)}
                               className="mt-4 text-sm min-[900px]:text-base font-semibold underline underline-offset-2 text-[#C4622D]"
                             >
-                              + Add a third time
-                              <span className="block text-xs min-[900px]:text-sm font-normal no-underline text-[#8a7460]">
-                                Añadir una tercera hora
-                              </span>
+                              {c.addThirdChoice}
                             </button>
                           ) : (
                             renderAltSlot(altDate3, setAltDate3, altTime3, setAltTime3, c.thirdChoice)
@@ -2592,12 +2538,11 @@ export default function StudioBookingPage() {
               <div>
                 <Section step="3" title={c.customizeSession}>
                   <p className="text-sm min-[900px]:text-base text-gray-500 mb-4 min-[900px]:mb-5">
-                    Optional, but it helps your therapist get it right.
-                    <span className="block text-xs min-[900px]:text-sm text-gray-400">Opcional, pero ayuda a tu terapeuta.</span>
+                    {c.optionalHelps}
                   </p>
                   {customerProfile && prefsApplied && (
                     <div className="mb-4 min-[900px]:mb-5 rounded-xl border border-[#C4622D]/30 bg-[#C4622D]/5 px-3 min-[900px]:px-4 py-2 min-[900px]:py-2.5 flex items-center justify-between gap-2">
-                      <span className="text-xs min-[900px]:text-sm font-medium text-gray-700">Prefilled from your profile</span>
+                      <span className="text-xs min-[900px]:text-sm font-medium text-gray-700">{c.prefilledProfile}</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -2609,26 +2554,25 @@ export default function StudioBookingPage() {
                         }}
                         className="text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline"
                       >
-                        Start blank
+                        {c.startBlank}
                       </button>
                     </div>
                   )}
                   {!service && (
                     <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
                       <p className="text-xs min-[900px]:text-sm text-gray-600">
-                        Pick a massage first to choose these options.
-                        <span className="block text-gray-400">Elige antes un masaje para usar estas opciones.</span>
+                        {c.pickMassageFirst}
                       </p>
                       <button
                         type="button"
                         onClick={() => goStep(1)}
                         className="mt-1.5 text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline"
                       >
-                        Choose a massage <span className="font-normal">/ Elegir masaje</span>
+                        {c.chooseMassage}
                       </button>
                     </div>
                   )}
-                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Comfort <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Confort</span></p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">{c.comfort}</p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {[
                       { v: "silence" },
@@ -2650,7 +2594,7 @@ export default function StudioBookingPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Pressure <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Presión</span></p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">{c.pressure}</p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {PRESSURE_LEVELS.map(p => (
                       <button key={p} type="button" disabled={!service} onClick={() => setPressure(p)}
@@ -2661,7 +2605,7 @@ export default function StudioBookingPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Focus areas <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Zonas</span></p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">{c.focusAreas}</p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {FOCUS_AREAS.map(f => (
                       <button key={f} type="button" disabled={!service} onClick={() => toggle(focusAreas, f, setFocusAreas)}
@@ -2674,8 +2618,8 @@ export default function StudioBookingPage() {
 
                   {addons.length > 0 && (
                     <>
-                      <p className="text-xs font-semibold text-gray-500 mb-1 min-[900px]:text-xl min-[900px]:mb-1.5">Make it yours <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Hazlo tuyo</span></p>
-                      <p className="text-xs min-[900px]:text-sm text-gray-400 mb-2 min-[900px]:mb-3">Extras this studio offers. Added to your total.</p>
+                      <p className="text-xs font-semibold text-gray-500 mb-1 min-[900px]:text-xl min-[900px]:mb-1.5">{c.makeItYours}</p>
+                      <p className="text-xs min-[900px]:text-sm text-gray-400 mb-2 min-[900px]:mb-3">{c.extrasNote}</p>
                       <div className="space-y-2 min-[900px]:space-y-3 mb-4 min-[900px]:mb-5">
                         {addons.map((a: any) => {
                           const on = addonNames.includes(a.name);
@@ -2707,9 +2651,9 @@ export default function StudioBookingPage() {
                   )}
 
 
-                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Notes for your therapist <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Notas</span></p>
+                  <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">{c.notesForTherapist}</p>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                    placeholder="Anything we should know? Injuries, allergies, preferences."
+                    placeholder={c.notesPlaceholder}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24 min-[900px]:text-base min-[900px]:h-28" />
                 </Section>
                 <WizardNav onBack={() => goStep(2)} onNext={() => goStep(4)} skip={() => goStep(4)} />
@@ -2728,7 +2672,7 @@ export default function StudioBookingPage() {
                           onClick={() => setPeopleOpen(true)}
                           className="text-xs text-gray-400 hover:text-gray-500 transition-colors"
                         >
-                          Booking for more than one person? / ¿Reservas para más de una persona?
+                          {c.moreThanOne}
                         </button>
                       ) : (
                         <div className="flex flex-wrap gap-2">
@@ -2749,55 +2693,49 @@ export default function StudioBookingPage() {
                             );
                           })}
                           <p className="w-full mt-1 text-xs text-gray-400">
-                            We will check the studio can take your group at the same time.
-                            <span className="block text-[11px] text-gray-400">
-                              Confirmamos con el centro que pueden atender a todo el grupo a la vez.
-                            </span>
+                            {c.groupCheck}
                           </p>
                         </div>
                       )}
                     </div>
                     <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
-                      <input ref={nameRef} value={firstName} onChange={e => { setFirstName(e.target.value); setStepError(null); }} placeholder="First name / Nombre" autoComplete="given-name"
+                      <input ref={nameRef} value={firstName} onChange={e => { setFirstName(e.target.value); setStepError(null); }} placeholder={c.firstName} autoComplete="given-name"
                         aria-invalid={!!stepError && !firstName.trim()}
                         className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                           stepError && !firstName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
-                      <input value={lastName} onChange={e => { setLastName(e.target.value); setStepError(null); }} placeholder="Last name / Apellido" autoComplete="family-name"
+                      <input value={lastName} onChange={e => { setLastName(e.target.value); setStepError(null); }} placeholder={c.lastName} autoComplete="family-name"
                         aria-invalid={!!stepError && !lastName.trim()}
                         className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                           stepError && !lastName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
                     </div>
                     <div>
-                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder="Email" type="email" inputMode="email" autoComplete="email"
+                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder={c.email} type="email" inputMode="email" autoComplete="email"
                         aria-invalid={contact.emailValid === false}
                         className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                           contact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
                       {contact.emailValid === false && (
                         <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
-                          {CONTACT_COPY.en.badEmail}
-                          <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badEmail}</span>
+                          {CONTACT_COPY[lang].badEmail}
                         </p>
                       )}
                     </div>
                     <div>
-                      <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder="WhatsApp / Phone (+34 600 123 456)" type="tel" inputMode="tel" autoComplete="tel"
+                      <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder={c.waPhone} type="tel" inputMode="tel" autoComplete="tel"
                         aria-invalid={contact.phoneValid === false}
                         className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
                           contact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
                       {contact.phoneValid === false && (
                         <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
-                          {CONTACT_COPY.en.badPhone}
-                          <span className="block text-[11px] min-[900px]:text-xs">{CONTACT_COPY.es.badPhone}</span>
+                          {CONTACT_COPY[lang].badPhone}
                         </p>
                       )}
                     </div>
                     <p className="text-xs min-[900px]:text-sm text-gray-400">
-                      Give us an email or a WhatsApp number so we can reach you.
-                      <span className="block text-[11px] min-[900px]:text-xs text-gray-400">Déjanos un email o un WhatsApp para poder contactarte.</span>
+                      {c.giveContact}
                     </p>
 
 
@@ -2809,12 +2747,9 @@ export default function StudioBookingPage() {
                           onChange={e => setCreateAccount(e.target.checked)}
                         />
                         <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
-                          Create my free Massage Club account
+                          {c.createAccount}
                           <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
-                            Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.
-                          </span>
-                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
-                            Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.
+                            {c.createAccountSub}
                           </span>
                         </span>
                       </label>
@@ -2822,8 +2757,7 @@ export default function StudioBookingPage() {
 
                     {stepError && (
                       <p role="alert" className="text-sm min-[900px]:text-base font-medium text-[#B03A2E]">
-                        {stepError.en}
-                        <span className="block text-xs min-[900px]:text-sm font-normal text-[#8a7460]">{stepError.es}</span>
+                        {stepError}
                       </p>
                     )}
                   </div>
@@ -2861,10 +2795,7 @@ export default function StudioBookingPage() {
                   {/* Quiet first-timer reassurance, right before the commit */}
                   <div className="mt-4 rounded-2xl border border-[#EADFD2] bg-[#FBF7F2] px-4 py-3">
                     <p className="text-xs min-[900px]:text-sm text-[#5a4736] leading-snug">
-                      First massage? Draping is always used, you choose the pressure, and you can stop anytime.
-                    </p>
-                    <p className="text-[11px] min-[900px]:text-xs text-[#8a7460] leading-snug mt-0.5">
-                      ¿Primer masaje? Siempre se usa toalla, tú eliges la presión y puedes parar cuando quieras.
+                      {c.firstMassage}
                     </p>
                     <a
                       href="/guides/your-first-massage-in-madrid"
@@ -2872,22 +2803,12 @@ export default function StudioBookingPage() {
                       rel="noopener noreferrer"
                       className="inline-block mt-1.5 text-xs min-[900px]:text-sm font-semibold text-[#C4622D] hover:underline"
                     >
-                      Read the first-timer guide <span className="font-normal opacity-80">/ Lee la guía para principiantes</span>
+                      {c.readFirstTimer}
                     </a>
                   </div>
 
                   <p className="mt-3 text-xs min-[900px]:text-sm text-center text-[#8a7460]">
-                    {instantConfirm ? (
-                      <>
-                        Your time is confirmed right away. You pay at the studio.
-                        <span className="block">Tu hora se confirma al instante. Pagas en el estudio.</span>
-                      </>
-                    ) : (
-                      <>
-                        The studio confirms your time. You pay at the studio.
-                        <span className="block">El estudio confirma tu hora. Pagas en el estudio.</span>
-                      </>
-                    )}
+                    {instantConfirm ? c.confirmedRightAway : c.studioConfirms}
                   </p>
                   <WizardNav onBack={() => goStep(4)} />
 
@@ -2901,7 +2822,7 @@ export default function StudioBookingPage() {
           <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
             <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
               <p className="text-xs min-[900px]:text-sm font-bold uppercase tracking-[2px] text-[#C4622D] mb-1 min-[900px]:mb-2">
-                Your booking <span className="font-normal text-[#B3A597]">/ Tu reserva</span>
+                {c.yourBooking}
               </p>
               <SummaryRow label={c.service} value={service ? servicePrimaryName(service) : null} placeholder={c.pickAService} />
               <SummaryRow label={c.day} value={prettyDay} placeholder={c.pickDay} />
@@ -2960,9 +2881,7 @@ export default function StudioBookingPage() {
                     : "text-white bg-[#C4622D] shadow-sm hover:opacity-95"
                 }`}
               >
-                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> WhatsApp us and we set it up</span>
-                <span className="text-xs min-[900px]:text-sm font-normal opacity-90">Escríbenos por WhatsApp y te lo organizamos</span>
-
+                <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> {c.waSetItUp}</span>
               </a>
             )}
             <div className="flex flex-wrap gap-2 min-[900px]:gap-2.5">
@@ -3000,7 +2919,7 @@ export default function StudioBookingPage() {
 
               {partner.phone && (
                 <a href={telHref(partner.phone) || undefined} className="flex items-center gap-1 text-sm hover:text-gray-600">
-                  <Phone size={14} /> Call
+                  <Phone size={14} /> {c.call}
                 </a>
               )}
               {partner.instagram && (
@@ -3013,18 +2932,18 @@ export default function StudioBookingPage() {
             {/* Massage Club credit */}
             <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
               <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
-              <span>Powered by Massage Club</span>
+              <span>{c.poweredBy}</span>
             </div>
 
             {/* Legal footer */}
             <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-8 text-gray-400 text-[11px]">
               <span>Massage Club · Madrid</span>
               <span>·</span>
-              <Link to="/for-studios" className="hover:text-[#C4622D] transition">For studios</Link>
+              <Link to="/for-studios" className="hover:text-[#C4622D] transition">{c.forStudios}</Link>
               <span>·</span>
-              <Link to="/privacy" className="hover:text-[#C4622D] transition">Política de Privacidad</Link>
+              <Link to="/privacy" className="hover:text-[#C4622D] transition">{c.privacy}</Link>
               <span>·</span>
-              <Link to="/terms" className="hover:text-[#C4622D] transition">Términos</Link>
+              <Link to="/terms" className="hover:text-[#C4622D] transition">{c.terms}</Link>
               <span>·</span>
               <a href="mailto:support@massageclub.io" className="hover:text-[#C4622D] transition">support@massageclub.io</a>
             </div>
