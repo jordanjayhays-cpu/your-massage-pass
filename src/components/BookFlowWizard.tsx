@@ -487,12 +487,32 @@ export default function BookFlowWizard({
       });
       const data = await res.json().catch(() => ({ ok: false }));
       if (res.ok && data.ok) {
+        trackFunnel("wizard_submit_ok", {
+          source,
+          lang,
+          massage: massage || null,
+          area: areaValue || null,
+          request_id: (data as { id?: string | number }).id ?? null,
+        });
         setStatus("success");
         afterStep();
       } else {
+        trackFunnel("wizard_submit_error", {
+          source,
+          massage: massage || null,
+          area: areaValue || null,
+          status: res.status,
+          error: String((data as { error?: unknown }).error ?? `http_${res.status}`).slice(0, 200),
+        });
         setStatus("error");
       }
-    } catch {
+    } catch (e) {
+      trackFunnel("wizard_submit_error", {
+        source,
+        massage: massage || null,
+        area: areaValue || null,
+        error: String((e as Error)?.message || e || "network_error").slice(0, 200),
+      });
       setStatus("error");
     }
   };
