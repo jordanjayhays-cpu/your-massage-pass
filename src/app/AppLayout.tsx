@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { captureReferralFromUrl } from "@/lib/referral";
 import { captureSource } from "@/lib/attribution";
 import { migrateFavouritesToAccount } from "@/lib/favourites";
+import { DealsFooterLine } from "@/components/DealsLink";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
@@ -60,6 +61,10 @@ export default function AppLayout() {
     <BookingProvider>
       <MobileFrame>
         <Outlet />
+        {/* Shared quiet footer entry point to the deals list. */}
+        <footer className="px-4 pb-8 pt-6 text-center">
+          <DealsFooterLine />
+        </footer>
       </MobileFrame>
     </BookingProvider>
   );
