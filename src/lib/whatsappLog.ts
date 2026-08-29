@@ -40,6 +40,16 @@ const uuidOrNull = (v?: string | null): string | null =>
  * can later be attached to an account. Never throws.
  */
 export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<string | null> {
+  return (await logWhatsappRequestResult(row)).id;
+}
+
+/**
+ * Same insert, but also reports why it failed so callers can send the error
+ * message into funnel analytics. Never throws.
+ */
+export async function logWhatsappRequestResult(
+  row: WhatsappRequestLog,
+): Promise<{ id: string | null; error: string | null }> {
   try {
     const payload = {
       partner_id: uuidOrNull(row.partner_id ?? null),
@@ -62,14 +72,16 @@ export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<strin
       wa_number: clean(row.wa_number),
       message_text: clean(row.message_text),
     };
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("whatsapp_requests")
       .insert(payload as any)
       .select("id")
       .maybeSingle();
-    return (data as any)?.id ?? null;
-  } catch {
+    if (error) return { id: null, error: String(error.message || "insert_error").slice(0, 200) };
+    return { id: (data as any)?.id ?? null, error: null };
+  } catch (e) {
     // Logging must never break the handoff.
-    return null;
+    return { id: null, error: String((e as Error)?.message || e || "network_error").slice(0, 200) };
   }
 }
+
