@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useFlowLang } from "@/lib/flowLang";
 import { isValidEmail } from "@/lib/contactValidation";
 import { trackEvent } from "@/lib/siteVisit";
 import { trackFunnel } from "@/lib/funnel";
@@ -25,6 +25,50 @@ const COPY = {
     done: "Listo, te avisamos",
     invalid: "Ese email no parece correcto",
   },
+  fr: {
+    line: "Pas prêt à réserver ? On vous écrit dès qu'on trouve un bon prix.",
+    placeholder: "Votre email",
+    button: "M'envoyer les offres",
+    consent:
+      "En vous inscrivant, vous acceptez de recevoir des offres de massage à Madrid par email. Désinscription à tout moment.",
+    done: "C'est fait, on vous tient au courant",
+    invalid: "Cet email ne semble pas correct",
+  },
+  de: {
+    line: "Noch nicht bereit zu buchen? Wir schreiben dir, sobald wir einen guten Preis finden.",
+    placeholder: "Deine E-Mail",
+    button: "Angebote per E-Mail",
+    consent:
+      "Mit der Anmeldung stimmst du zu, dass wir dir Massage-Angebote in Madrid per E-Mail schicken. Jederzeit abbestellbar.",
+    done: "Erledigt, wir melden uns",
+    invalid: "Diese E-Mail sieht nicht richtig aus",
+  },
+  it: {
+    line: "Non sei pronto a prenotare? Ti scriviamo appena troviamo un buon prezzo.",
+    placeholder: "La tua email",
+    button: "Avvisami delle offerte",
+    consent:
+      "Iscrivendoti accetti di ricevere offerte di massaggi a Madrid via email. Puoi disiscriverti quando vuoi.",
+    done: "Fatto, ti terremo aggiornato",
+    invalid: "Questa email non sembra corretta",
+  },
+  pt: {
+    line: "Ainda não estás pronto para reservar? Avisamos-te quando encontrarmos um bom preço.",
+    placeholder: "O teu email",
+    button: "Avisa-me de ofertas",
+    consent:
+      "Ao juntares-te aceitas receber ofertas de massagens em Madrid por email. Cancela quando quiseres.",
+    done: "Feito, entraremos em contacto",
+    invalid: "Esse email não parece correto",
+  },
+  zh: {
+    line: "还没准备好预约？我们找到好价格会发邮件通知您。",
+    placeholder: "您的邮箱",
+    button: "邮件通知我优惠",
+    consent: "加入即表示您同意我们通过邮件向您发送马德里按摩优惠信息，随时可以取消订阅。",
+    done: "完成，我们会联系您",
+    invalid: "这个邮箱地址看起来不对",
+  },
 } as const;
 
 type Props = {
@@ -42,8 +86,7 @@ type Props = {
  * preferences they have already told us (want / area).
  */
 export default function ExitCaptureBlock({ source, want, area, step = null, className = "" }: Props) {
-  const { i18n } = useTranslation();
-  const lang = (i18n.resolvedLanguage || "en").slice(0, 2) === "es" ? "es" : "en";
+  const lang = useFlowLang();
   const t = COPY[lang];
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useFlowLang } from "@/lib/flowLang";
 
 const COPY = {
   en: {
@@ -16,11 +16,45 @@ const COPY = {
     homeLine: "Buenos precios en el masaje que quieres, en tu zona de Madrid. Un email cuando salga una oferta, nada de spam.",
     homeCta: "Únete gratis",
   },
+  fr: {
+    deals: "Recevez des offres de massage à Madrid",
+    confirmPre: "Vous voulez connaître les bons prix ?",
+    confirmLink: "Rejoindre la liste",
+    homeLine: "De bons prix sur le massage que vous voulez, dans votre quartier de Madrid. Un email quand une offre arrive, jamais de spam.",
+    homeCta: "Rejoindre gratuitement",
+  },
+  de: {
+    deals: "Massage-Angebote in Madrid erhalten",
+    confirmPre: "Möchtest du von guten Preisen erfahren?",
+    confirmLink: "Zur Liste anmelden",
+    homeLine: "Gute Preise für die Massage, die du willst, in deinem Teil von Madrid. Eine E-Mail, wenn ein Angebot kommt, nie Spam.",
+    homeCta: "Kostenlos anmelden",
+  },
+  it: {
+    deals: "Ricevi offerte di massaggi a Madrid",
+    confirmPre: "Vuoi sapere quando ci sono buoni prezzi?",
+    confirmLink: "Iscriviti alla lista",
+    homeLine: "Buoni prezzi sul massaggio che vuoi, nella tua zona di Madrid. Un'email quando arriva un'offerta, mai spam.",
+    homeCta: "Iscriviti gratis",
+  },
+  pt: {
+    deals: "Recebe ofertas de massagens em Madrid",
+    confirmPre: "Queres saber quando há bons preços?",
+    confirmLink: "Junta-te à lista",
+    homeLine: "Bons preços na massagem que queres, na tua zona de Madrid. Um email quando sai uma oferta, nunca spam.",
+    homeCta: "Junta-te grátis",
+  },
+  zh: {
+    deals: "获取马德里按摩优惠信息",
+    confirmPre: "想了解优惠价格吗？",
+    confirmLink: "加入名单",
+    homeLine: "在您所在的马德里地区，享受您想要的按摩的优惠价格。有优惠时才发一封邮件，绝不打扰。",
+    homeCta: "免费加入",
+  },
 } as const;
 
 function useLang() {
-  const { i18n } = useTranslation();
-  const lang = (i18n.resolvedLanguage || "en").slice(0, 2) === "es" ? "es" : "en";
+  const lang = useFlowLang();
   return COPY[lang];
 }
 

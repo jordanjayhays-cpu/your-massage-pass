@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Lock, Sparkles } from "lucide-react";
 
 import {
-  COMPLIMENT_TAGS, ISSUE_TAGS, reviewTagLabel, suggestDisplayName, type Lang,
+  COMPLIMENT_TAGS, ISSUE_TAGS, reviewTagLabel, suggestDisplayName,
 } from "@/lib/reviews";
+import { toFlowLang, type FlowLang } from "@/lib/flowLang";
 
 const FN_URL = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/review";
 
@@ -43,6 +44,8 @@ type FetchResp = {
 
 const COPY = {
   en: {
+    pageTitle: "Leave a review - Massage Club",
+    pageDesc: "Tell us about your massage.",
     loading: "Loading…",
     invalid: "Invalid link",
     invalidSub: "We could not find that booking.",
@@ -85,9 +88,10 @@ const COPY = {
     bookNext: "Book your next massage",
     bookAgainWa: "https://wa.me/34613977900?text=Hi%2C%20I%20want%20to%20book%20again",
     browse: "Browse studios",
-
   },
   es: {
+    pageTitle: "Deja tu opinión - Massage Club",
+    pageDesc: "Cuéntanos qué tal tu masaje.",
     loading: "Cargando…",
     invalid: "Enlace no válido",
     invalidSub: "No encontramos esa reserva.",
@@ -130,7 +134,236 @@ const COPY = {
     bookNext: "Reserva tu próximo masaje",
     bookAgainWa: "https://wa.me/34613977900?text=Hola%2C%20quiero%20reservar%20otra%20vez",
     browse: "Ver estudios",
+  },
+  fr: {
+    pageTitle: "Laisser un avis - Massage Club",
+    pageDesc: "Parlez-nous de votre massage.",
+    loading: "Chargement…",
+    invalid: "Lien non valide",
+    invalidSub: "Nous n'avons pas trouvé cette réservation.",
+    cancelled: "Cette réservation a été annulée",
+    back: "Retour",
+    skip: "Passer",
+    continue: "Continuer",
+    finish: "Terminer",
+    sending: "Enregistrement…",
+    error: "Impossible d'enregistrer. Veuillez réessayer.",
+    s1: (what: string, where: string) => (what ? `Comment était votre ${what} chez ${where} ?` : `Comment était votre massage chez ${where} ?`),
+    s1sub: "Touchez une étoile",
+    s2: "Comment était la pression ?",
+    s2sub: "Seuls vous et Massage Club voyez votre réponse.",
+    tooSoft: "Trop légère",
+    justRight: "Parfaite",
+    tooFirm: "Trop forte",
+    s3: "Le studio était-il propre ?",
+    s4: "Comment était l'ambiance ?",
+    starsSub: "Touchez une étoile",
+    s5good: "Qu'est-ce qui vous a marqué ?",
+    s5bad: "Qu'est-ce qui aurait pu être mieux ?",
+    s5sub: "Touchez tout ce qui s'applique",
+    other: "Autre",
+    otherPh: "Dites-nous en quelques mots",
 
+    s6: "Partagez votre expérience",
+    s6sub: "Ceci apparaît sur la page du studio.",
+    s6ph: "Que diriez-vous à un ami à propos de ce massage ?",
+    nameLabel: "Affiché comme",
+    namePh: "Client Massage Club",
+    s7: "Quelque chose juste pour nous ?",
+    s7sub: "Uniquement pour Massage Club. Le studio ne voit jamais ceci.",
+    s7ph: "Quelque chose que vous préférez ne pas dire publiquement",
+    s8: (studio: string) => `Retourneriez-vous chez ${studio} ?`,
+    yes: "Oui",
+    no: "Non",
+    thanksTitle: "Merci",
+    thanksBody: "Merci, votre avis aide d'autres personnes à trouver de bons massages.",
+    bookNext: "Réservez votre prochain massage",
+    bookAgainWa: "https://wa.me/34613977900?text=Bonjour%2C%20je%20veux%20r%C3%A9server%20%C3%A0%20nouveau",
+    browse: "Voir les studios",
+  },
+  de: {
+    pageTitle: "Bewertung abgeben - Massage Club",
+    pageDesc: "Erzähl uns von deiner Massage.",
+    loading: "Wird geladen…",
+    invalid: "Ungültiger Link",
+    invalidSub: "Wir konnten diese Buchung nicht finden.",
+    cancelled: "Diese Buchung wurde storniert",
+    back: "Zurück",
+    skip: "Überspringen",
+    continue: "Weiter",
+    finish: "Fertig",
+    sending: "Wird gespeichert…",
+    error: "Konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    s1: (what: string, where: string) => (what ? `Wie war deine ${what} bei ${where}?` : `Wie war deine Massage bei ${where}?`),
+    s1sub: "Tippe auf einen Stern",
+    s2: "Wie war der Druck?",
+    s2sub: "Nur du und Massage Club sehen deine Antwort.",
+    tooSoft: "Zu sanft",
+    justRight: "Genau richtig",
+    tooFirm: "Zu stark",
+    s3: "Wie sauber war das Studio?",
+    s4: "Wie war die Atmosphäre?",
+    starsSub: "Tippe auf einen Stern",
+    s5good: "Was hat dir besonders gefallen?",
+    s5bad: "Was hätte besser sein können?",
+    s5sub: "Tippe alles Zutreffende an",
+    other: "Sonstiges",
+    otherPh: "Sag es uns in ein paar Worten",
+
+    s6: "Teile deine Erfahrung",
+    s6sub: "Das erscheint auf der Seite des Studios.",
+    s6ph: "Was würdest du einem Freund über diese Massage erzählen?",
+    nameLabel: "Angezeigt als",
+    namePh: "Massage Club Kunde",
+    s7: "Etwas nur für uns?",
+    s7sub: "Nur für Massage Club. Das Studio sieht das nie.",
+    s7ph: "Etwas, das du lieber nicht öffentlich sagen möchtest",
+    s8: (studio: string) => `Würdest du wieder zu ${studio} gehen?`,
+    yes: "Ja",
+    no: "Nein",
+    thanksTitle: "Danke",
+    thanksBody: "Danke, deine Bewertung hilft anderen, tolle Massagen zu finden.",
+    bookNext: "Buche deine nächste Massage",
+    bookAgainWa: "https://wa.me/34613977900?text=Hallo%2C%20ich%20m%C3%B6chte%20wieder%20buchen",
+    browse: "Studios ansehen",
+  },
+  it: {
+    pageTitle: "Lascia una recensione - Massage Club",
+    pageDesc: "Raccontaci del tuo massaggio.",
+    loading: "Caricamento…",
+    invalid: "Link non valido",
+    invalidSub: "Non abbiamo trovato quella prenotazione.",
+    cancelled: "Questa prenotazione è stata annullata",
+    back: "Indietro",
+    skip: "Salta",
+    continue: "Continua",
+    finish: "Termina",
+    sending: "Salvataggio…",
+    error: "Impossibile salvare. Riprova.",
+    s1: (what: string, where: string) => (what ? `Com'è stato il tuo ${what} da ${where}?` : `Com'è stato il tuo massaggio da ${where}?`),
+    s1sub: "Tocca una stella",
+    s2: "Com'era la pressione?",
+    s2sub: "Solo tu e Massage Club vedete questa risposta.",
+    tooSoft: "Troppo leggera",
+    justRight: "Perfetta",
+    tooFirm: "Troppo forte",
+    s3: "Quanto era pulito lo studio?",
+    s4: "Com'era l'atmosfera?",
+    starsSub: "Tocca una stella",
+    s5good: "Cosa ti è piaciuto di più?",
+    s5bad: "Cosa si sarebbe potuto migliorare?",
+    s5sub: "Tocca tutto ciò che si applica",
+    other: "Altro",
+    otherPh: "Raccontacelo in poche parole",
+
+    s6: "Condividi la tua esperienza",
+    s6sub: "Questo appare sulla pagina dello studio.",
+    s6ph: "Cosa diresti a un amico di questo massaggio?",
+    nameLabel: "Mostrato come",
+    namePh: "Cliente Massage Club",
+    s7: "Qualcosa solo per noi?",
+    s7sub: "Solo per Massage Club. Lo studio non lo vede mai.",
+    s7ph: "Qualcosa che preferisci non dire pubblicamente",
+    s8: (studio: string) => `Torneresti da ${studio}?`,
+    yes: "Sì",
+    no: "No",
+    thanksTitle: "Grazie",
+    thanksBody: "Grazie, la tua recensione aiuta altre persone a trovare ottimi massaggi.",
+    bookNext: "Prenota il tuo prossimo massaggio",
+    bookAgainWa: "https://wa.me/34613977900?text=Ciao%2C%20vorrei%20prenotare%20di%20nuovo",
+    browse: "Sfoglia gli studi",
+  },
+  pt: {
+    pageTitle: "Deixe uma avaliação - Massage Club",
+    pageDesc: "Conte-nos sobre a sua massagem.",
+    loading: "A carregar…",
+    invalid: "Link inválido",
+    invalidSub: "Não encontramos essa reserva.",
+    cancelled: "Esta reserva foi cancelada",
+    back: "Voltar",
+    skip: "Saltar",
+    continue: "Continuar",
+    finish: "Concluir",
+    sending: "A guardar…",
+    error: "Não foi possível guardar. Tenta novamente.",
+    s1: (what: string, where: string) => (what ? `Como foi a sua ${what} em ${where}?` : `Como foi a sua massagem em ${where}?`),
+    s1sub: "Toque numa estrela",
+    s2: "Como foi a pressão?",
+    s2sub: "Só tu e a Massage Club veem esta resposta.",
+    tooSoft: "Muito suave",
+    justRight: "Perfeita",
+    tooFirm: "Muito forte",
+    s3: "Quão limpo estava o estúdio?",
+    s4: "Como foi o ambiente?",
+    starsSub: "Toque numa estrela",
+    s5good: "O que se destacou?",
+    s5bad: "O que poderia ter sido melhor?",
+    s5sub: "Toque em tudo o que se aplica",
+    other: "Outro",
+    otherPh: "Diz-nos em poucas palavras",
+
+    s6: "Partilha a tua experiência",
+    s6sub: "Isto aparece na página do estúdio.",
+    s6ph: "O que dirias a um amigo sobre esta massagem?",
+    nameLabel: "Mostrado como",
+    namePh: "Cliente Massage Club",
+    s7: "Algo só para nós?",
+    s7sub: "Só para a Massage Club. O estúdio nunca vê isto.",
+    s7ph: "Algo que preferes não dizer publicamente",
+    s8: (studio: string) => `Voltarias a ${studio}?`,
+    yes: "Sim",
+    no: "Não",
+    thanksTitle: "Obrigado",
+    thanksBody: "Obrigado, a tua avaliação ajuda outras pessoas a encontrar boas massagens.",
+    bookNext: "Reserva a tua próxima massagem",
+    bookAgainWa: "https://wa.me/34613977900?text=Ol%C3%A1%2C%20quero%20reservar%20novamente",
+    browse: "Ver estúdios",
+  },
+  zh: {
+    pageTitle: "留下评价 - Massage Club",
+    pageDesc: "告诉我们你的按摩体验。",
+    loading: "加载中…",
+    invalid: "链接无效",
+    invalidSub: "我们找不到该预约。",
+    cancelled: "该预约已取消",
+    back: "返回",
+    skip: "跳过",
+    continue: "继续",
+    finish: "完成",
+    sending: "保存中…",
+    error: "保存失败，请重试。",
+    s1: (what: string, where: string) => (what ? `你在${where}的${what}怎么样？` : `你在${where}的按摩怎么样？`),
+    s1sub: "点击星星",
+    s2: "力度怎么样？",
+    s2sub: "只有你和 Massage Club 能看到这个答案。",
+    tooSoft: "太轻",
+    justRight: "刚刚好",
+    tooFirm: "太重",
+    s3: "工作室干净吗？",
+    s4: "氛围怎么样？",
+    starsSub: "点击星星",
+    s5good: "哪些方面很突出？",
+    s5bad: "哪些方面可以改进？",
+    s5sub: "点击所有适用的选项",
+    other: "其他",
+    otherPh: "用几个词告诉我们",
+
+    s6: "分享你的体验",
+    s6sub: "这会显示在工作室的页面上。",
+    s6ph: "你会怎么向朋友介绍这次按摩？",
+    nameLabel: "显示为",
+    namePh: "Massage Club 客户",
+    s7: "有什么只想告诉我们的吗？",
+    s7sub: "仅供 Massage Club 查看，工作室看不到这个。",
+    s7ph: "你不想公开说的内容",
+    s8: (studio: string) => `你还会再去${studio}吗？`,
+    yes: "会",
+    no: "不会",
+    thanksTitle: "谢谢",
+    thanksBody: "谢谢你的评价，这能帮助其他人找到好的按摩体验。",
+    bookNext: "预约下一次按摩",
+    bookAgainWa: "https://wa.me/34613977900?text=%E4%BD%A0%E5%A5%BD%EF%BC%8C%E6%88%91%E6%83%B3%E5%86%8D%E6%AC%A1%E9%A2%84%E7%BA%A6",
+    browse: "浏览工作室",
   },
 } as const;
 
@@ -172,7 +405,7 @@ export default function Review() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FetchResp | null>(null);
   const [fatal, setFatal] = useState<"invalid" | "cancelled" | null>(null);
-  const [lang, setLang] = useState<Lang>("en");
+  const [lang, setLang] = useState<FlowLang>("en");
 
   const [step, setStep] = useState(1);
   const [dir, setDir] = useState<1 | -1>(1);
@@ -196,6 +429,17 @@ export default function Review() {
   const t = COPY[lang];
 
   useEffect(() => {
+    document.title = t.pageTitle;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", t.pageDesc);
+  }, [t.pageTitle, t.pageDesc]);
+
+  useEffect(() => {
     if (!token) { setFatal("invalid"); setLoading(false); return; }
     (async () => {
       try {
@@ -203,7 +447,7 @@ export default function Review() {
         if (!r.ok) { setFatal("invalid"); setLoading(false); return; }
         const j: FetchResp = await r.json();
         setData(j);
-        setLang(String(j.lang || "").slice(0, 2).toLowerCase() === "es" ? "es" : "en");
+        setLang(toFlowLang(j.lang));
         if (j.cancelled) { setFatal("cancelled"); setLoading(false); return; }
         setDisplayName(suggestDisplayName(j.name));
         const rev = j.review;

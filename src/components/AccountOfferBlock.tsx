@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useFlowLang } from "@/lib/flowLang";
 import { supabase } from "@/lib/supabase";
 import { isValidEmail } from "@/lib/contactValidation";
 import { trackFunnel } from "@/lib/funnel";
@@ -39,6 +39,56 @@ const COPY = {
     sent: "Mira tu correo para terminar - un toque",
     invalid: "Ese email no parece correcto",
   },
+  fr: {
+    bookingTitle: "Enregistrez vos infos pour la prochaine fois",
+    bookingButton: "Créer mon compte gratuit",
+    bookingSub: "Suivez cette réservation, réservez à nouveau en deux clics et profitez des prix membres quand ils existeront.",
+    saveTitle: "Créez un compte gratuit pour sauvegarder des instituts et être averti d'un bon prix",
+    saveButton: "Créer mon compte gratuit",
+    emailLabel: "Votre email",
+    sent: "Vérifiez votre email pour terminer - un clic",
+    invalid: "Cet email ne semble pas correct",
+  },
+  de: {
+    bookingTitle: "Speichere deine Daten für nächstes Mal",
+    bookingButton: "Kostenloses Konto erstellen",
+    bookingSub: "Verfolge diese Buchung, buche in zwei Klicks erneut und erhalte Mitgliederpreise, sobald es sie gibt.",
+    saveTitle: "Erstelle ein kostenloses Konto, um Studios zu speichern und von guten Preisen zu erfahren",
+    saveButton: "Kostenloses Konto erstellen",
+    emailLabel: "Deine E-Mail",
+    sent: "Schau in dein E-Mail-Postfach, um fertig zu werden - ein Klick",
+    invalid: "Diese E-Mail sieht nicht richtig aus",
+  },
+  it: {
+    bookingTitle: "Salva i tuoi dati per la prossima volta",
+    bookingButton: "Crea il mio account gratuito",
+    bookingSub: "Tieni traccia di questa prenotazione, riprenota in due tocchi e ottieni i prezzi soci quando li avremo.",
+    saveTitle: "Crea un account gratuito per salvare i centri e sapere quando troviamo un buon prezzo",
+    saveButton: "Crea il mio account gratuito",
+    emailLabel: "La tua email",
+    sent: "Controlla la tua email per finire - un tocco",
+    invalid: "Questa email non sembra corretta",
+  },
+  pt: {
+    bookingTitle: "Guarda os teus dados para a próxima vez",
+    bookingButton: "Criar a minha conta grátis",
+    bookingSub: "Acompanha esta reserva, reserva de novo em dois toques e recebe preços de sócio quando existirem.",
+    saveTitle: "Cria uma conta grátis para guardar estúdios e saber quando temos um bom preço",
+    saveButton: "Criar a minha conta grátis",
+    emailLabel: "O teu email",
+    sent: "Confere o teu email para terminar - um toque",
+    invalid: "Esse email não parece correto",
+  },
+  zh: {
+    bookingTitle: "保存您的信息，方便下次预约",
+    bookingButton: "创建我的免费账户",
+    bookingSub: "追踪这次预约，两次点击即可再次预约，还能享受会员价格（如有）。",
+    saveTitle: "创建免费账户，收藏门店并在有优惠时收到通知",
+    saveButton: "创建我的免费账户",
+    emailLabel: "您的邮箱",
+    sent: "请查看您的邮箱以完成 - 只需一步",
+    invalid: "这个邮箱地址看起来不对",
+  },
 } as const;
 
 /**
@@ -56,8 +106,7 @@ export default function AccountOfferBlock({
   source,
   className = "",
 }: Props) {
-  const { i18n } = useTranslation();
-  const lang = (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2) === "es" ? "es" : "en";
+  const lang = useFlowLang();
   const t = COPY[lang];
 
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
