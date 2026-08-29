@@ -669,7 +669,7 @@ export default function BookFlowWizard({
                 <p className="text-sm text-muted-foreground">{t.dayLabel}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {dayChips.map((d) => (
-                    <Chip key={d} active={dVal === d} onClick={() => { setD(d); setHint(null); }}>{d}</Chip>
+                    <Chip key={d} active={dVal === d} onClick={() => { setD(d); setHint(null); trackFunnel("wizard_day_selected", { day: d, iso: isoForDay(d), option: idx + 1, massage: massage || null, source }); }}>{d}</Chip>
                   ))}
                 </div>
               </div>
