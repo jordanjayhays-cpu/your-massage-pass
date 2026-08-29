@@ -95,6 +95,7 @@ import ConfirmHoursRedirect from "./app/screens/ConfirmHoursRedirect";
 import StudioHours from "./pages/StudioHours";
 import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
+import AdTrafficRedirect from "./lib/AdTrafficRedirect";
 import ConsentBanner from "./components/ConsentBanner";
 import AnalyticsOptOut from "./components/AnalyticsOptOut";
 import ThanksToast from "./components/ThanksToast";
@@ -116,6 +117,7 @@ const App = () => (
       <BrowserRouter>
         <LocationAskProvider>
         <RouteTracker />
+        <AdTrafficRedirect />
         <ConsentBanner />
         <AnalyticsOptOut />
         <ThanksToast />
