@@ -12,8 +12,11 @@ import {
   Calendar as CalendarIcon, Check,
 } from "lucide-react";
 import PartnerLangPills from "@/app/components/PartnerLangPills";
-import { MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
 import { defaultPartnerLang, applyPartnerLang, type PartnerLang } from "@/app/lib/partnerLanguage";
+
+// Partner support intentionally uses the founder's personal WhatsApp, not the automated booking assistant.
+const PARTNER_SUPPORT_WA = "34612474827";
+const PARTNER_SUPPORT_WA_DISPLAY = "+34 612 474 827";
 
 const MASSAGE_TYPES = ["Relax", "Therapeutic", "Swedish", "Deep Tissue", "Sports", "Thai", "Balinese", "Ayurvedic", "Lomi Lomi", "Hot Stone", "Aromatherapy", "Reflexology", "Shiatsu", "Kobido", "Craneo-Facial", "Lymphatic", "Prenatal", "Couples", "4 Hands", "Express", "Ritual", "Hammam", "Body", "Physiotherapy", "Facial", "Spa Day", "Other"];
 const DAYS = [
@@ -949,7 +952,7 @@ function StudioSetupInner() {
 
   const openOptionalSetup = () => { setClaimAdvanced(true); setStep(1); window.scrollTo({ top: 0 }); };
 
-  const helpWaHref = `https://wa.me/${MASSAGE_CLUB_WA}?text=${encodeURIComponent(
+  const helpWaHref = `https://wa.me/${PARTNER_SUPPORT_WA}?text=${encodeURIComponent(
     `Hola Jordan, soy de ${sourceData?.business_name || "mi estudio"}. ¿Me lo configuráis vosotros?`
   )}`;
 
