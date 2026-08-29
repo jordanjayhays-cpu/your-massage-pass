@@ -265,6 +265,53 @@ export default function Notify() {
                     )}
 
                     <div className="space-y-2">
+                      <Label className="text-[15px]">{t.wantQ}</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {WANT_OPTIONS.map((o) => {
+                          const active = wantSel.includes(o.value);
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() =>
+                                setWantSel((prev) =>
+                                  active ? prev.filter((v) => v !== o.value) : [...prev, o.value],
+                                )
+                              }
+                              className={`h-10 px-4 rounded-full border text-sm font-medium transition ${
+                                active
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-background text-foreground/80 hover:border-primary/40"
+                              }`}
+                            >
+                              {lang === "es" ? o.es : o.en}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="area" className="text-[15px]">
+                        {t.areaQ}
+                      </Label>
+                      <select
+                        id="area"
+                        value={area}
+                        onChange={(e) => setArea(e.target.value)}
+                        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base md:text-sm"
+                      >
+                        <option value="">{t.areaPlaceholder}</option>
+                        {AREA_OPTIONS.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                        <option value="Somewhere else">{t.somewhereElse}</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
                       <div className="flex items-start gap-3">
                         <Checkbox
                           id="consent"
