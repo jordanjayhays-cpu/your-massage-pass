@@ -16,7 +16,11 @@ const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
 const COPY = {
   en: {
     title: "Join Massage Club",
-    sub: "Free. We'll message you when we find massages worth booking in Madrid.",
+    sub: "Free. We'll email you when we get a good price on the massage you want, in your part of Madrid.",
+    wantQ: "Which massage do you like?",
+    areaQ: "Where are you?",
+    areaPlaceholder: "Choose an area",
+    somewhereElse: "Somewhere else",
     name: "Name",
     email: "Email",
     whatsapp: "WhatsApp",
@@ -34,7 +38,11 @@ const COPY = {
   },
   es: {
     title: "Únete a Massage Club",
-    sub: "Gratis. Te escribimos cuando encontremos masajes que merezcan la pena en Madrid.",
+    sub: "Gratis. Te escribimos cuando consigamos un buen precio en el masaje que quieres, en tu zona de Madrid.",
+    wantQ: "¿Qué masaje te gusta?",
+    areaQ: "¿Dónde estás?",
+    areaPlaceholder: "Elige una zona",
+    somewhereElse: "Otra zona",
     name: "Nombre",
     email: "Email",
     whatsapp: "WhatsApp",
