@@ -5,10 +5,97 @@ import {
   fetchPublicReviews,
   summariseReviews,
   reviewTagLabel,
-  reviewDateLabel,
   type PublicReview,
-  type Lang,
 } from "@/lib/reviews";
+import { toFlowLang, type FlowLang } from "@/lib/flowLang";
+import { monthYear } from "@/lib/localeFormat";
+
+const COPY = {
+  en: {
+    heading: "Verified reviews",
+    sub: "Only from clients who booked through Massage Club.",
+    empty: "No reviews yet. Reviews come only from verified Massage Club bookings.",
+    review: (n: number) => (n === 1 ? "review" : "reviews"),
+    pressureRight: "Pressure just right",
+    cleanliness: "Cleanliness",
+    atmosphere: "Atmosphere",
+    fallbackName: "Massage Club client",
+    verifiedBooking: "Verified booking",
+    showAll: (n: number) => `Show all ${n} reviews`,
+  },
+  es: {
+    heading: "Opiniones verificadas",
+    sub: "Solo de clientes que reservaron con Massage Club.",
+    empty: "Todavía no hay opiniones. Las opiniones vienen solo de reservas verificadas de Massage Club.",
+    review: (n: number) => (n === 1 ? "opinión" : "opiniones"),
+    pressureRight: "Presión perfecta",
+    cleanliness: "Limpieza",
+    atmosphere: "Ambiente",
+    fallbackName: "Cliente de Massage Club",
+    verifiedBooking: "Reserva verificada",
+    showAll: (n: number) => `Ver las ${n} opiniones`,
+  },
+  fr: {
+    heading: "Avis vérifiés",
+    sub: "Uniquement des clients ayant réservé via Massage Club.",
+    empty: "Pas encore d'avis. Les avis proviennent uniquement de réservations vérifiées Massage Club.",
+    review: (n: number) => (n === 1 ? "avis" : "avis"),
+    pressureRight: "Pression parfaite",
+    cleanliness: "Propreté",
+    atmosphere: "Ambiance",
+    fallbackName: "Client Massage Club",
+    verifiedBooking: "Réservation vérifiée",
+    showAll: (n: number) => `Voir les ${n} avis`,
+  },
+  de: {
+    heading: "Verifizierte Bewertungen",
+    sub: "Nur von Kunden, die über Massage Club gebucht haben.",
+    empty: "Noch keine Bewertungen. Bewertungen stammen nur von verifizierten Massage-Club-Buchungen.",
+    review: (n: number) => (n === 1 ? "Bewertung" : "Bewertungen"),
+    pressureRight: "Druck genau richtig",
+    cleanliness: "Sauberkeit",
+    atmosphere: "Atmosphäre",
+    fallbackName: "Massage Club Kunde",
+    verifiedBooking: "Verifizierte Buchung",
+    showAll: (n: number) => `Alle ${n} Bewertungen anzeigen`,
+  },
+  it: {
+    heading: "Recensioni verificate",
+    sub: "Solo da clienti che hanno prenotato con Massage Club.",
+    empty: "Ancora nessuna recensione. Le recensioni provengono solo da prenotazioni verificate Massage Club.",
+    review: (n: number) => (n === 1 ? "recensione" : "recensioni"),
+    pressureRight: "Pressione perfetta",
+    cleanliness: "Pulizia",
+    atmosphere: "Atmosfera",
+    fallbackName: "Cliente Massage Club",
+    verifiedBooking: "Prenotazione verificata",
+    showAll: (n: number) => `Vedi tutte le ${n} recensioni`,
+  },
+  pt: {
+    heading: "Avaliações verificadas",
+    sub: "Apenas de clientes que reservaram pela Massage Club.",
+    empty: "Ainda não há avaliações. As avaliações vêm apenas de reservas verificadas da Massage Club.",
+    review: (n: number) => (n === 1 ? "avaliação" : "avaliações"),
+    pressureRight: "Pressão perfeita",
+    cleanliness: "Limpeza",
+    atmosphere: "Ambiente",
+    fallbackName: "Cliente Massage Club",
+    verifiedBooking: "Reserva verificada",
+    showAll: (n: number) => `Ver todas as ${n} avaliações`,
+  },
+  zh: {
+    heading: "已验证评价",
+    sub: "仅来自通过 Massage Club 预约的客户。",
+    empty: "还没有评价。评价仅来自经过验证的 Massage Club 预约。",
+    review: (n: number) => "条评价",
+    pressureRight: "力度刚好",
+    cleanliness: "清洁度",
+    atmosphere: "氛围",
+    fallbackName: "Massage Club 客户",
+    verifiedBooking: "已验证预约",
+    showAll: (n: number) => `查看全部 ${n} 条评价`,
+  },
+} as const;
 
 function Stars({ n, size = 14 }: { n: number; size?: number }) {
   return (
@@ -36,10 +123,11 @@ export default function StudioReviews({
   className = "",
 }: {
   partnerId: string;
-  lang?: Lang;
+  lang?: FlowLang | string;
   className?: string;
 }) {
-  const es = lang === "es";
+  const flowLang = toFlowLang(lang);
+  const t = COPY[flowLang];
   const [reviews, setReviews] = useState<PublicReview[] | null>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -60,21 +148,13 @@ export default function StudioReviews({
       <div className="flex items-center gap-2 mb-1">
         <BadgeCheck size={18} className="text-[#C4622D]" />
         <h2 className="font-display text-xl min-[900px]:text-2xl font-semibold text-[#2b2b2b]">
-          {es ? "Opiniones verificadas" : "Verified reviews"}
+          {t.heading}
         </h2>
       </div>
-      <p className="text-xs text-[#8a7460] mb-4">
-        {es
-          ? "Solo de clientes que reservaron con Massage Club."
-          : "Only from clients who booked through Massage Club."}
-      </p>
+      <p className="text-xs text-[#8a7460] mb-4">{t.sub}</p>
 
       {s.count === 0 ? (
-        <p className="text-sm text-[#5C5349]">
-          {es
-            ? "Todavía no hay opiniones. Las opiniones vienen solo de reservas verificadas de Massage Club."
-            : "No reviews yet. Reviews come only from verified Massage Club bookings."}
-        </p>
+        <p className="text-sm text-[#5C5349]">{t.empty}</p>
       ) : (
         <>
           {/* Airbnb-style header: big average, then histogram */}
@@ -85,7 +165,7 @@ export default function StudioReviews({
               </div>
               <div className="mt-2"><Stars n={Math.round(s.average ?? 0)} size={15} /></div>
               <div className="text-xs text-[#8a7460] mt-1">
-                {s.count} {es ? (s.count === 1 ? "opinión" : "opiniones") : (s.count === 1 ? "review" : "reviews")}
+                {s.count} {t.review(s.count)}
               </div>
             </div>
             <div className="flex-1 min-w-0 space-y-1">
@@ -111,17 +191,17 @@ export default function StudioReviews({
             <div className="mb-5 grid gap-3 min-[560px]:grid-cols-3">
               {[
                 s.pressureRight != null && {
-                  label: es ? "Presión perfecta" : "Pressure just right",
+                  label: t.pressureRight,
                   value: `${Math.round(s.pressureRight * 100)}%`,
                   pct: Math.round(s.pressureRight * 100),
                 },
                 s.cleanliness != null && {
-                  label: es ? "Limpieza" : "Cleanliness",
+                  label: t.cleanliness,
                   value: s.cleanliness.toFixed(1),
                   pct: Math.round((s.cleanliness / 5) * 100),
                 },
                 s.ambience != null && {
-                  label: es ? "Ambiente" : "Atmosphere",
+                  label: t.atmosphere,
                   value: s.ambience.toFixed(1),
                   pct: Math.round((s.ambience / 5) * 100),
                 },
@@ -145,9 +225,9 @@ export default function StudioReviews({
           {/* Top tags */}
           {s.topTags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-5">
-              {s.topTags.map((t) => (
-                <span key={t.key} className="rounded-full border border-[#EADFD1] bg-[#FAF6F1] px-3 py-1 text-xs font-medium text-[#5C5349]">
-                  {reviewTagLabel(t.key, lang)} <span className="text-[#8a7460]">x{t.count}</span>
+              {s.topTags.map((tg) => (
+                <span key={tg.key} className="rounded-full border border-[#EADFD1] bg-[#FAF6F1] px-3 py-1 text-xs font-medium text-[#5C5349]">
+                  {reviewTagLabel(tg.key, flowLang)} <span className="text-[#8a7460]">x{tg.count}</span>
                 </span>
               ))}
             </div>
@@ -160,9 +240,11 @@ export default function StudioReviews({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-[#2b2b2b] truncate">
-                      {r.display_name?.trim() || (es ? "Cliente de Massage Club" : "Massage Club client")}
+                      {r.display_name?.trim() || t.fallbackName}
                     </p>
-                    <p className="text-[11px] text-[#8a7460]">{reviewDateLabel(r.created_at, lang)}</p>
+                    <p className="text-[11px] text-[#8a7460]">
+                      {monthYear(new Date(r.created_at), flowLang)}
+                    </p>
                   </div>
                   <Stars n={Math.round(Number(r.rating))} />
                 </div>
@@ -171,9 +253,9 @@ export default function StudioReviews({
                 )}
                 {((r.tags ?? []).length > 0 || r.custom_tag?.trim()) && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {(r.tags ?? []).map((t) => (
-                      <span key={t} className="rounded-full bg-[#F6EFE6] px-2.5 py-0.5 text-[11px] text-[#5C5349]">
-                        {reviewTagLabel(t, lang)}
+                    {(r.tags ?? []).map((tg) => (
+                      <span key={tg} className="rounded-full bg-[#F6EFE6] px-2.5 py-0.5 text-[11px] text-[#5C5349]">
+                        {reviewTagLabel(tg, flowLang)}
                       </span>
                     ))}
                     {r.custom_tag?.trim() && (
@@ -184,7 +266,7 @@ export default function StudioReviews({
                   </div>
                 )}
                 <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-[#7A9A6A]">
-                  <BadgeCheck size={12} /> {es ? "Reserva verificada" : "Verified booking"}
+                  <BadgeCheck size={12} /> {t.verifiedBooking}
                 </span>
               </li>
             ))}
@@ -196,7 +278,7 @@ export default function StudioReviews({
               onClick={() => setShowAll(true)}
               className="mt-3 text-sm font-semibold text-[#C4622D] underline underline-offset-2"
             >
-              {es ? `Ver las ${reviews.length} opiniones` : `Show all ${reviews.length} reviews`}
+              {t.showAll(reviews.length)}
             </button>
           )}
         </>

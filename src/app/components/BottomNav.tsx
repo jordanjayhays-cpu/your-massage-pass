@@ -2,6 +2,17 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Flower2, Sparkles, CalendarDays, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useFlowLang } from "@/lib/flowLang";
+
+const ARIA_PRIMARY = {
+  en: "Primary",
+  es: "Principal",
+  fr: "Principal",
+  de: "Hauptnavigation",
+  it: "Principale",
+  pt: "Principal",
+  zh: "主导航",
+} as const;
 
 const TAB_DEFS = [
   { key: "massages", to: "/studios", icon: Flower2, match: ["/studios", "/studios", "/massages"] },
@@ -26,12 +37,13 @@ export default function BottomNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { t } = useTranslation();
+  const lang = useFlowLang();
   if (!shouldShowBottomNav(pathname)) return null;
 
   return (
     <nav
       className="relative flex-shrink-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/60 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-      aria-label="Primary"
+      aria-label={ARIA_PRIMARY[lang]}
     >
       <ul className="flex items-stretch justify-around w-full md:max-w-2xl md:mx-auto">
         {TAB_DEFS.map((tab) => {

@@ -1,10 +1,12 @@
 import { supabase } from "@/lib/supabase";
+import { toFlowLang, type FlowLang } from "@/lib/flowLang";
+import { monthYear } from "@/lib/localeFormat";
 
 /* ─────────── Review tag vocabulary ───────────
  * Chip keys are stored in reviews.tags. Labels live here so the review form and
  * the public studio page always agree.
  */
-export type Lang = "en" | "es";
+export type Lang = FlowLang;
 
 export const COMPLIMENT_TAGS = [
   "great_pressure",
@@ -23,23 +25,56 @@ export const ISSUE_TAGS = [
   "not_as_described",
 ] as const;
 
-const TAG_LABELS: Record<string, { en: string; es: string }> = {
-  great_pressure: { en: "Great pressure", es: "Presión perfecta" },
-  very_clean: { en: "Very clean", es: "Muy limpio" },
-  relaxing_vibe: { en: "Relaxing vibe", es: "Ambiente relajante" },
-  friendly_team: { en: "Friendly team", es: "Equipo amable" },
-  good_value: { en: "Good value", es: "Buena relación calidad-precio" },
-  english_spoken: { en: "English spoken", es: "Hablan inglés" },
-  pressure_off: { en: "Pressure was off", es: "La presión no era la adecuada" },
-  cleanliness: { en: "Cleanliness", es: "Limpieza" },
-  waiting_time: { en: "Waiting time", es: "Tiempo de espera" },
-  communication: { en: "Communication", es: "Comunicación" },
-  not_as_described: { en: "Not as described", es: "No era lo descrito" },
+const TAG_LABELS: Record<string, Record<FlowLang, string>> = {
+  great_pressure: {
+    en: "Great pressure", es: "Presión perfecta", fr: "Pression parfaite", de: "Perfekter Druck",
+    it: "Pressione perfetta", pt: "Pressão perfeita", zh: "力度很棒",
+  },
+  very_clean: {
+    en: "Very clean", es: "Muy limpio", fr: "Très propre", de: "Sehr sauber",
+    it: "Molto pulito", pt: "Muito limpo", zh: "非常干净",
+  },
+  relaxing_vibe: {
+    en: "Relaxing vibe", es: "Ambiente relajante", fr: "Ambiance relaxante", de: "Entspannte Atmosphäre",
+    it: "Atmosfera rilassante", pt: "Ambiente relaxante", zh: "氛围很放松",
+  },
+  friendly_team: {
+    en: "Friendly team", es: "Equipo amable", fr: "Équipe sympathique", de: "Freundliches Team",
+    it: "Staff gentile", pt: "Equipe simpática", zh: "团队友好",
+  },
+  good_value: {
+    en: "Good value", es: "Buena relación calidad-precio", fr: "Bon rapport qualité-prix", de: "Gutes Preis-Leistungs-Verhältnis",
+    it: "Buon rapporto qualità-prezzo", pt: "Boa relação custo-benefício", zh: "性价比高",
+  },
+  english_spoken: {
+    en: "English spoken", es: "Hablan inglés", fr: "On parle anglais", de: "Englisch wird gesprochen",
+    it: "Si parla inglese", pt: "Falam inglês", zh: "会讲英语",
+  },
+  pressure_off: {
+    en: "Pressure was off", es: "La presión no era la adecuada", fr: "La pression n'était pas la bonne", de: "Der Druck hat nicht gepasst",
+    it: "La pressione non era giusta", pt: "A pressão não estava certa", zh: "力度不太合适",
+  },
+  cleanliness: {
+    en: "Cleanliness", es: "Limpieza", fr: "Propreté", de: "Sauberkeit",
+    it: "Pulizia", pt: "Limpeza", zh: "清洁度",
+  },
+  waiting_time: {
+    en: "Waiting time", es: "Tiempo de espera", fr: "Temps d'attente", de: "Wartezeit",
+    it: "Tempo di attesa", pt: "Tempo de espera", zh: "等待时间",
+  },
+  communication: {
+    en: "Communication", es: "Comunicación", fr: "Communication", de: "Kommunikation",
+    it: "Comunicazione", pt: "Comunicação", zh: "沟通",
+  },
+  not_as_described: {
+    en: "Not as described", es: "No era lo descrito", fr: "Ne correspondait pas à la description", de: "Nicht wie beschrieben",
+    it: "Non come descritto", pt: "Não era como descrito", zh: "与描述不符",
+  },
 };
 
-export function reviewTagLabel(key: string, lang: Lang = "en"): string {
+export function reviewTagLabel(key: string, lang: string = "en"): string {
   const known = TAG_LABELS[key];
-  if (known) return known[lang];
+  if (known) return known[toFlowLang(lang)];
   const words = String(key || "").replace(/[_-]+/g, " ").trim();
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : "";
 }
@@ -150,11 +185,11 @@ export function summariseReviews(reviews: PublicReview[]): ReviewSummary {
   };
 }
 
-/** "March 2026" / "marzo 2026" */
-export function reviewDateLabel(iso: string, lang: Lang = "en"): string {
+/** "March 2026" / "marzo 2026" - localized month + year for a review date. */
+export function reviewDateLabel(iso: string, lang: string = "en"): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-GB", { month: "long", year: "numeric" });
+  return monthYear(d, lang);
 }
 
 /** "Jordan H." from a booking name. */

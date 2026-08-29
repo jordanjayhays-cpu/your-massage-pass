@@ -8,6 +8,7 @@ import { captureReferralFromUrl } from "@/lib/referral";
 import { captureSource } from "@/lib/attribution";
 import { migrateFavouritesToAccount } from "@/lib/favourites";
 import { DealsFooterLine } from "@/components/DealsLink";
+import { FLOW_LANGS } from "@/lib/flowLang";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
@@ -39,7 +40,11 @@ export default function AppLayout() {
           .eq("id", user.id)
           .maybeSingle();
         const lang = (data as any)?.preferred_language;
-        if (!cancelled && (lang === "es" || lang === "en") && lang !== i18n.resolvedLanguage) {
+        if (
+          !cancelled &&
+          (FLOW_LANGS as readonly string[]).includes(lang) &&
+          lang !== i18n.resolvedLanguage
+        ) {
           i18n.changeLanguage(lang);
         }
       } catch {

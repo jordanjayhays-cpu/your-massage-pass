@@ -8,9 +8,10 @@ import de from "./de.json";
 import it from "./it.json";
 import pt from "./pt.json";
 import zh from "./zh.json";
-import ar from "./ar.json";
 
-const SUPPORTED = ["es", "en", "fr", "de", "it", "pt", "zh", "ar"] as const;
+// Arabic was only ever a stub (a handful of handoff keys) so it is not offered:
+// a half-translated language reads worse than English. Re-add with a full ar.json.
+const SUPPORTED = ["es", "en", "fr", "de", "it", "pt", "zh"] as const;
 
 i18n
   .use(LanguageDetector)
@@ -24,7 +25,6 @@ i18n
       it: { translation: it },
       pt: { translation: pt },
       zh: { translation: zh },
-      ar: { translation: ar },
     },
     fallbackLng: "en",
     supportedLngs: SUPPORTED as unknown as string[],
@@ -48,7 +48,7 @@ try {
 
 const applyDir = (lng: string) => {
   if (typeof document === "undefined") return;
-  document.documentElement.dir = lng === "ar" ? "rtl" : "ltr";
+  document.documentElement.dir = "ltr";
   document.documentElement.lang = lng;
 };
 applyDir(i18n.resolvedLanguage || "en");

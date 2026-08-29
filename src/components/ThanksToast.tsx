@@ -1,7 +1,12 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useFlowLang } from "@/lib/flowLang";
+
+const COPY = {
+  en: "Thanks, noted!", es: "¡Gracias!", fr: "Merci, c'est noté !", de: "Danke, notiert!",
+  it: "Grazie, annotato!", pt: "Obrigado, anotado!", zh: "谢谢，已记录！",
+} as const;
 
 /**
  * People land back on the site with ?thanks=1 after replying to our follow up
@@ -9,12 +14,11 @@ import { toast } from "sonner";
  */
 export default function ThanksToast() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { i18n } = useTranslation();
+  const lang = useFlowLang();
 
   useEffect(() => {
     if (searchParams.get("thanks") !== "1") return;
-    const es = (i18n.language || "en").slice(0, 2) === "es";
-    toast(es ? "¡Gracias!" : "Thanks, noted!");
+    toast(COPY[lang]);
     const next = new URLSearchParams(searchParams);
     next.delete("thanks");
     setSearchParams(next, { replace: true });

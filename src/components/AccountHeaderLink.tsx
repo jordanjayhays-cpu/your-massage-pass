@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useFlowLang } from "@/lib/flowLang";
 import { supabase } from "@/lib/supabase";
+
+const COPY = {
+  en: { myAccount: "My account", signIn: "Sign in" },
+  es: { myAccount: "Mi cuenta", signIn: "Entrar" },
+  fr: { myAccount: "Mon compte", signIn: "Se connecter" },
+  de: { myAccount: "Mein Konto", signIn: "Anmelden" },
+  it: { myAccount: "Il mio account", signIn: "Accedi" },
+  pt: { myAccount: "A minha conta", signIn: "Entrar" },
+  zh: { myAccount: "我的账户", signIn: "登录" },
+} as const;
 
 /**
  * Quiet account affordance for the booking screens: "Sign in" when signed out,
@@ -9,8 +19,8 @@ import { supabase } from "@/lib/supabase";
  * compete with the booking CTA.
  */
 export default function AccountHeaderLink({ className = "" }: { className?: string }) {
-  const { i18n } = useTranslation();
-  const es = (i18n.resolvedLanguage || i18n.language || "en").slice(0, 2) === "es";
+  const lang = useFlowLang();
+  const t = COPY[lang];
   const [name, setName] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
@@ -51,7 +61,7 @@ export default function AccountHeaderLink({ className = "" }: { className?: stri
       to={signedIn ? "/app/profile" : "/login"}
       className={`text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-primary transition ${className}`}
     >
-      {signedIn ? name || (es ? "Mi cuenta" : "My account") : es ? "Entrar" : "Sign in"}
+      {signedIn ? name || t.myAccount : t.signIn}
     </Link>
   );
 }

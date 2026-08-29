@@ -2,12 +2,11 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { DealsFooterLine } from "@/components/DealsLink";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { MessageSquare, CalendarCheck, Banknote, ChevronRight } from "lucide-react";
-
+import { useFlowLang, type FlowLang } from "@/lib/flowLang";
 
 const COPY = {
   en: {
@@ -29,6 +28,7 @@ const COPY = {
     ],
     book: "Book a massage",
     whatsapp: "Or message us on WhatsApp",
+    faqTitle: "FAQ",
     faq: [
       { q: "Do I pay online?", a: "No. You pay the studio directly when you're there, cash or card." },
       { q: "What does it cost?", a: "The studio's normal price. Our service is free." },
@@ -39,7 +39,7 @@ const COPY = {
   },
   es: {
     title: "Cómo funciona Massage Club",
-    sub: "Masajes en Madrid, reservados por ti en inglés o español. Gratis.",
+    sub: "Masajes en Madrid, reservados por ti en tu idioma. Gratis.",
     steps: [
       {
         title: "Dinos qué quieres",
@@ -56,6 +56,7 @@ const COPY = {
     ],
     book: "Reserva un masaje",
     whatsapp: "O escríbenos por WhatsApp",
+    faqTitle: "Preguntas frecuentes",
     faq: [
       { q: "¿Pago online?", a: "No. Pagas en el centro, en efectivo o tarjeta." },
       { q: "¿Cuánto cuesta?", a: "El precio normal del centro. Nuestro servicio es gratis." },
@@ -64,32 +65,158 @@ const COPY = {
     ],
     footer: "Massage Club · Madrid · book.massageclub.io",
   },
+  fr: {
+    title: "Comment fonctionne Massage Club",
+    sub: "Massages à Madrid, réservés pour vous dans votre langue. Gratuit.",
+    steps: [
+      {
+        title: "Dites-nous ce que vous voulez",
+        body: "Quel massage, à peu près quand, et dans quel quartier de Madrid. C'est tout ce qu'il nous faut.",
+      },
+      {
+        title: "Nous confirmons votre créneau",
+        body: "Nous l'organisons avec le centre et confirmons votre créneau, généralement en moins d'une heure.",
+      },
+      {
+        title: "Vous payez sur place",
+        body: "Directement au centre, au même prix qu'en passant par la porte. Nous ne prenons rien — pas de frais, pas de commission.",
+      },
+    ],
+    book: "Réserver un massage",
+    whatsapp: "Ou écrivez-nous sur WhatsApp",
+    faqTitle: "FAQ",
+    faq: [
+      { q: "Je paie en ligne ?", a: "Non. Vous payez directement le centre sur place, en espèces ou par carte." },
+      { q: "Combien ça coûte ?", a: "Le prix normal du centre. Notre service est gratuit." },
+      { q: "Les centres parlent-ils français ?", a: "La réservation se fait dans votre langue. Certains centres parlent français, d'autres non — on vous le dit avant de réserver." },
+      { q: "Puis-je annuler ?", a: "Oui, écrivez-nous simplement. Aucun frais, on demande juste de prévenir à temps." },
+    ],
+    footer: "Massage Club · Madrid · book.massageclub.io",
+  },
+  de: {
+    title: "So funktioniert Massage Club",
+    sub: "Massagen in Madrid, für dich in deiner Sprache gebucht. Kostenlos.",
+    steps: [
+      {
+        title: "Sag uns, was du willst",
+        body: "Welche Massage, ungefähr wann und in welcher Gegend von Madrid. Mehr brauchen wir nicht.",
+      },
+      {
+        title: "Wir bestätigen deinen Termin",
+        body: "Wir arrangieren es mit dem Studio und bestätigen deinen Termin, meist innerhalb einer Stunde.",
+      },
+      {
+        title: "Du zahlst im Studio",
+        body: "Direkt vor Ort, zum selben Preis wie beim Reingehen. Wir verlangen nichts — keine Gebühr, keine Provision.",
+      },
+    ],
+    book: "Massage buchen",
+    whatsapp: "Oder schreib uns auf WhatsApp",
+    faqTitle: "Häufige Fragen",
+    faq: [
+      { q: "Zahle ich online?", a: "Nein. Du zahlst direkt im Studio, bar oder mit Karte." },
+      { q: "Was kostet es?", a: "Den normalen Preis des Studios. Unser Service ist kostenlos." },
+      { q: "Sprechen die Studios Deutsch?", a: "Die Buchung läuft in deiner Sprache. Manche Studios sprechen Deutsch, manche nicht — wir sagen es dir vor der Buchung." },
+      { q: "Kann ich stornieren?", a: "Ja, schreib uns einfach. Keine Kosten, wir bitten nur um rechtzeitige Info." },
+    ],
+    footer: "Massage Club · Madrid · book.massageclub.io",
+  },
+  it: {
+    title: "Come funziona Massage Club",
+    sub: "Massaggi a Madrid, prenotati per te nella tua lingua. Gratis.",
+    steps: [
+      {
+        title: "Dicci cosa vuoi",
+        body: "Che massaggio, più o meno quando e in quale zona di Madrid. Non ci serve altro.",
+      },
+      {
+        title: "Confermiamo il tuo orario",
+        body: "Lo organizziamo con il centro e ti confermiamo, di solito entro un'ora.",
+      },
+      {
+        title: "Paghi al centro",
+        body: "Direttamente a loro, allo stesso prezzo di chi entra dalla porta. Non ti facciamo pagare nulla — niente commissioni.",
+      },
+    ],
+    book: "Prenota un massaggio",
+    whatsapp: "O scrivici su WhatsApp",
+    faqTitle: "Domande frequenti",
+    faq: [
+      { q: "Pago online?", a: "No. Paghi direttamente al centro, in contanti o con carta." },
+      { q: "Quanto costa?", a: "Il prezzo normale del centro. Il nostro servizio è gratuito." },
+      { q: "I centri parlano italiano?", a: "La prenotazione avviene nella tua lingua. Alcuni centri parlano italiano, altri no — te lo diciamo prima di prenotare." },
+      { q: "Posso cancellare?", a: "Sì, scrivici e basta. Nessun costo, ti chiediamo solo di avvisare in tempo." },
+    ],
+    footer: "Massage Club · Madrid · book.massageclub.io",
+  },
+  pt: {
+    title: "Como funciona a Massage Club",
+    sub: "Massagens em Madrid, reservadas para ti no teu idioma. Grátis.",
+    steps: [
+      {
+        title: "Diz-nos o que queres",
+        body: "Que massagem, mais ou menos quando e em que zona de Madrid. É só isso que precisamos.",
+      },
+      {
+        title: "Confirmamos o teu horário",
+        body: "Organizamos com o estúdio e confirmamos o teu horário, normalmente em menos de uma hora.",
+      },
+      {
+        title: "Pagas no estúdio",
+        body: "Diretamente a eles, ao mesmo preço de quem entra na porta. Não cobramos nada — sem taxa, sem comissão.",
+      },
+    ],
+    book: "Reservar uma massagem",
+    whatsapp: "Ou manda-nos WhatsApp",
+    faqTitle: "Perguntas frequentes",
+    faq: [
+      { q: "Pago online?", a: "Não. Pagas diretamente no estúdio, em dinheiro ou cartão." },
+      { q: "Quanto custa?", a: "O preço normal do estúdio. O nosso serviço é grátis." },
+      { q: "Os estúdios falam português?", a: "A reserva é feita no teu idioma. Alguns estúdios falam português, outros não — dizemos-te antes de reservares." },
+      { q: "Posso cancelar?", a: "Sim, é só mandar mensagem. Sem custos, só pedimos que avises a tempo." },
+    ],
+    footer: "Massage Club · Madrid · book.massageclub.io",
+  },
+  zh: {
+    title: "Massage Club 使用方法",
+    sub: "在马德里的按摩，用您的语言为您预订。完全免费。",
+    steps: [
+      {
+        title: "告诉我们您想要什么",
+        body: "什么按摩、大概什么时间、马德里的哪个区域。我们只需要这些信息。",
+      },
+      {
+        title: "我们确认您的时间",
+        body: "我们与按摩中心安排并确认您的时段，通常一小时内完成。",
+      },
+      {
+        title: "您在按摩中心付款",
+        body: "直接付给他们，价格与到店一样。我们不收取任何费用——没有预订费，没有佣金。",
+      },
+    ],
+    book: "预订按摩",
+    whatsapp: "或在WhatsApp上给我们留言",
+    faqTitle: "常见问题",
+    faq: [
+      { q: "我需要在线付款吗？", a: "不需要。您到店时直接付款给按摩中心，现金或刷卡均可。" },
+      { q: "费用是多少？", a: "按摩中心的正常价格。我们的服务是免费的。" },
+      { q: "按摩中心会说中文吗？", a: "预订用您的语言进行。有些按摩中心会说中文，有些不会——预订前我们会告诉您。" },
+      { q: "我可以取消吗？", a: "可以，给我们留言即可。没有任何费用，我们只要求您提前告知。" },
+    ],
+    footer: "Massage Club · Madrid · book.massageclub.io",
+  },
 } as const;
 
-type PageLang = keyof typeof COPY;
+type PageLang = FlowLang;
 
 const ICONS = [MessageSquare, CalendarCheck, Banknote];
 
 export default function HowItWorks() {
-  const { i18n } = useTranslation();
-  const resolved = (i18n.resolvedLanguage || "en").slice(0, 2);
-  const lang: PageLang = resolved === "es" ? "es" : "en";
+  const lang: PageLang = useFlowLang();
   const t = COPY[lang] ?? COPY.en;
-
-  // Restore persisted page language (default English) and keep <html lang> + mc_lang in sync.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("mc_lang");
-      if ((saved === "en" || saved === "es") && saved !== resolved) {
-        i18n.changeLanguage(saved);
-      }
-    } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
-    try { localStorage.setItem("mc_lang", lang); } catch { /* ignore */ }
   }, [lang]);
 
   return (
@@ -176,7 +303,7 @@ export default function HowItWorks() {
           {/* FAQ */}
           <section className="mb-10 md:mb-12">
             <h2 className="font-display text-lg font-semibold text-foreground mb-4">
-              FAQ
+              {t.faqTitle}
             </h2>
             <div className="space-y-4">
               {t.faq.map((item, idx) => (
