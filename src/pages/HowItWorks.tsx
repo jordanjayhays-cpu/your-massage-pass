@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
+import { DealsFooterLine } from "@/components/DealsLink";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -194,6 +195,7 @@ export default function HowItWorks() {
 
         {/* Footer */}
         <footer className="py-6 text-center border-t border-border">
+          <DealsFooterLine className="mb-2" />
           <p className="text-xs text-muted-foreground">
             {t.footer}
           </p>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
+import { DealsFooterLine } from "@/components/DealsLink";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import BookFlowWizard, { useBookFlowLang } from "@/components/BookFlowWizard";
 import { trackEvent } from "@/lib/siteVisit";
@@ -148,6 +149,7 @@ export default function FbLanding() {
             }
             className="text-center"
           />
+          <DealsFooterLine className="mt-6 text-center" />
 
           <p className="mt-6 text-xs text-muted-foreground text-center">{t.footer}</p>
         </footer>
