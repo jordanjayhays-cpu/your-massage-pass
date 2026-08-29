@@ -31,6 +31,7 @@ import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 import { DealsConfirmationLine } from "@/components/DealsLink";
 import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
+import StudioGallery from "@/app/components/StudioGallery";
 
 
 
@@ -1846,8 +1847,14 @@ export default function StudioBookingPage() {
   return (
     <div className="min-h-screen bg-[#FAF6F1] relative">
       <div className="absolute top-3 right-3 z-30 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
-      {/* Hero */}
-      <div className="relative h-44 bg-gradient-to-br from-[#C4622D] to-[#5b0a16]">
+      {/* Hero — real cover photo when the studio has one, otherwise the themed fallback */}
+      <div
+        className={`relative bg-gradient-to-br from-[#C4622D] to-[#5b0a16] ${
+          partner.cover_url
+            ? "aspect-[16/10] max-h-[380px] overflow-hidden rounded-b-3xl"
+            : "h-44"
+        }`}
+      >
         <img
           src={studioImage({
             id: partner.id,
@@ -1856,10 +1863,13 @@ export default function StudioBookingPage() {
             services: (profile.services || []).map((s: any) => `${s.name ?? ""} ${s.type ?? ""}`),
             description: partner.description,
           }, 1200)}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-60"
+          alt={partner.cover_url ? partner.business_name : ""}
+          loading="lazy"
+          decoding="async"
+          className={`absolute inset-0 h-full w-full object-cover ${partner.cover_url ? "" : "opacity-60"}`}
           onError={(e) => studioImageFallback(e, 1200)}
         />
+        {partner.cover_url && <div className="absolute inset-0 bg-black/25" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-4 left-0 right-0 px-5 max-w-lg mx-auto">
           <div className="flex items-end gap-3">
@@ -1944,13 +1954,7 @@ export default function StudioBookingPage() {
               <div ref={serviceRef}>
                 <Section step="1" title="Choose a service" titleEs="Elige un servicio">
                   {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4 min-[900px]:mb-5">{partner.description}</p>}
-                  {(partner.gallery || []).length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
-                      {partner.gallery.map((url: string, i: number) => (
-                        <img key={i} src={url} alt="" className="h-24 w-36 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
-                      ))}
-                    </div>
-                  )}
+                  <StudioGallery items={partner.gallery || []} />
                   {!rebookId && (
                     <BookAgainBanner
                       partnerId={partner.id}
