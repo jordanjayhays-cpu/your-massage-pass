@@ -3,7 +3,7 @@ import { servicePrimaryName } from "@/lib/serviceName";
 import { findMassageType } from "@/lib/massageTypes";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Search, Star, MapPin, Heart, SlidersHorizontal, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
 import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
 import { useBooking } from "../BookingContext";
@@ -25,6 +25,11 @@ import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
 import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 
+
+
+/** Accent and case insensitive compare, so "Chamberi" matches "Chamberí". */
+const norm = (v: string) =>
+  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 
 export default function MassageList() {
@@ -52,6 +57,15 @@ export default function MassageList() {
   const askLocation = useLocationAsk();
 
   const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
+
+  // Area preselected from a link elsewhere on the site: /studios?area=Chamberi
+  const [searchParams, setSearchParams] = useSearchParams();
+  const areaParam = (searchParams.get("area") || "").trim();
+  const clearAreaParam = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("area");
+    setSearchParams(next, { replace: true });
+  };
 
 
 
@@ -128,7 +142,11 @@ export default function MassageList() {
           (m as any).lng <= areaBounds.east &&
           (m as any).lng >= areaBounds.west);
       const matchesSaved = !savedOnly || isFavourite(favouriteKey(m as any));
-      return matchesQ && matchesType && matchesArea && matchesSaved;
+      const areaHaystack = norm(
+        [(m as any).district, (m as any).address, (m as any).location, m.studio].filter(Boolean).join(" "),
+      );
+      const matchesAreaParam = !areaParam || areaHaystack.includes(norm(areaParam));
+      return matchesQ && matchesType && matchesArea && matchesSaved && matchesAreaParam;
     })
 
     .map((m) => ({
@@ -341,6 +359,15 @@ export default function MassageList() {
           }}
           onSelect={(shop) => handleBook(shop)}
         />
+        {areaParam && (
+          <button
+            type="button"
+            onClick={clearAreaParam}
+            className="mt-2 mr-2 inline-flex items-center gap-2 rounded-full border border-primary/50 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+          >
+            {lang === "es" ? `Zona: ${areaParam} · Quitar` : `Area: ${areaParam} · Clear`}
+          </button>
+        )}
         {areaBounds && (
           <button
             type="button"
@@ -430,7 +457,9 @@ export default function MassageList() {
           {shopsLoading ? (
             <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
+            <div className="md:col-span-2 xl:col-span-1 text-center py-12">
+              <p className="text-sm text-muted-foreground">{t("app.massageList.noMatches")}</p>
+            </div>
           ) : (
 
             <>
@@ -569,6 +598,19 @@ export default function MassageList() {
             </>
           )}
         </div>
+
+
+        {/* Never leave a filtered list looking silent and unresponsive. */}
+        {!shopsLoading && !savedOnly && filtered.length < 3 && (areaParam || areaBounds || q.trim()) && (
+          <p className="md:col-span-2 xl:col-span-1 text-sm text-muted-foreground text-center py-4">
+            {lang === "es"
+              ? "Todavía hay pocos estudios aquí - dinos qué quieres y te encontramos uno. "
+              : "Few studios here yet - tell us what you want and we will find you one. "}
+            <Link to="/book" className="text-primary font-semibold underline underline-offset-2">
+              {lang === "es" ? "Pídelo aquí" : "Ask us here"}
+            </Link>
+          </p>
+        )}
 
         <ExitCaptureBlock
           source="studios-exit"

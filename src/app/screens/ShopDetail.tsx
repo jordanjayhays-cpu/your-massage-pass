@@ -29,6 +29,7 @@ import { telHref, conciergePrefill, MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
+import { studioPath } from "@/lib/studioHref";
 
 
 export default function ShopDetail() {
@@ -310,7 +311,7 @@ export default function ShopDetail() {
                       <Clock className="h-3.5 w-3.5" /> {t("duration_min", { count: s.duration })}
                     </span>
                     <button
-                      onClick={() => navigate(`/app/booking/${m.id}/calendar`)}
+                      onClick={() => navigate(studioPath(m as any))}
                       className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
                     >
                       {t("book_btn")}
@@ -401,7 +402,7 @@ export default function ShopDetail() {
                 <Phone className="h-4 w-4 text-primary" /> {t("call")}
               </a>
               <button
-                onClick={() => navigate(`/app/booking/${m.id}/calendar`)}
+                onClick={() => navigate(studioPath(m as any))}
                 className="h-12 rounded-full border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/50 transition shadow-soft"
               >
                 <MessageSquare className="h-4 w-4 text-primary" /> {t("chat")}

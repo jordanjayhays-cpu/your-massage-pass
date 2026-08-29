@@ -10,9 +10,6 @@ import AppLayout from "./app/AppLayout";
 import Login from "./app/screens/Login";
 import MassageList from "./app/screens/MassageList";
 import ShopDetail from "./app/screens/ShopDetail";
-import Calendar from "./app/screens/Calendar";
-import Customize from "./app/screens/Customize";
-import Payment from "./app/screens/Payment";
 import Discovery from "./app/screens/Discovery";
 import MassageType from "./app/screens/MassageType";
 import Quiz from "./app/screens/Quiz";
@@ -197,9 +194,11 @@ const App = () => (
             <Route index element={<Login />} />
             <Route path="massages" element={<MassageList />} />
             <Route path="massages/:id" element={<ShopDetail />} />
-            <Route path="booking/:id/calendar" element={<Calendar />} />
-            <Route path="booking/:id/customize" element={<Customize />} />
-            <Route path="booking/:id/payment" element={<Payment />} />
+            {/* Legacy calendar/customize/payment flow removed: customers book on
+                the studio's own page. Components stay for internal use only. */}
+            <Route path="booking/:id/*" element={<Navigate to="/studios" replace />} />
+
+
             <Route path="discovery" element={<Discovery />} />
             <Route path="discovery/quiz" element={<Quiz />} />
             <Route path="discovery/:type" element={<MassageType />} />
@@ -221,9 +220,9 @@ const App = () => (
             <Route index element={<Navigate to="/" replace />} />
             <Route path="massages" element={<Navigate to="/studios" replace />} />
             <Route path="massages/:id" element={<ShopDetail />} />
-            <Route path="booking/:id/calendar" element={<Calendar />} />
-            <Route path="booking/:id/customize" element={<Customize />} />
-            <Route path="booking/:id/payment" element={<Payment />} />
+            {/* Legacy calendar/customize/payment flow removed for customers. */}
+            <Route path="booking/:id/*" element={<Navigate to="/studios" replace />} />
+
             <Route path="discovery" element={<Discovery />} />
             <Route path="discovery/quiz" element={<Quiz />} />
             <Route path="discovery/:type" element={<MassageType />} />
