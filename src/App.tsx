@@ -221,9 +221,9 @@ const App = () => (
             <Route index element={<Navigate to="/" replace />} />
             <Route path="massages" element={<Navigate to="/studios" replace />} />
             <Route path="massages/:id" element={<ShopDetail />} />
-            <Route path="booking/:id/calendar" element={<Calendar />} />
-            <Route path="booking/:id/customize" element={<Customize />} />
-            <Route path="booking/:id/payment" element={<Payment />} />
+            {/* Legacy calendar/customize/payment flow removed for customers. */}
+            <Route path="booking/:id/*" element={<Navigate to="/studios" replace />} />
+
             <Route path="discovery" element={<Discovery />} />
             <Route path="discovery/quiz" element={<Quiz />} />
             <Route path="discovery/:type" element={<MassageType />} />
