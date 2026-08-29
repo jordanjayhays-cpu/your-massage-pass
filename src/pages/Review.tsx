@@ -530,7 +530,7 @@ export default function Review() {
 
             {step === 8 && (
               <>
-                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s8}</h1>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s8(studio)}</h1>
                 <div className="mt-8 grid grid-cols-2 gap-3">
                   {[{ v: true, l: t.yes }, { v: false, l: t.no }].map((o) => {
                     const on = wouldReturn === o.v;
