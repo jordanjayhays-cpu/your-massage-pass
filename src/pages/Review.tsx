@@ -37,6 +37,7 @@ type FetchResp = {
     tags?: string[] | null;
     private_note?: string | null;
     display_name?: string | null;
+    custom_tag?: string | null;
   } | null;
 };
 
@@ -467,7 +468,25 @@ export default function Review() {
                       </button>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => setOtherOn((v) => !v)}
+                    className={`rounded-full border px-4 py-3 text-[15px] font-medium transition ${
+                      otherOn ? "border-[#B85C38] bg-[#B85C38] text-white" : "border-[#E7DCCE] bg-white text-[#3D2B1F]"
+                    }`}
+                  >
+                    {t.other}
+                  </button>
                 </div>
+                {otherOn && (
+                  <input
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value.slice(0, 60))}
+                    placeholder={t.otherPh}
+                    maxLength={60}
+                    className="mt-4 w-full rounded-2xl border border-[#E7DCCE] bg-white px-4 py-3 text-[15px] text-[#3D2B1F] outline-none focus:border-[#B85C38]"
+                  />
+                )}
               </>
             )}
 
