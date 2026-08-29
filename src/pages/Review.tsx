@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Lock, Sparkles } from "lucide-react";
 
 import {
   COMPLIMENT_TAGS, ISSUE_TAGS, reviewTagLabel, suggestDisplayName, type Lang,
@@ -6,6 +7,10 @@ import {
 
 const FN_URL = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/review";
 const BOOK_AGAIN_WA = "https://wa.me/34613977900?text=Hi";
+
+const LAST_STEP = 8;
+
+type Pressure = "too_soft" | "perfect" | "too_strong";
 
 function sanitize(v: unknown): string {
   if (v == null) return "";
@@ -25,6 +30,9 @@ type FetchResp = {
   review?: {
     rating?: number;
     would_return?: boolean | null;
+    pressure_feedback?: Pressure | null;
+    cleanliness?: number | null;
+    ambience?: number | null;
     comment?: string | null;
     tags?: string[] | null;
     private_note?: string | null;
@@ -32,40 +40,44 @@ type FetchResp = {
   } | null;
 };
 
-const CREAM = "#faf6f1";
-const TERRA = "#C4622D";
-const INK = "#3d2b1f";
-const MUTED = "#8a7460";
-const LINE = "#EADFD1";
-
 const COPY = {
   en: {
     loading: "Loading…",
     invalid: "Invalid link",
     invalidSub: "We could not find that booking.",
     cancelled: "This booking was cancelled",
-    ratingTitle: "How was it?",
-    ratingHint: "Tap a star",
-    complimentTitle: "What stood out?",
-    issueTitle: "What went wrong?",
-    optional: "Optional - tap any that apply",
-    wordsTitle: "Anything to add?",
-    publicLabel: "Share your experience",
-    publicHint: "Shown on the studio page",
-    privateLabel: "Anything just for Massage Club?",
-    privateHint: "Never published",
-    returnLabel: "Would you go back?",
+    back: "Back",
+    skip: "Skip",
+    continue: "Continue",
+    finish: "Finish",
+    sending: "Saving…",
+    error: "Could not save. Please try again.",
+    s1: (what: string, where: string) => (what ? `How was your ${what} at ${where}?` : `How was your massage at ${where}?`),
+    s1sub: "Tap a star",
+    s2: "How was the pressure?",
+    s2sub: "Only you and Massage Club see how you answer this.",
+    tooSoft: "Too soft",
+    justRight: "Just right",
+    tooFirm: "Too firm",
+    s3: "How clean was the studio?",
+    s4: "How was the atmosphere?",
+    starsSub: "Tap a star",
+    s5good: "What stood out?",
+    s5bad: "What went wrong?",
+    s5sub: "Tap any that apply",
+    s6: "Share your experience",
+    s6sub: "This appears on the studio's page.",
+    s6ph: "What would you tell a friend about this massage?",
+    nameLabel: "Shown as",
+    namePh: "Massage Club client",
+    s7: "Anything just for us?",
+    s7sub: "Just for Massage Club. The studio never sees this.",
+    s7ph: "Anything you would rather not say publicly",
+    s8: "Would you go back?",
     yes: "Yes",
     no: "No",
-    nameLabel: "Shown as",
-    back: "Back",
-    next: "Next",
-    send: "Send review",
-    update: "Update review",
-    sending: "Sending…",
-    error: "Could not send. Please try again.",
     thanksTitle: "Thank you",
-    thanksBody: "Your review helps the next person find a good massage in Madrid.",
+    thanksBody: "Thanks, your review helps other people find great massages.",
     bookNext: "Book your next massage",
     browse: "Browse studios",
   },
@@ -74,32 +86,68 @@ const COPY = {
     invalid: "Enlace no válido",
     invalidSub: "No encontramos esa reserva.",
     cancelled: "Esta reserva fue cancelada",
-    ratingTitle: "¿Qué tal fue?",
-    ratingHint: "Toca una estrella",
-    complimentTitle: "¿Qué destacarías?",
-    issueTitle: "¿Qué falló?",
-    optional: "Opcional - toca lo que aplique",
-    wordsTitle: "¿Algo más?",
-    publicLabel: "Cuenta tu experiencia",
-    publicHint: "Se muestra en la página del estudio",
-    privateLabel: "¿Algo solo para Massage Club?",
-    privateHint: "Nunca se publica",
-    returnLabel: "¿Volverías?",
+    back: "Atrás",
+    skip: "Saltar",
+    continue: "Continuar",
+    finish: "Terminar",
+    sending: "Guardando…",
+    error: "No se pudo guardar. Inténtalo de nuevo.",
+    s1: (what: string, where: string) => (what ? `¿Qué tal tu ${what} en ${where}?` : `¿Qué tal tu masaje en ${where}?`),
+    s1sub: "Toca una estrella",
+    s2: "¿Qué tal la presión?",
+    s2sub: "Esto solo lo vemos tú y Massage Club.",
+    tooSoft: "Muy suave",
+    justRight: "Perfecta",
+    tooFirm: "Muy fuerte",
+    s3: "¿Qué tal la limpieza?",
+    s4: "¿Qué tal el ambiente?",
+    starsSub: "Toca una estrella",
+    s5good: "¿Qué destacarías?",
+    s5bad: "¿Qué falló?",
+    s5sub: "Toca lo que aplique",
+    s6: "Cuenta tu experiencia",
+    s6sub: "Se muestra en la página del estudio.",
+    s6ph: "¿Qué le contarías a un amigo sobre este masaje?",
+    nameLabel: "Se muestra como",
+    namePh: "Cliente de Massage Club",
+    s7: "¿Algo solo para nosotros?",
+    s7sub: "Solo para Massage Club. El estudio nunca lo ve.",
+    s7ph: "Algo que prefieras no decir en público",
+    s8: "¿Volverías?",
     yes: "Sí",
     no: "No",
-    nameLabel: "Se muestra como",
-    back: "Atrás",
-    next: "Siguiente",
-    send: "Enviar valoración",
-    update: "Actualizar valoración",
-    sending: "Enviando…",
-    error: "No se pudo enviar. Inténtalo de nuevo.",
     thanksTitle: "Gracias",
-    thanksBody: "Tu opinión ayuda a la próxima persona a encontrar un buen masaje en Madrid.",
+    thanksBody: "Gracias, tu opinión ayuda a otras personas a encontrar buenos masajes.",
     bookNext: "Reserva tu próximo masaje",
     browse: "Ver estudios",
   },
 } as const;
+
+/** Big tappable star row. */
+function StarRow({
+  value, onPick,
+}: { value: number; onPick: (n: number) => void }) {
+  return (
+    <div className="flex justify-center gap-1 min-[420px]:gap-2">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onPick(n)}
+          aria-label={`${n} / 5`}
+          className="px-0.5 leading-none transition-transform active:scale-90"
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: "clamp(2.6rem, 13vw, 3.6rem)",
+            color: n <= value ? "#B85C38" : "#DFD3C3",
+          }}
+        >
+          {n <= value ? "★" : "☆"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function Review() {
   const params = useMemo(
@@ -115,18 +163,22 @@ export default function Review() {
   const [fatal, setFatal] = useState<"invalid" | "cancelled" | null>(null);
   const [lang, setLang] = useState<Lang>("en");
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [rating, setRating] = useState<number>(preselectedR);
+  const [step, setStep] = useState(1);
+  const [dir, setDir] = useState<1 | -1>(1);
+  const [rating, setRating] = useState(preselectedR);
+  const [pressure, setPressure] = useState<Pressure | "">("");
+  const [cleanliness, setCleanliness] = useState(0);
+  const [ambience, setAmbience] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [privateNote, setPrivateNote] = useState("");
   const [wouldReturn, setWouldReturn] = useState<boolean | null>(null);
-  const [displayName, setDisplayName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+
+  const [saving, setSaving] = useState(false);
   const [errMsg, setErrMsg] = useState("");
-  const [isUpdate, setIsUpdate] = useState(false);
-  const advanced = useRef(false);
+  const [done, setDone] = useState(false);
+  const jumped = useRef(false);
 
   const t = COPY[lang];
 
@@ -141,14 +193,17 @@ export default function Review() {
         setLang(String(j.lang || "").slice(0, 2).toLowerCase() === "es" ? "es" : "en");
         if (j.cancelled) { setFatal("cancelled"); setLoading(false); return; }
         setDisplayName(suggestDisplayName(j.name));
-        if (j.review) {
-          setIsUpdate(true);
-          if (j.review.rating) setRating(j.review.rating);
-          if (Array.isArray(j.review.tags)) setTags(j.review.tags.filter(Boolean));
-          if (j.review.comment) setComment(j.review.comment);
-          if (j.review.private_note) setPrivateNote(j.review.private_note);
-          if (j.review.display_name) setDisplayName(j.review.display_name);
-          if (typeof j.review.would_return === "boolean") setWouldReturn(j.review.would_return);
+        const rev = j.review;
+        if (rev) {
+          if (rev.rating) setRating(rev.rating);
+          if (rev.pressure_feedback) setPressure(rev.pressure_feedback);
+          if (rev.cleanliness) setCleanliness(Number(rev.cleanliness));
+          if (rev.ambience) setAmbience(Number(rev.ambience));
+          if (Array.isArray(rev.tags)) setTags(rev.tags.filter(Boolean));
+          if (rev.comment) setComment(rev.comment);
+          if (rev.private_note) setPrivateNote(rev.private_note);
+          if (rev.display_name) setDisplayName(rev.display_name);
+          if (typeof rev.would_return === "boolean") setWouldReturn(rev.would_return);
         }
       } catch {
         setFatal("invalid");
@@ -157,254 +212,345 @@ export default function Review() {
     })();
   }, [token]);
 
-  // Email deep link with &r= lands straight on the chips step.
-  useEffect(() => {
-    if (!loading && !fatal && preselectedR && !advanced.current) {
-      advanced.current = true;
-      setStep(2);
+  /** Persist everything we know so far. Fire and forget unless it is the final save. */
+  const save = async (patch: Record<string, unknown> = {}, final = false) => {
+    const score = rating || Number(patch.rating) || 0;
+    if (score < 1) return true;
+    const body = {
+      token,
+      rating,
+      pressure_feedback: pressure || null,
+      cleanliness: cleanliness || null,
+      ambience: ambience || null,
+      tags,
+      comment: comment.trim() || null,
+      display_name: displayName.trim() || null,
+      private_note: privateNote.trim() || null,
+      would_return: wouldReturn,
+      lang,
+      ...patch,
+    };
+    try {
+      const r = await fetch(FN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.status === 404) { setFatal("invalid"); return false; }
+      if (r.status === 409) { setFatal("cancelled"); return false; }
+      if (!r.ok) { if (final) setErrMsg(t.error); return false; }
+      return true;
+    } catch {
+      if (final) setErrMsg(t.error);
+      return false;
     }
+  };
+
+  const goNext = (patch: Record<string, unknown> = {}) => {
+    setErrMsg("");
+    setDir(1);
+    void save(patch);                     // incremental, non-blocking
+    setStep((s) => Math.min(s + 1, LAST_STEP));
+  };
+
+  const goBack = () => { setErrMsg(""); setDir(-1); setStep((s) => Math.max(1, s - 1)); };
+
+  const finish = async (patch: Record<string, unknown> = {}) => {
+    setSaving(true);
+    setErrMsg("");
+    const ok = await save(patch, true);
+    setSaving(false);
+    if (ok) setDone(true);
+  };
+
+  // Email deep link with &r= skips the first screen.
+  useEffect(() => {
+    if (!loading && !fatal && preselectedR && !jumped.current) {
+      jumped.current = true;
+      setStep(2);
+      void save({ rating: preselectedR });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, fatal, preselectedR]);
 
-  const pickStar = (n: number) => {
-    setRating(n);
-    setTags([]);            // chip set depends on the score
-    window.setTimeout(() => setStep(2), 220);   // auto-advance
+  const pickStars = (n: number, set: (v: number) => void, field?: string) => {
+    set(n);
+    window.setTimeout(() => {
+      if (step === LAST_STEP) return;
+      goNext(field ? { [field]: n } : {});
+    }, 240);
   };
 
   const toggleTag = (key: string) =>
     setTags((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
-  const submit = async () => {
-    if (rating < 1 || submitting) return;
-    setSubmitting(true);
-    setErrMsg("");
-    try {
-      const r = await fetch(FN_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          rating,
-          tags,
-          comment: comment.trim() || null,
-          private_note: privateNote.trim() || null,
-          display_name: displayName.trim() || null,
-          would_return: wouldReturn,
-          lang,
-        }),
-      });
-      if (r.status === 404) { setFatal("invalid"); setSubmitting(false); return; }
-      if (r.status === 409) { setFatal("cancelled"); setSubmitting(false); return; }
-      if (!r.ok) { setErrMsg(t.error); setSubmitting(false); return; }
-      setDone(true);
-    } catch {
-      setErrMsg(t.error);
-    }
-    setSubmitting(false);
-  };
-
-  const studio = sanitize(data?.studio);
+  const studio = sanitize(data?.studio) || "—";
   const service = sanitize(data?.service);
-  const date = sanitize(data?.date);
-  const time = sanitize(data?.time);
-  const subLine = [service, [date, time].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
   const chipKeys: readonly string[] = rating >= 4 ? COMPLIMENT_TAGS : ISSUE_TAGS;
+  const privateScreen = step === 7;
 
-  const card: React.CSSProperties = {
-    width: "100%", background: "#fff", borderRadius: 24,
-    boxShadow: "0 6px 24px rgba(80, 44, 20, 0.08)",
-    padding: "28px 22px", color: INK,
-  };
-  const primaryBtn = (enabled: boolean): React.CSSProperties => ({
-    width: "100%", padding: "15px 20px", borderRadius: 999, border: "none",
-    background: enabled ? TERRA : "#E4DCD0", color: "#fff",
-    fontWeight: 700, fontSize: 16, cursor: enabled ? "pointer" : "not-allowed",
-  });
+  /* ── Shells ─────────────────────────────────────────────── */
+
+  const Centered = ({ children }: { children: React.ReactNode }) => (
+    <div className="min-h-[100dvh] bg-[#FAF6F0] flex items-center justify-center px-6 text-center">
+      <div className="max-w-sm">{children}</div>
+    </div>
+  );
+
+  if (loading) {
+    return <Centered><p className="text-[#8A7460]">{t.loading}</p></Centered>;
+  }
+  if (fatal === "invalid") {
+    return (
+      <Centered>
+        <div className="text-5xl mb-3">⚠️</div>
+        <h1 className="font-display text-2xl font-bold text-[#3D2B1F]">{t.invalid}</h1>
+        <p className="mt-1 text-sm text-[#8A7460]">{t.invalidSub}</p>
+      </Centered>
+    );
+  }
+  if (fatal === "cancelled") {
+    return (
+      <Centered>
+        <div className="text-5xl mb-3">🗓️</div>
+        <h1 className="font-display text-2xl font-bold text-[#3D2B1F]">{t.cancelled}</h1>
+      </Centered>
+    );
+  }
+  if (done) {
+    return (
+      <div className="min-h-[100dvh] bg-[#FAF6F0] flex flex-col items-center justify-center px-6 text-center animate-wizard-in-right">
+        <div className="max-w-sm w-full">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#B85C38]/10">
+            <Sparkles className="text-[#B85C38]" size={28} />
+          </div>
+          <h1 className="font-display text-3xl font-bold text-[#3D2B1F]">{t.thanksTitle}</h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-[#5C5349]">{t.thanksBody}</p>
+          <a
+            href={BOOK_AGAIN_WA}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-8 block w-full rounded-full bg-[#B85C38] px-6 py-4 text-base font-semibold text-white"
+          >
+            {t.bookNext}
+          </a>
+          <a href="/studios" className="mt-4 inline-block text-sm font-semibold text-[#B85C38] underline underline-offset-4">
+            {t.browse}
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const canContinue =
+    step === 1 ? rating >= 1 :
+    step === 6 ? true :
+    true;
 
   return (
-    <div style={{ minHeight: "100vh", background: CREAM }}>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "14px 20px", borderBottom: `1px solid ${LINE}`, background: CREAM,
-      }}>
-        <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" width={28} height={28} style={{ borderRadius: 8 }} />
-        <span style={{ fontWeight: 600, color: INK, letterSpacing: 0.2 }}>Massage Club</span>
-      </div>
+    <div className={`min-h-[100dvh] flex flex-col ${privateScreen ? "bg-[#F3EBE2]" : "bg-[#FAF6F0]"} transition-colors duration-300`}>
+      {/* Progress + back */}
+      <header className="sticky top-0 z-10 px-4 pt-3 pb-2 backdrop-blur-sm">
+        <div className="h-1 w-full rounded-full bg-[#E7DCCE]">
+          <div
+            className="h-1 rounded-full bg-[#B85C38] transition-all duration-300"
+            style={{ width: `${(step / LAST_STEP) * 100}%` }}
+          />
+        </div>
+        <div className="mt-2 flex h-8 items-center">
+          {step > 1 ? (
+            <button type="button" onClick={goBack} aria-label={t.back}
+              className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full text-[#3D2B1F] active:bg-[#3D2B1F]/5">
+              <ArrowLeft size={20} />
+            </button>
+          ) : <span className="h-9 w-9" />}
+          <span className="ml-auto truncate text-xs text-[#8A7460]">{studio}</span>
+        </div>
+      </header>
 
-      <div style={{ maxWidth: 520, margin: "0 auto", padding: "32px 18px 40px" }}>
-        <div style={card}>
-          {loading ? (
-            <p style={{ color: MUTED, fontSize: 15, textAlign: "center" }}>{t.loading}</p>
-          ) : fatal === "invalid" ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 52, marginBottom: 10 }}>⚠️</div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, margin: "4px 0" }}>{t.invalid}</h1>
-              <p style={{ fontSize: 14, color: MUTED }}>{t.invalidSub}</p>
-            </div>
-          ) : fatal === "cancelled" ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 52, marginBottom: 10 }}>🗓️</div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, margin: "4px 0" }}>{t.cancelled}</h1>
-            </div>
-          ) : done ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 52, marginBottom: 10 }}>🌿</div>
-              <h1 style={{ fontSize: 24, fontWeight: 700, margin: "4px 0 8px" }}>{t.thanksTitle}</h1>
-              <p style={{ fontSize: 15, color: "#5a4736", margin: "0 0 20px" }}>{t.thanksBody}</p>
-              <a href={BOOK_AGAIN_WA} target="_blank" rel="noopener noreferrer"
-                style={{ ...primaryBtn(true), display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
-                {t.bookNext}
-              </a>
-              <a href="/studios" style={{ display: "inline-block", marginTop: 14, color: TERRA, fontWeight: 600, fontSize: 14 }}>
-                {t.browse}
-              </a>
-            </div>
-          ) : (
-            <>
-              {/* Context */}
-              <div style={{ textAlign: "center", marginBottom: 18 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.22em", color: TERRA, margin: 0 }}>
-                  {lang === "es" ? "TU OPINIÓN SOBRE" : "YOUR REVIEW OF"}
-                </p>
-                <h1 style={{
-                  fontFamily: "'Fraunces','Playfair Display',Georgia,serif",
-                  fontSize: 30, fontWeight: 700, lineHeight: 1.15, margin: "8px 0 4px", color: INK,
-                }}>
-                  {studio || "—"}
+      {/* One question per screen */}
+      <main className="flex-1 overflow-hidden px-6">
+        <div
+          key={step}
+          className={dir === 1 ? "animate-wizard-in-right" : "animate-wizard-in-left"}
+        >
+          <div className="mx-auto w-full max-w-md pt-8 min-[720px]:pt-16 pb-40">
+            {step === 1 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">
+                  {t.s1(service, studio)}
                 </h1>
-                {subLine && <div style={{ fontSize: 13, color: MUTED }}>{subLine}</div>}
-              </div>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.s1sub}</p>
+                <div className="mt-10">
+                  <StarRow value={rating} onPick={(n) => { setRating(n); window.setTimeout(() => goNext({ rating: n }), 240); }} />
+                </div>
+              </>
+            )}
 
-              {/* Step dots */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 18 }}>
-                {[1, 2, 3].map((n) => (
-                  <span key={n} style={{
-                    width: n === step ? 22 : 7, height: 7, borderRadius: 999,
-                    background: n === step ? TERRA : "#E4DCD0", transition: "all .2s",
-                  }} />
-                ))}
-              </div>
-
-              {step === 1 && (
-                <div style={{ textAlign: "center" }}>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 2px" }}>{t.ratingTitle}</h2>
-                  <p style={{ fontSize: 13, color: MUTED, margin: "0 0 14px" }}>{t.ratingHint}</p>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 4 }}>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <button key={n} type="button" onClick={() => pickStar(n)} aria-label={`${n}`}
-                        style={{
-                          background: "transparent", border: "none", cursor: "pointer",
-                          fontSize: "3rem", lineHeight: 1, padding: "0 2px",
-                          color: n <= rating ? TERRA : "#DCD1C2",
-                        }}>
-                        {n <= rating ? "★" : "☆"}
+            {step === 2 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s2}</h1>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.s2sub}</p>
+                <div className="mt-8 space-y-3">
+                  {([
+                    ["too_soft", t.tooSoft],
+                    ["perfect", t.justRight],
+                    ["too_strong", t.tooFirm],
+                  ] as [Pressure, string][]).map(([v, label]) => {
+                    const on = pressure === v;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => { setPressure(v); window.setTimeout(() => goNext({ pressure_feedback: v }), 240); }}
+                        className={`w-full rounded-2xl border-2 px-5 py-5 text-left text-lg font-semibold transition ${
+                          on ? "border-[#B85C38] bg-[#B85C38] text-white" : "border-[#E7DCCE] bg-white text-[#3D2B1F]"
+                        }`}
+                      >
+                        {label}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
+              </>
+            )}
 
-              {step === 2 && (
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 2px" }}>
-                    {rating >= 4 ? t.complimentTitle : t.issueTitle}
-                  </h2>
-                  <p style={{ fontSize: 13, color: MUTED, margin: "0 0 14px" }}>{t.optional}</p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
-                    {chipKeys.map((key) => {
-                      const on = tags.includes(key);
-                      return (
-                        <button key={key} type="button" onClick={() => toggleTag(key)}
-                          style={{
-                            padding: "10px 14px", borderRadius: 999,
-                            border: `1px solid ${on ? TERRA : LINE}`,
-                            background: on ? TERRA : "#fff", color: on ? "#fff" : INK,
-                            fontWeight: 600, fontSize: 14, cursor: "pointer",
-                          }}>
-                          {reviewTagLabel(key, lang)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button type="button" onClick={() => setStep(3)} style={primaryBtn(true)}>{t.next}</button>
-                  <button type="button" onClick={() => setStep(1)}
-                    style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: MUTED, fontSize: 14, cursor: "pointer" }}>
-                    {t.back}
-                  </button>
+            {step === 3 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s3}</h1>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.starsSub}</p>
+                <div className="mt-10">
+                  <StarRow value={cleanliness} onPick={(n) => pickStars(n, setCleanliness, "cleanliness")} />
                 </div>
-              )}
+              </>
+            )}
 
-              {step === 3 && (
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 14px" }}>{t.wordsTitle}</h2>
-
-                  <label style={{ fontSize: 14, fontWeight: 600 }}>{t.publicLabel}</label>
-                  <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>{t.publicHint}</div>
-                  <textarea value={comment} rows={3}
-                    onChange={(e) => setComment(e.target.value.slice(0, 1000))}
-                    style={{
-                      width: "100%", padding: "10px 12px", borderRadius: 12, border: `1px solid ${LINE}`,
-                      fontSize: 14, color: INK, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
-                    }} />
-
-                  <label style={{ fontSize: 14, fontWeight: 600, display: "block", marginTop: 16 }}>{t.privateLabel}</label>
-                  <div style={{ fontSize: 12, color: MUTED, marginBottom: 6 }}>{t.privateHint}</div>
-                  <textarea value={privateNote} rows={2}
-                    onChange={(e) => setPrivateNote(e.target.value.slice(0, 1000))}
-                    style={{
-                      width: "100%", padding: "10px 12px", borderRadius: 12, border: `1px solid ${LINE}`,
-                      fontSize: 14, color: INK, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box",
-                    }} />
-
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{t.returnLabel}</div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {[{ v: true, l: t.yes }, { v: false, l: t.no }].map((o) => {
-                        const on = wouldReturn === o.v;
-                        return (
-                          <button key={String(o.v)} type="button"
-                            onClick={() => setWouldReturn((prev) => (prev === o.v ? null : o.v))}
-                            style={{
-                              flex: 1, padding: "11px 12px", borderRadius: 999,
-                              border: `1px solid ${on ? TERRA : LINE}`,
-                              background: on ? TERRA : "#fff", color: on ? "#fff" : INK,
-                              fontWeight: 600, fontSize: 14, cursor: "pointer",
-                            }}>{o.l}</button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 16, marginBottom: 20 }}>
-                    <label style={{ fontSize: 14, fontWeight: 600 }}>{t.nameLabel}</label>
-                    <input value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value.slice(0, 60))}
-                      placeholder={lang === "es" ? "Cliente de Massage Club" : "Massage Club client"}
-                      style={{
-                        width: "100%", marginTop: 6, padding: "11px 12px", borderRadius: 12,
-                        border: `1px solid ${LINE}`, fontSize: 14, color: INK, fontFamily: "inherit", boxSizing: "border-box",
-                      }} />
-                  </div>
-
-                  {errMsg && <div style={{ color: "#b23a3a", fontSize: 13, marginBottom: 10 }}>{errMsg}</div>}
-
-                  <button type="button" onClick={submit} disabled={rating < 1 || submitting} style={primaryBtn(rating >= 1 && !submitting)}>
-                    {submitting ? t.sending : isUpdate ? t.update : t.send}
-                  </button>
-                  <button type="button" onClick={() => setStep(2)}
-                    style={{ display: "block", margin: "12px auto 0", background: "none", border: "none", color: MUTED, fontSize: 14, cursor: "pointer" }}>
-                    {t.back}
-                  </button>
+            {step === 4 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s4}</h1>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.starsSub}</p>
+                <div className="mt-10">
+                  <StarRow value={ambience} onPick={(n) => pickStars(n, setAmbience, "ambience")} />
                 </div>
-              )}
-            </>
+              </>
+            )}
+
+            {step === 5 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">
+                  {rating >= 4 ? t.s5good : t.s5bad}
+                </h1>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.s5sub}</p>
+                <div className="mt-8 flex flex-wrap gap-2.5">
+                  {chipKeys.map((key) => {
+                    const on = tags.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleTag(key)}
+                        className={`rounded-full border px-4 py-3 text-[15px] font-medium transition ${
+                          on ? "border-[#B85C38] bg-[#B85C38] text-white" : "border-[#E7DCCE] bg-white text-[#3D2B1F]"
+                        }`}
+                      >
+                        {reviewTagLabel(key, lang)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {step === 6 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s6}</h1>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.s6sub}</p>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value.slice(0, 1000))}
+                  rows={6}
+                  placeholder={t.s6ph}
+                  className="mt-6 w-full rounded-2xl border border-[#E7DCCE] bg-white p-4 text-[15px] leading-relaxed text-[#3D2B1F] outline-none focus:border-[#B85C38]"
+                />
+                <label className="mt-6 block text-sm font-semibold text-[#3D2B1F]">{t.nameLabel}</label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value.slice(0, 60))}
+                  placeholder={t.namePh}
+                  className="mt-2 w-full rounded-2xl border border-[#E7DCCE] bg-white px-4 py-3 text-[15px] text-[#3D2B1F] outline-none focus:border-[#B85C38]"
+                />
+              </>
+            )}
+
+            {step === 7 && (
+              <>
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#3D2B1F]/8">
+                  <Lock size={18} className="text-[#3D2B1F]" />
+                </div>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s7}</h1>
+                <p className="mt-2 text-sm text-[#8A7460]">{t.s7sub}</p>
+                <textarea
+                  value={privateNote}
+                  onChange={(e) => setPrivateNote(e.target.value.slice(0, 1000))}
+                  rows={6}
+                  placeholder={t.s7ph}
+                  className="mt-6 w-full rounded-2xl border border-[#E0D4C4] bg-[#FBF7F2] p-4 text-[15px] leading-relaxed text-[#3D2B1F] outline-none focus:border-[#B85C38]"
+                />
+              </>
+            )}
+
+            {step === 8 && (
+              <>
+                <h1 className="font-display text-[27px] min-[420px]:text-3xl font-bold leading-tight text-[#3D2B1F]">{t.s8}</h1>
+                <div className="mt-8 grid grid-cols-2 gap-3">
+                  {[{ v: true, l: t.yes }, { v: false, l: t.no }].map((o) => {
+                    const on = wouldReturn === o.v;
+                    return (
+                      <button
+                        key={String(o.v)}
+                        type="button"
+                        onClick={() => setWouldReturn((prev) => (prev === o.v ? null : o.v))}
+                        className={`rounded-2xl border-2 px-4 py-7 text-lg font-semibold transition ${
+                          on ? "border-[#B85C38] bg-[#B85C38] text-white" : "border-[#E7DCCE] bg-white text-[#3D2B1F]"
+                        }`}
+                      >
+                        {o.l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {errMsg && <p className="mt-6 text-sm text-[#B23A3A]">{errMsg}</p>}
+          </div>
+        </div>
+      </main>
+
+      {/* Pinned action */}
+      <footer className="sticky bottom-0 border-t border-[#EADFD1] bg-[inherit] px-6 pb-[max(16px,env(safe-area-inset-bottom))] pt-4">
+        <div className="mx-auto w-full max-w-md">
+          <button
+            type="button"
+            disabled={!canContinue || saving}
+            onClick={() => (step === LAST_STEP ? finish() : goNext())}
+            className={`w-full rounded-full px-6 py-4 text-base font-semibold text-white transition ${
+              canContinue && !saving ? "bg-[#B85C38]" : "bg-[#DFD3C3] cursor-not-allowed"
+            }`}
+          >
+            {saving ? t.sending : step === LAST_STEP ? t.finish : t.continue}
+          </button>
+          {step > 1 && (
+            <button
+              type="button"
+              onClick={() => (step === LAST_STEP ? finish() : goNext())}
+              className="mx-auto mt-3 block text-sm text-[#8A7460] underline underline-offset-4"
+            >
+              {t.skip}
+            </button>
           )}
         </div>
-
-        <div style={{ marginTop: 22, fontSize: 13, color: MUTED, textAlign: "center" }}>
-          Massage Club · Madrid · book.massageclub.io
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }

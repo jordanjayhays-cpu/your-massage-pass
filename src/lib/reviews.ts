@@ -54,15 +54,20 @@ export type PublicReview = {
   comment: string | null;
   display_name: string | null;
   would_return: boolean | null;
+  cleanliness: number | null;
+  ambience: number | null;
+  pressure_feedback: "too_soft" | "perfect" | "too_strong" | null;
   created_at: string;
 };
 
-const PUBLIC_COLUMNS = "id,partner_id,rating,tags,comment,display_name,would_return,created_at";
+const PUBLIC_COLUMNS =
+  "id,partner_id,rating,tags,comment,display_name,would_return,cleanliness,ambience,pressure_feedback,created_at";
 
 /**
  * Published reviews for one studio, newest first.
  * Reads the `public_reviews` view, which exposes public columns only — private
- * notes, emails and pressure feedback are never sent to the browser.
+ * notes and emails are never sent to the browser. Category scores come through
+ * for the aggregate bars; individual cards never render them.
  */
 export async function fetchPublicReviews(partnerId: string): Promise<PublicReview[]> {
   if (!partnerId) return [];
@@ -86,12 +91,28 @@ export type ReviewSummary = {
   /** histogram[5] … histogram[1] */
   histogram: Record<number, number>;
   topTags: { key: string; count: number }[];
+  /** average 1-5, null when nobody answered */
+  cleanliness: number | null;
+  ambience: number | null;
+  /** share of answers that said the pressure was just right, 0-1 */
+  pressureRight: number | null;
+  pressureAnswers: number;
 };
+
+function avg(values: number[]): number | null {
+  if (!values.length) return null;
+  return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
+}
 
 export function summariseReviews(reviews: PublicReview[]): ReviewSummary {
   const histogram: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let total = 0;
   const tagCounts: Record<string, number> = {};
+  const clean: number[] = [];
+  const amb: number[] = [];
+  let pressureAnswers = 0;
+  let pressureRightCount = 0;
+
   for (const r of reviews) {
     const n = Math.round(Number(r.rating));
     if (n >= 1 && n <= 5) {
@@ -102,17 +123,29 @@ export function summariseReviews(reviews: PublicReview[]): ReviewSummary {
       if (!t) continue;
       tagCounts[t] = (tagCounts[t] ?? 0) + 1;
     }
+    if (r.cleanliness != null && Number(r.cleanliness) > 0) clean.push(Number(r.cleanliness));
+    if (r.ambience != null && Number(r.ambience) > 0) amb.push(Number(r.ambience));
+    if (r.pressure_feedback) {
+      pressureAnswers += 1;
+      if (r.pressure_feedback === "perfect") pressureRightCount += 1;
+    }
   }
+
   const count = reviews.length;
   const topTags = Object.entries(tagCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
     .map(([key, c]) => ({ key, count: c }));
+
   return {
     count,
     average: count ? Math.round((total / count) * 10) / 10 : null,
     histogram,
     topTags,
+    cleanliness: avg(clean),
+    ambience: avg(amb),
+    pressureRight: pressureAnswers ? pressureRightCount / pressureAnswers : null,
+    pressureAnswers,
   };
 }
 

@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
       const { data: review } = await admin
         .from("reviews")
-        .select("rating, would_return, pressure_feedback, comment, tags, private_note, display_name")
+        .select("rating, would_return, pressure_feedback, cleanliness, ambience, comment, tags, private_note, display_name")
         .eq("booking_id", b.id)
         .maybeSingle();
 
@@ -101,12 +101,25 @@ Deno.serve(async (req) => {
         ? [...new Set(body.tags.map((t: unknown) => String(t)).filter((t: string) => ALLOWED_TAGS.has(t)))]
         : [];
 
+      const score = (v: unknown): number | null => {
+        const n = Math.round(Number(v));
+        return n >= 1 && n <= 5 ? n : null;
+      };
+      const pressure = ["too_soft", "perfect", "too_strong"].includes(String(body?.pressure_feedback))
+        ? String(body.pressure_feedback)
+        : null;
+
+      // The wizard saves after every step, so a half-finished review still keeps
+      // the stars. Each upsert carries the full known state of the review.
       const row = {
         booking_id: b.id,
         partner_id: b.partner_id,
         user_id: b.user_id,
         client_email: b.client_email,
         rating,
+        pressure_feedback: pressure,
+        cleanliness: score(body?.cleanliness),
+        ambience: score(body?.ambience),
         would_return: typeof body?.would_return === "boolean" ? body.would_return : null,
         comment: clean(body?.comment),
         private_note: clean(body?.private_note),
