@@ -23,6 +23,7 @@ import CompareToggle from "../components/CompareToggle";
 import CompareBar from "../components/CompareBar";
 import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
+import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 
 
 
@@ -568,6 +569,12 @@ export default function MassageList() {
             </>
           )}
         </div>
+
+        <ExitCaptureBlock
+          source="studios-exit"
+          area={areaName}
+          className="mt-8"
+        />
 
         <div className="pt-8 pb-2 text-center space-y-3">
           <p className="text-xs text-muted-foreground">

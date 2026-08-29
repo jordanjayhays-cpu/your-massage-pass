@@ -25,6 +25,7 @@ import { markStudioVisited } from "@/lib/visitedStudios";
 import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 import { DealsConfirmationLine } from "@/components/DealsLink";
+import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
 
 
@@ -2406,6 +2407,14 @@ export default function StudioBookingPage() {
           </aside>
 
           <div className="min-[900px]:col-span-2 space-y-5">
+            <ExitCaptureBlock
+              source="studio-exit"
+              want={(() => {
+                const svc = service || profile?.services.find((s) => s.id === hoServiceId) || null;
+                return svc ? servicePrimaryName(svc) : null;
+              })()}
+              area={(partner as any).district || null}
+            />
             {/* Contact footer */}
             <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
               <WhatsAppAskButton
