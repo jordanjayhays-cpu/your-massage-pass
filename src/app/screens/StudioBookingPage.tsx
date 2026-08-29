@@ -2110,6 +2110,21 @@ export default function StudioBookingPage() {
                       </button>
                     </div>
                   )}
+                  {!service && (
+                    <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+                      <p className="text-xs min-[900px]:text-sm text-gray-600">
+                        Pick a massage first to choose these options.
+                        <span className="block text-gray-400">Elige antes un masaje para usar estas opciones.</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => goStep(1)}
+                        className="mt-1.5 text-xs min-[900px]:text-sm font-semibold text-[#C4622D] underline"
+                      >
+                        Choose a massage <span className="font-normal">/ Elegir masaje</span>
+                      </button>
+                    </div>
+                  )}
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Comfort <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Confort</span></p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {[
@@ -2120,8 +2135,10 @@ export default function StudioBookingPage() {
                       <button
                         key={o.v}
                         type="button"
+                        disabled={!service}
                         onClick={() => setConversationPref(prev => prev === o.v ? "" : o.v)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
+                          !service ? "bg-white text-gray-300 border-gray-100 cursor-not-allowed" :
                           conversationPref === o.v ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}
                       >
@@ -2133,8 +2150,9 @@ export default function StudioBookingPage() {
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Pressure <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Presión</span></p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {PRESSURE_LEVELS.map(p => (
-                      <button key={p} onClick={() => setPressure(p)}
+                      <button key={p} type="button" disabled={!service} onClick={() => setPressure(p)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
+                          !service ? "bg-white text-gray-300 border-gray-100 cursor-not-allowed" :
                           pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}>{p}</button>
                     ))}
@@ -2143,8 +2161,9 @@ export default function StudioBookingPage() {
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Focus areas <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Zonas</span></p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {FOCUS_AREAS.map(f => (
-                      <button key={f} onClick={() => toggle(focusAreas, f, setFocusAreas)}
+                      <button key={f} type="button" disabled={!service} onClick={() => toggle(focusAreas, f, setFocusAreas)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
+                          !service ? "bg-white text-gray-300 border-gray-100 cursor-not-allowed" :
                           focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}>{f}</button>
                     ))}
