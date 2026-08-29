@@ -553,7 +553,10 @@ export default function BookFlowWizard({
           href={waLink}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => trackEvent("wizard_whatsapp_click", { meta: { source, lang } })}
+          onClick={() => {
+            trackEvent("wizard_whatsapp_click", { meta: { source, lang } });
+            trackFunnel("wizard_wa_handoff", { source, lang, massage: massage || null, area: areaValue || null });
+          }}
           className="mt-6 w-full h-14 rounded-full bg-[#25D366] text-white text-base font-semibold shadow-soft hover:bg-[#128C7E] transition inline-flex items-center justify-center gap-2"
         >
           <MessageCircle className="h-5 w-5 fill-current" /> {t.sendWhatsApp}
