@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
 import LiteYouTube from "@/components/LiteYouTube";
@@ -28,6 +28,32 @@ const HERO_IMG =
 
 // Editorial spa aesthetic: warm sand palette + Instrument Serif display
 const FONT_CSS = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&display=swap";
+
+/**
+ * Area names in copy are real links: people tap "Chamberi" expecting to filter,
+ * so send them to the studios list preselected to that area.
+ */
+const AREA_NAMES = [
+  "Chamberí", "Chueca", "Salamanca", "Malasaña", "Chamartín", "Centro",
+  "Retiro", "La Latina", "Lavapiés", "Argüelles", "Tetuán",
+];
+
+function linkifyAreas(text: string) {
+  const pattern = new RegExp(`(${AREA_NAMES.join("|")})`, "g");
+  return text.split(pattern).map((part, i) =>
+    AREA_NAMES.includes(part) ? (
+      <Link
+        key={`${part}-${i}`}
+        to={`/studios?area=${encodeURIComponent(part)}`}
+        className="text-[#C4622D] underline underline-offset-2 hover:opacity-80 transition"
+      >
+        {part}
+      </Link>
+    ) : (
+      <span key={`t-${i}`}>{part}</span>
+    ),
+  );
+}
 
 export default function Login() {
   const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.login" });
@@ -489,7 +515,7 @@ export default function Login() {
                   <Icon className="h-4 w-4 text-[#C4622D]" />
                   <p style={serif} className="text-xl text-[#211C1A]">{title}</p>
                 </div>
-                <p className="text-sm text-[#7A7068]">{sub}</p>
+                <p className="text-sm text-[#7A7068]">{linkifyAreas(sub)}</p>
               </div>
             </div>
           ))}
