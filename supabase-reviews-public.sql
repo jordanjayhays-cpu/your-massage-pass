@@ -12,6 +12,7 @@ create or replace view public.public_reviews as
     r.partner_id,
     r.rating,
     r.tags,
+    r.custom_tag,
     r.comment,
     r.display_name,
     r.would_return,
