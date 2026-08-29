@@ -1258,13 +1258,13 @@ export default function StudioBookingPage() {
                       <div>
                         <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
                         <div className="mt-1.5">
-                          <DayStrip value={hoDate} onChange={setHoDate} label={t("app.handoff.prefDate")} />
+                          <DayStrip value={hoDate} onChange={(v: string) => { setHoDate(v); trackFunnel("wizard_day_selected", { flow: "studio-handoff", day: v, massage: hoService ? servicePrimaryName(hoService) : null, area: (partner as any).district || null }, partner.slug || partner.id); }} label={t("app.handoff.prefDate")} />
                         </div>
                       </div>
                       <div>
                         <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
                         <div className="mt-1.5">
-                          <TimePills value={hoTime} onChange={setHoTime} label={t("app.handoff.prefTime")} />
+                          <TimePills value={hoTime} onChange={(v: string) => { setHoTime(v); trackFunnel("wizard_time_selected", { flow: "studio-handoff", time: v, massage: hoService ? servicePrimaryName(hoService) : null, area: (partner as any).district || null }, partner.slug || partner.id); }} label={t("app.handoff.prefTime")} />
                         </div>
                       </div>
                       {!altOpen ? (
