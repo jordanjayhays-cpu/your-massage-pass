@@ -11,7 +11,7 @@ import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
 import { trackFunnel } from "@/lib/funnel";
-import { logWhatsappRequest } from "@/lib/whatsappLog";
+import { logWhatsappRequest, logWhatsappRequestResult } from "@/lib/whatsappLog";
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
