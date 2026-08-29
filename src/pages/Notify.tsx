@@ -16,7 +16,11 @@ const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
 const COPY = {
   en: {
     title: "Join Massage Club",
-    sub: "Free. We'll message you when we find massages worth booking in Madrid.",
+    sub: "Free. We'll email you when we get a good price on the massage you want, in your part of Madrid.",
+    wantQ: "Which massage do you like?",
+    areaQ: "Where are you?",
+    areaPlaceholder: "Choose an area",
+    somewhereElse: "Somewhere else",
     name: "Name",
     email: "Email",
     whatsapp: "WhatsApp",
@@ -34,7 +38,11 @@ const COPY = {
   },
   es: {
     title: "Únete a Massage Club",
-    sub: "Gratis. Te escribimos cuando encontremos masajes que merezcan la pena en Madrid.",
+    sub: "Gratis. Te escribimos cuando consigamos un buen precio en el masaje que quieres, en tu zona de Madrid.",
+    wantQ: "¿Qué masaje te gusta?",
+    areaQ: "¿Dónde estás?",
+    areaPlaceholder: "Elige una zona",
+    somewhereElse: "Otra zona",
     name: "Nombre",
     email: "Email",
     whatsapp: "WhatsApp",
@@ -55,6 +63,27 @@ const COPY = {
 type PageLang = keyof typeof COPY;
 type Status = "idle" | "loading" | "success" | "error";
 
+const WANT_OPTIONS = [
+  { value: "relaxing", en: "Relaxing", es: "Relajante" },
+  { value: "deep-tissue", en: "Deep tissue", es: "Descontracturante" },
+  { value: "thai", en: "Thai", es: "Tailandés" },
+  { value: "sports", en: "Sports", es: "Deportivo" },
+  { value: "hot-stone", en: "Hot stone", es: "Piedras calientes" },
+  { value: "not-sure", en: "Not sure", es: "No lo sé" },
+] as const;
+
+const AREA_OPTIONS = [
+  "Centro",
+  "Chamberí",
+  "Salamanca",
+  "Retiro",
+  "La Latina",
+  "Malasaña",
+  "Chamartín",
+  "Argüelles",
+  "Tetuán",
+] as const;
+
 export default function Notify() {
   const { i18n } = useTranslation();
   const resolved = (i18n.resolvedLanguage || "en").slice(0, 2);
@@ -65,6 +94,8 @@ export default function Notify() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [wantSel, setWantSel] = useState<string[]>([]);
+  const [area, setArea] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [consentError, setConsentError] = useState(false);
   const [contactError, setContactError] = useState(false);
@@ -109,6 +140,8 @@ export default function Notify() {
           name: name.trim() || undefined,
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
+          want: wantSel.length ? wantSel.join(", ") : undefined,
+          area: area || undefined,
           lang,
           consent: true,
           consent_text: t.consentLabel,
@@ -230,6 +263,53 @@ export default function Notify() {
                         {t.contactError}
                       </div>
                     )}
+
+                    <div className="space-y-2">
+                      <Label className="text-[15px]">{t.wantQ}</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {WANT_OPTIONS.map((o) => {
+                          const active = wantSel.includes(o.value);
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() =>
+                                setWantSel((prev) =>
+                                  active ? prev.filter((v) => v !== o.value) : [...prev, o.value],
+                                )
+                              }
+                              className={`h-10 px-4 rounded-full border text-sm font-medium transition ${
+                                active
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-background text-foreground/80 hover:border-primary/40"
+                              }`}
+                            >
+                              {lang === "es" ? o.es : o.en}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="area" className="text-[15px]">
+                        {t.areaQ}
+                      </Label>
+                      <select
+                        id="area"
+                        value={area}
+                        onChange={(e) => setArea(e.target.value)}
+                        className="h-12 w-full rounded-xl border border-input bg-background px-3 text-base md:text-sm"
+                      >
+                        <option value="">{t.areaPlaceholder}</option>
+                        {AREA_OPTIONS.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                        <option value="Somewhere else">{t.somewhereElse}</option>
+                      </select>
+                    </div>
 
                     <div className="space-y-2">
                       <div className="flex items-start gap-3">

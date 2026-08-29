@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { DealsFooterLine } from "@/components/DealsLink";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -120,7 +121,8 @@ export default function GuideLayout({
               ))}
             </ul>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-6">
+          <DealsFooterLine className="text-center mt-6" />
+          <p className="text-xs text-muted-foreground text-center mt-2">
             Massage Club · Madrid <span className="mx-1">·</span>{" "}
             <Link to="/privacy" className="hover:text-primary transition underline-offset-2 hover:underline">
               Privacy

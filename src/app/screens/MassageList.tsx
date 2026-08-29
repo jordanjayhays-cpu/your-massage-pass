@@ -569,7 +569,15 @@ export default function MassageList() {
           )}
         </div>
 
-        <div className="pt-8 pb-2 text-center">
+        <div className="pt-8 pb-2 text-center space-y-3">
+          <p className="text-xs text-muted-foreground">
+            <button
+              onClick={() => navigate("/notify")}
+              className="hover:text-primary underline underline-offset-2 transition"
+            >
+              {lang === "es" ? "Recibe ofertas de masajes en Madrid" : "Get massage deals in Madrid"}
+            </button>
+          </p>
           <button
             onClick={() => navigate("/partner/login")}
             className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 transition"

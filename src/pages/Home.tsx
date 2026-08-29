@@ -8,6 +8,7 @@ import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import { DealsFooterLine, DealsJoinSection } from "@/components/DealsLink";
 import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
@@ -245,6 +246,8 @@ export default function Home() {
         </section>
       </main>
 
+      <DealsJoinSection className="max-w-6xl mx-auto px-4 pt-4 pb-10" />
+
       {/* Footer */}
       <footer className="border-t border-border/60 bg-background">
         <div className="max-w-6xl mx-auto px-4 py-8 text-center">
@@ -259,6 +262,7 @@ export default function Home() {
             ))}
           </ul>
 
+          <DealsFooterLine className="mb-4" />
           <p className="text-xs text-muted-foreground">
             Massage Club · Madrid{" "}
             <span className="mx-1">·</span>{" "}
