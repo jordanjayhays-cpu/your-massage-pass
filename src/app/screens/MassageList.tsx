@@ -359,6 +359,15 @@ export default function MassageList() {
           }}
           onSelect={(shop) => handleBook(shop)}
         />
+        {areaParam && (
+          <button
+            type="button"
+            onClick={clearAreaParam}
+            className="mt-2 mr-2 inline-flex items-center gap-2 rounded-full border border-primary/50 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
+          >
+            {lang === "es" ? `Zona: ${areaParam} · Quitar` : `Area: ${areaParam} · Clear`}
+          </button>
+        )}
         {areaBounds && (
           <button
             type="button"
@@ -448,7 +457,9 @@ export default function MassageList() {
           {shopsLoading ? (
             <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.loadingStudios")}</p>
           ) : filtered.length === 0 ? (
-            <p className="md:col-span-2 xl:col-span-1 text-center text-muted-foreground py-12 text-sm">{t("app.massageList.noMatches")}</p>
+            <div className="md:col-span-2 xl:col-span-1 text-center py-12">
+              <p className="text-sm text-muted-foreground">{t("app.massageList.noMatches")}</p>
+            </div>
           ) : (
 
             <>
@@ -587,6 +598,19 @@ export default function MassageList() {
             </>
           )}
         </div>
+
+
+        {/* Never leave a filtered list looking silent and unresponsive. */}
+        {!shopsLoading && !savedOnly && filtered.length < 3 && (areaParam || areaBounds || q.trim()) && (
+          <p className="md:col-span-2 xl:col-span-1 text-sm text-muted-foreground text-center py-4">
+            {lang === "es"
+              ? "Todavía hay pocos estudios aquí - dinos qué quieres y te encontramos uno. "
+              : "Few studios here yet - tell us what you want and we will find you one. "}
+            <Link to="/book" className="text-primary font-semibold underline underline-offset-2">
+              {lang === "es" ? "Pídelo aquí" : "Ask us here"}
+            </Link>
+          </p>
+        )}
 
         <ExitCaptureBlock
           source="studios-exit"
