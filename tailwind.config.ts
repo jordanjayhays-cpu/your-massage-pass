@@ -85,12 +85,23 @@ export default {
           "0%, 100%": { transform: "scale(1)", opacity: "1" },
           "35%": { transform: "scale(1.04)", opacity: "0.92" },
         },
+        // Review wizard: one question slides in as the previous one leaves.
+        "wizard-in-right": {
+          from: { opacity: "0", transform: "translateX(24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "wizard-in-left": {
+          from: { opacity: "0", transform: "translateX(-24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-up": "fade-up 0.8s ease-out forwards",
         "pulse-once": "pulse-once 0.9s ease-in-out 2",
+        "wizard-in-right": "wizard-in-right 0.26s cubic-bezier(0.22,1,0.36,1)",
+        "wizard-in-left": "wizard-in-left 0.26s cubic-bezier(0.22,1,0.36,1)",
       },
     },
   },
