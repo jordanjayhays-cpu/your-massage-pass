@@ -11,7 +11,7 @@ import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
 import { trackFunnel } from "@/lib/funnel";
-import { logWhatsappRequest } from "@/lib/whatsappLog";
+import { logWhatsappRequest, logWhatsappRequestResult } from "@/lib/whatsappLog";
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
@@ -1012,7 +1012,14 @@ export default function StudioBookingPage() {
       });
       // Log the lead BEFORE the WhatsApp link opens, so we keep the record even
       // if the visitor never sends the message.
-      waRequestIdRef.current = await logWhatsappRequest({
+      trackFunnel("wizard_submit_attempt", {
+        flow: "studio-handoff",
+        studio: partner.slug || partner.id,
+        massage: hoService ? servicePrimaryName(hoService) : null,
+        area: (partner as any).district || null,
+        people,
+      }, partner.slug || partner.id);
+      const logged = await logWhatsappRequestResult({
         partner_id: partner.id,
         slug: partner.slug || null,
         studio_name: partner.business_name,
@@ -1033,7 +1040,26 @@ export default function StudioBookingPage() {
         wa_number: waNumber,
         message_text: waMsg,
       });
+      waRequestIdRef.current = logged.id;
+      if (logged.error) {
+        trackFunnel("wizard_submit_error", {
+          flow: "studio-handoff",
+          studio: partner.slug || partner.id,
+          massage: hoService ? servicePrimaryName(hoService) : null,
+          area: (partner as any).district || null,
+          error: logged.error,
+        }, partner.slug || partner.id);
+      } else {
+        trackFunnel("wizard_submit_ok", {
+          flow: "studio-handoff",
+          studio: partner.slug || partner.id,
+          massage: hoService ? servicePrimaryName(hoService) : null,
+          area: (partner as any).district || null,
+          request_id: logged.id,
+        }, partner.slug || partner.id);
+      }
     };
+
 
     const waLink = conciergeWhatsappUrl(waMsg);
     const websiteUrl = (() => {
