@@ -6,7 +6,7 @@ import {
 } from "@/lib/reviews";
 
 const FN_URL = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/review";
-const BOOK_AGAIN_WA = "https://wa.me/34613977900?text=Hi";
+
 
 const LAST_STEP = 8;
 
@@ -83,7 +83,9 @@ const COPY = {
     thanksTitle: "Thank you",
     thanksBody: "Thanks, your review helps other people find great massages.",
     bookNext: "Book your next massage",
+    bookAgainWa: "https://wa.me/34613977900?text=Hi%2C%20I%20want%20to%20book%20again",
     browse: "Browse studios",
+
   },
   es: {
     loading: "Cargando…",
@@ -126,7 +128,9 @@ const COPY = {
     thanksTitle: "Gracias",
     thanksBody: "Gracias, tu opinión ayuda a otras personas a encontrar buenos masajes.",
     bookNext: "Reserva tu próximo masaje",
+    bookAgainWa: "https://wa.me/34613977900?text=Hola%2C%20quiero%20reservar%20otra%20vez",
     browse: "Ver estudios",
+
   },
 } as const;
 
@@ -338,8 +342,9 @@ export default function Review() {
           <h1 className="font-display text-3xl font-bold text-[#3D2B1F]">{t.thanksTitle}</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#5C5349]">{t.thanksBody}</p>
           <a
-            href={BOOK_AGAIN_WA}
+            href={t.bookAgainWa}
             target="_blank"
+
             rel="noopener noreferrer"
             className="mt-8 block w-full rounded-full bg-[#B85C38] px-6 py-4 text-base font-semibold text-white"
           >
