@@ -7,6 +7,7 @@ import { trackEvent } from "@/lib/siteVisit";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
+import { DealsConfirmationLine } from "@/components/DealsLink";
 
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";

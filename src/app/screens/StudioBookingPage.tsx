@@ -24,6 +24,7 @@ import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
 import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
+import { DealsConfirmationLine } from "@/components/DealsLink";
 import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
 
 
