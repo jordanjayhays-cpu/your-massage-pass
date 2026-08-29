@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
 import { DealsFooterLine } from "@/components/DealsLink";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import AccountHeaderLink from "@/components/AccountHeaderLink";
 import BookFlowWizard, { useBookFlowLang } from "@/components/BookFlowWizard";
 import { trackEvent } from "@/lib/siteVisit";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
@@ -89,7 +90,10 @@ export default function FbLanding() {
           >
             Massage Club
           </Link>
-          <LanguageFlagToggle variant="compact" />
+          <div className="flex items-center gap-3">
+            <AccountHeaderLink />
+            <LanguageFlagToggle variant="compact" />
+          </div>
         </div>
       </header>
 

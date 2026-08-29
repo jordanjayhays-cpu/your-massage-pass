@@ -1,6 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import AccountHeaderLink from "@/components/AccountHeaderLink";
 import BookFlowWizard, { BOOK_FLOW_COPY, useBookFlowLang } from "@/components/BookFlowWizard";
 
 export default function BookFlow() {
@@ -20,7 +21,10 @@ export default function BookFlow() {
           <Link to="/" className="font-display text-lg tracking-tight text-foreground">
             Massage Club
           </Link>
-          <LanguageFlagToggle variant="compact" />
+          <div className="flex items-center gap-3">
+            <AccountHeaderLink />
+            <LanguageFlagToggle variant="compact" />
+          </div>
         </div>
       </header>
 

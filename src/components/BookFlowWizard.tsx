@@ -10,6 +10,10 @@ import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 import { DealsConfirmationLine } from "@/components/DealsLink";
 import ExitCaptureBlock from "@/components/ExitCaptureBlock";
+import AccountOfferBlock from "@/components/AccountOfferBlock";
+import { supabase } from "@/lib/supabase";
+import { useLastBooking } from "@/lib/useLastBooking";
+import { linkRequestToUser } from "@/lib/pendingAccount";
 
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
@@ -278,6 +282,58 @@ export default function BookFlowWizard({
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  // Returning users: never type anything they have already given us.
+  const [signedIn, setSignedIn] = useState(false);
+  const [sameAsLast, setSameAsLast] = useState<string | null>(null);
+  const { lastBooking } = useLastBooking();
+
+  useEffect(() => {
+    let cancelled = false;
+    const prefill = async (user: any) => {
+      if (!user || cancelled) return;
+      setSignedIn(true);
+      const meta = (user.user_metadata || {}) as Record<string, string>;
+      const metaName = (meta.full_name || meta.name || "").trim();
+      setEmail((prev) => prev || user.email || "");
+      if (metaName) {
+        const [f, ...rest] = metaName.split(/\s+/);
+        setFirstName((prev) => prev || f || "");
+        setLastName((prev) => prev || rest.join(" "));
+      }
+      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      if (cancelled || !data) return;
+      const p = data as any;
+      const full = (p.full_name || "").trim();
+      const [pf, ...pr] = full ? full.split(/\s+/) : [];
+      setFirstName((prev) => prev || p.first_name || pf || "");
+      setLastName((prev) => prev || p.last_name || pr.join(" ") || "");
+      setEmail((prev) => prev || p.email || "");
+      setPhone((prev) => prev || p.phone || "");
+    };
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) prefill(data.session.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) prefill(session.user);
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  // "Same as last time": preselect the massage they booked before.
+  useEffect(() => {
+    if (!lastBooking?.serviceName) return;
+    const want = lastBooking.serviceName.toLowerCase();
+    const match = (t.massages as readonly string[]).find(
+      (m) => want.includes(m.toLowerCase()) || m.toLowerCase().includes(want),
+    );
+    if (!match) return;
+    setSameAsLast(match);
+    setMassage((prev) => prev || match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastBooking?.serviceName, lang]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const massageRef = useRef<HTMLDivElement>(null);
@@ -494,6 +550,8 @@ export default function BookFlowWizard({
           area: areaValue || null,
           request_id: (data as { id?: string | number }).id ?? null,
         });
+        // Already signed in: attach the request to their account, no offer.
+        if (signedIn) void linkRequestToUser(null, email.trim() || null);
         setStatus("success");
         afterStep();
       } else {
@@ -566,6 +624,14 @@ export default function BookFlowWizard({
             {t.noWhatsApp.replace("{contact}", fallbackContact)}
           </p>
         )}
+        <AccountOfferBlock
+          className="mt-6"
+          firstName={firstName.trim()}
+          lastName={lastName.trim()}
+          email={email.trim()}
+          phone={phone.trim()}
+          source={`wizard:${source}`}
+        />
         <DealsConfirmationLine className="mt-6" />
       </div>
     );
@@ -633,6 +699,11 @@ export default function BookFlowWizard({
                   }`}
                 >
                   {m}
+                  {sameAsLast === m && (
+                    <span className="block mt-1 text-xs font-normal text-muted-foreground">
+                      {lang === "es" ? "como la última vez" : "same as last time"}
+                    </span>
+                  )}
                 </button>
               );
             })}

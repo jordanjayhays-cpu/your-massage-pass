@@ -19,6 +19,8 @@ import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import AccountHeaderLink from "@/components/AccountHeaderLink";
+import AccountOfferBlock from "@/components/AccountOfferBlock";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { isInstantConfirm } from "@/lib/instantConfirm";
@@ -175,6 +177,8 @@ export default function StudioBookingPage() {
   const timeRef = useRef<HTMLDivElement | null>(null);
   // Guard so a single WhatsApp tap logs exactly one row.
   const waLoggedRef = useRef(false);
+  // Id of the request we just logged, so a new account can be attached to it.
+  const waRequestIdRef = useRef<string | null>(null);
   // Languages the visitor speaks — defaults to the site language, never a required field.
   const siteLang = (i18n.language || "en").slice(0, 2);
   const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
@@ -879,6 +883,15 @@ export default function StudioBookingPage() {
                 </div>
               </>
             )}
+            <AccountOfferBlock
+              className="mt-6"
+              firstName={firstName.trim()}
+              lastName={lastName.trim()}
+              email={email.trim()}
+              phone={phone.trim()}
+              requestId={waRequestIdRef.current}
+              source="studio-booking"
+            />
             <DealsConfirmationLine className="mt-6" />
             <MarketingOptInCard
               className="mt-6"
@@ -999,7 +1012,7 @@ export default function StudioBookingPage() {
       });
       // Log the lead BEFORE the WhatsApp link opens, so we keep the record even
       // if the visitor never sends the message.
-      await logWhatsappRequest({
+      waRequestIdRef.current = await logWhatsappRequest({
         partner_id: partner.id,
         slug: partner.slug || null,
         studio_name: partner.business_name,
@@ -1049,7 +1062,7 @@ export default function StudioBookingPage() {
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
       <div className="min-h-screen p-4 pb-28 relative" style={{ background: "#FAF6F1" }}>
-        <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
         <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden text-center min-[900px]:text-left" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
             <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
@@ -1512,6 +1525,14 @@ export default function StudioBookingPage() {
                           Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
                         </p>
                       </div>
+                      <AccountOfferBlock
+                        firstName={hoFirstName.trim()}
+                        lastName={hoLastName.trim()}
+                        email={hoEmail.trim()}
+                        phone={hoPhone.trim()}
+                        requestId={waRequestIdRef.current}
+                        source="studio-handoff"
+                      />
                       <Link
                         to="/studios"
                         className="inline-flex flex-col items-center justify-center w-full h-12 min-[900px]:h-14 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition"
@@ -1795,7 +1816,7 @@ export default function StudioBookingPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF6F1] relative">
-      <div className="absolute top-3 right-3 z-30"><LanguageFlagToggle /></div>
+      <div className="absolute top-3 right-3 z-30 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
       {/* Hero */}
       <div className="relative h-44 bg-gradient-to-br from-[#C4622D] to-[#5b0a16]">
         <img
@@ -2429,7 +2450,7 @@ export default function StudioBookingPage() {
                     slug: partner.slug || partner.id,
                     meta: { filled: !!(service || date || time), service: !!service, date: !!date },
                   });
-                  logWhatsappRequest({
+                  void logWhatsappRequest({
                     partner_id: partner.id,
                     slug: partner.slug || null,
                     studio_name: partner.business_name,
@@ -2448,7 +2469,7 @@ export default function StudioBookingPage() {
                     user_id: userId,
                     wa_number: bookingWaNumber,
                     message_text: bookingWaMsg,
-                  });
+                  }).then((id) => { waRequestIdRef.current = id; });
                 }}
                 className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
                   askWaTapped
