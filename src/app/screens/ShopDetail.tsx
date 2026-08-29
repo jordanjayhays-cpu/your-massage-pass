@@ -29,6 +29,7 @@ import { telHref, conciergePrefill, MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
+import { studioPath } from "@/lib/studioHref";
 
 
 export default function ShopDetail() {
