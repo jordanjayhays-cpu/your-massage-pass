@@ -2015,6 +2015,13 @@ export default function StudioBookingPage() {
                   )}
 
                 </Section>
+                {partner?.id && (
+                  <StudioReviews
+                    partnerId={String(partner.id)}
+                    lang={siteLang === "es" ? "es" : "en"}
+                    className="mt-4"
+                  />
+                )}
                 <WizardNav
                   onNext={() => goStep(2)}
                   disabled={!service}
