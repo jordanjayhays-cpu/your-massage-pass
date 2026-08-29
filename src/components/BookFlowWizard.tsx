@@ -871,6 +871,7 @@ export default function BookFlowWizard({
       {step >= 2 && (
         <ExitCaptureBlock
           source="wizard-exit"
+          step={step}
           want={massage || null}
           area={area ? (area === t.other ? areaOther || null : area) : null}
           className="mt-8"
