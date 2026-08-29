@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLocation } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { trackEvent } from "@/lib/siteVisit";
+import { useFlowLang } from "@/lib/flowLang";
 import { shouldShowBottomNav } from "./BottomNav";
 
-/* ── Tiny global store so screens can give the bubble context (or hide it) ── */
 type BubbleCtx = { studio?: string | null; hidden?: boolean };
 let ctx: BubbleCtx = {};
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-/** Screens call this to set studio context or hide the bubble (wizard steps, success). */
 export function setWaBubbleContext(next: BubbleCtx) {
   if (ctx.studio === (next.studio ?? undefined) && !!ctx.hidden === !!next.hidden) return;
   ctx = { studio: next.studio ?? undefined, hidden: !!next.hidden };
@@ -28,7 +26,6 @@ const subscribe = (l: () => void) => {
 };
 const getSnapshot = () => ctx;
 
-/** Routes where the concierge bubble lives. Studio pages opt in via context. */
 function routeAllowsBubble(pathname: string): boolean {
   const p = pathname.replace(/\/+$/, "") || "/";
   if (p === "/" || p === "/web" || p === "/landing") return true;
@@ -42,9 +39,20 @@ function routeAllowsBubble(pathname: string): boolean {
 
 const TOOLTIP_SEEN_KEY = "mc_wa_bubble_hint";
 
+const COPY = {
+  en: { hint: "Questions? WhatsApp us, we reply fast", aria: "WhatsApp us" },
+  es: { hint: "¿Dudas? Escríbenos por WhatsApp", aria: "Escríbenos por WhatsApp" },
+  fr: { hint: "Des questions ? Écrivez-nous sur WhatsApp, réponse rapide", aria: "Écrivez-nous sur WhatsApp" },
+  de: { hint: "Fragen? Schreib uns auf WhatsApp, wir antworten schnell", aria: "Schreib uns auf WhatsApp" },
+  it: { hint: "Domande? Scrivici su WhatsApp, rispondiamo veloci", aria: "Scrivici su WhatsApp" },
+  pt: { hint: "Dúvidas? Escreve-nos no WhatsApp, respondemos rápido", aria: "Escreve-nos no WhatsApp" },
+  zh: { hint: "有问题吗？给我们发 WhatsApp，我们会快速回复", aria: "给我们发 WhatsApp" },
+} as const;
+
 export default function WhatsAppBubble() {
   const { pathname } = useLocation();
-  const { i18n } = useTranslation();
+  const lang = useFlowLang();
+  const t = COPY[lang];
   const { studio, hidden } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const [showHint, setShowHint] = useState(false);
   const timer = useRef<number | null>(null);
@@ -53,8 +61,6 @@ export default function WhatsAppBubble() {
 
   const visible = !hidden && (!!studio || routeAllowsBubble(pathname));
   if (!visible) return null;
-
-  const es = (i18n.language || "en").slice(0, 2).toLowerCase() === "es";
 
   // Sit above the bottom tab bar when it is on screen.
   const bottomClass = shouldShowBottomNav(pathname)
@@ -68,7 +74,7 @@ export default function WhatsAppBubble() {
           role="status"
           className="max-w-[190px] rounded-full bg-white/95 backdrop-blur px-3 py-2 text-[12px] leading-snug font-medium text-[#4a3a2c] shadow-lg border border-black/5 motion-safe:animate-in motion-safe:fade-in"
         >
-          {es ? "¿Dudas? Escríbenos por WhatsApp" : "Questions? WhatsApp us, we reply fast"}
+          {t.hint}
         </span>
       )}
       <WhatsAppAskButton
@@ -89,7 +95,7 @@ export default function WhatsAppBubble() {
               } catch { /* private mode: ignore */ }
               open();
             }}
-            aria-label={es ? "Escríbenos por WhatsApp" : "WhatsApp us"}
+            aria-label={t.aria}
             className="h-[52px] w-[52px] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl motion-safe:transition hover:scale-[1.04] active:scale-95"
             style={{ backgroundColor: "#25D366" }}
           >
