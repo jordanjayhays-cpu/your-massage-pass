@@ -191,6 +191,20 @@ export default function StudioBookingPage() {
     markStudioVisited(studioId);
   }, [studioId]);
 
+  // Funnel: each booking step becoming visible (claimed-studio wizard).
+  useEffect(() => {
+    trackFunnel(`wizard_step_${step}`, { flow: "studio", studio: studioId, service_id: serviceId || null }, studioId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // Funnel: same for the unclaimed-studio handoff wizard.
+  useEffect(() => {
+    trackFunnel(`wizard_step_${hoStep}`, { flow: "studio-handoff", studio: studioId, service_id: hoServiceId || null }, studioId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoStep]);
+
+
+
 
   const toggleSpokenLang = (code: SpokenLang) => {
     setSpokenLangs(prev => {
