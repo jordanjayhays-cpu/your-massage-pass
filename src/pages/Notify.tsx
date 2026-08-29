@@ -63,6 +63,27 @@ const COPY = {
 type PageLang = keyof typeof COPY;
 type Status = "idle" | "loading" | "success" | "error";
 
+const WANT_OPTIONS = [
+  { value: "relaxing", en: "Relaxing", es: "Relajante" },
+  { value: "deep-tissue", en: "Deep tissue", es: "Descontracturante" },
+  { value: "thai", en: "Thai", es: "Tailandés" },
+  { value: "sports", en: "Sports", es: "Deportivo" },
+  { value: "hot-stone", en: "Hot stone", es: "Piedras calientes" },
+  { value: "not-sure", en: "Not sure", es: "No lo sé" },
+] as const;
+
+const AREA_OPTIONS = [
+  "Centro",
+  "Chamberí",
+  "Salamanca",
+  "Retiro",
+  "La Latina",
+  "Malasaña",
+  "Chamartín",
+  "Argüelles",
+  "Tetuán",
+] as const;
+
 export default function Notify() {
   const { i18n } = useTranslation();
   const resolved = (i18n.resolvedLanguage || "en").slice(0, 2);
@@ -73,6 +94,8 @@ export default function Notify() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [wantSel, setWantSel] = useState<string[]>([]);
+  const [area, setArea] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [consentError, setConsentError] = useState(false);
   const [contactError, setContactError] = useState(false);
@@ -117,6 +140,8 @@ export default function Notify() {
           name: name.trim() || undefined,
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
+          want: wantSel.length ? wantSel.join(", ") : undefined,
+          area: area || undefined,
           lang,
           consent: true,
           consent_text: t.consentLabel,
