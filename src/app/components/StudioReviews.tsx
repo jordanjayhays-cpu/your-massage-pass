@@ -77,13 +77,13 @@ export default function StudioReviews({
         </p>
       ) : (
         <>
-          {/* Summary + histogram */}
-          <div className="flex flex-col min-[560px]:flex-row min-[560px]:items-center gap-4 min-[560px]:gap-6 mb-4">
+          {/* Airbnb-style header: big average, then histogram */}
+          <div className="flex flex-col min-[560px]:flex-row min-[560px]:items-center gap-4 min-[560px]:gap-6 mb-5">
             <div className="flex-shrink-0">
-              <div className="text-4xl font-bold leading-none text-[#2b2b2b]">
+              <div className="text-5xl font-bold leading-none text-[#2b2b2b]">
                 {s.average?.toFixed(1)}
               </div>
-              <div className="mt-1"><Stars n={Math.round(s.average ?? 0)} size={15} /></div>
+              <div className="mt-2"><Stars n={Math.round(s.average ?? 0)} size={15} /></div>
               <div className="text-xs text-[#8a7460] mt-1">
                 {s.count} {es ? (s.count === 1 ? "opinión" : "opiniones") : (s.count === 1 ? "review" : "reviews")}
               </div>
@@ -105,6 +105,42 @@ export default function StudioReviews({
               })}
             </div>
           </div>
+
+          {/* Category averages */}
+          {(s.pressureRight != null || s.cleanliness != null || s.ambience != null) && (
+            <div className="mb-5 grid gap-3 min-[560px]:grid-cols-3">
+              {[
+                s.pressureRight != null && {
+                  label: es ? "Presión perfecta" : "Pressure just right",
+                  value: `${Math.round(s.pressureRight * 100)}%`,
+                  pct: Math.round(s.pressureRight * 100),
+                },
+                s.cleanliness != null && {
+                  label: es ? "Limpieza" : "Cleanliness",
+                  value: s.cleanliness.toFixed(1),
+                  pct: Math.round((s.cleanliness / 5) * 100),
+                },
+                s.ambience != null && {
+                  label: es ? "Ambiente" : "Atmosphere",
+                  value: s.ambience.toFixed(1),
+                  pct: Math.round((s.ambience / 5) * 100),
+                },
+              ].filter(Boolean).map((row) => {
+                const r = row as { label: string; value: string; pct: number };
+                return (
+                  <div key={r.label}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-xs text-[#8a7460]">{r.label}</span>
+                      <span className="text-sm font-semibold text-[#2b2b2b] tabular-nums">{r.value}</span>
+                    </div>
+                    <span className="mt-1 block h-1.5 w-full rounded-full bg-[#F1E8DC] overflow-hidden">
+                      <span className="block h-full rounded-full bg-[#B85C38]" style={{ width: `${r.pct}%` }} />
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Top tags */}
           {s.topTags.length > 0 && (
