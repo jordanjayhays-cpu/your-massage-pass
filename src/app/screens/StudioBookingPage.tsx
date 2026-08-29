@@ -88,6 +88,10 @@ const BOOKING_STEPS_COPY: Record<FlowLang, string[]> = {
   pt: ["Serviço", "Dia e hora", "Personalizar", "Os teus dados", "Confirmar"],
   zh: ["服务", "日期和时间", "个性化", "您的信息", "确认"],
 };
+const BOOKING_STEPS_ARIA: Record<FlowLang, string> = {
+  en: "Booking steps", es: "Pasos de la reserva", fr: "Étapes de réservation", de: "Buchungsschritte",
+  it: "Passaggi della prenotazione", pt: "Etapas da reserva", zh: "预订步骤",
+};
 const HANDOFF_STEPS_COPY: Record<FlowLang, string[]> = {
   en: ["Service", "Day and time", "Your details", "WhatsApp"],
   es: ["Servicio", "Día y hora", "Tus datos", "WhatsApp"],
@@ -110,8 +114,13 @@ const CONVERSATION_LABEL_COPY: Record<FlowLang, Record<string, string>> = {
 const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+const dayShort = (d: Date, lang: FlowLang) => shortWeekday(d, lang);
+const monShort = (d: Date, lang: FlowLang) =>
+  new Intl.DateTimeFormat(localeOf(lang), { month: "short" }).format(d).replace(/\.$/, "");
+
 export default function StudioBookingPage() {
   const { t, i18n } = useTranslation();
+  const lang = useFlowLang();
   const { studioId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
@@ -575,7 +584,7 @@ export default function StudioBookingPage() {
       : [];
   const times = timesFor(date);
   const prettyDayOf = (d: Date | null) =>
-    d ? `${DAY_LABELS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` : null;
+    d ? `${dayShort(d, lang)} ${d.getDate()} ${monShort(d, lang)}` : null;
 
   // Compact day + time picker used for the optional second and third choices.
   const renderAltSlot = (
@@ -602,9 +611,9 @@ export default function StudioBookingPage() {
                 active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
               }`}
             >
-              <div className="text-[10px] uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+              <div className="text-[10px] uppercase opacity-70">{dayShort(d, lang)}</div>
               <div className="text-base font-bold leading-none mt-0.5">{d.getDate()}</div>
-              <div className="text-[10px] opacity-70">{MONTHS[d.getMonth()]}</div>
+              <div className="text-[10px] opacity-70">{monShort(d, lang)}</div>
             </button>
           );
         })}
@@ -770,7 +779,7 @@ export default function StudioBookingPage() {
 
   // ─── Confirmation screen ───
   if (done) {
-    const prettyDate = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : "";
+    const prettyDate = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : "";
     const isClaimed = partner.status === "active";
     const studioNumber = (partner as any).whatsapp || partner.phone;
     const waNumber = resolveWhatsappNumber(partner as any);
@@ -1237,7 +1246,7 @@ export default function StudioBookingPage() {
             <div ref={hoPanelRef} className="min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
             {waLink && (
               <>
-                <Stepper steps={HANDOFF_STEPS} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
+                <Stepper steps={pickCopy(HANDOFF_STEPS_COPY, lang)} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
                 {/* The only Continue: one sticky bar, never an inline duplicate */}
                 {hoStep === 1 && (
                   <StickyContinue
@@ -1647,7 +1656,7 @@ export default function StudioBookingPage() {
   const hasContact = contact.ok;
   const canBook = !!(service && date && time && nameComplete && hasContact);
 
-  const prettyDay = date ? `${DAY_LABELS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}` : null;
+  const prettyDay = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : null;
 
 
 
@@ -1655,7 +1664,7 @@ export default function StudioBookingPage() {
   // Wizard navigation. Every step is shown, nothing is skipped automatically.
   const goStep = (n: number) => {
     // Step-shown events fire from the effect above; this only records progress.
-    if (n > step) trackFunnel("wizard_step_completed", { flow: "studio", from: BOOKING_STEPS[step - 1]?.label ?? String(step), to: n }, partner?.slug || studioId);
+    if (n > step) trackFunnel("wizard_step_completed", { flow: "studio", from: pickCopy(BOOKING_STEPS_COPY, lang)[step - 1] ?? String(step), to: n }, partner?.slug || studioId);
     setStep(n);
     setMaxStep(m => Math.max(m, n));
     setStepError(null);
@@ -1939,7 +1948,7 @@ export default function StudioBookingPage() {
 
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 pb-28">
         {/* Stepper: always visible so nobody misses a step */}
-        <Stepper steps={BOOKING_STEPS} current={step} maxReached={maxStep} onGo={goStep} />
+        <Stepper steps={pickCopy(BOOKING_STEPS_COPY, lang)} current={step} maxReached={maxStep} onGo={goStep} />
 
         {/* Always reachable Continue, so the primary action never hides below the fold */}
         {step === 1 && <StickyContinue ready={!!service} onNext={() => goStep(2)} />}
@@ -2093,9 +2102,9 @@ export default function StudioBookingPage() {
                             className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition snap-start ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
-                            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+                            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{dayShort(d, lang)}</div>
                             <div className="text-lg min-[900px]:text-2xl font-bold leading-none mt-0.5">{d.getDate()}</div>
-                            <div className="text-[10px] min-[900px]:text-xs opacity-70">{MONTHS[d.getMonth()]}</div>
+                            <div className="text-[10px] min-[900px]:text-xs opacity-70">{monShort(d, lang)}</div>
                           </button>
                         );
                       })}
@@ -2220,9 +2229,9 @@ export default function StudioBookingPage() {
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">Comfort <span className="font-normal text-gray-400 min-[900px]:text-sm">/ Confort</span></p>
                   <div className="flex flex-wrap gap-2 mb-4 min-[900px]:gap-3 min-[900px]:mb-5">
                     {[
-                      { v: "silence", l: "Silence" },
-                      { v: "minimal", l: "A little chat" },
-                      { v: "chatty", l: "Happy to chat" },
+                      { v: "silence" },
+                      { v: "minimal" },
+                      { v: "chatty" },
                     ].map(o => (
                       <button
                         key={o.v}
@@ -2234,7 +2243,7 @@ export default function StudioBookingPage() {
                           conversationPref === o.v ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
                         }`}
                       >
-                        {o.l}
+                        {pickCopy(CONVERSATION_LABEL_COPY, lang)[o.v]}
                       </button>
                     ))}
                   </div>
@@ -2246,7 +2255,7 @@ export default function StudioBookingPage() {
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
                           !service ? "bg-white text-gray-300 border-gray-100 cursor-not-allowed" :
                           pressure === p ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
-                        }`}>{p}</button>
+                        }`}>{pickCopy(PRESSURE_LABEL_COPY, lang)[p] || p}</button>
                     ))}
                   </div>
 
@@ -2257,7 +2266,7 @@ export default function StudioBookingPage() {
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition min-[900px]:px-5 min-[900px]:py-3 min-[900px]:text-[15px] ${
                           !service ? "bg-white text-gray-300 border-gray-100 cursor-not-allowed" :
                           focusAreas.includes(f) ? "bg-[#C4622D] text-white border-[#C4622D]" : "bg-white text-gray-600 border-gray-200"
-                        }`}>{f}</button>
+                        }`}>{pickCopy(FOCUS_AREA_LABEL_COPY, lang)[f] || f}</button>
                     ))}
                   </div>
 
@@ -2437,7 +2446,7 @@ export default function StudioBookingPage() {
                     <SummaryRow label="Day" labelEs="Día" value={prettyDay} placeholder="Pick a day" onChange={() => goStep(2)} />
                     <SummaryRow label="Time" labelEs="Hora" value={time} placeholder="Pick a time" onChange={() => goStep(2)} />
                     <SummaryRow label="Pressure" labelEs="Presión" value={pressure || null} placeholder="Not set" onChange={() => goStep(3)} />
-                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? CONVERSATION_LABELS[conversationPref] || conversationPref : null} placeholder="Not set" onChange={() => goStep(3)} />
+                    <SummaryRow label="Comfort" labelEs="Confort" value={conversationPref ? pickCopy(CONVERSATION_LABEL_COPY, lang)[conversationPref] || conversationPref : null} placeholder="Not set" onChange={() => goStep(3)} />
                     <SummaryRow label="Focus areas" labelEs="Zonas" value={focusAreas.length ? focusAreas.join(", ") : null} placeholder="None" onChange={() => goStep(3)} />
                     <SummaryRow label="Add-ons" labelEs="Extras" value={addonSummary} placeholder="None" onChange={() => goStep(3)} />
                     <SummaryRow label="Notes" labelEs="Notas" value={notes.trim() || null} placeholder="None" onChange={() => goStep(3)} />
@@ -2654,6 +2663,7 @@ function Section({ step, title, titleEs, children }: { step: string; title: stri
 
 /** Horizontal day strip used by the WhatsApp handoff form (ISO value in/out). */
 function DayStrip({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const lang = useFlowLang();
   const days: Date[] = [];
   const today = new Date();
   for (let i = 0; i < 14; i++) {
@@ -2680,9 +2690,9 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
               color: active ? "#ffffff" : "#5a4736",
             }}
           >
-            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{DAY_LABELS[d.getDay()]}</div>
+            <div className="text-[10px] min-[900px]:text-xs uppercase opacity-70">{dayShort(d, lang)}</div>
             <div className="text-lg min-[900px]:text-2xl font-bold leading-none mt-0.5">{d.getDate()}</div>
-            <div className="text-[10px] min-[900px]:text-xs opacity-70">{MONTHS[d.getMonth()]}</div>
+            <div className="text-[10px] min-[900px]:text-xs opacity-70">{monShort(d, lang)}</div>
           </button>
         );
       })}
@@ -2718,7 +2728,7 @@ function TimePills({ value, onChange, label }: { value: string; onChange: (v: st
   );
 }
 
-export type StepDef = { label: string; labelEs: string };
+export type StepDef = string;
 
 /** Always visible wizard header. Completed steps are clickable, upcoming ones muted. */
 /** Keeps a freshly selected card comfortably in view without a jarring jump. */
@@ -2780,6 +2790,7 @@ function StickyContinue({
 function Stepper({
   steps, current, maxReached, onGo,
 }: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
+  const lang = useFlowLang();
   const activeRef = useRef<HTMLButtonElement | null>(null);
   // On narrow screens the five steps scroll, so keep the active one in view.
   useEffect(() => {
@@ -2787,7 +2798,7 @@ function Stepper({
   }, [current]);
   return (
     <nav
-      aria-label="Booking steps"
+      aria-label={pickCopy(BOOKING_STEPS_ARIA, lang)}
       className="relative flex items-start gap-0.5 min-[900px]:gap-1 overflow-x-auto pb-1 -mx-1 px-1 max-w-full min-[900px]:max-w-[720px] no-scrollbar"
     >
       {/* Thin connector line behind the step bullets */}
@@ -2802,7 +2813,7 @@ function Stepper({
         const reachable = n <= maxReached;
         return (
           <button
-            key={s.label}
+            key={s}
             type="button"
             onClick={() => reachable && onGo(n)}
             disabled={!reachable}
@@ -2828,9 +2839,8 @@ function Stepper({
                 isCurrent ? "text-[#C4622D]" : isDone ? "text-gray-700" : "text-[#A6968A]"
               }`}
             >
-              {s.label}
+              {s}
             </span>
-            <span className="hidden min-[380px]:block text-[9px] min-[900px]:text-[10px] leading-tight text-[#B3A597]">{s.labelEs}</span>
           </button>
         );
       })}
