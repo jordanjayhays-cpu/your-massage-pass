@@ -17,6 +17,9 @@ import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/Whats
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
 import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
+import { useFlowLang, pickCopy, type FlowLang } from "@/lib/flowLang";
+import { shortWeekday, longWeekday, shortDate, longDate, timeLabel, formatPrice, formatMinutes, parseISODate, localeOf } from "@/lib/localeFormat";
+import { localizedServiceName } from "@/lib/serviceTypeI18n";
 
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -47,8 +50,7 @@ import {
   Phone, Instagram, MessageCircle, CalendarDays
 } from "lucide-react";
 
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Canonical (English) keys kept for storage/logic; display labels are localized below.
 const PRESSURE_LEVELS = ["Light", "Medium", "Firm", "Deep"];
 const FOCUS_AREAS = ["Neck", "Shoulders", "Upper Back", "Lower Back", "Legs", "Feet", "Arms", "Hands"];
 const PEOPLE_OPTIONS = ["2", "3", "4", "5+"];
@@ -56,24 +58,53 @@ const PEOPLE_OPTIONS = ["2", "3", "4", "5+"];
 // Fixed options for the unclaimed-studio handoff, where real availability is unknown.
 const HANDOFF_TIMES = Array.from({ length: 11 }, (_, i) => `${String(10 + i).padStart(2, "0")}:00`);
 
+const PRESSURE_LABEL_COPY: Record<FlowLang, Record<string, string>> = {
+  en: { Light: "Light", Medium: "Medium", Firm: "Firm", Deep: "Deep" },
+  es: { Light: "Suave", Medium: "Media", Firm: "Firme", Deep: "Profunda" },
+  fr: { Light: "Légère", Medium: "Moyenne", Firm: "Ferme", Deep: "Profonde" },
+  de: { Light: "Leicht", Medium: "Mittel", Firm: "Fest", Deep: "Tief" },
+  it: { Light: "Leggera", Medium: "Media", Firm: "Decisa", Deep: "Profonda" },
+  pt: { Light: "Leve", Medium: "Média", Firm: "Firme", Deep: "Profunda" },
+  zh: { Light: "轻柔", Medium: "适中", Firm: "有力", Deep: "深层" },
+};
+
+const FOCUS_AREA_LABEL_COPY: Record<FlowLang, Record<string, string>> = {
+  en: { Neck: "Neck", Shoulders: "Shoulders", "Upper Back": "Upper back", "Lower Back": "Lower back", Legs: "Legs", Feet: "Feet", Arms: "Arms", Hands: "Hands" },
+  es: { Neck: "Cuello", Shoulders: "Hombros", "Upper Back": "Espalda alta", "Lower Back": "Espalda baja", Legs: "Piernas", Feet: "Pies", Arms: "Brazos", Hands: "Manos" },
+  fr: { Neck: "Nuque", Shoulders: "Épaules", "Upper Back": "Haut du dos", "Lower Back": "Bas du dos", Legs: "Jambes", Feet: "Pieds", Arms: "Bras", Hands: "Mains" },
+  de: { Neck: "Nacken", Shoulders: "Schultern", "Upper Back": "Oberer Rücken", "Lower Back": "Unterer Rücken", Legs: "Beine", Feet: "Füße", Arms: "Arme", Hands: "Hände" },
+  it: { Neck: "Collo", Shoulders: "Spalle", "Upper Back": "Schiena alta", "Lower Back": "Schiena bassa", Legs: "Gambe", Feet: "Piedi", Arms: "Braccia", Hands: "Mani" },
+  pt: { Neck: "Pescoço", Shoulders: "Ombros", "Upper Back": "Costas superiores", "Lower Back": "Costas inferiores", Legs: "Pernas", Feet: "Pés", Arms: "Braços", Hands: "Mãos" },
+  zh: { Neck: "颈部", Shoulders: "肩部", "Upper Back": "上背部", "Lower Back": "下背部", Legs: "腿部", Feet: "脚部", Arms: "手臂", Hands: "手部" },
+};
+
 // Wizard steps, shown in the header on every screen.
-const BOOKING_STEPS = [
-  { label: "Service", labelEs: "Servicio" },
-  { label: "Day and time", labelEs: "Día y hora" },
-  { label: "Customize", labelEs: "Personaliza" },
-  { label: "Your details", labelEs: "Tus datos" },
-  { label: "Confirm", labelEs: "Confirmar" },
-];
-const HANDOFF_STEPS = [
-  { label: "Service", labelEs: "Servicio" },
-  { label: "Day and time", labelEs: "Día y hora" },
-  { label: "Your details", labelEs: "Tus datos" },
-  { label: "WhatsApp", labelEs: "WhatsApp" },
-];
-const CONVERSATION_LABELS: Record<string, string> = {
-  silence: "Silence",
-  minimal: "A little chat",
-  chatty: "Happy to chat",
+const BOOKING_STEPS_COPY: Record<FlowLang, string[]> = {
+  en: ["Service", "Day and time", "Customize", "Your details", "Confirm"],
+  es: ["Servicio", "Día y hora", "Personaliza", "Tus datos", "Confirmar"],
+  fr: ["Service", "Jour et heure", "Personnaliser", "Vos infos", "Confirmer"],
+  de: ["Leistung", "Tag und Uhrzeit", "Anpassen", "Deine Daten", "Bestätigen"],
+  it: ["Servizio", "Giorno e ora", "Personalizza", "I tuoi dati", "Conferma"],
+  pt: ["Serviço", "Dia e hora", "Personalizar", "Os teus dados", "Confirmar"],
+  zh: ["服务", "日期和时间", "个性化", "您的信息", "确认"],
+};
+const HANDOFF_STEPS_COPY: Record<FlowLang, string[]> = {
+  en: ["Service", "Day and time", "Your details", "WhatsApp"],
+  es: ["Servicio", "Día y hora", "Tus datos", "WhatsApp"],
+  fr: ["Service", "Jour et heure", "Vos infos", "WhatsApp"],
+  de: ["Leistung", "Tag und Uhrzeit", "Deine Daten", "WhatsApp"],
+  it: ["Servizio", "Giorno e ora", "I tuoi dati", "WhatsApp"],
+  pt: ["Serviço", "Dia e hora", "Os teus dados", "WhatsApp"],
+  zh: ["服务", "日期和时间", "您的信息", "WhatsApp"],
+};
+const CONVERSATION_LABEL_COPY: Record<FlowLang, Record<string, string>> = {
+  en: { silence: "Silence", minimal: "A little chat", chatty: "Happy to chat" },
+  es: { silence: "Silencio", minimal: "Charla ligera", chatty: "Me gusta hablar" },
+  fr: { silence: "Silence", minimal: "Un peu de conversation", chatty: "J'aime discuter" },
+  de: { silence: "Stille", minimal: "Etwas Small Talk", chatty: "Ich rede gerne" },
+  it: { silence: "Silenzio", minimal: "Un po' di chiacchiere", chatty: "Mi piace parlare" },
+  pt: { silence: "Silêncio", minimal: "Uma conversa leve", chatty: "Gosto de conversar" },
+  zh: { silence: "安静", minimal: "简单聊聊", chatty: "喜欢聊天" },
 };
 
 const isoDate = (d: Date) =>

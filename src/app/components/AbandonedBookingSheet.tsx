@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Loader2, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { trackEvent } from "@/lib/siteVisit";
+import { useFlowLang } from "@/lib/flowLang";
 
 const SESSION_KEY = "mc_booking_lead_sheet";
 
@@ -20,6 +20,79 @@ function markHandled() {
     /* ignore */
   }
 }
+
+const COPY = {
+  en: {
+    title: "Want us to hold this?",
+    body: "Leave your email and we will save your booking details and help you finish, no commitment.",
+    invalidEmail: "Enter a valid email",
+    saveFailed: "Could not save. Please try again.",
+    savedTitle: "Saved",
+    savedBody: "We will email you to help you finish.",
+    save: "Save my booking",
+    noThanks: "No thanks",
+  },
+  es: {
+    title: "¿Te lo guardamos?",
+    body: "Déjanos tu email y guardamos los detalles de tu reserva y te ayudamos a terminar, sin compromiso.",
+    invalidEmail: "Escribe un email válido",
+    saveFailed: "No se pudo guardar. Inténtalo otra vez.",
+    savedTitle: "Guardado",
+    savedBody: "Te escribiremos para ayudarte a terminar.",
+    save: "Guardar mi reserva",
+    noThanks: "No, gracias",
+  },
+  fr: {
+    title: "On vous le garde ?",
+    body: "Laissez votre email, on enregistre les détails de votre réservation et on vous aide à terminer, sans engagement.",
+    invalidEmail: "Saisissez un email valide",
+    saveFailed: "Impossible d'enregistrer. Réessayez.",
+    savedTitle: "Enregistré",
+    savedBody: "Nous vous écrirons pour vous aider à terminer.",
+    save: "Enregistrer ma réservation",
+    noThanks: "Non merci",
+  },
+  de: {
+    title: "Sollen wir das für dich merken?",
+    body: "Hinterlasse deine E-Mail, wir speichern deine Buchungsdetails und helfen dir beim Abschluss, ganz unverbindlich.",
+    invalidEmail: "Bitte eine gültige E-Mail eingeben",
+    saveFailed: "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+    savedTitle: "Gespeichert",
+    savedBody: "Wir schreiben dir, um dir beim Abschluss zu helfen.",
+    save: "Meine Buchung speichern",
+    noThanks: "Nein danke",
+  },
+  it: {
+    title: "Vuoi che lo teniamo da parte?",
+    body: "Lasciaci la tua email, salviamo i dettagli della tua prenotazione e ti aiutiamo a finire, senza impegno.",
+    invalidEmail: "Inserisci un'email valida",
+    saveFailed: "Impossibile salvare. Riprova.",
+    savedTitle: "Salvato",
+    savedBody: "Ti scriveremo per aiutarti a finire.",
+    save: "Salva la mia prenotazione",
+    noThanks: "No grazie",
+  },
+  pt: {
+    title: "Queres que guardemos isto?",
+    body: "Deixa o teu email e guardamos os detalhes da tua reserva e ajudamos-te a terminar, sem compromisso.",
+    invalidEmail: "Escreve um email válido",
+    saveFailed: "Não foi possível guardar. Tenta outra vez.",
+    savedTitle: "Guardado",
+    savedBody: "Vamos escrever-te para te ajudar a terminar.",
+    save: "Guardar a minha reserva",
+    noThanks: "Não, obrigado",
+  },
+  zh: {
+    title: "需要我们帮你保留吗？",
+    body: "留下你的邮箱，我们会保存你的预约信息并帮助你完成预约，无需承诺。",
+    invalidEmail: "请输入有效的邮箱",
+    saveFailed: "保存失败，请重试。",
+    savedTitle: "已保存",
+    savedBody: "我们会发邮件帮助你完成预约。",
+    save: "保存我的预约",
+    noThanks: "不用了",
+  },
+} as const;
 
 /**
  * Abandoned-booking capture trigger.
@@ -107,8 +180,8 @@ export default function AbandonedBookingSheet({
   time: string | null;
   defaultEmail?: string;
 }) {
-  const { i18n } = useTranslation();
-  const es = (i18n.resolvedLanguage || "en").startsWith("es");
+  const lang = useFlowLang();
+  const c = COPY[lang];
   const [email, setEmail] = useState(defaultEmail || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -124,7 +197,7 @@ export default function AbandonedBookingSheet({
   const submit = async () => {
     const clean = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean) || clean.length > 255) {
-      setError(es ? "Escribe un email válido" : "Enter a valid email");
+      setError(c.invalidEmail);
       return;
     }
     setSaving(true);
@@ -140,7 +213,7 @@ export default function AbandonedBookingSheet({
     ]);
     setSaving(false);
     if (err) {
-      setError(es ? "No se pudo guardar. Inténtalo otra vez." : "Could not save. Please try again.");
+      setError(c.saveFailed);
       return;
     }
     trackEvent("lead_captured", { slug, meta: { service: serviceName, date, time } });
@@ -154,7 +227,7 @@ export default function AbandonedBookingSheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={es ? "¿Te lo guardamos?" : "Want us to hold this?"}
+        aria-label={c.title}
         className="relative w-full min-[900px]:max-w-md bg-[#FAF6F1] rounded-t-3xl min-[900px]:rounded-3xl border-t min-[900px]:border border-[#EADFD2] shadow-2xl px-5 pt-4 pb-6"
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#EADFD2] min-[900px]:hidden" />
@@ -163,21 +236,13 @@ export default function AbandonedBookingSheet({
             <div className="mx-auto mb-3 h-10 w-10 rounded-full bg-[#C4622D] text-white flex items-center justify-center">
               <Check size={20} />
             </div>
-            <p className="font-semibold text-gray-800">{es ? "Guardado" : "Saved"}</p>
-            <p className="text-sm text-[#8a7460]">
-              {es ? "Te escribiremos para ayudarte a terminar." : "We will email you to help you finish."}
-            </p>
+            <p className="font-semibold text-gray-800">{c.savedTitle}</p>
+            <p className="text-sm text-[#8a7460]">{c.savedBody}</p>
           </div>
         ) : (
           <>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {es ? "¿Te lo guardamos?" : "Want us to hold this?"}
-            </h2>
-            <p className="mt-1 text-sm text-[#8a7460]">
-              {es
-                ? "Déjanos tu email y guardamos los detalles de tu reserva y te ayudamos a terminar, sin compromiso."
-                : "Leave your email and we will save your booking details and help you finish, no commitment."}
-            </p>
+            <h2 className="text-lg font-semibold text-gray-900">{c.title}</h2>
+            <p className="mt-1 text-sm text-[#8a7460]">{c.body}</p>
             <input
               type="email"
               inputMode="email"
@@ -195,13 +260,13 @@ export default function AbandonedBookingSheet({
               className="mt-3 w-full rounded-2xl bg-[#C4622D] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {saving && <Loader2 size={16} className="animate-spin" />}
-              {es ? "Guardar mi reserva" : "Save my booking"}
+              {c.save}
             </button>
             <button
               onClick={onClose}
               className="mt-3 w-full text-center text-xs text-[#8a7460] underline underline-offset-2"
             >
-              {es ? "No, gracias" : "No thanks"}
+              {c.noThanks}
             </button>
           </>
         )}
