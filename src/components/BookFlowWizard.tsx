@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, MapPin, MessageCircle } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
+import { trackFunnel } from "@/lib/funnel";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
