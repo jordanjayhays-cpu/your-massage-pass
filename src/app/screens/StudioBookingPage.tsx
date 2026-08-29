@@ -1180,14 +1180,13 @@ export default function StudioBookingPage() {
           onClick={() => askLocation((res) => { if (res) { setUserLoc(res.loc); setLocAreaName(res.areaName); } })}
           className="underline underline-offset-2 font-semibold"
         >
-          Show distance <span className="font-normal">/ Ver distancia</span>
+          {c.showDistance}
         </button>
       )}
       {directionsHref && (
         <a href={directionsHref} target="_blank" rel="noreferrer" className={`underline underline-offset-2 font-semibold ${dark ? "" : "text-[#C4622D]"}`}>
-          Directions <span className="font-normal">/ Cómo llegar</span>
-        </a>
-      )}
+          {c.directions}
+        </a>)}
     </p>
   );
 
