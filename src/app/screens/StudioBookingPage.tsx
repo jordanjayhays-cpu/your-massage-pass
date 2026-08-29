@@ -7,6 +7,7 @@ import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
+import StudioReviews from "@/app/components/StudioReviews";
 import { haversineKm, distanceLabel, walkingDirectionsUrl, type LatLng } from "@/lib/distance";
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
