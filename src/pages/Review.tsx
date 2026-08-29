@@ -176,6 +176,8 @@ export default function Review() {
   const [cleanliness, setCleanliness] = useState(0);
   const [ambience, setAmbience] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
+  const [customTag, setCustomTag] = useState("");
+  const [otherOn, setOtherOn] = useState(false);
   const [comment, setComment] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [privateNote, setPrivateNote] = useState("");
@@ -206,6 +208,7 @@ export default function Review() {
           if (rev.cleanliness) setCleanliness(Number(rev.cleanliness));
           if (rev.ambience) setAmbience(Number(rev.ambience));
           if (Array.isArray(rev.tags)) setTags(rev.tags.filter(Boolean));
+          if (rev.custom_tag) { setCustomTag(String(rev.custom_tag)); setOtherOn(true); }
           if (rev.comment) setComment(rev.comment);
           if (rev.private_note) setPrivateNote(rev.private_note);
           if (rev.display_name) setDisplayName(rev.display_name);
@@ -229,6 +232,7 @@ export default function Review() {
       cleanliness: cleanliness || null,
       ambience: ambience || null,
       tags,
+      custom_tag: customTag.trim() || null,
       comment: comment.trim() || null,
       display_name: displayName.trim() || null,
       private_note: privateNote.trim() || null,
