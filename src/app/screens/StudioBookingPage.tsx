@@ -177,6 +177,8 @@ export default function StudioBookingPage() {
   const timeRef = useRef<HTMLDivElement | null>(null);
   // Guard so a single WhatsApp tap logs exactly one row.
   const waLoggedRef = useRef(false);
+  // Id of the request we just logged, so a new account can be attached to it.
+  const waRequestIdRef = useRef<string | null>(null);
   // Languages the visitor speaks — defaults to the site language, never a required field.
   const siteLang = (i18n.language || "en").slice(0, 2);
   const defaultSpoken: SpokenLang[] = isSpokenLang(siteLang) ? [siteLang] : ["en"];
@@ -1010,7 +1012,7 @@ export default function StudioBookingPage() {
       });
       // Log the lead BEFORE the WhatsApp link opens, so we keep the record even
       // if the visitor never sends the message.
-      await logWhatsappRequest({
+      waRequestIdRef.current = await logWhatsappRequest({
         partner_id: partner.id,
         slug: partner.slug || null,
         studio_name: partner.business_name,
@@ -1523,6 +1525,14 @@ export default function StudioBookingPage() {
                           Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.
                         </p>
                       </div>
+                      <AccountOfferBlock
+                        firstName={hoFirstName.trim()}
+                        lastName={hoLastName.trim()}
+                        email={hoEmail.trim()}
+                        phone={hoPhone.trim()}
+                        requestId={waRequestIdRef.current}
+                        source="studio-handoff"
+                      />
                       <Link
                         to="/studios"
                         className="inline-flex flex-col items-center justify-center w-full h-12 min-[900px]:h-14 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition"
@@ -2440,7 +2450,7 @@ export default function StudioBookingPage() {
                     slug: partner.slug || partner.id,
                     meta: { filled: !!(service || date || time), service: !!service, date: !!date },
                   });
-                  logWhatsappRequest({
+                  void logWhatsappRequest({
                     partner_id: partner.id,
                     slug: partner.slug || null,
                     studio_name: partner.business_name,
@@ -2459,7 +2469,7 @@ export default function StudioBookingPage() {
                     user_id: userId,
                     wa_number: bookingWaNumber,
                     message_text: bookingWaMsg,
-                  });
+                  }).then((id) => { waRequestIdRef.current = id; });
                 }}
                 className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
                   askWaTapped
