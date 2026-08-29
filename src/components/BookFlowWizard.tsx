@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, MapPin, MessageCircle } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
+import { trackFunnel } from "@/lib/funnel";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
@@ -391,6 +392,17 @@ export default function BookFlowWizard({
     return name;
   };
 
+  // Funnel: each step becoming visible, with whatever they have chosen so far.
+  useEffect(() => {
+    trackFunnel(`wizard_step_${step}`, {
+      source,
+      lang,
+      massage: massage || null,
+      area: area ? areaValue : null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const handleUseLocation = () => {
     setLocationDenied(false);
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -417,8 +429,10 @@ export default function BookFlowWizard({
         const option = mapAreaNameToOption(nearest.name);
         if (areas.includes(option)) {
           setArea(option);
+          trackFunnel("wizard_area_selected", { area: option, via: "geolocation", massage: massage || null, source });
         } else if (areas.includes(nearest.name)) {
           setArea(nearest.name);
+          trackFunnel("wizard_area_selected", { area: nearest.name, via: "geolocation", massage: massage || null, source });
         }
         setHint(null);
       },
@@ -436,6 +450,7 @@ export default function BookFlowWizard({
 
   const submit = async () => {
     setHint(null);
+    trackFunnel("wizard_submit_attempt", { source, lang, massage: massage || null, area: areaValue || null, people });
     if (!firstName.trim() || !lastName.trim()) return fail(t.missName, nameRef);
     if (contact.phoneValid === false) return fail(cc.badPhone, contactRef);
     if (contact.emailValid === false) return fail(cc.badEmail, contactRef);
@@ -472,12 +487,32 @@ export default function BookFlowWizard({
       });
       const data = await res.json().catch(() => ({ ok: false }));
       if (res.ok && data.ok) {
+        trackFunnel("wizard_submit_ok", {
+          source,
+          lang,
+          massage: massage || null,
+          area: areaValue || null,
+          request_id: (data as { id?: string | number }).id ?? null,
+        });
         setStatus("success");
         afterStep();
       } else {
+        trackFunnel("wizard_submit_error", {
+          source,
+          massage: massage || null,
+          area: areaValue || null,
+          status: res.status,
+          error: String((data as { error?: unknown }).error ?? `http_${res.status}`).slice(0, 200),
+        });
         setStatus("error");
       }
-    } catch {
+    } catch (e) {
+      trackFunnel("wizard_submit_error", {
+        source,
+        massage: massage || null,
+        area: areaValue || null,
+        error: String((e as Error)?.message || e || "network_error").slice(0, 200),
+      });
       setStatus("error");
     }
   };
@@ -518,7 +553,10 @@ export default function BookFlowWizard({
           href={waLink}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => trackEvent("wizard_whatsapp_click", { meta: { source, lang } })}
+          onClick={() => {
+            trackEvent("wizard_whatsapp_click", { meta: { source, lang } });
+            trackFunnel("wizard_wa_handoff", { source, lang, massage: massage || null, area: areaValue || null });
+          }}
           className="mt-6 w-full h-14 rounded-full bg-[#25D366] text-white text-base font-semibold shadow-soft hover:bg-[#128C7E] transition inline-flex items-center justify-center gap-2"
         >
           <MessageCircle className="h-5 w-5 fill-current" /> {t.sendWhatsApp}
@@ -631,7 +669,7 @@ export default function BookFlowWizard({
                 <p className="text-sm text-muted-foreground">{t.dayLabel}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {dayChips.map((d) => (
-                    <Chip key={d} active={dVal === d} onClick={() => { setD(d); setHint(null); }}>{d}</Chip>
+                    <Chip key={d} active={dVal === d} onClick={() => { setD(d); setHint(null); trackFunnel("wizard_day_selected", { day: d, iso: isoForDay(d), option: idx + 1, massage: massage || null, source }); }}>{d}</Chip>
                   ))}
                 </div>
               </div>
@@ -640,7 +678,7 @@ export default function BookFlowWizard({
                 <p className="text-sm text-muted-foreground">{t.timeLabel}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {timeChips.map((x) => (
-                    <Chip key={x} active={tVal === x} onClick={() => { setT(x); setHint(null); }}>{x}</Chip>
+                    <Chip key={x} active={tVal === x} onClick={() => { setT(x); setHint(null); trackFunnel("wizard_time_selected", { time: x, option: idx + 1, massage: massage || null, source }); }}>{x}</Chip>
                   ))}
                 </div>
               </div>
@@ -690,7 +728,7 @@ export default function BookFlowWizard({
               <select
                 id="area"
                 value={area}
-                onChange={(e) => { setArea(e.target.value); setHint(null); setLocationDenied(false); }}
+                onChange={(e) => { setArea(e.target.value); setHint(null); setLocationDenied(false); if (e.target.value) trackFunnel("wizard_area_selected", { area: e.target.value, via: "select", massage: massage || null, source }); }}
                 className="mt-1.5 w-full h-12 rounded-xl border border-border bg-card px-3 text-base text-foreground"
               >
                 <option value="">{t.areaPlaceholder}</option>
@@ -833,6 +871,7 @@ export default function BookFlowWizard({
       {step >= 2 && (
         <ExitCaptureBlock
           source="wizard-exit"
+          step={step}
           want={massage || null}
           area={area ? (area === t.other ? areaOther || null : area) : null}
           className="mt-8"

@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { trackFunnel } from "@/lib/funnel";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
@@ -150,6 +151,11 @@ export default function Notify() {
       });
       const data = await res.json().catch(() => ({ ok: false }));
       if (res.ok && data.ok) {
+        trackFunnel("deals_signup_ok", {
+          source: "join",
+          want: wantSel.length ? wantSel.join(", ") : null,
+          area: area || null,
+        });
         setStatus("success");
       } else {
         setStatus("error");

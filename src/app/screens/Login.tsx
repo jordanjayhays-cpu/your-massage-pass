@@ -10,6 +10,7 @@ import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
 import { useStudioCount } from "@/lib/studioCount";
 import { trackAccountCreatedConversion, isFreshlyCreatedUser } from "@/lib/adsConversion";
+import { trackFunnel } from "@/lib/funnel";
 
 
 
@@ -127,7 +128,9 @@ export default function Login() {
         const { data: { user } } = await supabase.auth.getUser();
         const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
         // Only a brand-new auth user counts as an account creation conversion.
-        if (isFreshlyCreatedUser(user?.created_at)) trackAccountCreatedConversion();
+        const isNew = isFreshlyCreatedUser(user?.created_at);
+        if (isNew) trackAccountCreatedConversion();
+        trackFunnel(isNew ? "account_created" : "account_signin", { how: "email" });
         if (user) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -156,6 +159,7 @@ export default function Login() {
   };
 
   const handleGoogle = async () => {
+    trackFunnel("account_signin", { how: "google" });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/studios` },
