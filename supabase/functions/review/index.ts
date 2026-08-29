@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
       const { data: review } = await admin
         .from("reviews")
-        .select("rating, would_return, pressure_feedback, cleanliness, ambience, comment, tags, private_note, display_name")
+        .select("rating, would_return, pressure_feedback, cleanliness, ambience, comment, tags, custom_tag, private_note, display_name")
         .eq("booking_id", b.id)
         .maybeSingle();
 
@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
         private_note: clean(body?.private_note),
         display_name: clean(body?.display_name, 60),
         tags,
+        custom_tag: clean(body?.custom_tag, 60),
         lang: clean(body?.lang, 5) || b.lang || "en",
         published: true,
       };
