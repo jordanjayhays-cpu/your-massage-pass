@@ -5,16 +5,17 @@
  * (localStorage "mc_consent" === "granted" / "accepted"), and never loads for
  * the personal opt-out flag (localStorage "mc_nt" === "1").
  */
+import { isTrackingExcluded } from "./siteVisit";
+
 const CLARITY_ID = "y6e1s80114";
 
 type ClarityFn = (...args: unknown[]) => void;
 
 function optedOut(): boolean {
-  try {
-    return localStorage.getItem("mc_nt") === "1";
-  } catch {
-    return false;
-  }
+  // isTrackingExcluded() also reads ?nt=1 / ?nt=0 from the current URL and
+  // persists it, so Clarity is blocked even on the very first page load
+  // carrying ?nt=1, before any other component effect runs.
+  return isTrackingExcluded();
 }
 
 function hasConsent(): boolean {
