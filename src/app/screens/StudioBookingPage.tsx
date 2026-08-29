@@ -1944,13 +1944,7 @@ export default function StudioBookingPage() {
               <div ref={serviceRef}>
                 <Section step="1" title="Choose a service" titleEs="Elige un servicio">
                   {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4 min-[900px]:mb-5">{partner.description}</p>}
-                  {(partner.gallery || []).length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3">
-                      {partner.gallery.map((url: string, i: number) => (
-                        <img key={i} src={url} alt="" className="h-24 w-36 flex-shrink-0 rounded-xl object-cover border border-gray-200" />
-                      ))}
-                    </div>
-                  )}
+                  <StudioGallery items={partner.gallery || []} />
                   {!rebookId && (
                     <BookAgainBanner
                       partnerId={partner.id}
