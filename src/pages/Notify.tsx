@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { trackFunnel } from "@/lib/funnel";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 const SUPPORT_WHATSAPP = "https://wa.me/34612474827";
