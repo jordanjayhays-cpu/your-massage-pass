@@ -862,6 +862,7 @@ export default function StudioBookingPage() {
                 </div>
               </>
             )}
+            <DealsConfirmationLine className="mt-6" />
             <MarketingOptInCard
               className="mt-6"
               email={email.trim() || null}

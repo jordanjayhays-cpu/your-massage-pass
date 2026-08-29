@@ -526,6 +526,7 @@ export default function BookFlowWizard({
             {t.noWhatsApp.replace("{contact}", fallbackContact)}
           </p>
         )}
+        <DealsConfirmationLine className="mt-6" />
       </div>
     );
   }
