@@ -83,6 +83,7 @@ export default function ExitCaptureBlock({ source, want, area, step = null, clas
       /* still show done - the lead function is best-effort */
     }
     trackEvent("exit_capture_submit", { meta: { source, has_want: !!want, has_area: !!area } });
+    trackFunnel("deals_signup_ok", { source, step, want: want || null, area: area || null });
     setState("done");
   };
 
