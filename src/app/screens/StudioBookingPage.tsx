@@ -2406,6 +2406,11 @@ export default function StudioBookingPage() {
           </aside>
 
           <div className="min-[900px]:col-span-2 space-y-5">
+            <ExitCaptureBlock
+              source="studio-exit"
+              want={service ? servicePrimaryName(service) : hoService ? servicePrimaryName(hoService) : null}
+              area={(partner as any).district || null}
+            />
             {/* Contact footer */}
             <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
               <WhatsAppAskButton

@@ -8,6 +8,7 @@ import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 import { DealsConfirmationLine } from "@/components/DealsLink";
+import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
@@ -828,6 +829,15 @@ export default function BookFlowWizard({
         )}
 
       </div>
+
+      {step >= 2 && (
+        <ExitCaptureBlock
+          source="wizard-exit"
+          want={massage || null}
+          area={area ? (area === t.other ? areaOther || null : area) : null}
+          className="mt-8"
+        />
+      )}
     </div>
   );
 }
