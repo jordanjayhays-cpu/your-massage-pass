@@ -728,7 +728,7 @@ export default function BookFlowWizard({
               <select
                 id="area"
                 value={area}
-                onChange={(e) => { setArea(e.target.value); setHint(null); setLocationDenied(false); }}
+                onChange={(e) => { setArea(e.target.value); setHint(null); setLocationDenied(false); if (e.target.value) trackFunnel("wizard_area_selected", { area: e.target.value, via: "select", massage: massage || null, source }); }}
                 className="mt-1.5 w-full h-12 rounded-xl border border-border bg-card px-3 text-base text-foreground"
               >
                 <option value="">{t.areaPlaceholder}</option>
