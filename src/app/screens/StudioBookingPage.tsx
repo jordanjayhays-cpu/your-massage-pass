@@ -2281,7 +2281,7 @@ export default function StudioBookingPage() {
             )}
             <div>
               <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur text-white px-3 py-1 rounded-full text-xs font-semibold mb-2">
-                <Sparkles size={12} /> Book your massage
+                <Sparkles size={12} /> {c.bookYourMassage}
               </div>
               <h1 className="font-display text-3xl font-semibold text-white leading-tight">{partner.business_name}</h1>
               {rating ? (
