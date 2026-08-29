@@ -1,6 +1,17 @@
 import { X, Scale } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCompare, comparePath } from "@/lib/compare";
+import { useFlowLang } from "@/lib/flowLang";
+
+const COPY = {
+  en: { compare: "Compare", clear: "Clear", compareN: (n: number) => `Compare (${n})`, pick: "Pick another studio to compare prices", remove: (name: string) => `Remove ${name}` },
+  es: { compare: "Comparar", clear: "Borrar", compareN: (n: number) => `Comparar (${n})`, pick: "Elige otro estudio para comparar precios", remove: (name: string) => `Quitar ${name}` },
+  fr: { compare: "Comparer", clear: "Effacer", compareN: (n: number) => `Comparer (${n})`, pick: "Choisissez un autre institut pour comparer les prix", remove: (name: string) => `Retirer ${name}` },
+  de: { compare: "Vergleichen", clear: "Leeren", compareN: (n: number) => `Vergleichen (${n})`, pick: "Wähle ein weiteres Studio zum Preisvergleich", remove: (name: string) => `${name} entfernen` },
+  it: { compare: "Confronta", clear: "Cancella", compareN: (n: number) => `Confronta (${n})`, pick: "Scegli un altro centro per confrontare i prezzi", remove: (name: string) => `Rimuovi ${name}` },
+  pt: { compare: "Comparar", clear: "Limpar", compareN: (n: number) => `Comparar (${n})`, pick: "Escolhe outro estúdio para comparar preços", remove: (name: string) => `Remover ${name}` },
+  zh: { compare: "比较", clear: "清除", compareN: (n: number) => `比较 (${n})`, pick: "再选一家门店来比较价格", remove: (name: string) => `移除 ${name}` },
+} as const;
 
 /**
  * Sticky bottom bar listing the studios picked for comparison.
@@ -9,6 +20,8 @@ import { useCompare, comparePath } from "@/lib/compare";
 export default function CompareBar({ className = "pb-3" }: { className?: string }) {
   const { items, remove, clear } = useCompare();
   const navigate = useNavigate();
+  const lang = useFlowLang();
+  const t = COPY[lang];
   if (items.length === 0) return null;
 
   const ready = items.length >= 2;
@@ -18,7 +31,7 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
       <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            <Scale className="h-3.5 w-3.5" /> Compare
+            <Scale className="h-3.5 w-3.5" /> {t.compare}
           </span>
 
           <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
@@ -31,7 +44,7 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
                 <button
                   type="button"
                   onClick={() => remove(it.key)}
-                  aria-label={`Remove ${it.name} / Quitar ${it.name}`}
+                  aria-label={t.remove(it.name)}
                   className="h-5 w-5 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
                 >
                   <X className="h-3 w-3" />
@@ -46,7 +59,7 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
               onClick={clear}
               className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
             >
-              Clear <span className="text-muted-foreground/70">· Borrar</span>
+              {t.clear}
             </button>
             {ready ? (
               <button
@@ -54,15 +67,12 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
                 onClick={() => navigate(comparePath(items.map((i) => i.key)))}
                 className="h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft hover:opacity-90 transition"
               >
-                Compare ({items.length})
+                {t.compareN(items.length)}
               </button>
             ) : (
               <span className="inline-flex flex-col justify-center rounded-full border border-dashed border-primary/50 bg-primary/5 px-4 py-2 min-h-11 text-left animate-pulse-once">
                 <span className="text-xs font-semibold text-primary leading-tight">
-                  Pick another studio to compare prices
-                </span>
-                <span className="text-[10px] text-muted-foreground leading-tight">
-                  Elige otro estudio para comparar precios
+                  {t.pick}
                 </span>
               </span>
             )}
