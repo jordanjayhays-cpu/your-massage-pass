@@ -678,7 +678,7 @@ export default function BookFlowWizard({
                 <p className="text-sm text-muted-foreground">{t.timeLabel}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {timeChips.map((x) => (
-                    <Chip key={x} active={tVal === x} onClick={() => { setT(x); setHint(null); }}>{x}</Chip>
+                    <Chip key={x} active={tVal === x} onClick={() => { setT(x); setHint(null); trackFunnel("wizard_time_selected", { time: x, option: idx + 1, massage: massage || null, source }); }}>{x}</Chip>
                   ))}
                 </div>
               </div>
