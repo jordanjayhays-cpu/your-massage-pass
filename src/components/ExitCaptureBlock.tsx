@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isValidEmail } from "@/lib/contactValidation";
 import { trackEvent } from "@/lib/siteVisit";
+import { trackFunnel } from "@/lib/funnel";
 
 const LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 
