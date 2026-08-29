@@ -19,6 +19,8 @@ import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
 
 import { captureSource, getSource } from "@/lib/attribution";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import AccountHeaderLink from "@/components/AccountHeaderLink";
+import AccountOfferBlock from "@/components/AccountOfferBlock";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { isInstantConfirm } from "@/lib/instantConfirm";
@@ -879,6 +881,15 @@ export default function StudioBookingPage() {
                 </div>
               </>
             )}
+            <AccountOfferBlock
+              className="mt-6"
+              firstName={firstName.trim()}
+              lastName={lastName.trim()}
+              email={email.trim()}
+              phone={phone.trim()}
+              requestId={waRequestIdRef.current}
+              source="studio-booking"
+            />
             <DealsConfirmationLine className="mt-6" />
             <MarketingOptInCard
               className="mt-6"
@@ -1049,7 +1060,7 @@ export default function StudioBookingPage() {
     const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
     return (
       <div className="min-h-screen p-4 pb-28 relative" style={{ background: "#FAF6F1" }}>
-        <div className="absolute top-3 right-3 z-10"><LanguageFlagToggle /></div>
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
         <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden text-center min-[900px]:text-left" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
             <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
@@ -1795,7 +1806,7 @@ export default function StudioBookingPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF6F1] relative">
-      <div className="absolute top-3 right-3 z-30"><LanguageFlagToggle /></div>
+      <div className="absolute top-3 right-3 z-30 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
       {/* Hero */}
       <div className="relative h-44 bg-gradient-to-br from-[#C4622D] to-[#5b0a16]">
         <img

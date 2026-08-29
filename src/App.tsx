@@ -96,6 +96,7 @@ import StudioHours from "./pages/StudioHours";
 import BookingActionRedirect from "./app/screens/BookingActionRedirect";
 import RouteTracker from "./lib/RouteTracker";
 import AdTrafficRedirect from "./lib/AdTrafficRedirect";
+import AccountLinker from "./lib/AccountLinker";
 import ConsentBanner from "./components/ConsentBanner";
 import AnalyticsOptOut from "./components/AnalyticsOptOut";
 import ThanksToast from "./components/ThanksToast";
@@ -118,6 +119,7 @@ const App = () => (
         <LocationAskProvider>
         <RouteTracker />
         <AdTrafficRedirect />
+        <AccountLinker />
         <ConsentBanner />
         <AnalyticsOptOut />
         <ThanksToast />
