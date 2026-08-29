@@ -150,6 +150,11 @@ export default function Notify() {
       });
       const data = await res.json().catch(() => ({ ok: false }));
       if (res.ok && data.ok) {
+        trackFunnel("deals_signup_ok", {
+          source: "join",
+          want: wantSel.length ? wantSel.join(", ") : null,
+          area: area || null,
+        });
         setStatus("success");
       } else {
         setStatus("error");
