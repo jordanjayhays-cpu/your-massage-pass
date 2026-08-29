@@ -18,4 +18,4 @@
 - Instagram account is banned from automation: no DMs, no scheduling tools.
 - "Special massage" seekers get the standard shutdown line and no further replies.
 - Approval required before any outbound message to third parties, except automations Jordan has explicitly approved (lead-to-studio offer email).
-- Test contacts that must never trigger real emails or nudges: jordan.hays@student.ie.edu, jordanjayhays@gmail.com, jordan@massageclub.io, support@massageclub.io, jordan@niahconnect.com, +15622355063, testing.com/example.com/test.com/placeholder.local domains, +mctest/+uitest, names containing test/prueba.
+- Test contacts that must never trigger real emails or nudges: jordan.hays@student.ie.edu, jordanjayhays@gmail.com, jordan@massageclub.io, support@massageclub.io, jordan@niahconnect.com, +15622355063, testing.com/example.com/test.com/placeholder.local domains, +mctest/+uitest, names containing test/prueba. Friend testers (never contact, never save as real customers, tests must never reach real studios): Cata (+17867276503, cata.waack@gmail.com) and Yi (+86 numbers ending 997, elon_yilong@student.ie.edu).
