@@ -26,6 +26,7 @@ import Survey from "./app/screens/Survey";
 import SurveyCustomers from "./app/screens/SurveyCustomers";
 import SurveyStudios from "./app/screens/SurveyStudios";
 import FounderDashboard from "./app/screens/FounderDashboard";
+import FounderChats from "./app/screens/FounderChats";
 import AdminInviteStudio from "./app/screens/AdminInviteStudio";
 import StudioSetup from "./app/screens/StudioSetup";
 import ClaimShortLink from "./app/screens/ClaimShortLink";

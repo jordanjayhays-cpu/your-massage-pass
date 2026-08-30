@@ -206,7 +206,6 @@ export default function FounderChats() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-sm text-primary hover:underline"
               >
-                <RefreshCw className="hidden" />
                 Reply on WhatsApp
               </a>
             </div>
