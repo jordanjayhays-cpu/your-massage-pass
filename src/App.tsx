@@ -40,6 +40,7 @@ import Web from "./pages/Web";
 import Home from "./pages/Home";
 import BookingResult from "./pages/BookingResult";
 import Welcome from "./pages/Welcome";
+import AccountSetup from "./pages/AccountSetup";
 import Compare from "./pages/Compare";
 import MassageTypePage from "./pages/MassageTypePage";
 import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
@@ -128,6 +129,7 @@ const App = () => (
         <Routes>
           <Route path="/booking-result" element={<BookingResult />} />
           <Route path="/welcome" element={<Welcome />} />
+          <Route path="/account/setup" element={<AccountSetup />} />
 
           <Route path="/compare" element={<Compare />} />
           <Route path="/review" element={<Review />} />
