@@ -1194,13 +1194,11 @@ function StudioSetupInner() {
           </div>
         </div>
 
-        {/* STEP 1: LANGUAGE CHOOSER */}
-        {step === 1 && (
-          <div className="mb-4 rounded-2xl border border-[#E5DDD3] bg-[#FAF7F2] p-4">
-            <label className="text-xs font-medium text-[#7A7068] mb-2 block">{t("partner.studioSetup.langChooserLabel")}</label>
-            <SetupLangPills value={lang} onChange={chooseLang} />
-          </div>
-        )}
+        {/* LANGUAGE CHOOSER — visible on every step so owners landing mid-flow can always switch */}
+        <div className="mb-4 rounded-2xl border border-[#E5DDD3] bg-[#FAF7F2] p-4">
+          <label className="text-xs font-medium text-[#7A7068] mb-2 block">{t("partner.studioSetup.langChooserLabel")}</label>
+          <SetupLangPills value={lang} onChange={chooseLang} />
+        </div>
 
         {/* STEP 1: ACCOUNT */}
         {step === 1 && mode === "claim" && (
@@ -1427,6 +1425,9 @@ function StudioSetupInner() {
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-[#B85C38] text-white flex items-center justify-center text-sm font-bold">4</div>
                 <h2 className="font-display text-lg font-semibold text-[#2b2b2b]">{t("partner.studioSetup.step4CalendarTitle")}</h2>
+                <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-[#9E9387] border border-[#E5DDD3] rounded-full px-2 py-0.5 bg-[#FAF6F1]">
+                  {t("partner.studioSetup.optionalTag")}
+                </span>
               </div>
               <p className="text-sm text-[#7A7068]">
                 {t("partner.studioSetup.calendarRecommendedDesc")}
@@ -1488,14 +1489,15 @@ function StudioSetupInner() {
 
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11"><ChevronLeft className="h-4 w-4 mr-1" /> {t("partner.studioSetup.backButton")}</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setStep(5)}
+                  className="flex-1 h-11 border-[#B85C38] text-[#B85C38] hover:bg-[#FAF6F1]"
+                >
+                  {t("partner.studioSetup.skipForNow")} <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
               </div>
-
-              <button
-                onClick={() => setStep(5)}
-                className="w-full text-center text-xs text-[#7A7068] hover:text-[#B85C38] underline underline-offset-2 pt-1"
-              >
-                {t("partner.studioSetup.skipForNow")}
-              </button>
+              <p className="text-xs text-center text-[#7A7068]">{t("partner.studioSetup.skipForNowSub")}</p>
 
             </CardContent>
           </Card>
