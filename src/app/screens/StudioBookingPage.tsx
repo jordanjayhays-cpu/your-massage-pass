@@ -598,6 +598,10 @@ export default function StudioBookingPage() {
   const [hoStep, setHoStep] = useState(1);
   // The handoff panel heading, so every step transition visibly moves the viewport.
   const hoPanelRef = useRef<HTMLDivElement | null>(null);
+  // The inline Continue inside the step card. The sticky bar watches it and
+  // hides its own button while this one is on screen, so exactly one
+  // actionable Continue is visible at any scroll position.
+  const hoInlineContinueRef = useRef<HTMLButtonElement | null>(null);
   // Distances are only ever shown once the visitor has granted location.
   const [userLoc, setUserLoc] = useState<LatLng | null>(() => savedLocationResult()?.loc ?? null);
   const [locAreaName, setLocAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
