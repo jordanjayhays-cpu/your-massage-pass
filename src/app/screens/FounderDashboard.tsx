@@ -5,6 +5,8 @@ import StudioPipeline from "./founder/StudioPipeline";
 import ConciergeTab from "./founder/ConciergeTab";
 import FindStudio from "./founder/FindStudio";
 import BookingWaButtons from "./founder/BookingWaButtons";
+import RecentActivity from "./founder/RecentActivity";
+
 
 
 
