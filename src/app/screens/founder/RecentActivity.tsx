@@ -152,12 +152,12 @@ export default function RecentActivity({ refreshTick }: { refreshTick?: number }
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 style={serif} className="text-2xl">Booking funnel</h2>
         <div className="flex flex-wrap gap-2">
-          <Pills
+          <Pills<"all" | "real">
             options={[{ key: "all" as const, label: "All" }, { key: "real" as const, label: "Real only" }]}
             value={scope}
             onChange={setScope}
           />
-          <Pills
+          <Pills<"7" | "30" | "all">
             options={[
               { key: "7" as const, label: "7d" },
               { key: "30" as const, label: "30d" },
@@ -199,7 +199,7 @@ export default function RecentActivity({ refreshTick }: { refreshTick?: number }
 
       <div className="border-t border-[#F0E7DB] pt-4">
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <Pills
+          <Pills<"bookings" | "whatsapp">
             options={[
               { key: "bookings" as const, label: "Recent bookings" },
               { key: "whatsapp" as const, label: "WhatsApp requests" },
