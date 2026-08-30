@@ -163,7 +163,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     forStudios: "For studios", privacy: "Privacy Policy", terms: "Terms",
     bookNow: "Book now", requestBooking: "Request booking", instantConfirmation: "Instant confirmation",
     freeToBook: "Free to book · Pay at the studio · No card needed",
-    booking: "Booking", skipStep: "Skip this step",
+    booking: "Booking", skipStep: "skip",
     addNameContact: "Add your first and last name so the studio knows who is coming",
     slotFilled: "That time just filled up, pick another",
     somethingWrong: "Something went wrong. Please try again.",
@@ -598,6 +598,10 @@ export default function StudioBookingPage() {
   const [hoStep, setHoStep] = useState(1);
   // The handoff panel heading, so every step transition visibly moves the viewport.
   const hoPanelRef = useRef<HTMLDivElement | null>(null);
+  // The inline Continue inside the step card. The sticky bar watches it and
+  // hides its own button while this one is on screen, so exactly one
+  // actionable Continue is visible at any scroll position.
+  const hoInlineContinueRef = useRef<HTMLButtonElement | null>(null);
   // Distances are only ever shown once the visitor has granted location.
   const [userLoc, setUserLoc] = useState<LatLng | null>(() => savedLocationResult()?.loc ?? null);
   const [locAreaName, setLocAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
@@ -1643,6 +1647,7 @@ export default function StudioBookingPage() {
                     onNext={() => hoGo(2)}
                     summary={hoSummaryLine}
                     note={hoServiceId ? undefined : c.chooseServiceContinue}
+                    inlineRef={hoInlineContinueRef}
                   />
                 )}
                 {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
@@ -1698,6 +1703,7 @@ export default function StudioBookingPage() {
                       </div>
 
                       <button
+                        ref={hoInlineContinueRef}
                         type="button"
                         onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
                         className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition"
@@ -3064,13 +3070,44 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, busy, badge, note, summary,
+  ready, onNext, label, busy, badge, note, summary, inlineRef,
 }: {
   ready: boolean; onNext: () => void; label?: string; busy?: boolean;
   badge?: { text: string }; note?: string; summary?: string | null;
+  /** Inline Continue inside the step card. While it is in the viewport the
+   *  sticky bar shows summary text only (no button), so exactly one
+   *  actionable Continue is ever visible. */
+  inlineRef?: React.RefObject<HTMLElement | null>;
 }) {
   const lang = useFlowLang();
   const c = pickCopy(PAGE_COPY, lang);
+  const [inlineVisible, setInlineVisible] = useState(false);
+  useEffect(() => {
+    const el = inlineRef?.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setInlineVisible(false);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => setInlineVisible(entries[0]?.isIntersecting ?? false),
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [inlineRef]);
+
+  // Inline Continue is on screen: keep the summary visible but drop the
+  // button so there is never a second competing CTA.
+  if (inlineVisible) {
+    if (!summary) return null;
+    return (
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+        <p className="max-w-lg min-[900px]:max-w-[1100px] mx-auto w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">
+          {summary}
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
@@ -3169,6 +3206,7 @@ function Stepper({
 /**
  * Step footer: Back, an optional Skip, and the "why is Continue not lit" hint.
  * The Continue button itself lives ONLY in the sticky bar, never inline.
+ * Back and Skip stay visually quiet so the single Continue owns the attention.
  */
 function WizardNav({
   onBack, disabled, hint, skip,
@@ -3191,16 +3229,18 @@ function WizardNav({
       )}
       <div className="flex items-center justify-between">
         {onBack ? (
-          <button type="button" onClick={onBack} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
+          <button type="button" onClick={onBack} className="text-xs min-[900px]:text-sm text-[#A6968A] hover:text-[#8a7460] motion-safe:transition">
             {c.back}
           </button>
         ) : <span />}
-        {skip && (
-          <button type="button" onClick={skip} className="text-sm min-[900px]:text-base font-semibold text-[#C4622D] underline underline-offset-2">
+      </div>
+      {skip && (
+        <div className="text-center">
+          <button type="button" onClick={skip} className="text-xs text-[#B0A696] hover:text-[#8a7460] motion-safe:transition">
             {c.skipStep}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

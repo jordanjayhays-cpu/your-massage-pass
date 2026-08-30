@@ -677,6 +677,22 @@ export default function BookFlowWizard({
   const [sameAsLast, setSameAsLast] = useState<string | null>(null);
   const { lastBooking } = useLastBooking();
 
+  // One Continue at a time: while the inline button is in the viewport the
+  // sticky bottom bar stays hidden; once it scrolls away the bar appears.
+  const continueWrapRef = useRef<HTMLDivElement | null>(null);
+  const [inlineContinueVisible, setInlineContinueVisible] = useState(true);
+  useEffect(() => {
+    const el = continueWrapRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entries) => setInlineContinueVisible(entries[0]?.isIntersecting ?? false),
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [step]);
+
+
   useEffect(() => {
     let cancelled = false;
     const prefill = async (user: any) => {
@@ -798,6 +814,17 @@ export default function BookFlowWizard({
   const contact = contactOk(phone, email);
   const nameComplete = !!firstName.trim() && !!lastName.trim();
   const canSubmit = nameComplete && contact.ok;
+
+  // One-line running summary shown in the sticky bar (e.g. "Deep tissue · Today · Centro").
+  const stickySummary = useMemo(() => {
+    const parts = [
+      massage || null,
+      day || null,
+      step >= 3 ? (area ? (area === t.other ? areaOther || null : area) : null) : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  }, [massage, day, area, areaOther, step, lang, t]);
+
 
 
 
@@ -1305,7 +1332,7 @@ export default function BookFlowWizard({
 
       {step === 4 && <p className="mt-6 text-xs text-muted-foreground">{t.consent}</p>}
 
-      <div className="mt-4">
+      <div className="mt-4" ref={continueWrapRef}>
         {step < 4 ? (
           <button
             type="button"
@@ -1331,6 +1358,28 @@ export default function BookFlowWizard({
         )}
 
       </div>
+
+      {/* Sticky Continue: only appears once the inline one has scrolled away,
+          so exactly one actionable Continue is visible at any scroll position. */}
+      {!inlineContinueVisible && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="max-w-2xl mx-auto">
+            {stickySummary && (
+              <p className="mb-1.5 text-center text-xs font-semibold text-muted-foreground truncate">{stickySummary}</p>
+            )}
+            <button
+              type="button"
+              onClick={step < 4 ? goNext : submit}
+              disabled={step === 4 && (status === "loading" || !canSubmit)}
+              className="w-full min-h-[52px] rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            >
+              {step < 4 ? (
+                <>{t.continue} <ArrowRight className="h-4 w-4" /></>
+              ) : status === "loading" ? t.sending : t.submit}
+            </button>
+          </div>
+        </div>
+      )}
 
       {step >= 2 && (
         <ExitCaptureBlock
