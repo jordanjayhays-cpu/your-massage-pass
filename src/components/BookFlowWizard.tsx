@@ -817,14 +817,9 @@ export default function BookFlowWizard({
 
   // One-line running summary shown in the sticky bar (e.g. "Deep tissue · Today · Centro").
   const stickySummary = useMemo(() => {
-    const dayLabels: Record<string, string> = {
-      today: t.today,
-      tomorrow: t.tomorrow,
-      flexible: t.flexible,
-    };
     const parts = [
       massage || null,
-      day ? dayLabels[day] ?? shortDate(day, localeOf(lang)) : null,
+      day || null,
       step >= 3 ? (area ? (area === t.other ? areaOther || null : area) : null) : null,
     ].filter(Boolean);
     return parts.length ? parts.join(" · ") : null;
