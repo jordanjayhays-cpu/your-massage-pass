@@ -617,7 +617,11 @@ export default function FounderDashboard() {
         </div>
 
         <div className="space-y-6">
+          {/* 1b. Booking funnel + recent activity */}
+          <RecentActivity refreshTick={refreshTick} />
+
           {/* 2. Upcoming bookings */}
+
           <Card title="Upcoming bookings">
             <div className="divide-y divide-[#F0E7DB]">
               {upcoming.slice(0, 12).map((b) => (
