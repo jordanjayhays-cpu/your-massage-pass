@@ -196,8 +196,7 @@ function Stepper({ value, onChange, min = 1, max = 10, size = "lg" }: { value: n
 }
 
 
-function StaffChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { t } = useTranslation();
+function StaffChips({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: SetupT }) {
   const num = value.trim() === "" ? null : Number(value);
   const isSixPlus = num !== null && num >= 6;
   return (
@@ -247,8 +246,7 @@ function StaffChips({ value, onChange }: { value: string; onChange: (v: string) 
 const DURATION_OPTIONS = [30, 45, 60, 75, 90, 120];
 const selectCls = "text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none text-[#2b2b2b] w-full";
 
-function ServiceTypeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { t } = useTranslation();
+function ServiceTypeField({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: SetupT }) {
   const [custom, setCustom] = useState(() => !!value && !MASSAGE_TYPES.includes(value));
   if (custom) {
     return (
@@ -276,8 +274,7 @@ function ServiceTypeField({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
-function ServiceDurationField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const { t } = useTranslation();
+function ServiceDurationField({ value, onChange, t }: { value: number; onChange: (v: number) => void; t: SetupT }) {
   const [custom, setCustom] = useState(() => !DURATION_OPTIONS.includes(value));
   if (custom) {
     return (
@@ -312,7 +309,6 @@ function ServiceDurationField({ value, onChange }: { value: number; onChange: (v
 
 
 function StudioSetupInner() {
-  const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
@@ -321,10 +317,17 @@ function StudioSetupInner() {
   const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
-  const [lang, setLang] = useState<PartnerLang>(() => {
-    const resolved = i18n.resolvedLanguage;
-    return resolved === "es" || resolved === "en" ? resolved : defaultPartnerLang();
-  });
+  // Studio owners get their own language choice (es default, plus en / zh / th).
+  // Remembered locally for the session and saved to partners.preferred_language.
+  const [lang, setLang] = useState<SetupLang>(() => loadSetupLang() ?? "es");
+  const [langTouched, setLangTouched] = useState(() => loadSetupLang() !== null);
+  const t = useMemo(() => makeSetupT(lang), [lang]);
+  const chooseLang = (l: SetupLang) => {
+    setLang(l);
+    setLangTouched(true);
+    saveSetupLang(l);
+    void persistLang(l);
+  };
   const TOTAL_STEPS = mode === "claim" ? 6 : 5;
   const DONE_STEP = TOTAL_STEPS;
 
@@ -896,7 +899,7 @@ function StudioSetupInner() {
         <p className="text-sm font-medium text-[#2b2b2b]">{t("app.studioHours.staffTitle")}</p>
         <p className="text-xs text-[#7A7068]">{t("app.studioHours.staffHelp")} · {t("app.studioHours.staffOptional")}</p>
       </div>
-      <StaffChips value={staffCount} onChange={setStaffCount} />
+      <StaffChips value={staffCount} onChange={setStaffCount} t={t} />
     </div>
   );
 
