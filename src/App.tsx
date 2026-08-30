@@ -26,6 +26,7 @@ import Survey from "./app/screens/Survey";
 import SurveyCustomers from "./app/screens/SurveyCustomers";
 import SurveyStudios from "./app/screens/SurveyStudios";
 import FounderDashboard from "./app/screens/FounderDashboard";
+import FounderChats from "./app/screens/FounderChats";
 import AdminInviteStudio from "./app/screens/AdminInviteStudio";
 import StudioSetup from "./app/screens/StudioSetup";
 import ClaimShortLink from "./app/screens/ClaimShortLink";
@@ -253,6 +254,8 @@ const App = () => (
           <Route path="/survey/customers" element={<SurveyCustomers />} />
           <Route path="/survey/studios" element={<SurveyStudios />} />
           <Route path="/founder" element={<FounderDashboard />} />
+          {/* Founder-only WhatsApp bot conversation viewer (not publicly linked, noindex) */}
+          <Route path="/founder/chats" element={<FounderChats />} />
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
           {/* Legacy id links stay alive, redirecting to the canonical /{slug} URL. */}
           <Route path="/s/:studioId" element={<StudioIdRedirect />} />
