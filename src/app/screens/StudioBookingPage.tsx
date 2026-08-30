@@ -163,7 +163,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     forStudios: "For studios", privacy: "Privacy Policy", terms: "Terms",
     bookNow: "Book now", requestBooking: "Request booking", instantConfirmation: "Instant confirmation",
     freeToBook: "Free to book · Pay at the studio · No card needed",
-    booking: "Booking", skipStep: "Skip this step",
+    booking: "Booking", skipStep: "skip",
     addNameContact: "Add your first and last name so the studio knows who is coming",
     slotFilled: "That time just filled up, pick another",
     somethingWrong: "Something went wrong. Please try again.",
