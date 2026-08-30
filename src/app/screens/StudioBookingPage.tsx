@@ -1647,6 +1647,7 @@ export default function StudioBookingPage() {
                     onNext={() => hoGo(2)}
                     summary={hoSummaryLine}
                     note={hoServiceId ? undefined : c.chooseServiceContinue}
+                    inlineRef={hoInlineContinueRef}
                   />
                 )}
                 {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
@@ -1702,6 +1703,7 @@ export default function StudioBookingPage() {
                       </div>
 
                       <button
+                        ref={hoInlineContinueRef}
                         type="button"
                         onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
                         className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition"
