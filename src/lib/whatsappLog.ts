@@ -36,8 +36,9 @@ const uuidOrNull = (v?: string | null): string | null =>
 /**
  * Log a WhatsApp handoff to whatsapp_requests.
  * Returns a promise so callers can await the insert before opening the wa.me link.
- * Resolves with the new row id when the database gives it back, so the request
- * can later be attached to an account. Never throws.
+ * Resolves with the client-generated `client_ref` uuid stored with the row (or
+ * null when it could not be stored), so the request can later be attached to an
+ * account without reading the row back. Never throws.
  */
 export async function logWhatsappRequest(row: WhatsappRequestLog): Promise<string | null> {
   return (await logWhatsappRequestResult(row)).id;
@@ -51,13 +52,14 @@ export async function logWhatsappRequestResult(
   row: WhatsappRequestLog,
 ): Promise<{ id: string | null; error: string | null }> {
   try {
-    // Generate the id client-side. whatsapp_requests has an anon INSERT policy but
-    // intentionally NO SELECT policy (customer PII), so chaining .select() on the
-    // insert makes PostgREST reject it with an RLS violation. Including the id in
-    // the payload lets callers know the row id without reading it back.
-    const id = crypto.randomUUID();
-    const payload = {
-      id,
+    // whatsapp_requests.id is a BIGINT with an auto-increment default, so the
+    // client must never send it. The table also has an anon INSERT policy but
+    // intentionally NO SELECT policy (customer PII), so chaining .select() on
+    // the insert makes PostgREST reject it as an RLS violation. Instead we send
+    // our own uuid in `client_ref`, which is all callers need to attach the row
+    // to an account later without ever reading it back.
+    const clientRef = crypto.randomUUID();
+    const payload: Record<string, unknown> = {
       partner_id: uuidOrNull(row.partner_id ?? null),
       slug: clean(row.slug),
       studio_name: clean(row.studio_name) || "Unknown studio",
@@ -80,9 +82,20 @@ export async function logWhatsappRequestResult(
     };
     const { error } = await supabase
       .from("whatsapp_requests")
-      .insert(payload as any);
-    if (error) return { id: null, error: String(error.message || "insert_error").slice(0, 200) };
-    return { id, error: null };
+      .insert({ ...payload, client_ref: clientRef } as any);
+    if (!error) return { id: clientRef, error: null };
+
+    // The client_ref column may not exist on this database yet. Losing the
+    // handoff row matters far more than losing the account link, so retry
+    // without it; callers then fall back to linking by email.
+    if (String(error.message || "").includes("client_ref")) {
+      const { error: retryError } = await supabase
+        .from("whatsapp_requests")
+        .insert(payload as any);
+      if (!retryError) return { id: null, error: null };
+      return { id: null, error: String(retryError.message || "insert_error").slice(0, 200) };
+    }
+    return { id: null, error: String(error.message || "insert_error").slice(0, 200) };
   } catch (e) {
     // Logging must never break the handoff.
     return { id: null, error: String((e as Error)?.message || e || "network_error").slice(0, 200) };
