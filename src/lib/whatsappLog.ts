@@ -78,13 +78,11 @@ export async function logWhatsappRequestResult(
       wa_number: clean(row.wa_number),
       message_text: clean(row.message_text),
     };
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("whatsapp_requests")
-      .insert(payload as any)
-      .select("id")
-      .maybeSingle();
+      .insert(payload as any);
     if (error) return { id: null, error: String(error.message || "insert_error").slice(0, 200) };
-    return { id: (data as any)?.id ?? null, error: null };
+    return { id, error: null };
   } catch (e) {
     // Logging must never break the handoff.
     return { id: null, error: String((e as Error)?.message || e || "network_error").slice(0, 200) };
