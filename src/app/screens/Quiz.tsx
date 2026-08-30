@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronRight, RefreshCw, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { QUIZ, MASSAGE_TYPES, MassageType } from "../data";
+import { QUIZ, MASSAGE_TYPES, MassageType, type Massage } from "../data";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/siteVisit";
@@ -98,7 +98,7 @@ export default function Quiz() {
     .sort((a, b) => b[1] - a[1])[0]?.[0];
   const winner = MASSAGE_TYPES.find((t) => t.id === winnerType);
   // Studio suggestions come from live data only; no hardcoded demo studios.
-  const matchingStudios: never[] = [];
+  const matchingStudios: Massage[] = [];
 
   // One quiz_finish per completed run, carrying the recommended type.
   const finishLogged = useRef(false);
