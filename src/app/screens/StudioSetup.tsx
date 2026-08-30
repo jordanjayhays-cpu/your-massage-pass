@@ -365,6 +365,16 @@ function StudioSetupInner() {
     toast.success(t("partner.studioSetup.pwSavedToast"));
   };
 
+  // Best-effort: keep partners.preferred_language in sync so our emails to the
+  // studio go out in the language they picked. Silently ignored when the row is
+  // not writable yet (not signed in / still a pre-built listing).
+  const persistLang = async (l: SetupLang) => {
+    try {
+      const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
+      if (uid) await supabase.from("partners").update({ preferred_language: l }).eq("id", uid);
+    } catch { /* ignore */ }
+  };
+
   // Source data (invite, draft, or scraped partner)
   const [sourceData, setSourceData] = useState<any>(null);
   const [sourceError, setSourceError] = useState("");
@@ -473,6 +483,9 @@ function StudioSetupInner() {
           .eq("partner_id", partner.id);
 
         setSourceData(partner);
+        if (!langTouched && isSetupLang(partner.preferred_language)) {
+          setLang(partner.preferred_language);
+        }
         setEmail(partner.email || "");
         setActivateEmail(partner.email || "");
         setActivateAddress(partner.address || "");
@@ -951,6 +964,7 @@ function StudioSetupInner() {
     const row = Array.isArray(data) ? data[0] : data;
     if (error || !row) { setActivateError(t("partner.studioSetup.oneStepFailed")); return; }
     setLiveEmail(row.email || em);
+    void persistLang(lang);
     setSourceData((prev: any) => ({ ...prev, status: "active", email: row.email || em, address: activateAddress.trim() || prev?.address, slug: row.slug || prev?.slug }));
     setClaimActivated(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -982,7 +996,7 @@ function StudioSetupInner() {
 
           <div className="rounded-2xl border border-[#E5DDD3] bg-[#FAF7F2] p-4">
             <label className="text-xs font-medium text-[#7A7068] mb-2 block">{t("partner.studioSetup.langChooserLabel")}</label>
-            <PartnerLangPills value={lang} onChange={(l) => { setLang(l); applyPartnerLang(l); }} />
+            <SetupLangPills value={lang} onChange={chooseLang} />
           </div>
 
           {claimActivated ? (
@@ -1184,7 +1198,7 @@ function StudioSetupInner() {
         {step === 1 && (
           <div className="mb-4 rounded-2xl border border-[#E5DDD3] bg-[#FAF7F2] p-4">
             <label className="text-xs font-medium text-[#7A7068] mb-2 block">{t("partner.studioSetup.langChooserLabel")}</label>
-            <PartnerLangPills value={lang} onChange={(l) => { setLang(l); applyPartnerLang(l); }} />
+            <SetupLangPills value={lang} onChange={chooseLang} />
           </div>
         )}
 
