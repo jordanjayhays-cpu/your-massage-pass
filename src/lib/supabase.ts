@@ -139,7 +139,7 @@ export interface Shop {
 }
 
 /** Fetch all active shops with their services from Supabase.
- *  Falls back to the hardcoded MASSAGES array if the table is empty. */
+ *  Returns an empty list when the table is empty (no hardcoded demo studios). */
 export async function fetchShops(): Promise<Shop[]> {
   // Try real data first
   const { data: partners, error } = await supabase
@@ -270,7 +270,7 @@ export async function fetchStudioProfile(partnerId: string): Promise<StudioProfi
 /** Fetch a single shop by its composite ID (partnerUUID__serviceSlug). */
 export async function fetchShopById(id: string): Promise<Shop | null> {
   // Real-studio ids use "__" between the partner UUID and the service slug.
-  // Demo (hardcoded) ids don't, so let the caller fall back to MASSAGES.
+  // Unknown ids simply resolve to null; there is no hardcoded fallback.
   if (!id || !id.includes("__")) return null;
   const partnerId = id.split("__")[0];
   const slug = id.split("__").slice(1).join("__");
