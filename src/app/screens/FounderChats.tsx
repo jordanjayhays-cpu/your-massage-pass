@@ -3,7 +3,7 @@
 // public navigation and marked noindex.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, MessageCircle } from "lucide-react";
 
 const FN_URL =
   "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/wa-chat";
