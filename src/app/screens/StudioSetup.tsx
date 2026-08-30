@@ -1375,12 +1375,12 @@ function StudioSetupInner() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <input value={svc.name} onChange={e => updateService(i, "name", e.target.value)} placeholder={t("partner.studioSetup.servicePlaceholder")} className="col-span-2 text-sm px-3 py-2 bg-white border border-[#E5DDD3] rounded-lg focus:outline-none focus:border-[#B85C38] text-[#2b2b2b]" />
-                      <ServiceTypeField value={svc.type} onChange={v => updateService(i, "type", v)} />
+                      <ServiceTypeField value={svc.type} onChange={v => updateService(i, "type", v)} t={t} />
                       <div className="flex items-center gap-1 bg-white border border-[#E5DDD3] rounded-lg px-2">
                         <Euro size={13} className="text-[#7A7068]" />
                         <input value={svc.price} onChange={e => updateService(i, "price", Number(e.target.value))} type="number" min={0} className="w-full py-2 text-sm focus:outline-none" />
                       </div>
-                      <ServiceDurationField value={svc.duration} onChange={v => updateService(i, "duration", v)} />
+                      <ServiceDurationField value={svc.duration} onChange={v => updateService(i, "duration", v)} t={t} />
                     </div>
                   </div>
                 ))}
