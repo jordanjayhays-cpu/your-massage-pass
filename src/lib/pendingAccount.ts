@@ -74,10 +74,11 @@ export async function applyPendingAccount(): Promise<void> {
     // the email they typed into the booking form.
     const email = (pending.email || user.email || "").trim().toLowerCase();
     if (pending.requestId) {
+      // requestId is the client-generated `client_ref` uuid, not the bigint id.
       await supabase
         .from("whatsapp_requests")
         .update({ user_id: user.id } as any)
-        .eq("id", pending.requestId);
+        .eq("client_ref", pending.requestId);
     } else if (email) {
       await supabase
         .from("whatsapp_requests")
@@ -99,7 +100,8 @@ export async function linkRequestToUser(requestId: string | null, email?: string
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     if (requestId) {
-      await supabase.from("whatsapp_requests").update({ user_id: user.id } as any).eq("id", requestId);
+      // requestId is the client-generated `client_ref` uuid, not the bigint id.
+      await supabase.from("whatsapp_requests").update({ user_id: user.id } as any).eq("client_ref", requestId);
     } else if (email) {
       await supabase
         .from("whatsapp_requests")
