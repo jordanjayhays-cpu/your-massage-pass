@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Search, Star, MapPin, Heart, SlidersHorizontal, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
-import { MASSAGES, MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm } from "../data";
+import { MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm, type Massage } from "../data";
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import StudioMap, { studioKey, type MapBounds } from "../components/StudioMap";
@@ -56,7 +56,7 @@ export default function MassageList() {
   const [areaName, setAreaName] = useState<string | null>(() => savedLocationResult()?.areaName ?? null);
   const askLocation = useLocationAsk();
 
-  const [selectedStudio, setSelectedStudio] = useState<Shop | typeof MASSAGES[0] | null>(null);
+  const [selectedStudio, setSelectedStudio] = useState<Shop | Massage | null>(null);
 
   // Area preselected from a link elsewhere on the site: /studios?area=Chamberi
   const [searchParams, setSearchParams] = useSearchParams();
@@ -187,10 +187,10 @@ export default function MassageList() {
 
 
   /** Same destination as tapping the card / Book now. */
-  const cardHref = (m: Shop | typeof MASSAGES[0]) =>
+  const cardHref = (m: Shop | Massage) =>
     "partner_id" in m && (m as Shop).partner_id ? studioPath(m as Shop) : `/massages/${m.id}`;
 
-  const handleBook = (m: Shop | typeof MASSAGES[0]) => {
+  const handleBook = (m: Shop | Massage) => {
     if ("partner_id" in m && (m as Shop).partner_id) {
       navigate(studioPath(m as Shop));
       return;

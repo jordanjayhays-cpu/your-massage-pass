@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Gauge, Clock, Droplet, Shirt, Info, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MASSAGE_GUIDE, MASSAGE_TYPES, MASSAGES, type MassageGuide } from "../data";
+import { MASSAGE_GUIDE, MASSAGE_TYPES, type Massage, type MassageGuide } from "../data";
 import { fetchShops, type Shop } from "@/lib/supabase";
 import { useBooking } from "../BookingContext";
 import { studioPath } from "@/lib/studioHref";
 
-type AnyStudio = Shop | (typeof MASSAGES)[number];
+type AnyStudio = Shop | Massage;
 
 function matchesGuide(s: AnyStudio, g: MassageGuide): boolean {
   if (g.relatedType && (s as any).type === g.relatedType) return true;
@@ -47,7 +47,7 @@ export default function MassageTypePage() {
 
   // Legacy fallback (shouldn't normally happen, all ids covered in guide)
   if (!guide && legacy) {
-    const studios = MASSAGES.filter((m) => m.type === type);
+    const studios: Massage[] = [];
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="relative h-56 flex-shrink-0">
@@ -99,7 +99,7 @@ export default function MassageTypePage() {
 
   const g = guide!;
 
-  const allStudios: AnyStudio[] = [...realShops, ...MASSAGES];
+  const allStudios: AnyStudio[] = [...realShops];
   const seen = new Set<string>();
   const matched = allStudios.filter((s) => {
     if (!s || !(s as any).id || seen.has((s as any).id)) return false;

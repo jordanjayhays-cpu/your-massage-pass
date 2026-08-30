@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
-import { MASSAGES, MADRID_CENTER } from "../data";
+import { MADRID_CENTER, type Massage } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
@@ -36,7 +36,7 @@ export default function ShopDetail() {
   const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.shopDetail" });
   const navigate = useNavigate();
   const { id } = useParams();
-  const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
+  const [massage, setMassage] = useState<Shop | Massage | null>(null);
   const [loading, setLoading] = useState(true);
   const { isFavourite, toggle: toggleFavourite, sheet: favouriteSheet } = useFavouriteAction();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -56,8 +56,7 @@ export default function ShopDetail() {
         setLoading(false);
         return;
       }
-      const fallback = MASSAGES.find((m) => m.id === id) ?? null;
-      setMassage(fallback);
+      setMassage(null);
       setLoading(false);
     });
   }, [id]);
