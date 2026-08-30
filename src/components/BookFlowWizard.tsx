@@ -815,6 +815,22 @@ export default function BookFlowWizard({
   const nameComplete = !!firstName.trim() && !!lastName.trim();
   const canSubmit = nameComplete && contact.ok;
 
+  // One-line running summary shown in the sticky bar (e.g. "Deep tissue · Today · Centro").
+  const stickySummary = useMemo(() => {
+    const dayLabels: Record<string, string> = {
+      today: t.today,
+      tomorrow: t.tomorrow,
+      flexible: t.flexible,
+    };
+    const parts = [
+      massage || null,
+      day ? dayLabels[day] ?? shortDate(day, localeOf(lang)) : null,
+      step >= 3 ? (area ? (area === t.other ? areaOther || null : area) : null) : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  }, [massage, day, area, areaOther, step, lang, t]);
+
+
 
 
   const fail = (msg: string, ref: React.RefObject<HTMLDivElement>) => {
@@ -1360,7 +1376,7 @@ export default function BookFlowWizard({
               type="button"
               onClick={step < 4 ? goNext : submit}
               disabled={step === 4 && (status === "loading" || !canSubmit)}
-              className="w-full h-13 min-h-[52px] rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="w-full min-h-[52px] rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               {step < 4 ? (
                 <>{t.continue} <ArrowRight className="h-4 w-4" /></>
