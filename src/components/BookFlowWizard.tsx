@@ -1321,7 +1321,7 @@ export default function BookFlowWizard({
 
       {step === 4 && <p className="mt-6 text-xs text-muted-foreground">{t.consent}</p>}
 
-      <div className="mt-4">
+      <div className="mt-4" ref={continueWrapRef}>
         {step < 4 ? (
           <button
             type="button"
@@ -1347,6 +1347,28 @@ export default function BookFlowWizard({
         )}
 
       </div>
+
+      {/* Sticky Continue: only appears once the inline one has scrolled away,
+          so exactly one actionable Continue is visible at any scroll position. */}
+      {!inlineContinueVisible && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="max-w-2xl mx-auto">
+            {stickySummary && (
+              <p className="mb-1.5 text-center text-xs font-semibold text-muted-foreground truncate">{stickySummary}</p>
+            )}
+            <button
+              type="button"
+              onClick={step < 4 ? goNext : submit}
+              disabled={step === 4 && (status === "loading" || !canSubmit)}
+              className="w-full h-13 min-h-[52px] rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            >
+              {step < 4 ? (
+                <>{t.continue} <ArrowRight className="h-4 w-4" /></>
+              ) : status === "loading" ? t.sending : t.submit}
+            </button>
+          </div>
+        </div>
+      )}
 
       {step >= 2 && (
         <ExitCaptureBlock
