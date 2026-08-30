@@ -3206,6 +3206,7 @@ function Stepper({
 /**
  * Step footer: Back, an optional Skip, and the "why is Continue not lit" hint.
  * The Continue button itself lives ONLY in the sticky bar, never inline.
+ * Back and Skip stay visually quiet so the single Continue owns the attention.
  */
 function WizardNav({
   onBack, disabled, hint, skip,
@@ -3228,16 +3229,18 @@ function WizardNav({
       )}
       <div className="flex items-center justify-between">
         {onBack ? (
-          <button type="button" onClick={onBack} className="text-sm min-[900px]:text-base font-semibold text-[#8a7460] underline underline-offset-2">
+          <button type="button" onClick={onBack} className="text-xs min-[900px]:text-sm text-[#A6968A] hover:text-[#8a7460] motion-safe:transition">
             {c.back}
           </button>
         ) : <span />}
-        {skip && (
-          <button type="button" onClick={skip} className="text-sm min-[900px]:text-base font-semibold text-[#C4622D] underline underline-offset-2">
+      </div>
+      {skip && (
+        <div className="text-center">
+          <button type="button" onClick={skip} className="text-xs text-[#B0A696] hover:text-[#8a7460] motion-safe:transition">
             {c.skipStep}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
