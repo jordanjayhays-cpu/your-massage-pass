@@ -51,7 +51,13 @@ export async function logWhatsappRequestResult(
   row: WhatsappRequestLog,
 ): Promise<{ id: string | null; error: string | null }> {
   try {
+    // Generate the id client-side. whatsapp_requests has an anon INSERT policy but
+    // intentionally NO SELECT policy (customer PII), so chaining .select() on the
+    // insert makes PostgREST reject it with an RLS violation. Including the id in
+    // the payload lets callers know the row id without reading it back.
+    const id = crypto.randomUUID();
     const payload = {
+      id,
       partner_id: uuidOrNull(row.partner_id ?? null),
       slug: clean(row.slug),
       studio_name: clean(row.studio_name) || "Unknown studio",
@@ -72,13 +78,11 @@ export async function logWhatsappRequestResult(
       wa_number: clean(row.wa_number),
       message_text: clean(row.message_text),
     };
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("whatsapp_requests")
-      .insert(payload as any)
-      .select("id")
-      .maybeSingle();
+      .insert(payload as any);
     if (error) return { id: null, error: String(error.message || "insert_error").slice(0, 200) };
-    return { id: (data as any)?.id ?? null, error: null };
+    return { id, error: null };
   } catch (e) {
     // Logging must never break the handoff.
     return { id: null, error: String((e as Error)?.message || e || "network_error").slice(0, 200) };
