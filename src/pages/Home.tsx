@@ -72,14 +72,23 @@ export default function Home() {
   }, []);
 
   const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
+    // Accent-insensitive normalization so "tailandes" matches "Tailandés".
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const query = norm(q.trim());
     if (!query) return shops;
-    return shops.filter(
-      (s) =>
-        s.studio.toLowerCase().includes(query) ||
-        s.name.toLowerCase().includes(query) ||
-        (s.district ?? "").toLowerCase().includes(query)
-    );
+    return shops.filter((s) => {
+      const haystacks: string[] = [
+        s.studio,
+        s.name,
+        s.district ?? "",
+        s.address ?? "",
+        s.description ?? "",
+        ...(s.tags ?? []),
+        ...(s.services ?? []),
+      ];
+      return haystacks.some((h) => norm(h).includes(query));
+    });
   }, [shops, q]);
 
   const bookHref = (s: ShopWithSlug) => `/book/${s.slug || s.partner_id}`;
