@@ -3070,13 +3070,44 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, busy, badge, note, summary,
+  ready, onNext, label, busy, badge, note, summary, inlineRef,
 }: {
   ready: boolean; onNext: () => void; label?: string; busy?: boolean;
   badge?: { text: string }; note?: string; summary?: string | null;
+  /** Inline Continue inside the step card. While it is in the viewport the
+   *  sticky bar shows summary text only (no button), so exactly one
+   *  actionable Continue is ever visible. */
+  inlineRef?: React.RefObject<HTMLElement | null>;
 }) {
   const lang = useFlowLang();
   const c = pickCopy(PAGE_COPY, lang);
+  const [inlineVisible, setInlineVisible] = useState(false);
+  useEffect(() => {
+    const el = inlineRef?.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setInlineVisible(false);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => setInlineVisible(entries[0]?.isIntersecting ?? false),
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [inlineRef]);
+
+  // Inline Continue is on screen: keep the summary visible but drop the
+  // button so there is never a second competing CTA.
+  if (inlineVisible) {
+    if (!summary) return null;
+    return (
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+        <p className="max-w-lg min-[900px]:max-w-[1100px] mx-auto w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">
+          {summary}
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
