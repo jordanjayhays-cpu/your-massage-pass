@@ -677,6 +677,22 @@ export default function BookFlowWizard({
   const [sameAsLast, setSameAsLast] = useState<string | null>(null);
   const { lastBooking } = useLastBooking();
 
+  // One Continue at a time: while the inline button is in the viewport the
+  // sticky bottom bar stays hidden; once it scrolls away the bar appears.
+  const continueWrapRef = useRef<HTMLDivElement | null>(null);
+  const [inlineContinueVisible, setInlineContinueVisible] = useState(true);
+  useEffect(() => {
+    const el = continueWrapRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entries) => setInlineContinueVisible(entries[0]?.isIntersecting ?? false),
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [step]);
+
+
   useEffect(() => {
     let cancelled = false;
     const prefill = async (user: any) => {
