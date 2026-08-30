@@ -1,6 +1,5 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,8 +10,12 @@ import {
   Sparkles, ChevronRight, ChevronLeft, Euro, CheckCircle2, ArrowLeft,
   Calendar as CalendarIcon, Check,
 } from "lucide-react";
-import PartnerLangPills from "@/app/components/PartnerLangPills";
-import { defaultPartnerLang, applyPartnerLang, type PartnerLang } from "@/app/lib/partnerLanguage";
+import SetupLangPills from "@/app/components/SetupLangPills";
+import {
+  makeSetupT, loadSetupLang, saveSetupLang, isSetupLang,
+  type SetupLang, type SetupT,
+} from "@/app/lib/studioSetupI18n";
+
 
 // Partner support intentionally uses the founder's personal WhatsApp, not the automated booking assistant.
 const PARTNER_SUPPORT_WA = "34612474827";
