@@ -8,6 +8,7 @@ import {
   bumpSessionSaveCount,
   dismissSignupPromptForSession,
   markFavouriteSignupIntent,
+  shouldShowSignupPrompt,
   toggleFavourite,
   useFavourites,
 } from "@/lib/favourites";
@@ -48,15 +49,13 @@ export function useFavouriteAction() {
       toast(c.saved);
 
       const count = bumpSessionSaveCount();
-      if (signedIn === false) {
+      if (signedIn === false && shouldShowSignupPrompt(count)) {
         markFavouriteSignupIntent();
-        if (!promptOpen) {
-          trackEvent("favourite_signup_prompt_shown", { meta: { saves: count } });
-          setPromptOpen(true);
-        }
+        trackEvent("favourite_signup_prompt_shown", { meta: { saves: count } });
+        setPromptOpen(true);
       }
     },
-    [c.saved, promptOpen, signedIn],
+    [c.saved, signedIn],
   );
 
   const isFavourite = useCallback(
