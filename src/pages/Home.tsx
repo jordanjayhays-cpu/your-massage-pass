@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, MapPin, ArrowRight } from "lucide-react";
+import { Search, MapPin, ArrowRight, Sparkles } from "lucide-react";
 import { fetchShops } from "@/lib/supabase";
 import StudioStatusBadge from "@/app/components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
