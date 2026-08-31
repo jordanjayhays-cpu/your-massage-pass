@@ -9,7 +9,7 @@ import { MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm, type Massage } f
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import StudioMap, { studioKey, type MapBounds } from "../components/StudioMap";
-import { fetchShops, supabase } from "@/lib/supabase";
+import { loadShops, cachedShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import ProfileHeaderButton from "@/app/components/ProfileHeaderButton";
@@ -69,14 +69,32 @@ export default function MassageList() {
 
 
 
+  // Runs on every mount, including back-navigation remounts. Paints instantly
+  // from the in-memory cache when we have one, then revalidates. The loading
+  // flag always resolves, so "0 found" can only show after a completed fetch.
   useEffect(() => {
-    fetchShops().then((shops) => {
-      setRealShops(shops);
+    let cancelled = false;
+    const cached = cachedShops();
+    if (cached && cached.length) {
+      setRealShops(cached);
       setShopsLoading(false);
-      const claimed = shops.filter((s) => s.status === "active").map((s) => s.partner_id);
-      if (claimed.length) fetchFreeTodayPartnerIds(claimed).then(setFreeTodayIds).catch(() => {});
-    });
+    } else {
+      setShopsLoading(true);
+    }
+    loadShops()
+      .then((shops) => {
+        if (cancelled) return;
+        setRealShops(shops);
+        const claimed = shops.filter((s) => s.status === "active").map((s) => s.partner_id);
+        if (claimed.length) fetchFreeTodayPartnerIds(claimed).then(setFreeTodayIds).catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setShopsLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
+
 
   // Debounce the search query so the dropdown/spinner do not thrash on every keystroke.
   useEffect(() => {
