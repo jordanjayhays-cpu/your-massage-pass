@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 import { DealsFooterLine } from "@/components/DealsLink";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import AccountHeaderLink from "@/components/AccountHeaderLink";
@@ -25,6 +26,7 @@ const COPY = {
     trust: "50+ Madrid studios listed with real prices.",
     footerLead: "Prefer to chat? Message us on WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "Try smart matching",
     sawGoogle: "I saw you on Google.",
     sawFb: "I saw you on Facebook.",
     sawSite: "I saw you on Massage Club.",
@@ -45,6 +47,7 @@ const COPY = {
     trust: "Más de 50 centros de Madrid con precios reales.",
     footerLead: "¿Prefieres escribirnos? Mándanos un WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "Prueba el emparejamiento inteligente",
     sawGoogle: "Os he visto en Google.",
     sawFb: "Os he visto en Facebook.",
     sawSite: "Os he visto en Massage Club.",
@@ -65,6 +68,7 @@ const COPY = {
     trust: "Plus de 50 centres à Madrid avec de vrais prix.",
     footerLead: "Vous préférez discuter ? Écrivez-nous sur WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "Essayer le matching intelligent",
     sawGoogle: "Je vous ai vus sur Google.",
     sawFb: "Je vous ai vus sur Facebook.",
     sawSite: "Je vous ai vus sur Massage Club.",
@@ -85,6 +89,7 @@ const COPY = {
     trust: "Über 50 Studios in Madrid mit echten Preisen.",
     footerLead: "Lieber chatten? Schreib uns auf WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "Smartes Matching testen",
     sawGoogle: "Ich habe euch bei Google gesehen.",
     sawFb: "Ich habe euch bei Facebook gesehen.",
     sawSite: "Ich habe euch bei Massage Club gesehen.",
@@ -105,6 +110,7 @@ const COPY = {
     trust: "Oltre 50 centri a Madrid con prezzi reali.",
     footerLead: "Preferisci chattare? Scrivici su WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "Prova l'abbinamento intelligente",
     sawGoogle: "Vi ho visti su Google.",
     sawFb: "Vi ho visti su Facebook.",
     sawSite: "Vi ho visti su Massage Club.",
@@ -125,6 +131,7 @@ const COPY = {
     trust: "Mais de 50 estúdios em Madrid com preços reais.",
     footerLead: "Prefere conversar? Manda-nos WhatsApp",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "Experimenta a correspondência inteligente",
     sawGoogle: "Vi-vos no Google.",
     sawFb: "Vi-vos no Facebook.",
     sawSite: "Vi-vos no Massage Club.",
@@ -144,6 +151,7 @@ const COPY = {
     trust: "已收录马德里50多家按摩中心，价格真实。",
     footerLead: "更想聊聊？在WhatsApp上给我们留言",
     footer: "Massage Club · Madrid · book.massageclub.io",
+    matchCta: "试试智能匹配",
     sawGoogle: "我在谷歌上看到你们的。",
     sawFb: "我在Facebook上看到你们的。",
     sawSite: "我在Massage Club上看到你们的。",
@@ -252,6 +260,16 @@ export default function FbLanding() {
             }
             className="text-center"
           />
+          <div className="mt-4 text-center">
+            <Link
+              to="/match"
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border border-primary/40 bg-card text-sm font-semibold text-foreground hover:border-primary transition"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+              {t.matchCta}
+            </Link>
+          </div>
+
           <DealsFooterLine className="mt-6 text-center" />
 
           <p className="mt-6 text-xs text-muted-foreground text-center">{t.footer}</p>
