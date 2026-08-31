@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, Leaf, Dumbbell, Flower2, HelpCircle, Star } from "lucide-react";
+import { ArrowLeft, Sparkles, Leaf, Dumbbell, Flower2, HelpCircle, Star, Check, Loader2 } from "lucide-react";
 import { supabase, loadShops, cachedShops, type Shop } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
 import { studioImageFallback } from "@/lib/studioImages";
@@ -400,6 +400,131 @@ function fromShop(shop: Shop, keyword: string | null): MatchCard {
   };
 }
 
+const MATCH_LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/match-lead";
+
+function MatchLeadCard({
+  t,
+  cards,
+  needLabel,
+  whenLabel,
+  area,
+}: {
+  t: (typeof COPY)["en"];
+  cards: MatchCard[];
+  needLabel: string;
+  whenLabel: string;
+  area: string | null;
+}) {
+  const [email, setEmail] = useState("");
+  const [optIn, setOptIn] = useState(false);
+  const [state, setState] = useState<"idle" | "saving" | "done">("idle");
+  const [error, setError] = useState<"invalid" | "failed" | null>(null);
+
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  if (state === "done") {
+    return (
+      <div className="mt-6 rounded-2xl border border-[#E5DDD3] bg-[#FBF7F2] p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+            <Check className="h-4 w-4 text-primary" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">{t.leadSent}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    if (!valid) {
+      setError("invalid");
+      return;
+    }
+    setError(null);
+    setState("saving");
+    try {
+      const res = await fetch(MATCH_LEAD_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          opt_in: optIn,
+          answers: { want: needLabel, when: whenLabel, area },
+          matches: cards.slice(0, 3).map((c) => ({
+            name: c.studio,
+            slug: c.slug,
+            svc: c.service,
+            price: c.price,
+            duration: c.duration,
+            area: c.area,
+          })),
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      if (json?.ok) {
+        setState("done");
+      } else {
+        setState("idle");
+        setError("failed");
+      }
+    } catch {
+      setState("idle");
+      setError("failed");
+    }
+  };
+
+  return (
+    <form
+      className="mt-6 rounded-2xl border border-[#E5DDD3] bg-[#FBF7F2] p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (state !== "saving") void submit();
+      }}
+    >
+      <p className="font-semibold text-foreground">{t.leadTitle}</p>
+      <p className="mt-1 text-sm text-muted-foreground leading-snug">{t.leadSub}</p>
+      <div className="mt-3 flex gap-2">
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          maxLength={255}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder={t.leadPlaceholder}
+          aria-invalid={error === "invalid"}
+          className={`h-11 min-w-0 flex-1 rounded-full border bg-background px-4 text-sm text-foreground ${
+            error === "invalid" ? "border-2 border-destructive" : "border-border/70"
+          }`}
+        />
+        <button
+          type="submit"
+          disabled={state === "saving"}
+          className="h-11 shrink-0 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground inline-flex items-center gap-2 hover:opacity-90 transition disabled:opacity-60"
+        >
+          {state === "saving" && <Loader2 className="h-4 w-4 animate-spin" />}
+          {t.leadButton}
+        </button>
+      </div>
+      <label className="mt-3 flex items-start gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={optIn}
+          onChange={(e) => setOptIn(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+        />
+        <span className="text-xs text-muted-foreground leading-snug">{t.leadOptIn}</span>
+      </label>
+      {error && (
+        <p className="mt-2 text-xs text-destructive">{error === "invalid" ? t.leadInvalid : t.leadError}</p>
+      )}
+    </form>
+  );
+}
+
 export default function MatchFlow() {
   const lang = useFlowLang();
   const t = pickCopy(COPY, lang) as (typeof COPY)["en"];
@@ -709,6 +834,15 @@ export default function MatchFlow() {
                   </article>
                 ))}
               </div>
+            )}
+            {cards.length > 0 && (
+              <MatchLeadCard
+                t={t}
+                cards={cards}
+                needLabel={need ? t.needs[need] : t.needs.unsure}
+                whenLabel={when ? t.when[when] : t.when.flexible}
+                area={area}
+              />
             )}
             <Link
               to="/studios"
