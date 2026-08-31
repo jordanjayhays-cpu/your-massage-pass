@@ -426,7 +426,7 @@ export default function MatchFlow() {
   };
 
   const whyLine = (c: MatchCard) => {
-    const bits = [t.whyNeed[need ?? "unsure"]];
+    const bits: string[] = [t.whyNeed[need ?? "unsure"]];
     if (c.area) bits.push(t.inArea(c.area));
     bits.push(t.realPrice);
     return bits.join(", ");
