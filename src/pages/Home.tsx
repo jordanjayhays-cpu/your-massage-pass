@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, MapPin, ArrowRight } from "lucide-react";
+import { Search, MapPin, ArrowRight, Sparkles } from "lucide-react";
 import { fetchShops } from "@/lib/supabase";
 import StudioStatusBadge from "@/app/components/StudioStatusBadge";
 import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
@@ -212,6 +212,21 @@ export default function Home() {
 
         {/* Grid */}
         <section className="pb-12">
+          <Link
+            to="/match"
+            className="mb-5 flex items-center gap-3 rounded-2xl border border-primary/30 bg-card shadow-soft px-4 py-3.5 hover:border-primary transition"
+          >
+            <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-primary">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <span className="text-sm md:text-base font-semibold text-foreground leading-snug">
+              {isSpanish
+                ? "Emparejamiento inteligente con IA: encuentra tu masaje en 3 toques"
+                : "Smart matching with AI: find your massage in 3 taps"}
+            </span>
+            <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-primary" />
+          </Link>
+
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-display text-xl md:text-2xl text-foreground">
               Estudios en Madrid
