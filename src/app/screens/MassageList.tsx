@@ -9,7 +9,7 @@ import { MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm, type Massage } f
 import { useBooking } from "../BookingContext";
 import { cn } from "@/lib/utils";
 import StudioMap, { studioKey, type MapBounds } from "../components/StudioMap";
-import { fetchShops, supabase } from "@/lib/supabase";
+import { loadShops, cachedShops, supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import ProfileHeaderButton from "@/app/components/ProfileHeaderButton";
