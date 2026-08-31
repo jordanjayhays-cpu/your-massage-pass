@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, Leaf, Dumbbell, Flower2, HelpCircle, Star } from "lucide-react";
+import { ArrowLeft, Sparkles, Leaf, Dumbbell, Flower2, HelpCircle, Star, Check, Loader2 } from "lucide-react";
 import { supabase, loadShops, cachedShops, type Shop } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
 import { studioImageFallback } from "@/lib/studioImages";
@@ -58,6 +58,14 @@ const COPY = {
       `Hi! Smart match found me ${studio}. I'd like ${service} ${when}. Can you book it for me?`,
     back: "Back",
     step: (n: number) => `Step ${n} of 3`,
+    leadTitle: "Email me my matches",
+    leadSub: "We send these three studios to your inbox so you can decide later. Reply to the email and we book it for you.",
+    leadPlaceholder: "your@email.com",
+    leadOptIn: "Also send me occasional Massage Club updates",
+    leadButton: "Send my matches",
+    leadSent: "Sent! Check your inbox.",
+    leadError: "That did not work, try again",
+    leadInvalid: "That email does not look right",
   },
   es: {
     title: "Emparejamiento inteligente con IA",
@@ -96,6 +104,14 @@ const COPY = {
       `¡Hola! El emparejamiento inteligente me ha encontrado ${studio}. Me gustaría ${service} ${when}. ¿Me lo podéis reservar?`,
     back: "Atrás",
     step: (n: number) => `Paso ${n} de 3`,
+    leadTitle: "Envíame mis coincidencias",
+    leadSub: "Te enviamos estos tres estudios a tu correo para que decidas más tarde. Responde al correo y lo reservamos por ti.",
+    leadPlaceholder: "tu@email.com",
+    leadOptIn: "Enviarme también novedades ocasionales de Massage Club",
+    leadButton: "Enviar mis coincidencias",
+    leadSent: "¡Enviado! Revisa tu correo.",
+    leadError: "No funcionó, inténtalo otra vez",
+    leadInvalid: "Ese email no parece correcto",
   },
   fr: {
     title: "Matching intelligent avec IA",
@@ -134,6 +150,14 @@ const COPY = {
       `Bonjour ! Le matching intelligent m'a trouvé ${studio}. Je voudrais ${service} ${when}. Pouvez-vous le réserver pour moi ?`,
     back: "Retour",
     step: (n: number) => `Étape ${n} sur 3`,
+    leadTitle: "M'envoyer mes correspondances",
+    leadSub: "Nous envoyons ces trois centres dans votre boîte mail pour décider plus tard. Répondez au mail et nous réservons pour vous.",
+    leadPlaceholder: "votre@email.com",
+    leadOptIn: "M'envoyer aussi les actualités occasionnelles de Massage Club",
+    leadButton: "Envoyer mes correspondances",
+    leadSent: "Envoyé ! Vérifiez votre boîte mail.",
+    leadError: "Cela n'a pas fonctionné, réessayez",
+    leadInvalid: "Cet email ne semble pas correct",
   },
   de: {
     title: "Smartes Matching mit KI",
@@ -172,6 +196,14 @@ const COPY = {
       `Hallo! Das smarte Matching hat mir ${studio} vorgeschlagen. Ich hätte gern ${service} ${when}. Könnt ihr das für mich buchen?`,
     back: "Zurück",
     step: (n: number) => `Schritt ${n} von 3`,
+    leadTitle: "Meine Treffer per E-Mail erhalten",
+    leadSub: "Wir schicken dir diese drei Studios in dein Postfach, damit du später entscheiden kannst. Antworte auf die E-Mail und wir buchen für dich.",
+    leadPlaceholder: "deine@email.com",
+    leadOptIn: "Mir auch gelegentliche Massage-Club-Neuigkeiten schicken",
+    leadButton: "Meine Treffer senden",
+    leadSent: "Gesendet! Schau in dein Postfach.",
+    leadError: "Das hat nicht geklappt, versuch es noch einmal",
+    leadInvalid: "Diese E-Mail sieht nicht richtig aus",
   },
   it: {
     title: "Abbinamento intelligente con IA",
@@ -210,6 +242,14 @@ const COPY = {
       `Ciao! L'abbinamento intelligente mi ha trovato ${studio}. Vorrei ${service} ${when}. Potete prenotarlo per me?`,
     back: "Indietro",
     step: (n: number) => `Passo ${n} di 3`,
+    leadTitle: "Inviami i miei abbinamenti",
+    leadSub: "Ti inviamo questi tre centri via email così puoi decidere più tardi. Rispondi all'email e prenotiamo noi per te.",
+    leadPlaceholder: "tua@email.com",
+    leadOptIn: "Inviami anche aggiornamenti occasionali di Massage Club",
+    leadButton: "Invia i miei abbinamenti",
+    leadSent: "Inviato! Controlla la tua casella email.",
+    leadError: "Non ha funzionato, riprova",
+    leadInvalid: "Questa email non sembra corretta",
   },
   pt: {
     title: "Correspondência inteligente com IA",
@@ -248,6 +288,14 @@ const COPY = {
       `Olá! A correspondência inteligente encontrou-me ${studio}. Gostaria de ${service} ${when}. Podem reservar para mim?`,
     back: "Voltar",
     step: (n: number) => `Passo ${n} de 3`,
+    leadTitle: "Enviem-me as minhas correspondências",
+    leadSub: "Enviamos estes três estúdios para o teu email para decidires mais tarde. Responde ao email e nós tratamos da reserva por ti.",
+    leadPlaceholder: "teu@email.com",
+    leadOptIn: "Enviem-me também novidades ocasionais do Massage Club",
+    leadButton: "Enviar as minhas correspondências",
+    leadSent: "Enviado! Vê a tua caixa de email.",
+    leadError: "Não funcionou, tenta outra vez",
+    leadInvalid: "Esse email não parece correto",
   },
   zh: {
     title: "AI 智能匹配",
@@ -285,6 +333,14 @@ const COPY = {
       `你好！智能匹配为我找到了 ${studio}。我想预约 ${service}（${when}）。可以帮我预订吗？`,
     back: "返回",
     step: (n: number) => `第 ${n} 步，共 3 步`,
+    leadTitle: "把匹配结果发到我的邮箱",
+    leadSub: "我们会把这三家按摩中心发到您的邮箱，您可以稍后决定。回复邮件，我们帮您预订。",
+    leadPlaceholder: "您的@邮箱.com",
+    leadOptIn: "也发送 Massage Club 的不定期消息",
+    leadButton: "发送我的匹配结果",
+    leadSent: "已发送！请查收您的邮箱。",
+    leadError: "没有成功，请重试",
+    leadInvalid: "这个邮箱地址看起来不对",
   },
 } as const;
 
@@ -342,6 +398,131 @@ function fromShop(shop: Shop, keyword: string | null): MatchCard {
     duration: svc?.duration ?? null,
     price: svc?.price ?? null,
   };
+}
+
+const MATCH_LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/match-lead";
+
+function MatchLeadCard({
+  t,
+  cards,
+  needLabel,
+  whenLabel,
+  area,
+}: {
+  t: (typeof COPY)["en"];
+  cards: MatchCard[];
+  needLabel: string;
+  whenLabel: string;
+  area: string | null;
+}) {
+  const [email, setEmail] = useState("");
+  const [optIn, setOptIn] = useState(false);
+  const [state, setState] = useState<"idle" | "saving" | "done">("idle");
+  const [error, setError] = useState<"invalid" | "failed" | null>(null);
+
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  if (state === "done") {
+    return (
+      <div className="mt-6 rounded-2xl border border-[#E5DDD3] bg-[#FBF7F2] p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+            <Check className="h-4 w-4 text-primary" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">{t.leadSent}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    if (!valid) {
+      setError("invalid");
+      return;
+    }
+    setError(null);
+    setState("saving");
+    try {
+      const res = await fetch(MATCH_LEAD_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          opt_in: optIn,
+          answers: { want: needLabel, when: whenLabel, area },
+          matches: cards.slice(0, 3).map((c) => ({
+            name: c.studio,
+            slug: c.slug,
+            svc: c.service,
+            price: c.price,
+            duration: c.duration,
+            area: c.area,
+          })),
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      if (json?.ok) {
+        setState("done");
+      } else {
+        setState("idle");
+        setError("failed");
+      }
+    } catch {
+      setState("idle");
+      setError("failed");
+    }
+  };
+
+  return (
+    <form
+      className="mt-6 rounded-2xl border border-[#E5DDD3] bg-[#FBF7F2] p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (state !== "saving") void submit();
+      }}
+    >
+      <p className="font-semibold text-foreground">{t.leadTitle}</p>
+      <p className="mt-1 text-sm text-muted-foreground leading-snug">{t.leadSub}</p>
+      <div className="mt-3 flex gap-2">
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          maxLength={255}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder={t.leadPlaceholder}
+          aria-invalid={error === "invalid"}
+          className={`h-11 min-w-0 flex-1 rounded-full border bg-background px-4 text-sm text-foreground ${
+            error === "invalid" ? "border-2 border-destructive" : "border-border/70"
+          }`}
+        />
+        <button
+          type="submit"
+          disabled={state === "saving"}
+          className="h-11 shrink-0 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground inline-flex items-center gap-2 hover:opacity-90 transition disabled:opacity-60"
+        >
+          {state === "saving" && <Loader2 className="h-4 w-4 animate-spin" />}
+          {t.leadButton}
+        </button>
+      </div>
+      <label className="mt-3 flex items-start gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={optIn}
+          onChange={(e) => setOptIn(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+        />
+        <span className="text-xs text-muted-foreground leading-snug">{t.leadOptIn}</span>
+      </label>
+      {error && (
+        <p className="mt-2 text-xs text-destructive">{error === "invalid" ? t.leadInvalid : t.leadError}</p>
+      )}
+    </form>
+  );
 }
 
 export default function MatchFlow() {
@@ -653,6 +834,15 @@ export default function MatchFlow() {
                   </article>
                 ))}
               </div>
+            )}
+            {cards.length > 0 && (
+              <MatchLeadCard
+                t={t}
+                cards={cards}
+                needLabel={need ? t.needs[need] : t.needs.unsure}
+                whenLabel={when ? t.when[when] : t.when.flexible}
+                area={area}
+              />
             )}
             <Link
               to="/studios"
