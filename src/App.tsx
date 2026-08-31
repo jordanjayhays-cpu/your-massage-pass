@@ -38,6 +38,7 @@ import PartnerClients from "./app/screens/PartnerClients";
 import MyBookings from "./app/screens/MyBookings";
 import Profile from "./app/screens/Profile";
 import Web from "./pages/Web";
+import MatchFlow from "./pages/MatchFlow";
 import Home from "./pages/Home";
 import BookingResult from "./pages/BookingResult";
 import Welcome from "./pages/Welcome";
@@ -140,6 +141,7 @@ const App = () => (
           {/* Public lead-capture pages shared on WhatsApp */}
           <Route path="/book" element={<BookFlow />} />
           <Route path="/start" element={<FbLanding />} />
+          <Route path="/match" element={<MatchFlow />} />
           <Route path="/fb" element={<FbRedirect />} />
 
           {/* Common near-miss redirects - keep them before the /:studioId catch-all */}
