@@ -138,8 +138,49 @@ export interface Shop {
   auto_confirm_bookings?: boolean | null;
 }
 
+/** In-memory cache of the last successful studio list.
+ *  Back-navigation remounts the discovery screen; without this a hung or
+ *  aborted request would leave it stuck on "Loading studios…" with 0 found. */
+let shopsCache: Shop[] | null = null;
+let shopsInFlight: Promise<Shop[]> | null = null;
+
+/** Last successful result, if any. Used to paint instantly on remount. */
+export function cachedShops(): Shop[] | null {
+  return shopsCache;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("timeout")), ms);
+    p.then(
+      (v) => { window.clearTimeout(timer); resolve(v); },
+      (e) => { window.clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
+/** Always-resolving studio loader: dedupes concurrent calls, times out,
+ *  and falls back to the last good result instead of hanging. */
+export async function loadShops(): Promise<Shop[]> {
+  if (shopsInFlight) return shopsInFlight;
+  shopsInFlight = (async () => {
+    try {
+      const shops = await withTimeout(fetchShops(), 15000);
+      shopsCache = shops;
+      return shops;
+    } catch (err) {
+      console.error("[loadShops] failed:", err);
+      return shopsCache ?? [];
+    } finally {
+      shopsInFlight = null;
+    }
+  })();
+  return shopsInFlight;
+}
+
 /** Fetch all active shops with their services from Supabase.
  *  Returns an empty list when the table is empty (no hardcoded demo studios). */
+
 export async function fetchShops(): Promise<Shop[]> {
   // Try real data first
   const { data: partners, error } = await supabase
