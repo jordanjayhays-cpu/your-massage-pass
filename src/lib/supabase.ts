@@ -166,8 +166,9 @@ export async function loadShops(): Promise<Shop[]> {
   shopsInFlight = (async () => {
     try {
       const shops = await withTimeout(fetchShops(), 15000);
-      shopsCache = shops;
-      return shops;
+      // Never let a transient empty/error result wipe a good cache.
+      if (shops.length || !shopsCache) shopsCache = shops;
+      return shopsCache ?? shops;
     } catch (err) {
       console.error("[loadShops] failed:", err);
       return shopsCache ?? [];
