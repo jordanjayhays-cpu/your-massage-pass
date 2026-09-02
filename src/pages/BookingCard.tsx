@@ -55,18 +55,22 @@ type CardState = {
 type CardError = { ok: false; error: string };
 
 const C = {
-  page: "#F1EBE2",
-  card: "#FFFFFF",
-  panel: "#FAF6F0",
-  ink: "#262019",
-  muted: "#8A7F73",
-  line: "#E9E1D6",
-  clay: "#B85C38",
-  green: "#2F7A4F",
-  greenBg: "#E3F1E8",
+  page: "#262019",
+  card: "transparent",
+  panel: "rgba(243,236,226,0.08)",
+  ink: "#F3ECE2",
+  onCream: "#262019",
+  muted: "#B8AC9E",
+  faint: "#8A7F73",
+  line: "rgba(243,236,226,0.14)",
+  clay: "#D08A62",
+  green: "#8BD3A5",
+  greenBg: "rgba(111,196,143,0.14)",
+  greenLine: "rgba(111,196,143,0.35)",
 };
 
-const display = { fontFamily: "'Fraunces', 'EB Garamond', Georgia, serif" } as const;
+const display = { fontFamily: "'Fraunces', 'EB Garamond', Georgia, serif", letterSpacing: "-0.02em" } as const;
+
 
 /* ---------------------------------------------------------------- copy */
 
@@ -177,8 +181,8 @@ function Chip({ label, selected, onClick }: { label: string; selected: boolean; 
         lineHeight: 1.2,
         cursor: "pointer",
         border: `1px solid ${selected ? C.ink : C.line}`,
-        background: selected ? C.ink : "#fff",
-        color: selected ? "#FAF6F0" : C.ink,
+        background: selected ? C.ink : "transparent",
+        color: selected ? C.onCream : C.ink,
         transition: "background 120ms ease, color 120ms ease",
       }}
     >
@@ -205,10 +209,13 @@ function TopStrip({ phone, t }: { phone: string; t: Copy }) {
         fontSize: 11,
         color: C.muted,
         letterSpacing: "0.14em",
-        padding: "14px 4px 12px",
+        padding: "16px 4px 18px",
       }}
     >
-      <span>{t.brand}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: C.ink }}>
+        <span style={{ width: 6, height: 6, borderRadius: 999, background: C.ink, flex: "0 0 auto" }} />
+        {t.brand}
+      </span>
       {phone ? <span style={{ letterSpacing: "0.02em", fontVariantNumeric: "tabular-nums" }}>{t.bookingFor(phone)}</span> : null}
     </div>
   );
@@ -221,7 +228,7 @@ function WhatsAppNote({ text }: { text: string }) {
         display: "flex",
         gap: 10,
         alignItems: "flex-start",
-        border: `1px dashed ${C.line}`,
+        border: "1px dashed rgba(243,236,226,0.25)",
         borderRadius: 14,
         padding: "12px 14px",
         marginTop: 18,
@@ -235,6 +242,7 @@ function WhatsAppNote({ text }: { text: string }) {
     </div>
   );
 }
+
 
 /* --------------------------------------------------------------- page */
 
@@ -353,34 +361,38 @@ export default function BookingCard() {
   const areaLabel = req?.area || area || (lang === "es" ? "Madrid" : "Madrid");
 
   const shell = (children: React.ReactNode) => (
-    <div style={{ minHeight: "100vh", background: C.page, color: C.ink, fontFamily: "'Outfit', system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: C.page, color: C.ink, fontFamily: "'Outfit', system-ui, sans-serif", position: "relative", overflow: "hidden" }}>
       <Helmet>
         <meta name="robots" content="noindex" />
         <title>Massage Club booking</title>
       </Helmet>
       <style>{`
-        .mc-card :focus-visible { outline: 2px solid ${C.clay}; outline-offset: 2px; }
+        .mc-card :focus-visible { outline: 2px solid ${C.ink}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { .mc-card * { transition: none !important; animation: none !important; } }
       `}</style>
-      <div className="mc-card" style={{ maxWidth: 420, margin: "0 auto", padding: "0 16px 40px" }}>
+      <div aria-hidden="true" style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+        <div style={{ position: "absolute", width: 720, height: 720, borderRadius: "50%", background: "#B85C38", opacity: 0.5, top: -300, left: -260, filter: "blur(2px)" }} />
+        <div style={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", background: "#8A4A2E", opacity: 0.55, bottom: -220, right: -200, filter: "blur(2px)" }} />
+        <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "#D08A62", opacity: 0.55, top: 90, right: -60, filter: "blur(2px)" }} />
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px)", backgroundSize: "6px 6px", mixBlendMode: "overlay" }} />
+      </div>
+      <div className="mc-card" style={{ maxWidth: 420, margin: "0 auto", padding: "0 16px 40px", position: "relative", zIndex: 1 }}>
         {children}
       </div>
     </div>
   );
 
   const cardBox: React.CSSProperties = {
-    background: C.card,
-    borderRadius: 18,
-    boxShadow: "0 8px 24px rgba(38, 32, 25, 0.07)",
-    padding: 20,
+    padding: "4px 0",
   };
+
 
   if (invalid) {
     return shell(
       <>
         <TopStrip phone="" t={t} />
         <div style={{ ...cardBox, marginTop: 40, textAlign: "center" }}>
-          <h1 style={{ ...display, fontWeight: 500, fontSize: 24, lineHeight: 1.25, margin: "8px 0 18px" }}>{t.expired}</h1>
+          <h1 style={{ ...display, fontWeight: 500, fontSize: 28, lineHeight: 1.15, margin: "8px 0 18px" }}>{t.expired}</h1>
           <a
             href={WA}
             target="_blank"
@@ -388,11 +400,12 @@ export default function BookingCard() {
             style={{
               display: "block",
               background: C.ink,
-              color: "#FAF6F0",
-              borderRadius: 14,
+              color: C.onCream,
+              borderRadius: 999,
               padding: "14px 16px",
               textDecoration: "none",
               fontSize: 15,
+              fontWeight: 600,
             }}
           >
             {t.waBtn}
@@ -420,8 +433,8 @@ export default function BookingCard() {
       <>
         <TopStrip phone={phone} t={t} />
         <div style={cardBox}>
-          <h1 style={{ ...display, fontWeight: 500, fontSize: 30, lineHeight: 1.2, margin: "2px 0 8px" }}>{t.title}</h1>
-          <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.5, margin: "0 0 22px" }}>{t.sub}</p>
+          <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 12px" }}>{t.title}</h1>
+          <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.5, margin: "0 0 26px" }}>{t.sub}</p>
 
           <GroupLabel>{t.which}</GroupLabel>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
