@@ -46,6 +46,8 @@ import Welcome from "./pages/Welcome";
 import AccountSetup from "./pages/AccountSetup";
 import Compare from "./pages/Compare";
 import MassageTypePage from "./pages/MassageTypePage";
+import BookingCard from "./pages/BookingCard";
+
 import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
 
 /**
@@ -277,8 +279,12 @@ const App = () => (
           <Route path="/for-studios" element={<ForStudios />} />
           <Route path="/para-estudios" element={<ForStudios />} />
 
+          {/* WhatsApp booking card (noindex, standalone) */}
+          <Route path="/r/:token" element={<BookingCard />} />
+
           {/* Canonical studio URL on every host: /{slug} */}
           <Route path="/:studioId" element={<StudioBookingPage />} />
+
 
           <Route path="*" element={<NotFound />} />
         </Routes>
