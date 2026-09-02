@@ -468,13 +468,15 @@ export default function BookingCard() {
             onClick={() => void post({ action: "create", svc, day, time: band, area })}
             style={{
               width: "100%",
-              borderRadius: 14,
-              padding: "15px 16px",
+              borderRadius: 999,
+              padding: "16px",
               fontSize: 16,
+              fontWeight: 600,
               border: "none",
               cursor: ready && !busy ? "pointer" : "default",
-              background: ready ? C.ink : C.line,
-              color: ready ? "#FAF6F0" : C.muted,
+              background: C.ink,
+              color: C.onCream,
+              opacity: ready ? 1 : 0.3,
             }}
           >
             {t.cta}
