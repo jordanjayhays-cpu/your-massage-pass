@@ -535,10 +535,132 @@ export default function BookingCard() {
 
   /* ------------------------------------------------------------- idle */
   if (phase === "idle") {
+    const handleService = (k: string) => {
+      setSvc(k);
+      window.setTimeout(() => setStep(2), 180);
+    };
+    const handleDay = (k: string) => {
+      setDay(k);
+      if (band) window.setTimeout(() => setStep(3), 180);
+    };
+    const handleBand = (k: string) => {
+      setBand(k);
+      if (day) window.setTimeout(() => setStep(3), 180);
+    };
+    const handleArea = (a: string) => {
+      setArea(a);
+      window.setTimeout(() => setStep(4), 180);
+    };
+
+    const summaryRow = (label: string, value: string, target: number) => (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.line}` }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted }}>{label}</div>
+          <div style={{ fontSize: 16, color: C.ink, marginTop: 2, lineHeight: 1.35 }}>{value}</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setStep(target)}
+          style={{ background: "transparent", border: "none", color: C.clay, fontSize: 13, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+        >
+          {t.change}
+        </button>
+      </div>
+    );
+
     return shell(
       <>
         <TopStrip phone={phone} t={t} />
-        <div style={cardBox}>idle</div>
+        <div style={cardBox}>
+          {step === 1 ? (
+            <>
+              <StepIndicator step={1} t={t} />
+              <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 20px" }}>{t.whichQuestion}</h1>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {SVCS.map((k) => (
+                  <OptionButton key={k} label={t.services[k]} selected={svc === k} onClick={() => handleService(k)} />
+                ))}
+              </div>
+            </>
+          ) : step === 2 ? (
+            <>
+              <BackButton label={t.backAria} onClick={() => setStep(1)} />
+              <StepIndicator step={2} t={t} />
+              <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 20px" }}>{t.whenQuestion}</h1>
+              <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>{t.dayGroup}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+                {DAYS.map((k) => (
+                  <OptionButton key={k} label={t.days[k]} selected={day === k} onClick={() => handleDay(k)} />
+                ))}
+              </div>
+              <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 10 }}>{t.timeGroup}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
+                {BANDS.map((k) => (
+                  <OptionButton key={k} label={t.times[k]} selected={band === k} onClick={() => handleBand(k)} />
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={!(day && band)}
+                onClick={() => setStep(3)}
+                style={{
+                  width: "100%",
+                  borderRadius: 999,
+                  padding: "16px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: day && band ? "pointer" : "default",
+                  background: C.ink,
+                  color: C.onCream,
+                  opacity: day && band ? 1 : 0.3,
+                }}
+              >
+                {t.continue}
+              </button>
+            </>
+          ) : step === 3 ? (
+            <>
+              <BackButton label={t.backAria} onClick={() => setStep(2)} />
+              <StepIndicator step={3} t={t} />
+              <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 20px" }}>{t.whereQuestion}</h1>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {areas.map((a) => (
+                  <OptionButton key={a} label={a} selected={area === a} onClick={() => handleArea(a)} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <BackButton label={t.backAria} onClick={() => setStep(3)} />
+              <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 20px" }}>{t.readyQuestion}</h1>
+              <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: "0 14px", marginBottom: 22 }}>
+                {summaryRow(t.summaryMassage, serviceLabel, 1)}
+                {summaryRow(t.summaryWhen, `${dayLabel}, ${timeLabel}`, 2)}
+                {summaryRow(t.summaryWhere, areaLabel, 3)}
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void post({ action: "create", svc, day, time: band, area })}
+                style={{
+                  width: "100%",
+                  borderRadius: 999,
+                  padding: "16px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: busy ? "default" : "pointer",
+                  background: C.ink,
+                  color: C.onCream,
+                }}
+              >
+                {t.cta}
+              </button>
+              <p style={{ color: C.muted, fontSize: 12, lineHeight: 1.5, margin: "12px 0 0" }}>{t.fine}</p>
+            </>
+          )}
+        </div>
       </>,
     );
   }
