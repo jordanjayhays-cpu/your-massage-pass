@@ -408,6 +408,8 @@ export default function BookingCard() {
       stop();
       document.removeEventListener("visibilitychange", onVis);
     };
+  }, [polling]);
+
   // When the card becomes idle, pick a sensible starting step based on what is already filled.
   useEffect(() => {
     if (phase !== prevPhaseRef.current && phase === "idle") {
