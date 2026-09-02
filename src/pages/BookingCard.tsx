@@ -83,6 +83,18 @@ const COPY = {
     which: "WHICH MASSAGE",
     when: "WHEN",
     where: "WHERE",
+    whichQuestion: "Which massage?",
+    whenQuestion: "When?",
+    whereQuestion: "Where in Madrid?",
+    readyQuestion: "Ready to ask?",
+    stepOf: (n: number) => `${n} of 3`,
+    continue: "Continue",
+    dayGroup: "Day",
+    timeGroup: "Time",
+    summaryMassage: "Massage",
+    summaryWhen: "When",
+    summaryWhere: "Where",
+    backAria: "Back",
     cta: "Ask the studios",
     fine: "You pay the studio directly. No booking fee. Your time is only booked once a studio confirms it, and we tell you here and on WhatsApp.",
     asking: (n: number, area: string) => `Asking ${n} studios in ${area}`,
@@ -123,6 +135,18 @@ const COPY = {
     which: "QUÉ MASAJE",
     when: "CUÁNDO",
     where: "DÓNDE",
+    whichQuestion: "¿Qué masaje?",
+    whenQuestion: "¿Cuándo?",
+    whereQuestion: "¿En qué zona de Madrid?",
+    readyQuestion: "¿Preguntamos?",
+    stepOf: (n: number) => `${n} de 3`,
+    continue: "Seguir",
+    dayGroup: "Día",
+    timeGroup: "Hora",
+    summaryMassage: "Masaje",
+    summaryWhen: "Cuándo",
+    summaryWhere: "Zona",
+    backAria: "Atrás",
     cta: "Preguntar a los centros",
     fine: "Pagas directamente en el centro. Sin comisión. Tu hora solo queda reservada cuando un centro la confirma, y te lo decimos aquí y por WhatsApp.",
     asking: (n: number, area: string) => `Preguntando a ${n} centros en ${area}`,
@@ -243,6 +267,79 @@ function WhatsAppNote({ text }: { text: string }) {
   );
 }
 
+function OptionButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      style={{
+        width: "100%",
+        minHeight: 60,
+        padding: "14px 16px",
+        borderRadius: 16,
+        fontSize: 19,
+        lineHeight: 1.25,
+        textAlign: "left",
+        cursor: "pointer",
+        border: `1px solid ${C.line}`,
+        background: selected ? C.ink : "transparent",
+        color: selected ? C.onCream : C.ink,
+        transition: "background 120ms ease, color 120ms ease",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function StepIndicator({ step, t }: { step: number; t: Copy }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      <span style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted }}>{t.stepOf(step)}</span>
+      <div style={{ display: "flex", gap: 6 }}>
+        {[1, 2, 3].map((n) => (
+          <span
+            key={n}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: n === step ? C.ink : "rgba(243,236,226,0.25)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BackButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      style={{
+        width: 44,
+        height: 44,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        padding: 0,
+        color: C.ink,
+      }}
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </button>
+  );
+}
+
 
 /* --------------------------------------------------------------- page */
 
@@ -253,7 +350,7 @@ export default function BookingCard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [forceCard, setForceCard] = useState(false);
-  const [otherNote, setOtherNote] = useState(false);
+  const [step, setStep] = useState(1);
 
   const [svc, setSvc] = useState<string | null>(null);
   const [day, setDay] = useState<string | null>(null);
@@ -286,6 +383,7 @@ export default function BookingCard() {
   }, [load]);
 
   const phase: Phase = forceCard ? "idle" : state?.phase ?? "idle";
+  const prevPhaseRef = useRef<Phase>(phase);
 
   // Poll every 8s while waiting, pause when the tab is hidden.
   const polling = phase === "queued" || phase === "asking";
@@ -310,7 +408,14 @@ export default function BookingCard() {
       stop();
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [polling]);
+  // When the card becomes idle, pick a sensible starting step based on what is already filled.
+  useEffect(() => {
+    if (phase !== prevPhaseRef.current && phase === "idle") {
+      setStep(svc && day && band && area ? 4 : svc && day && band ? 3 : svc ? 2 : 1);
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, svc, day, band, area]);
+
 
   const post = useCallback(
     async (body: Record<string, unknown>) => {
@@ -428,61 +533,10 @@ export default function BookingCard() {
 
   /* ------------------------------------------------------------- idle */
   if (phase === "idle") {
-    const ready = Boolean(svc && day && band && area);
     return shell(
       <>
         <TopStrip phone={phone} t={t} />
-        <div style={cardBox}>
-          <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 12px" }}>{t.title}</h1>
-          <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.5, margin: "0 0 26px" }}>{t.sub}</p>
-
-          <GroupLabel>{t.which}</GroupLabel>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
-            {SVCS.map((k) => (
-              <Chip key={k} label={t.services[k]} selected={svc === k} onClick={() => setSvc(k)} />
-            ))}
-          </div>
-
-          <GroupLabel>{t.when}</GroupLabel>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-            {DAYS.map((k) => (
-              <Chip key={k} label={t.days[k]} selected={day === k} onClick={() => setDay(k)} />
-            ))}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
-            {BANDS.map((k) => (
-              <Chip key={k} label={t.times[k]} selected={band === k} onClick={() => setBand(k)} />
-            ))}
-          </div>
-
-          <GroupLabel>{t.where}</GroupLabel>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
-            {areas.map((a) => (
-              <Chip key={a} label={a} selected={area === a} onClick={() => setArea(a)} />
-            ))}
-          </div>
-
-          <button
-            type="button"
-            disabled={!ready || busy}
-            onClick={() => void post({ action: "create", svc, day, time: band, area })}
-            style={{
-              width: "100%",
-              borderRadius: 999,
-              padding: "16px",
-              fontSize: 16,
-              fontWeight: 600,
-              border: "none",
-              cursor: ready && !busy ? "pointer" : "default",
-              background: C.ink,
-              color: C.onCream,
-              opacity: ready ? 1 : 0.3,
-            }}
-          >
-            {t.cta}
-          </button>
-          <p style={{ color: C.muted, fontSize: 12, lineHeight: 1.5, margin: "12px 0 0" }}>{t.fine}</p>
-        </div>
+        <div style={cardBox}>idle</div>
       </>,
     );
   }
@@ -516,6 +570,7 @@ export default function BookingCard() {
               setDay(null);
               setBand(null);
               setArea(null);
+              setStep(1);
               setForceCard(true);
             }}
             style={{
