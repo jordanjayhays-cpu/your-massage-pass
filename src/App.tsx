@@ -46,6 +46,8 @@ import Welcome from "./pages/Welcome";
 import AccountSetup from "./pages/AccountSetup";
 import Compare from "./pages/Compare";
 import MassageTypePage from "./pages/MassageTypePage";
+import BookingCard from "./pages/BookingCard";
+
 import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
 
 /**
