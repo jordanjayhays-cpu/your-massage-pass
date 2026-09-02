@@ -552,10 +552,10 @@ export default function BookingCard() {
     <>
       <TopStrip phone={phone} t={t} />
       <div style={cardBox}>
-        <h1 style={{ ...display, fontWeight: 500, fontSize: 30, lineHeight: 1.2, margin: "2px 0 8px" }}>{headline}</h1>
+        <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 12px" }}>{headline}</h1>
         <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.5, margin: "0 0 18px" }}>{offered ? t.offerSub : t.askingSub}</p>
 
-        <div style={{ background: C.panel, borderRadius: 14, padding: 14, marginBottom: 18 }}>
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 14, marginBottom: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div>
               <div style={{ ...display, fontSize: 18 }}>{serviceLabel}</div>
