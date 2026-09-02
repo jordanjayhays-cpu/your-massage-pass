@@ -495,8 +495,8 @@ export default function BookingCard() {
       <>
         <TopStrip phone={phone} t={t} />
         <div style={cardBox}>
-          <h1 style={{ ...display, fontWeight: 500, fontSize: 30, lineHeight: 1.2, margin: "2px 0 16px" }}>{t.bookedTitle}</h1>
-          <div style={{ background: C.panel, borderRadius: 14, padding: 16, fontSize: 15, lineHeight: 1.6 }}>
+          <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 18px" }}>{t.bookedTitle}</h1>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, fontSize: 15, lineHeight: 1.6 }}>
             <div style={{ ...display, fontSize: 18 }}>{t.bookedLine}</div>
             <div style={{ fontVariantNumeric: "tabular-nums" }}>
               {req?.studio ? `${req.studio}, ` : ""}
