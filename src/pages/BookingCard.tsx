@@ -151,8 +151,9 @@ const COPY = {
     times: { morning: "Mañana 10-13", afternoon: "Tarde 13-18", evening: "Noche 18-21" },
     timesShort: { morning: "Mañana", afternoon: "Tarde", evening: "Noche" },
   },
-} as const;
+};
 
+type Copy = typeof COPY.en;
 type Lang = keyof typeof COPY;
 
 const SVCS = ["relax", "deep", "thai", "sports", "stone", "unsure"] as const;
@@ -194,7 +195,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TopStrip({ phone, t }: { phone: string; t: (typeof COPY)["en"] }) {
+function TopStrip({ phone, t }: { phone: string; t: Copy }) {
   return (
     <div
       style={{
