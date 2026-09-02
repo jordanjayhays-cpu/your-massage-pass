@@ -567,7 +567,7 @@ export default function BookingCard() {
               <button
                 type="button"
                 onClick={() => setForceCard(true)}
-                style={{ background: "none", border: "none", color: C.clay, fontSize: 13, cursor: "pointer", padding: 4 }}
+                style={{ background: "transparent", border: `1px solid ${C.line}`, borderRadius: 999, color: C.ink, fontSize: 13, cursor: "pointer", padding: "6px 12px" }}
               >
                 {t.change}
               </button>
