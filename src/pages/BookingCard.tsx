@@ -521,7 +521,7 @@ export default function BookingCard() {
             style={{
               width: "100%",
               marginTop: 14,
-              borderRadius: 14,
+              borderRadius: 999,
               padding: "14px 16px",
               fontSize: 15,
               background: "transparent",
