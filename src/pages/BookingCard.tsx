@@ -356,6 +356,7 @@ export default function BookingCard() {
   const [day, setDay] = useState<string | null>(null);
   const [band, setBand] = useState<string | null>(null);
   const [area, setArea] = useState<string | null>(null);
+  const [otherNote, setOtherNote] = useState(false);
 
   const lang: Lang = state?.lang === "es" ? "es" : "en";
   const t = COPY[lang];
