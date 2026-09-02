@@ -576,7 +576,7 @@ export default function BookingCard() {
         </div>
 
         {offered ? (
-          <div style={{ background: C.greenBg, borderRadius: 14, padding: 16, marginBottom: 18 }}>
+          <div style={{ background: C.greenBg, border: `1px solid ${C.greenLine}`, borderRadius: 16, padding: 16, marginBottom: 18 }}>
             <div style={{ fontSize: 11, letterSpacing: "0.12em", color: C.green, marginBottom: 6 }}>{t.offerEyebrow}</div>
             <div style={{ ...display, fontSize: 22, lineHeight: 1.25 }}>{req?.studio}</div>
             <div style={{ fontSize: 14, color: C.ink, marginTop: 6, fontVariantNumeric: "tabular-nums" }}>
@@ -590,12 +590,13 @@ export default function BookingCard() {
                 onClick={() => void post({ action: "accept", request_id: req?.id })}
                 style={{
                   flex: 1,
-                  borderRadius: 12,
+                  borderRadius: 999,
                   padding: "13px 12px",
                   fontSize: 15,
+                  fontWeight: 600,
                   border: "none",
-                  background: C.green,
-                  color: "#fff",
+                  background: C.ink,
+                  color: C.onCream,
                   cursor: "pointer",
                 }}
               >
@@ -610,12 +611,12 @@ export default function BookingCard() {
                 }}
                 style={{
                   flex: 1,
-                  borderRadius: 12,
+                  borderRadius: 999,
                   padding: "13px 12px",
                   fontSize: 15,
                   background: "transparent",
                   color: C.ink,
-                  border: `1px solid ${C.green}`,
+                  border: `1px solid ${C.line}`,
                   cursor: "pointer",
                 }}
               >
