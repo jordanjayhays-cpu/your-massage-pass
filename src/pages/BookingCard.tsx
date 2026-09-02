@@ -643,12 +643,12 @@ export default function BookingCard() {
             const won = s.outcome === "won";
             const hasReplied = Boolean(s.replied) && s.outcome === "pending";
             const pill = won
-              ? { label: t.pillConfirmed, bg: C.greenBg, color: C.green }
+              ? { label: t.pillConfirmed, bg: C.greenBg, color: C.green, border: "1px solid transparent" }
               : stood
-                ? { label: t.pillStood, bg: C.panel, color: C.muted }
+                ? { label: t.pillStood, bg: "transparent", color: C.faint, border: "1px solid transparent" }
                 : hasReplied
-                  ? { label: t.pillReplied, bg: "#F6E7E0", color: C.clay }
-                  : { label: t.pillAsked, bg: C.panel, color: C.muted };
+                  ? { label: t.pillReplied, bg: "rgba(208,138,98,0.22)", color: C.ink, border: "1px solid transparent" }
+                  : { label: t.pillAsked, bg: "transparent", color: C.muted, border: `1px solid ${C.line}` };
             return (
               <div
                 key={s.partner_id}
@@ -659,7 +659,7 @@ export default function BookingCard() {
                   gap: 12,
                   padding: "12px 0",
                   borderTop: `1px solid ${C.line}`,
-                  opacity: stood ? 0.5 : 1,
+                  opacity: stood ? 0.45 : 1,
                   textDecoration: stood ? "line-through" : "none",
                 }}
               >
@@ -681,6 +681,7 @@ export default function BookingCard() {
                     padding: "5px 10px",
                     background: pill.bg,
                     color: pill.color,
+                    border: pill.border,
                   }}
                 >
                   {pill.label}
