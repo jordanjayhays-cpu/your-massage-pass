@@ -625,6 +625,42 @@ export default function BookingCard() {
       window.setTimeout(() => setStep(4), 180);
     };
 
+    const nameOk = name.trim().length >= 2;
+    const emailValid = emailOk(email);
+    const detailsOk = nameOk && emailValid;
+    const showEmailError = (emailTouched || emailRejected) && !emailValid;
+
+    const inputStyle: React.CSSProperties = {
+      width: "100%",
+      boxSizing: "border-box",
+      background: C.panel,
+      border: `1px solid ${C.line}`,
+      borderRadius: 14,
+      padding: "14px 16px",
+      fontSize: 18,
+      lineHeight: 1.3,
+      color: C.ink,
+      fontFamily: "inherit",
+      outline: "none",
+    };
+
+    const submitCreate = async () => {
+      const res = await post({
+        action: "create",
+        svc,
+        day,
+        time: band,
+        area,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+      });
+      if (res && (res as CardError).ok === false && (res as CardError).error === "bad_email") {
+        setEmailRejected(true);
+        setEmailTouched(true);
+        setStep(4);
+      }
+    };
+
     const summaryRow = (label: string, value: string, target: number) => (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.line}` }}>
         <div style={{ minWidth: 0 }}>
