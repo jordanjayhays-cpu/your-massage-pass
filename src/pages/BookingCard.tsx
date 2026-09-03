@@ -739,19 +739,89 @@ export default function BookingCard() {
                 ))}
               </div>
             </>
-          ) : (
+          ) : step === 4 ? (
             <>
               <BackButton label={t.backAria} onClick={() => setStep(3)} />
+              <StepIndicator step={4} t={t} />
+              <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 8px" }}>{t.detailsQuestion}</h1>
+              <p style={{ color: C.muted, fontSize: 15, lineHeight: 1.5, margin: "0 0 22px" }}>{t.detailsSub}</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (detailsOk) setStep(5);
+                }}
+              >
+                <label htmlFor="mc-name" style={{ display: "block", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>
+                  {t.nameLabel}
+                </label>
+                <input
+                  id="mc-name"
+                  ref={nameInputRef}
+                  type="text"
+                  value={name}
+                  placeholder={t.namePlaceholder}
+                  autoComplete="given-name"
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: 18 }}
+                />
+                <label htmlFor="mc-email" style={{ display: "block", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>
+                  {t.emailLabel}
+                </label>
+                <input
+                  id="mc-email"
+                  type="email"
+                  value={email}
+                  placeholder={t.emailPlaceholder}
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  aria-invalid={showEmailError}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailTouched(true);
+                    setEmailRejected(false);
+                  }}
+                  style={inputStyle}
+                />
+                {showEmailError ? (
+                  <div role="alert" style={{ color: C.clay, fontSize: 13, marginTop: 8 }}>{t.emailError}</div>
+                ) : null}
+                <p style={{ color: C.muted, fontSize: 12, lineHeight: 1.5, margin: "12px 0 20px" }}>{t.detailsNote}</p>
+                <button
+                  type="submit"
+                  disabled={!detailsOk}
+                  style={{
+                    width: "100%",
+                    borderRadius: 999,
+                    padding: "16px",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: detailsOk ? "pointer" : "default",
+                    background: C.ink,
+                    color: C.onCream,
+                    opacity: detailsOk ? 1 : 0.3,
+                  }}
+                >
+                  {t.detailsContinue}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <BackButton label={t.backAria} onClick={() => setStep(4)} />
               <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 20px" }}>{t.readyQuestion}</h1>
               <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: "0 14px", marginBottom: 22 }}>
                 {summaryRow(t.summaryMassage, serviceLabel, 1)}
                 {summaryRow(t.summaryWhen, `${dayLabel}, ${timeLabel}`, 2)}
                 {summaryRow(t.summaryWhere, areaLabel, 3)}
+                {summaryRow(t.summaryName, name.trim(), 4)}
+                {summaryRow(t.summaryEmail, email.trim(), 4)}
               </div>
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void post({ action: "create", svc, day, time: band, area })}
+                onClick={() => void submitCreate()}
                 style={{
                   width: "100%",
                   borderRadius: 999,
