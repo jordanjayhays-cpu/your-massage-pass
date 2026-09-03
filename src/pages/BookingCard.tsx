@@ -470,10 +470,20 @@ export default function BookingCard() {
   // When the card becomes idle, pick a sensible starting step based on what is already filled.
   useEffect(() => {
     if (phase !== prevPhaseRef.current && phase === "idle") {
-      setStep(svc && day && band && area ? 4 : svc && day && band ? 3 : svc ? 2 : 1);
+      setStep(svc && day && band && area ? 5 : svc && day && band ? 3 : svc ? 2 : 1);
     }
     prevPhaseRef.current = phase;
   }, [phase, svc, day, band, area]);
+
+  // Remember name and email for returning visitors.
+  useEffect(() => {
+    saveDetails(name, email);
+  }, [name, email]);
+
+  // Focus the name field when the details step appears.
+  useEffect(() => {
+    if (step === 4) nameInputRef.current?.focus();
+  }, [step]);
 
 
   const post = useCallback(
@@ -487,6 +497,12 @@ export default function BookingCard() {
         });
         const json = (await res.json()) as CardState | CardError;
         if (json && (json as CardError).ok === false) {
+          const err = (json as CardError).error;
+          if (err === "open_request") {
+            void load();
+            return json as CardError;
+          }
+          if (err === "bad_email") return json as CardError;
           setInvalid(true);
           return null;
         }
@@ -499,7 +515,7 @@ export default function BookingCard() {
         setBusy(false);
       }
     },
-    [token],
+    [token, load],
   );
 
   const req = state?.request ?? null;
