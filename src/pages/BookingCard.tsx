@@ -87,8 +87,19 @@ const COPY = {
     whenQuestion: "When?",
     whereQuestion: "Where in Madrid?",
     readyQuestion: "Ready to ask?",
-    stepOf: (n: number) => `${n} of 3`,
+    stepOf: (n: number) => `${n} of 4`,
     continue: "Continue",
+    detailsQuestion: "Your details",
+    detailsSub: "So the studio knows who is coming.",
+    nameLabel: "Name",
+    namePlaceholder: "Your first name",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    detailsNote: "We send your confirmation here. No newsletters.",
+    emailError: "That email does not look right.",
+    detailsContinue: "Continue",
+    summaryName: "Name",
+    summaryEmail: "Email",
     dayGroup: "Day",
     timeGroup: "Time",
     summaryMassage: "Massage",
@@ -139,8 +150,19 @@ const COPY = {
     whenQuestion: "¿Cuándo?",
     whereQuestion: "¿En qué zona de Madrid?",
     readyQuestion: "¿Preguntamos?",
-    stepOf: (n: number) => `${n} de 3`,
+    stepOf: (n: number) => `${n} de 4`,
     continue: "Seguir",
+    detailsQuestion: "Tus datos",
+    detailsSub: "Para que el centro sepa quién viene.",
+    nameLabel: "Nombre",
+    namePlaceholder: "Tu nombre",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    detailsNote: "Aquí te enviamos la confirmación. Sin newsletters.",
+    emailError: "Ese email no parece correcto.",
+    detailsContinue: "Continuar",
+    summaryName: "Nombre",
+    summaryEmail: "Email",
     dayGroup: "Día",
     timeGroup: "Hora",
     summaryMassage: "Masaje",
@@ -183,6 +205,34 @@ const COPY = {
 
 type Copy = typeof COPY.en;
 type Lang = keyof typeof COPY;
+
+const DETAILS_KEY = "mc_card_details";
+
+function readSavedDetails(): { name: string; email: string } {
+  try {
+    const raw = window.localStorage.getItem(DETAILS_KEY);
+    if (!raw) return { name: "", email: "" };
+    const parsed = JSON.parse(raw) as { name?: unknown; email?: unknown };
+    return {
+      name: typeof parsed.name === "string" ? parsed.name : "",
+      email: typeof parsed.email === "string" ? parsed.email : "",
+    };
+  } catch {
+    return { name: "", email: "" };
+  }
+}
+
+function saveDetails(name: string, email: string) {
+  try {
+    window.localStorage.setItem(DETAILS_KEY, JSON.stringify({ name, email }));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function emailOk(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
 
 const SVCS = ["relax", "deep", "thai", "sports", "stone", "unsure"] as const;
 const DAYS = ["today", "tomorrow", "week"] as const;
@@ -357,6 +407,12 @@ export default function BookingCard() {
   const [band, setBand] = useState<string | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [otherNote, setOtherNote] = useState(false);
+  const [details] = useState(readSavedDetails);
+  const [name, setName] = useState(details.name);
+  const [email, setEmail] = useState(details.email);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [emailRejected, setEmailRejected] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const lang: Lang = state?.lang === "es" ? "es" : "en";
   const t = COPY[lang];
@@ -414,10 +470,20 @@ export default function BookingCard() {
   // When the card becomes idle, pick a sensible starting step based on what is already filled.
   useEffect(() => {
     if (phase !== prevPhaseRef.current && phase === "idle") {
-      setStep(svc && day && band && area ? 4 : svc && day && band ? 3 : svc ? 2 : 1);
+      setStep(svc && day && band && area ? 5 : svc && day && band ? 3 : svc ? 2 : 1);
     }
     prevPhaseRef.current = phase;
   }, [phase, svc, day, band, area]);
+
+  // Remember name and email for returning visitors.
+  useEffect(() => {
+    saveDetails(name, email);
+  }, [name, email]);
+
+  // Focus the name field when the details step appears.
+  useEffect(() => {
+    if (step === 4) nameInputRef.current?.focus();
+  }, [step]);
 
 
   const post = useCallback(
@@ -431,6 +497,12 @@ export default function BookingCard() {
         });
         const json = (await res.json()) as CardState | CardError;
         if (json && (json as CardError).ok === false) {
+          const err = (json as CardError).error;
+          if (err === "open_request") {
+            void load();
+            return json as CardError;
+          }
+          if (err === "bad_email") return json as CardError;
           setInvalid(true);
           return null;
         }
@@ -443,7 +515,7 @@ export default function BookingCard() {
         setBusy(false);
       }
     },
-    [token],
+    [token, load],
   );
 
   const req = state?.request ?? null;
@@ -553,6 +625,42 @@ export default function BookingCard() {
       window.setTimeout(() => setStep(4), 180);
     };
 
+    const nameOk = name.trim().length >= 2;
+    const emailValid = emailOk(email);
+    const detailsOk = nameOk && emailValid;
+    const showEmailError = (emailTouched || emailRejected) && !emailValid;
+
+    const inputStyle: React.CSSProperties = {
+      width: "100%",
+      boxSizing: "border-box",
+      background: C.panel,
+      border: `1px solid ${C.line}`,
+      borderRadius: 14,
+      padding: "14px 16px",
+      fontSize: 18,
+      lineHeight: 1.3,
+      color: C.ink,
+      fontFamily: "inherit",
+      outline: "none",
+    };
+
+    const submitCreate = async () => {
+      const res = await post({
+        action: "create",
+        svc,
+        day,
+        time: band,
+        area,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+      });
+      if (res && (res as CardError).ok === false && (res as CardError).error === "bad_email") {
+        setEmailRejected(true);
+        setEmailTouched(true);
+        setStep(4);
+      }
+    };
+
     const summaryRow = (label: string, value: string, target: number) => (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.line}` }}>
         <div style={{ minWidth: 0 }}>
@@ -631,19 +739,89 @@ export default function BookingCard() {
                 ))}
               </div>
             </>
-          ) : (
+          ) : step === 4 ? (
             <>
               <BackButton label={t.backAria} onClick={() => setStep(3)} />
+              <StepIndicator step={4} t={t} />
+              <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 8px" }}>{t.detailsQuestion}</h1>
+              <p style={{ color: C.muted, fontSize: 15, lineHeight: 1.5, margin: "0 0 22px" }}>{t.detailsSub}</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (detailsOk) setStep(5);
+                }}
+              >
+                <label htmlFor="mc-name" style={{ display: "block", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>
+                  {t.nameLabel}
+                </label>
+                <input
+                  id="mc-name"
+                  ref={nameInputRef}
+                  type="text"
+                  value={name}
+                  placeholder={t.namePlaceholder}
+                  autoComplete="given-name"
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: 18 }}
+                />
+                <label htmlFor="mc-email" style={{ display: "block", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, marginBottom: 8 }}>
+                  {t.emailLabel}
+                </label>
+                <input
+                  id="mc-email"
+                  type="email"
+                  value={email}
+                  placeholder={t.emailPlaceholder}
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  aria-invalid={showEmailError}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailTouched(true);
+                    setEmailRejected(false);
+                  }}
+                  style={inputStyle}
+                />
+                {showEmailError ? (
+                  <div role="alert" style={{ color: C.clay, fontSize: 13, marginTop: 8 }}>{t.emailError}</div>
+                ) : null}
+                <p style={{ color: C.muted, fontSize: 12, lineHeight: 1.5, margin: "12px 0 20px" }}>{t.detailsNote}</p>
+                <button
+                  type="submit"
+                  disabled={!detailsOk}
+                  style={{
+                    width: "100%",
+                    borderRadius: 999,
+                    padding: "16px",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    border: "none",
+                    cursor: detailsOk ? "pointer" : "default",
+                    background: C.ink,
+                    color: C.onCream,
+                    opacity: detailsOk ? 1 : 0.3,
+                  }}
+                >
+                  {t.detailsContinue}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <BackButton label={t.backAria} onClick={() => setStep(4)} />
               <h1 style={{ ...display, fontWeight: 500, fontSize: 40, lineHeight: 1.02, margin: "2px 0 20px" }}>{t.readyQuestion}</h1>
               <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: "0 14px", marginBottom: 22 }}>
                 {summaryRow(t.summaryMassage, serviceLabel, 1)}
                 {summaryRow(t.summaryWhen, `${dayLabel}, ${timeLabel}`, 2)}
                 {summaryRow(t.summaryWhere, areaLabel, 3)}
+                {summaryRow(t.summaryName, name.trim(), 4)}
+                {summaryRow(t.summaryEmail, email.trim(), 4)}
               </div>
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void post({ action: "create", svc, day, time: band, area })}
+                onClick={() => void submitCreate()}
                 style={{
                   width: "100%",
                   borderRadius: 999,
