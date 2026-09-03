@@ -407,6 +407,12 @@ export default function BookingCard() {
   const [band, setBand] = useState<string | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [otherNote, setOtherNote] = useState(false);
+  const [details] = useState(readSavedDetails);
+  const [name, setName] = useState(details.name);
+  const [email, setEmail] = useState(details.email);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [emailRejected, setEmailRejected] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const lang: Lang = state?.lang === "es" ? "es" : "en";
   const t = COPY[lang];
