@@ -206,6 +206,34 @@ const COPY = {
 type Copy = typeof COPY.en;
 type Lang = keyof typeof COPY;
 
+const DETAILS_KEY = "mc_card_details";
+
+function readSavedDetails(): { name: string; email: string } {
+  try {
+    const raw = window.localStorage.getItem(DETAILS_KEY);
+    if (!raw) return { name: "", email: "" };
+    const parsed = JSON.parse(raw) as { name?: unknown; email?: unknown };
+    return {
+      name: typeof parsed.name === "string" ? parsed.name : "",
+      email: typeof parsed.email === "string" ? parsed.email : "",
+    };
+  } catch {
+    return { name: "", email: "" };
+  }
+}
+
+function saveDetails(name: string, email: string) {
+  try {
+    window.localStorage.setItem(DETAILS_KEY, JSON.stringify({ name, email }));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function emailOk(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+}
+
 const SVCS = ["relax", "deep", "thai", "sports", "stone", "unsure"] as const;
 const DAYS = ["today", "tomorrow", "week"] as const;
 const BANDS = ["morning", "afternoon", "evening"] as const;
