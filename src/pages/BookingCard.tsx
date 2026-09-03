@@ -157,7 +157,7 @@ const COPY = {
     nameLabel: "Nombre",
     namePlaceholder: "Tu nombre",
     emailLabel: "Email",
-    emailPlaceholder: "tu@ejemplo.com",
+    emailPlaceholder: "you@example.com",
     detailsNote: "Aquí te enviamos la confirmación. Sin newsletters.",
     emailError: "Ese email no parece correcto.",
     detailsContinue: "Continuar",
