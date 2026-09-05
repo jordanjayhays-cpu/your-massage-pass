@@ -6,6 +6,7 @@ import { fetchShops } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
+import { RecentBookings } from "@/components/RecentBookings";
 import { studioImageFallback } from "@/lib/studioImages";
 import { GUIDES } from "@/pages/guides/GuideLayout";
 import { useSiteVisit } from "@/lib/siteVisit";
@@ -142,6 +143,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <RecentBookings />
 
         {/* Grid */}
         <section className="pb-12">
