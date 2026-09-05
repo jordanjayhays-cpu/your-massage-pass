@@ -89,9 +89,16 @@ If yes: set `share_ok = true` on the request. The home page strip shows the firs
 
 - The bot: every customer question, every studio ask, confirmations, stand-downs,
   reminders, no-shows, late replies.
+- `studio-followups` (cron, every 10 min, 09:00 to 21:00 Madrid): the studio
+  relationship without a person. A studio that writes BAJA or "no nos escribáis
+  más" is opted out, hidden from the site and gets the apology automatically. A
+  studio that replied and is not yet a partner gets the free sign-up link once.
+  A confirmed booking with no discount gets one 10% ask to the studio; a written
+  percentage is recorded and the customer is told.
 - Cron: dispatch sweep (every 20 min, 08:00 to 22:00 Madrid), bidding settle
   (every 5 min), booking-guard (every 10 min), rescue (every 30 min).
 - The hourly reply watch (Claude routine): emails support@ only when something
   new happened that the bot did not handle.
-- Jordan: relationship messages to studios, apologies, opt-out replies, anything
-  that needs a person's name. Everything above is copy-paste ready.
+- Jordan: nothing routine. The messages above exist for the rare case a studio
+  asks for a person by name or a situation goes wrong. Everything else is sent
+  by the bot.
