@@ -14,7 +14,8 @@
 - In WhatsApp chats: answers and offers only, links only if someone asks what the service is. Every conversation gets an offer with prices within the first two messages.
 - No em dashes in any user-facing copy.
 - Always provide an English translation for any Spanish text shown to Jordan.
-- Never claim massage releases toxins, detoxes, cures, or boosts immunity. Never promise studios speak English. Never offer discounts.
+- Never claim massage releases toxins, detoxes, cures, or boosts immunity. Never promise studios speak English.
+- Discounts (Jordan, 5 Sept): we never fund a discount, never invent one, and never quote one to a customer before the studio has confirmed it in writing. On every request the bot asks each studio for a 10% Massage Club rate, tells them truthfully that several studios were asked and the client goes with the best offer, and awards the booking to the best offer (same-day requests go to the first yes). Never tell a studio the client has another booking unless that is true. The customer hears about a discount only on the confirmation, once the studio gave it.
 - Instagram account is banned from automation: no DMs, no scheduling tools.
 - "Special massage" seekers get the standard shutdown line and no further replies.
 - Approval required before any outbound message to third parties, except automations Jordan has explicitly approved (lead-to-studio offer email).
