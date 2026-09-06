@@ -221,15 +221,15 @@ export const COPY: Record<string, any> = {
     welcomeBackPlainBtns: [{ id: "menu_book", title: "Book a massage" }, { id: "menu_status", title: "My booking" }],
     stages: { new: "Received. We are checking with the studio now.", studio_asked: "Sent to the studio. Waiting for them to confirm your time.", studio_replied: "The studio replied. We are finalising your time.", offered: "We sent you options. Reply with your choice.", confirmed: "Confirmed! Check the details in this chat or your email.", dismissed: "Closed.", cancelled: "Cancelled.", no_show: "Missed. Write here whenever you want to rebook." },
     statusLine: (svcN: string, when: string, studio: string, stage: string) => `${svcN}${when ? " · " + when : ""}${studio ? "\nStudio: " + studio : ""}\nStatus: ${stage}`,
-    confirm: (n: string, sN: string, w: string, st: string, id: number | null) =>
-      `Thanks ${n}, got it.\n\n${sN}\n${w}\n${st}\n\n⏳ *Your time is not booked yet.* Every studio confirms availability with us first. We are asking them right now and will message you here the moment they say yes - during opening hours that is usually quick. If they cannot fit you, we bring you alternatives.\n\nYou pay the studio directly. No fee from us.\n\nType *menu* anytime to check your booking.\nYour bookings and all our studios: book.massageclub.io` + (id ? `\nRef #${id}` : ""),
+    confirm: (n: string, sN: string, w: string, st: string, _id: number | null) =>
+      `Done, ${n}. ${sN}, ${w}, ${st}.\n\nI'm asking the studios right now and I'll write here the moment one confirms, usually within the hour when they're open. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
     studioConfirmed: (n: string, studio: string, svcN: string, when: string) =>
       `Good news ${n}! *${studio}* confirmed your ${svcN} for *${when}*.\n\nYou pay the studio directly. Enjoy!\n\nMassage Club · book.massageclub.io`,
     priceInfo: "Good question. At our studios 60 minutes is usually between 40 and 85 EUR, and 90 minutes between 60 and 100 EUR, depending on the studio and the type of massage. We always send you the exact price before you confirm, and you pay the studio directly. No fee from us.",
     ackReply: "🙌 We'll update you here as soon as the studio replies.",
     cardIntro: (url: string) => `Massage Club here. Book in three taps, no login, and watch the studios reply live:\n${url}\n\nOr just tell me what you would like and I will handle it right here.`,
-    confirmLater: (n: string, sN: string, w: string, st: string, id: number | null) =>
-      `Thanks ${n}, got it.\n\n${sN}\n${w}\n${st}\n\n⏳ *Your time is not booked yet.* Studios are closed right now, so we will ask them the moment they open at 09:00 and message you here as soon as one says yes. If they cannot fit you, we bring you alternatives.\n\nYou pay the studio directly. No fee from us.\n\nType *menu* anytime to check your booking.\nYour bookings and all our studios: book.massageclub.io` + (id ? `\nRef #${id}` : ""),
+    confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
+      `Done, ${n}. ${sN}, ${w}, ${st}.\n\nThe studios are closed right now. I'll ask them the moment they open at 09:00 and write here as soon as one confirms. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
       `Update on your ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} can take you at *${time}* ${day}${asked ? " instead of " + asked : ""}. Does that work?`,
     offerYes: (t: string) => `Yes, book ${t}`,
@@ -320,15 +320,15 @@ export const COPY: Record<string, any> = {
     welcomeBackPlainBtns: [{ id: "menu_book", title: "Reservar masaje" }, { id: "menu_status", title: "Mi reserva" }],
     stages: { new: "Recibida. Estamos consultando con el centro.", studio_asked: "Enviada al centro. Esperando que confirmen tu hora.", studio_replied: "El centro ha respondido. Estamos cerrando tu hora.", offered: "Te enviamos opciones. Responde con tu elección.", confirmed: "¡Confirmada! Mira los detalles en este chat o tu email.", dismissed: "Cerrada.", cancelled: "Cancelada.", no_show: "No asististe. Escríbenos cuando quieras otra hora." },
     statusLine: (svcN: string, when: string, studio: string, stage: string) => `${svcN}${when ? " · " + when : ""}${studio ? "\nCentro: " + studio : ""}\nEstado: ${stage}`,
-    confirm: (n: string, sN: string, w: string, st: string, id: number | null) =>
-      `Gracias ${n}, apuntado.\n\n${sN}\n${w}\n${st}\n\n⏳ *Tu hora aún no está reservada.* Cada centro nos confirma primero su disponibilidad. Se lo estamos pidiendo ahora mismo y te escribimos aquí en cuanto digan que sí; en horario de apertura suele ser rápido. Si no pueden, te traemos alternativas.\n\nPagas directamente en el centro. Sin comisión.\n\nEscribe *menu* cuando quieras para ver tu reserva.\nTus reservas y todos nuestros centros: book.massageclub.io` + (id ? `\nRef #${id}` : ""),
+    confirm: (n: string, sN: string, w: string, st: string, _id: number | null) =>
+      `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nEstoy preguntando a los centros ahora mismo y te escribo aquí en cuanto uno confirme, normalmente en menos de una hora si están abiertos. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     studioConfirmed: (n: string, studio: string, svcN: string, when: string) =>
       `¡Buenas noticias ${n}! *${studio}* ha confirmado tu ${svcN} para *${when}*.\n\nPagas directamente en el centro. ¡Disfruta!\n\nMassage Club · book.massageclub.io`,
     priceInfo: "Buena pregunta. En nuestros centros 60 minutos suele costar entre 40 y 85 EUR, y 90 minutos entre 60 y 100 EUR, según el centro y el tipo de masaje. Te enviamos el precio exacto antes de confirmar y pagas directamente en el centro. Sin comisión.",
     ackReply: "🙌 Te avisamos por aquí en cuanto responda el centro.",
     cardIntro: (url: string) => `Somos Massage Club. Reserva en tres toques, sin registro, y mira cómo responden los centros en directo:\n${url}\n\nO dime qué quieres y lo gestiono por aquí mismo.`,
-    confirmLater: (n: string, sN: string, w: string, st: string, id: number | null) =>
-      `Gracias ${n}, apuntado.\n\n${sN}\n${w}\n${st}\n\n⏳ *Tu hora aún no está reservada.* Los centros están cerrados ahora, así que se lo pedimos en cuanto abran a las 09:00 y te escribimos aquí en cuanto uno diga que sí. Si no pueden, te traemos alternativas.\n\nPagas directamente en el centro. Sin comisión.\n\nEscribe *menu* cuando quieras para ver tu reserva.\nTus reservas y todos nuestros centros: book.massageclub.io` + (id ? `\nRef #${id}` : ""),
+    confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
+      `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
       `Novedades sobre tu ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} puede atenderte a las *${time}* ${day}${asked ? " en vez de " + asked : ""}. ¿Te va bien?`,
     offerYes: (t: string) => `Sí, reserva ${t}`,
