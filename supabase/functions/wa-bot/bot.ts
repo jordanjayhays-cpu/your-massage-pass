@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/c6a1fd5637bf8e7d83a4086a2e8ff0176d8586be/supabase/functions/wa-bot/copy.ts";
+import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/1becc6fe4a0308d9bb98e0f16a2b1b7a1e5edd0e/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
@@ -157,8 +157,22 @@ const askServiceMore = (to: string, L: string) =>
     ...MORE_SERVICES.map((s) => ({ id: s.id, title: L === "es" ? s.tEs : s.tEn, description: "" })),
     { id: "svc_back", title: COPY[L].backRow.title, description: COPY[L].backRow.desc },
   ]);
-const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, COPY[L].dayBtns);
-const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, COPY[L].dayBtns);
+// v50: the day buttons carry the date. "Mañana" tapped at 01:17 meant Sunday to
+// David and Monday to every studio we asked (6 Sept). The long form is stored
+// on the session (dayDate) and travels to the studios in message_text.
+const SHORT_ES = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric" });
+const SHORT_EN = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric" });
+const LONG_ES = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
+const LONG_EN = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
+const shortDate = (L: string, plusDays: number) => (L === "es" ? SHORT_ES : SHORT_EN).format(new Date(Date.now() + plusDays * 86400e3)).replace(/[.,]/g, "");
+const longDate = (L: string, plusDays: number) => (L === "es" ? LONG_ES : LONG_EN).format(new Date(Date.now() + plusDays * 86400e3)).replace(/,/g, "");
+const dayBtns = (L: string) => [
+  { id: "day_today", title: `${L === "es" ? "Hoy" : "Today"} (${shortDate(L, 0)})` },
+  { id: "day_tomorrow", title: `${L === "es" ? "Mañana" : "Tomorrow"} (${shortDate(L, 1)})` },
+  { id: "day_other", title: L === "es" ? "Otro día" : "Another day" },
+];
+const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, dayBtns(L));
+const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, dayBtns(L));
 const askTime = (to: string, L: string) =>
   sendList(to, COPY[L].time, COPY[L].timeBtn, [
     { id: "time_morning", title: L === "es" ? HOURS.time_morning.labelEs : HOURS.time_morning.label, description: "" },
@@ -315,8 +329,10 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
   if (!s.data.lang && (s.data.adRef || AD_OPENER_RE.test(String(firstText || "").trim()))) {
     s.step = "await_service"; await saveSession(s);
     await logEvent(from, "flow_started", { fromAd: true, bilingual: true });
+    // v50: a price and a promise before the first question (Jordan, 6 Sept:
+    // eleven of nineteen ad leads never answered the old first screen).
     await sendList(from,
-      "Massage Club. Masajes profesionales en los mejores centros de Madrid, pagas en el centro, sin comisión. / Professional massages at Madrid's best studios, you pay the studio, no fee.\n\n¿Qué masaje quieres? / Which massage would you like?",
+      "Hola, soy Jordan, de Massage Club. Te busco hueco en un centro de masajes profesional cerca de ti: 60 min desde 45 EUR, pagas en el centro, sin comisión, y yo hablo con los centros por ti.\n\nHi, I'm Jordan from Massage Club. I find you a slot at a professional massage studio near you: 60 min from 45 EUR, you pay the studio, no fee, and I deal with the studios for you.\n\n¿Qué masaje quieres? / Which massage?",
       "Elegir / Choose", [
         { id: "svc_relax", title: "Relajante · Relaxing", description: "" },
         { id: "svc_deep", title: "Descontracturante", description: "Deep tissue" },
@@ -1127,7 +1143,7 @@ async function createRequest(s: Session): Promise<number | null> {
       day1: d.day || null, time1: d.time || null,
       day2: d.day || null, time2: d.timeBand && d.timeBand !== d.time ? d.timeBand : null,
       languages: d.lang === "es" ? "es" : "en",
-      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : "")}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
+      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : "")}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
       stage: "new",
     }),
   });
@@ -1142,12 +1158,13 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   s.step = "done"; await saveSession(s);
   const id = await createRequest(s);
   const svcName = s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage");
-  const studioLine = s.data.chosen ? `${s.data.chosen.name}${s.data.chosen.price ? " · " + Number(s.data.chosen.price) + " EUR" : ""}` : (s.data.customStudio ? s.data.customStudio : (L === "es" ? "Centro: el mejor disponible" : "Studio: best available"));
+  const studioLine = s.data.chosen ? `${s.data.chosen.name}${s.data.chosen.price ? " · " + Number(s.data.chosen.price) + " EUR" : ""}` : (s.data.customStudio ? s.data.customStudio : (s.data.area && s.data.area !== "anywhere" ? (L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`) : (L === "es" ? "en Madrid" : "in Madrid")));
   // v36: outside studio hours the honest line is "at 09:00", not "right now".
   const h = mcMadridHour();
   const confirmCopy = (!s.data.chosen && (h < 9 || h >= 21)) ? COPY[L].confirmLater : COPY[L].confirm;
   const svcLabel = trSvc(svcName, L) + (s.data.duration && s.data.duration !== 60 ? ` ${s.data.duration} min` : "");
-  await sendText(from, confirmCopy(String(s.data.name || s.wa_name || "").split(" ")[0], svcLabel, [s.data.day, s.data.time].filter(Boolean).join(", "), studioLine, id));
+  const whenLabel = [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", ");
+  await sendText(from, confirmCopy(String(s.data.name || s.wa_name || "").split(" ")[0], svcLabel, whenLabel, studioLine, id));
   // Now that the choice is made, the studio page is useful instead of a
   // distraction: send it after the confirmation, never before.
   if (s.data.chosen && s.data.chosen.slug) {
@@ -1630,8 +1647,8 @@ const handler = async (req: Request) => {
         break;
       }
       case "await_day": {
-        if (replyId === "day_today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "today" }); await askTime(from, L); }
-        else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "tomorrow" }); await askTime(from, L); }
+        if (replyId === "day_today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "today" }); await askTime(from, L); }
+        else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "tomorrow" }); await askTime(from, L); }
         else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, COPY[L].dayAsk); }
         else await askDay(from, L);
         break;
@@ -1680,9 +1697,9 @@ const handler = async (req: Request) => {
       }
       case "await_sameday": {
         if (replyId === "sd_earliest") { s.data.time = COPY[L].earliestToday; s.data.timeBand = null; s.data.timeBandId = null; await logEvent(from, "sameday_choice", { choice: "earliest" }); await afterTime(s, from, L); }
-        else if (replyId === "sd_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; await logEvent(from, "sameday_choice", { choice: "tomorrow" }); await afterTime(s, from, L); }
+        else if (replyId === "sd_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); await logEvent(from, "sameday_choice", { choice: "tomorrow" }); await afterTime(s, from, L); }
         else if (replyId === "sd_keep") { await logEvent(from, "sameday_choice", { choice: "keep" }); await afterTime(s, from, L); }
-        else if (text && /tomorrow|ma\u00f1ana/i.test(text)) { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; await afterTime(s, from, L); }
+        else if (text && /tomorrow|ma\u00f1ana/i.test(text)) { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); await afterTime(s, from, L); }
         else if (text && /earliest|soon|antes|cuanto antes|12/i.test(text)) { s.data.time = COPY[L].earliestToday; s.data.timeBand = null; s.data.timeBandId = null; await afterTime(s, from, L); }
         else await sendButtons(from, COPY[L].sameDay, COPY[L].sameDayBtns(String(s.data.time || "")));
         break;
@@ -1750,8 +1767,11 @@ const handler = async (req: Request) => {
       case "await_name": {
         if (!text) { await sendText(from, COPY[L].name); break; }
         s.data.name = text.slice(0, 80);
-        s.step = "await_email"; await saveSession(s);
-        await sendText(from, COPY[L].email);
+        // v50: no email question before the booking. Seven questions before we
+        // did anything was too many (Jordan, 6 Sept). The email is asked once,
+        // after a studio confirms (await_email_post).
+        s.data.email = s.data.email || null;
+        await finalizeBooking(s, from, L);
         break;
       }
       case "await_email": {
