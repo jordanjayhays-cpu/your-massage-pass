@@ -33,13 +33,16 @@ export function strongSpanish(t: string): boolean {
   const words = ["hola", "buenas", "quiero", "masaje", "reservar", "cuanto", "cuánto", "precio", "gracias", "por", "favor", "mañana", "hoy", "para", "una", "cita", "hora", "tarde", "noche", "zona", "donde", "dónde"];
   // v48: the massage words themselves are Spanish too. "Relajante de hora y media"
   // (6 Sept, 02:54) scored as English and got the English day question.
-  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad"];
+  const strong = ["hola", "buenas", "buenos", "días", "dias", "tardes", "noches", "quiero", "quería", "queria", "querría", "gustaría", "gustaria", "masaje", "masajes", "masajista", "reservar", "reserva", "reservarme", "precio", "precios", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "podéis", "podeis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "información", "informacion", "saber", "sesión", "sesion", "cerca", "euros", "vosotros", "ustedes", "usted"];
   const toks = s.split(/[^a-záéíóúñü]+/).filter(Boolean);
   const found = new Set<string>();
   for (const w of toks) if (words.includes(w)) found.add(w);
   if (found.size >= 3) return true;
   // v39: a short message with one unmistakably Spanish word is Spanish ("Hola", "Buenos días", "¿Qué tipo de masaje ofrecen?")
   if (toks.length <= 7 && toks.some((w) => strong.includes(w))) return true;
+  // v53: accents and ñ do not happen in English. "Buenos días, quería información
+  // sobre sesiones" has no word from the lists above and is plainly Spanish.
+  if (toks.length <= 12 && /[áéíóúñ]/.test(s)) return true;
   return /[¿¡]/.test(s);
 }
 export const isEmail = (t: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t.trim());

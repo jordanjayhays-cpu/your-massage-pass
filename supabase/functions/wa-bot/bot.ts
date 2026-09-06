@@ -1,3 +1,15 @@
+// wa-bot v53 (6 Sept): the funnel fixes from the 5-6 Sept founder_log.
+// (1) copy.ts is imported relative to this file, so one commit pins both.
+// (2) A studio's "No podemos" tap (studio_no_N) reaches its handler; before
+//     v53 the router only knew confirm|other, so a clean no read as silence.
+// (3) Cancel / Change from a customer whose request no studio has confirmed yet
+//     (a button, or a typed "cancelar" / "no") cancels or freezes the request
+//     and stands the studios down, instead of answering with a status line.
+// (4) Spanish detection also trusts accents and ñ in a short message, and a
+//     name typed at the name step never switches the language.
+// (5) dispatch-studios v14 owns the silent-studio fallback: a request with no
+//     answer after 20 min (same day) or 40 min asks the next studios and tells
+//     the customer, in their language; "cancel" stands every studio down.
 // wa-bot v48 (6 Sept): the bot module lives in this repo and is loaded by a
 // five-line index.ts deployed on Supabase that pins this file by commit and
 // passes the secrets in (start({ waToken, resendKey, opsKey })). Nothing secret
@@ -58,7 +70,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/1becc6fe4a0308d9bb98e0f16a2b1b7a1e5edd0e/supabase/functions/wa-bot/copy.ts";
+import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "./copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
@@ -768,11 +780,58 @@ async function handleArrival(from: string, replyId: string, partner: { id: strin
   if (req.arrival_status === "no_show" || req.stage === "no_show") { await sendText(from, "Gracias, ya lo teníamos apuntado. Massage Club"); return; }
   await markNoShow(req, studio, from, "studio tapped No ha venido");
 }
+// v53: Cancel / Change on a request that no studio has confirmed yet. On 5 Sept
+// Anderson tapped Cancelar on #48 while it sat in studio_asked and got a status
+// line back, and five studios kept being asked. Cancel closes the request and
+// stands the studios down (dispatch-studios "cancel"); Change freezes it and
+// asks what works; Yes is just the status.
+const OPEN_STAGES = ["new", "studio_asked", "studio_replied", "offered", "bidding"];
+async function cancelDispatch(requestId: number) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/dispatch-studios?key=${OPS_KEY}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cancel: { request_id: requestId } }),
+    });
+    console.log(`[wa] cancel dispatch request=${requestId} status=${res.status}`);
+  } catch (e) { console.log("[wa] cancel dispatch failed", String(e)); }
+}
+async function handleOpenRequestAnswer(kind: "yes" | "change" | "cancel", req: any, from: string, L: string, s: Session) {
+  const name = String(req.first_name || "").split(" ")[0];
+  const note = String(req.stage_note || "");
+  if (kind === "cancel") {
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=neq.confirmed`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify({ stage: "cancelled", customer_flag: "cancelled", settle_after: null, stage_note: `${note}${note ? " | " : ""}cancelled by the customer on WhatsApp before any studio confirmed`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
+    });
+    await cancelDispatch(Number(req.id));
+    await sendText(from, L === "es"
+      ? `Entendido${name ? ", " + name : ""}: cancelamos tu petición y avisamos nosotros a los centros. Cuando quieras otro masaje, escríbenos por aquí.`
+      : `Understood${name ? ", " + name : ""}: your request is cancelled and we are letting the studios know. Whenever you want a massage again, just write here.`);
+    s.step = "done"; s.data.reconfirm = null; s.data.offer = null; s.data.change = null; await saveSession(s);
+    await logEvent(from, "cancelled", { id: req.id, before_confirm: true });
+    await notifyJordanWa(`${name || "+" + digitsOf(from)} cancelled request #${req.id} before any studio confirmed. The bot stood the studios down. Nothing to do.`, from);
+    return;
+  }
+  if (kind === "change") {
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify({ customer_flag: "change_requested", stage_note: `${note}${note ? " | " : ""}customer asked to change the day or time before a studio confirmed`.slice(0, 500) }),
+    });
+    await sendText(from, L === "es"
+      ? "Sin problema. ¿Qué día y hora te vendrían mejor? Escríbelo aquí y se lo pedimos a los centros."
+      : "No problem. What day and time would work better? Type it here and we ask the studios.");
+    s.data.prevStep = s.step; s.step = "await_change"; s.data.change = { request: req.id, studio: "", time: req.time1 || "", studioNum: "" }; s.data.reconfirm = null; await saveSession(s);
+    await logEvent(from, "change_requested", { id: req.id, before_confirm: true });
+    return;
+  }
+  await sendStatus(from, L, from);
+}
 // Customer answers to the T-3h check (template buttons or typed words).
 async function handleCustomerReconfirm(kind: "yes" | "change" | "cancel", reqId: string, from: string, L: string, s: Session) {
-  const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${reqId}&select=id,first_name,service_name,studio_name,partner_id,client_phone,languages,confirmed_day,confirmed_time,confirmed_start,customer_flag,reconfirmed_at,studio_warned_at,stage`, { headers: H() });
+  const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${reqId}&select=id,first_name,service_name,studio_name,partner_id,client_phone,languages,day1,time1,confirmed_day,confirmed_time,confirmed_start,customer_flag,reconfirmed_at,studio_warned_at,stage,stage_note`, { headers: H() });
   const req = (await rr.json().catch(() => []))[0] || null;
   if (!req || digitsOf(req.client_phone) !== digitsOf(from)) { await sendMenu(from, L); return; }
+  if (req.stage !== "confirmed" && OPEN_STAGES.includes(String(req.stage))) { await handleOpenRequestAnswer(kind, req, from, L, s); return; }
   const pc = req.partner_id ? await partnerCard(req.partner_id) : { business_name: "", address: "", phone: "", neighbourhood: "" };
   const studio = pc.business_name || req.studio_name || "";
   const time = reqTime(req);
@@ -1361,7 +1420,9 @@ const handler = async (req: Request) => {
       await handleArrival(from, replyId, partner);
       return new Response("OK", { status: 200 });
     }
-    if (/^studio_(confirm|other)_\d+$/.test(replyId)) {
+    // v53: the "No podemos" payload (studio_no_N) was never routed here, so the
+    // v49 handler was dead code and a studio's clean no counted as silence.
+    if (/^studio_(confirm|other|no)_\d+$/.test(replyId)) {
       const partner = await findPartnerByNumber(digitsOf(from));
       await handleStudioReply(from, replyId, btnText, text, partner);
       return new Response("OK", { status: 200 });
@@ -1466,7 +1527,10 @@ const handler = async (req: Request) => {
       }
       return new Response("OK", { status: 200 });
     }
-    if (text && s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
+    // v53: a name, an area or an email typed at its own step ("Andrés",
+    // "Chamberí") is an answer, not a language switch.
+    const answerStep = ["await_name", "await_area", "await_studio_text", "await_email", "await_email_post"].includes(s.step);
+    if (text && s.data.lang !== "es" && !answerStep && strongSpanish(text)) s.data.lang = "es";
     const L: string = s.data.lang === "es" ? "es" : "en";
 
     // Clothing questions get a real answer about professional standards, then
@@ -1519,7 +1583,9 @@ const handler = async (req: Request) => {
         const wantsCancel = CANCEL_RE.test(text) || DECLINE_RE.test(text);
         const wantsChange = CHANGE_RE.test(text) && !GOODBYE_RE.test(text) && !wantsCancel;
         if (isYes || isNo || wantsCancel || wantsChange) {
-          const cq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&stage=eq.confirmed&order=created_at.desc&limit=1&select=id,confirmed_start`, { headers: H() });
+          // v53: a typed "cancelar" or "no" also counts on a request no studio has
+          // confirmed yet (Anderson, 5 Sept), not only on a confirmed booking.
+          const cq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&stage=in.(confirmed,new,studio_asked,studio_replied,offered,bidding)&order=created_at.desc&limit=1&select=id,stage,confirmed_start`, { headers: H() });
           const creq = (await cq.json().catch(() => []))[0] || null;
           const soon = creq && (!creq.confirmed_start || Date.parse(creq.confirmed_start) > Date.now() - 2 * 3600e3);
           if (creq && soon && (wantsCancel || wantsChange || isNo || (isYes && s.step === "await_reconfirm"))) {
@@ -1868,6 +1934,12 @@ const handler = async (req: Request) => {
         if (text) {
           const num = s.phone.replace(/[^0-9]/g, "");
           const c = s.data.change || {};
+          // v53: "cancelar" while we wait for the new time is a cancellation,
+          // not a time. Anderson wrote No, then Cancelar, and got nothing.
+          if (c.request && (CANCEL_RE.test(text) || DECLINE_RE.test(text))) {
+            await handleCustomerReconfirm("cancel", String(c.request), from, L, s);
+            break;
+          }
           await sendText(from, COPY[L].changeNoted(c.studio || ""));
           if (c.request) await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${c.request}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage_note: `Customer asks to change to: ${text.slice(0, 200)}` }) }).catch(() => {});
           if (c.studioNum) await tellStudio(String(c.studioNum), String(s.wa_name || ""), String(c.time || ""), `El cliente pide cambiar su cita de las ${c.time || "-"} a: "${text.slice(0, 160)}". ¿Os encaja? Responded aquí con la hora que podéis y se lo pasamos. Gracias, Massage Club`, `pide cambiar a: ${text.slice(0, 120)}`);
