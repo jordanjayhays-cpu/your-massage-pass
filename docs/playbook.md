@@ -112,3 +112,24 @@ passes the WhatsApp token, the Resend key and the ops key in. To ship a change:
 commit `bot.ts`, push, then redeploy the loader with the new commit hash.
 `dispatch-studios`, `studio-followups` and `booking-guard` are still deployed
 as whole files.
+
+## Studio opening hours are a hard filter (6 Sept)
+
+Calma Madrid, our one claimed studio, confirmed its hours on 18 August
+(Mon to Fri 10 to 20, Sat 10 to 14) and was still asked for Sunday slots
+three times in one weekend. The owner wrote in to complain.
+
+Since dispatch-studios v16 every candidate's `partners.opening_hours` is
+parsed before an ask goes out. A studio whose hours say it is closed on the
+requested day, or at the requested time, is skipped and listed in the founder
+email under "Not asked, closed by their own hours". Hours that are missing or
+unreadable never block an ask. The parser understands the shapes we store:
+"Mon-Sat 10:00-20:00", "Lun-Vie 10:00-20:00, Sáb 10:00-14:00",
+"Daily 10:00-21:00", "Todos los días 12:00-20:00",
+"Sun-Thu 10:00-21:30, Fri-Sat 10:00-22:00".
+
+When a studio tells us its hours in a reply ("no abrimos fines de semana"),
+write them into `opening_hours` so the filter learns.
+
+The secret-free source lives at `supabase/functions/dispatch-studios/index.ts`;
+the deployed copy carries the keys.
