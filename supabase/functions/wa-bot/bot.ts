@@ -453,6 +453,23 @@ async function notifyHuman(s: Session, lastText: string) {
 const wantsHuman = (t: string) => /\b(human|person|agent|jordan|persona|humano|agente|hablar con alguien|real person)\b/i.test(t);
 // v39: the customer is never parked on "a representative will write". We answer,
 // keep them in the flow, and tell Jordan so he can jump in from his number.
+// v53: ask the current step's question again, after answering something else.
+async function reAsk(s: Session, from: string, L: string) {
+  switch (s.step) {
+    case "await_service": await askService(from, L); break;
+    case "await_day": if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L); break;
+    case "await_time": await askTime(from, L); break;
+    case "await_hour": await askHour(from, L, s.data.timeBandId || "time_afternoon"); break;
+    case "await_area": await askArea(from, L); break;
+    case "await_sameday": await sendButtons(from, COPY[L].sameDay, COPY[L].sameDayBtns(String(s.data.time || ""))); break;
+    case "await_day_text": await sendText(from, COPY[L].dayAsk); break;
+    case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
+    case "await_name": await sendText(from, COPY[L].name); break;
+    case "await_email": await sendText(from, COPY[L].email); break;
+    case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
+  }
+}
+
 async function helpInstead(s: Session, from: string, L: string, text: string) {
   await sendText(from, COPY[L].noHuman);
   await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} needed help (${s.step}): ${String(text || "").slice(0, 120)}. Bot kept them in the flow; jump in if you want.`, from);
@@ -1559,6 +1576,19 @@ const handler = async (req: Request) => {
       return new Response("OK", { status: 200 });
     }
 
+    // v53: a question typed at a button step gets its answer and then the question
+    // again. On 6 Sept a customer asked "Que precio es?" three times at the day
+    // question and got the day buttons three times.
+    const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
+    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || HOWWORKS_RE.test(text) || ZONEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
+      if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
+      else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
+      else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
+      else { await helpInstead(s, from, L, text); return new Response("OK", { status: 200 }); }
+      await reAsk(s, from, L);
+      return new Response("OK", { status: 200 });
+    }
+
     if ((text && !freeTextStep && wantsHuman(text)) || replyId === "svc_human") {
       // v39: no hand-off. Help here, tell Jordan, carry on (Jordan, 5 Sept).
       await helpInstead(s, from, L, text || "asked for a person");
@@ -1663,6 +1693,13 @@ const handler = async (req: Request) => {
         if (replyId === "day_today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "today" }); await askTime(from, L); }
         else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "tomorrow" }); await askTime(from, L); }
         else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, COPY[L].dayAsk); }
+        // v53: a typed "hoy", "mañana", "el lunes" or "12 de septiembre" at the day buttons is an answer.
+        else if (text && detectDay(text, L)) {
+          const d = detectDay(text, L);
+          s.data.day = d;
+          s.data.dayDate = /^(hoy|today)$/i.test(d) ? longDate(L, 0) : (/^(mañana|tomorrow)$/i.test(d) ? longDate(L, 1) : null);
+          s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "typed" }); await askTime(from, L);
+        }
         else await askDay(from, L);
         break;
       }
