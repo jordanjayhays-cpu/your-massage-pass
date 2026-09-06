@@ -453,6 +453,23 @@ async function notifyHuman(s: Session, lastText: string) {
 const wantsHuman = (t: string) => /\b(human|person|agent|jordan|persona|humano|agente|hablar con alguien|real person)\b/i.test(t);
 // v39: the customer is never parked on "a representative will write". We answer,
 // keep them in the flow, and tell Jordan so he can jump in from his number.
+// v55: message types the bot cannot read. WhatsApp also sends "unsupported"
+// for things like polls and view-once media.
+const MEDIA_TYPES = ["image", "sticker", "audio", "video", "document", "contacts", "unsupported", "order"];
+const MEDIA_LINE: Record<string, string> = {
+  es: "Aquí solo puedo leer texto y botones, no imágenes ni audios. Escríbeme lo que necesitas o toca una opción.",
+  en: "I can only read text and buttons here, not images or voice notes. Type what you need or tap an option.",
+};
+const STUDIO_MEDIA_LINE = "Gracias. Aquí no puedo abrir imágenes, audios ni documentos. Si es la hora o el precio, escribídmelo en texto y se lo paso al cliente ahora mismo. Jordan, Massage Club";
+// True if we sent this exact line to this number within the window.
+async function sentRecently(phone: string, body: string, windowMs: number): Promise<boolean> {
+  try {
+    const since = new Date(Date.now() - windowMs).toISOString();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(phone)}&direction=eq.out&created_at=gt.${since}&body=eq.${encodeURIComponent(body)}&select=id&limit=1`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    return Array.isArray(rows) && rows.length > 0;
+  } catch { return false; }
+}
 // v53: ask the current step's question again, after answering something else.
 async function reAsk(s: Session, from: string, L: string) {
   switch (s.step) {
@@ -1414,6 +1431,17 @@ const handler = async (req: Request) => {
             }
           } else await handleStudioReply(from, "", "", text, partner);
         }
+        else if (MEDIA_TYPES.includes(String(msg.type))) {
+          // v55: a studio's photo, voice note or PDF used to vanish into the log
+          // (Korn Náng and Centro Aloha both sent images on 6 Sept and heard
+          // nothing). Ask for text, once per two hours, and show Jordan.
+          if (!(await sentRecently(from, STUDIO_MEDIA_LINE, 2 * 3600e3))) await sendText(from, STUDIO_MEDIA_LINE);
+          await founderCard(`📎 ${partner.business_name} sent a ${msg.type}`, {
+            badge: "STUDIO MEDIA", title: `${partner.business_name} sent a ${msg.type} the bot cannot read`,
+            paras: [`Open the chat on WhatsApp to see it. The bot asked them to write the time or price as text.`],
+            waNum: from, waLabel: "Open the chat", prefill: "Hola, soy Jordan de Massage Club: ",
+          }).catch(() => {});
+        }
         else console.log(`[wa] non-text message from partner ${partner.business_name}, ignored`);
         return new Response("OK", { status: 200 });
       }
@@ -1498,6 +1526,17 @@ const handler = async (req: Request) => {
     }
     if (text && s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
     const L: string = s.data.lang === "es" ? "es" : "en";
+
+    // v55: a sticker, photo or voice note mid-flow is not an answer. On 6 Sept
+    // two stickers at 23:09 got the full welcome twice. Say what we can read,
+    // ask the current question again, and never repeat that within ten minutes.
+    if (MEDIA_TYPES.includes(String(msg.type)) && !text && !replyId && s.step !== "start") {
+      if (s.step !== "done" && s.step !== "menu" && s.step !== "human" && !(await sentRecently(from, MEDIA_LINE[L], 10 * 60e3))) {
+        await sendText(from, MEDIA_LINE[L]);
+        await reAsk(s, from, L);
+      }
+      return new Response("OK", { status: 200 });
+    }
 
     // Clothing questions get a real answer about professional standards, then
     // we pick the flow back up. Never a human handoff, never stored as data.
