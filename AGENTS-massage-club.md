@@ -4,7 +4,7 @@ Read this before touching anything. It exists so you don't burn tokens rediscove
 
 ## What this is
 Vite + React + TypeScript + shadcn/ui. A pay-per-session massage booking marketplace for Madrid studios.
-Live: https://massage-madrid-magic.lovable.app
+Live: https://book.massageclub.io (verified 2026-09-07; Vercel)
 Deploys via Lovable ↔ GitHub sync. Push to `main` → Lovable syncs → Jordan publishes.
 
 ## Where things live
