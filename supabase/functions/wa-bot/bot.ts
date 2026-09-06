@@ -507,8 +507,8 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     if (m[1] === "confirm") {
       // v41: a second tap from the winning studio is not a new studio.
       if (req.stage === "confirmed") {
-        if (partner && String(req.partner_id || "") === String(partner.id)) await sendText(from, "Ya lo tenemos apuntado, gracias. Cualquier cambio, escribidnos aquí. Massage Club");
-        else await sendText(from, "Gracias, pero esta reserva ya la ha cogido otro centro hace un momento. No hace falta que hagáis nada. Os avisaremos con la siguiente. Massage Club");
+        if (partner && String(req.partner_id || "") === String(partner.id)) await sendText(from, "Ya lo tenemos apuntado, gracias. Cualquier cambio, escribidme aquí. Jordan, Massage Club");
+        else await sendText(from, "Gracias, pero esta reserva ya la ha cogido otro centro hace un momento. No hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club");
         return;
       }
       // v43: a Confirmado on a request with no exact time is an offer of
@@ -553,8 +553,11 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       // them for hours on a booking that no longer existed. A tap on a covered
       // request gets the covered answer and nothing else.
       if (req.stage === "confirmed" || req.stage === "cancelled" || req.stage === "dismissed" || req.stage === "no_show") {
-        if (partner && String(req.partner_id || "") === String(partner.id)) await sendText(from, "Ya lo tenemos apuntado, gracias. Si necesitáis cambiar la hora, decidnos cuál os encaja y se lo pasamos al cliente. Massage Club");
-        else await sendText(from, "Gracias por responder. Esta reserva ya está cubierta por otro centro, así que no hace falta que hagáis nada. Os avisaremos con la siguiente. Massage Club");
+        // v54: a cancelled or dismissed request is not "covered by another
+        // centre". On 6 Sept Sinergia38 was told that about Mateo's cancelled
+        // booking. Say what actually happened.
+        if (partner && String(req.partner_id || "") === String(partner.id)) await sendText(from, "Ya lo tenemos apuntado, gracias. Si necesitáis cambiar la hora, decidnos cuál os encaja y se lo pasamos al cliente. Jordan, Massage Club");
+        else await sendText(from, coveredLine(req.stage));
         return;
       }
       // v36: if this studio already wrote a time, the tap is just them being
@@ -660,10 +663,13 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
           method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
           body: JSON.stringify({ replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
         });
-        await sendText(from, "Gracias por responder. Esa reserva ya quedó cubierta por otro centro, así que no hace falta que hagáis nada. Os avisaremos con la siguiente. Massage Club");
+        const sdq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${sdrow.request_id}&select=stage`, { headers: H() });
+        const sdreq = await sdq.json().catch(() => []);
+        const sdStage = Array.isArray(sdreq) && sdreq[0] ? String(sdreq[0].stage || "") : "";
+        await sendText(from, coveredLine(sdStage));
         await founderCard(`💬 ${partner.business_name} answered a covered request · #${sdrow.request_id}`, {
           badge: "LATE REPLY", title: `${partner.business_name} wrote back after the request was covered`,
-          paras: [`The bot thanked them and said the booking is covered. Nothing to do.`],
+          paras: [`The bot thanked them and said the booking is covered (or that the client cancelled, when that is what happened). Nothing to do.`],
           quote: freeText, waNum: from, waLabel: "Reply to the studio", prefill: `Hola, soy Jordan de Massage Club: `,
         });
         return;
@@ -748,7 +754,7 @@ async function handleLiveStudioMessage(live: any, partner: { id: string; busines
   const minsTo = live.confirmed_start ? Math.round((Date.parse(live.confirmed_start) - Date.now()) / 60000) : 0;
   if (ARRIVED_RE.test(text) && !NOSHOW_RE.test(text)) {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${live.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ arrival_status: "arrived", customer_flag: null }) });
-    await sendText(from, "¡Gracias por avisar! Que vaya bien. Massage Club");
+    await sendText(from, "¡Gracias por avisar! Que vaya bien. Jordan, Massage Club");
     await notifyJordanWa(`${name || "The customer"} arrived at ${studio} (${time}).`, cust);
     return;
   }
@@ -778,11 +784,11 @@ async function handleArrival(from: string, replyId: string, partner: { id: strin
   const studio = partner?.business_name || req.studio_name || "";
   if (m[1] === "yes") {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ arrival_status: "arrived", customer_flag: null }) });
-    await sendText(from, "¡Gracias! Que vaya bien. Massage Club");
+    await sendText(from, "¡Gracias! Que vaya bien. Jordan, Massage Club");
     await logEvent(digitsOf(req.client_phone || from), "arrived", { id: req.id, studio });
     return;
   }
-  if (req.arrival_status === "no_show" || req.stage === "no_show") { await sendText(from, "Gracias, ya lo teníamos apuntado. Massage Club"); return; }
+  if (req.arrival_status === "no_show" || req.stage === "no_show") { await sendText(from, "Gracias, ya lo teníamos apuntado. Jordan, Massage Club"); return; }
   await markNoShow(req, studio, from, "studio tapped No ha venido");
 }
 // Customer answers to the T-3h check (template buttons or typed words).
@@ -893,7 +899,7 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
   const claimed = await claim.json().catch(() => []);
   if (!Array.isArray(claimed) || !claimed.length) {
     // Someone else got there first. Say so plainly rather than silently.
-    await sendText(from, "Gracias, pero esta reserva ya la ha cogido otro centro hace un momento. No hace falta que hagáis nada. Os avisaremos con la siguiente. Massage Club");
+    await sendText(from, "Gracias, pero esta reserva ya la ha cogido otro centro hace un momento. No hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club");
     return false;
   }
   if (partner) {
@@ -1313,6 +1319,13 @@ export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: stri
   if (cfg.opsKey) OPS_KEY = cfg.opsKey;
   Deno.serve(handler);
 }
+// v54: what a studio hears when it answers a request that is no longer open.
+// Cancelled or dismissed requests say so; anything else was covered elsewhere.
+const coveredLine = (stage: string) =>
+  stage === "cancelled" || stage === "dismissed"
+    ? "Gracias por responder. Al final el cliente ha cancelado esa cita, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club"
+    : "Gracias por responder. Esa reserva ya quedó cubierta por otro centro, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club";
+
 const handler = async (req: Request) => {
   let payload: any = null;
   try { payload = await req.json(); } catch { return new Response("OK", { status: 200 }); }
