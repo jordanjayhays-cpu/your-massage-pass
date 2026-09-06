@@ -332,7 +332,7 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     // v50: a price and a promise before the first question (Jordan, 6 Sept:
     // eleven of nineteen ad leads never answered the old first screen).
     await sendList(from,
-      "Hola, soy Jordan, de Massage Club. Te busco hueco en un centro de masajes profesional cerca de ti: 60 min desde 45 EUR, pagas en el centro, sin comisión, y yo hablo con los centros por ti.\n\nHi, I'm Jordan from Massage Club. I find you a slot at a professional massage studio near you: 60 min from 45 EUR, you pay the studio, no fee, and I deal with the studios for you.\n\n¿Qué masaje quieres? / Which massage?",
+      "Hola, somos Massage Club. Te buscamos hueco en un centro de masajes profesional cerca de ti: 60 min desde 45 EUR, pagas en el centro, sin comisión, y nosotros hablamos con los centros por ti.\n\nHi, this is Massage Club. We find you a slot at a professional massage studio near you: 60 min from 45 EUR, you pay the studio, no fee, and we deal with the studios for you.\n\n¿Qué masaje quieres? / Which massage?",
       "Elegir / Choose", [
         { id: "svc_relax", title: "Relajante · Relaxing", description: "" },
         { id: "svc_deep", title: "Descontracturante", description: "Deep tissue" },
