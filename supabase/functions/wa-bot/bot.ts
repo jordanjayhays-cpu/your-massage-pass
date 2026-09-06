@@ -980,14 +980,17 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   const cs = await getSession(clientNum);
   const L = cs.data.lang === "es" || req.languages === "es" ? "es" : "en";
   const pc = await partnerCard(partner.id);
-  const day = req.day1 || (L === "es" ? "ese día" : "that day");
+  // v51: a studio's "mañana a las 10" is an offer for TOMORROW. Selvarrosa wrote
+  // exactly that on 6 Sept and David was told "10:00 today" (already past).
+  const offerDay = offerDayFromText(freeText, L);
+  const day = offerDay || req.day1 || (L === "es" ? "ese día" : "that day");
   const asked = [req.day1, req.time1].filter(Boolean).join(" ");
   await sendButtons(clientNum,
     COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked),
     [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }]);
   cs.data.prevStep = cs.step;
   cs.step = "await_offer";
-  cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id };
+  cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id, day: offerDay || null };
   await saveSession(cs);
   await sendText(studioFrom, "Gracias. Se lo proponemos ahora mismo al cliente. ¿Podéis guardar esa hora unos 15 minutos? Os confirmamos en cuanto responda.");
   await logEvent(clientNum, "offer_forwarded", { request_id: req.id, studio: partner.business_name, time });
@@ -1036,8 +1039,16 @@ async function customerConfirmEmail(req: any, studio: string, when: string, addr
   }).catch((e) => console.log("[wa] customer email failed", String(e)));
 }
 
+// v51: which day a studio's offer is for, from its own words. Empty = the day asked.
+function offerDayFromText(t: string, L: string): string {
+  const s = String(t || "").toLowerCase();
+  if (/\bma[nñ]ana\b/.test(s) && !/\bpor la ma[nñ]ana\b|\bde la ma[nñ]ana\b/.test(s)) return L === "es" ? "Mañana" : "Tomorrow";
+  if (/\bhoy\b/.test(s)) return L === "es" ? "Hoy" : "Today";
+  return "";
+}
+
 async function acceptOffer(rowId: string, from: string, L: string, s: Session) {
-  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}&select=id,request_id,partner_id,phone,offered_time`, { headers: H() });
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}&select=id,request_id,partner_id,phone,offered_time,reply_text`, { headers: H() });
   const drows = await dr.json().catch(() => []);
   const row = Array.isArray(drows) && drows[0] ? drows[0] : null;
   if (!row || !row.offered_time) { await sendText(from, COPY[L].offerGone); s.step = "done"; s.data.offer = null; await saveSession(s); return; }
@@ -1065,7 +1076,9 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session) {
     await notifyJordanWa(`${req.first_name || "Customer"} accepted ${studio}'s new time ${cwhen}. Studio told, customer confirmed by chat and email.`, from);
     return;
   }
-  const day = req.day1 || "";
+  // v51: the day comes from the offer itself (session, or the studio's words on
+  // the dispatch row when the customer tapped an older offer), not the day asked.
+  const day = (s.data.offer?.row === rowId && s.data.offer?.day) || offerDayFromText(String(row.reply_text || ""), L) || req.day1 || "";
   const when = [day, row.offered_time].filter(Boolean).join(" ");
   // Same race guard as a studio's Confirmado tap: only one confirmation per request.
   const claim = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=neq.confirmed`, {
