@@ -102,3 +102,13 @@ If yes: set `share_ok = true` on the request. The home page strip shows the firs
 - Jordan: nothing routine. The messages above exist for the rare case a studio
   asks for a person by name or a situation goes wrong. Everything else is sent
   by the bot.
+
+## Shipping the bot
+
+The bot's code is `supabase/functions/wa-bot/bot.ts` (plus `copy.ts` for the
+words). Neither file holds a key. The deployed Supabase function `wa-bot` is a
+five line loader that imports `bot.ts` from GitHub, pinned to a commit, and
+passes the WhatsApp token, the Resend key and the ops key in. To ship a change:
+commit `bot.ts`, push, then redeploy the loader with the new commit hash.
+`dispatch-studios`, `studio-followups` and `booking-guard` are still deployed
+as whole files.
