@@ -450,7 +450,7 @@ async function helpInstead(s: Session, from: string, L: string, text: string) {
 
 // A studio replied (template button or free text). Never enters the customer flow.
 async function handleStudioReply(from: string, payloadId: string, btnText: string, freeText: string, partner: { id: string; business_name: string } | null) {
-  const m = payloadId.match(/^studio_(confirm|other)_(\d+)$/);
+  const m = payloadId.match(/^studio_(confirm|other|no)_(\d+)$/);
   if (m) {
     const requestId = Number(m[2]);
     const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
@@ -460,6 +460,17 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     const L = req.languages === "es" ? "es" : "en";
     const when = [req.day1, req.time1].filter(Boolean).join(" ");
     const studioPrefill = `Hola, soy Jordan de Massage Club, sobre la reserva de ${req.first_name || "nuestro cliente"}${when ? " (" + when + ")" : ""}: `;
+    // v49: the "No podemos" button on solicitud_reserva_v2. A clean no beats
+    // silence: the row is closed, the studio is thanked, nothing else happens.
+    if (m[1] === "no") {
+      if (partner) {
+        const drow = await dispatchRowFor(requestId, partner.id);
+        if (drow && drow.outcome !== "won") await patchDispatch(drow.id, { outcome: "declined", replied_at: new Date().toISOString(), reply_text: "No podemos (botón)" });
+      }
+      await sendText(from, "Entendido, gracias por avisar tan rápido. Os escribo con la siguiente. Jordan, Massage Club");
+      await logEvent(req.client_phone || from, "studio_declined", { id: requestId, studio: partner ? partner.business_name : from });
+      return;
+    }
     if (m[1] === "confirm") {
       // v41: a second tap from the winning studio is not a new studio.
       if (req.stage === "confirmed") {
