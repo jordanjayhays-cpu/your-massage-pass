@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/bc4afa56e38f0b8402b5d482e7b9fac476c356fc/supabase/functions/wa-bot/copy.ts";
+import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/9d732261ddaf3ae27f4914664318195960a62e7e/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
@@ -312,7 +312,27 @@ async function bookingLink(phone: string, lang: string): Promise<string | null> 
 }
 
 // Greeting for a fresh conversation: returning customers get a personal hello.
+// v59: a first message that is a real question gets its answer before we ask
+// ours. "What street in madrid" produced the service menu, twice.
+function firstAnswer(t: string, L: string): string {
+  const s = String(t || "");
+  if (ZONEQ_RE.test(s)) return COPY[L].zoneAnswer;
+  if (HOWWORKS_RE.test(s)) return COPY[L].howItWorks;
+  return "";
+}
+
+// v59: WhatsApp delivered an ad lead's two opening messages 0.34s apart on
+// 7 Sept and each one ran greet(), so they got three walls of text before they
+// had said anything. One greeting per minute, whichever arrives first.
+async function greetedRecently(phone: string, windowMs = 60_000): Promise<boolean> {
+  const since = new Date(Date.now() - windowMs).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(phone)}&direction=eq.out&created_at=gte.${since}&select=id&limit=1`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 async function greet(s: Session, from: string, firstText?: string): Promise<void> {
+  if (await greetedRecently(from)) { await logEvent(from, "greet_suppressed", { firstText: String(firstText || "").slice(0, 80) }); return; }
   const last = await lastRequestFor(from);
   if (!s.data.lang && last && last.languages === "es") s.data.lang = "es";
   const L = s.data.lang === "es" ? "es" : "en";
@@ -343,7 +363,8 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
       s.data.lang = knownLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day"; await saveSession(s);
       await logEvent(from, "flow_started", { fromAd: true, oneQuestion: true, lang: knownLang });
       await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-      await sendButtons(from, FIRST_LINE[knownLang], dayBtns(knownLang));
+      const pre = firstAnswer(ft, knownLang);
+      await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[knownLang], dayBtns(knownLang));
       return;
     }
     s.step = "await_service"; await saveSession(s);
@@ -364,10 +385,6 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
       ]);
     return;
   }
-  // v36: new customers get the booking card link first. Everything below still
-  // runs, so typing works exactly as before for anyone who prefers the chat.
-  const cardUrl = await bookingLink(from, L);
-  if (cardUrl) { await sendText(from, COPY[L].cardIntro(cardUrl)); await logEvent(from, "card_link_sent", {}); }
   if (firstText && absorbSentence(s, firstText, L)) {
     // v39: "Quiero reservar tailandés en Centro, lunes noche" is three answers, not a
     // reason to show the menu. Confirm what we understood and ask only the rest.
@@ -379,6 +396,21 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     await continueFromKnown(s, from, L);
     return;
   }
+  // v59: anyone whose first message shows the language gets the same single
+  // question as an ad lead: what it costs, then "which day?". The eight-option
+  // list and the booking link are the fallback for a message we cannot read
+  // (a sticker, a bare "Hola"), not the opening move for everyone.
+  const gLang = strongSpanish(String(firstText || "")) ? "es" : looksEnglish(String(firstText || "")) ? "en" : "";
+  if (gLang) {
+    s.data.lang = gLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day"; await saveSession(s);
+    await logEvent(from, "flow_started", { oneQuestion: true, lang: gLang });
+    await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
+    const pre = firstAnswer(String(firstText || ""), gLang);
+    await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[gLang], dayBtns(gLang));
+    return;
+  }
+  const cardUrl = await bookingLink(from, L);
+  if (cardUrl) { await sendText(from, COPY[L].cardIntro(cardUrl)); await logEvent(from, "card_link_sent", {}); }
   s.step = "await_service"; await saveSession(s);
   await logEvent(from, "flow_started", {});
   await askService(from, L);
