@@ -171,6 +171,12 @@ const dayBtns = (L: string) => [
   { id: "day_tomorrow", title: `${L === "es" ? "Mañana" : "Tomorrow"} (${shortDate(L, 1)})` },
   { id: "day_other", title: L === "es" ? "Otro día" : "Another day" },
 ];
+// v56: the one-question opener for an ad lead whose language is already clear.
+const FIRST_LINE: Record<string, string> = {
+  en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 45 to 60 EUR. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
+  es: "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. Un masaje relajante de 60 min suele costar entre 45 y 60 EUR. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien? Si prefieres descontracturante, tailandés o deportivo, dímelo.",
+};
+const looksEnglish = (t: string) => /\b(hi|hello|hey|i|i'd|i'm|id|im|like|book|booking|want|need|please|massage|can|could|you|tomorrow|today|tonight|near|the)\b/i.test(String(t || "")) && !/[¿¡ñ]|\b(hola|quiero|masaje|reservar|gracias)\b/i.test(String(t || ""));
 const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, dayBtns(L));
 const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, dayBtns(L));
 const askTime = (to: string, L: string) =>
@@ -327,6 +333,19 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
   // We do not know their language yet, so the first screen is bilingual and
   // short: one list, no link. Their first tap or word sets the language.
   if (!s.data.lang && (s.data.adRef || AD_OPENER_RE.test(String(firstText || "").trim()))) {
+    // v56 (7 Sept): when the first message already tells us the language, one
+    // question in that language, not a bilingual wall. "Hi, I'd like to book a
+    // massage" got a Spanish-first screen with eight options at 00:28 on 7 Sept.
+    // Relaxing 60 min is assumed; they can name another type at any point.
+    const ft = String(firstText || "").trim();
+    const knownLang = strongSpanish(ft) ? "es" : (AD_OPENER_RE.test(ft) || looksEnglish(ft)) ? "en" : "";
+    if (knownLang) {
+      s.data.lang = knownLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day"; await saveSession(s);
+      await logEvent(from, "flow_started", { fromAd: true, oneQuestion: true, lang: knownLang });
+      await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
+      await sendButtons(from, FIRST_LINE[knownLang], dayBtns(knownLang));
+      return;
+    }
     s.step = "await_service"; await saveSession(s);
     await logEvent(from, "flow_started", { fromAd: true, bilingual: true });
     // v50: a price and a promise before the first question (Jordan, 6 Sept:
@@ -1751,6 +1770,14 @@ const handler = async (req: Request) => {
           s.data.day = d;
           s.data.dayDate = /^(hoy|today)$/i.test(d) ? longDate(L, 0) : (/^(mañana|tomorrow)$/i.test(d) ? longDate(L, 1) : null);
           s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "typed" }); await askTime(from, L);
+        }
+        // v56: "deep tissue please" at the day question changes the assumed massage.
+        else if (text && detectService(text) && detectService(text) !== s.data.service) {
+          s.data.service = detectService(text); delete s.data.defaultService; await saveSession(s);
+          await logEvent(from, "service_chosen", { service: s.data.service, typed: true });
+          const row = ALL_SERVICES.find((x) => x.id === s.data.service);
+          await sendText(from, L === "es" ? `Perfecto, ${row ? String(row.tEs).toLowerCase() : "ese masaje"}.` : `Got it, ${row ? String(row.tEn).toLowerCase() : "that one"}.`);
+          if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
         }
         else await askDay(from, L);
         break;
