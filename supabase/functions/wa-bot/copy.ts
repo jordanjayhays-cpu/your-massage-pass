@@ -4,7 +4,10 @@ export const JORDAN_MAIN_NUMBER = "+34 612 474 827";
 export const AD_OPENER_RE = /^hi,? i'?d like to book a massage\.? i saw you on (facebook|instagram)\.?$/i;
 // v39: people write whole sentences ("Tailandés en Centro, lunes noche"). Read them.
 export const UNSURE_RE = /(no s[eé] (qu[eé]|cu[aá]l)|not sure|don'?t know|no tengo claro|cualquiera me vale|recomi[eé]nda|recommend|ay[uú]dame a elegir|help me (choose|pick|figure))/i;
-export const ZONEQ_RE = /(d[oó]nde est[aá]is|en qu[eé] zona est[aá]is|d[oó]nde (est[aá]n|se encuentran)|where are you (located|based)|which area are you|your address|vuestra direcci[oó]n|qu[eé] zonas)/i;
+// v59: people ask where we are without a question mark. "What street in madrid"
+// and "Que calle o zona en madrid" both got the service menu instead of an
+// answer on 7 Sept, the second time in the same conversation.
+export const ZONEQ_RE = /(d[oó]nde est[aá]is|d[oó]nde (est[aá]n|se encuentran|sois)|en qu[eé] (zona|barrio|calle|parte|sitio)|qu[eé] (zona|zonas|barrio|calle|direcci[oó]n|parte de madrid)|vuestra direcci[oó]n|direcci[oó]n del centro|ubicaci[oó]n|where are you (located|based)|which area|what area|which street|what street|where is it|your address)/i;
 export function detectDay(t: string, L: string): string {
   const s = stripAcc(t);
   if (/\b(hoy|today|tonight|esta noche|esta tarde)\b/.test(s)) return L === "es" ? "Hoy" : "Today";
