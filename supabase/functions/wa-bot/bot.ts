@@ -176,10 +176,29 @@ const dayBtns = (L: string) => [
 // first thing the bot sees identifies their request. Pick the thread back up
 // with what they already told us instead of greeting them as a stranger.
 const RESUME_RE = /\bMC-(R\d{1,6}|C\d{4,8})\b/i;
+// v61: the code is only in the link for people we have no phone number for.
+// Everyone else taps a link that says something a person would actually write,
+// and we identify them the way we always could: by the number they wrote from.
+const RESUME_PHRASE_RE = /\b(termin[ao]r|acabar|completar|continuar con|seguir con)\s+(mi|la)\s+reserva\b|\bmi reserva de masaje\b|\bfinish (my|the) booking\b|\bcontinue (my|the) booking\b|\bcomplete my booking\b/i;
 const RESUME_LINE = (L: string, name: string, svc: string, area: string) =>
   L === "es"
     ? `Hola${name ? " " + name : ""}, seguimos donde lo dejamos: ${svc}${area ? " por " + area : ""}. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien?`
     : `Hi${name ? " " + name : ""}, picking up where we left off: ${svc}${area ? " around " + area : ""}. You pay the studio, no fee from us.\n\nWhich day works for you?`;
+
+// They tapped the link but the text carries no code, so find their own most
+// recent request by the number they wrote from.
+async function resumeFromPhone(s: Session, from: string): Promise<boolean> {
+  const digits = digitsOf(from);
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?or=(client_phone.eq.${digits},client_phone.eq.%2B${digits})&order=created_at.desc&limit=1&select=id`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    const id = Array.isArray(rows) && rows[0] ? rows[0].id : null;
+    return await resumeFromCode(s, from, id ? `R${id}` : `C${digits.slice(-6)}`);
+  } catch (e) {
+    console.log("[wa] resume by phone failed", String(e));
+    return await resumeFromCode(s, from, `C${digits.slice(-6)}`);
+  }
+}
 
 // Returns true when the code was recognised and answered.
 async function resumeFromCode(s: Session, from: string, code: string): Promise<boolean> {
@@ -1701,6 +1720,7 @@ const handler = async (req: Request) => {
     if (text && !replyId) {
       const rc = text.match(RESUME_RE);
       if (rc && await resumeFromCode(s, from, rc[1])) return new Response("OK", { status: 200 });
+      if (!rc && RESUME_PHRASE_RE.test(text) && await resumeFromPhone(s, from)) return new Response("OK", { status: 200 });
     }
 
     if (text && BACK_RE.test(text)) {
