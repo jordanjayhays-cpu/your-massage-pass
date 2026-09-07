@@ -58,8 +58,17 @@ export const NOSHOW_RE = /(no ha llegado|no ha venido|no vino|no aparece|no se h
 // v36: studio offers. A studio answering with a time ("a las 12:15", "12:15",
 // "16.30") is an offer for the customer, not a note for Jordan.
 export const mcMadridHour = (): number => parseInt(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).format(new Date()), 10);
+// v58: a studio stating its opening hours is not offering an appointment.
+// Calma Madrid wrote "el sábado abrimos hasta las 14:00 horas y de lunes a
+// viernes cerramos a las 20:00 horas" on 7 Sept and the bot forwarded 14:00 to
+// a customer as a slot they never offered. Words like these mean the message is
+// about when the doors are open; only an explicit offer beside them makes it a
+// real time. When in doubt the reply goes to a founder card, never to a client.
+export const HOURS_STATEMENT_RE = /\b(abrimos|abre|abierto|cerramos|cierra|cerrad[oa]s?|horario|de lunes a viernes|lun(es)?\s*[-a]\s*vie(rnes)?|todos los d[ií]as|we (open|close)|opening hours|closed on|mon(day)?\s*(-|to)\s*(fri|sat|sun))/i;
+const OFFER_MARKER_RE = /\b(podemos|podr[ií]amos|tenemos (hueco|libre|disponible)|hay hueco|disponible|(nos|os|le) va bien|s[ií],?\s*a\s+las|vale\s+a\s+las|ok\s+a\s+las|puede venir|os espero|te esperamos|reservad[oa])\b/i;
 export function parseOfferedTime(t: string): string {
   const s = String(t || "");
+  if (HOURS_STATEMENT_RE.test(s) && !OFFER_MARKER_RE.test(s)) return "";
   if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return ""; // opening hours range, not an offer
   let m = s.match(/\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b/);
   if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
