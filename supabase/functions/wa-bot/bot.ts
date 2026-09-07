@@ -171,6 +171,52 @@ const dayBtns = (L: string) => [
   { id: "day_tomorrow", title: `${L === "es" ? "Mañana" : "Tomorrow"} (${shortDate(L, 1)})` },
   { id: "day_other", title: L === "es" ? "Otro día" : "Another day" },
 ];
+// v60: an email we sent ("your massage is still open") carries a code. When
+// they tap through, WhatsApp opens with that code already typed, so the very
+// first thing the bot sees identifies their request. Pick the thread back up
+// with what they already told us instead of greeting them as a stranger.
+const RESUME_RE = /\bMC-(R\d{1,6}|C\d{4,8})\b/i;
+const RESUME_LINE = (L: string, name: string, svc: string, area: string) =>
+  L === "es"
+    ? `Hola${name ? " " + name : ""}, seguimos donde lo dejamos: ${svc}${area ? " por " + area : ""}. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien?`
+    : `Hi${name ? " " + name : ""}, picking up where we left off: ${svc}${area ? " around " + area : ""}. You pay the studio, no fee from us.\n\nWhich day works for you?`;
+
+// Returns true when the code was recognised and answered.
+async function resumeFromCode(s: Session, from: string, code: string): Promise<boolean> {
+  const m = code.match(/^R(\d+)$/i);
+  let req: Record<string, unknown> | null = null;
+  if (m) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${m[1]}&select=id,first_name,service_name,day1,time1,area,languages,stage,studio_name&limit=1`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    req = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  }
+  // An unknown code is still someone answering our email, so never fall through
+  // to a cold greeting: carry on with whatever the session already knows.
+  const L: string = req && req.languages === "es" ? "es" : (s.data.lang === "es" ? "es" : (s.data.lang === "en" ? "en" : "en"));
+  s.data.lang = L;
+  if (req) {
+    const svcId = detectService(String(req.service_name || ""));
+    if (svcId) { s.data.service = svcId; s.data.defaultService = false; }
+    if (!s.data.area && req.area) s.data.area = String(req.area);
+    if (!s.data.known?.name && req.first_name) s.data.known = { ...(s.data.known || {}), name: String(req.first_name) };
+    s.data.resumedRequest = req.id;
+  }
+  if (!s.data.service) { s.data.service = "svc_relax"; s.data.defaultService = true; }
+  s.step = "await_day";
+  await saveSession(s);
+  const name = String(req?.first_name || s.data.known?.name || "").split(" ")[0];
+  const svc = trSvcLow(String(req?.service_name || "massage"), L);
+  await sendButtons(from, RESUME_LINE(L, name, svc, String(s.data.area || "")), dayBtns(L));
+  await logEvent(from, "resumed_from_email", { code, request_id: req?.id ?? null });
+  await founderCard(`\u{1F517} ${name || from} came back from the email (${code})`, {
+    badge: "EMAIL WORKED",
+    title: `${name || from} tapped the link in our email`,
+    paras: [`They landed straight at the day question with ${svc} already known. Nothing to do, the bot has it.`],
+    waNum: from, waLabel: "Open the chat",
+  });
+  return true;
+}
+
 // v56: the one-question opener for an ad lead whose language is already clear.
 const FIRST_LINE: Record<string, string> = {
   en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 45 to 60 EUR. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
@@ -1648,6 +1694,13 @@ const handler = async (req: Request) => {
           }
         }
       }
+    }
+
+    // Must run before the greeting and the "hola" branch: the prefilled text
+    // starts with a greeting, and that would restart them from scratch.
+    if (text && !replyId) {
+      const rc = text.match(RESUME_RE);
+      if (rc && await resumeFromCode(s, from, rc[1])) return new Response("OK", { status: 200 });
     }
 
     if (text && BACK_RE.test(text)) {
