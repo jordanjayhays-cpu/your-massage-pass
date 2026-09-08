@@ -81,6 +81,12 @@ let GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 // How many studios one request goes out to. Raising this raises how many
 // businesses we message per customer, so change it deliberately.
 const DEFAULT_FANOUT = 5;
+// v22 (8 Sept): a same-day request goes to more studios. Across 83 asks only 35%
+// of studios replied at all, and the average reply took 6 and a half hours. Five
+// studios therefore buys roughly 1.7 answers by tomorrow morning, which is no
+// use to someone who wants a massage this afternoon: Sharo J asked at 15:17,
+// five studios were asked, and not one could take her.
+const SAMEDAY_FANOUT = 9;
 
 const OPEN_HOUR = 9;
 const CLOSE_HOUR = 21;
@@ -493,6 +499,11 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   const requestId = Number(r.id);
   const area = String(r.area || "");
   const want = String(r.service_name || "");
+  // Today needs more doors knocked on, because most of them will not open in time.
+  const reqDay = requestDate(r);
+  const isSameDay = /^(today|hoy)$/i.test(String(r.day1 || "").trim())
+    || (!!reqDay && reqDay.getTime() === madridToday().getTime());
+  const fanout = isSameDay ? Math.max(opts.fanout, SAMEDAY_FANOUT) : opts.fanout;
 
   // v7: a price hunt ranks by listed 60 min relaxing price instead of fit and distance.
   // v10: an explicit partner list wins over both.
@@ -506,8 +517,8 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
     })).filter((c: Candidate) => c.wa.length >= 9);
   } else {
     candidates = (opts.cheapest
-      ? await rpc("cheapest_candidates", { p_limit: opts.fanout })
-      : await rpc("dispatch_candidates", { p_area: area || null, p_want: want || null, p_limit: opts.fanout })) as Candidate[];
+      ? await rpc("cheapest_candidates", { p_limit: fanout })
+      : await rpc("dispatch_candidates", { p_area: area || null, p_want: want || null, p_limit: fanout })) as Candidate[];
   }
   // v10: never ask the same studio twice for one request.
   if (opts.extra) {
@@ -534,7 +545,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
 
   const testCustomer = isTestCustomer(r);
   if (opts.dryRun) {
-    return { requestId, sent: 0, dryRun: true, testCustomer, skippedClosed, requestDate: requestDate(r)?.toISOString().slice(0, 10) || null, candidates: candidates.map((c) => ({ name: c.business_name, area: c.area, km: c.km, wa: c.wa, widened: c.widened, score: c.score })) };
+    return { requestId, sent: 0, dryRun: true, testCustomer, sameDay: isSameDay, fanout, skippedClosed, requestDate: requestDate(r)?.toISOString().slice(0, 10) || null, candidates: candidates.map((c) => ({ name: c.business_name, area: c.area, km: c.km, wa: c.wa, widened: c.widened, score: c.score })) };
   }
 
   let sent = 0;

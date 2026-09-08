@@ -259,6 +259,19 @@ const FIRST_LINE: Record<string, string> = {
   en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 45 to 60 EUR. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
   es: "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. Un masaje relajante de 60 min suele costar entre 45 y 60 EUR. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien? Si prefieres descontracturante, tailandés o deportivo, dímelo.",
 };
+// v72: when the first message does not tell us the language, ask the same
+// single question in both, rather than an eight option list with Español and
+// English on it. Of the 31 customers who never reached a booking, 12 stopped at
+// that list, and three of them tapped a language button, received a restatement
+// of who we are, and never wrote again. The language question cost a turn and
+// returned nothing; their next words tell us anyway.
+const FIRST_LINE_BOTH =
+  "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. 60 min desde 45 EUR, pagas en el centro, sin comisión.\n\nHi, this is Massage Club. We find you a slot at a professional studio near you. 60 min from 45 EUR, you pay the studio, no fee from us.\n\n¿Qué día te viene bien? / Which day works for you?";
+const dayBtnsBoth = () => [
+  { id: "day_today", title: `Hoy / Today (${shortDate("es", 0)})` },
+  { id: "day_tomorrow", title: `Mañana / Tomorrow (${shortDate("es", 1)})` },
+  { id: "day_other", title: "Otro día / Another day" },
+];
 const looksEnglish = (t: string) => /\b(hi|hello|hey|i|i'd|i'm|id|im|like|book|booking|want|need|please|massage|can|could|you|tomorrow|today|tonight|near|the)\b/i.test(String(t || "")) && !/[¿¡ñ]|\b(hola|quiero|masaje|reservar|gracias)\b/i.test(String(t || ""));
 const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, dayBtns(L));
 const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, dayBtns(L));
@@ -450,22 +463,11 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
       await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[knownLang], dayBtns(knownLang));
       return;
     }
-    s.step = "await_service"; await saveSession(s);
-    await logEvent(from, "flow_started", { fromAd: true, bilingual: true });
-    // v50: a price and a promise before the first question (Jordan, 6 Sept:
-    // eleven of nineteen ad leads never answered the old first screen).
-    await sendList(from,
-      "Hola, somos Massage Club. Te buscamos hueco en un centro de masajes profesional cerca de ti: 60 min desde 45 EUR, pagas en el centro, sin comisión, y nosotros hablamos con los centros por ti.\n\nHi, this is Massage Club. We find you a slot at a professional massage studio near you: 60 min from 45 EUR, you pay the studio, no fee, and we deal with the studios for you.\n\n¿Qué masaje quieres? / Which massage?",
-      "Elegir / Choose", [
-        { id: "svc_relax", title: "Relajante · Relaxing", description: "" },
-        { id: "svc_deep", title: "Descontracturante", description: "Deep tissue" },
-        { id: "svc_thai", title: "Tailandés · Thai", description: "" },
-        { id: "svc_sports", title: "Deportivo · Sports", description: "" },
-        { id: "svc_unsure", title: "Ayúdame · Help me", description: "no sé qué tipo / not sure" },
-        { id: "svc_more", title: "Más · More", description: "balinés, shiatsu, reflexología..." },
-        { id: "lang_es", title: "Español", description: "seguir en español" },
-        { id: "lang_en", title: "English", description: "continue in English" },
-      ]);
+    s.data.service = "svc_relax"; s.data.defaultService = true; s.data.bilingual = true;
+    s.step = "await_day"; await saveSession(s);
+    await logEvent(from, "flow_started", { fromAd: true, bilingual: true, oneQuestion: true });
+    await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
+    await sendButtons(from, FIRST_LINE_BOTH, dayBtnsBoth());
     return;
   }
   if (firstText && absorbSentence(s, firstText, L)) {
@@ -492,11 +494,16 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[gLang], dayBtns(gLang));
     return;
   }
-  const cardUrl = await bookingLink(from, L);
-  if (cardUrl) { await sendText(from, COPY[L].cardIntro(cardUrl)); await logEvent(from, "card_link_sent", {}); }
-  s.step = "await_service"; await saveSession(s);
-  await logEvent(from, "flow_started", {});
-  await askService(from, L);
+  // v72: one message, one question, no link. This used to send the booking link
+  // and then the service menu, so a person who had said one word got three
+  // messages and a website competing with the chat before they had answered
+  // anything.
+  s.data.service = "svc_relax"; s.data.defaultService = true; s.data.bilingual = !s.data.lang;
+  s.step = "await_day"; await saveSession(s);
+  await logEvent(from, "flow_started", { oneQuestion: true, unreadable: true });
+  await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
+  if (s.data.lang) await sendButtons(from, FIRST_LINE[L], dayBtns(L));
+  else await sendButtons(from, FIRST_LINE_BOTH, dayBtnsBoth());
 }
 
 async function goBack(s: Session, to: string, L: string): Promise<boolean> {
@@ -2198,13 +2205,11 @@ const handler = async (req: Request) => {
         break;
       }
       case "await_service": {
-        // v39: an ad lead who tapped a massage on the bilingual list has not told us
-        // their language yet. Ask once, then continue in it.
-        if (!s.data.lang && (s.data.adRef || s.data.bilingual) && replyId.startsWith("svc_") && replyId !== "svc_more" && replyId !== "svc_back") {
-          s.data.pendingService = replyId; s.data.bilingual = true; await saveSession(s);
-          await sendButtons(from, "¿Seguimos en español o en inglés? / Spanish or English?", [{ id: "lang_es", title: "Español" }, { id: "lang_en", title: "English" }]);
-          break;
-        }
+        // v72: the language question is gone. It cost a turn and returned only a
+        // restatement of who we are; three people tapped it and never wrote
+        // again. Carry on bilingually until their own words settle it, and the
+        // menus still carry an inline "switch to English" for anyone who wants
+        // to choose deliberately.
         if (replyId === "svc_more") { await askServiceMore(from, L); }
         else if (replyId === "svc_back") { await askService(from, L); }
         else if (replyId === "svc_unsure") { s.data.service = replyId; s.step = "await_day"; await saveSession(s); await logEvent(from, "service_chosen", { service: replyId }); await askDayUnsure(from, L); }
