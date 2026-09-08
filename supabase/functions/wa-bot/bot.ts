@@ -2349,6 +2349,11 @@ const handler = async (req: Request) => {
         break;
       }
       case "await_email_req": {
+        // v70: a tap is not an answer to this question. Live test on 8 Sept:
+        // a button left over from an earlier message arrived here, matched
+        // nothing, and was recorded as a refusal, so the booking went out with
+        // no email and nobody typed a word. Only typed text can decline.
+        if (replyId && !text) { await sendText(from, COPY[L].email); break; }
         if (text && isEmail(text)) {
           s.data.email = text.trim().toLowerCase();
           await finalizeBooking(s, from, L);
