@@ -378,6 +378,7 @@ export default function ShopDetail() {
                         studio_name: m.studio || m.name || "Unknown studio",
                         wa_number: MASSAGE_CLUB_WA,
                         message_text: waMessage,
+                        handoff: true,
                       });
                     }
                     open();
