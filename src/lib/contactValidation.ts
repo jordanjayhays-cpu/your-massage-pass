@@ -75,6 +75,8 @@ export const EMAIL_REQUIRED_COPY = {
 } as const;
 
 /** Contact is usable when there is at least one valid channel and no invalid one. */
+export function contactOk(phone: string, email: string) {
+
 
   const p = (phone ?? "").trim();
   const e = (email ?? "").trim();
