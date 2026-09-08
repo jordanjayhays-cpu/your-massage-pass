@@ -299,7 +299,7 @@ const askArea = (to: string, L: string) =>
 // making them pick the same thing again from a menu.
 const sendMenu = (to: string, L: string) => sendList(to, COPY[L].menuTitle, COPY[L].menuBtn, COPY[L].menuRows);
 
-type Opt = { id: string; business_name: string; slug: string; area: string; google_rating: any; google_reviews: any; venue_type: string; wa: string; svc: string; duration: number; price: number };
+type Opt = { id: string; business_name: string; slug: string; area: string; google_rating: any; google_reviews: any; venue_type: string; wa: string; svc: string; duration: number; price: number; registered?: boolean; discount_pct?: number | null };
 async function matchStudios(area: string, want: string): Promise<Opt[]> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/match_studios`, {
     method: "POST", headers: H(),
@@ -363,7 +363,7 @@ async function loadPicks(to: string, L: string, s: Session): Promise<boolean> {
   // of Madrid, the same way the rescue job does.
   if (!picks.length && s.data.area) picks = await matchStudios("", svcRow ? svcRow.en : "");
   if (!picks.length) return false;
-  s.data.picks = picks.map((o) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: o.price, duration: o.duration, area: o.area }));
+  s.data.picks = picks.map((o) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: o.price, duration: o.duration, area: o.area, registered: !!o.registered }));
   return true;
 }
 
@@ -371,8 +371,8 @@ async function askStudio(to: string, L: string, s: Session): Promise<boolean> {
   const ok = await loadPicks(to, L, s);
   if (!ok) return false;
   const top = s.data.picks[0];
-  await sendButtons(to, COPY[L].topPick(top.name, trSvc(top.svc, L), top.duration || 60, Number(top.price), top.area || "Madrid"), COPY[L].topPickBtns);
-  await logEvent(to, "studio_offered", { variant: "toppick", top: top.name, price: top.price });
+  await sendButtons(to, COPY[L].topPick(top.name, trSvc(top.svc, L), top.duration || 60, Number(top.price), top.area || "Madrid", !!top.registered), COPY[L].topPickBtns);
+  await logEvent(to, "studio_offered", { variant: "toppick", top: top.name, price: top.price, registered: !!top.registered });
   return true;
 }
 
@@ -386,7 +386,7 @@ async function askStudioList(to: string, L: string, s: Session): Promise<boolean
   const rows = picks.map((o: any, i: number) => ({
     id: `studio_${i}`,
     title: String(o.name).slice(0, 24),
-    description: `${trSvc(o.svc, L)} ${o.duration || 60} min · ${Number(o.price)} EUR`,
+    description: `${trSvc(o.svc, L)} ${o.duration || 60} min · ${Number(o.price)} EUR${o.registered ? " · " + COPY[L].partnerTag : ""}`.slice(0, 72),
   }));
   rows.push({ id: "studio_any", title: COPY[L].anyStudio, description: COPY[L].anyStudioDesc });
   rows.push({ id: "studio_other", title: COPY[L].otherStudio, description: COPY[L].otherStudioDesc });

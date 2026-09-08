@@ -204,9 +204,12 @@ export const COPY: Record<string, any> = {
     areaAgain: "Type your area, for example Chamberí, Sol or Retiro. Or tap share location.",
     modesty: "Good question. Our studios are professional therapeutic studios: you are covered with a towel the whole time and underwear stays on. The therapist only uncovers the area being worked on. If that works for you, let us carry on with your booking.",
     studios: "Best matches near you, with real prices. Pick one and we ask them to confirm your time.\n\nType *back* anytime to change an earlier answer.",
-    topPick: (name: string, svcN: string, dur: number, price: number, area: string) =>
-      `Best match for you:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}\n\nShall we ask them to confirm your time?`,
+    // v73: the three studios that signed up and loaded their own menu are the
+    // only ones we can quote at an exact price, so say so when we recommend one.
+    topPick: (name: string, svcN: string, dur: number, price: number, area: string, registered?: boolean) =>
+      `Best match for you:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}${registered ? "\nMassage Club partner, so that is their real menu price and not an estimate." : ""}\n\nShall we ask them to confirm your time?`,
     topPickBtns: [{ id: "pick_yes", title: "Yes, book it" }, { id: "pick_more", title: "See other options" }],
+    partnerTag: "Massage Club partner",
     bookedLink: (name: string, url: string) => `${name}: ${url}`,
     studiosBtn: "Choose studio",
     studioLinks: "Want a closer look first? Photos, full menus and reviews:",
@@ -303,9 +306,10 @@ export const COPY: Record<string, any> = {
     areaAgain: "Escribe tu zona, por ejemplo Chamberí, Sol o Retiro. O toca compartir ubicación.",
     modesty: "Buena pregunta. Nuestros centros son profesionales y terapéuticos: te cubren con una toalla durante toda la sesión y la ropa interior se mantiene puesta. El terapeuta solo descubre la zona que está trabajando. Si te parece bien, seguimos con tu reserva.",
     studios: "Las mejores opciones cerca de ti, con precios reales. Elige una y pedimos al centro que confirme tu hora.\n\nEscribe *volver* cuando quieras para cambiar una respuesta anterior.",
-    topPick: (name: string, svcN: string, dur: number, price: number, area: string) =>
-      `Tu mejor opción:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}\n\n¿Les pedimos que confirmen tu hora?`,
+    topPick: (name: string, svcN: string, dur: number, price: number, area: string, registered?: boolean) =>
+      `Tu mejor opción:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}${registered ? "\nCentro asociado a Massage Club, así que este es su precio real de carta, no una estimación." : ""}\n\n¿Les pedimos que confirmen tu hora?`,
     topPickBtns: [{ id: "pick_yes", title: "Sí, resérvalo" }, { id: "pick_more", title: "Ver otras opciones" }],
+    partnerTag: "centro asociado",
     bookedLink: (name: string, url: string) => `${name}: ${url}`,
     studiosBtn: "Elegir centro",
     studioLinks: "¿Quieres verlos antes? Fotos, menús completos y opiniones:",
