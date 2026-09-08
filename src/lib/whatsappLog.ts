@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { isValidEmail } from "@/lib/contactValidation";
 
-
 export type WhatsappRequestLog = {
   partner_id?: string | null;
   slug?: string | null;
