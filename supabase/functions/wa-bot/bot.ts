@@ -2341,9 +2341,9 @@ const handler = async (req: Request) => {
       case "await_name": {
         if (!text) { await sendText(from, COPY[L].name); break; }
         s.data.name = text.slice(0, 80);
-        // v50: no email question before the booking. Seven questions before we
-        // did anything was too many (Jordan, 6 Sept). The email is asked once,
-        // after a studio confirms (await_email_post).
+        // v67: the email is asked here, by finalizeBooking, before the request
+        // exists. v50 had moved it to after a studio confirmed, to shorten the
+        // flow; that left customers we could not answer (Sharo J, 8 Sept).
         s.data.email = s.data.email || null;
         await finalizeBooking(s, from, L);
         break;
@@ -2372,7 +2372,9 @@ const handler = async (req: Request) => {
         break;
       }
       case "await_email": {
-        if (text && /^(skip|saltar|no)$/i.test(text)) { s.data.email = null; }
+        // A skip here is a refusal, and finalizeBooking must not ask a second
+        // time for something the customer has already turned down.
+        if (text && /^(skip|saltar|no)$/i.test(text)) { s.data.email = null; s.data.emailRefused = true; }
         else if (text && isEmail(text)) { s.data.email = text.trim().toLowerCase(); }
         else { await sendText(from, COPY[L].emailBad); break; }
         await finalizeBooking(s, from, L);
