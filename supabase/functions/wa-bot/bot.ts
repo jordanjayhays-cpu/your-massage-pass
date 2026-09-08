@@ -63,6 +63,22 @@ const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const AI_MODEL = "claude-haiku-4-5-20251001";
+// The shared secrets for this project live in app_secrets, the way CRON_KEY and
+// the LinkedIn keys already do, so the key is read from there when it is not in
+// the environment. Looked up once per worker, then held in memory.
+let aiKeyChecked = false;
+async function aiKey(): Promise<string> {
+  if (AI_KEY || aiKeyChecked) return AI_KEY;
+  aiKeyChecked = true;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.ANTHROPIC_API_KEY&select=value&limit=1`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    AI_KEY = Array.isArray(rows) && rows[0]?.value ? String(rows[0].value).trim() : "";
+  } catch (e) {
+    console.log("[wa] ai key lookup failed", String(e));
+  }
+  return AI_KEY;
+}
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
 const SUPPORT = ["support@massageclub.io"];
 const JORDAN = ["jordan@massageclub.io", "jordanjayhays@gmail.com"]; // v39: "wants a person" must reach the Gmail too (Jordan, 5 Sept)
@@ -1099,7 +1115,8 @@ Rules:
 - Output JSON and nothing else.`;
 
 async function interpret(text: string, history: Array<{ dir: string; body: string }>, state: string): Promise<Reading | null> {
-  if (!AI_KEY || !text.trim()) return null;
+  const key = await aiKey();
+  if (!key || !text.trim()) return null;
   const convo = history.slice(-8).map((m) => `${m.dir === "in" ? "Customer" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
   const user = `Where the booking stands: ${state}\n\nRecent conversation:\n${convo}\n\nThe message to read:\n${text.slice(0, 600)}`;
   try {
@@ -1107,7 +1124,7 @@ async function interpret(text: string, history: Array<{ dir: string; body: strin
     const timer = setTimeout(() => ctl.abort(), 6000);
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST", signal: ctl.signal,
-      headers: { "x-api-key": AI_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
       body: JSON.stringify({ model: AI_MODEL, max_tokens: 400, system: AI_SYSTEM, messages: [{ role: "user", content: user }] }),
     });
     clearTimeout(timer);
@@ -1216,7 +1233,7 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
 
 // The single entry point the give-up branches call.
 async function lastResort(s: Session, from: string, L: string, text: string): Promise<boolean> {
-  if (!AI_KEY || !text) return false;
+  if (!text || !(await aiKey())) return false;
   try {
     const [thread, st] = await Promise.all([recentThread(from), bookingState(from)]);
     const r = await interpret(text, thread, st.line);
@@ -1774,6 +1791,13 @@ const handler = async (req: Request) => {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const settled = await settleBids();
       return new Response(JSON.stringify({ ok: true, settled }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    // v66: read a message and return the reading, sending nothing. For checking
+    // the interpreter against real sentences without a customer in the loop.
+    if (payload?.ops === "interpret") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const reading = await interpret(String(payload.text || ""), Array.isArray(payload.history) ? payload.history : [], String(payload.state || "No booking on file yet."));
+      return new Response(JSON.stringify({ ok: true, keyPresent: !!(await aiKey()), reading }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     const value = payload?.entry?.[0]?.changes?.[0]?.value;
     const msg = value?.messages?.[0];
