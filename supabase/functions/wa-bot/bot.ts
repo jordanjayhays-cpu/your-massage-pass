@@ -616,7 +616,7 @@ async function reAsk(s: Session, from: string, L: string) {
     case "await_day_text": await sendText(from, COPY[L].dayAsk); break;
     case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
     case "await_name": await sendText(from, COPY[L].name); break;
-    case "await_email": await sendText(from, COPY[L].email); break;
+    case "await_email": case "await_email_req": await sendText(from, COPY[L].email); break;
     case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
   }
 }
@@ -1645,6 +1645,17 @@ async function createRequest(s: Session): Promise<number | null> {
 // Create the request and send the confirmation - shared by the normal flow end
 // and the shortcuts that skip name/email for known customers.
 async function finalizeBooking(s: Session, from: string, L: string) {
+  // v67 (Jordan, 8 Sept): every booking needs an email. Sharo J asked for a
+  // couples massage through the website with no email and no WhatsApp history,
+  // five studios were asked, and she could not be told a single thing. WhatsApp
+  // only carries free text for 24 hours after someone writes to us, so a phone
+  // number on its own is not a way of reaching anyone. v50 took this question
+  // out of the flow to shorten it; today cost more than the question does.
+  if (!s.data.email && !s.data.emailRefused) {
+    s.step = "await_email_req"; await saveSession(s);
+    await sendText(from, COPY[L].email);
+    return;
+  }
   s.step = "done"; await saveSession(s);
   const id = await createRequest(s);
   const svcName = s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage");
@@ -1964,7 +1975,7 @@ const handler = async (req: Request) => {
         case "await_time_text": await sendText(from, COPY[NL].timeAsk); break;
         case "await_area": await askArea(from, NL); break;
         case "await_name": await sendText(from, COPY[NL].name); break;
-        case "await_email": await sendText(from, COPY[NL].email); break;
+        case "await_email": case "await_email_req": await sendText(from, COPY[NL].email); break;
         default: await askService(from, NL);
       }
       return new Response("OK", { status: 200 });
@@ -1993,7 +2004,7 @@ const handler = async (req: Request) => {
         case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
         case "await_studio_text": await sendText(from, COPY[L].otherStudioAsk); break;
         case "await_name": await sendText(from, COPY[L].name); break;
-        case "await_email": await sendText(from, COPY[L].email); break;
+        case "await_email": case "await_email_req": await sendText(from, COPY[L].email); break;
       }
       await logEvent(from, "modesty_question", {});
       return new Response("OK", { status: 200 });
@@ -2057,7 +2068,7 @@ const handler = async (req: Request) => {
       if (moved) return new Response("OK", { status: 200 });
     }
 
-    const freeTextStep = ["await_name", "await_email", "await_email_post", "await_day_text", "await_area", "await_time_text", "await_studio_text"].includes(s.step);
+    const freeTextStep = ["await_name", "await_email", "await_email_req", "await_email_post", "await_day_text", "await_area", "await_time_text", "await_studio_text"].includes(s.step);
 
     // A question at a free-text step gets answered, then we ask our question
     // again. Never store someone's question as their name, day or area.
@@ -2075,7 +2086,7 @@ const handler = async (req: Request) => {
         case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
         case "await_studio_text": await sendText(from, COPY[L].otherStudioAsk); break;
         case "await_name": await sendText(from, COPY[L].name); break;
-        case "await_email": await sendText(from, COPY[L].email); break;
+        case "await_email": case "await_email_req": await sendText(from, COPY[L].email); break;
         case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
       }
       return new Response("OK", { status: 200 });
@@ -2138,7 +2149,7 @@ const handler = async (req: Request) => {
       await saveSession(s); await logEvent(from, "flow_started", { via: "menu" }); await askService(from, L);
       return new Response("OK", { status: 200 });
     }
-    if ((HI_RE.test(text) || (text && !freeTextStep && BOOKAGAIN_RE.test(text))) && s.step !== "start" && !["await_name", "await_email", "await_email_post", "await_day_text", "await_offer", "await_sameday", "await_reconfirm", "await_change"].includes(s.step)) {
+    if ((HI_RE.test(text) || (text && !freeTextStep && BOOKAGAIN_RE.test(text))) && s.step !== "start" && !["await_name", "await_email", "await_email_req", "await_email_post", "await_day_text", "await_offer", "await_sameday", "await_reconfirm", "await_change"].includes(s.step)) {
       if (s.step === "done" && HI_RE.test(text)) { await sendMenu(from, L); return new Response("OK", { status: 200 }); }
       // A "hola" seconds after the greeting is a hello, not a restart: ask the
       // service question again instead of resending the card link and intro.
@@ -2334,6 +2345,29 @@ const handler = async (req: Request) => {
         // did anything was too many (Jordan, 6 Sept). The email is asked once,
         // after a studio confirms (await_email_post).
         s.data.email = s.data.email || null;
+        await finalizeBooking(s, from, L);
+        break;
+      }
+      case "await_email_req": {
+        if (text && isEmail(text)) {
+          s.data.email = text.trim().toLowerCase();
+          await finalizeBooking(s, from, L);
+          break;
+        }
+        // A mangled address gets one retry. Anything else is a refusal, and a
+        // refusal does not lose us the customer: they are in a WhatsApp thread,
+        // so we can still reach them. It is logged and Jordan is told, because
+        // an exception nobody can see is the same as no rule at all.
+        if (text && text.includes("@") && !s.data.emailRetried) {
+          s.data.emailRetried = true; await saveSession(s);
+          await sendText(from, COPY[L].emailBad);
+          break;
+        }
+        s.data.emailRefused = true; await saveSession(s);
+        await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} would not give an email (${text ? text.slice(0, 60) : "no answer"}). Booking went ahead because they are reachable on WhatsApp, but there is no second channel.`, from);
+        await sendText(from, L === "es"
+          ? "Sin problema, seguimos sin email. Te lo cuento todo por aquí."
+          : "No problem, we will carry on without one. I will keep you posted right here.");
         await finalizeBooking(s, from, L);
         break;
       }
