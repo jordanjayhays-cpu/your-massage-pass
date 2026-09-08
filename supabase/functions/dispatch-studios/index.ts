@@ -35,6 +35,11 @@
 //   is what the studio reads, not a guess from "Hoy"/"Mañana" at send time.
 // v14 (6 Sept): { send: { phone, text } } plain text to any number that has
 //   written to the bot, for the watch to answer someone the bot left hanging.
+// v21 (8 Sept, Jordan): a request never reaches a studio unless we can answer
+//   the customer. Either an email address or a WhatsApp thread they have
+//   written to. Sharo J asked for a couples massage through the website with no
+//   email and no WhatsApp history; five studios were asked, two turned their
+//   afternoon over to it, and she could not be told anything at all.
 // v20 (8 Sept): every note to a studio falls back to aviso_centro_v1 when their
 //   24 hour window is shut, stand-downs included. Two studios asked about
 //   Fernando were never told the request was covered, because plain text to a
@@ -471,6 +476,19 @@ async function standDownOthers(requestId: number, winnerPartnerId: string | null
   return n;
 }
 
+// v21: can we answer this person at all? An email always works. A phone only
+// works if they have written to the bot, because WhatsApp will not carry free
+// text to someone who never started a conversation.
+async function reachableCustomer(r: Record<string, unknown>): Promise<{ ok: boolean; how: string }> {
+  if (String(r.contact_email || "").trim()) return { ok: true, how: "email" };
+  const phone = toWa(String(r.client_phone || ""));
+  if (phone) {
+    const prior = await sq(`wa_messages?phone=eq.${phone}&direction=eq.in&limit=1&select=id`);
+    if (Array.isArray(prior) && prior.length) return { ok: true, how: "whatsapp" };
+  }
+  return { ok: false, how: "none" };
+}
+
 async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[] }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
@@ -745,6 +763,35 @@ async function handleRequest(req: Request): Promise<Response> {
           body: JSON.stringify({ stage: "cancelled", stage_updated_at: new Date().toISOString(), stage_note: `${String(sib.stage_note || "")}; superseded by #${r.id} (${diff.join("; ")}), ${notified.filter((x) => x.ok).length} of ${notified.length} studios stood down`.slice(0, 500) }),
         });
         console.log(`[dispatch] req=${r.id} supersedes #${sib.id}: ${diff.join("; ")}`);
+      }
+    }
+    // v21: studios are a finite resource and their goodwill is the whole
+    // business. Asking five of them to hold an afternoon for someone we cannot
+    // write back to spends that goodwill for nothing, and the customer is left
+    // believing we are working on it.
+    if (!dryRun && !forceDispatch) {
+      const reach = await reachableCustomer(r);
+      if (!reach.ok) {
+        await sq(`whatsapp_requests?id=eq.${r.id}`, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            stage: "needs_contact",
+            dispatched_at: new Date().toISOString(),
+            dispatch_count: 0,
+            stage_updated_at: new Date().toISOString(),
+            stage_note: `No way to reach the customer: no email on file and ${String(r.client_phone || "no phone")} has never written to the bot. Not sent to any studio.`.slice(0, 500),
+          }),
+        });
+        await founderEmail(`Cannot reach ${String(r.first_name || "a customer")}, request #${r.id} not sent`, [
+          `<b>${String(r.first_name || "A customer")} asked for ${svcEs(r.service_name)} ${[r.day1, r.time1].filter(Boolean).join(" ")}${r.area ? " near " + r.area : ""}, and we have no way to answer them.</b>`,
+          `No email address, and ${String(r.client_phone || "their number")} has never written to our WhatsApp, so nothing we send can be delivered.`,
+          `No studio was asked. Asking studios to hold a slot for someone we cannot write back to costs their goodwill and gets us nothing.`,
+          `If you want to reach them, the phone is the only channel: <b>${String(r.client_phone || "not given")}</b>.`,
+          `Request #${r.id} is parked at stage needs_contact. Add an email to the row and dispatch it again, or send it anyway with force_dispatch.`,
+        ]);
+        console.log(`[dispatch] req=${r.id} customer unreachable, not dispatched`);
+        results.push({ requestId: r.id, skipped: "customer unreachable, nothing sent" });
+        continue;
       }
     }
     results.push(await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds }));
