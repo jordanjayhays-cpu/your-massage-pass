@@ -106,6 +106,7 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
       service_name: serviceName,
       price: service.price ?? null,
       wa_number: MASSAGE_CLUB_WA,
+      handoff: true,
       message_text: message,
     });
     window.open(conciergeWhatsappUrl(message), "_blank", "noopener,noreferrer");

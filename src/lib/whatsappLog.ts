@@ -23,6 +23,11 @@ export type WhatsappRequestLog = {
   user_id?: string | null;
   wa_number?: string | null;
   message_text?: string | null;
+  /**
+   * True when this row only records that the visitor was sent to WhatsApp to
+   * start the conversation themselves, so there is no email to collect.
+   */
+  handoff?: boolean;
 };
 
 const clean = (v: unknown): string | null => {
@@ -56,9 +61,11 @@ export async function logWhatsappRequestResult(
   try {
     // Safety net: a request with no email is unreachable, because WhatsApp only
     // lets us reply for free within 24h of the customer writing to us. Refuse
-    // the insert rather than create a request we cannot answer.
+    // the insert rather than create a request we cannot answer. Rows flagged
+    // handoff only record the visitor being sent to WhatsApp themselves, which
+    // opens the reply window, so they skip this check.
     const emailCandidate = clean(row.contact_email);
-    if (!emailCandidate || !isValidEmail(emailCandidate)) {
+    if (!row.handoff && (!emailCandidate || !isValidEmail(emailCandidate))) {
       return { id: null, error: "email_required" };
     }
     // whatsapp_requests.id is a BIGINT with an auto-increment default, so the
@@ -69,7 +76,6 @@ export async function logWhatsappRequestResult(
     // to an account later without ever reading it back.
     const clientRef = crypto.randomUUID();
     const payload: Record<string, unknown> = {
-
       partner_id: uuidOrNull(row.partner_id ?? null),
       slug: clean(row.slug),
       studio_name: clean(row.studio_name) || "Unknown studio",
