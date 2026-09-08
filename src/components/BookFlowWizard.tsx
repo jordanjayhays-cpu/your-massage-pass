@@ -1364,7 +1364,7 @@ export default function BookFlowWizard({
               {status === "loading" ? t.sending : t.submit}
             </button>
             {!canSubmit && (
-              <p className="mt-2 text-center text-sm text-muted-foreground">{cc.needContact}</p>
+              <p className="mt-2 text-center text-sm text-muted-foreground">{nameComplete && !emailValid ? ec.error : cc.needContact}</p>
             )}
           </>
         )}

@@ -16,7 +16,7 @@ import { logWhatsappRequest, logWhatsappRequestResult } from "@/lib/whatsappLog"
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
-import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
+import { contactOk, CONTACT_COPY, EMAIL_REQUIRED_COPY, isValidEmail } from "@/lib/contactValidation";
 import { useFlowLang, pickCopy, type FlowLang } from "@/lib/flowLang";
 import { shortWeekday, longWeekday, shortDate, longDate, timeLabel, formatPrice, formatMinutes, parseISODate, localeOf } from "@/lib/localeFormat";
 import { localizedServiceName } from "@/lib/serviceTypeI18n";
@@ -1419,9 +1419,11 @@ export default function StudioBookingPage() {
     };
 
     const hoContact = contactOk(hoPhone, hoEmail);
-    const hoEmailValid = hoContact.emailValid === true;
+    // Email is mandatory: WhatsApp only lets us reply for free for 24h.
+    const hoEmailValid = isValidEmail(hoEmail);
     const hoPhoneValid = hoContact.phoneValid === true;
-    const hoDetailsReady = !!(hoNameComplete && hoContact.ok);
+    const hoDetailsReady = !!(hoNameComplete && hoEmailValid && hoContact.phoneValid !== false);
+
 
 
     const trackWhatsappIntent = async () => {
@@ -1859,6 +1861,9 @@ export default function StudioBookingPage() {
                         )}
                       </div>
                       <div>
+                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
+                          {EMAIL_REQUIRED_COPY[lang].label}
+                        </p>
                         <input
                           value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
@@ -1866,17 +1871,24 @@ export default function StudioBookingPage() {
                           type="email"
                           inputMode="email"
                           autoComplete="email"
-                          aria-invalid={hoContact.emailValid === false}
+                          required
+                          aria-required="true"
+                          aria-invalid={!hoEmailValid && !!hoEmail.trim()}
                           className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
-                            hoContact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                            !hoEmailValid && hoEmail.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                           }`}
                         />
-                        {hoContact.emailValid === false && (
+                        {!hoEmailValid && hoEmail.trim() ? (
                           <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
-                            {CONTACT_COPY[lang].badEmail}
+                            {EMAIL_REQUIRED_COPY[lang].error}
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                            {EMAIL_REQUIRED_COPY[lang].helper}
                           </p>
                         )}
                       </div>
+
                       <div>
 
                         <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
