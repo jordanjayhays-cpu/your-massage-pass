@@ -35,6 +35,10 @@
 //   is what the studio reads, not a guess from "Hoy"/"Mañana" at send time.
 // v14 (6 Sept): { send: { phone, text } } plain text to any number that has
 //   written to the bot, for the watch to answer someone the bot left hanging.
+// v20 (8 Sept): every note to a studio falls back to aviso_centro_v1 when their
+//   24 hour window is shut, stand-downs included. Two studios asked about
+//   Fernando were never told the request was covered, because plain text to a
+//   studio that had not written back dies silently at Meta.
 // v17 (8 Sept): a repeat from the same customer that carries new information is
 //   a change, not a duplicate. The old studios are stood down, the old request
 //   is closed, and the new one goes out. Fernando restated his service once and
@@ -376,9 +380,29 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
 // trying to recruit as partners, so silence would cost us more than it saves.
 // v6: studios that said yes but did not give the best offer ("accepted") are
 // stood down too, with a line that thanks them for the yes.
-// v17: one note to every studio still in play on a request, free text inside
-// their 24h window and aviso_centro_v1 outside it. Lifted out of the notify
-// handler so the amendment path can stand studios down without a second call.
+// v20: one note to one studio. Free text inside their 24 hour window, the
+// approved aviso_centro_v1 template outside it. Every message we send a studio
+// goes through here, because a note that fails silently leaves a partner
+// hanging: The Organic Spa and Masajes Chamberí were asked about Fernando on
+// 8 September, never heard that it was covered, and the only trace was a
+// delivery-failure alert nobody could act on.
+async function sendStudioNote(to: string, text: string, short: string, rq: Record<string, unknown>): Promise<{ how: string; ok: boolean }> {
+  if (!to) return { how: "none", ok: false };
+  const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
+  const openWindow = Array.isArray(lastIn) && lastIn[0]?.created_at && (Date.now() - Date.parse(lastIn[0].created_at)) < 23.5 * 3600e3;
+  if (openWindow && await sendText(to, text)) return { how: "text", ok: true };
+  const params = [param(String(rq.first_name || "el cliente"), 40), param(String(rq.confirmed_time || rq.time1 || "-"), 20), param(short || text, 300)];
+  const res = await fetch(GRAPH, {
+    method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name: "aviso_centro_v1", language: { code: "es" }, components: [{ type: "body", parameters: params.map((x) => ({ type: "text", text: x })) }] } }),
+  });
+  if (res.ok) { await logMsg(to, `[aviso_centro_v1] ${params.join(" | ")}`); return { how: "template", ok: true }; }
+  console.log("[dispatch] studio note template failed", res.status, (await res.text()).slice(0, 200));
+  return { how: "template", ok: false };
+}
+
+// v17: one note to every studio still in play on a request. Lifted out of the
+// notify handler so the amendment path can stand studios down without a second call.
 async function notifyStudios(requestId: number, text: string, short?: string, onlyIds?: string[]) {
   const reqRows = await sq(`whatsapp_requests?id=eq.${requestId}&select=id,first_name,time1,confirmed_time`);
   const rq = (Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {}) as Record<string, unknown>;
@@ -388,21 +412,8 @@ async function notifyStudios(requestId: number, text: string, short?: string, on
   for (const row of (Array.isArray(rows) ? rows : [])) {
     if (only && !only.has(String(row.partner_id))) continue;
     const to = String(row.phone || "");
-    const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
-    const openWindow = Array.isArray(lastIn) && lastIn[0]?.created_at && (Date.now() - Date.parse(lastIn[0].created_at)) < 23.5 * 3600e3;
-    let ok = false; let how = "text";
-    if (openWindow) ok = await sendText(to, text);
-    if (!ok) {
-      how = "template";
-      const params = [param(String(rq.first_name || "el cliente"), 40), param(String(rq.confirmed_time || rq.time1 || "-"), 20), param(String(short || text), 300)];
-      const res = await fetch(GRAPH, {
-        method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name: "aviso_centro_v1", language: { code: "es" }, components: [{ type: "body", parameters: params.map((x) => ({ type: "text", text: x })) }] } }),
-      });
-      ok = res.ok;
-      if (ok) await logMsg(to, `[aviso_centro_v1] ${params.join(" | ")}`); else console.log("[dispatch] notify template failed", res.status, (await res.text()).slice(0, 200));
-    }
-    out.push({ phone: to, how, ok });
+    const r = await sendStudioNote(to, text, String(short || text), rq);
+    out.push({ phone: to, how: r.how, ok: r.ok });
   }
   return out;
 }
@@ -433,17 +444,29 @@ const LOCKED_STAGES = new Set(["confirmed", "no_show"]);
 async function standDownOthers(requestId: number, winnerPartnerId: string | null) {
   const rows = await sq(`request_dispatch?request_id=eq.${requestId}&outcome=in.(pending,accepted)&select=id,partner_id,phone,outcome`);
   if (!Array.isArray(rows) || !rows.length) return 0;
+  // v20: the template fallback matters most here. A studio that was asked by
+  // template and never wrote back has no open window, so the plain text this
+  // used to send died at Meta and they were left waiting on an answer that
+  // never came.
+  const reqRows = await sq(`whatsapp_requests?id=eq.${requestId}&select=id,first_name,time1,confirmed_time`);
+  const rq = (Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {}) as Record<string, unknown>;
   let n = 0;
   for (const row of rows) {
     if (winnerPartnerId && row.partner_id === winnerPartnerId) continue;
-    const ok = await sendText(row.phone, row.outcome === "accepted"
+    const accepted = row.outcome === "accepted";
+    const res = await sendStudioNote(String(row.phone || ""), accepted
       ? "Gracias por decir que sí. Esta vez el cliente se ha ido con otra oferta, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club"
-      : "Gracias por responder. Esta reserva ya está cubierta por otro centro, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club");
+      : "Gracias por responder. Esta reserva ya está cubierta por otro centro, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club",
+      accepted
+        ? "gracias por decir que si, esta vez el cliente se ha ido con otra oferta, no hace falta que hagais nada"
+        : "esta reserva ya esta cubierta por otro centro, no hace falta que hagais nada",
+      rq);
     await sq(`request_dispatch?id=eq.${row.id}`, {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ outcome: "stood_down" }),
     });
-    if (ok) n++;
+    if (res.ok) n++;
+    else console.log(`[dispatch] req=${requestId} stand-down did not reach ${row.phone}`);
   }
   return n;
 }
