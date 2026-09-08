@@ -60,15 +60,14 @@
 //  - A studio is never asked for a day or time its own hours say it is closed.
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
-const OPS_KEY = Deno.env.get("OPS_KEY") || "";
+let OPS_KEY = Deno.env.get("OPS_KEY") || "";
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
 const SUPPORT = ["support@massageclub.io"];
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 
-const WA_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ||
-  "";
-const PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") || "1270437552818077";
-const GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
+let WA_TOKEN = Deno.env.get("WHATSAPP_TOKEN") || "";
+let PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") || "1270437552818077";
+let GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 
 // How many studios one request goes out to. Raising this raises how many
 // businesses we message per customer, so change it deliberately.
@@ -583,7 +582,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   return { requestId, sent, studios: sentNames, skippedClosed, testCustomer, name: String(r.first_name || ""), service: `${svcEs(r.service_name)} ${reqDuration(r)} min`, when: [r.day1, r.time1].filter(Boolean).join(" "), area };
 }
 
-Deno.serve(async (req: Request) => {
+async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* allow empty */ }
@@ -738,4 +737,17 @@ Deno.serve(async (req: Request) => {
   }
 
   return new Response(JSON.stringify({ ok: true, handled: results.length, results }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
-});
+}
+
+// v18 (8 Sept): this file carries no secrets, because the repo is public. The
+// deployed function is an eight-line loader that pins one commit of this file
+// and passes the keys in. Deno.env.set is not supported in the edge runtime, so
+// they arrive as arguments rather than as a faked environment.
+export function start(opts: { opsKey: string; resendKey: string; waToken: string; phoneId?: string }) {
+  OPS_KEY = opts.opsKey;
+  RESEND_API_KEY = opts.resendKey;
+  WA_TOKEN = opts.waToken;
+  if (opts.phoneId) PHONE_ID = opts.phoneId;
+  GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
+  Deno.serve(handleRequest);
+}
