@@ -2077,8 +2077,18 @@ const handler = async (req: Request) => {
       else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
       else {
-        await helpInstead(s, from, L, text);
-        return new Response("OK", { status: 200 });
+        // v71: the regexes above cover price, how it works and zone. Everything
+        // else went to helpInstead, which is the generic "tell me the massage,
+        // the day and the zone" plus the menu. That is what 12 of the 31
+        // customers who never reached a booking last saw. Read it properly
+        // first; helpInstead is only the answer when the model has none.
+        const stepBefore = s.step;
+        if (await lastResort(s, from, L, text)) {
+          if (s.step !== stepBefore) return new Response("OK", { status: 200 });
+        } else {
+          await helpInstead(s, from, L, text);
+          return new Response("OK", { status: 200 });
+        }
       }
       switch (s.step) {
         case "await_area": await askArea(from, L); break;
@@ -2100,7 +2110,15 @@ const handler = async (req: Request) => {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
-      else { await helpInstead(s, from, L, text); return new Response("OK", { status: 200 }); }
+      else {
+        const stepBefore = s.step;
+        if (await lastResort(s, from, L, text)) {
+          if (s.step !== stepBefore) return new Response("OK", { status: 200 });
+        } else {
+          await helpInstead(s, from, L, text);
+          return new Response("OK", { status: 200 });
+        }
+      }
       await reAsk(s, from, L);
       return new Response("OK", { status: 200 });
     }
