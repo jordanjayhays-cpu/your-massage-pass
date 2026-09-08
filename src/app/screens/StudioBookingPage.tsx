@@ -2731,17 +2731,25 @@ export default function StudioBookingPage() {
                         }`} />
                     </div>
                     <div>
-                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder={c.email} type="email" inputMode="email" autoComplete="email"
-                        aria-invalid={contact.emailValid === false}
+                      <p className="text-xs font-semibold mb-2 min-[900px]:text-sm text-[#5a4736]">
+                        {EMAIL_REQUIRED_COPY[lang].label}
+                      </p>
+                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder={c.email} type="email" inputMode="email" autoComplete="email" required aria-required="true"
+                        aria-invalid={!emailValid && !!email.trim()}
                         className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                          contact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                          !emailValid && email.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
-                      {contact.emailValid === false && (
+                      {!emailValid && email.trim() ? (
                         <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
-                          {CONTACT_COPY[lang].badEmail}
+                          {EMAIL_REQUIRED_COPY[lang].error}
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#7A7068]">
+                          {EMAIL_REQUIRED_COPY[lang].helper}
                         </p>
                       )}
                     </div>
+
                     <div>
                       <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder={c.waPhone} type="tel" inputMode="tel" autoComplete="tel"
                         aria-invalid={contact.phoneValid === false}
