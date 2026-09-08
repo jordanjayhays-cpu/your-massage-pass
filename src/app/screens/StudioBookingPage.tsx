@@ -1661,7 +1661,7 @@ export default function StudioBookingPage() {
                     ready={hoDetailsReady}
                     onNext={() => hoGo(4)}
                     summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : CONTACT_COPY[lang].needContact}
+                    note={hoDetailsReady ? undefined : hoDetailsNote}
                   />
                 )}
 
@@ -1906,7 +1906,7 @@ export default function StudioBookingPage() {
                       </div>
                       {!hoDetailsReady && (
                         <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          {CONTACT_COPY[lang].needContact}
+                          {hoDetailsNote}
                         </p>
                       )}
 
@@ -1914,7 +1914,7 @@ export default function StudioBookingPage() {
                         onBack={() => hoGo(2)}
                         onNext={() => hoGo(4)}
                         disabled={!hoDetailsReady}
-                        hint={CONTACT_COPY[lang].needContact}
+                        hint={hoDetailsNote}
                       />
                     </div>
                   )}
@@ -2786,7 +2786,7 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!nameComplete || !hasContact}
-                  hint={CONTACT_COPY[lang].needContact}
+                  hint={detailsNote}
                 />
 
               </div>
