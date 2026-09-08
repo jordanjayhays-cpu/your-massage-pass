@@ -1423,6 +1423,9 @@ export default function StudioBookingPage() {
     const hoEmailValid = isValidEmail(hoEmail);
     const hoPhoneValid = hoContact.phoneValid === true;
     const hoDetailsReady = !!(hoNameComplete && hoEmailValid && hoContact.phoneValid !== false);
+    const hoDetailsNote =
+      hoNameComplete && !hoEmailValid ? EMAIL_REQUIRED_COPY[lang].error : CONTACT_COPY[lang].needContact;
+
 
 
 
@@ -2032,9 +2035,13 @@ export default function StudioBookingPage() {
 
   // Name plus at least one valid way to reach them (WhatsApp number OR email).
   const contact = contactOk(phone, email);
-  const emailValid = contact.emailValid === true;
-  const hasContact = contact.ok;
+  // Email is mandatory: WhatsApp only lets us reply for free for 24h, so a
+  // request with no email is one we cannot answer at all.
+  const emailValid = isValidEmail(email);
+  const hasContact = emailValid && contact.phoneValid !== false;
+  const detailsNote = nameComplete && !emailValid ? EMAIL_REQUIRED_COPY[lang].error : CONTACT_COPY[lang].needContact;
   const canBook = !!(service && date && time && nameComplete && hasContact);
+
 
   const prettyDay = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : null;
 
@@ -2061,16 +2068,12 @@ export default function StudioBookingPage() {
       setStepError(CONTACT_COPY[lang].badPhone);
       return;
     }
-    if (contact.emailValid === false) {
-      setStepError(CONTACT_COPY[lang].badEmail);
+    if (!emailValid) {
+      setStepError(EMAIL_REQUIRED_COPY[lang].error);
       emailRef.current?.focus();
       return;
     }
-    if (!hasContact) {
-      setStepError(CONTACT_COPY[lang].needContact);
-      emailRef.current?.focus();
-      return;
-    }
+
 
     goStep(5);
   };
