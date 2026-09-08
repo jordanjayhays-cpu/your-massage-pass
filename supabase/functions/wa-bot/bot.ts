@@ -61,6 +61,8 @@
 import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/834950d3cfa1b29f57e67f5b39be063defea05be/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+const AI_MODEL = "claude-haiku-4-5-20251001";
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
 const SUPPORT = ["support@massageclub.io"];
 const JORDAN = ["jordan@massageclub.io", "jordanjayhays@gmail.com"]; // v39: "wants a person" must reach the Gmail too (Jordan, 5 Sept)
@@ -1050,6 +1052,182 @@ function parseDiscount(text: string): number | null {
   if (n === null || n < 5 || n > 50) return null;
   return n;
 }
+// ---- v65: read the message instead of pattern-matching it ----
+// Every customer-facing failure on 8 September was a regular expression missing
+// a plain sentence. Fernando typed "Sinergia 38", "Opción 1", "Lavapies es
+// perfecto", "Dígame la dirección", "Cuánto es el precio con el 10 por ciento?"
+// and his own phone number when asked for consent. All six got the menu.
+//
+// This runs ONLY where the bot has already given up, so it can never make a
+// working path worse. Without an API key it does nothing at all and the old
+// behaviour stands, which is why it is safe to ship before the key exists.
+//
+// The model never writes to the customer. It returns a structured reading and
+// the bot answers from the same approved copy it always used, so the rules on
+// wording, signing and health claims cannot be talked around.
+type Reading = {
+  intent: string;
+  language: string;
+  question: string | null;
+  fields: { day?: string; time?: string; area?: string; service?: string; budget_eur?: number | null; studio_choice?: string; phone_consent?: boolean | null };
+  confidence: number;
+};
+const AI_SYSTEM = `You read one WhatsApp message for Massage Club, a massage booking concierge in Madrid, and return JSON only.
+
+You never write to the customer. You only report what their message means.
+
+Return exactly this shape:
+{"intent":"...","language":"es|en","question":"price|address|how_it_works|zone|hours|other|null","fields":{"day":"","time":"","area":"","service":"","budget_eur":null,"studio_choice":"","phone_consent":null},"confidence":0.0}
+
+intent is one of:
+  ask        they are asking a question (set "question")
+  choose     they are picking one of the options we offered (set fields.studio_choice to the studio name or the option number as written)
+  confirm    they are saying yes to what we proposed
+  decline    they are saying no to what we proposed
+  detail     they are supplying booking details (set the fields they gave)
+  consent    they are answering a request for permission (set fields.phone_consent true or false)
+  change     they want to move or alter an existing booking
+  cancel     they want to cancel
+  smalltalk  thanks, greetings, acknowledgements, nothing to act on
+  unclear    you cannot tell
+
+Rules:
+- Report only what the message says. Never invent a day, time, price or studio.
+- fields.time only for a clock time the customer named, in HH:MM. A duration like "1h" or "una hora" is not a time.
+- budget_eur only if they named a maximum they will pay.
+- confidence is 0 to 1. Use below 0.6 when you are guessing.
+- Output JSON and nothing else.`;
+
+async function interpret(text: string, history: Array<{ dir: string; body: string }>, state: string): Promise<Reading | null> {
+  if (!AI_KEY || !text.trim()) return null;
+  const convo = history.slice(-8).map((m) => `${m.dir === "in" ? "Customer" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
+  const user = `Where the booking stands: ${state}\n\nRecent conversation:\n${convo}\n\nThe message to read:\n${text.slice(0, 600)}`;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 6000);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal: ctl.signal,
+      headers: { "x-api-key": AI_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: AI_MODEL, max_tokens: 400, system: AI_SYSTEM, messages: [{ role: "user", content: user }] }),
+    });
+    clearTimeout(timer);
+    if (!res.ok) { console.log("[wa] interpret http", res.status, (await res.text()).slice(0, 200)); return null; }
+    const out = await res.json();
+    const raw = String(out?.content?.[0]?.text || "");
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const r = JSON.parse(m[0]) as Reading;
+    if (!r || typeof r.intent !== "string") return null;
+    r.fields = r.fields || {};
+    r.confidence = Number(r.confidence) || 0;
+    return r;
+  } catch (e) {
+    console.log("[wa] interpret failed", String(e));
+    return null;
+  }
+}
+
+// The last dozen messages either way, oldest first.
+async function recentThread(phone: string): Promise<Array<{ dir: string; body: string }>> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=12&select=direction,body`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ dir: String(x.direction || ""), body: String(x.body || "") }));
+}
+
+// A one-line description of where this person's booking stands, for the model.
+async function bookingState(phone: string): Promise<{ line: string; req: any }> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=ilike.*${digitsOf(phone)}&order=id.desc&limit=1&select=id,first_name,service_name,day1,time1,area,stage,studio_name,confirmed_day,confirmed_time,partner_id,share_ok,client_phone`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  const req = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  if (!req) return { line: "No booking on file yet.", req: null };
+  const when = [req.confirmed_day || req.day1, req.confirmed_time || req.time1].filter(Boolean).join(" ");
+  return {
+    line: `Request #${req.id}, ${req.stage}. ${req.service_name || "massage"}${when ? " for " + when : ""}${req.studio_name ? " at " + req.studio_name : ""}${req.area ? " near " + req.area : ""}.`,
+    req,
+  };
+}
+
+// The bot acts on the reading using its own approved copy. Returns true when it
+// handled the message, false to let the old fallback run.
+async function actOnReading(r: Reading, s: Session, from: string, L: string, req: any, text: string): Promise<boolean> {
+  await logEvent(from, "interpreted", { intent: r.intent, question: r.question, confidence: r.confidence, text: text.slice(0, 160) });
+  if (r.confidence < 0.6) return false;
+  const lang = r.language === "es" || r.language === "en" ? r.language : L;
+
+  if (r.intent === "ask") {
+    if (r.question === "price") { await sendText(from, COPY[lang].priceInfo); return true; }
+    if (r.question === "how_it_works") { await sendText(from, COPY[lang].howItWorks); return true; }
+    if (r.question === "address") {
+      // Only a real address from a real confirmed booking, never a guess.
+      if (req && req.partner_id && req.stage === "confirmed") {
+        const pc = await partnerCard(String(req.partner_id));
+        if (pc.address) {
+          const when = [req.confirmed_day || req.day1, req.confirmed_time || req.time1].filter(Boolean).join(" ");
+          await sendText(from, lang === "es"
+            ? `${req.studio_name || "El centro"}\n📍 ${pc.address}${when ? `\n🗓 ${when}` : ""}\n\nPagas allí, sin comisión.`
+            : `${req.studio_name || "The studio"}\n📍 ${pc.address}${when ? `\n🗓 ${when}` : ""}\n\nYou pay there, no fee from us.`);
+          return true;
+        }
+      }
+      await sendText(from, COPY[lang].zoneAnswer);
+      return true;
+    }
+    if (r.question === "zone") { await sendText(from, COPY[lang].zoneAnswer); return true; }
+    return false;
+  }
+
+  if (r.intent === "consent" && typeof r.fields.phone_consent === "boolean" && req) {
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify({ share_ok: r.fields.phone_consent }),
+    });
+    await sendText(from, r.fields.phone_consent
+      ? (lang === "es" ? "Perfecto, gracias. Se lo paso al centro." : "Perfect, thank you. I will pass it to the studio.")
+      : (lang === "es" ? "Entendido, no se lo damos. Cualquier cosa te la digo yo por aquí." : "Understood, we will not share it. Anything they need to say reaches you through me."));
+    await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} ${r.fields.phone_consent ? "AGREED" : "REFUSED"} to share their number with the studio (#${req.id}).`, from);
+    return true;
+  }
+
+  if (r.intent === "smalltalk") { await sendText(from, COPY[lang].ackReply); return true; }
+
+  // choose, confirm, decline, change and cancel all move money or a partner's
+  // diary, so a person decides. The difference from before is that Jordan is
+  // told what the customer actually meant instead of "bot answered with menu".
+  if (["choose", "confirm", "decline", "change", "cancel"].includes(r.intent)) {
+    const num = digitsOf(from);
+    await sendText(from, lang === "es"
+      ? "Recibido, lo miro ahora mismo y te confirmo en un momento."
+      : "Got it, I am checking that now and will confirm in a moment.");
+    await notifyJordanWa(`${s.wa_name || "+" + num} wants to ${r.intent.toUpperCase()}${r.fields.studio_choice ? " (" + r.fields.studio_choice + ")" : ""}${req ? " on #" + req.id : ""}: ${text.slice(0, 140)}`, from);
+    await founderCard(`🔔 ${s.wa_name || "+" + num} wants to ${r.intent}${req ? " · #" + req.id : ""}`, {
+      badge: r.intent.toUpperCase(),
+      title: `${s.wa_name || "The customer"} said something the bot will not act on alone`,
+      paras: [
+        `Read as: ${r.intent}${r.fields.studio_choice ? `, choosing "${r.fields.studio_choice}"` : ""}${r.fields.day ? `, day ${r.fields.day}` : ""}${r.fields.time ? `, time ${r.fields.time}` : ""}${r.fields.budget_eur ? `, budget ${r.fields.budget_eur} EUR` : ""} (confidence ${r.confidence}).`,
+        `They were told we are looking at it. Nothing was promised to a studio.`,
+      ],
+      quote: text, waNum: num, to: JORDAN,
+    });
+    s.step = "human"; await saveSession(s);
+    return true;
+  }
+  return false;
+}
+
+// The single entry point the give-up branches call.
+async function lastResort(s: Session, from: string, L: string, text: string): Promise<boolean> {
+  if (!AI_KEY || !text) return false;
+  try {
+    const [thread, st] = await Promise.all([recentThread(from), bookingState(from)]);
+    const r = await interpret(text, thread, st.line);
+    if (!r) return false;
+    return await actOnReading(r, s, from, L, st.req, text);
+  } catch (e) {
+    console.log("[wa] lastResort failed", String(e));
+    return false;
+  }
+}
+
 // ---- v63: reaching a customer when WhatsApp cannot ----
 // WhatsApp only carries free text within 24 hours of the customer's last
 // message. Deyanira Ramirez arrived through the website and never wrote to the
@@ -1572,7 +1750,8 @@ async function sendStatus(to: string, L: string, phone: string) {
   await sendText(to, COPY[L].statusLine(trSvc(b.service_name || "Massage", L), when, studio, stageTxt));
 }
 
-export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string } = {}) {
+export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string } = {}) {
+  if (cfg.aiKey) AI_KEY = cfg.aiKey;
   if (cfg.waToken) WA_TOKEN = cfg.waToken;
   if (cfg.resendKey) RESEND_API_KEY = cfg.resendKey;
   if (cfg.opsKey) OPS_KEY = cfg.opsKey;
@@ -2251,6 +2430,8 @@ const handler = async (req: Request) => {
           // v39: a new request typed after a finished one ("otro masaje el sábado").
           // The finished booking's answers are cleared first so the sentence is read fresh.
           await continueFromKnown(s, from, L);
+        } else if (text && await lastResort(s, from, L, text)) {
+          // v65: the model read it. Nothing more to do here.
         } else if (text && (/\?/.test(text) || text.trim().split(/\s+/).length >= 3)) {
           // v39: a question we cannot place gets an answer and the menu, never a hand-off.
           await sendText(from, COPY[L].noHuman);
