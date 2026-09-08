@@ -75,8 +75,13 @@ export function parseOfferedTime(t: string): string {
   if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return ""; // opening hours range, not an offer
   let m = s.match(/\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b/);
   if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
-  m = s.match(/\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])/i) || s.match(/\b([01]?\d|2[0-3])\s*h\b/i);
+  m = s.match(/\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])/i);
   if (m) return `${m[1].padStart(2, "0")}:00`;
+  // A bare "18h" is a time. A bare "1h" is a duration, and no studio in Madrid
+  // offers 01:00: Centro Aloha's "si coges 1h" (if he takes the hour) was read
+  // as a 01:00 slot and forwarded to a customer on 8 September.
+  m = s.match(/\b([01]?\d|2[0-3])\s*h\b/i);
+  if (m && parseInt(m[1], 10) >= 8) return `${m[1].padStart(2, "0")}:00`;
   return "";
 }
 export const AUTOREPLY_RE = /gracias por (contactar|comunicarte|comunicarse|escribir|tu mensaje)|te responderemos|responderemos lo antes|te atenderemos|nos pondremos en contacto|contestar lo antes|hemos recibido tu mensaje|ahora no podemos responder|en este momento estamos ocupados|get back to you|currently busy|horario de atenci[o\u00f3]n|thank you for contacting|thanks for your message/i;
