@@ -1016,12 +1016,86 @@ function parseDiscount(text: string): number | null {
   if (n === null || n < 5 || n > 50) return null;
   return n;
 }
+// ---- v63: reaching a customer when WhatsApp cannot ----
+// WhatsApp only carries free text within 24 hours of the customer's last
+// message. Deyanira Ramirez arrived through the website and never wrote to the
+// bot at all, so six messages about a slot Sinergia38 was really holding for
+// her bounced with 131047 while her email address sat in the same row.
+const CUSTOMER_WINDOW_MS = 23.5 * 3600e3;
+async function waWindowOpen(phone: unknown): Promise<boolean> {
+  const p = digitsOf(String(phone || ""));
+  if (!p) return false;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${p}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  const last = Array.isArray(rows) && rows[0]?.created_at ? Date.parse(String(rows[0].created_at)) : 0;
+  return last > 0 && Date.now() - last < CUSTOMER_WINDOW_MS;
+}
+async function emailCustomer(req: any, subject: string, body: string): Promise<boolean> {
+  const to = String(req?.contact_email || "").trim();
+  if (!to || !RESEND_API_KEY) return false;
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:22px 34px 8px;"><p style="margin:0;color:${C.ink};font-size:15px;line-height:1.65;white-space:pre-wrap;">${esc(body)}</p></td></tr><tr><td style="padding:8px 34px 26px;"><div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div><p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, html, text: body }),
+  }).catch(() => null);
+  const ok = !!res && res.ok;
+  if (!ok) console.log("[wa] customer email failed", to);
+  return ok;
+}
+// Say something to a customer on whichever channel can actually carry it, and
+// report which one did. "none" means they were not told, which is a fact the
+// caller has to act on rather than ignore.
+async function reachCustomer(req: any, text: string, subject: string): Promise<"whatsapp" | "email" | "none"> {
+  const phone = digitsOf(String(req?.client_phone || ""));
+  if (phone && await waWindowOpen(phone) && await sendText(phone, text)) return "whatsapp";
+  if (await emailCustomer(req, subject, text)) return "email";
+  // No window on record and no email: the send may still work, so try it.
+  if (phone && await sendText(phone, text)) return "whatsapp";
+  return "none";
+}
+// An exact clock time. A band ("mañana (10-13)") or "Flexible" is not something
+// a studio can be told is booked.
+const EXACT_TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
 // One studio takes the booking: the request is claimed, the others stood down,
 // the studio gets the card, the customer the address (and the discount, if any).
 async function awardWinner(req: any, partner: { id: string; business_name: string } | null, from: string, discountPct: number | null): Promise<boolean> {
   const requestId = Number(req.id);
   const L = req.languages === "es" ? "es" : "en";
   const when = [req.day1, req.time1].filter(Boolean).join(" ");
+  // v63: two things must be true before a studio hears the word confirmed.
+  // There has to be an exact time, and the customer has to be reachable on some
+  // channel. Deyanira's request said "jueves, 10 sept, mañana (10-13)" with no
+  // time at all, and Sinergia38 was sent "Reserva confirmada" for her while she
+  // had never written us a single word. A confirmation the customer never
+  // receives is not a booking, it is a no-show waiting to happen.
+  const exactTime = EXACT_TIME_RE.test(String(req.confirmed_time || req.time1 || "").trim());
+  const reachable = !!String(req.contact_email || "").trim() || await waWindowOpen(req.client_phone);
+  if (!exactTime || !reachable) {
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&stage=neq.confirmed`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify({
+        stage: "studio_replied",
+        studio_reply: `${partner ? partner.business_name : from}: disponible, sin confirmar (${exactTime ? "cliente ilocalizable" : "sin hora exacta"})`,
+        stage_updated_at: new Date().toISOString(),
+      }),
+    });
+    await sendText(from, exactTime
+      ? "Gracias. Antes de confirmarlo tengo que hablar con el cliente. En cuanto me diga algo os aviso, no reservéis nada todavía. Jordan, Massage Club"
+      : "Gracias. Todavía no tengo la hora exacta del cliente, así que aún no puedo dar la reserva por hecha. Decidme qué hora os viene bien y se la propongo. Jordan, Massage Club");
+    await founderCard(`⚠️ Not confirmed: ${exactTime ? "customer unreachable" : "no exact time"} · #${requestId}`, {
+      badge: "HELD",
+      title: `${partner ? partner.business_name : "The studio"} said yes, but this is not a booking`,
+      paras: [
+        exactTime
+          ? `${req.first_name || "The customer"} cannot be reached on WhatsApp and we have no email for them, so they cannot be told. The studio was asked to hold off.`
+          : `${req.first_name || "The customer"} never gave an exact time (${String(req.time1 || "none")}), so there is nothing to confirm. The studio was asked which time suits them.`,
+        `Nothing was promised to the studio. Request #${requestId} is waiting.`,
+      ],
+      waNum: from,
+    });
+    return false;
+  }
   const studioPrefill = `Hola, soy Jordan de Massage Club, sobre la reserva de ${req.first_name || "nuestro cliente"}${when ? " (" + when + ")" : ""}: `;
   // v35: the request is fanned out to several studios with nobody assigned, so
   // the claim both wins the booking and names the studio. The stage filter makes
@@ -1056,7 +1130,16 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
   await sendText(from, studioConfirmCard(req, clientNum, pc, discountPct));
   if (clientNum) {
     const discountLine = discountPct ? (L === "es" ? `\n💶 ${discountPct}% de descuento sobre la tarifa del centro, pagas allí.` : `\n💶 ${discountPct}% off the studio's price, you pay there.`) : "";
-    await sendText(clientNum, COPY[L].studioConfirmed(req.first_name || "", req.studio_name || (L === "es" ? "el centro" : "the studio"), trSvcLow(req.service_name || "massage", L), when) + (pc.address ? `\n📍 ${pc.address}` : "") + discountLine);
+    const confirmText = COPY[L].studioConfirmed(req.first_name || "", req.studio_name || (L === "es" ? "el centro" : "the studio"), trSvcLow(req.service_name || "massage", L), when) + (pc.address ? `\n📍 ${pc.address}` : "") + discountLine;
+    const via = await reachCustomer(req, confirmText, L === "es" ? `Reserva confirmada: ${req.studio_name || "tu centro"}, ${when}` : `Confirmed: ${req.studio_name || "your studio"}, ${when}`);
+    if (via === "none") {
+      await founderCard(`⚠️ ${req.first_name || "The customer"} could not be told about #${requestId}`, {
+        badge: "UNDELIVERED",
+        title: "The booking is confirmed but the customer has not heard it",
+        paras: [`${req.studio_name || "The studio"} is expecting them at ${when}. WhatsApp is outside its 24 hour window and there is no email on file.`],
+        waNum: clientNum,
+      });
+    }
     // Email-skippers get one ask at the happiest moment: booking confirmed.
     if (!req.contact_email) {
       const cs = await getSession(clientNum);
