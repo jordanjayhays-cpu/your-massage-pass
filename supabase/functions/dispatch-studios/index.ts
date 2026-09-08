@@ -35,6 +35,11 @@
 //   is what the studio reads, not a guess from "Hoy"/"Mañana" at send time.
 // v14 (6 Sept): { send: { phone, text } } plain text to any number that has
 //   written to the bot, for the watch to answer someone the bot left hanging.
+// v17 (8 Sept): a repeat from the same customer that carries new information is
+//   a change, not a duplicate. The old studios are stood down, the old request
+//   is closed, and the new one goes out. Fernando restated his service once and
+//   his day twice on 7 Sept and all three were binned while he was told the
+//   studios were being asked.
 // v16 (6 Sept): a studio whose opening hours say it is closed on the day (or at
 //   the time) the customer asked for is not asked. Calma Madrid, closed on
 //   Sundays with hours on file since 18 Aug, was asked for Sunday slots three
@@ -372,6 +377,60 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
 // trying to recruit as partners, so silence would cost us more than it saves.
 // v6: studios that said yes but did not give the best offer ("accepted") are
 // stood down too, with a line that thanks them for the yes.
+// v17: one note to every studio still in play on a request, free text inside
+// their 24h window and aviso_centro_v1 outside it. Lifted out of the notify
+// handler so the amendment path can stand studios down without a second call.
+async function notifyStudios(requestId: number, text: string, short?: string, onlyIds?: string[]) {
+  const reqRows = await sq(`whatsapp_requests?id=eq.${requestId}&select=id,first_name,time1,confirmed_time`);
+  const rq = (Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {}) as Record<string, unknown>;
+  const only = Array.isArray(onlyIds) && onlyIds.length ? new Set(onlyIds.map(String)) : null;
+  const rows = await sq(`request_dispatch?request_id=eq.${requestId}&outcome=in.(pending,accepted,won)&select=id,partner_id,phone,outcome`);
+  const out: Array<{ phone: string; how: string; ok: boolean }> = [];
+  for (const row of (Array.isArray(rows) ? rows : [])) {
+    if (only && !only.has(String(row.partner_id))) continue;
+    const to = String(row.phone || "");
+    const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
+    const openWindow = Array.isArray(lastIn) && lastIn[0]?.created_at && (Date.now() - Date.parse(lastIn[0].created_at)) < 23.5 * 3600e3;
+    let ok = false; let how = "text";
+    if (openWindow) ok = await sendText(to, text);
+    if (!ok) {
+      how = "template";
+      const params = [param(String(rq.first_name || "el cliente"), 40), param(String(rq.confirmed_time || rq.time1 || "-"), 20), param(String(short || text), 300)];
+      const res = await fetch(GRAPH, {
+        method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name: "aviso_centro_v1", language: { code: "es" }, components: [{ type: "body", parameters: params.map((x) => ({ type: "text", text: x })) }] } }),
+      });
+      ok = res.ok;
+      if (ok) await logMsg(to, `[aviso_centro_v1] ${params.join(" | ")}`); else console.log("[dispatch] notify template failed", res.status, (await res.text()).slice(0, 200));
+    }
+    out.push({ phone: to, how, ok });
+  }
+  return out;
+}
+
+// v17: two requests from the same person are the same booking when the four
+// fields a studio actually reads agree. A blank on the newer row means "not
+// restated", not "changed": the web form and the WhatsApp chat it opens fill in
+// different blanks, which is why they must not read as a change.
+const normField = (v: unknown) => String(v ?? "").toLowerCase().replace(/[.,;:!¡?¿]/g, " ").replace(/\s+/g, " ").trim();
+function bookingDiff(fresh: Record<string, unknown>, sib: Record<string, unknown>): string[] {
+  const diff: string[] = [];
+  for (const [col, label] of [["service_name", "service"], ["day1", "day"], ["time1", "time"], ["area", "area"]] as Array<[string, string]>) {
+    const a = normField(fresh[col]);
+    const b = normField(sib[col]);
+    if (!a || a === b) continue;
+    if (b && (a.includes(b) || b.includes(a))) continue; // "Deep tissue" vs "Deep tissue massage"
+    diff.push(b ? `${label} ${sib[col]} -> ${fresh[col]}` : `${label} now ${fresh[col]}`);
+  }
+  return diff;
+}
+
+// A repeat this soon after the first fan-out is the same arrival, not a change.
+const SAME_ARRIVAL_MS = 10 * 60 * 1000;
+// Stages a bot does not unwind on its own: a studio has been promised a slot,
+// and only the customer's own words move a confirmed booking.
+const LOCKED_STAGES = new Set(["confirmed", "no_show"]);
+
 async function standDownOthers(requestId: number, winnerPartnerId: string | null) {
   const rows = await sq(`request_dispatch?request_id=eq.${requestId}&outcome=in.(pending,accepted)&select=id,partner_id,phone,outcome`);
   if (!Array.isArray(rows) || !rows.length) return 0;
@@ -554,30 +613,7 @@ Deno.serve(async (req: Request) => {
   if (body.notify && typeof body.notify === "object") {
     const n = body.notify as { request_id?: number; text?: string; short?: string; partner_ids?: string[] };
     if (!n.request_id || !n.text) return new Response(JSON.stringify({ error: "notify.request_id and notify.text required" }), { status: 200, headers: { "Content-Type": "application/json" } });
-    const reqRows = await sq(`whatsapp_requests?id=eq.${Number(n.request_id)}&select=id,first_name,time1,confirmed_time`);
-    const rq = Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {};
-    const only = Array.isArray(n.partner_ids) && n.partner_ids.length ? new Set(n.partner_ids.map(String)) : null;
-    const rows = await sq(`request_dispatch?request_id=eq.${Number(n.request_id)}&outcome=in.(pending,accepted,won)&select=id,partner_id,phone,outcome`);
-    const out: Array<{ phone: string; how: string; ok: boolean }> = [];
-    for (const row of (Array.isArray(rows) ? rows : [])) {
-      if (only && !only.has(String(row.partner_id))) continue;
-      const to = String(row.phone || "");
-      const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
-      const openWindow = Array.isArray(lastIn) && lastIn[0]?.created_at && (Date.now() - Date.parse(lastIn[0].created_at)) < 23.5 * 3600e3;
-      let ok = false; let how = "text";
-      if (openWindow) ok = await sendText(to, String(n.text));
-      if (!ok) {
-        how = "template";
-        const params = [param(String(rq.first_name || "el cliente"), 40), param(String(rq.confirmed_time || rq.time1 || "-"), 20), param(String(n.short || n.text), 300)];
-        const res = await fetch(GRAPH, {
-          method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name: "aviso_centro_v1", language: { code: "es" }, components: [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }] } }),
-        });
-        ok = res.ok;
-        if (ok) await logMsg(to, `[aviso_centro_v1] ${params.join(" | ")}`); else console.log("[dispatch] notify template failed", res.status, (await res.text()).slice(0, 200));
-      }
-      out.push({ phone: to, how, ok });
-    }
+    const out = await notifyStudios(Number(n.request_id), String(n.text), n.short, n.partner_ids);
     return new Response(JSON.stringify({ ok: true, notified: out }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
   }
   // v14: a plain text to any number that has written to the bot (ops key only).
@@ -649,15 +685,44 @@ Deno.serve(async (req: Request) => {
     const phoneDigits = String(r.client_phone || "").replace(/[^0-9]/g, "");
     if (!dryRun && !forceDispatch && !extra && phoneDigits.length >= 9) {
       const since24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-      const sib = await sq(`whatsapp_requests?id=neq.${r.id}&client_phone=ilike.*${phoneDigits}&dispatched_at=not.is.null&dispatch_count=gt.0&stage=neq.dismissed&created_at=gte.${since24}&select=id,stage&limit=1`);
-      if (Array.isArray(sib) && sib[0]) {
-        await sq(`whatsapp_requests?id=eq.${r.id}`, {
+      const sibs = await sq(`whatsapp_requests?id=neq.${r.id}&client_phone=ilike.*${phoneDigits}&dispatched_at=not.is.null&dispatch_count=gt.0&stage=neq.dismissed&created_at=gte.${since24}&order=id.desc&select=id,stage,stage_note,service_name,day1,time1,area,dispatched_at&limit=1`);
+      const sib = (Array.isArray(sibs) && sibs[0] ? sibs[0] : null) as Record<string, unknown> | null;
+      if (sib) {
+        const sinceDispatch = Date.now() - Date.parse(String(sib.dispatched_at || ""));
+        const sameArrival = Number.isFinite(sinceDispatch) && sinceDispatch < SAME_ARRIVAL_MS;
+        const diff = sameArrival ? [] : bookingDiff(r, sib);
+        if (!diff.length) {
+          await sq(`whatsapp_requests?id=eq.${r.id}`, {
+            method: "PATCH", headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({ dispatched_at: new Date().toISOString(), dispatch_count: 0, stage: "dismissed", stage_note: `duplicate of #${sib.id} (same customer within 24h, nothing changed), not re-dispatched` }),
+          });
+          console.log(`[dispatch] req=${r.id} duplicate of #${sib.id}, skipped`);
+          results.push({ requestId: r.id, skipped: `duplicate of #${sib.id}` });
+          continue;
+        }
+        if (LOCKED_STAGES.has(String(sib.stage || ""))) {
+          // A confirmed booking is frozen. Nothing new is promised to the studio
+          // and nothing is unwound until a person has read what the customer said.
+          await sq(`whatsapp_requests?id=eq.${r.id}`, {
+            method: "PATCH", headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({ dispatched_at: new Date().toISOString(), dispatch_count: 0, stage: "needs_review", stage_note: `change to confirmed #${sib.id} (${diff.join("; ")}), held for a person`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
+          });
+          await founderEmail(`Change on a confirmed booking, #${sib.id}`, [
+            `${String(r.first_name || "The customer")} has asked for something different on a booking that is already confirmed.<br>${diff.join("<br>")}<br>No studio was told anything. Request #${r.id} is waiting for you.`,
+          ]);
+          results.push({ requestId: r.id, skipped: `change to confirmed #${sib.id}, held for a person` });
+          continue;
+        }
+        // A change. The studios asked for the old slot are told it is off, the
+        // old request is closed, and the new one goes out fresh below.
+        const notified = await notifyStudios(Number(sib.id),
+          "Gracias por vuestra paciencia. El cliente ha cambiado la cita, así que la anterior queda anulada y no hace falta que hagáis nada. Os escribo ahora con los datos nuevos. Jordan, de Massage Club",
+          "el cliente ha cambiado la cita, la anterior queda anulada, no hace falta que hagáis nada");
+        await sq(`whatsapp_requests?id=eq.${sib.id}`, {
           method: "PATCH", headers: { Prefer: "return=minimal" },
-          body: JSON.stringify({ dispatched_at: new Date().toISOString(), dispatch_count: 0, stage: "dismissed", stage_note: `duplicate of #${sib[0].id} (same customer within 24h), not re-dispatched` }),
+          body: JSON.stringify({ stage: "cancelled", stage_updated_at: new Date().toISOString(), stage_note: `${String(sib.stage_note || "")}; superseded by #${r.id} (${diff.join("; ")}), ${notified.filter((x) => x.ok).length} of ${notified.length} studios stood down`.slice(0, 500) }),
         });
-        console.log(`[dispatch] req=${r.id} duplicate of #${sib[0].id}, skipped`);
-        results.push({ requestId: r.id, skipped: `duplicate of #${sib[0].id}` });
-        continue;
+        console.log(`[dispatch] req=${r.id} supersedes #${sib.id}: ${diff.join("; ")}`);
       }
     }
     results.push(await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds }));
