@@ -792,7 +792,23 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // está lleno", "no podemos") within two days of being asked. They never got
     // the stand-down if they had not written before, so this is the first time
     // the bot can actually tell them. Log the answer, thank them, close.
+    // v63: a studio holding a live booking of ours is not writing about a dead
+    // request. Sinergia38 asked for the client's email while a confirmed
+    // booking of theirs for the next day was on our books, and the bot told
+    // them "the client cancelled", because a stood-down row from an older
+    // request of the same customer was the newest thing the next query saw.
+    // Telling a partner their booking is off when it is not is worse than
+    // saying nothing, so a live booking closes that branch entirely.
+    let liveBooking: any = null;
     if (!req) {
+      const lb = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=eq.confirmed&order=stage_updated_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,client_phone,languages,contact_email,area,share_ok,stage_updated_at`, { headers: H() });
+      const lbs = await lb.json().catch(() => []);
+      const cand = Array.isArray(lbs) && lbs[0] ? lbs[0] : null;
+      // A booking from last month is not what they are writing about.
+      const age = cand ? Date.now() - Date.parse(String(cand.stage_updated_at || "")) : Infinity;
+      if (cand && age < 14 * 24 * 3600e3) liveBooking = cand;
+    }
+    if (!req && !liveBooking) {
       const since = new Date(Date.now() - 48 * 3600e3).toISOString();
       const sd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(stood_down,lost,declined,expired)&created_at=gte.${since}&order=created_at.desc&limit=1&select=id,request_id,outcome`, { headers: H() });
       const sdr = await sd.json().catch(() => []);
@@ -833,6 +849,24 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         paras: [`About ${req.first_name || "the customer"}'s ${req.service_name || "massage"} (${[req.day1, req.time1].filter(Boolean).join(" ")}):`],
         quote: freeText,
         waNum: from, waLabel: "Reply to the studio", prefill: studioPrefill,
+      });
+    } else if (liveBooking) {
+      // They have a confirmed booking with us, so this is about that. Say
+      // nothing to them: answering a question we have not read is how the
+      // false cancellation happened. Jordan gets it with the booking attached.
+      const lbWhen = [liveBooking.confirmed_day || liveBooking.day1, liveBooking.confirmed_time || liveBooking.time1].filter(Boolean).join(" ");
+      await notifyJordanWa(`${partner.business_name} wrote about ${liveBooking.first_name || "a client"}'s confirmed booking (${lbWhen}): ${freeText.slice(0, 160)}`, from);
+      await founderCard(`💬 ${partner.business_name} wrote about a confirmed booking · #${liveBooking.id}`, {
+        badge: "STUDIO MESSAGE",
+        title: `${partner.business_name} has a question about ${liveBooking.first_name || "the customer"}`,
+        paras: [
+          `${liveBooking.service_name || "Massage"} on ${lbWhen || "a day not recorded"}. Nothing was said back to them automatically.`,
+          liveBooking.share_ok
+            ? `The customer agreed to share their details: ${liveBooking.client_phone || "no phone on file"}.`
+            : `The customer has NOT agreed to share their phone or email, so do not pass either on without asking them first.`,
+        ],
+        quote: freeText,
+        waNum: from, waLabel: "Reply to the studio", prefill: `Hola, soy Jordan de Massage Club, sobre la reserva de ${liveBooking.first_name || "nuestro cliente"}: `,
       });
     } else {
       await notifyJordanWa(`${partner.business_name} wrote and no open request matched: ${freeText.slice(0, 160)}`, from);
