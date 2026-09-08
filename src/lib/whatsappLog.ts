@@ -1,4 +1,6 @@
 import { supabase } from "@/lib/supabase";
+import { isValidEmail } from "@/lib/contactValidation";
+
 
 export type WhatsappRequestLog = {
   partner_id?: string | null;
@@ -52,6 +54,13 @@ export async function logWhatsappRequestResult(
   row: WhatsappRequestLog,
 ): Promise<{ id: string | null; error: string | null }> {
   try {
+    // Safety net: a request with no email is unreachable, because WhatsApp only
+    // lets us reply for free within 24h of the customer writing to us. Refuse
+    // the insert rather than create a request we cannot answer.
+    const emailCandidate = clean(row.contact_email);
+    if (!emailCandidate || !isValidEmail(emailCandidate)) {
+      return { id: null, error: "email_required" };
+    }
     // whatsapp_requests.id is a BIGINT with an auto-increment default, so the
     // client must never send it. The table also has an anon INSERT policy but
     // intentionally NO SELECT policy (customer PII), so chaining .select() on
@@ -60,6 +69,7 @@ export async function logWhatsappRequestResult(
     // to an account later without ever reading it back.
     const clientRef = crypto.randomUUID();
     const payload: Record<string, unknown> = {
+
       partner_id: uuidOrNull(row.partner_id ?? null),
       slug: clean(row.slug),
       studio_name: clean(row.studio_name) || "Unknown studio",

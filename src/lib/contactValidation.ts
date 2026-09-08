@@ -25,8 +25,57 @@ export function isValidPhone(value: string): boolean {
   }
 }
 
+/**
+ * Copy for the now mandatory email field. Email is our only reliable channel
+ * once the 24 hour WhatsApp reply window closes, so every booking request
+ * form asks for it and blocks submission without a valid one.
+ */
+export const EMAIL_REQUIRED_COPY = {
+  en: {
+    label: "Your email",
+    helper:
+      "Your confirmation goes here as well as WhatsApp, so nothing gets lost if we cannot reach you there.",
+    error: "We need a valid email so your confirmation reaches you.",
+  },
+  es: {
+    label: "Tu email",
+    helper:
+      "Ahí te llega la confirmación además de por WhatsApp, así no se pierde nada si no podemos contactarte por ahí.",
+    error: "Necesitamos un email válido para que te llegue la confirmación.",
+  },
+  fr: {
+    label: "Votre email",
+    helper:
+      "Votre confirmation arrive ici en plus de WhatsApp, comme ça rien ne se perd si on ne peut pas vous joindre là bas.",
+    error: "Il nous faut un email valide pour que votre confirmation vous parvienne.",
+  },
+  de: {
+    label: "Deine E-Mail",
+    helper:
+      "Deine Bestätigung kommt hierhin und zusätzlich per WhatsApp, so geht nichts verloren, falls wir dich dort nicht erreichen.",
+    error: "Wir brauchen eine gültige E-Mail, damit deine Bestätigung ankommt.",
+  },
+  it: {
+    label: "La tua email",
+    helper:
+      "La conferma arriva qui oltre che su WhatsApp, così non si perde nulla se non riusciamo a contattarti lì.",
+    error: "Ci serve un'email valida perché ti arrivi la conferma.",
+  },
+  pt: {
+    label: "O teu email",
+    helper:
+      "A confirmação chega aqui além do WhatsApp, assim não se perde nada se não conseguirmos falar contigo por lá.",
+    error: "Precisamos de um email válido para que a confirmação te chegue.",
+  },
+  zh: {
+    label: "你的邮箱",
+    helper: "确认信息除了通过 WhatsApp 发送，也会发到这里，即使联系不上你也不会遗漏。",
+    error: "我们需要一个有效的邮箱，确认信息才能发给你。",
+  },
+} as const;
+
 /** Contact is usable when there is at least one valid channel and no invalid one. */
-export function contactOk(phone: string, email: string) {
+
   const p = (phone ?? "").trim();
   const e = (email ?? "").trim();
   const phoneValid = p ? isValidPhone(p) : null;
