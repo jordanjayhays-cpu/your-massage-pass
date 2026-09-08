@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/9d732261ddaf3ae27f4914664318195960a62e7e/supabase/functions/wa-bot/copy.ts";
+import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/834950d3cfa1b29f57e67f5b39be063defea05be/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
@@ -743,7 +743,13 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // so look the studio up through what we asked them before falling back to
     // an already assigned booking.
     let req: any = null;
-    const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,won)&order=created_at.desc&limit=1&select=id,request_id`, { headers: H() });
+    // The row must be recent and must include the ones we have already marked
+    // accepted, or a studio's reply lands on whatever else of theirs is still
+    // open. Centro Aloha answered about Fernando on 8 September and the bot
+    // attached it to David's request from the 5th, which was still pending, and
+    // offered David a slot at 01:00.
+    const drSince = new Date(Date.now() - 48 * 3600e3).toISOString();
+    const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${drSince}&order=created_at.desc&limit=1&select=id,request_id`, { headers: H() });
     const drows = await dr.json().catch(() => []);
     const drow = Array.isArray(drows) && drows[0] ? drows[0] : null;
     if (drow) {
@@ -998,7 +1004,10 @@ async function patchDispatch(id: string, body: Record<string, unknown>) {
 // "10%", "un 10 %", "10 por ciento", "diez por ciento de descuento".
 function parseDiscount(text: string): number | null {
   const t = String(text || "").toLowerCase();
-  const m = t.match(/(\d{1,2})\s*(%|por\s*ciento|porciento)/);
+  // "10/" is a slipped "10%": Centro Aloha wrote "le hacemos el 10/ de
+  // descuento" and it read as no discount at all, so the message fell through
+  // to the free-text branch and was attached to the wrong request.
+  const m = t.match(/(\d{1,2})\s*(%|\/|por\s*ciento|porciento)/);
   let n: number | null = m ? parseInt(m[1], 10) : null;
   if (n === null && /descuento|dto|por\s*ciento/.test(t)) {
     const words: Record<string, number> = { cinco: 5, diez: 10, quince: 15, veinte: 20, veinticinco: 25, treinta: 30 };
