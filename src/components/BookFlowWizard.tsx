@@ -6,7 +6,7 @@ import { trackEvent } from "@/lib/siteVisit";
 import { trackFunnel } from "@/lib/funnel";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
-import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
+import { contactOk, CONTACT_COPY, EMAIL_REQUIRED_COPY, isValidEmail } from "@/lib/contactValidation";
 import { DealsConfirmationLine } from "@/components/DealsLink";
 import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 import AccountOfferBlock from "@/components/AccountOfferBlock";
@@ -647,6 +647,8 @@ export default function BookFlowWizard({
 }) {
   const t = BOOK_FLOW_COPY[lang] ?? BOOK_FLOW_COPY.en;
   const cc = CONTACT_COPY[lang as "en" | "es"] ?? CONTACT_COPY.en;
+  const ec = EMAIL_REQUIRED_COPY[lang as "en" | "es"] ?? EMAIL_REQUIRED_COPY.en;
+
 
 
   const [step, setStep] = useState(1);
@@ -813,7 +815,10 @@ export default function BookFlowWizard({
 
   const contact = contactOk(phone, email);
   const nameComplete = !!firstName.trim() && !!lastName.trim();
-  const canSubmit = nameComplete && contact.ok;
+  // Email is mandatory: it is the only channel we can always reach them on.
+  const emailValid = isValidEmail(email);
+  const canSubmit = nameComplete && emailValid && contact.phoneValid !== false;
+
 
   // One-line running summary shown in the sticky bar (e.g. "Deep tissue · Today · Centro").
   const stickySummary = useMemo(() => {
@@ -926,8 +931,8 @@ export default function BookFlowWizard({
     trackFunnel("wizard_submit_attempt", { source, lang, massage: massage || null, area: areaValue || null, people });
     if (!firstName.trim() || !lastName.trim()) return fail(t.missName, nameRef);
     if (contact.phoneValid === false) return fail(cc.badPhone, contactRef);
-    if (contact.emailValid === false) return fail(cc.badEmail, contactRef);
-    if (!contact.ok) return fail(cc.needContact, contactRef);
+    if (!emailValid) return fail(ec.error, contactRef);
+
 
 
     setStatus("loading");
@@ -1306,19 +1311,26 @@ export default function BookFlowWizard({
                 )}
               </div>
               <div>
-                <Label htmlFor="bf-email" className="text-sm text-foreground">{t.email}</Label>
+                <Label htmlFor="bf-email" className="text-sm text-foreground">{ec.label}</Label>
                 <Input
                   id="bf-email"
                   type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  required
+                  aria-required="true"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={contact.emailValid === false}
-                  className={`mt-1.5 h-12 text-base ${contact.emailValid === false ? "border-2 border-destructive" : ""}`}
+                  aria-invalid={!emailValid && !!email.trim()}
+                  className={`mt-1.5 h-12 text-base ${!emailValid && email.trim() ? "border-2 border-destructive" : ""}`}
                 />
-                {contact.emailValid === false && (
-                  <p className="mt-1.5 text-sm text-destructive">{cc.badEmail}</p>
+                {!emailValid && email.trim() ? (
+                  <p className="mt-1.5 text-sm text-destructive">{ec.error}</p>
+                ) : (
+                  <p className="mt-1.5 text-sm text-muted-foreground">{ec.helper}</p>
                 )}
               </div>
+
             </div>
 
           </div>
@@ -1352,7 +1364,7 @@ export default function BookFlowWizard({
               {status === "loading" ? t.sending : t.submit}
             </button>
             {!canSubmit && (
-              <p className="mt-2 text-center text-sm text-muted-foreground">{cc.needContact}</p>
+              <p className="mt-2 text-center text-sm text-muted-foreground">{nameComplete && !emailValid ? ec.error : cc.needContact}</p>
             )}
           </>
         )}

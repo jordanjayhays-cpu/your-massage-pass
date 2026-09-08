@@ -16,7 +16,7 @@ import { logWhatsappRequest, logWhatsappRequestResult } from "@/lib/whatsappLog"
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
-import { contactOk, CONTACT_COPY } from "@/lib/contactValidation";
+import { contactOk, CONTACT_COPY, EMAIL_REQUIRED_COPY, isValidEmail } from "@/lib/contactValidation";
 import { useFlowLang, pickCopy, type FlowLang } from "@/lib/flowLang";
 import { shortWeekday, longWeekday, shortDate, longDate, timeLabel, formatPrice, formatMinutes, parseISODate, localeOf } from "@/lib/localeFormat";
 import { localizedServiceName } from "@/lib/serviceTypeI18n";
@@ -1419,9 +1419,14 @@ export default function StudioBookingPage() {
     };
 
     const hoContact = contactOk(hoPhone, hoEmail);
-    const hoEmailValid = hoContact.emailValid === true;
+    // Email is mandatory: WhatsApp only lets us reply for free for 24h.
+    const hoEmailValid = isValidEmail(hoEmail);
     const hoPhoneValid = hoContact.phoneValid === true;
-    const hoDetailsReady = !!(hoNameComplete && hoContact.ok);
+    const hoDetailsReady = !!(hoNameComplete && hoEmailValid && hoContact.phoneValid !== false);
+    const hoDetailsNote =
+      hoNameComplete && !hoEmailValid ? EMAIL_REQUIRED_COPY[lang].error : CONTACT_COPY[lang].needContact;
+
+
 
 
     const trackWhatsappIntent = async () => {
@@ -1656,7 +1661,7 @@ export default function StudioBookingPage() {
                     ready={hoDetailsReady}
                     onNext={() => hoGo(4)}
                     summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : CONTACT_COPY[lang].needContact}
+                    note={hoDetailsReady ? undefined : hoDetailsNote}
                   />
                 )}
 
@@ -1859,6 +1864,9 @@ export default function StudioBookingPage() {
                         )}
                       </div>
                       <div>
+                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
+                          {EMAIL_REQUIRED_COPY[lang].label}
+                        </p>
                         <input
                           value={hoEmail}
                           onChange={(e) => setHoEmail(e.target.value)}
@@ -1866,17 +1874,24 @@ export default function StudioBookingPage() {
                           type="email"
                           inputMode="email"
                           autoComplete="email"
-                          aria-invalid={hoContact.emailValid === false}
+                          required
+                          aria-required="true"
+                          aria-invalid={!hoEmailValid && !!hoEmail.trim()}
                           className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
-                            hoContact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                            !hoEmailValid && hoEmail.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                           }`}
                         />
-                        {hoContact.emailValid === false && (
+                        {!hoEmailValid && hoEmail.trim() ? (
                           <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
-                            {CONTACT_COPY[lang].badEmail}
+                            {EMAIL_REQUIRED_COPY[lang].error}
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
+                            {EMAIL_REQUIRED_COPY[lang].helper}
                           </p>
                         )}
                       </div>
+
                       <div>
 
                         <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
@@ -1891,7 +1906,7 @@ export default function StudioBookingPage() {
                       </div>
                       {!hoDetailsReady && (
                         <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          {CONTACT_COPY[lang].needContact}
+                          {hoDetailsNote}
                         </p>
                       )}
 
@@ -1899,7 +1914,7 @@ export default function StudioBookingPage() {
                         onBack={() => hoGo(2)}
                         onNext={() => hoGo(4)}
                         disabled={!hoDetailsReady}
-                        hint={CONTACT_COPY[lang].needContact}
+                        hint={hoDetailsNote}
                       />
                     </div>
                   )}
@@ -2020,9 +2035,13 @@ export default function StudioBookingPage() {
 
   // Name plus at least one valid way to reach them (WhatsApp number OR email).
   const contact = contactOk(phone, email);
-  const emailValid = contact.emailValid === true;
-  const hasContact = contact.ok;
+  // Email is mandatory: WhatsApp only lets us reply for free for 24h, so a
+  // request with no email is one we cannot answer at all.
+  const emailValid = isValidEmail(email);
+  const hasContact = emailValid && contact.phoneValid !== false;
+  const detailsNote = nameComplete && !emailValid ? EMAIL_REQUIRED_COPY[lang].error : CONTACT_COPY[lang].needContact;
   const canBook = !!(service && date && time && nameComplete && hasContact);
+
 
   const prettyDay = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : null;
 
@@ -2049,16 +2068,12 @@ export default function StudioBookingPage() {
       setStepError(CONTACT_COPY[lang].badPhone);
       return;
     }
-    if (contact.emailValid === false) {
-      setStepError(CONTACT_COPY[lang].badEmail);
+    if (!emailValid) {
+      setStepError(EMAIL_REQUIRED_COPY[lang].error);
       emailRef.current?.focus();
       return;
     }
-    if (!hasContact) {
-      setStepError(CONTACT_COPY[lang].needContact);
-      emailRef.current?.focus();
-      return;
-    }
+
 
     goStep(5);
   };
@@ -2716,17 +2731,25 @@ export default function StudioBookingPage() {
                         }`} />
                     </div>
                     <div>
-                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder={c.email} type="email" inputMode="email" autoComplete="email"
-                        aria-invalid={contact.emailValid === false}
+                      <p className="text-xs font-semibold mb-2 min-[900px]:text-sm text-[#5a4736]">
+                        {EMAIL_REQUIRED_COPY[lang].label}
+                      </p>
+                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder={c.email} type="email" inputMode="email" autoComplete="email" required aria-required="true"
+                        aria-invalid={!emailValid && !!email.trim()}
                         className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                          contact.emailValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
+                          !emailValid && email.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
                         }`} />
-                      {contact.emailValid === false && (
+                      {!emailValid && email.trim() ? (
                         <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
-                          {CONTACT_COPY[lang].badEmail}
+                          {EMAIL_REQUIRED_COPY[lang].error}
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#7A7068]">
+                          {EMAIL_REQUIRED_COPY[lang].helper}
                         </p>
                       )}
                     </div>
+
                     <div>
                       <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder={c.waPhone} type="tel" inputMode="tel" autoComplete="tel"
                         aria-invalid={contact.phoneValid === false}
@@ -2771,7 +2794,7 @@ export default function StudioBookingPage() {
                   onBack={() => goStep(3)}
                   onNext={submitDetailsStep}
                   disabled={!nameComplete || !hasContact}
-                  hint={CONTACT_COPY[lang].needContact}
+                  hint={detailsNote}
                 />
 
               </div>
