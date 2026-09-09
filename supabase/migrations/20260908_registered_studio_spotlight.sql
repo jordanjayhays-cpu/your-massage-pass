@@ -220,3 +220,25 @@ limit greatest(1, least(coalesce(p_limit, 5), 12));
 $function$;
 
 grant execute on function public.dispatch_candidates(text, text, integer) to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- v3, 9 September (Jordan): sponsored placement when location is open.
+--
+-- "anywhere", "me da igual" and a blank area are the same answer: the customer
+-- has no location preference. That is 12 of the last 47 requests, a quarter of
+-- everything. When nobody has named a neighbourhood there is no reason to send
+-- the request anywhere except the studios that signed up, loaded a real menu
+-- and can be quoted at an exact price.
+--
+-- The registered bonus in dispatch_candidates becomes:
+--   no area named, and the studio answers   +60
+--   no area named, and it does not          +25
+--   area named, and it answers              +30
+--   area named, and it does not             +12
+--
+-- Being signed up never outranks actually replying, or we bury the studios
+-- doing the work. With no area named the three partners take ranks 1, 2 and 3.
+-- With an area named they still lead but do not monopolise: a strong local
+-- studio can still come second.
+--
+-- Applied through the Supabase API; this is the record of the change.
