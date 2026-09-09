@@ -1519,6 +1519,22 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   });
 }
 
+// v77: has any studio on this request already offered the time the customer
+// just named? On 9 September Asim typed "7pm?" while TornaSol had offered 19:00
+// and Calma had offered 18:30 and 19:00 on the same request, and the bot
+// answered by repeating the 18:00 he had already turned down.
+async function dispatchOfferingTime(requestId: number, time: string, skipRow: string): Promise<{ id: string; partner: { id: string; business_name: string } } | null> {
+  if (!requestId || !time) return null;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&offered_time=eq.${encodeURIComponent(time)}&outcome=not.in.(declined,stood_down,expired)&order=replied_at.desc.nullslast&limit=4&select=id,partner_id`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  const row = (Array.isArray(rows) ? rows : []).find((x: any) => String(x.id) !== String(skipRow));
+  if (!row || !row.partner_id) return null;
+  const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(String(row.partner_id))}&select=id,business_name&limit=1`, { headers: H() });
+  const prs = await pr.json().catch(() => []);
+  const p = Array.isArray(prs) && prs[0] ? prs[0] : null;
+  return p ? { id: String(row.id), partner: { id: String(p.id), business_name: String(p.business_name || "") } } : null;
+}
+
 async function forwardTimeChange(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string) {
   const clientNum = digitsOf(req.client_phone || "");
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
@@ -2499,8 +2515,35 @@ const handler = async (req: Request) => {
         break;
       }
       case "await_offer": {
-        // Anything that is not a clear yes/no: a person reads it, the buttons stay valid.
+        // v77: a customer naming a time here is answering the offer, not making
+        // small talk. "7pm?" was Asim on 9 September, twenty minutes before two
+        // studios who could do exactly that were left unasked.
         if (text) {
+          const wanted = parseOfferedTime(text);
+          const offReq = Number(s.data.offer?.request || 0);
+          if (wanted && offReq && wanted !== String(s.data.offer?.time || "")) {
+            const alt = await dispatchOfferingTime(offReq, wanted, String(s.data.offer?.row || ""));
+            const cnum = s.phone.replace(/[^0-9]/g, "");
+            if (alt) {
+              await sendButtons(from, COPY[L].altOffer(alt.partner.business_name, wanted),
+                [{ id: `offer_yes_${alt.id}`, title: COPY[L].offerYes(wanted) }, { id: `offer_no_${alt.id}`, title: COPY[L].offerNo }]);
+              s.data.offer = { row: alt.id, time: wanted, studio: alt.partner.business_name, request: offReq, day: s.data.offer?.day || null };
+              await saveSession(s);
+              await logEvent(from, "counter_offer_matched", { request_id: offReq, time: wanted, studio: alt.partner.business_name });
+              await notifyJordanWa(`${s.wa_name || "+" + cnum} asked for ${wanted} on #${offReq} and ${alt.partner.business_name} had already offered it. Re-offered automatically.`, s.phone);
+            } else {
+              await sendText(from, COPY[L].askingTime(wanted));
+              await logEvent(from, "counter_offer_unmatched", { request_id: offReq, time: wanted });
+              await notifyJordanWa(`${s.wa_name || "+" + cnum} wants ${wanted} on #${offReq} and no studio has offered that time yet. They were told we are asking.`, s.phone);
+              await founderCard(`\u23f0 ${s.wa_name || "+" + cnum} asked for ${wanted} · #${offReq}`, {
+                badge: "TIME REQUESTED",
+                title: `${s.wa_name || "The customer"} named a time nobody has offered`,
+                paras: [`They turned down ${s.data.offer?.studio || "the studio"} at ${s.data.offer?.time || "?"} and asked for ${wanted} instead. No studio on this request has offered ${wanted}. Ask the ones still in play.`],
+                quote: text, waNum: cnum, prefill: await customerPrefill(s.phone), to: JORDAN,
+              });
+            }
+            break;
+          }
           const num = s.phone.replace(/[^0-9]/g, "");
           await founderCard(`💬 ${s.wa_name || "+" + num} replied to an offer: ${text.slice(0, 50)}`, {
             badge: "OFFER REPLY",

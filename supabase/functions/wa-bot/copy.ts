@@ -77,11 +77,23 @@ export function parseOfferedTime(t: string): string {
   if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
   m = s.match(/\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])/i);
   if (m) return `${m[1].padStart(2, "0")}:00`;
-  // A bare "18h" is a time. A bare "1h" is a duration, and no studio in Madrid
-  // offers 01:00: Centro Aloha's "si coges 1h" (if he takes the hour) was read
-  // as a 01:00 slot and forwarded to a customer on 8 September.
-  m = s.match(/\b([01]?\d|2[0-3])\s*h\b/i);
+  // v77: "19 horas" is a time and did not parse, because \b after h failed on
+  // the "o". TornaSol answered "19 horas" for Asim on 9 September, it was never
+  // recorded, and a studio that could do the exact evening slot he wanted was
+  // never offered to him. A bare "18h" is a time. A bare "1h" is a duration,
+  // and no studio in Madrid offers 01:00: Centro Aloha's "si coges 1h" (if he
+  // takes the hour) was read as a 01:00 slot and forwarded to a customer.
+  m = s.match(/\b([01]?\d|2[0-3])\s*h(?:oras?|rs?)?\b/i);
   if (m && parseInt(m[1], 10) >= 8) return `${m[1].padStart(2, "0")}:00`;
+  // v77: customers write "7pm". Asim did, while two studios had already offered
+  // exactly that, and the bot repeated an 18:00 offer he had just turned down.
+  m = s.match(/\b(1[0-2]|[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?m\.?\b/i);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    if (m[3].toLowerCase() === "p" && h < 12) h += 12;
+    if (m[3].toLowerCase() === "a" && h === 12) h = 0;
+    return `${String(h).padStart(2, "0")}:${m[2] || "00"}`;
+  }
   return "";
 }
 export const AUTOREPLY_RE = /gracias por (contactar|comunicarte|comunicarse|escribir|tu mensaje)|te responderemos|responderemos lo antes|te atenderemos|nos pondremos en contacto|contestar lo antes|hemos recibido tu mensaje|ahora no podemos responder|en este momento estamos ocupados|get back to you|currently busy|horario de atenci[o\u00f3]n|thank you for contacting|thanks for your message/i;
@@ -210,6 +222,11 @@ export const COPY: Record<string, any> = {
       `Best match for you:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}${registered ? "\nMassage Club partner, so that is their real menu price and not an estimate." : ""}\n\nShall we ask them to confirm your time?`,
     topPickBtns: [{ id: "pick_yes", title: "Yes, book it" }, { id: "pick_more", title: "See other options" }],
     partnerTag: "Massage Club partner",
+    // v77: the customer names a time at the offer step. Asim typed "7pm?" while
+    // TornaSol and Calma had both already offered 19:00 on his request, and the
+    // bot repeated the 18:00 he had just declined.
+    altOffer: (studio: string, time: string) => `Good news, *${studio}* can do *${time}*. Shall I book that?`,
+    askingTime: (time: string) => `Let me ask the studios about ${time} and I will come straight back here.`,
     bookedLink: (name: string, url: string) => `${name}: ${url}`,
     studiosBtn: "Choose studio",
     studioLinks: "Want a closer look first? Photos, full menus and reviews:",
@@ -315,6 +332,8 @@ export const COPY: Record<string, any> = {
       `Tu mejor opción:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}${registered ? "\nCentro asociado a Massage Club, así que este es su precio real de carta, no una estimación." : ""}\n\n¿Les pedimos que confirmen tu hora?`,
     topPickBtns: [{ id: "pick_yes", title: "Sí, resérvalo" }, { id: "pick_more", title: "Ver otras opciones" }],
     partnerTag: "centro asociado",
+    altOffer: (studio: string, time: string) => `Buenas noticias, *${studio}* puede a las *${time}*. ¿Te lo reservo?`,
+    askingTime: (time: string) => `Les pregunto por las ${time} y te digo aquí mismo.`,
     bookedLink: (name: string, url: string) => `${name}: ${url}`,
     studiosBtn: "Elegir centro",
     studioLinks: "¿Quieres verlos antes? Fotos, menús completos y opiniones:",
