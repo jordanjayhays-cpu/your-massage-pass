@@ -30,6 +30,11 @@ export function detectTime(t: string, L: string): string {
   if (/\b(por la manana|de la manana|morning|temprano|early)\b/.test(s)) return L === "es" ? HOURS.time_morning.labelEs : HOURS.time_morning.label;
   return "";
 }
+// v78: everyday words, no booking vocabulary. Deliberately excludes anything
+// that reads the same in both languages ("a", "no", "me", "hotel", "metro"), so
+// a mixed message is not dragged either way by a coincidence.
+const ES_COMMON = new Set(["el", "la", "los", "las", "un", "una", "unos", "unas", "del", "al", "que", "qué", "con", "para", "por", "en", "es", "son", "está", "estás", "estoy", "estar", "estaré", "estamos", "voy", "vamos", "va", "he", "ha", "han", "hemos", "te", "se", "nos", "mis", "tu", "su", "muy", "ya", "sí", "más", "pero", "como", "cómo", "cuando", "cuándo", "dónde", "donde", "aquí", "allí", "ahí", "ahora", "luego", "hasta", "desde", "sin", "sobre", "todo", "toda", "todos", "tengo", "tienes", "tiene", "quiero", "puedo", "puede", "podemos", "vale", "bien", "bueno", "buenas", "buenos", "llegado", "llegar", "llego", "camino", "cerca", "cercano", "cercana", "calle", "día", "días", "semana", "también", "entonces", "claro", "perfecto", "vosotros", "ustedes", "da", "igual", "otra", "otro", "mejor", "prefiero", "gusta", "zona", "barrio", "sitio", "algo", "nada", "poco", "mucho", "siento", "vemos"]);
+const EN_COMMON = new Set(["the", "an", "i", "you", "your", "is", "are", "was", "to", "for", "and", "of", "my", "can", "could", "would", "should", "want", "need", "please", "book", "booking", "massage", "tomorrow", "today", "tonight", "hi", "hello", "what", "when", "where", "which", "how", "much", "many", "do", "does", "did", "have", "has", "provide", "service", "male", "female", "there", "here", "with", "from", "about", "time", "day", "price", "cheap", "near", "nearest"]);
 export function strongSpanish(t: string): boolean {
   const s = String(t).toLowerCase();
   if (AD_OPENER_RE.test(s.trim())) return false; // the ad's canned line, not the person's words
@@ -43,6 +48,16 @@ export function strongSpanish(t: string): boolean {
   if (found.size >= 3) return true;
   // v39: a short message with one unmistakably Spanish word is Spanish ("Hola", "Buenos días", "¿Qué tipo de masaje ofrecen?")
   if (toks.length <= 7 && toks.some((w) => strong.includes(w))) return true;
+  // v78: ordinary Spanish that happens to contain none of the booking keywords
+  // was scored as English. Fernando wrote "Voy en camino / Metro más cercano? /
+  // A las 16:00 estaré allí" and later "Ya he llegado" on 9 September, and both
+  // came back false, so a Spanish speaker standing at the studio door was sent
+  // an English service menu. Ordinary words carry the language too.
+  const esHits = toks.filter((w) => ES_COMMON.has(w)).length;
+  const enHits = toks.filter((w) => EN_COMMON.has(w)).length;
+  if (esHits >= 2 && esHits > enHits) return true;
+  // Spanish orthography, with nothing English around it, is enough on its own.
+  if (/[áéíóúñ]/.test(s) && enHits === 0) return true;
   return /[¿¡]/.test(s);
 }
 export const isEmail = (t: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t.trim());
