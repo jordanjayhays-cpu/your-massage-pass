@@ -259,19 +259,15 @@ const FIRST_LINE: Record<string, string> = {
   en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 45 to 60 EUR. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
   es: "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. Un masaje relajante de 60 min suele costar entre 45 y 60 EUR. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien? Si prefieres descontracturante, tailandés o deportivo, dímelo.",
 };
-// v72: when the first message does not tell us the language, ask the same
-// single question in both, rather than an eight option list with Español and
-// English on it. Of the 31 customers who never reached a booking, 12 stopped at
-// that list, and three of them tapped a language button, received a restatement
-// of who we are, and never wrote again. The language question cost a turn and
-// returned nothing; their next words tell us anyway.
+// v75 (Jordan, 9 Sept): when the first message does not tell us the language,
+// open in ENGLISH and let anyone who wants Spanish say so. v72 sent both
+// languages at once, which doubled the length of the first screen and put a
+// slash through every button title without asking anything extra. The language
+// question itself stays gone: their own next words still settle it, so nobody
+// is stuck in English by writing back in Spanish.
 const FIRST_LINE_BOTH =
-  "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. 60 min desde 45 EUR, pagas en el centro, sin comisión.\n\nHi, this is Massage Club. We find you a slot at a professional studio near you. 60 min from 45 EUR, you pay the studio, no fee from us.\n\n¿Qué día te viene bien? / Which day works for you?";
-const dayBtnsBoth = () => [
-  { id: "day_today", title: `Hoy / Today (${shortDate("es", 0)})` },
-  { id: "day_tomorrow", title: `Mañana / Tomorrow (${shortDate("es", 1)})` },
-  { id: "day_other", title: "Otro día / Another day" },
-];
+  "Hi, this is Massage Club. We find you a slot at a professional studio near you. A 60 min relaxing massage is usually 45 to 60 EUR. You pay the studio, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.\n\n¿Prefieres español? Escribe *español* y seguimos en español.";
+const dayBtnsBoth = () => dayBtns("en");
 const looksEnglish = (t: string) => /\b(hi|hello|hey|i|i'd|i'm|id|im|like|book|booking|want|need|please|massage|can|could|you|tomorrow|today|tonight|near|the)\b/i.test(String(t || "")) && !/[¿¡ñ]|\b(hola|quiero|masaje|reservar|gracias)\b/i.test(String(t || ""));
 const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, dayBtns(L));
 const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, dayBtns(L));
@@ -463,9 +459,9 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
       await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[knownLang], dayBtns(knownLang));
       return;
     }
-    s.data.service = "svc_relax"; s.data.defaultService = true; s.data.bilingual = true;
+    s.data.service = "svc_relax"; s.data.defaultService = true; s.data.langUnset = true;
     s.step = "await_day"; await saveSession(s);
-    await logEvent(from, "flow_started", { fromAd: true, bilingual: true, oneQuestion: true });
+    await logEvent(from, "flow_started", { fromAd: true, langUnset: true, oneQuestion: true });
     await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
     await sendButtons(from, FIRST_LINE_BOTH, dayBtnsBoth());
     return;
@@ -498,7 +494,7 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
   // and then the service menu, so a person who had said one word got three
   // messages and a website competing with the chat before they had answered
   // anything.
-  s.data.service = "svc_relax"; s.data.defaultService = true; s.data.bilingual = !s.data.lang;
+  s.data.service = "svc_relax"; s.data.defaultService = true; s.data.langUnset = !s.data.lang;
   s.step = "await_day"; await saveSession(s);
   await logEvent(from, "flow_started", { oneQuestion: true, unreadable: true });
   await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
