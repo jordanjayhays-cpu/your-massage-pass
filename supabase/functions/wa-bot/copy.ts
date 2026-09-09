@@ -272,6 +272,11 @@ export const COPY: Record<string, any> = {
     missedYou: (studio: string) => `We are sorry we missed you today at ${studio || "the studio"}. If something came up, just reply here and we will find you another time.`,
     studioReaching: (studio: string, time: string, text: string) => `${studio} is trying to reach you about your ${time} appointment${text ? ': "' + text.slice(0, 120) + '"' : ""}. Are you on your way? Reply here and we will let them know.`,
     reconfirmRemind: (studio: string, time: string) => `Quick one: are you still coming to ${studio} at ${time}? Reply *yes*, or tell us what to change.`,
+    // v76: what we say when someone asks something we have no canned answer
+    // for. Before this, an unanswerable question fell through to the service
+    // menu: Fernando asked which metro and Asim asked whether a man or a woman
+    // does the treatment, and both got "which massage would you like?".
+    willFindOut: "Good question. I would rather check than guess, so I am finding out for you now and I will come straight back here with the answer.",
     noHuman: "I can sort this out right here. Tell me the massage you would like, the day, and the part of Madrid, in one message if you like. 60 minutes is 40 to 85 EUR depending on the studio, paid directly there, no fee from us.",
     zoneAnswer: "We are not a single studio. We book you into professional studios all over Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña and more) and you pick the area that suits you.",
   },
@@ -372,6 +377,7 @@ export const COPY: Record<string, any> = {
     missedYou: (studio: string) => `Sentimos no haberte visto hoy en ${studio || "el centro"}. Si surgió algo, responde aquí y te buscamos otra hora.`,
     studioReaching: (studio: string, time: string, text: string) => `${studio} intenta contactarte sobre tu cita de las ${time}${text ? ': "' + text.slice(0, 120) + '"' : ""}. ¿Estás de camino? Responde aquí y se lo decimos.`,
     reconfirmRemind: (studio: string, time: string) => `Una cosa rápida: ¿sigues contando con ir a ${studio} a las ${time}? Responde *sí*, o dinos qué cambiar.`,
+    willFindOut: "Buena pregunta. Prefiero confirmarlo antes que darte un dato a medias, así que lo consulto ahora mismo y te digo aquí.",
     noHuman: "Te lo resuelvo aquí mismo. Dime qué masaje quieres, qué día y en qué zona de Madrid, en un solo mensaje si quieres. 60 minutos cuesta entre 40 y 85 EUR según el centro, se paga allí directamente, sin comisión.",
     zoneAnswer: "No somos un solo centro. Te reservamos en centros profesionales de todo Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña y más) y tú eliges la zona que te venga bien.",
   },

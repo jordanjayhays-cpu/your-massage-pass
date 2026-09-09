@@ -1107,6 +1107,7 @@ intent is one of:
   consent    they are answering a request for permission (set fields.phone_consent true or false)
   change     they want to move or alter an existing booking
   cancel     they want to cancel
+  arrived    they are at the studio now, or on their way to an appointment they already have
   smalltalk  thanks, greetings, acknowledgements, nothing to act on
   unclear    you cannot tell
 
@@ -1193,7 +1194,27 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
       return true;
     }
     if (r.question === "zone") { await sendText(from, COPY[lang].zoneAnswer); return true; }
-    return false;
+    // v76 (9 Sept): everything else used to return false, which dropped the
+    // customer into the service menu. On 9 Sept the model read Asim's "Provide
+    // the service male or female?" as intent ask, question other, confidence
+    // 0.95, and the bot still asked him which massage he would like. Fernando
+    // got the same treatment when he asked which metro on his way to a booking
+    // he had already paid attention to, and Jose asked what a Thai massage was
+    // like and was told "Perfecto, tailandés". A question we cannot answer is
+    // not noise: say we are finding out, and put it in front of Jordan.
+    const askNum = digitsOf(from);
+    await sendText(from, COPY[lang].willFindOut);
+    await notifyJordanWa(`${s.wa_name || "+" + askNum} asked something the bot has no answer for${req ? " (#" + req.id + ")" : ""}: ${text.slice(0, 140)}`, from);
+    await founderCard(`❓ ${s.wa_name || "+" + askNum} asked a question we cannot answer${req ? " · #" + req.id : ""}`, {
+      badge: "NEEDS AN ANSWER",
+      title: `${s.wa_name || "The customer"} asked something not in the bot's copy`,
+      paras: [
+        `Read as: a question, type "${r.question || "unknown"}" (confidence ${r.confidence}).`,
+        `They were told we are finding out. Nothing was guessed at and no menu was sent. They are waiting on a real answer from you.`,
+      ],
+      quote: text, waNum: askNum, prefill: await customerPrefill(s.phone), to: JORDAN,
+    });
+    return true;
   }
 
   if (r.intent === "consent" && typeof r.fields.phone_consent === "boolean" && req) {
@@ -1205,6 +1226,22 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
       ? (lang === "es" ? "Perfecto, gracias. Se lo paso al centro." : "Perfect, thank you. I will pass it to the studio.")
       : (lang === "es" ? "Entendido, no se lo damos. Cualquier cosa te la digo yo por aquí." : "Understood, we will not share it. Anything they need to say reaches you through me."));
     await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} ${r.fields.phone_consent ? "AGREED" : "REFUSED"} to share their number with the studio (#${req.id}).`, from);
+    return true;
+  }
+
+  // v76: "Ya he llegado" from a customer standing at the studio door came back
+  // as the service menu, because a message opening with "Hola" was read as a
+  // greeting and nothing after it was read at all. Acknowledge the booking they
+  // already have. The studio is NOT messaged from here: the relay that guesses
+  // which customer a studio means is still wrong, and adding another automatic
+  // studio message would make that worse.
+  if (r.intent === "arrived" && req && String(req.stage) === "confirmed") {
+    const when = [req.confirmed_day || req.day1, req.confirmed_time || req.time1].filter(Boolean).join(" ");
+    await sendText(from, lang === "es"
+      ? `Genial${req.first_name ? ", " + req.first_name : ""}. Tu cita en ${req.studio_name || "el centro"}${when ? " es " + when : ""}. Que la disfrutes.`
+      : `Great${req.first_name ? ", " + req.first_name : ""}. Your appointment at ${req.studio_name || "the studio"}${when ? " is " + when : ""}. Enjoy it.`);
+    await logEvent(from, "customer_arrived", { id: req.id, studio: req.studio_name || null });
+    await notifyJordanWa(`${req.first_name || s.wa_name || "+" + digitsOf(from)} says they have arrived for #${req.id} at ${req.studio_name || "the studio"}${when ? " (" + when + ")" : ""}.`, from);
     return true;
   }
 
@@ -2170,6 +2207,20 @@ const handler = async (req: Request) => {
       await saveSession(s); await logEvent(from, "flow_started", { via: "menu" }); await askService(from, L);
       return new Response("OK", { status: 200 });
     }
+    // v76 (9 Sept): a customer who already has a booking in play is not
+    // starting over. Fernando wrote "Hola / Ya he llegado" while standing at
+    // Sinergia38's door and the greeting and reset branches below wiped his
+    // session, lost his language and sent him the service menu. Read what they
+    // wrote against their booking first; the branches below still run when the
+    // model has nothing useful.
+    if (text && !freeTextStep && !replyId && !HI_RE.test(text.trim())) {
+      const liveReq = await lastRequestFor(from);
+      const liveStage = String(liveReq?.stage || "");
+      if (["confirmed", "offered", "bidding", "studio_replied"].includes(liveStage) || s.step === "done" || s.step === "human") {
+        if (await lastResort(s, from, L, text)) return new Response("OK", { status: 200 });
+      }
+    }
+
     if ((HI_RE.test(text) || (text && !freeTextStep && BOOKAGAIN_RE.test(text))) && s.step !== "start" && !["await_name", "await_email", "await_email_req", "await_email_post", "await_day_text", "await_offer", "await_sameday", "await_reconfirm", "await_change"].includes(s.step)) {
       if (s.step === "done" && HI_RE.test(text)) { await sendMenu(from, L); return new Response("OK", { status: 200 }); }
       // A "hola" seconds after the greeting is a hello, not a restart: ask the
