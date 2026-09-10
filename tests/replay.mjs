@@ -131,6 +131,22 @@ check("AUTOREPLY_RE", "Gracias por contactar con nosotros, te responderemos lo a
   AUTOREPLY_RE.test("Gracias por contactar con nosotros, te responderemos lo antes posible"), true,
   "an out of office is not a studio saying yes");
 check("EROTIC_RE", "buscas masaje erotico?", EROTIC_RE.test("buscas masaje erotico?"), true, "");
+// Antonio, 10 Sept 11:54. Came off the ad, asked for a "Sensitive massage" and
+// the bot said "Good choice. Which day suits you?" before he spelled it out a
+// minute later and finally got the block line. The English word slipped past a
+// filter that only knew the Spanish sensitivo/sensitiva.
+const eroticCases = [
+  ["Sensitive massage pleas", true, "Antonio, 10 Sept. Got \"Good choice\" instead of the block line"],
+  ["sensitive masaje", true, ""],
+  ["massage sensitive", true, ""],
+  ["Whith some thing erotic", true, "Antonio's next message, this one did block"],
+  // These are ordinary customers describing their body. Blocking them would be
+  // far worse than the bug above: a real person turned away for asking properly.
+  ["I have sensitive skin, is oil ok?", false, "a real question about skin"],
+  ["my lower back is very sensitive", false, "a real question about a sore back"],
+  ["sensitive areas after surgery", false, ""],
+];
+for (const [input, want, note] of eroticCases) check("EROTIC_RE", input, EROTIC_RE.test(input), want, note);
 check("JOB_RE", "hola busco trabajo de masajista", JOB_RE.test("hola busco trabajo de masajista"), true,
   "therapists reach us through the same ads");
 check("ANY_RE", "me da igual", ANY_RE.test("me da igual"), true,

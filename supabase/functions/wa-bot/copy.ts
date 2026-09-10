@@ -114,7 +114,11 @@ export function parseOfferedTime(t: string): string {
 export const AUTOREPLY_RE = /gracias por (contactar|comunicarte|comunicarse|escribir|tu mensaje)|te responderemos|responderemos lo antes|te atenderemos|nos pondremos en contacto|contestar lo antes|hemos recibido tu mensaje|ahora no podemos responder|en este momento estamos ocupados|get back to you|currently busy|horario de atenci[o\u00f3]n|thank you for contacting|thanks for your message/i;
 export const EMAIL_IN_TEXT_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 // "Special massage" probes - one standard line, then permanent silence.
-export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|t[aá]ntr\w*|nuru|happy\s*end\w*|final\s*feliz|con\s*extras?|servicio\s*completo|body\s*(2|to)\s*body|lingam|yoni|prostat\w*)\b/i;
+// "Sensitive massage" is the English euphemism and it is only ever that when
+// it sits next to the word massage: "I have a sensitive lower back" and
+// "sensitive skin" are real things real customers say. Antonio wrote
+// "Sensitive massage pleas" on 10 Sept and the bot answered "Good choice".
+export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive\s+(?:massage|masaje)|(?:massage|masaje)\s+sensitive|t[aá]ntr\w*|nuru|happy\s*end\w*|final\s*feliz|con\s*extras?|servicio\s*completo|body\s*(2|to)\s*body|lingam|yoni|prostat\w*)\b/i;
 // Asking about clothing is often a genuine modesty question, so it gets a
 // straight answer about how professional studios work rather than a block. If
 // the next message crosses the line, EROTIC_RE catches it.
