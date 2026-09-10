@@ -18,6 +18,7 @@ import {
   parseOfferedTime, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
+  COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
 let pass = 0;
@@ -138,6 +139,36 @@ check("ANY_RE", "anywhere", ANY_RE.test("anywhere"), true, "");
 check("CANCEL_RE", "quiero cancelar", CANCEL_RE.test("quiero cancelar"), true, "");
 check("isEmail", "asim.s15d@gmail.com", isEmail("asim.s15d@gmail.com"), true, "");
 check("isEmail", "not an email", isEmail("not an email"), false, "");
+
+// ---------------------------------------------------------------------------
+// A promise the bot makes here is read by a cron somewhere else.
+//
+// When the bot cannot answer a question it sends COPY[lang].willFindOut, which
+// says we are finding out and will come back. stuck-booking-rescue v10 decides
+// whether a customer is still owed an answer by looking for these exact words
+// in the last thing we said to them, and stays silent if it finds them.
+//
+// That regex lives in the deployed function, not in this repo, so nothing in a
+// compiler will notice if this copy is reworded. If the two drift apart the
+// cron goes back to sending a cheerful "just checking in" over the top of an
+// unanswered question, which is what happened to the Instagram lead on
+// 9 September: they asked "Who give the Massage ?" at 21:11, got this promise
+// four seconds later, and got the generic nudge at 09:00 the next morning.
+//
+// Keep this regex identical to WILL_FIND_OUT_RE in stuck-booking-rescue.
+// ---------------------------------------------------------------------------
+const RESCUE_PROMISE_RE = /(I am finding out for you now|rather check than guess|lo consulto ahora mismo y te digo|Prefiero confirmarlo antes que)/i;
+for (const lang of ["en", "es"]) {
+  check("rescue cron still recognises willFindOut", `${lang}: ${COPY[lang].willFindOut}`,
+    RESCUE_PROMISE_RE.test(COPY[lang].willFindOut), true,
+    "reword this and stuck-booking-rescue starts nudging people who are owed an answer");
+}
+// The nudge itself must never look like the promise, or the cron would read its
+// own message as proof that someone is waiting and go quiet forever.
+check("rescue promise does not match the nudge",
+  "Just checking in ...",
+  RESCUE_PROMISE_RE.test("Just checking in \u{1F642} Your massage booking is saved right where you left off. Reply anytime and we continue from the same spot."),
+  false, "");
 
 // ---------------------------------------------------------------------------
 // Report
