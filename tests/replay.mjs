@@ -110,6 +110,18 @@ const questions = [
 for (const [input, want, note] of questions) check("looksLikeQuestion", input, looksLikeQuestion(input), want, note);
 
 // ---------------------------------------------------------------------------
+// "Who does the massage?" was asked twice in six hours on 9 September, by two
+// different people, and neither got an answer. It has a canned answer now
+// (COPY.therapistAnswer) reached through the model's "therapist" question type.
+// These are the exact words both of them used.
+// ---------------------------------------------------------------------------
+const therapistAsks = [
+  ["Who give the Massage ?", "Instagram lead, 9 Sept 21:11. Promised an answer, never got one"],
+  ["Provide the service male or female?", "Asim, 9 Sept 14:09. Got the service menu"],
+];
+for (const [input, note] of therapistAsks) check("therapist question reads as a question", input, looksLikeQuestion(input), true, note);
+
+// ---------------------------------------------------------------------------
 // Things that must never reach a studio or a customer.
 // ---------------------------------------------------------------------------
 check("AD_OPENER_RE", "Hi, I'd like to book a massage. I saw you on Facebook.",

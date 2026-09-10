@@ -237,6 +237,10 @@ export const COPY: Record<string, any> = {
       `Best match for you:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}${registered ? "\nMassage Club partner, so that is their real menu price and not an estimate." : ""}\n\nShall we ask them to confirm your time?`,
     topPickBtns: [{ id: "pick_yes", title: "Yes, book it" }, { id: "pick_more", title: "See other options" }],
     partnerTag: "Massage Club partner",
+    // v79: "Who give the Massage ?" and "Provide the service male or female?".
+    // True of every studio, needs no data we do not hold, and offers the thing
+    // they are really asking for rather than just stating a policy.
+    therapistAnswer: "The massage is given by a qualified therapist at the studio. If you would prefer a man or a woman, just tell me and I will ask the studio before booking.",
     // v77: the customer names a time at the offer step. Asim typed "7pm?" while
     // TornaSol and Calma had both already offered 19:00 on his request, and the
     // bot repeated the 18:00 he had just declined.
@@ -347,6 +351,7 @@ export const COPY: Record<string, any> = {
       `Tu mejor opción:\n\n*${name}*\n${svcN} · ${dur} min · ${price} EUR\n${area}${registered ? "\nCentro asociado a Massage Club, así que este es su precio real de carta, no una estimación." : ""}\n\n¿Les pedimos que confirmen tu hora?`,
     topPickBtns: [{ id: "pick_yes", title: "Sí, resérvalo" }, { id: "pick_more", title: "Ver otras opciones" }],
     partnerTag: "centro asociado",
+    therapistAnswer: "El masaje lo da un terapeuta profesional del centro. Si prefieres que sea hombre o mujer, dímelo y se lo pregunto al centro antes de reservar.",
     altOffer: (studio: string, time: string) => `Buenas noticias, *${studio}* puede a las *${time}*. ¿Te lo reservo?`,
     askingTime: (time: string) => `Les pregunto por las ${time} y te digo aquí mismo.`,
     bookedLink: (name: string, url: string) => `${name}: ${url}`,

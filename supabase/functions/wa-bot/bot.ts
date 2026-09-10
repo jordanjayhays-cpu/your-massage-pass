@@ -1096,7 +1096,7 @@ const AI_SYSTEM = `You read one WhatsApp message for Massage Club, a massage boo
 You never write to the customer. You only report what their message means.
 
 Return exactly this shape:
-{"intent":"...","language":"es|en","question":"price|address|how_it_works|zone|hours|other|null","fields":{"day":"","time":"","area":"","service":"","budget_eur":null,"studio_choice":"","phone_consent":null},"confidence":0.0}
+{"intent":"...","language":"es|en","question":"price|address|how_it_works|zone|hours|therapist|other|null","fields":{"day":"","time":"","area":"","service":"","budget_eur":null,"studio_choice":"","phone_consent":null},"confidence":0.0}
 
 intent is one of:
   ask        they are asking a question (set "question")
@@ -1112,6 +1112,7 @@ intent is one of:
   unclear    you cannot tell
 
 Rules:
+- question "therapist" is anyone asking WHO does the massage: man or woman, male or female, qualified, trained, who is the masseur.
 - Report only what the message says. Never invent a day, time, price or studio.
 - fields.time only for a clock time the customer named, in HH:MM. A duration like "1h" or "una hora" is not a time.
 - budget_eur only if they named a maximum they will pay.
@@ -1194,6 +1195,11 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
       return true;
     }
     if (r.question === "zone") { await sendText(from, COPY[lang].zoneAnswer); return true; }
+    // v79: asked twice in six hours on 9 September, by Asim at 14:09 and by an
+    // Instagram lead at 21:11. Both got a service menu or a promise nobody kept.
+    // It is a frequently asked question, not an edge case, and the answer holds
+    // for every studio without any therapist data we do not have.
+    if (r.question === "therapist") { await sendText(from, COPY[lang].therapistAnswer); return true; }
     // v76 (9 Sept): everything else used to return false, which dropped the
     // customer into the service menu. On 9 Sept the model read Asim's "Provide
     // the service male or female?" as intent ask, question other, confidence
