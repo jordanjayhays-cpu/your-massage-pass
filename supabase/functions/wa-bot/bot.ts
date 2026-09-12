@@ -1501,6 +1501,9 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
     if (drow) await patchDispatch(drow.id, { outcome: "won", discount_pct: discountPct ?? drow.discount_pct ?? null });
   }
   await awardRequest(requestId, partner ? partner.id : null);
+  // v83: the confirmation trigger has filled confirmed_start by now, so the
+  // booking row can be written with a real date and end time.
+  await ensureBooking(requestId);
   await logEvent(req.client_phone || from, "confirmed", { id: requestId, studio: req.studio_name, discount: discountPct });
   const clientNum = digitsOf(req.client_phone || "");
   const pc = partner ? await partnerCard(partner.id) : { business_name: "", address: "", phone: "", neighbourhood: "", status: "", slug: "" };
@@ -1536,6 +1539,43 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
 }
 // Cron calls this every 5 minutes: every bidding window that has closed goes to
 // the best accepted offer (highest discount, then earliest yes).
+// v83 (Jordan, 12 Sept): ask for the review straight after the massage, not the
+// next morning, and send them to Massage Club's own review page rather than
+// Google, because that is an asset we keep and it feeds the studio pages.
+//
+// Fifteen minutes after the end, so they have dressed, paid and picked the phone
+// back up. Never before the massage has finished, which is the mistake
+// whatsapp-followup made on 11 September when it asked Fernando how his massage
+// went six hours before it happened; this reads end_at, not created_at.
+//
+// Only within the 24 hour window, because a template would be needed otherwise
+// and none is approved for this. Test bookings are skipped. One ask per booking,
+// recorded in review_requested_at.
+async function askForReviews(): Promise<number> {
+  const now = Date.now();
+  const from = new Date(now - 6 * 3600e3).toISOString();
+  const to = new Date(now - 15 * 60e3).toISOString();
+  const url = `${SUPABASE_URL}/rest/v1/bookings?status=eq.confirmed&is_test=is.false&review_requested_at=is.null&end_at=gte.${from}&end_at=lte.${to}&select=id,action_token,spa_name,client_phone,lang&limit=20`;
+  const rows = await (await fetch(url, { headers: H() })).json().catch(() => []);
+  if (!Array.isArray(rows) || !rows.length) return 0;
+  let sent = 0;
+  for (const b of rows) {
+    const phone = digitsOf(b.client_phone || "");
+    // Mark it asked before sending, so a failure cannot turn into a loop that
+    // messages the same person on every sweep.
+    await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${b.id}`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify({ review_requested_at: new Date().toISOString() }),
+    });
+    if (!phone || !(await canFreeform(phone))) { console.log("[review] window shut, skipping booking", b.id); continue; }
+    const L = b.lang === "es" ? "es" : "en";
+    await sendText(phone, COPY[L].reviewAsk(String(b.spa_name || ""), `${APP}/review?token=${b.action_token}`));
+    await logEvent(phone, "review_asked", { booking: b.id, studio: b.spa_name });
+    sent++;
+  }
+  return sent;
+}
+
 async function settleBids(): Promise<number> {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
   const reqs = await r.json().catch(() => []);
@@ -1754,6 +1794,7 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session) {
   if (!Array.isArray(claimed) || !claimed.length) { await sendText(from, COPY[L].offerGone); s.step = "done"; s.data.offer = null; await saveSession(s); return; }
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "won", customer_answer: "yes", customer_answered_at: new Date().toISOString() }) });
   await awardRequest(req.id, row.partner_id);
+  await ensureBooking(req.id);
   const clientDigits = digitsOf(req.client_phone || from);
   await sendText(row.phone, `Confirmado: ${req.first_name || "el cliente"}, ${trSvc(req.service_name || "Massage", "es").toLowerCase()}, ${when}. ${req.languages === "es" ? "" : "Habla inglés. "}Si necesitáis decirle algo, escribidnos aquí y se lo hacemos llegar. Gracias, Massage Club`);
   await sendText(from, COPY[L].offerAccepted(studio, when, pc.address, pc.phone));
@@ -1911,6 +1952,66 @@ async function dispatchRequest(requestId: number) {
   } catch (e) { console.log("[wa] dispatch failed", String(e)); }
 }
 
+// v83: a WhatsApp confirmation has never written a bookings row. It lived only
+// in whatsapp_requests.stage, which meant no action_token (so /review could
+// never be linked), nothing for the reminder jobs to find, and no honest count
+// of completed massages, which is the one number the business is judged on.
+//
+// booking_ref carries 'wa-<request id>' under a unique index, so confirming
+// twice cannot produce two bookings. Everything here is derived from what the
+// request already holds; nothing is invented. If there is no real start
+// timestamp yet we do not guess a date, we skip and let a later confirmation
+// with a real time create it.
+const TEST_PHONES = ["15622355063", "17867276503", "34612474827"];
+const TEST_EMAIL_RE = /@(example|test|testing)\.com$|placeholder\.local$|jordanjayhays@gmail|jordan@massageclub|support@massageclub|jordan\.hays@student\.ie\.edu|jordan@niahconnect/i;
+const TEST_NAME_RE = /\b(test|prueba|uitest|mctest)\b/i;
+async function ensureBooking(requestId: number): Promise<string | null> {
+  try {
+    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&limit=1&select=id,first_name,last_name,contact_email,client_phone,studio_name,service_name,price,confirmed_start,confirmed_day,confirmed_time,partner_id,languages,area`, { headers: H() });
+    const req = ((await rr.json().catch(() => [])) || [])[0];
+    if (!req) return null;
+    if (!req.confirmed_start) { console.log("[booking] no confirmed_start yet for", requestId); return null; }
+    const start = new Date(req.confirmed_start);
+    if (isNaN(start.getTime())) return null;
+    const mins = 60;
+    // Madrid local date and time, because that is what the studio and the
+    // customer both mean; the column is TEXT and every existing row is local.
+    const fmt = (opt: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", ...opt }).format(start);
+    const bookingDate = fmt({ year: "numeric", month: "2-digit", day: "2-digit" });
+    const bookingTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false }).format(start);
+    const name = [req.first_name, req.last_name].filter(Boolean).join(" ").trim() || "WhatsApp customer";
+    const phone = digitsOf(req.client_phone || "");
+    const isTest = TEST_PHONES.includes(phone) || TEST_EMAIL_RE.test(String(req.contact_email || "")) || TEST_NAME_RE.test(name);
+    const body = {
+      booking_ref: `wa-${requestId}`,
+      client_name: name,
+      client_email: req.contact_email || null,
+      client_phone: req.client_phone || null,
+      spa_name: req.studio_name || "Studio",
+      massage_type: req.service_name || null,
+      booking_date: bookingDate,
+      booking_time: bookingTime,
+      duration: mins,
+      partner_id: req.partner_id || null,
+      start_at: start.toISOString(),
+      end_at: new Date(start.getTime() + mins * 60000).toISOString(),
+      price: req.price ?? null,
+      status: "confirmed",
+      lang: req.languages === "es" ? "es" : "en",
+      is_test: isTest,
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/bookings?on_conflict=booking_ref`, {
+      method: "POST",
+      headers: { ...H(), Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify(body),
+    });
+    const rows = await res.json().catch(() => []);
+    const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+    console.log(`[booking] wa-${requestId} -> booking ${row ? row.id : "?"} status=${res.status}${isTest ? " (test)" : ""}`);
+    return row ? String(row.action_token || "") : null;
+  } catch (e) { console.log("[booking] ensureBooking failed", requestId, String(e)); return null; }
+}
+
 // A studio said yes. Give them the booking and stand the others down.
 async function awardRequest(requestId: number, partnerId: string | null) {
   try {
@@ -2042,7 +2143,9 @@ const handler = async (req: Request) => {
     if (payload?.ops === "settle") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const settled = await settleBids();
-      return new Response(JSON.stringify({ ok: true, settled }), { status: 200, headers: { "Content-Type": "application/json" } });
+      // v83: the review ask rides on the same sweep rather than its own cron.
+      const reviewed = await askForReviews();
+      return new Response(JSON.stringify({ ok: true, settled, reviewed }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     // v66: read a message and return the reading, sending nothing. For checking
     // the interpreter against real sentences without a customer in the loop.

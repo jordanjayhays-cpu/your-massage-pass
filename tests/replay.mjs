@@ -292,6 +292,35 @@ check("member rate arithmetic", "45 EUR less 10%", memberMath(45, 10), 40.5, "")
 check("member rate arithmetic", "70 EUR less 15%", memberMath(70, 15), 59.5, "");
 
 // ---------------------------------------------------------------------------
+// v83: the review ask. On 11 September whatsapp-followup asked Fernando how his
+// massage went six hours BEFORE it happened, because it selected on when the
+// request was created. This one selects on end_at, so the window is arithmetic
+// and can be checked here.
+// ---------------------------------------------------------------------------
+const reviewDue = (endAt, now) => {
+  const end = Date.parse(endAt), t = Date.parse(now);
+  return end <= t - 15 * 60e3 && end >= t - 6 * 3600e3;
+};
+const NOW = "2026-09-11T17:00:00Z";
+check("review not asked before the massage ends", "ends 17:30, now 17:00", reviewDue("2026-09-11T17:30:00Z", NOW), false,
+  "this is exactly the Fernando bug: asked six hours before it happened");
+check("review not asked at the exact end", "ends 17:00, now 17:00", reviewDue("2026-09-11T17:00:00Z", NOW), false,
+  "still on the table or at the counter");
+check("review not asked 14 minutes after", "ends 16:46", reviewDue("2026-09-11T16:46:00Z", NOW), false, "");
+check("review asked 15 minutes after", "ends 16:45", reviewDue("2026-09-11T16:45:00Z", NOW), true, "Jordan chose 15 minutes");
+check("review asked two hours after", "ends 15:00", reviewDue("2026-09-11T15:00:00Z", NOW), true, "");
+check("review not asked a day later", "ends yesterday", reviewDue("2026-09-10T15:00:00Z", NOW), false,
+  "a sweep restart must not message everyone who ever had a massage");
+// The message itself: one line, one link, and the link is ours.
+for (const lang of ["en", "es"]) {
+  const msg = COPY[lang].reviewAsk("Centro Aloha", "https://book.massageclub.io/review?token=abc");
+  check("review ask names the studio", `${lang}`, /Centro Aloha/.test(msg), true, "");
+  check("review ask links massageclub only", `${lang}`, /^https:\/\/book\.massageclub\.io\//.test(msg.split("\n").pop()), true,
+    "customer-facing links must be massageclub.io only");
+  check("review ask stays short", `${lang}`, msg.split("\n")[0].length <= 70, true, "Jordan asked for super simple");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

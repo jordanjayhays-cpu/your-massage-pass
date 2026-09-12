@@ -351,6 +351,12 @@ export const COPY: Record<string, any> = {
     // never mention a discount we asked for and did not get. The figure must be
     // computed from the price the studio confirmed, never rounded to look nicer:
     // 10% off 60 is 54, not 55.
+    // v83: sent 15 minutes after the massage ends. Massage Club's own review
+    // page, not Google: the reviews are an asset we keep and they feed the
+    // studio pages. Deliberately one line and one link, because Jordan asked
+    // for super simple and a paragraph after a massage gets ignored.
+    reviewAsk: (studio: string, link: string) =>
+      `How was ${studio || "it"}? Rate it here, takes 10 seconds:\n${link}`,
     memberRate: (was: number, now: number, mins: number) =>
       `I got you the Massage Club member rate: *${now} EUR* instead of ${was}, ${mins} minutes.`,
     // Asked only after they tap to book, where it buys them something.
@@ -465,6 +471,8 @@ export const COPY: Record<string, any> = {
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
       `Novedades sobre tu ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} puede atenderte a las *${time}* ${day}${asked ? " en vez de " + asked : ""}. ¿Te va bien?`,
+    reviewAsk: (studio: string, link: string) =>
+      `¿Qué tal ${studio || "ha ido"}? Valóralo aquí, son 10 segundos:\n${link}`,
     memberRate: (was: number, now: number, mins: number) =>
       `Te he conseguido la tarifa de socio de Massage Club: *${now} EUR* en vez de ${was}, ${mins} minutos.`,
     memberJoin: "Genial. Hacerse socio es gratis, solo necesito tu nombre y tu email para fijar la tarifa y mandarte la confirmación. Paso tus datos al centro para que puedan localizarte el día de la cita.",
