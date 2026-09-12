@@ -123,8 +123,25 @@ export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive
 // straight answer about how professional studios work rather than a block. If
 // the next message crosses the line, EROTIC_RE catches it.
 export const MODESTY_RE = /\b(desnud\w*|sin\s*ropa|naked|nude|undress\w*|ropa\s*interior)\b/i;
-export const BLOCK_LINE_EN = "We only arrange professional therapeutic massages at licensed studios. We do not offer anything else, so we cannot help with this request.";
-export const BLOCK_LINE_ES = "Solo gestionamos masajes profesionales y terapéuticos en centros con licencia. No ofrecemos nada más, así que no podemos ayudarte con esta petición.";
+// v81 (Jordan, 10 and 12 Sept): stop blocking, persuade instead. The old lines
+// below ended the conversation and set the session to "blocked" forever. Ten
+// people sat in that state, 19% of everyone who had ever written, more than had
+// ever completed a booking. Two of them, Marvin and Abdul, had walked the whole
+// funnel first and Abdul had a real 13 September booking already sent to three
+// studios. The replacement answers the question flatly, without a lecture, and
+// carries straight on with the booking. No moralising: Jordan was explicit that
+// the point is to keep them in the flow, not to tell them off.
+export const BLOCK_LINE_EN = "We book therapeutic massage at licensed studios, nothing else.";
+export const BLOCK_LINE_ES = "Reservamos masajes terapéuticos en centros con licencia, nada más.";
+// Someone asking for a man or a woman is stating a preference about their
+// therapist, not asking for something else. Abdul typed "i need good girl for
+// me" while a real booking was in flight; Fernando typed "MAN" and was dumped
+// into the main menu 84 seconds before he cancelled. Both are this.
+export const GENDER_RE = /\b(masajista\s+(chic[oa]|hombre|mujer|femenin[oa]|masculin[oa])|(chic[oa]|hombre|mujer|male|female|man|woman|guy|girl|lady)\s+(masajista|therapist|masseur|masseuse)|(male|female|man|woman|guy|girl)\s+(therapist|masseur|masseuse)|prefiero\s+(un\s+)?(chic[oa]|hombre|mujer)|quiero\s+(un[ao]?\s+)?(masajista\s+)?(chic[oa]|hombre|mujer))\b/i;
+export const genderWanted = (t: string): "male" | "female" | null => {
+  if (!GENDER_RE.test(String(t || ""))) return null;
+  return /\b(chica|mujer|femenin[oa]|female|woman|girl|lady|masseuse)\b/i.test(t) ? "female" : "male";
+};
 // People asking for a job, not a massage (the ads reach therapists too).
 export const JOB_RE = /(\b(hiring|apply|applying|job|vacancy|vacancies|cv|resume|curriculum)\b|massage therapist\b.*\b(available|looking)|\b(soy|busco)\s+(masajista|trabajo|empleo)|\bcontrat(ais|an|amos)\b|\bcurriculum\b)/i;
 // "Any of them" / "you choose" typed instead of tapped.

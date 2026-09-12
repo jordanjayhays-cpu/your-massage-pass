@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/9eca0b1878efcb2580b71b91f51eef875fb5781a/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/9eca0b1878efcb2580b71b91f51eef875fb5781a/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -318,12 +318,21 @@ async function findPartnerByName(name: string): Promise<{ id: string; slug: stri
   const rows = await r.json().catch(() => []);
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
+// v81: was limit=1 with no ordering. Sinergia38 had two partner rows carrying
+// the same phone (a 9 Sept self signup alongside the live row), so Postgres
+// returned whichever it felt like. On 10 Sept it returned the duplicate, the
+// dispatch lookup then found no row for that partner_id, and their tap to
+// decline Fernando's request was silently dropped. Order so the live row wins:
+// active first, then the oldest, which is the one dispatches were built against.
 async function findPartnerByNumber(fromDigits: string): Promise<{ id: string; business_name: string } | null> {
   const local = fromDigits.startsWith("34") && fromDigits.length === 11 ? fromDigits.slice(2) : fromDigits;
   if (!local || local.length < 9) return null;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?or=(whatsapp.ilike.*${local}*,phone.ilike.*${local}*)&select=id,business_name&limit=1`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?or=(whatsapp.ilike.*${local}*,phone.ilike.*${local}*)&select=id,business_name,status&order=status.asc,created_at.asc&limit=5`, { headers: H() });
   const rows = await r.json().catch(() => []);
-  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+  if (!Array.isArray(rows) || !rows[0]) return null;
+  const live = rows.find((p: Record<string, unknown>) => String(p.status || "") === "active") || rows[0];
+  if (rows.length > 1) console.log("[studio] duplicate partner rows for", local, rows.map((p: Record<string, unknown>) => `${p.id}:${p.status}`).join(","), "using", live.id);
+  return { id: String(live.id), business_name: String(live.business_name || "") };
 }
 async function lastRequestFor(phone: string): Promise<any | null> {
   const num = "+" + digitsOf(phone);
@@ -650,8 +659,11 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // v49: the "No podemos" button on solicitud_reserva_v2. A clean no beats
     // silence: the row is closed, the studio is thanked, nothing else happens.
     if (m[1] === "no") {
-      if (partner) {
-        const drow = await dispatchRowFor(requestId, partner.id);
+      // v81: was gated on `partner`, so a studio we could not resolve to a
+      // partner row tapped "No podemos" into the void. The tap itself is the
+      // fact; record it whether or not the partner lookup worked.
+      {
+        const drow = await dispatchRowFor(requestId, partner ? partner.id : "", from);
         if (drow && drow.outcome !== "won") await patchDispatch(drow.id, { outcome: "declined", replied_at: new Date().toISOString(), reply_text: "No podemos (botón)" });
       }
       await sendText(from, "Entendido, gracias por avisar tan rápido. Os escribo con la siguiente. Jordan, Massage Club");
@@ -687,7 +699,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       // v46: not for today and no partner assigned yet: open the bidding window
       // instead of handing the booking to the fastest tap.
       if (partner && !isSameDayReq(req) && !req.partner_id) {
-        const drow = await dispatchRowFor(requestId, partner.id);
+        const drow = await dispatchRowFor(requestId, partner.id, from);
         if (drow && drow.outcome !== "won") {
           if (drow.outcome !== "accepted") await patchDispatch(drow.id, { outcome: "accepted", accepted_at: new Date().toISOString(), replied_at: new Date().toISOString() });
           const settleAfter = req.settle_after || new Date(Date.now() + BID_WINDOW_MS).toISOString();
@@ -1048,10 +1060,31 @@ const reqDuration = (req: any): number => {
   const m = String(req?.message_text || "").match(/Duraci[oó]n: (\d{2,3}) min/);
   return m ? parseInt(m[1], 10) : 60;
 };
-async function dispatchRowFor(requestId: number, partnerId: string): Promise<any | null> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&partner_id=eq.${encodeURIComponent(partnerId)}&order=created_at.desc&limit=1&select=id,outcome,phone,discount_pct,accepted_at`, { headers: H() });
-  const rows = await r.json().catch(() => []);
-  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+// v81: partner_id is not a reliable key for a tap. A studio with more than one
+// partner row, or an offer that went out against a different row, leaves the
+// partner lookup pointing somewhere the dispatch was never written. The phone
+// we actually messaged is the fact that cannot be wrong, so fall back to it.
+// A dropped tap is invisible and costs a booking, so this never returns empty
+// quietly: if nothing matches at all, it says so in the log.
+async function dispatchRowFor(requestId: number, partnerId: string, fromDigits = ""): Promise<any | null> {
+  const sel = "id,outcome,phone,discount_pct,accepted_at,partner_id";
+  if (partnerId) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&partner_id=eq.${encodeURIComponent(partnerId)}&order=created_at.desc&limit=1&select=${sel}`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    if (Array.isArray(rows) && rows[0]) return rows[0];
+  }
+  const digits = digitsOf(fromDigits);
+  if (digits.length >= 9) {
+    const r2 = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&order=created_at.desc&select=${sel}`, { headers: H() });
+    const all = await r2.json().catch(() => []);
+    if (Array.isArray(all)) {
+      const tail = digits.slice(-9);
+      const hit = all.find((d: Record<string, unknown>) => digitsOf(String(d.phone || "")).endsWith(tail));
+      if (hit) { console.log("[studio] dispatch matched by phone, not partner_id", requestId, digits); return hit; }
+      console.log("[studio] TAP DROPPED: no dispatch row for request", requestId, "phone", digits, "rows", all.length);
+    }
+  }
+  return null;
 }
 async function patchDispatch(id: string, body: Record<string, unknown>) {
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(body) });
@@ -1395,7 +1428,7 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
   }
   if (partner) {
     req.studio_name = partner.business_name;
-    const drow = await dispatchRowFor(requestId, partner.id);
+    const drow = await dispatchRowFor(requestId, partner.id, from);
     if (drow) await patchDispatch(drow.id, { outcome: "won", discount_pct: discountPct ?? drow.discount_pct ?? null });
   }
   await awardRequest(requestId, partner ? partner.id : null);
@@ -1418,7 +1451,7 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
     // Email-skippers get one ask at the happiest moment: booking confirmed.
     if (!req.contact_email) {
       const cs = await getSession(clientNum);
-      if (cs.step !== "blocked") {
+      if (cs.step !== "muted") {
         cs.step = "await_email_post"; await saveSession(cs);
         await sendText(clientNum, COPY[L].emailAskPost);
       }
@@ -1774,6 +1807,29 @@ async function continueFromKnown(s: Session, from: string, L: string) {
   if (!s.data.area) { s.step = "await_area"; await saveSession(s); await askArea(from, L); return; }
   await askNameOrFinalize(s, from, L);
 }
+// v81: a customer answering a question we did not ask. Jorge typed "Por plaza
+// Cuzco", his area, while the bot was asking which day, and await_day_text took
+// it as the day because that branch accepts any text at all. Fernando asked
+// about the therapist mid-confirmation and got the main menu. Marvin and Abdul
+// both walked the entire flow twice. All of it is the same thing: the bot only
+// ever listened for the one answer it had just asked for.
+//
+// Capture anything recognisable EXCEPT the slot we are standing on, and report
+// what was taken so the caller can say "got it" rather than repeat itself.
+// `skip` is the slot the current question owns, which its own branch handles.
+function absorbOffStep(s: Session, text: string, L: string, skip: "service" | "day" | "time" | "area"): string[] {
+  const got: string[] = [];
+  if (skip !== "service") {
+    const svc = UNSURE_RE.test(text) ? "svc_unsure" : detectService(text);
+    if (svc && !s.data.service) { s.data.service = svc; got.push("service"); }
+  }
+  if (skip !== "day") { const d = detectDay(text, L); if (d && !s.data.day) { s.data.day = d; got.push("day"); } }
+  if (skip !== "time") { const t = detectTime(text, L); if (t && !s.data.time) { s.data.time = t; s.data.timeBand = /\(/.test(t) ? t : null; got.push("time"); } }
+  if (skip !== "area") { const a = detectArea(text); if (a && !s.data.area) { s.data.area = a; got.push("area"); } }
+  const dur = detectDuration(text); if (dur && !s.data.duration) s.data.duration = dur;
+  return got;
+}
+
 // Read a free-text sentence into the session. Returns true if anything was understood.
 function absorbSentence(s: Session, text: string, L: string): boolean {
   let got = false;
@@ -1970,7 +2026,17 @@ const handler = async (req: Request) => {
     if (ref) s.data.adRef = [ref.headline, ref.source_url].filter(Boolean).join(" ") || "ctwa";
 
     // Blocked numbers stay blocked: no replies, no alerts, ever.
-    if (s.step === "blocked") return new Response("OK", { status: 200 });
+    // v81: "blocked" is no longer a death sentence (Jordan, 10 Sept: do not
+    // block, persuade). Anyone parked there by the old rule is let back into
+    // the flow from a clean start. Genuine never-contact numbers now use a
+    // separate step, "muted", which is the only one that stays silent, so the
+    // recovery cannot accidentally reopen a thread Jordan closed on purpose.
+    if (s.step === "muted") return new Response("OK", { status: 200 });
+    if (s.step === "blocked") {
+      s.step = "start";
+      await saveSession(s);
+      await logEvent(from, "unblocked", { was: "blocked" });
+    }
 
     // Someone is talking to the bot: alert on a number's first ever message and
     // whenever a known number comes back after 6+ quiet hours. Taps and replies
@@ -1994,20 +2060,28 @@ const handler = async (req: Request) => {
       }).catch((e) => console.log("[wa] chat alert failed", String(e)));
     }
 
-    // "Special massage" probes: standard line once, then permanent silence.
+    // v81 (Jordan, 10 and 12 Sept): answer neutrally and carry on. This used to
+    // set step="blocked" and never speak to them again. Ten people ended up
+    // there, more than have ever completed a booking, and two of them were real
+    // customers who had already been through the whole funnel.
     if ((text && EROTIC_RE.test(text)) || (btnText && EROTIC_RE.test(btnText))) {
-      s.step = "blocked"; await saveSession(s);
+      const said = String(text || btnText);
       await sendText(from, s.data.lang === "es" ? BLOCK_LINE_ES : BLOCK_LINE_EN);
-      await logEvent(from, "blocked", { text: String(text || btnText).slice(0, 120) });
-      await founderCard(`🚫 Blocked: ${profileName || "+" + digitsOf(from)}`, {
-        badge: "BLOCKED",
-        title: "Special-massage seeker blocked",
-        paras: [`+${digitsOf(from)} asked for something we do not offer. They got the standard line and the bot will never reply to them again. Nothing to do.`],
-        quote: text || btnText,
-        waNum: digitsOf(from),
-        to: [...SUPPORT],
-      }).catch(() => {});
+      await logEvent(from, "offer_declined_neutral", { text: said.slice(0, 120) });
+      // Keep them exactly where they were and ask the question again, so the
+      // booking they were halfway through is not thrown away.
+      await reAsk(s, from, s.data.lang === "es" ? "es" : "en");
       return new Response("OK", { status: 200 });
+    }
+    // A therapist-gender preference is not an off-menu request. Record it and
+    // let the flow continue; the studio ask carries it (see askGender below).
+    {
+      const g = genderWanted(String(text || btnText || ""));
+      if (g && s.data.therapistGender !== g) {
+        s.data.therapistGender = g;
+        await saveSession(s);
+        await logEvent(from, "therapist_gender", { gender: g });
+      }
     }
 
     // v39: a typed "Español" or "English" switches language like the tap does.
@@ -2316,10 +2390,33 @@ const handler = async (req: Request) => {
           await sendText(from, L === "es" ? `Perfecto, ${row ? String(row.tEs).toLowerCase() : "ese masaje"}.` : `Got it, ${row ? String(row.tEn).toLowerCase() : "that one"}.`);
           if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
         }
-        else await askDay(from, L);
+        else {
+          // v81: keep whatever they did tell us before repeating the question.
+          const got = text ? absorbOffStep(s, text, L, "day") : [];
+          if (got.length) {
+            await saveSession(s);
+            await logEvent(from, "offstep_absorbed", { at: "await_day", got });
+            await sendText(from, COPY[L].gotItSvc([s.data.area, s.data.time].filter(Boolean).join(" · ")));
+          }
+          if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
+        }
         break;
       }
       case "await_day_text": {
+        // v81: this used to take any text at all as the day. Jorge typed "Por
+        // plaza Cuzco" here on 10 Sept and his area became his day; he never
+        // wrote again. If it does not look like a day but does look like
+        // something else we need, keep that instead and ask the day again.
+        if (text && !detectDay(text, L)) {
+          const got = absorbOffStep(s, text, L, "day");
+          if (got.length) {
+            await saveSession(s);
+            await logEvent(from, "offstep_absorbed", { at: "await_day_text", got });
+            await sendText(from, COPY[L].gotItSvc([s.data.area, s.data.time].filter(Boolean).join(" · ")));
+            await sendText(from, COPY[L].dayAsk);
+            break;
+          }
+        }
         if (text) { s.data.day = text.slice(0, 60); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "typed" }); await askTime(from, L); }
         else await sendText(from, COPY[L].dayAsk);
         break;
@@ -2336,7 +2433,16 @@ const handler = async (req: Request) => {
         } else if (text && TIME_RE.test(text)) {
           s.data.time = text.slice(0, 20); s.data.timeBand = null; s.data.timeBandId = null;
           await afterTime(s, from, L);
-        } else await askTime(from, L);
+        } else {
+          // v81: keep an area or a day offered at the time question.
+          const got = text ? absorbOffStep(s, text, L, "time") : [];
+          if (got.length) {
+            await saveSession(s);
+            await logEvent(from, "offstep_absorbed", { at: "await_time", got });
+            await sendText(from, COPY[L].gotItSvc([s.data.day, s.data.area].filter(Boolean).join(" · ")));
+          }
+          await askTime(from, L);
+        }
         break;
       }
       case "await_time_text": {
@@ -2380,6 +2486,20 @@ const handler = async (req: Request) => {
           if (ANY_RE.test(text)) area = "anywhere";
           else {
             const hit = AREAS.find((a) => stripAcc(a) === stripAcc(text) || stripAcc(text).includes(stripAcc(a)));
+            // v81: the fallback below takes any text as the area, so "tomorrow
+            // at 6" typed here became someone's neighbourhood. If it is not a
+            // known area but is recognisably a day or a time, keep it as that
+            // and ask the area again. Same fault that swallowed Jorge's area.
+            if (!hit) {
+              const got = absorbOffStep(s, text, L, "area");
+              if (got.length) {
+                await saveSession(s);
+                await logEvent(from, "offstep_absorbed", { at: "await_area", got });
+                await sendText(from, COPY[L].gotItSvc([s.data.day, s.data.time].filter(Boolean).join(" · ")));
+                await askArea(from, L);
+                break;
+              }
+            }
             area = hit || text.slice(0, 40);
           }
         }

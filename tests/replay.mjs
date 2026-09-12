@@ -16,7 +16,7 @@
 
 import {
   parseOfferedTime, detectTime, detectDay, strongSpanish, isEmail,
-  HI_RE, ARRIVED_RE, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
+  HI_RE, ARRIVED_RE, genderWanted, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
@@ -185,6 +185,53 @@ check("rescue promise does not match the nudge",
   "Just checking in ...",
   RESCUE_PROMISE_RE.test("Just checking in \u{1F642} Your massage booking is saved right where you left off. Reply anytime and we continue from the same spot."),
   false, "");
+
+// ---------------------------------------------------------------------------
+// v81: therapist gender is a preference, not an off-menu request.
+// Abdul typed "i need good girl for me" on 7 September while a real 13
+// September booking was already sent to three studios, and was silenced.
+// Fernando typed "MAN" on 11 September and was dumped into the main menu 84
+// seconds before he cancelled. Both must read as a gender preference, and
+// neither may be read as an erotic request.
+// ---------------------------------------------------------------------------
+const genderCases = [
+  // Abdul, 7 Sept. Deliberately NOT classified: with no word like "therapist"
+  // or "masajista" beside it this is ambiguous, and a regex loose enough to
+  // catch it would catch much else besides. What matters is the line below:
+  // it must not be treated as an erotic request, which is what silenced him
+  // while a real 13 September booking was already out with three studios.
+  ["i need good girl for me", null, "Abdul, 7 Sept. Ambiguous on purpose, but must never be blocked"],
+  ["MAN", null, "Fernando, 11 Sept. Bare word, answered by the therapist question's own branch"],
+  ["Will be a guy right ?", null, "Fernando, 11 Sept. A question, handled as a question"],
+  ["quiero una masajista chica", "female", ""],
+  ["prefiero un chico", "male", ""],
+  ["do you have a male therapist", "male", ""],
+  ["masajista hombre por favor", "male", ""],
+  ["female masseuse please", "female", ""],
+];
+for (const [msg, want, note] of genderCases) {
+  check("therapist gender read", msg, genderWanted(msg), want, note);
+}
+// A gender preference must never trip the erotic lexicon. This is the exact
+// pair that cost Abdul his booking.
+for (const [msg] of genderCases) {
+  check("gender request is not erotic", msg, EROTIC_RE.test(msg), false,
+    "if this goes true, someone asking for a man or a woman gets shut down");
+}
+// And the genuine cases must still be caught, because the neutral reply still
+// has to fire for them.
+for (const msg of ["Sensitive massage pleas", "Whith some thing erotic", "nuru massage with happy ending", "masaje tantrico", "final feliz"]) {
+  check("erotic still caught", msg, EROTIC_RE.test(msg), true, "");
+}
+// The neutral reply replaced a shutdown. It must stay short and must not
+// moralise: Jordan was explicit that the point is to keep them in the flow.
+for (const [lang, line] of [["en", BLOCK_LINE_EN], ["es", BLOCK_LINE_ES]]) {
+  check("neutral line stays short", `${lang}: ${line}`, line.length <= 90, true,
+    "a lecture here is what pushed 10 people out of the funnel");
+  check("neutral line does not moralise", `${lang}: ${line}`,
+    /cannot help|no podemos ayudar(te)?|we cannot|no ofrecemos nada/i.test(line), false,
+    "the old copy ended the conversation; this one must not");
+}
 
 // ---------------------------------------------------------------------------
 // Report
