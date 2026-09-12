@@ -348,6 +348,36 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   const sameDay = /^(today|hoy)$/i.test(String(r.day1 || "").trim());
   const client = param(String(r.first_name || "Cliente"), 40);
 
+  // v24: solicitud_reserva_v3 is Jordan's own wording (12 Sept): lead with the
+  // client, not with a pitch. The approved v2 opens with two paragraphs
+  // explaining what Massage Club is before the client is mentioned, and asks
+  // for the 10% in the first message, which he moved to after they offer a
+  // time. A studio should meet us by getting a booking, not a sales letter.
+  //
+  // Three parameters instead of five: the area is gone, because a studio knows
+  // where it is and the area only ever mattered for choosing who to ask. The
+  // therapist preference rides inside the service line so it is still asked
+  // once, in the first message.
+  //
+  // Falls through to v2 and then v1 while v3 is still in review, so nothing
+  // stops going out during approval.
+  if (!cheapest) {
+    const genderLine = r.therapist_gender === "male" ? ", prefiere masajista chico"
+      : r.therapist_gender === "female" ? ", prefiere masajista chica" : "";
+    const p3 = [
+      param(`${svcEs(r.service_name).toLowerCase()} de ${reqDuration(r)} min${genderLine}`, 80),
+      client,
+      param(`${dayLabelEs(r.day1, r.message_text)}${r.time1 ? " a las " + r.time1 : ""}`, 60),
+    ];
+    const r3 = await sendTemplate(c.wa, "solicitud_reserva_v3", p3, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
+    console.log(`[dispatch] req=${r.id} studio=${c.business_name} tpl=v3 status=${r3.status} ${r3.out.slice(0, 140)}`);
+    if (r3.ok) {
+      await logMsg(c.wa, `[solicitud_reserva_v3] ${p3[1]}: ${p3[0]} | ${p3[2]} (req #${r.id})`);
+      return { ok: true };
+    }
+    if (!/132001|template|does not exist|not found|not approved/i.test(r3.out)) return { ok: false, error: `${r3.status} ${r3.out.slice(0, 200)}` };
+  }
+
   if (!cheapest) {
     const p2 = [client, param(`${svcEs(r.service_name).toLowerCase()} de ${reqDuration(r)} min`, 60), param(dayLabelEs(r.day1, r.message_text), 60), param(String(r.time1 || "hora por concretar"), 30), param(String(r.area || "Madrid"), 40)];
     const r2 = await sendTemplate(c.wa, NEW_TEMPLATE, p2, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
