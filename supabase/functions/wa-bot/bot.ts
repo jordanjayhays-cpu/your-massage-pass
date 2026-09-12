@@ -162,18 +162,24 @@ async function sendTemplate(to: string, name: string, lang: string, params: stri
 }
 
 
-const askService = (to: string, L: string) =>
-  sendList(to, COPY[L].intro, COPY[L].introBtn, [
-    ...MAIN_SERVICES.map((s) => ({ id: s.id, title: L === "es" ? s.tEs : s.tEn, description: s.id === "svc_unsure" ? (L === "es" ? "sin respuestas incorrectas" : "no wrong answers") : "" })),
-    { id: "svc_more", title: COPY[L].moreRow.title, description: COPY[L].moreRow.desc },
-    // v39: "Talk to a person" is the last resort, not a first-screen option (Jordan, 5 Sept).
-    // It stays in the menu and anyone typing "human"/"persona" still gets a person.
-    L === "es" ? { id: "lang_en", title: "English", description: "switch to English" } : { id: "lang_es", title: "Español", description: "cambiar a español" },
-  ]);
+// v81: three buttons, not a nine row list. A WhatsApp list is a menu the
+// customer has to open before they can answer, and 12 of the 53 people who ever
+// wrote to us stopped at exactly this question. Cutting choices to three is the
+// single best evidenced change available here. Everything else, including the
+// undecided, lives behind "Something else", which opens the full list, so
+// nothing is lost and the three easy answers stay one tap away.
+const askService = (to: string, L: string) => sendButtons(to, COPY[L].intro, COPY[L].introBtns);
+// "Something else" now carries the undecided as well as the rarer massages, so
+// "Help me figure it out" leads the list rather than hiding at the bottom of it.
 const askServiceMore = (to: string, L: string) =>
   sendList(to, COPY[L].moreTitle, COPY[L].introBtn, [
+    { id: "svc_unsure", title: L === "es" ? "Ayúdame a elegir" : "Help me figure it out", description: L === "es" ? "sin respuestas incorrectas" : "no wrong answers" },
+    ...MAIN_SERVICES.filter((s) => !["svc_relax", "svc_deep", "svc_unsure"].includes(s.id)).map((s) => ({ id: s.id, title: L === "es" ? s.tEs : s.tEn, description: "" })),
     ...MORE_SERVICES.map((s) => ({ id: s.id, title: L === "es" ? s.tEs : s.tEn, description: "" })),
-    { id: "svc_back", title: COPY[L].backRow.title, description: COPY[L].backRow.desc },
+    // No language row here on purpose: 1 + 3 + 6 is exactly the 10 rows a
+    // WhatsApp list allows, and an eleventh would be silently dropped by the
+    // slice in sendList rather than refused. Switching language still works by
+    // typing "español" or "English", and the row is on the main menu.
   ]);
 // v50: the day buttons carry the date. "Mañana" tapped at 01:17 meant Sunday to
 // David and Monday to every studio we asked (6 Sept). The long form is stored
@@ -837,7 +843,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       if (live && live.client_phone) { await handleLiveStudioMessage(live, partner, freeText, from); return; }
     }
     if (!req) {
-      const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=in.(studio_asked,studio_replied,bidding)&order=created_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1`, { headers: H() });
+      const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=in.(studio_asked,studio_replied,bidding)&order=created_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1,price,client_phone,languages`, { headers: H() });
       const rows = await rr.json().catch(() => []);
       req = Array.isArray(rows) && rows[0] ? rows[0] : null;
     }
@@ -1601,14 +1607,38 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   const offerDay = offerDayFromText(freeText, L);
   const day = offerDay || req.day1 || (L === "es" ? "ese día" : "that day");
   const asked = [req.day1, req.time1].filter(Boolean).join(" ");
+  // v81: if this studio confirmed both a price and a discount in writing, the
+  // customer hears what we got them. Only then. A studio that gave a price and
+  // ducked the discount produces the plain offer and no mention that we asked,
+  // because "we tried and they said no" makes us look weak and them look mean.
+  // memberLine stays empty unless every number came from the studio itself.
+  let memberLine = "";
+  try {
+    const dsp = await dispatchRowFor(req.id, partner.id, studioFrom);
+    const pct = dsp && dsp.discount_pct ? Number(dsp.discount_pct) : 0;
+    const listPrice = Number(req.price || 0);
+    if (pct > 0 && listPrice > 0) {
+      // whatsapp_requests has no duration column; 60 is the standard booking and
+      // the only length any price we hold is quoted against.
+      const mins = 60;
+      // Rounded to the cent the customer will actually be charged, never up to
+      // a tidier number: 10% off 60 is 54.
+      const now = Math.round(listPrice * (100 - pct)) / 100;
+      memberLine = "\n\n" + COPY[L].memberRate(listPrice, now, mins);
+    }
+  } catch (e) { console.log("[wa] member rate skipped", String(e)); }
   await sendButtons(clientNum,
-    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked),
+    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked) + memberLine,
     [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }]);
   cs.data.prevStep = cs.step;
   cs.step = "await_offer";
   cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id, day: offerDay || null };
   await saveSession(cs);
-  await sendText(studioFrom, "Gracias. Se lo proponemos ahora mismo al cliente. ¿Podéis guardar esa hora unos 15 minutos? Os confirmamos en cuanto responda.");
+  // v81 (Jordan, 12 Sept): his own words for this moment. The old line asked the
+  // studio to hold the slot for 15 minutes, which is a promise about the
+  // customer that we cannot make on their behalf. This one names the customer
+  // and commits only to coming back.
+  await sendText(studioFrom, `Vale, gracias. Lo confirmo con ${req.first_name || "el cliente"} y os digo algo en cuanto me conteste. Gracias.`);
   await logEvent(clientNum, "offer_forwarded", { request_id: req.id, studio: partner.business_name, time });
   await founderCard(`⏰ ${partner.business_name} offers ${time} · #${req.id}`, {
     badge: "OFFER FORWARDED",
@@ -1725,7 +1755,18 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session) {
   await sendText(row.phone, `Confirmado: ${req.first_name || "el cliente"}, ${trSvc(req.service_name || "Massage", "es").toLowerCase()}, ${when}. ${req.languages === "es" ? "" : "Habla inglés. "}Si necesitáis decirle algo, escribidnos aquí y se lo hacemos llegar. Gracias, Massage Club`);
   await sendText(from, COPY[L].offerAccepted(studio, when, pc.address, pc.phone));
   await customerConfirmEmail(req, studio, when, pc.address, pc.phone);
-  s.step = "done"; s.data.offer = null; await saveSession(s);
+  s.data.offer = null;
+  // v81 (Jordan, 12 Sept): the email lands here, at the moment they have just
+  // said yes to a real slot, where it buys them the member rate rather than
+  // standing between them and any answer. Nobody abandons over an email address
+  // once they have a booking in front of them. Sharo J had none of this: no
+  // email, no WhatsApp history, five studios asked and nothing we could tell her.
+  if (!req.contact_email && !s.data.emailRefused) {
+    s.step = "await_email_post"; await saveSession(s);
+    await sendText(from, COPY[L].memberJoin);
+  } else {
+    s.step = "done"; await saveSession(s);
+  }
   await logEvent(from, "confirmed", { id: req.id, studio, via: "offer" });
   await founderCard(`✅ Booked: ${req.first_name || "customer"} at ${studio}, ${when} · #${req.id}`, {
     badge: "BOOKED",
@@ -1810,7 +1851,18 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   // only carries free text for 24 hours after someone writes to us, so a phone
   // number on its own is not a way of reaching anyone. v50 took this question
   // out of the flow to shorten it; today cost more than the question does.
-  if (!s.data.email && !s.data.emailRefused) {
+  // v81 (Jordan, 12 Sept): the email question moves to the moment they accept a
+  // studio's offer, where it buys them the member rate, instead of standing
+  // between them and any answer at all. Asking here made it the fifth thing we
+  // wanted before the customer had received a single thing, and the funnel says
+  // people leave long before they get this far.
+  //
+  // The 8 September rule still holds: a booking is not confirmed without an
+  // email. What changes is only when it is asked. Someone mid-conversation on
+  // WhatsApp is reachable for 24 hours, so dispatching is safe; Sharo J was
+  // unreachable because she arrived through the website and never wrote to the
+  // bot at all, and dispatch-studios already refuses that case outright.
+  if (!s.data.email && !s.data.emailRefused && !(await canFreeform(digitsOf(from)))) {
     s.step = "await_email_req"; await saveSession(s);
     await sendText(from, COPY[L].email);
     return;
@@ -1837,7 +1889,11 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   // Only for unassigned requests: a customer still finishing the old flow with
   // a studio already chosen is handled by the studio-ask trigger, and fanning
   // out as well would message five studios about a booking that has one.
-  if (id && !s.data.chosen) await dispatchRequest(id);
+  if (id && !s.data.chosen) {
+    // v81: the first message in the whole flow that gives instead of asks.
+    await sendText(from, COPY[L].onIt);
+    await dispatchRequest(id);
+  }
 }
 
 // Fire and forget: a dispatch failure must never break the customer's
@@ -2487,10 +2543,18 @@ const handler = async (req: Request) => {
       }
       case "await_time": {
         if (HOURS[replyId]) {
+          // v81: the band is the answer. This used to push on to await_hour, so
+          // one fact cost two screens out of a flow the evidence says should be
+          // three or four questions total. The band goes to the studio and the
+          // studio proposes the exact hour, which it knows better than the
+          // customer guessing: the gaps in its own diary. A studio answering a
+          // band with no exact time is already handled as availability rather
+          // than a booking (v43), so nothing downstream has to change.
           s.data.timeBandId = replyId;
           s.data.timeBand = L === "es" ? HOURS[replyId].labelEs : HOURS[replyId].label;
-          s.step = "await_hour"; await saveSession(s);
-          await askHour(from, L, replyId);
+          s.data.time = s.data.timeBand;
+          await logEvent(from, "time_chosen", { time: s.data.time, band: true });
+          await afterTime(s, from, L);
         } else if (replyId === "time_custom") {
           s.step = "await_time_text"; await saveSession(s);
           await sendText(from, COPY[L].timeAsk);

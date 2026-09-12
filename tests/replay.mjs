@@ -258,6 +258,40 @@ for (const [msg, want, expect, note] of studioGender) {
 }
 
 // ---------------------------------------------------------------------------
+// v81: the shape of the opening message. 37 people sent one message and never
+// wrote again, and 12 of them stopped at this exact question. These checks are
+// about structure, not taste: three taps, one language, no link, no price.
+// ---------------------------------------------------------------------------
+for (const lang of ["en", "es"]) {
+  const intro = COPY[lang].intro;
+  const btns = COPY[lang].introBtns;
+  check("opener offers exactly three buttons", `${lang}`, btns.length, 3,
+    "WhatsApp only renders three as taps; a fourth turns it into a menu to open");
+  check("opener has no link", `${lang}: ${intro}`, /https?:\/\//.test(intro), false,
+    "one of the five old openers led with a booking link to someone sitting in WhatsApp");
+  check("opener quotes no price", `${lang}: ${intro}`, /\d+\s*(EUR|€)/i.test(intro), false,
+    "price before a question was in every one of the five openers that died");
+  check("opener is one language", `${lang}: ${intro}`, /Hi, this is|Massage Club here\./.test(intro) && /Hola|somos/.test(intro), false,
+    "the bilingual opener sent both languages in one block");
+  check("opener is short", `${lang}`, intro.length <= 130, true,
+    "37 people got a wall of text and never replied");
+  // The third button has to lead somewhere, not dead-end the undecided.
+  check("third button opens the rest", `${lang}: ${btns[2].id}`, btns[2].id, "svc_more", "");
+  // The "we are on it" line is the first thing in the flow that gives rather
+  // than asks. Losing it puts the customer back to five questions for nothing.
+  check("on-it line exists", `${lang}`, typeof COPY[lang].onIt === "string" && COPY[lang].onIt.length > 10, true, "");
+  check("member join line asks for both", `${lang}`,
+    /email/i.test(COPY[lang].memberJoin) && /(name|nombre)/i.test(COPY[lang].memberJoin), true,
+    "the email moved here, to the moment they accept a slot");
+}
+// The member rate must be computed, never rounded to a tidier number. 10% off
+// 60 is 54. Quoting 55 means the counter charges something we did not say.
+const memberMath = (was, pct) => Math.round(was * (100 - pct)) / 100;
+check("member rate arithmetic", "60 EUR less 10%", memberMath(60, 10), 54, "Jordan's own example said 55");
+check("member rate arithmetic", "45 EUR less 10%", memberMath(45, 10), 40.5, "");
+check("member rate arithmetic", "70 EUR less 15%", memberMath(70, 15), 59.5, "");
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

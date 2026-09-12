@@ -245,7 +245,13 @@ export const HOURS: Record<string, { hours: string[]; label: string; labelEs: st
 };
 export const COPY: Record<string, any> = {
   en: {
-    intro: "Massage Club here. We book massages at Madrid's best studios and you pay the studio directly, no fee from us.\n\nWhich massage would you like?",
+    // v81 (Jordan, 12 Sept). The old opener made three claims about us before
+    // asking anything, and offered nine services as a WhatsApp list, which is a
+    // menu the customer has to open first. 37 people sent one message and never
+    // wrote again; 12 of them stopped exactly here. Three claims become one, and
+    // nine options become three taps with everything else behind "Something else".
+    intro: "Hi! We're Massage Club, we help you find the best massage in Madrid.\n\nWhat are you after?",
+    introBtns: [{ id: "svc_relax", title: "Relaxing" }, { id: "svc_deep", title: "Deep tissue" }, { id: "svc_more", title: "Something else" }],
     introBtn: "Choose massage",
     moreTitle: "More massages:",
     moreRow: { title: "More massages", desc: "Balinese, shiatsu, reflexology..." },
@@ -270,6 +276,9 @@ export const COPY: Record<string, any> = {
     areaOtherDesc: "type it or share your location",
     areaShare: "Type your area, for example Arganzuela or Tetuán, or share your location.",
     gotItSvc: (svc: string) => `Got it, ${svc}. 👌`,
+    // v81: after four taps we stop asking and go to work. This is the first
+    // message in the whole flow the customer receives instead of gives.
+    onIt: "Give me a few minutes, I'm asking studios near you now.",
     jobSeeker: "Thanks for writing! We do not hire directly, but we work with Madrid's best studios and sometimes they look for good therapists. Send your name, experience and the neighbourhoods you cover, and we will keep you in mind. 🙏",
     otherTypeAck: "Of course, let us change the massage. Your day, time and area are saved.",
     areaAgain: "Type your area, for example Chamberí, Sol or Retiro. Or tap share location.",
@@ -332,6 +341,17 @@ export const COPY: Record<string, any> = {
       `Done, ${n}. ${sN}, ${w}, ${st}.\n\nThe studios are closed right now. I'll ask them the moment they open at 09:00 and write here as soon as one confirms. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
       `Update on your ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} can take you at *${time}* ${day}${asked ? " instead of " + asked : ""}. Does that work?`,
+    // v81 (Jordan, 12 Sept): the member rate. We ask every studio for a Massage
+    // Club rate, so when one gives it in writing the customer hears what we got
+    // them, not just a price. It is truthful only because that is literally how
+    // we obtain it: never label a studio's ordinary price a member rate, and
+    // never mention a discount we asked for and did not get. The figure must be
+    // computed from the price the studio confirmed, never rounded to look nicer:
+    // 10% off 60 is 54, not 55.
+    memberRate: (was: number, now: number, mins: number) =>
+      `I got you the Massage Club member rate: *${now} EUR* instead of ${was}, ${mins} minutes.`,
+    // Asked only after they tap to book, where it buys them something.
+    memberJoin: "Brilliant. Membership is free, I just need your name and email to lock in the rate and send your confirmation. I'll pass your details to the studio so they can reach you on the day.",
     offerYes: (t: string) => `Yes, book ${t}`,
     offerNo: "Another time",
     offerAccepted: (studio: string, when: string, addr: string, phone: string) =>
@@ -361,7 +381,8 @@ export const COPY: Record<string, any> = {
     zoneAnswer: "We are not a single studio. We book you into professional studios all over Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña and more) and you pick the area that suits you.",
   },
   es: {
-    intro: "Somos Massage Club. Reservamos masajes en los mejores centros de Madrid y pagas directamente en el centro, sin comisión.\n\n¿Qué masaje quieres?",
+    intro: "¡Hola! Somos Massage Club, te ayudamos a encontrar el mejor masaje de Madrid.\n\n¿Qué te apetece?",
+    introBtns: [{ id: "svc_relax", title: "Relajante" }, { id: "svc_deep", title: "Descontracturante" }, { id: "svc_more", title: "Otra cosa" }],
     introBtn: "Elegir masaje",
     moreTitle: "Más masajes:",
     moreRow: { title: "Más masajes", desc: "balinés, shiatsu, reflexología..." },
@@ -386,6 +407,7 @@ export const COPY: Record<string, any> = {
     areaOtherDesc: "escríbela o comparte tu ubicación",
     areaShare: "Escribe tu zona, por ejemplo Arganzuela o Tetuán, o comparte tu ubicación.",
     gotItSvc: (svc: string) => `Perfecto, ${svc}. 👌`,
+    onIt: "Dame unos minutos, estoy preguntando a centros cerca de ti.",
     jobSeeker: "¡Gracias por escribir! No contratamos directamente, pero trabajamos con los mejores centros de Madrid y a veces buscan buenos masajistas. Envíanos tu nombre, experiencia y las zonas que cubres, y te tendremos en cuenta. 🙏",
     otherTypeAck: "Claro, cambiamos el masaje. Tu día, hora y zona quedan guardados.",
     areaAgain: "Escribe tu zona, por ejemplo Chamberí, Sol o Retiro. O toca compartir ubicación.",
@@ -440,6 +462,9 @@ export const COPY: Record<string, any> = {
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
       `Novedades sobre tu ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} puede atenderte a las *${time}* ${day}${asked ? " en vez de " + asked : ""}. ¿Te va bien?`,
+    memberRate: (was: number, now: number, mins: number) =>
+      `Te he conseguido la tarifa de socio de Massage Club: *${now} EUR* en vez de ${was}, ${mins} minutos.`,
+    memberJoin: "Genial. Hacerse socio es gratis, solo necesito tu nombre y tu email para fijar la tarifa y mandarte la confirmación. Paso tus datos al centro para que puedan localizarte el día de la cita.",
     offerYes: (t: string) => `Sí, reserva ${t}`,
     offerNo: "Otra hora",
     offerAccepted: (studio: string, when: string, addr: string, phone: string) =>
