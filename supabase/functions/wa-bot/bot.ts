@@ -1975,8 +1975,8 @@ async function dispatchRequest(requestId: number) {
 // Gerome must never receive a Massage Club email, nudge or review ask. Their
 // addresses are also on the Resend suppression list, which covers the
 // functions that live only in the dashboard.
-const TEST_PHONES = ["15622355063", "17867276503", "34612474827", "34635569364", "8615273855997"];
-const TEST_EMAIL_RE = /@(example|test|testing)\.com$|placeholder\.local$|jordanjayhays@gmail|jordan@massageclub|support@massageclub|jordan\.hays@student\.ie\.edu|jordan@niahconnect|cata\.waack@gmail|elon_yilong@student\.ie\.edu|longyi_elon@outlook|geromin\.nepomuceno@student\.ie\.edu/i;
+const TEST_PHONES = ["15622355063", "17867276503", "34612474827", "34635569364", "8615273855997", "34662680781"];
+const TEST_EMAIL_RE = /@(example|test|testing)\.com$|placeholder\.local$|jordanjayhays@gmail|jordan@massageclub|support@massageclub|jordan\.hays@student\.ie\.edu|jordan@niahconnect|cata\.waack@gmail|elon_yilong@student\.ie\.edu|longyi_elon@outlook|geromin\.nepomuceno@student\.ie\.edu|ritiktulsyan674@gmail|sarfrazsingh@gmail/i;
 const TEST_NAME_RE = /\b(test|prueba|uitest|mctest)\b/i;
 async function ensureBooking(requestId: number): Promise<string | null> {
   try {

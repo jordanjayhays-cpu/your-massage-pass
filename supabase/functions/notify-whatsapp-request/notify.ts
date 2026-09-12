@@ -39,7 +39,7 @@ let WA_TOKEN = "";
 const PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") || "1270437552818077";
 const GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 
-const TEST_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com", "jordan@massageclub.io", "support@massageclub.io", "jordan@niahconnect.com", "cata.waack@gmail.com", "elon_yilong@student.ie.edu", "longyi_elon@outlook.com", "geromin.nepomuceno@student.ie.edu"];
+const TEST_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com", "jordan@massageclub.io", "support@massageclub.io", "jordan@niahconnect.com", "cata.waack@gmail.com", "elon_yilong@student.ie.edu", "longyi_elon@outlook.com", "geromin.nepomuceno@student.ie.edu", "ritiktulsyan674@gmail.com", "sarfrazsingh@gmail.com"];
 const TEST_DOMAINS = ["testing.com", "example.com", "test.com", "placeholder.local", "mailinator.com", "example.org"];
 const isTestContact = (email?: string | null, name?: string | null) => {
   const e = String(email || "").toLowerCase();
