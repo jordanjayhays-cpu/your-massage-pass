@@ -92,11 +92,11 @@ const OPEN_HOUR = 9;
 const CLOSE_HOUR = 21;
 
 const JORDAN_NUMBERS = ["15622355063", "34612474827", "34613977900"];
-const TEST_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com", "jordan@massageclub.io", "support@massageclub.io", "jordan@niahconnect.com", "cata.waack@gmail.com", "elon_yilong@student.ie.edu", "guest@massageclub.io"];
+const TEST_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com", "jordan@massageclub.io", "support@massageclub.io", "jordan@niahconnect.com", "cata.waack@gmail.com", "elon_yilong@student.ie.edu", "longyi_elon@outlook.com", "geromin.nepomuceno@student.ie.edu", "guest@massageclub.io"];
 const TEST_DOMAINS = ["testing.com", "example.com", "test.com", "placeholder.local", "mailinator.com", "example.org"];
 // Jordan's own number counts as a test customer too: his bookings must never
 // reach a real studio, even though the same number is a safe destination.
-const TEST_PHONES = ["15622355063", "17867276503", "34612474827"];
+const TEST_PHONES = ["15622355063", "17867276503", "34612474827", "34635569364"];
 
 const svc = () => Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const H = () => ({ apikey: svc(), Authorization: `Bearer ${svc()}`, "Content-Type": "application/json" });
