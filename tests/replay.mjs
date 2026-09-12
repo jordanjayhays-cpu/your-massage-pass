@@ -145,6 +145,16 @@ const eroticCases = [
   ["I have sensitive skin, is oil ok?", false, "a real question about skin"],
   ["my lower back is very sensitive", false, "a real question about a sore back"],
   ["sensitive areas after surgery", false, ""],
+  // Jasper, 11 Sept 08:50. Asked twice whether the studios have "extra
+  // services" and was answered "Good choice. Which day suits you?" both times,
+  // then his question was stored as the day he wanted.
+  ["They have extra services", true, "Jasper, 11 Sept. Got the day question twice instead of an answer"],
+  ["Just asking they have extra services", true, "his second attempt, same reply"],
+  ["servicios extras?", true, ""],
+  // Ordinary words that happen to contain extra. Blocking these would be worse
+  // than the bug.
+  ["I need an extra towel please", false, "a real request"],
+  ["trabajo muchas horas extras", false, "nothing to do with massage"],
 ];
 for (const [input, want, note] of eroticCases) check("EROTIC_RE", input, EROTIC_RE.test(input), want, note);
 check("JOB_RE", "hola busco trabajo de masajista", JOB_RE.test("hola busco trabajo de masajista"), true,
