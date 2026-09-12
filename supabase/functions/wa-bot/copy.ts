@@ -84,6 +84,43 @@ export const mcMadridHour = (): number => parseInt(new Intl.DateTimeFormat("en-G
 // real time. When in doubt the reply goes to a founder card, never to a client.
 export const HOURS_STATEMENT_RE = /\b(abrimos|abre|abierto|cerramos|cierra|cerrad[oa]s?|horario|de lunes a viernes|lun(es)?\s*[-a]\s*vie(rnes)?|todos los d[ií]as|we (open|close)|opening hours|closed on|mon(day)?\s*(-|to)\s*(fri|sat|sun))/i;
 const OFFER_MARKER_RE = /\b(podemos|podr[ií]amos|tenemos (hueco|libre|disponible)|hay hueco|disponible|(nos|os|le) va bien|s[ií],?\s*a\s+las|vale\s+a\s+las|ok\s+a\s+las|puede venir|os espero|te esperamos|reservad[oa])\b/i;
+// v84: a studio that offers several times. FISIOBARICA answered Asim's request
+// on 9 September with "17h, 18h y 20h" and only 17:00 was kept, so two thirds of
+// the availability they volunteered was thrown away. When he asked for 7pm an
+// hour later, nothing had 20:00 on file to come close with.
+//
+// Same guards as the singular: an opening-hours statement is not an offer, and
+// neither is a range like "de 10 a 20". Returns every distinct time in the order
+// the studio wrote them, so the first is still the one we lead with.
+export function parseOfferedTimes(t: string): string[] {
+  const s = String(t || "");
+  if (HOURS_STATEMENT_RE.test(s) && !OFFER_MARKER_RE.test(s)) return [];
+  if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return [];
+  const out: string[] = [];
+  const push = (h: number, m = "00") => {
+    if (h < 0 || h > 23) return;
+    const v = `${String(h).padStart(2, "0")}:${m}`;
+    if (!out.includes(v)) out.push(v);
+  };
+  // Walk the string once so the written order is preserved.
+  const re = /\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b|\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])|\b([01]?\d|2[0-3])\s*h(?:oras?|rs?)?\b|\b(1[0-2]|[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?m\.?\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    if (m[1] !== undefined) push(parseInt(m[1], 10), m[2]);
+    else if (m[3] !== undefined) push(parseInt(m[3], 10));
+    // A bare "1h" is a duration, not 01:00. Centro Aloha's "si coges 1h" was
+    // once read as a 01:00 slot and forwarded to a customer.
+    else if (m[4] !== undefined && parseInt(m[4], 10) >= 8) push(parseInt(m[4], 10));
+    else if (m[5] !== undefined) {
+      let h = parseInt(m[5], 10);
+      const ap = String(m[7] || "").toLowerCase();
+      if (ap === "p" && h < 12) h += 12;
+      if (ap === "a" && h === 12) h = 0;
+      push(h, m[6] || "00");
+    }
+  }
+  return out;
+}
 export function parseOfferedTime(t: string): string {
   const s = String(t || "");
   if (HOURS_STATEMENT_RE.test(s) && !OFFER_MARKER_RE.test(s)) return "";

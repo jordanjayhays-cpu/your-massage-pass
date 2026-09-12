@@ -15,7 +15,7 @@
 // read before any model or network call happens.
 
 import {
-  parseOfferedTime, detectTime, detectDay, strongSpanish, isEmail,
+  parseOfferedTime, parseOfferedTimes, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
@@ -318,6 +318,35 @@ for (const lang of ["en", "es"]) {
   check("review ask links massageclub only", `${lang}`, /^https:\/\/book\.massageclub\.io\//.test(msg.split("\n").pop()), true,
     "customer-facing links must be massageclub.io only");
   check("review ask stays short", `${lang}`, msg.split("\n")[0].length <= 70, true, "Jordan asked for super simple");
+}
+
+// ---------------------------------------------------------------------------
+// v84: a studio offering more than one time. FISIOBARICA answered Asim on
+// 9 September with "17h, 18h y 20h" and only 17:00 survived, so two thirds of
+// what they volunteered was discarded. When he asked for 7pm an hour later
+// there was nothing on file to come close with.
+// ---------------------------------------------------------------------------
+const multiTimes = [
+  ["17h, 18h y 20h", ["17:00", "18:00", "20:00"], "FISIOBARICA, 9 Sept, for Asim. Only the first was kept"],
+  ["Nos viene bien a las 18.00", ["18:00"], "Calma Madrid Spa, 9 Sept"],
+  ["podemos a las 12:15 o a las 18:00", ["12:15", "18:00"], ""],
+  ["19 horas", ["19:00"], "TornaSol, 9 Sept"],
+  ["tenemos 10:00, 11:00 y 12:00 libres", ["10:00", "11:00", "12:00"], ""],
+  ["7pm o 8pm", ["19:00", "20:00"], ""],
+  // Guards: none of these are offers.
+  ["Abrimos de 10 a 20", [], "opening hours, not availability"],
+  ["horario de lunes a viernes 10:00 a 21:00", [], "an hours statement"],
+  ["si coges 1h", [], "a duration, and no Madrid studio opens at 01:00"],
+  ["gracias", [], ""],
+];
+for (const [msg, want, note] of multiTimes) {
+  check("studio offered times", msg, parseOfferedTimes(msg), want, note);
+}
+// The plural must never disagree with the singular about what comes first,
+// or the lead offer and the alternatives would describe different things.
+for (const [msg] of multiTimes) {
+  const many = parseOfferedTimes(msg), one = parseOfferedTime(msg);
+  check("first offered time agrees with the singular", msg, many[0] || "", one, "");
 }
 
 // ---------------------------------------------------------------------------

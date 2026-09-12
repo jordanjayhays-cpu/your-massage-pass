@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/87454402ee481ef123e3798746bce0b0eb007a94/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/87454402ee481ef123e3798746bce0b0eb007a94/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -1636,7 +1636,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   const clientNum = digitsOf(req.client_phone || "");
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
-    body: JSON.stringify({ offered_time: time, offered_at: new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
+    body: JSON.stringify({ offered_time: time, offered_times: parseOfferedTimes(freeText), offered_at: new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
   });
   await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=neq.confirmed`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
@@ -1697,7 +1697,10 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
 // answered by repeating the 18:00 he had already turned down.
 async function dispatchOfferingTime(requestId: number, time: string, skipRow: string): Promise<{ id: string; partner: { id: string; business_name: string } } | null> {
   if (!requestId || !time) return null;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&offered_time=eq.${encodeURIComponent(time)}&outcome=not.in.(declined,stood_down,expired)&order=replied_at.desc.nullslast&limit=4&select=id,partner_id`, { headers: H() });
+  // v84: `or` so a studio that offered several times is reachable by any of
+  // them. FISIOBARICA offered Asim "17h, 18h y 20h"; only 17:00 was on file, so
+  // when he asked for 7pm the 20:00 they had volunteered was invisible.
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&or=(offered_time.eq.${encodeURIComponent(time)},offered_times.cs.{${encodeURIComponent(time)}})&outcome=not.in.(declined,stood_down,expired)&order=replied_at.desc.nullslast&limit=4&select=id,partner_id`, { headers: H() });
   const rows = await r.json().catch(() => []);
   const row = (Array.isArray(rows) ? rows : []).find((x: any) => String(x.id) !== String(skipRow));
   if (!row || !row.partner_id) return null;
@@ -1711,7 +1714,7 @@ async function forwardTimeChange(req: any, partner: { id: string; business_name:
   const clientNum = digitsOf(req.client_phone || "");
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
-    body: JSON.stringify({ offered_time: time, offered_at: new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
+    body: JSON.stringify({ offered_time: time, offered_times: parseOfferedTimes(freeText), offered_at: new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
   });
   const cs = await getSession(clientNum);
   const L = cs.data.lang === "es" || req.languages === "es" ? "es" : "en";
