@@ -277,12 +277,15 @@ const dayBtnsBoth = () => dayBtns("en");
 const looksEnglish = (t: string) => /\b(hi|hello|hey|i|i'd|i'm|id|im|like|book|booking|want|need|please|massage|can|could|you|tomorrow|today|tonight|near|the)\b/i.test(String(t || "")) && !/[¿¡ñ]|\b(hola|quiero|masaje|reservar|gracias)\b/i.test(String(t || ""));
 const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, dayBtns(L));
 const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, dayBtns(L));
+// v81b: three taps, not a four row list. The "custom time" row was the fourth,
+// which is what forced this into a menu the customer had to open first; the
+// invitation to type an exact time now lives in the question itself, and free
+// text was always parsed anyway. Someone who needs 20:00 types it and gets it.
 const askTime = (to: string, L: string) =>
-  sendList(to, COPY[L].time, COPY[L].timeBtn, [
-    { id: "time_morning", title: L === "es" ? HOURS.time_morning.labelEs : HOURS.time_morning.label, description: "" },
-    { id: "time_afternoon", title: L === "es" ? HOURS.time_afternoon.labelEs : HOURS.time_afternoon.label, description: "" },
-    { id: "time_evening", title: L === "es" ? HOURS.time_evening.labelEs : HOURS.time_evening.label, description: "" },
-    { id: "time_custom", title: COPY[L].timeCustomRow.title, description: COPY[L].timeCustomRow.desc },
+  sendButtons(to, COPY[L].time, [
+    { id: "time_morning", title: L === "es" ? HOURS.time_morning.labelEs : HOURS.time_morning.label },
+    { id: "time_afternoon", title: L === "es" ? HOURS.time_afternoon.labelEs : HOURS.time_afternoon.label },
+    { id: "time_evening", title: L === "es" ? HOURS.time_evening.labelEs : HOURS.time_evening.label },
   ]);
 const askHour = (to: string, L: string, band: string) => {
   const b = HOURS[band];

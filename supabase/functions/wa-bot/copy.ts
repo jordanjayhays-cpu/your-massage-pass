@@ -250,7 +250,7 @@ export const COPY: Record<string, any> = {
     // menu the customer has to open first. 37 people sent one message and never
     // wrote again; 12 of them stopped exactly here. Three claims become one, and
     // nine options become three taps with everything else behind "Something else".
-    intro: "Hi! We're Massage Club, we help you find the best massage in Madrid.\n\nWhat are you after?",
+    intro: "Hi! We're Massage Club, we help you find the best massage in Madrid.\n\nWhat type of massage would you like?",
     introBtns: [{ id: "svc_relax", title: "Relaxing" }, { id: "svc_deep", title: "Deep tissue" }, { id: "svc_more", title: "Something else" }],
     introBtn: "Choose massage",
     moreTitle: "More massages:",
@@ -260,7 +260,10 @@ export const COPY: Record<string, any> = {
     dayUnsure: "No problem, that's what we're here for. We'll match you with the right massage and studio. Which day suits you?",
     dayBtns: [{ id: "day_today", title: "Today" }, { id: "day_tomorrow", title: "Tomorrow" }, { id: "day_other", title: "Another day" }],
     dayAsk: "Which day? Just type it, for example Saturday or 3 September.",
-    time: "What time of day works best?",
+    // v81b: exact times are invited here rather than hidden behind a fourth
+    // list row. Anyone who needs 20:00 says so and gets 20:00; everyone else
+    // gives a window the studio can actually fill from its own gaps.
+    time: "What time works best? Tap a window, or type an exact time like 20:00.",
     timeBtn: "Pick a window",
     timeCustomRow: { title: "Custom time", desc: "type your exact time" },
     timeAsk: "What time? Type it, for example 16:30 or 9pm.",
@@ -268,7 +271,7 @@ export const COPY: Record<string, any> = {
     hourBtn: "Pick a time",
     hourFlex: "Flexible",
     hourFlexDesc: "any time in this window",
-    area: "Last question: which part of Madrid suits you? Tap one, or type any other area.",
+    area: "Last question: which part of Madrid are you located in? Tap one, type any other area, or share your location.",
     areaBtn: "Choose area",
     areaAnyTitle: "Anywhere in Madrid",
     areaAnyDesc: "we pick the best studio for you",
@@ -381,7 +384,7 @@ export const COPY: Record<string, any> = {
     zoneAnswer: "We are not a single studio. We book you into professional studios all over Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña and more) and you pick the area that suits you.",
   },
   es: {
-    intro: "¡Hola! Somos Massage Club, te ayudamos a encontrar el mejor masaje de Madrid.\n\n¿Qué te apetece?",
+    intro: "¡Hola! Somos Massage Club, te ayudamos a encontrar el mejor masaje de Madrid.\n\n¿Qué tipo de masaje quieres?",
     introBtns: [{ id: "svc_relax", title: "Relajante" }, { id: "svc_deep", title: "Descontracturante" }, { id: "svc_more", title: "Otra cosa" }],
     introBtn: "Elegir masaje",
     moreTitle: "Más masajes:",
@@ -391,7 +394,7 @@ export const COPY: Record<string, any> = {
     dayUnsure: "Sin problema, para eso estamos. Te buscamos el masaje y el centro perfectos. ¿Qué día te viene bien?",
     dayBtns: [{ id: "day_today", title: "Hoy" }, { id: "day_tomorrow", title: "Mañana" }, { id: "day_other", title: "Otro día" }],
     dayAsk: "¿Qué día? Escríbelo, por ejemplo sábado o 3 de septiembre.",
-    time: "¿Qué franja te va mejor?",
+    time: "¿Qué hora te viene mejor? Toca una franja, o escribe una hora exacta como las 20:00.",
     timeBtn: "Elegir franja",
     timeCustomRow: { title: "Otra hora", desc: "escribe tu hora exacta" },
     timeAsk: "¿A qué hora? Escríbela, por ejemplo 16:30 o 21:00.",
@@ -399,7 +402,7 @@ export const COPY: Record<string, any> = {
     hourBtn: "Elegir hora",
     hourFlex: "Flexible",
     hourFlexDesc: "cualquier hora de esta franja",
-    area: "Última pregunta: ¿qué zona de Madrid te viene bien? Toca una, o escribe otra zona.",
+    area: "Última pregunta: ¿en qué zona de Madrid estás? Toca una, escribe otra zona, o comparte tu ubicación.",
     areaBtn: "Elegir zona",
     areaAnyTitle: "Cualquier zona",
     areaAnyDesc: "elegimos el mejor centro para ti",
