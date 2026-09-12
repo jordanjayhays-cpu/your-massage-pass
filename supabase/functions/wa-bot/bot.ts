@@ -2157,6 +2157,26 @@ const handler = async (req: Request) => {
       const reading = await interpret(String(payload.text || ""), Array.isArray(payload.history) ? payload.history : [], String(payload.state || "No booking on file yet."));
       return new Response(JSON.stringify({ ok: true, keyPresent: !!(await aiKey()), reading }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    // v85: every webhook Meta sends carries the WhatsApp Business Account id in
+    // entry[0].id, and we have always thrown it away. It is the id templates are
+    // created against, and it is not discoverable from the phone number id or
+    // from the token, so without this the only way to create a template is for
+    // Jordan to read it out of WhatsApp Manager by hand. Keep it the first time
+    // we see it. Written once; after that this is a no-op read.
+    const wabaId = String(payload?.entry?.[0]?.id || "");
+    if (/^\d{10,20}$/.test(wabaId)) {
+      try {
+        const have = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.WABA_ID&select=key&limit=1`, { headers: H() });
+        const hv = await have.json().catch(() => []);
+        if (!Array.isArray(hv) || !hv.length) {
+          await fetch(`${SUPABASE_URL}/rest/v1/app_secrets`, {
+            method: "POST", headers: { ...H(), Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify({ key: "WABA_ID", value: wabaId }),
+          });
+          console.log("[wa] captured WABA id", wabaId);
+        }
+      } catch (e) { console.log("[wa] WABA capture failed", String(e)); }
+    }
     const value = payload?.entry?.[0]?.changes?.[0]?.value;
     const msg = value?.messages?.[0];
     // v39: delivery failures are news. A free-text reminder outside the 24h
