@@ -15,7 +15,7 @@
 // read before any model or network call happens.
 
 import {
-  parseOfferedTime, parseOfferedTimes, detectTime, detectDay, strongSpanish, isEmail,
+  parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
@@ -385,6 +385,46 @@ for (const [cur, text, want, note] of langCases) {
 }
 check("empty language means English", "(new)", "" === "es" ? "es" : "en", "en",
   "the ads are written in English, so an unknown language is English");
+
+// ---------------------------------------------------------------------------
+// v87: "always respond" (Jordan, 12 Sept). Twelve threads had drifted with the
+// other person's message last and ours never sent, one of them a partner studio
+// complaining about a no-show, unanswered for eight days. The handler now sends
+// a holding line whenever a branch answered nothing, with common-sense
+// exceptions. These check the exceptions, because a fallback that fires on a
+// goodbye is worse than silence: it restarts a conversation that had ended.
+// ---------------------------------------------------------------------------
+const threadClosed = (said) =>
+  GOODBYE_RE.test(said)
+  || /^\s*(ok|okay|vale|gracias|thanks|thank you|👍|👌|🙏)\s*$/i.test(said)
+  || /\b(have a (good|nice|lovely) (day|one|evening|night)|good night|buenas noches|buen d[ií]a|que vaya bien|igualmente)\b/i.test(said);
+const closedCases = [
+  ["Ok thanks", true, "Marvin, 7 Sept. His last words, and nothing more was needed"],
+  ["Have a good day", true, "Nabin Bista, 8 Sept"],
+  ["gracias", true, ""],
+  ["Thanks", true, "Fernando, 11 Sept, after cancelling"],
+  ["👍", true, ""],
+  ["hasta luego", true, ""],
+  ["vale", true, ""],
+  // These are NOT closed, and silence on them is the fault being fixed.
+  ["Por lo menos debería avisarnos que no iba a venir.", false, "Baan Bua, 4 Sept. Eight days unanswered"],
+  ["Si no habla español no puede venir", false, "Taolandia, 31 Aug. Twelve days unanswered"],
+  ["Que?", false, "Centro Aloha, 11 Sept"],
+  ["How much", false, "Marvin asked this and was answered; it must never count as closed"],
+  ["7pm?", false, "Asim, 9 Sept"],
+  ["No podemos", false, "Sinergia38's decline still deserves a thank you"],
+];
+for (const [said, want, note] of closedCases) {
+  check("thread closed needs no reply", said, threadClosed(said), want, note);
+}
+// The holding line must not promise a person, because the bot never hands off
+// to "a representative", and must not restate the question it failed to answer.
+for (const lang of ["en", "es"]) {
+  const f = COPY[lang].fallbackAck;
+  check("fallback does not promise a human", `${lang}: ${f}`,
+    /representative|agent|colleague|compañer|representante|una persona/i.test(f), false, "");
+  check("fallback stays short", `${lang}`, f.length <= 110, true, "");
+}
 
 // ---------------------------------------------------------------------------
 // Report

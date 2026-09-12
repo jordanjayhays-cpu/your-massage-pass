@@ -112,13 +112,19 @@ async function logEvent(phone: string, event: string, meta: Record<string, unkno
   } catch (e) { console.log("[wa] event log failed", String(e)); }
 }
 
+// v87 (Jordan, 12 Sept): "always respond, never be the last one to message".
+// Twelve threads had drifted with their message last and ours never sent, some
+// for twelve days, including a partner studio complaining about a no-show. The
+// rule is worthless as a memo, so it is enforced: every send flips this, and the
+// handler checks it before it finishes. Reset per webhook, not per process.
+let sentThisTurn = false;
 async function waSend(to: string, payload: Record<string, unknown>, logBody: string, type: string) {
   const res = await fetch(GRAPH, {
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, ...payload }),
   });
   if (!res.ok) console.log("[wa] send failed", res.status, (await res.text()).slice(0, 300));
-  else await logMsg(to, "out", logBody, type);
+  else { sentThisTurn = true; await logMsg(to, "out", logBody, type); }
   return res.ok;
 }
 const sendText = (to: string, body: string) => waSend(to, { type: "text", text: { body, preview_url: false } }, body, "text");
@@ -2123,6 +2129,42 @@ async function sendStatus(to: string, L: string, phone: string) {
   await sendText(to, COPY[L].statusLine(trSvc(b.service_name || "Massage", L), when, studio, stageTxt));
 }
 
+// v87: the guarantee behind Jordan's "always respond" rule (12 Sept). handleInner
+// has 45 return points and several of them answer nothing at all, which is how
+// twelve threads ended with the customer's or the studio's message last, one of
+// them a partner complaining about a no-show that sat unanswered for eight days.
+//
+// Rather than patch every branch, wrap the whole thing: if a real inbound
+// message came in and nothing at all went back, say something. Common sense is
+// encoded as the exceptions, which is what Jordan asked for: a goodbye or a
+// thank-you needs no reply, a muted number gets nothing ever, and a reaction or
+// a delivery receipt is not a message. Jordan hears about every one of these,
+// because a fallback firing means a branch somewhere answered nothing.
+const handler = async (req: Request) => {
+  sentThisTurn = false;
+  let raw = "";
+  try { raw = await req.text(); } catch { /* empty body */ }
+  const res = await handleInner(new Request(req.url, { method: req.method, headers: req.headers, body: raw || null }));
+  try {
+    const p = raw ? JSON.parse(raw) : null;
+    const m = p?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    const from = digitsOf(String(m?.from || ""));
+    const said = String(m?.text?.body || m?.button?.text || "");
+    const isReaction = m?.type === "reaction";
+    if (m && from && !sentThisTurn && !isReaction && !TEST_PHONES.includes(from)) {
+      const s = await getSession(from);
+      const closed = GOODBYE_RE.test(said) || /^\s*(ok|okay|vale|gracias|thanks|thank you|👍|👌|🙏)\s*$/i.test(said) || /\\b(have a (good|nice|lovely) (day|one|evening|night)|good night|buenas noches|buen d[ií]a|que vaya bien|igualmente)\\b/i.test(said);
+      if (s.step !== "muted" && !closed) {
+        const L = s.data.lang === "es" ? "es" : "en";
+        await sendText(from, COPY[L].fallbackAck);
+        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120) });
+        await notifyJordanWa(`Nothing was sent back to +${from} (step ${s.step}), so they got the holding line. They said: ${said.slice(0, 140)}`, from).catch(() => {});
+      }
+    }
+  } catch (e) { console.log("[wa] fallback check failed", String(e)); }
+  return res;
+};
+
 export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string } = {}) {
   if (cfg.aiKey) AI_KEY = cfg.aiKey;
   if (cfg.waToken) WA_TOKEN = cfg.waToken;
@@ -2137,7 +2179,7 @@ const coveredLine = (stage: string) =>
     ? "Gracias por responder. Al final el cliente ha cancelado esa cita, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club"
     : "Gracias por responder. Esa reserva ya quedó cubierta por otro centro, así que no hace falta que hagáis nada. Os escribo con la siguiente. Jordan, Massage Club";
 
-const handler = async (req: Request) => {
+const handleInner = async (req: Request) => {
   let payload: any = null;
   try { payload = await req.json(); } catch { return new Response("OK", { status: 200 }); }
 

@@ -392,6 +392,10 @@ export const COPY: Record<string, any> = {
     // page, not Google: the reviews are an asset we keep and they feed the
     // studio pages. Deliberately one line and one link, because Jordan asked
     // for super simple and a paragraph after a massage gets ignored.
+    // v87: the line nobody should ever need. It only goes out when a branch
+    // answered nothing at all, which is a bug, so it stays vague on purpose
+    // rather than guessing at what they asked. Jordan is told every time.
+    fallbackAck: "Got that, thank you. Let me look into it and I will come straight back to you.",
     reviewAsk: (studio: string, link: string) =>
       `How was ${studio || "it"}? Rate it here, takes 10 seconds:\n${link}`,
     memberRate: (was: number, now: number, mins: number) =>
@@ -508,6 +512,7 @@ export const COPY: Record<string, any> = {
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
       `Novedades sobre tu ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} puede atenderte a las *${time}* ${day}${asked ? " en vez de " + asked : ""}. ¿Te va bien?`,
+    fallbackAck: "Recibido, gracias. Lo miro y te digo algo enseguida.",
     reviewAsk: (studio: string, link: string) =>
       `¿Qué tal ${studio || "ha ido"}? Valóralo aquí, son 10 segundos:\n${link}`,
     memberRate: (was: number, now: number, mins: number) =>
