@@ -350,6 +350,43 @@ for (const [msg] of multiTimes) {
 }
 
 // ---------------------------------------------------------------------------
+// v86: the language switch must work in both directions. It used to be one way:
+// a single Spanish word turned Spanish on and nothing ever turned it off, so an
+// English speaker who typed "hola" once was answered in Spanish forever. Jordan
+// wrote "Hi" to the bot on 12 September and got Spanish, because a test session
+// from weeks earlier still had him flagged es.
+//
+// Leaving a language must be harder than entering one, so a message has to look
+// English AND carry no Spanish signal before it switches back.
+// ---------------------------------------------------------------------------
+const looksEnglish = (t) => /\b(hi|hello|hey|i|i'd|i'm|id|im|like|book|booking|want|need|please|massage|can|could|you|tomorrow|today|tonight|near|the)\b/i.test(String(t || ""));
+const nextLang = (cur, text) => {
+  if (!text) return cur;
+  if (cur !== "es" && strongSpanish(text)) return "es";
+  if (cur === "es" && !strongSpanish(text) && looksEnglish(text)) return "en";
+  return cur;
+};
+const langCases = [
+  ["es", "Hi", "en", "Jordan, 12 Sept. One English word from someone wrongly flagged Spanish"],
+  ["es", "Hi, I'd like to book a massage", "en", ""],
+  ["es", "tomorrow please", "en", ""],
+  ["en", "Hola, quiero reservar un masaje", "es", "a real Spanish speaker still switches in"],
+  ["en", "buenas, cuanto cuesta?", "es", ""],
+  // Must NOT flip back on a message that still carries Spanish.
+  ["es", "hola, tomorrow please", "es", "mixed, and Spanish signal present, so it stays"],
+  ["es", "gracias", "es", "no English signal at all"],
+  ["es", "ok", "es", "too thin to move anyone"],
+  ["es", "👍", "es", ""],
+  // A brand new person with nothing set gets English, which is what the ads say.
+  ["", "Hi, I'd like to book a massage. I saw you on Facebook.", "", "empty resolves to English downstream"],
+];
+for (const [cur, text, want, note] of langCases) {
+  check("language switches both ways", `${cur || "(new)"} + ${text}`, nextLang(cur, text), want, note);
+}
+check("empty language means English", "(new)", "" === "es" ? "es" : "en", "en",
+  "the ads are written in English, so an unknown language is English");
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

@@ -2365,7 +2365,21 @@ const handler = async (req: Request) => {
       }
       return new Response("OK", { status: 200 });
     }
-    if (text && s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
+    // v86: this used to be one way only. Spanish could be switched on by a
+    // single Spanish word and nothing ever switched it back, so an English
+    // speaker who typed "hola" once was answered in Spanish for the rest of
+    // their life. Jordan wrote "Hi" to the bot on 12 September and got Spanish,
+    // because a test session from weeks earlier still had him flagged es.
+    //
+    // Symmetric now, and deliberately harder to leave a language than to enter
+    // it: strongSpanish already weighs a whole message, while looksEnglish
+    // matches common words, so English only wins when there is no Spanish
+    // signal at all. A brand new person with no language set gets English,
+    // which is what the ads are written in.
+    if (text) {
+      if (s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
+      else if (s.data.lang === "es" && !strongSpanish(text) && looksEnglish(text)) s.data.lang = "en";
+    }
     const L: string = s.data.lang === "es" ? "es" : "en";
 
     // v55: a sticker, photo or voice note mid-flow is not an answer. On 6 Sept
