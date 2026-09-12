@@ -142,6 +142,29 @@ export const genderWanted = (t: string): "male" | "female" | null => {
   if (!GENDER_RE.test(String(t || ""))) return null;
   return /\b(chica|mujer|femenin[oa]|female|woman|girl|lady|masseuse)\b/i.test(t) ? "female" : "male";
 };
+// v81: a studio answering the therapist-gender question in its own words.
+// Returns true only on a clear yes and false only on a clear no. Anything else
+// is null, because the rule is that we never tell a customer something a studio
+// has not actually confirmed, and a wrong yes here means someone arrives to
+// find the opposite of what they asked for.
+// Real examples: Centro Aloha's "Si hay masajista chico, mañana le esperamos a
+// Fernando" (10 Sept) is a yes; "Solo tenemos masajista chica" is a no to a man.
+export function studioGenderReply(text: string, wanted: "male" | "female"): boolean | null {
+  const t = stripAcc(text);
+  if (!/(masajist|terapeut|chic[oa]|hombre|mujer|senor|chaval)/.test(t)) return null;
+  const wantRe = wanted === "male" ? /(chico|hombre|masculino|chaval|senor)/ : /(chica|mujer|femenina|senora)/;
+  const otherRe = wanted === "male" ? /(chica|mujer|femenina)/ : /(chico|hombre|masculino|chaval)/;
+  const saysWanted = wantRe.test(t);
+  const saysOther = otherRe.test(t);
+  // "solo tenemos chica", "no hay chico", "no tenemos masajista hombre"
+  if (/\b(no|solo|solamente|unicamente|nicamente)\b/.test(t)) {
+    if (saysOther && !saysWanted) return false;
+    if (/\bno\b[^.]{0,20}/.test(t) && saysWanted) return false;
+    return null;
+  }
+  if (saysWanted && !saysOther) return true;
+  return null;
+}
 // People asking for a job, not a massage (the ads reach therapists too).
 export const JOB_RE = /(\b(hiring|apply|applying|job|vacancy|vacancies|cv|resume|curriculum)\b|massage therapist\b.*\b(available|looking)|\b(soy|busco)\s+(masajista|trabajo|empleo)|\bcontrat(ais|an|amos)\b|\bcurriculum\b)/i;
 // "Any of them" / "you choose" typed instead of tapped.

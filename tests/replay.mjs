@@ -16,7 +16,7 @@
 
 import {
   parseOfferedTime, detectTime, detectDay, strongSpanish, isEmail,
-  HI_RE, ARRIVED_RE, genderWanted, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
+  HI_RE, ARRIVED_RE, genderWanted, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
@@ -231,6 +231,30 @@ for (const [lang, line] of [["en", BLOCK_LINE_EN], ["es", BLOCK_LINE_ES]]) {
   check("neutral line does not moralise", `${lang}: ${line}`,
     /cannot help|no podemos ayudar(te)?|we cannot|no ofrecemos nada/i.test(line), false,
     "the old copy ended the conversation; this one must not");
+}
+
+// ---------------------------------------------------------------------------
+// v81: reading a studio's answer to the therapist-gender question. A wrong yes
+// here sends someone to a studio expecting the opposite of what they asked for,
+// so anything short of a clear answer must stay null and claim nothing.
+// ---------------------------------------------------------------------------
+const studioGender = [
+  ["Si hay masajista chico, mañana le esperamos a Fernando", "male", true,
+   "Centro Aloha, 10 Sept 17:10. The written yes nothing could remember"],
+  ["si, tenemos masajista chico", "male", true, ""],
+  ["Solo tenemos masajista chica", "male", false, "the case that must stand the studio down"],
+  ["no tenemos masajista hombre", "male", false, ""],
+  ["tenemos masajista chica disponible", "female", true, ""],
+  ["solo hombres", "female", false, ""],
+  // Ambiguous or unrelated: claim nothing.
+  ["a las 17:00", "male", null, "a time is not an answer about the therapist"],
+  ["Ok, aqui estaremos", "male", null, "Aloha, 11 Sept. Relaying this as an answer is how bookings break"],
+  ["Que?", "male", null, "Aloha, 11 Sept"],
+  ["si", "male", null, "a bare yes does not say what they are agreeing to"],
+  ["tenemos chico y chica", "male", null, "mentions both, so it is not a clean confirmation"],
+];
+for (const [msg, want, expect, note] of studioGender) {
+  check("studio gender reply", `${msg} (wanted ${want})`, studioGenderReply(msg, want), expect, note);
 }
 
 // ---------------------------------------------------------------------------

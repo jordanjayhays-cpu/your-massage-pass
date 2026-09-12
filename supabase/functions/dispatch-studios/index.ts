@@ -360,7 +360,13 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     if (!/132001|template|does not exist|not found/i.test(r2.out)) return { ok: false, error: `${r2.status} ${r2.out.slice(0, 200)}` };
   }
 
-  const service = param(`${svcEs(r.service_name)} ${reqDuration(r)} min${r.price ? " · " + r.price + " EUR" : ""}${cheapest ? ". " + PRICE_HUNT_LINE : (sameDay ? "" : ". " + BEST_OFFER_LINE)}`, 300);
+  // v23: ask for the therapist gender inside the slot request rather than as a
+  // second round trip (Jordan, 12 Sept). Fernando asked for a man on 10 Sept,
+  // it was only asked by hand afterwards, and nothing recorded Centro Aloha's
+  // written yes, so the bot later offered to ask a question already answered.
+  const genderAsk = r.therapist_gender === "male" ? " Una cosa más: prefiere masajista chico, ¿tenéis a esa hora?"
+    : r.therapist_gender === "female" ? " Una cosa más: prefiere masajista chica, ¿tenéis a esa hora?" : "";
+  const service = param(`${svcEs(r.service_name)} ${reqDuration(r)} min${r.price ? " · " + r.price + " EUR" : ""}${genderAsk}${cheapest ? ". " + PRICE_HUNT_LINE : (sameDay ? "" : ". " + BEST_OFFER_LINE)}`, 300);
   const when = param(`${dayLabelEs(r.day1, r.message_text)}${r.time1 ? ", " + r.time1 : ""}`);
 
   const res = await fetch(GRAPH, {

@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/9eca0b1878efcb2580b71b91f51eef875fb5781a/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/9eca0b1878efcb2580b71b91f51eef875fb5781a/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -752,6 +752,26 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
   }
   // Free text from a known partner number: attach to their latest open request.
   if (partner && freeText) {
+    // v81: a studio answering the therapist-gender question. Recorded against
+    // the dispatch row with the studio's own words, so the claim we later make
+    // to the customer can always be traced back to something they wrote. Only
+    // a clear yes or no is stored; anything ambiguous is left null on purpose.
+    try {
+      const since48g = new Date(Date.now() - 48 * 3600e3).toISOString();
+      const gd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${since48g}&order=created_at.desc&limit=1&select=id,request_id`, { headers: H() });
+      const gdr = (await gd.json().catch(() => []))[0] || null;
+      if (gdr) {
+        const gq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${gdr.request_id}&select=therapist_gender&limit=1`, { headers: H() });
+        const want = String(((await gq.json().catch(() => []))[0] || {}).therapist_gender || "");
+        if (want === "male" || want === "female") {
+          const ans = studioGenderReply(freeText, want);
+          if (ans !== null) {
+            await patchDispatch(gdr.id, { therapist_gender_ok: ans, therapist_gender_note: freeText.slice(0, 300) });
+            console.log("[studio] therapist gender", want, ans ? "confirmed" : "refused", "by", partner.business_name);
+          }
+        }
+      }
+    } catch (e) { console.log("[studio] gender parse failed", String(e)); }
     // v46: a written discount is an offer on the open request. 10% or more wins
     // the booking at once; less waits for the window to close.
     const pct = parseDiscount(freeText);
@@ -1191,7 +1211,7 @@ async function recentThread(phone: string): Promise<Array<{ dir: string; body: s
 
 // A one-line description of where this person's booking stands, for the model.
 async function bookingState(phone: string): Promise<{ line: string; req: any }> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=ilike.*${digitsOf(phone)}&order=id.desc&limit=1&select=id,first_name,service_name,day1,time1,area,stage,studio_name,confirmed_day,confirmed_time,partner_id,share_ok,client_phone`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=ilike.*${digitsOf(phone)}&order=id.desc&limit=1&select=id,first_name,service_name,day1,time1,area,stage,studio_name,confirmed_day,confirmed_time,partner_id,share_ok,client_phone,therapist_gender`, { headers: H() });
   const rows = await r.json().catch(() => []);
   const req = Array.isArray(rows) && rows[0] ? rows[0] : null;
   if (!req) return { line: "No booking on file yet.", req: null };
@@ -1204,6 +1224,20 @@ async function bookingState(phone: string): Promise<{ line: string; req: any }> 
 
 // The bot acts on the reading using its own approved copy. Returns true when it
 // handled the message, false to let the old fallback run.
+// v81: has a studio confirmed the therapist gender this customer asked for,
+// in its own written words? Only a dispatch row carrying therapist_gender_ok
+// counts, and only for the studio that is actually holding the booking, because
+// one studio saying yes says nothing about another. Returns null when we do not
+// know, which is the case the customer must never hear a guess about.
+async function confirmedGender(req: any): Promise<{ studio: string; gender: string } | null> {
+  const want = String(req?.therapist_gender || "");
+  if (!want || !req?.id) return null;
+  const url = `${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${req.id}&therapist_gender_ok=is.true&select=partner_id,therapist_gender_note${req.partner_id ? `&partner_id=eq.${encodeURIComponent(req.partner_id)}` : ""}&limit=1`;
+  const rows = await (await fetch(url, { headers: H() })).json().catch(() => []);
+  if (!Array.isArray(rows) || !rows[0]) return null;
+  return { studio: String(req.studio_name || "The studio"), gender: want };
+}
+
 async function actOnReading(r: Reading, s: Session, from: string, L: string, req: any, text: string): Promise<boolean> {
   await logEvent(from, "interpreted", { intent: r.intent, question: r.question, confidence: r.confidence, text: text.slice(0, 160) });
   if (r.confidence < 0.6) return false;
@@ -1232,7 +1266,33 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
     // Instagram lead at 21:11. Both got a service menu or a promise nobody kept.
     // It is a frequently asked question, not an edge case, and the answer holds
     // for every studio without any therapist data we do not have.
-    if (r.question === "therapist") { await sendText(from, COPY[lang].therapistAnswer); return true; }
+    // v81: if a studio has already answered this in writing, say so. Fernando
+    // asked "Will be a guy right ?" at 13:30:41 on 11 September, twenty hours
+    // after Centro Aloha had written "Si hay masajista chico, mañana le
+    // esperamos a Fernando". He got the generic line offering to ask the studio
+    // before booking, then the main menu, and cancelled 66 seconds later.
+    if (r.question === "therapist") {
+      const known = req ? await confirmedGender(req) : null;
+      if (known) {
+        const when = [req.confirmed_time || req.time1].filter(Boolean).join("");
+        await sendText(from, lang === "es"
+          ? `Sí. ${known.studio} confirmó masajista ${known.gender === "male" ? "chico" : "chica"} para tu cita${when ? " de las " + when : ""}.`
+          : `Yes. ${known.studio} confirmed a ${known.gender} therapist for your${when ? " " + when : ""} booking.`);
+        // Back where they were, never the main menu. The menu is what lost him.
+        await reAsk(s, from, lang);
+        return true;
+      }
+      const wanted = req && req.therapist_gender ? String(req.therapist_gender) : (s.data.therapistGender ? String(s.data.therapistGender) : "");
+      if (wanted) {
+        await sendText(from, lang === "es"
+          ? `Se lo he pedido al centro: masajista ${wanted === "male" ? "chico" : "chica"}. En cuanto me confirmen te lo digo.`
+          : `I have asked the studio for a ${wanted} therapist. I will tell you the moment they confirm.`);
+        await reAsk(s, from, lang);
+        return true;
+      }
+      await sendText(from, COPY[lang].therapistAnswer);
+      return true;
+    }
     // v76 (9 Sept): everything else used to return false, which dropped the
     // customer into the service menu. On 9 Sept the model read Asim's "Provide
     // the service male or female?" as intent ask, question other, confidence
@@ -1727,6 +1787,10 @@ async function createRequest(s: Session): Promise<number | null> {
       contact_email: d.email || null,
       day1: d.day || null, time1: d.time || null,
       day2: d.day || null, time2: d.timeBand && d.timeBand !== d.time ? d.timeBand : null,
+      // v81: carried so the studio ask can include it and so an answer, once a
+      // studio gives one in writing, has somewhere to live. Fernando asked for
+      // a man, Centro Aloha said yes in writing, and nothing could remember it.
+      therapist_gender: d.therapistGender === "male" || d.therapistGender === "female" ? d.therapistGender : null,
       languages: d.lang === "es" ? "es" : "en",
       message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : "")}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
       stage: "new",
