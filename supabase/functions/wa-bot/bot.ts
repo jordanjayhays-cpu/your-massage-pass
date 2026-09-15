@@ -2241,6 +2241,20 @@ const handleInner = async (req: Request) => {
       const stranded: string[] = [];
       const closing: string[] = [];
       const hanging: string[] = [];
+      // One alarm per thing per day. Without this, every run while a condition
+      // holds sends another email, which is how "Rescue acted on 1 stuck
+      // booking" reached Jordan 27 times in a week and stopped being read.
+      // The marker rides funnel_events so there is no new table to migrate.
+      const seenR = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=eq.watchdog_alert&created_at=gte.${new Date(now - 20 * 3600e3).toISOString()}&select=meta`, { headers: H() });
+      const seenRows = await seenR.json().catch(() => []);
+      const seen = new Set((Array.isArray(seenRows) ? seenRows : []).map((x: any) => String(x?.meta?.key || "")).filter(Boolean));
+      const fresh: Array<{ key: string; phone: string }> = [];
+      const once = (key: string, phone: string, into: string[], line: string) => {
+        if (seen.has(key)) return;
+        seen.add(key);
+        fresh.push({ key, phone });
+        into.push(line);
+      };
 
       const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=in.(${LIVE.join(",")})&select=id,first_name,client_phone,contact_email,service_name,stage,created_at,confirmed_start,reconfirmed_at,client_confirmed_at,customer_flag&order=id.desc&limit=60`, { headers: H() });
       const reqs = await rq.json().catch(() => []);
@@ -2269,7 +2283,7 @@ const handleInner = async (req: Request) => {
           const answered = lastIn && Date.parse(lastIn) > Date.parse(off.replied_at);
           if (offAgeH >= 2 && !answered) {
             const pc = off.partner_id ? await partnerCard(off.partner_id) : { business_name: "" };
-            stranded.push(`${who}: ${pc.business_name || "a studio"} ${off.outcome === "won" || off.outcome === "accepted" ? "ACCEPTED" : "offered " + (off.offered_time || "a time")} ${Math.round(offAgeH)}h ago and they have said nothing since.`);
+            once(`stranded:${r.id}`, ph, stranded, `${who}: ${pc.business_name || "a studio"} ${off.outcome === "won" || off.outcome === "accepted" ? "ACCEPTED" : "offered " + (off.offered_time || "a time")} ${Math.round(offAgeH)}h ago and they have said nothing since.`);
           }
         }
 
@@ -2278,7 +2292,7 @@ const handleInner = async (req: Request) => {
         if (!r.contact_email && quietMs !== Infinity && !settled && ageDays <= 14) {
           const hoursLeft = 24 - quietMs / 3600e3;
           if (hoursLeft <= 4 && hoursLeft > -2) {
-            closing.push(`${who}: no email on file and the WhatsApp window shuts in ${hoursLeft <= 0 ? "under an hour" : Math.round(hoursLeft) + "h"}. After that nothing reaches them.`);
+            once(`closing:${r.id}`, ph, closing, `${who}: no email on file and the WhatsApp window shuts in ${hoursLeft <= 0 ? "under an hour" : Math.round(hoursLeft) + "h"}. After that nothing reaches them.`);
           }
         }
       }
@@ -2297,11 +2311,17 @@ const handleInner = async (req: Request) => {
         if (TEST_PHONES.includes(ph) || studioNums.has(ph)) continue;
         const mins = (now - Date.parse(m.created_at)) / 60000;
         if (mins < 10 || mins > 36 * 60) continue;
-        hanging.push(`+${ph}: "${String(m.body || "").slice(0, 70)}" ${mins < 90 ? Math.round(mins) + " min" : Math.round(mins / 60) + "h"} ago, still the last word in the thread.`);
+        once(`hanging:${ph}:${m.created_at}`, ph, hanging, `+${ph}: "${String(m.body || "").slice(0, 70)}" ${mins < 90 ? Math.round(mins) + " min" : Math.round(mins / 60) + "h"} ago, still the last word in the thread.`);
       }
 
       const found = stranded.length + closing.length + hanging.length;
       if (found && !dry) {
+        for (const f of fresh) {
+          await fetch(`${SUPABASE_URL}/rest/v1/funnel_events`, {
+            method: "POST", headers: { ...H(), Prefer: "return=minimal" },
+            body: JSON.stringify({ phone: f.phone, event: "watchdog_alert", meta: { key: f.key } }),
+          });
+        }
         const lines = [
           stranded.length ? "A STUDIO SAID YES AND NOBODY CLOSED IT\n" + stranded.join("\n") : "",
           closing.length ? "\nABOUT TO BECOME UNREACHABLE\n" + closing.join("\n") : "",
