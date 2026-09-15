@@ -2204,11 +2204,18 @@ const handleInner = async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, keyPresent: !!(await aiKey()), reading }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     // v90: read the approved template list, and send one template to one
-    // number. Rufaro's 19:00 booking on 15 Sept sat unconfirmed for nine days
-    // and her 24 hour window had been shut since the 6th, so there was no way
-    // at all to ask her whether she was coming: every customer template in this
-    // file is wired to a flow, and dispatch-studios only sends plain text and
-    // the studio templates. Both are ops key guarded.
+    // number. Both ops key guarded.
+    //
+    // Written while checking whether Rufaro's unconfirmed 19:00 booking on
+    // 15 Sept could be reached at all, her 24h window having been shut since
+    // the 6th. It could: booking-guard drives off whatsapp_requests, not
+    // bookings, and sends appointment_check_v1 at T-3h to exactly this case.
+    // Keep that straight. What is genuinely missing is any way to read the
+    // approved template list, or to send one template once, without editing
+    // and deploying a function: every customer template in this file is wired
+    // to a flow, and dispatch-studios sends only plain text and the studio
+    // templates. Ops "templates" is how the five parameters of
+    // appointment_check_v1 were read rather than guessed.
     if (payload?.ops === "templates") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const wr = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.WABA_ID&select=value&limit=1`, { headers: H() });
