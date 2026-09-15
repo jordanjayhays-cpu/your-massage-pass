@@ -2653,6 +2653,31 @@ const handleInner = async (req: Request) => {
       return new Response("OK", { status: 200 });
     }
     if (/^(book|reservar)$/i.test(text) || replyId === "menu_book") {
+      // v92: a tap on "Finish my booking" is not a fresh start. The recovery
+      // template tells someone their massage is still saved with us, and this
+      // branch then wiped the one thing we had just promised was safe.
+      // Favioagui tapped at 09:45 on 15 Sept, forty minutes after the
+      // template, and was answered with "Hi! We're Massage Club, what type of
+      // massage would you like?" His service, day and area were thrown away in
+      // the same breath. Eight other people were still holding that button.
+      //
+      // So a recovered session picks up at the first question we do not have
+      // an answer to, keeping everything we already know. Guarded on the step
+      // still being one of the flow steps, because someone who has since
+      // finished a booking and taps Book from the menu really does want a new
+      // one and must not be resumed into stale answers.
+      const RESUMABLE = ["await_service", "await_day", "await_day_text", "await_time", "await_hour", "await_time_text", "await_area", "await_studio", "await_studio_text", "await_name", "await_email"];
+      if (replyId === "menu_book" && s.data.recoverySent && RESUMABLE.includes(String(s.step))) {
+        const d = s.data;
+        const resumeAt = !d.service ? "service" : !d.day ? "day" : !d.time ? "time" : !d.area ? "area" : "finish";
+        await logEvent(from, "flow_resumed", { via: "recovery", at: resumeAt });
+        if (resumeAt === "service") { s.step = "await_service"; await saveSession(s); await askService(from, L); }
+        else if (resumeAt === "day") { s.step = "await_day"; await saveSession(s); if (d.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L); }
+        else if (resumeAt === "time") { s.step = "await_time"; await saveSession(s); await askTime(from, L); }
+        else if (resumeAt === "area") { s.step = "await_area"; await saveSession(s); await askArea(from, L); }
+        else { await askNameOrFinalize(s, from, L); }
+        return new Response("OK", { status: 200 });
+      }
       s.step = "await_service"; s.data = { lang: s.data.lang || "", known: s.data.known || null, adRef: s.data.adRef || null };
       await saveSession(s); await logEvent(from, "flow_started", { via: "menu" }); await askService(from, L);
       return new Response("OK", { status: 200 });
