@@ -2203,6 +2203,44 @@ const handleInner = async (req: Request) => {
       const reading = await interpret(String(payload.text || ""), Array.isArray(payload.history) ? payload.history : [], String(payload.state || "No booking on file yet."));
       return new Response(JSON.stringify({ ok: true, keyPresent: !!(await aiKey()), reading }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    // v90: read the approved template list, and send one template to one
+    // number. Rufaro's 19:00 booking on 15 Sept sat unconfirmed for nine days
+    // and her 24 hour window had been shut since the 6th, so there was no way
+    // at all to ask her whether she was coming: every customer template in this
+    // file is wired to a flow, and dispatch-studios only sends plain text and
+    // the studio templates. Both are ops key guarded.
+    if (payload?.ops === "templates") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const wr = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.WABA_ID&select=value&limit=1`, { headers: H() });
+      const wj = await wr.json().catch(() => []);
+      const waba = String(wj?.[0]?.value || "");
+      if (!waba) return new Response(JSON.stringify({ ok: false, error: "no WABA_ID in app_secrets" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      const tr = await fetch(`https://graph.facebook.com/v21.0/${waba}/message_templates?limit=200&fields=name,language,status,category,components`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+      const tj = await tr.json().catch(() => ({}));
+      const only = String(payload.name || "");
+      const rows = (Array.isArray(tj?.data) ? tj.data : [])
+        .filter((t: any) => !only || String(t.name) === only)
+        .map((t: any) => ({
+          name: t.name, language: t.language, status: t.status, category: t.category,
+          body: (t.components || []).find((c: any) => c.type === "BODY")?.text || "",
+          buttons: ((t.components || []).find((c: any) => c.type === "BUTTONS")?.buttons || []).map((b: any) => b.text),
+        }));
+      return new Response(JSON.stringify({ ok: tr.ok, count: rows.length, templates: rows }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    // { ops: "tpl", key, to, name, lang, params: [], payloads: [] }
+    // dry: true renders what would be sent and sends nothing.
+    if (payload?.ops === "tpl") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const to = String(payload.to || "").replace(/[^0-9]/g, "");
+      const name = String(payload.name || "");
+      const lang = String(payload.lang || "en");
+      const params: string[] = Array.isArray(payload.params) ? payload.params.map((x: any) => String(x)) : [];
+      const payloads: string[] = Array.isArray(payload.payloads) ? payload.payloads.map((x: any) => String(x)) : [];
+      if (!to || !name) return new Response(JSON.stringify({ ok: false, error: "to and name required" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (payload.dry) return new Response(JSON.stringify({ ok: true, dry: true, to, name, lang, params, payloads }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+      const sent = await sendTemplate(to, name, lang, params, payloads);
+      return new Response(JSON.stringify({ ok: !!sent, to, name, lang, params }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     // v85: every webhook Meta sends carries the WhatsApp Business Account id in
     // entry[0].id, and we have always thrown it away. It is the id templates are
     // created against, and it is not discoverable from the phone number id or
