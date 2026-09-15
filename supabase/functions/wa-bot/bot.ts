@@ -2213,6 +2213,104 @@ const handleInner = async (req: Request) => {
       const reading = await interpret(String(payload.text || ""), Array.isArray(payload.history) ? payload.history : [], String(payload.state || "No booking on file yet."));
       return new Response(JSON.stringify({ ok: true, keyPresent: !!(await aiKey()), reading }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    // v94: the watchdog. Every failure this week was found by a person reading
+    // the database by hand, which is not a system and does not survive paid
+    // traffic. Three checks, run on a cron, each tied to a loss that actually
+    // happened:
+    //
+    //   STRANDED YES  a studio offered or accepted and the customer has said
+    //                 nothing since. Deyanira (Sinergia38 "ambos confirmamos",
+    //                 7 days), Sharo J (Calma 18:30, 7 days), Viko (KamAI won,
+    //                 10 days), Asim (TornaSol 19:00 never answered, 6 days)
+    //                 and Andy all sat here with nothing watching them.
+    //   WINDOW CLOSING  a request is out to studios, we hold no email, and the
+    //                 customer's 24h WhatsApp window is about to shut. When it
+    //                 does they become unreachable with a studio holding a
+    //                 slot, which is exactly how the first three above died.
+    //   LEFT HANGING  the last message in a thread is theirs. Fernando's "MAN"
+    //                 and Andy's "Mujer" were both answered with something
+    //                 else entirely, and nothing noticed.
+    //
+    // Reports once per firing and only when something is wrong, so a quiet day
+    // costs no email. { ops: "watchdog", key, dry } lists without sending.
+    if (payload?.ops === "watchdog") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const dry = !!payload.dry;
+      const now = Date.now();
+      const LIVE = ["offered", "studio_asked", "studio_replied", "bidding", "confirmed"];
+      const stranded: string[] = [];
+      const closing: string[] = [];
+      const hanging: string[] = [];
+
+      const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=in.(${LIVE.join(",")})&select=id,first_name,client_phone,contact_email,service_name,stage,created_at&order=id.desc&limit=60`, { headers: H() });
+      const reqs = await rq.json().catch(() => []);
+      for (const r of (Array.isArray(reqs) ? reqs : [])) {
+        const ph = digitsOf(r.client_phone);
+        if (!ph || TEST_PHONES.includes(ph)) continue;
+        const who = `#${r.id} ${r.first_name || "+" + ph}`;
+
+        const lr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${ph}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
+        const lastIn = (await lr.json().catch(() => []))[0]?.created_at;
+        const quietMs = lastIn ? now - Date.parse(lastIn) : Infinity;
+
+        const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${r.id}&or=(offered_time.not.is.null,outcome.in.(accepted,won))&order=replied_at.desc&limit=1&select=partner_id,offered_time,outcome,replied_at`, { headers: H() });
+        const off = (await dr.json().catch(() => []))[0];
+        if (off && off.replied_at) {
+          const offAgeH = (now - Date.parse(off.replied_at)) / 3600e3;
+          const answered = lastIn && Date.parse(lastIn) > Date.parse(off.replied_at);
+          if (offAgeH >= 2 && !answered) {
+            const pc = off.partner_id ? await partnerCard(off.partner_id) : { business_name: "" };
+            stranded.push(`${who}: ${pc.business_name || "a studio"} ${off.outcome === "won" || off.outcome === "accepted" ? "ACCEPTED" : "offered " + (off.offered_time || "a time")} ${Math.round(offAgeH)}h ago and they have said nothing since.`);
+          }
+        }
+
+        // The window shuts 24h after their last inbound. Warn with 4h to spare,
+        // and only when we have no email to fall back on.
+        if (!r.contact_email && quietMs !== Infinity) {
+          const hoursLeft = 24 - quietMs / 3600e3;
+          if (hoursLeft <= 4 && hoursLeft > -2) {
+            closing.push(`${who}: no email on file and the WhatsApp window shuts in ${hoursLeft <= 0 ? "under an hour" : Math.round(hoursLeft) + "h"}. After that nothing reaches them.`);
+          }
+        }
+      }
+
+      // Left hanging: the last thing in the thread is theirs. Studios excluded,
+      // they are answered by a different path and their silence is normal.
+      const mr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${new Date(now - 36 * 3600e3).toISOString()}&order=created_at.asc&select=phone,direction,body,created_at`, { headers: H() });
+      const msgs = await mr.json().catch(() => []);
+      const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=phone,whatsapp&limit=400`, { headers: H() });
+      const prows = await pr.json().catch(() => []);
+      const studioNums = new Set((Array.isArray(prows) ? prows : []).flatMap((x: any) => [digitsOf(x.whatsapp), digitsOf(x.phone)]).filter(Boolean));
+      const last: Record<string, any> = {};
+      for (const m of (Array.isArray(msgs) ? msgs : [])) last[String(m.phone)] = m;
+      for (const [ph, m] of Object.entries(last)) {
+        if (m.direction !== "in") continue;
+        if (TEST_PHONES.includes(ph) || studioNums.has(ph)) continue;
+        const mins = (now - Date.parse(m.created_at)) / 60000;
+        if (mins < 10 || mins > 36 * 60) continue;
+        hanging.push(`+${ph}: "${String(m.body || "").slice(0, 70)}" ${mins < 90 ? Math.round(mins) + " min" : Math.round(mins / 60) + "h"} ago, still the last word in the thread.`);
+      }
+
+      const found = stranded.length + closing.length + hanging.length;
+      if (found && !dry) {
+        const lines = [
+          stranded.length ? "A STUDIO SAID YES AND NOBODY CLOSED IT\n" + stranded.join("\n") : "",
+          closing.length ? "\nABOUT TO BECOME UNREACHABLE\n" + closing.join("\n") : "",
+          hanging.length ? "\nLEFT HANGING\n" + hanging.join("\n") : "",
+        ].filter(Boolean).join("\n");
+        await fetch("https://api.resend.com/emails", {
+          method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: FROM_EMAIL, to: SUPPORT,
+            subject: stranded.length ? `${stranded.length} studio yes${stranded.length > 1 ? "es" : ""} nobody has closed`
+              : closing.length ? `${closing.length} about to become unreachable`
+              : `${hanging.length} left hanging`,
+            text: lines + "\n\nNothing here is automatic. Each line is someone waiting on a person.",
+          }),
+        });
+      }
+      return new Response(JSON.stringify({ ok: true, dry, found, stranded, closing, hanging }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     // v90: read the approved template list, and send one template to one
     // number. Both ops key guarded.
     //
