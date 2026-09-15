@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/ed59f862fb895ada295e645711ae61b4ae9b6806/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/ed59f862fb895ada295e645711ae61b4ae9b6806/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -351,7 +351,7 @@ async function findPartnerByNumber(fromDigits: string): Promise<{ id: string; bu
 }
 async function lastRequestFor(phone: string): Promise<any | null> {
   const num = "+" + digitsOf(phone);
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=first_name,last_name,contact_email,service_name,studio_name,partner_id,slug,price,languages,day1,time1,confirmed_day,confirmed_time,stage`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=id,first_name,last_name,contact_email,service_name,studio_name,partner_id,slug,price,languages,day1,time1,confirmed_day,confirmed_time,stage,therapist_gender`, { headers: H() });
   const rows = await r.json().catch(() => []);
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
@@ -1256,7 +1256,13 @@ async function confirmedGender(req: any): Promise<{ studio: string; gender: stri
 async function actOnReading(r: Reading, s: Session, from: string, L: string, req: any, text: string): Promise<boolean> {
   await logEvent(from, "interpreted", { intent: r.intent, question: r.question, confidence: r.confidence, text: text.slice(0, 160) });
   if (r.confidence < 0.6) return false;
-  const lang = r.language === "es" || r.language === "en" ? r.language : L;
+  // v93: the reading's language guess is a guess, and it loses to the language
+  // this customer has actually been speaking. Andy wrote "Tell them how is the
+  // masseur?" on 15 Sept, in English, in a session already set to en, and the
+  // model read it as Spanish. He was answered twice in Spanish and stopped
+  // replying. A stored language is evidence; a per-message guess is not.
+  const lang = (s.data.lang === "es" || s.data.lang === "en") ? String(s.data.lang)
+    : (r.language === "es" || r.language === "en") ? r.language : L;
 
   if (r.intent === "ask") {
     if (r.question === "price") { await sendText(from, COPY[lang].priceInfo); return true; }
@@ -1305,7 +1311,11 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
         await reAsk(s, from, lang);
         return true;
       }
+      // v93: this line invites a one word answer, so remember that we asked.
+      // The handler upstream then accepts a bare "MAN" or "Mujer" as the answer.
       await sendText(from, COPY[lang].therapistAnswer);
+      s.data.askedGender = new Date().toISOString();
+      await saveSession(s);
       return true;
     }
     // v76 (9 Sept): everything else used to return false, which dropped the
@@ -2415,12 +2425,43 @@ const handleInner = async (req: Request) => {
     }
     // A therapist-gender preference is not an off-menu request. Record it and
     // let the flow continue; the studio ask carries it (see askGender below).
+    //
+    // v93: a bare "MAN" or "Mujer" is the answer to the question this bot asks
+    // itself, and it was thrown away every time, because GENDER_RE needs the
+    // gender word paired with a second word. Fernando answered "MAN" on
+    // 11 September, was shown the main menu, and cancelled fifty seconds later.
+    // Andy answered "Mujer" on 15 September, was shown a 17:00 slot that had
+    // already passed, and went quiet. Across 55 requests therapist_gender had
+    // been written exactly once. The bare form is only accepted when we have
+    // just asked, so an ordinary "man" inside a sentence is still not a booking
+    // preference. And a preference from someone whose booking is already in
+    // play is written onto the request rather than held in a session nobody
+    // reads: finalizeBooking, which was the only writer, is long behind them.
     {
-      const g = genderWanted(String(text || btnText || ""));
-      if (g && s.data.therapistGender !== g) {
-        s.data.therapistGender = g;
+      const said = String(text || btnText || "");
+      const g = genderWanted(said) || (s.data.askedGender ? genderBare(said) : null);
+      if (g) {
+        const hadAsked = !!s.data.askedGender;
+        s.data.askedGender = null;
+        if (s.data.therapistGender !== g) {
+          s.data.therapistGender = g;
+          await logEvent(from, "therapist_gender", { gender: g });
+        }
         await saveSession(s);
-        await logEvent(from, "therapist_gender", { gender: g });
+        const greq = hadAsked ? await lastRequestFor(from) : null;
+        if (greq && !["cancelled", "dismissed"].includes(String(greq.stage || "")) && String(greq.therapist_gender || "") !== g) {
+          await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${greq.id}`, {
+            method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+            body: JSON.stringify({ therapist_gender: g }),
+          });
+          const gL = s.data.lang === "es" ? "es" : "en";
+          await sendText(from, gL === "es"
+            ? `Anotado: masajista ${g === "male" ? "chico" : "chica"}. Se lo pregunto al centro y te digo algo en cuanto me contesten. No te reservamos en un sitio que no pueda.`
+            : `Noted, a ${g === "male" ? "man" : "woman"} therapist. We are asking the studio now and will not book you anywhere that cannot do it.`);
+          await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} asked for a ${g} therapist on request #${greq.id}. The studios still need asking.`, from);
+          await logEvent(from, "therapist_gender_on_request", { id: greq.id, gender: g });
+          return new Response("OK", { status: 200 });
+        }
       }
     }
 

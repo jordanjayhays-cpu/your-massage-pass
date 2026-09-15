@@ -178,6 +178,18 @@ export const BLOCK_LINE_ES = "Reservamos masajes terapéuticos en centros con li
 // me" while a real booking was in flight; Fernando typed "MAN" and was dumped
 // into the main menu 84 seconds before he cancelled. Both are this.
 export const GENDER_RE = /\b(masajista\s+(chic[oa]|hombre|mujer|femenin[oa]|masculin[oa])|(chic[oa]|hombre|mujer|male|female|man|woman|guy|girl|lady)\s+(masajista|therapist|masseur|masseuse)|(male|female|man|woman|guy|girl)\s+(therapist|masseur|masseuse)|prefiero\s+(un\s+)?(chic[oa]|hombre|mujer)|quiero\s+(un[ao]?\s+)?(masajista\s+)?(chic[oa]|hombre|mujer))\b/i;
+// v93: the answer to our own question. The bot says "if you would prefer a man
+// or a woman, just tell me" and people answer with exactly one word, which
+// GENDER_RE cannot match because every branch of it needs a second word.
+// Fernando typed "MAN" on 11 Sept and cancelled fifty seconds later. Andy typed
+// "Mujer" on 15 Sept and went quiet. This only ever runs when the bot has just
+// asked, so a stray "man" in ordinary conversation is still not a preference.
+export const GENDER_BARE_RE = /^(?:una?\s+)?(chic[oa]|hombre|mujer|se[nñ]ora|masculin[oa]|femenin[oa]|male|female|man|woman|guy|girl|lady)(?:\s+(?:por\s+favor|please|preferably|mejor|gracias|thanks|thx))?[.!]?$/i;
+export const genderBare = (t: string): "male" | "female" | null => {
+  const m = String(t || "").trim().match(GENDER_BARE_RE);
+  if (!m) return null;
+  return /^(chica|mujer|se[nñ]ora|femenin[oa]|female|woman|girl|lady)$/i.test(m[1]) ? "female" : "male";
+};
 export const genderWanted = (t: string): "male" | "female" | null => {
   if (!GENDER_RE.test(String(t || ""))) return null;
   return /\b(chica|mujer|femenin[oa]|female|woman|girl|lady|masseuse)\b/i.test(t) ? "female" : "male";

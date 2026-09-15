@@ -16,7 +16,7 @@
 
 import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
-  HI_RE, ARRIVED_RE, genderWanted, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
+  HI_RE, ARRIVED_RE, genderWanted, genderBare, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
@@ -434,6 +434,44 @@ for (const lang of ["en", "es"]) {
   check("fallback does not promise a human", `${lang}: ${f}`,
     /representative|agent|colleague|compañer|representante|una persona/i.test(f), false, "");
   check("fallback stays short", `${lang}`, f.length <= 110, true, "");
+}
+
+// ---------------------------------------------------------------------------
+// v93: the one word answer to our own man-or-woman question. genderBare only
+// ever runs when the bot has just asked, so it is deliberately strict: it takes
+// a standalone gender word and nothing else. The two real losses are the first
+// two cases here. The negatives are sentences that must never be read as a
+// booking preference, because a stray "man" is not an instruction.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["MAN", "male", "Fernando, 11 Sept 13:30:57, answered the bot's own question and was shown the menu"],
+  ["Mujer", "female", "Andy, 15 Sept 17:06:36, answered and was shown a 17:00 slot that had passed"],
+  ["man", "male", ""],
+  ["Woman", "female", ""],
+  ["hombre", "male", ""],
+  ["chica", "female", ""],
+  ["chico", "male", ""],
+  ["female please", "female", "a polite one word answer is still one word"],
+  ["mujer por favor", "female", ""],
+  ["una chica", "female", ""],
+  ["Lady", "female", ""],
+  ["guy", "male", ""],
+  ["man or woman is fine", null, "not a choice, must not be read as male"],
+  ["I am the man who booked yesterday", null, "a stray gender word in a sentence"],
+  ["can a woman therapist do deep tissue", null, "a question, not an answer"],
+  ["no", null, ""],
+  ["", null, ""],
+]) {
+  check("bare gender answer", JSON.stringify(msg), genderBare(msg), want, note);
+}
+
+// The paired form must keep working untouched, and must still match on its own.
+for (const [msg, want] of [
+  ["male therapist", "male"],
+  ["masajista chica", "female"],
+  ["prefiero un hombre", "male"],
+]) {
+  check("paired gender still reads", msg, genderWanted(msg), want, "");
 }
 
 // ---------------------------------------------------------------------------
