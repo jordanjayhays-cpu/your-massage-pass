@@ -2242,12 +2242,21 @@ const handleInner = async (req: Request) => {
       const closing: string[] = [];
       const hanging: string[] = [];
 
-      const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=in.(${LIVE.join(",")})&select=id,first_name,client_phone,contact_email,service_name,stage,created_at&order=id.desc&limit=60`, { headers: H() });
+      const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=in.(${LIVE.join(",")})&select=id,first_name,client_phone,contact_email,service_name,stage,created_at,confirmed_start,reconfirmed_at,client_confirmed_at,customer_flag&order=id.desc&limit=60`, { headers: H() });
       const reqs = await rq.json().catch(() => []);
       for (const r of (Array.isArray(reqs) ? reqs : [])) {
         const ph = digitsOf(r.client_phone);
         if (!ph || TEST_PHONES.includes(ph)) continue;
         const who = `#${r.id} ${r.first_name || "+" + ph}`;
+        // The first dry run flagged Fernando's #67, which he reconfirmed on
+        // 9 September and then attended. A watchdog that reports settled
+        // history gets ignored, and this project already has one job that sent
+        // the same line 27 times in a week. So: a booking whose time has passed
+        // is history, a customer who has confirmed has answered, and anything
+        // older than a fortnight is a graveyard entry rather than an alarm.
+        const startedMs = r.confirmed_start ? Date.parse(r.confirmed_start) : 0;
+        const settled = !!r.reconfirmed_at || !!r.client_confirmed_at || (startedMs > 0 && startedMs < now - 2 * 3600e3);
+        const ageDays = (now - Date.parse(r.created_at)) / 86400e3;
 
         const lr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${ph}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
         const lastIn = (await lr.json().catch(() => []))[0]?.created_at;
@@ -2255,7 +2264,7 @@ const handleInner = async (req: Request) => {
 
         const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${r.id}&or=(offered_time.not.is.null,outcome.in.(accepted,won))&order=replied_at.desc&limit=1&select=partner_id,offered_time,outcome,replied_at`, { headers: H() });
         const off = (await dr.json().catch(() => []))[0];
-        if (off && off.replied_at) {
+        if (off && off.replied_at && !settled && ageDays <= 14) {
           const offAgeH = (now - Date.parse(off.replied_at)) / 3600e3;
           const answered = lastIn && Date.parse(lastIn) > Date.parse(off.replied_at);
           if (offAgeH >= 2 && !answered) {
@@ -2266,7 +2275,7 @@ const handleInner = async (req: Request) => {
 
         // The window shuts 24h after their last inbound. Warn with 4h to spare,
         // and only when we have no email to fall back on.
-        if (!r.contact_email && quietMs !== Infinity) {
+        if (!r.contact_email && quietMs !== Infinity && !settled && ageDays <= 14) {
           const hoursLeft = 24 - quietMs / 3600e3;
           if (hoursLeft <= 4 && hoursLeft > -2) {
             closing.push(`${who}: no email on file and the WhatsApp window shuts in ${hoursLeft <= 0 ? "under an hour" : Math.round(hoursLeft) + "h"}. After that nothing reaches them.`);
