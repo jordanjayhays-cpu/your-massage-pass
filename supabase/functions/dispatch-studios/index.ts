@@ -138,6 +138,14 @@ const SVC_ES: Array<[RegExp, string]> = [
   [/four hands|cuatro manos/i, "Masaje a cuatro manos"], [/gua sha/i, "Gua sha"],
   [/relax|relaj|not sure|^massage$|massage treatment|^masaje$/i, "Masaje relajante"],
 ];
+// v25 (16 Sept): solicitud_reserva_v3 reads "tengo un cliente para un masaje
+// {{1}}", so the parameter must NOT begin with "masaje" or the studio reads
+// "un masaje masaje balinés". Nine studios got exactly that on 15 September,
+// and it was their first impression of Massage Club that day.
+const svcParam = (name: unknown, mins: number, gender: string): string => {
+  const base = svcEs(name).toLowerCase().replace(/^masaje\s+/, "");
+  return `${base} de ${mins} min${gender}`;
+};
 function svcEs(name: unknown): string {
   const s = String(name || "").trim();
   for (const [re, v] of SVC_ES) if (re.test(s)) return v;
@@ -227,14 +235,52 @@ function dayLabelEs(day1: unknown, messageText?: unknown): string {
   // 6 de septiembre"); that beats guessing from "Hoy"/"Mañana" at send time.
   const fm = String(messageText || "").match(/Fecha: ([^|]+)/);
   if (fm) {
-    const f = fm[1].trim().toLowerCase();
+    // v25: wa-bot writes "Fecha:" in the CUSTOMER's language, so an English
+    // speaker's booking put "tuesday 15 september" into a Spanish sentence.
+    // Andy's nine studios read "lo quiere el tuesday 15 september" on 15 Sept.
+    const f = toEs(fm[1].trim().toLowerCase());
     if (f === today.toLowerCase()) return `hoy, ${f}`;
     if (f === tomorrow.toLowerCase()) return `mañana, ${f}`;
     return f;
   }
   if (/^(hoy|today)$/i.test(d)) return `hoy, ${today}`;
   if (/^(ma[nñ]ana|tomorrow)$/i.test(d)) return `mañana, ${tomorrow}`;
-  return d || "día por concretar";
+  return toEs(d) || "día por concretar";
+}
+
+// English weekday and month names, translated where they sit. Studios read
+// Spanish; a date is not the place to make them work it out.
+const EN_ES: Array<[RegExp, string]> = [
+  [/\bmonday\b/gi, "lunes"], [/\btuesday\b/gi, "martes"], [/\bwednesday\b/gi, "miércoles"],
+  [/\bthursday\b/gi, "jueves"], [/\bfriday\b/gi, "viernes"], [/\bsaturday\b/gi, "sábado"],
+  [/\bsunday\b/gi, "domingo"],
+  [/\bjanuary\b/gi, "enero"], [/\bfebruary\b/gi, "febrero"], [/\bmarch\b/gi, "marzo"],
+  [/\bapril\b/gi, "abril"], [/\bmay\b/gi, "mayo"], [/\bjune\b/gi, "junio"],
+  [/\bjuly\b/gi, "julio"], [/\baugust\b/gi, "agosto"], [/\bseptember\b/gi, "septiembre"],
+  [/\boctober\b/gi, "octubre"], [/\bnovember\b/gi, "noviembre"], [/\bdecember\b/gi, "diciembre"],
+  [/\btoday\b/gi, "hoy"], [/\btomorrow\b/gi, "mañana"], [/\btonight\b/gi, "esta noche"],
+];
+function toEs(t: string): string {
+  let out = String(t || "");
+  for (const [re, es] of EN_ES) out = out.replace(re, es);
+  // "martes 15 septiembre" reads better as "martes 15 de septiembre".
+  return out.replace(/(\d{1,2})\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/gi, "$1 de $2");
+}
+
+// v25: a time band is not an hour. "a las Evening (18-21)" went to nine studios
+// on 15 September. A band becomes a Spanish range; only a real clock time keeps
+// "a las".
+function whenEs(time1: unknown): string {
+  const t = String(time1 || "").trim();
+  if (!t) return "";
+  if (/^\d{1,2}([:.]\d{2})?$/.test(t)) return ` a las ${t}`;
+  const band = t.toLowerCase();
+  if (/morning|ma[nñ]ana/.test(band)) return " por la mañana (10:00-13:00)";
+  if (/afternoon|tarde/.test(band)) return " por la tarde (13:00-18:00)";
+  if (/evening|night|noche/.test(band)) return " por la tarde-noche (18:00-21:00)";
+  const m = band.match(/(\d{1,2})\s*-\s*(\d{1,2})/);
+  if (m) return ` entre las ${m[1]}:00 y las ${m[2]}:00`;
+  return ` a las ${toEs(t)}`;
 }
 
 // v16: opening hours. partners.opening_hours is free text in one of a few
@@ -365,9 +411,9 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const genderLine = r.therapist_gender === "male" ? ", prefiere masajista chico"
       : r.therapist_gender === "female" ? ", prefiere masajista chica" : "";
     const p3 = [
-      param(`${svcEs(r.service_name).toLowerCase()} de ${reqDuration(r)} min${genderLine}`, 80),
+      param(svcParam(r.service_name, reqDuration(r), genderLine), 80),
       client,
-      param(`${dayLabelEs(r.day1, r.message_text)}${r.time1 ? " a las " + r.time1 : ""}`, 60),
+      param(`${dayLabelEs(r.day1, r.message_text)}${whenEs(r.time1)}`, 70),
     ];
     const r3 = await sendTemplate(c.wa, "solicitud_reserva_v3", p3, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} tpl=v3 status=${r3.status} ${r3.out.slice(0, 140)}`);
