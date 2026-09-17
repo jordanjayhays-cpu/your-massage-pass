@@ -2359,13 +2359,14 @@ const handleInner = async (req: Request) => {
       const wj = await wr.json().catch(() => []);
       const waba = String(wj?.[0]?.value || "");
       if (!waba) return new Response(JSON.stringify({ ok: false, error: "no WABA_ID in app_secrets" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      const tr = await fetch(`https://graph.facebook.com/v21.0/${waba}/message_templates?limit=200&fields=name,language,status,category,components`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+      const tr = await fetch(`https://graph.facebook.com/v21.0/${waba}/message_templates?limit=200&fields=name,language,status,category,rejected_reason,quality_score,components`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
       const tj = await tr.json().catch(() => ({}));
       const only = String(payload.name || "");
       const rows = (Array.isArray(tj?.data) ? tj.data : [])
         .filter((t: any) => !only || String(t.name) === only)
         .map((t: any) => ({
           name: t.name, language: t.language, status: t.status, category: t.category,
+          rejected_reason: t.rejected_reason, quality: t.quality_score?.score,
           body: (t.components || []).find((c: any) => c.type === "BODY")?.text || "",
           buttons: ((t.components || []).find((c: any) => c.type === "BUTTONS")?.buttons || []).map((b: any) => b.text),
         }));
