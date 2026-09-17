@@ -2908,7 +2908,11 @@ const handleInner = async (req: Request) => {
         else { await askNameOrFinalize(s, from, L); }
         return new Response("OK", { status: 200 });
       }
-      s.step = "await_service"; s.data = { lang: s.data.lang || "", known: s.data.known || null, adRef: s.data.adRef || null };
+      // v101: recoverySent survives the reset. recover-abandoned reads
+      // funnel_events now, so this is belt and braces, but the flag saying
+      // someone has already had their one template must not be thrown away
+      // by the very tap that template invited.
+      s.step = "await_service"; s.data = { lang: s.data.lang || "", known: s.data.known || null, adRef: s.data.adRef || null, recoverySent: s.data.recoverySent || null };
       await saveSession(s); await logEvent(from, "flow_started", { via: "menu" }); await askService(from, L);
       return new Response("OK", { status: 200 });
     }
