@@ -184,6 +184,35 @@ export const GENDER_RE = /\b(masajista\s+(chic[oa]|hombre|mujer|femenin[oa]|masc
 // Fernando typed "MAN" on 11 Sept and cancelled fifty seconds later. Andy typed
 // "Mujer" on 15 Sept and went quiet. This only ever runs when the bot has just
 // asked, so a stray "man" in ordinary conversation is still not a preference.
+// v102: an offer inside the band the customer asked for is not a change of
+// plan. On 17 Sept the bot told Pedro that TornaSol could see him "a las 17:00
+// Hoy en vez de Hoy Tarde (13-18)", and 17:00 sits inside 13-18. "Instead of"
+// turned an exact match into an apology and made a good offer read like a
+// compromise. Only a different day, or a time outside the band, is worth
+// flagging to the customer.
+export const askBand = (time1: string): [number, number] | null => {
+  const t = String(time1 || "").trim().toLowerCase();
+  if (!t) return null;
+  const m = t.match(/(\d{1,2})\s*-\s*(\d{1,2})/);
+  if (m) return [parseInt(m[1], 10), parseInt(m[2], 10)];
+  if (/morning|ma[n\u00f1]ana/.test(t)) return [10, 13];
+  if (/afternoon|tarde/.test(t)) return [13, 18];
+  if (/evening|night|noche/.test(t)) return [18, 21];
+  return null;
+};
+export const offerMatchesAsk = (offeredTime: string, offerDay: string | null, day1: string, time1: string): boolean => {
+  const od = String(offerDay || "").trim().toLowerCase();
+  if (od && od !== String(day1 || "").trim().toLowerCase()) return false;
+  const h = String(offeredTime || "").trim().match(/^(\d{1,2})(?:[:.](\d{2}))?$/);
+  if (!h) return false;
+  const asked = String(time1 || "").trim();
+  if (/^\d{1,2}(?:[:.]\d{2})?$/.test(asked)) return asked.replace(".", ":") === String(offeredTime).trim().replace(".", ":");
+  const band = askBand(asked);
+  if (!band) return false;
+  const hour = parseInt(h[1], 10);
+  return hour >= band[0] && hour < band[1];
+};
+
 export const GENDER_BARE_RE = /^(?:una?\s+)?(chic[oa]|hombre|mujer|se[nñ]ora|masculin[oa]|femenin[oa]|male|female|man|woman|guy|girl|lady)(?:\s+(?:por\s+favor|please|preferably|mejor|gracias|thanks|thx))?[.!]?$/i;
 export const genderBare = (t: string): "male" | "female" | null => {
   const m = String(t || "").trim().match(GENDER_BARE_RE);

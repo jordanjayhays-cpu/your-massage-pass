@@ -16,7 +16,7 @@
 
 import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
-  HI_RE, ARRIVED_RE, genderWanted, genderBare, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
+  HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
@@ -472,6 +472,29 @@ for (const [msg, want] of [
   ["prefiero un hombre", "male"],
 ]) {
   check("paired gender still reads", msg, genderWanted(msg), want, "");
+}
+
+// ---------------------------------------------------------------------------
+// An offer inside the band they asked for is not a change of plan (17 Sept).
+// Pedro was told TornaSol could see him "a las 17:00 Hoy en vez de Hoy Tarde
+// (13-18)". 17:00 is inside 13-18, so there was nothing to apologise for.
+// ---------------------------------------------------------------------------
+for (const [time, offerDay, day1, time1, want, note] of [
+  ["17:00", null, "Hoy", "Tarde (13-18)", true, "Pedro, the line that started this"],
+  ["13:00", null, "Hoy", "Tarde (13-18)", true, "the first hour of the band counts"],
+  ["18:00", null, "Hoy", "Tarde (13-18)", false, "the band ends at 18, so this is outside"],
+  ["19:00", "Manana", "Hoy", "Tarde (13-18)", false, "Sinergia38: a different day is a real change"],
+  ["16:00", null, "Hoy", "Tarde (13-18)", true, "Centro Aloha"],
+  ["11:00", null, "Hoy", "Manana (10-13)", true, "morning band by its numbers"],
+  ["20:00", null, "Hoy", "Evening (18-21)", true, "English band name, no numbers"],
+  ["12:00", null, "Hoy", "afternoon", false, "named band with no numbers, midday is not afternoon"],
+  ["16:30", null, "Friday", "16:30", true, "exact time asked, exact time offered"],
+  ["17:00", null, "Friday", "16:30", false, "exact time asked, different time offered"],
+  ["16:00", null, "Hoy", "", false, "no time asked at all, say nothing clever"],
+  ["", null, "Hoy", "Tarde (13-18)", false, "no offered time is never a match"],
+  ["17:00", "Hoy", "Hoy", "Tarde (13-18)", true, "same day named explicitly still matches"],
+]) {
+  check("offer matches the ask", `${time} vs ${day1} ${time1}`, offerMatchesAsk(time, offerDay, day1, time1), want, note);
 }
 
 // ---------------------------------------------------------------------------
