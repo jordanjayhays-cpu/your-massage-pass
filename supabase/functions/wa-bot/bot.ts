@@ -2371,6 +2371,30 @@ const handleInner = async (req: Request) => {
         }));
       return new Response(JSON.stringify({ ok: tr.ok, count: rows.length, templates: rows }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    // v95: submit a template to Meta for approval. solicitud_reserva_v3 took
+    // four days, so the approval clock is the scarce thing and it should start
+    // the moment wording is agreed, not after the next conversation about it.
+    // { ops: "tplnew", key, name, body, buttons: [..], category?, lang?, dry? }
+    if (payload?.ops === "tplnew") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const wr = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.WABA_ID&select=value&limit=1`, { headers: H() });
+      const waba = String(((await wr.json().catch(() => []))[0] || {}).value || "");
+      if (!waba) return new Response(JSON.stringify({ ok: false, error: "no WABA_ID in app_secrets" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      const tname = String(payload.name || "");
+      const tbody = String(payload.body || "");
+      const tbuttons: string[] = Array.isArray(payload.buttons) ? payload.buttons.map((b: any) => String(b)) : [];
+      if (!tname || !tbody) return new Response(JSON.stringify({ ok: false, error: "name and body required" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      const comps: any[] = [{ type: "BODY", text: tbody }];
+      if (tbuttons.length) comps.push({ type: "BUTTONS", buttons: tbuttons.slice(0, 3).map((t) => ({ type: "QUICK_REPLY", text: t })) });
+      const spec = { name: tname, language: String(payload.lang || "es"), category: String(payload.category || "MARKETING"), components: comps };
+      if (payload.dry) return new Response(JSON.stringify({ ok: true, dry: true, waba, spec }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+      const rr2 = await fetch(`https://graph.facebook.com/v21.0/${waba}/message_templates`, {
+        method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify(spec),
+      });
+      const tout = await rr2.text();
+      return new Response(JSON.stringify({ ok: rr2.ok, status: rr2.status, name: tname, out: tout.slice(0, 600) }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     // { ops: "tpl", key, to, name, lang, params: [], payloads: [] }
     // dry: true renders what would be sent and sends nothing.
     if (payload?.ops === "tpl") {
