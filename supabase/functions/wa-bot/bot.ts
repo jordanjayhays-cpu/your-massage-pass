@@ -2519,6 +2519,17 @@ const handleInner = async (req: Request) => {
     // A reaction (someone tapping a thumbs up on our message) is not an answer.
     if (msg.type === "reaction") return new Response("OK", { status: 200 });
 
+    // v103: a click-to-WhatsApp tap can arrive as an interactive reply with no
+    // id on it at all. On 17 Sept a Facebook lead's empty tap landed 400ms
+    // after their opening text, the bot treated it as a second conversation,
+    // and the first thing that person read from us was the same pitch twice in
+    // two slightly different wordings. An event with nothing to act on is not
+    // a new conversation. It stays in the log above; it just gets no reply.
+    if ((msg.type === "interactive" || msg.type === "button") && !replyId && !text && !btnText && !loc) {
+      console.log(`[wa] empty interactive from ${from}, logged and ignored`);
+      return new Response("OK", { status: 200 });
+    }
+
     // ---- Studio replies: template button payloads, or free text from a partner number ----
     if (/^arr_(yes|no)_\d+$/.test(replyId)) {
       const partner = await findPartnerByNumber(digitsOf(from));
