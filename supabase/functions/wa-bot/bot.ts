@@ -2409,6 +2409,26 @@ const handleInner = async (req: Request) => {
       const tout = await rr2.text();
       return new Response(JSON.stringify({ ok: rr2.ok, status: rr2.status, name: tname, out: tout.slice(0, 600) }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    // v97: can this project's token touch the ad accounts, or not? Asserting
+    // either way is worthless; Meta is the only authority. Read only: it reports
+    // what the token actually is, which ad accounts it can see, and the
+    // campaign's own status. It changes nothing.
+    if (payload?.ops === "adcheck") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const probe = async (label: string, path: string) => {
+        try {
+          const r = await fetch(`https://graph.facebook.com/v21.0/${path}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+          return { label, status: r.status, out: (await r.text()).slice(0, 500) };
+        } catch (e) { return { label, status: 0, out: String(e).slice(0, 200) }; }
+      };
+      const camp = String(payload.campaign || "6992734410277");
+      const probes = await Promise.all([
+        probe("what this token is", "debug_token?input_token=" + encodeURIComponent(WA_TOKEN)),
+        probe("ad accounts it can see", "me/adaccounts?fields=name,account_status"),
+        probe("the campaign itself", `${camp}?fields=name,status,effective_status,daily_budget`),
+      ]);
+      return new Response(JSON.stringify({ ok: true, probes }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     // { ops: "tpl", key, to, name, lang, params: [], payloads: [] }
     // dry: true renders what would be sent and sends nothing.
     if (payload?.ops === "tpl") {
