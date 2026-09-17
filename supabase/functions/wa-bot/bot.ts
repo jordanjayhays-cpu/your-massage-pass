@@ -2385,7 +2385,20 @@ const handleInner = async (req: Request) => {
       const tbody = String(payload.body || "");
       const tbuttons: string[] = Array.isArray(payload.buttons) ? payload.buttons.map((b: any) => String(b)) : [];
       if (!tname || !tbody) return new Response(JSON.stringify({ ok: false, error: "name and body required" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      const comps: any[] = [{ type: "BODY", text: tbody }];
+      // v96: Meta rejects a template with INVALID_FORMAT when the body carries
+      // {{n}} placeholders and no example values. solicitud_socio_v1 and
+      // solicitud_reserva_v4 were both auto-rejected for exactly this on
+      // 17 Sept, while v3 with a near-identical body sits APPROVED, so the
+      // fault was the submission shape and not the wording. Examples are
+      // required, one per placeholder, in order.
+      const ex: string[] = Array.isArray(payload.examples) ? payload.examples.map((x: any) => String(x)) : [];
+      const holes = new Set((tbody.match(/\{\{\s*\d+\s*\}\}/g) || []).map((h) => h.replace(/[^0-9]/g, "")));
+      if (holes.size && ex.length !== holes.size) {
+        return new Response(JSON.stringify({ ok: false, error: `body has ${holes.size} placeholders, ${ex.length} examples given. Meta rejects the mismatch as INVALID_FORMAT.` }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      const bodyComp: any = { type: "BODY", text: tbody };
+      if (ex.length) bodyComp.example = { body_text: [ex] };
+      const comps: any[] = [bodyComp];
       if (tbuttons.length) comps.push({ type: "BUTTONS", buttons: tbuttons.slice(0, 3).map((t) => ({ type: "QUICK_REPLY", text: t })) });
       const spec = { name: tname, language: String(payload.lang || "es"), category: String(payload.category || "MARKETING"), components: comps };
       if (payload.dry) return new Response(JSON.stringify({ ok: true, dry: true, waba, spec }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
