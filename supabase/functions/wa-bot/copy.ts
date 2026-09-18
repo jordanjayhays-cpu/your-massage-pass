@@ -35,13 +35,22 @@ export function detectTime(t: string, L: string): string {
 // a mixed message is not dragged either way by a coincidence.
 const ES_COMMON = new Set(["el", "la", "los", "las", "un", "una", "unos", "unas", "del", "al", "que", "qué", "con", "para", "por", "en", "es", "son", "está", "estás", "estoy", "estar", "estaré", "estamos", "voy", "vamos", "va", "he", "ha", "han", "hemos", "te", "se", "nos", "mis", "tu", "su", "muy", "ya", "sí", "más", "pero", "como", "cómo", "cuando", "cuándo", "dónde", "donde", "aquí", "allí", "ahí", "ahora", "luego", "hasta", "desde", "sin", "sobre", "todo", "toda", "todos", "tengo", "tienes", "tiene", "quiero", "puedo", "puede", "podemos", "vale", "bien", "bueno", "buenas", "buenos", "llegado", "llegar", "llego", "camino", "cerca", "cercano", "cercana", "calle", "día", "días", "semana", "también", "entonces", "claro", "perfecto", "vosotros", "ustedes", "da", "igual", "otra", "otro", "mejor", "prefiero", "gusta", "zona", "barrio", "sitio", "algo", "nada", "poco", "mucho", "siento", "vemos"]);
 const EN_COMMON = new Set(["the", "an", "i", "you", "your", "is", "are", "was", "to", "for", "and", "of", "my", "can", "could", "would", "should", "want", "need", "please", "book", "booking", "massage", "tomorrow", "today", "tonight", "hi", "hello", "what", "when", "where", "which", "how", "much", "many", "do", "does", "did", "have", "has", "provide", "service", "male", "female", "there", "here", "with", "from", "about", "time", "day", "price", "cheap", "near", "nearest"]);
+// "I don't understand", in the forms people actually type it.
+export const LOST_ES_RE = /\bno\s+(?:te\s+|le\s+|lo\s+)?(?:entiendo|entiendes|entiende|comprendo)\b|\bno\s+hablo\s+ingl[eé]s\b|\bhablas?\s+espa[nñ]ol\b|\ben\s+espa[nñ]ol\b/i;
 export function strongSpanish(t: string): boolean {
   const s = String(t).toLowerCase();
   if (AD_OPENER_RE.test(s.trim())) return false; // the ad's canned line, not the person's words
+  // v104 (18 Sept, live): a Facebook lead wrote "No entiendo" and the bot
+  // answered "Good choice. Which day suits you?". Neither word was in any list:
+  // "no" is deliberately excluded because it reads the same in both languages,
+  // and "entiendo" was simply missing. Someone telling us they cannot read the
+  // message is the strongest language signal there is, so it settles it on its
+  // own, whatever else is in the sentence.
+  if (LOST_ES_RE.test(s)) return true;
   const words = ["hola", "buenas", "quiero", "masaje", "reservar", "cuanto", "cuánto", "precio", "gracias", "por", "favor", "mañana", "hoy", "para", "una", "cita", "hora", "tarde", "noche", "zona", "donde", "dónde"];
   // v48: the massage words themselves are Spanish too. "Relajante de hora y media"
   // (6 Sept, 02:54) scored as English and got the English day question.
-  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad"];
+  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera"];
   const toks = s.split(/[^a-záéíóúñü]+/).filter(Boolean);
   const found = new Set<string>();
   for (const w of toks) if (words.includes(w)) found.add(w);

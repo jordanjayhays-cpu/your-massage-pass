@@ -498,6 +498,31 @@ for (const [time, offerDay, day1, time1, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// Someone saying they cannot read us settles the language (18 Sept, live).
+// A Facebook lead wrote "No entiendo" and was answered in English.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["No entiendo", true, "the message that started this"],
+  ["no entiendo nada", true, ""],
+  ["No te entiendo", true, ""],
+  ["no comprendo", true, ""],
+  ["No hablo ingles", true, "no accent typed"],
+  ["Hablas espanol?", true, ""],
+  ["en espanol por favor", true, ""],
+  ["Quesiera informaci\u00f3n", true, "Juan, 17 Sept, exactly as he typed it"],
+  ["Quesiera informacion", true, "same words with the accent dropped, as a phone often does"],
+  ["Dime tipo masaje y precio", true, "Juan asking mid-flow"],
+  ["Otro dia te llamo", true, "a polite no, still Spanish"],
+  ["Hola", true, ""],
+  ["I don't understand", false, "English speaker saying the same thing"],
+  ["Saturday 3", false, "a day, not a language signal"],
+  ["Hi, I'd like to book a massage. I saw you on Facebook.", false, "the ad's canned line"],
+  ["no", false, "reads the same in both languages"],
+]) {
+  check("says they cannot read us", JSON.stringify(msg), strongSpanish(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
