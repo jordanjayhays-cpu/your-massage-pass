@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/33d5d82/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/22bc11b/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -3025,6 +3025,21 @@ const handleInner = async (req: Request) => {
             await saveSession(s);
             await logEvent(from, "offstep_absorbed", { at: "await_day", got });
             await sendText(from, COPY[L].gotItSvc([s.data.area, s.data.time].filter(Boolean).join(" · ")));
+            s.data.miss = 0;
+          } else {
+            // v105: on 18 Sept a lead sent four Instagram links and got the same
+            // sentence back four times, word for word, because an answer we
+            // cannot read just re-asks the question. The counter keys on the
+            // step, so moving on clears it and nothing needs resetting
+            // elsewhere. From the second consecutive miss we say we did not
+            // understand before asking again.
+            s.data.miss = (s.data.missAt === s.step ? Number(s.data.miss || 0) : 0) + 1;
+            s.data.missAt = s.step;
+            await saveSession(s);
+            if (s.data.miss >= 2) {
+              await sendText(from, COPY[L].notCaught);
+              await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
+            }
           }
           if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
         }
