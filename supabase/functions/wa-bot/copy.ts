@@ -347,6 +347,11 @@ export const COPY: Record<string, any> = {
     moreRow: { title: "More massages", desc: "Balinese, shiatsu, reflexology..." },
     backRow: { title: "Back", desc: "main massage list" },
     day: "Good choice. Which day suits you?",
+    // v105: repeating the same question at someone who sent something we could
+    // not read makes the bot look broken. On 18 Sept a lead sent four Instagram
+    // links and got "Good choice. Which day suits you?" four times, word for
+    // word. From the second miss at a step we say so first.
+    notCaught: "Sorry, I did not catch that.",
     dayUnsure: "No problem, that's what we're here for. We'll match you with the right massage and studio. Which day suits you?",
     dayBtns: [{ id: "day_today", title: "Today" }, { id: "day_tomorrow", title: "Tomorrow" }, { id: "day_other", title: "Another day" }],
     dayAsk: "Which day? Just type it, for example Saturday or 3 September.",
@@ -491,6 +496,7 @@ export const COPY: Record<string, any> = {
     moreRow: { title: "Más masajes", desc: "balinés, shiatsu, reflexología..." },
     backRow: { title: "Volver", desc: "lista principal" },
     day: "Buena elección. ¿Qué día te viene bien?",
+    notCaught: "Perdona, no te he entendido.",
     dayUnsure: "Sin problema, para eso estamos. Te buscamos el masaje y el centro perfectos. ¿Qué día te viene bien?",
     dayBtns: [{ id: "day_today", title: "Hoy" }, { id: "day_tomorrow", title: "Mañana" }, { id: "day_other", title: "Otro día" }],
     dayAsk: "¿Qué día? Escríbelo, por ejemplo sábado o 3 de septiembre.",

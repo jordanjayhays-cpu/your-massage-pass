@@ -523,6 +523,13 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// The not-caught line exists in both languages and says so plainly (18 Sept).
+// ---------------------------------------------------------------------------
+for (const [lang, want] of [["en", "Sorry, I did not catch that."], ["es", "Perdona, no te he entendido."]]) {
+  check("not caught line", lang, COPY[lang].notCaught, want, "shown from the second miss at a step");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
