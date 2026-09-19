@@ -192,6 +192,18 @@ export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive
 // A request for us to come to them, not a person saying where they are.
 // "I am at my hotel in Sol, which studios are near" is a location, not an
 // outcall, so the phrases that only describe a place need a verb in front.
+// v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
+// studio their price after our potential discount." So a price only ever comes
+// from a studio's own written reply about this booking, never from a listed or
+// scraped figure. A number without a currency marker is not a price: "a las
+// 16:00" and "10% de descuento" must never be read as one.
+export const parseQuotedPrice = (t: string): number | null => {
+  const m = String(t || "").match(/(?:^|[^\d])(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:€|eur\b|euros?\b)|(?:precio|price|cuesta|son|queda|sale|total)\D{0,12}(\d{1,3}(?:[.,]\d{1,2})?)/i);
+  if (!m) return null;
+  const v = parseFloat(String(m[1] || m[2]).replace(",", "."));
+  return v >= 10 && v <= 400 ? v : null;
+};
+export const euro = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2)) + " EUR";
 export const HOME_VISIT_RE = /\b(?:home\s*(?:service|visit)s?|(?:home|in[-\s]?home|out)\s?call|(?:massage|masaje)\s+(?:at|in|en)\s+(?:my|mi)\s+(?:home|house|hotel|room|casa|habitaci[oó]n)|(?:come|travel|send|bring)(?:\s+\w+){0,2}?\s+(?:to|round\s+to)\s+(?:my|our|the)\s+(?:home|house|hotel|room|place|flat|apartment)|a\s+domicilio|en\s+mi\s+(?:casa|domicilio)|servicio\s+a\s+domicilio|(?:ven[ií]r|desplaz\w+)\s+a\s+mi\s+(?:casa|hotel|habitaci[oó]n))\b/i;
 // A message that is nothing but a link. Case 04: four Instagram links in a row.
 export const LINK_ONLY_RE = /^\s*(?:https?:\/\/|www\.)\S+\s*$/i;
@@ -493,8 +505,16 @@ export const COPY: Record<string, any> = {
     fallbackAck: "Got that, thank you. Let me look into it and I will come straight back to you.",
     reviewAsk: (studio: string, link: string) =>
       `How was ${studio || "it"}? Rate it here, takes 10 seconds:\n${link}`,
-    memberRate: (was: number, now: number, mins: number) =>
-      `I got you the Massage Club member rate: *${now} EUR* instead of ${was}, ${mins} minutes.`,
+    // v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
+    // studio there price after our potential discount." The old memberRate line
+    // multiplied a listed price by the discount and called the result a member
+    // rate. A listed price is not a confirmed one, so it is gone. This line only
+    // ever carries a number the studio wrote about this booking, and it only
+    // says "Massage Club rate" when that same studio also confirmed a discount.
+    priceLine: (n: number, mins: number, member: boolean) =>
+      member
+        ? `Price: ${euro(n)} for ${mins} minutes, the Massage Club rate they confirmed for you. You pay at the studio.`
+        : `Price: ${euro(n)} for ${mins} minutes, confirmed by the studio. You pay there, no fee.`,
     // Asked only after they tap to book, where it buys them something.
     memberJoin: "Brilliant. Membership is free, I just need your name and email to lock in the rate and send your confirmation. I'll pass your details to the studio so they can reach you on the day.",
     offerYes: (t: string) => `Yes, book ${t}`,
@@ -613,8 +633,10 @@ export const COPY: Record<string, any> = {
     fallbackAck: "Recibido, gracias. Lo miro y te digo algo enseguida.",
     reviewAsk: (studio: string, link: string) =>
       `¿Qué tal ${studio || "ha ido"}? Valóralo aquí, son 10 segundos:\n${link}`,
-    memberRate: (was: number, now: number, mins: number) =>
-      `Te he conseguido la tarifa de socio de Massage Club: *${now} EUR* en vez de ${was}, ${mins} minutos.`,
+    priceLine: (n: number, mins: number, member: boolean) =>
+      member
+        ? `Precio: ${euro(n)} por ${mins} minutos, la tarifa Massage Club que te han confirmado. Pagas en el centro.`
+        : `Precio: ${euro(n)} por ${mins} minutos, confirmado por el centro. Pagas allí, sin comisión.`,
     memberJoin: "Genial. Hacerse socio es gratis, solo necesito tu nombre y tu email para fijar la tarifa y mandarte la confirmación. Paso tus datos al centro para que puedan localizarte el día de la cita.",
     offerYes: (t: string) => `Sí, reserva ${t}`,
     offerNo: "Otra hora",

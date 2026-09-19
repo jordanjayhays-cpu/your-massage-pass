@@ -17,7 +17,7 @@
 import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
-  AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
+  AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -607,6 +607,53 @@ for (const [msg, want, note] of [
   ["do you need my email?", false, ""],
 ]) {
   check("job seeker", JSON.stringify(msg), JOB_RE.test(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// The price a studio confirmed (Jordan, 19 Sept: "before we offer pricing we
+// must confirm with the studio there price after our potential discount").
+// Every line here is the shape a Madrid studio actually writes. The rejections
+// matter more than the matches: a bare number in a studio's message is far more
+// often an hour or a percentage than a price, and quoting one of those to a
+// customer is a wrong number at the till.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["45€", 45, ""],
+  ["45 eur", 45, ""],
+  ["son 40 euros", 40, ""],
+  ["A las 16:00, 45€", 45, "one message carries both the time and the price"],
+  ["precio 39", 39, ""],
+  ["1h 55 eur", 55, ""],
+  ["40,50 EUR con el descuento", 40.5, "Spanish decimal comma"],
+  ["Sí, con el 10% se queda en 54 euros", 54, ""],
+  ["16:00", null, "an hour is not a price"],
+  ["a las 3 p.m.", null, "an hour is not a price"],
+  ["10% de descuento", null, "a percentage is not a price"],
+  ["Tenemos disponibilidad hasta las 14:00 horas", null, ""],
+  ["Sí, tengo hueco", null, ""],
+  ["", null, ""],
+  ["9€", null, "under 10 EUR is not a massage price, it is a typo or a deposit"],
+  ["500 euros", null, "over 400 EUR is not one massage"],
+]) {
+  check("studio quoted price", JSON.stringify(msg), parseQuotedPrice(msg), want, note);
+}
+
+check("euro", "45", euro(45), "45 EUR", "no stray decimals on a whole number");
+check("euro", "40.5", euro(40.5), "40.50 EUR", "cents when there are cents");
+
+// The offer line only ever carries a studio-confirmed number, and it says
+// "Massage Club rate" only when that same studio also confirmed the discount.
+for (const lang of ["en", "es"]) {
+  check("price line", `${lang} member`, /45 EUR/.test(COPY[lang].priceLine(45, 60, true)), true, "");
+  check("price line", `${lang} plain`, /45 EUR/.test(COPY[lang].priceLine(45, 60, false)), true, "");
+  check("price line", `${lang} member names the rate`, /Massage Club/.test(COPY[lang].priceLine(45, 60, true)), true, "");
+  check("price line", `${lang} plain does not claim a rate`, /Massage Club/.test(COPY[lang].priceLine(45, 60, false)), false,
+    "a studio that gave a price and ducked the discount is not a member rate");
+  check("price line", `${lang} no asterisks`, COPY[lang].priceLine(45, 60, true).includes("*"), false,
+    "Jordan, 18 Sept: remove the * and just send it normally");
+  check("price line", `${lang} no em dash`, /\u2014/.test(COPY[lang].priceLine(45, 60, true)), false, "");
+  check("no list-price member rate", `${lang}`, COPY[lang].memberRate === undefined, true,
+    "removed 19 Sept: it multiplied a listed price by the discount and nobody had confirmed the result");
 }
 
 // ---------------------------------------------------------------------------
