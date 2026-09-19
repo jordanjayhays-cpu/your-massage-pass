@@ -112,11 +112,16 @@ export function parseOfferedTimes(t: string): string[] {
     if (!out.includes(v)) out.push(v);
   };
   // Walk the string once so the written order is preserved.
-  const re = /\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b|\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])|\b([01]?\d|2[0-3])\s*h(?:oras?|rs?)?\b|\b(1[0-2]|[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?m\.?\b/gi;
+  const re = /\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b|\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])(?!\s*[ap]\.?\s?m)|\b([01]?\d|2[0-3])\s*h(?:oras?|rs?)?\b|\b(1[0-2]|[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?m\.?\b/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s)) !== null) {
     if (m[1] !== undefined) push(parseInt(m[1], 10), m[2]);
-    else if (m[3] !== undefined) push(parseInt(m[3], 10));
+    else if (m[3] !== undefined) {
+      // v107: same two corrections as parseOfferedTime. "a las 3 p.m." is
+      // handed to the am/pm arm, and a bare "a las 3" is the afternoon.
+      const h3 = parseInt(m[3], 10);
+      push(h3 >= 1 && h3 <= 7 ? h3 + 12 : h3);
+    }
     // A bare "1h" is a duration, not 01:00. Centro Aloha's "si coges 1h" was
     // once read as a 01:00 slot and forwarded to a customer.
     else if (m[4] !== undefined && parseInt(m[4], 10) >= 8) push(parseInt(m[4], 10));
@@ -136,8 +141,18 @@ export function parseOfferedTime(t: string): string {
   if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return ""; // opening hours range, not an offer
   let m = s.match(/\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b/);
   if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
-  m = s.match(/\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])/i);
-  if (m) return `${m[1].padStart(2, "0")}:00`;
+  // v107 (19 Sept): "a las 3 p.m." used to stop here and return 03:00, because
+  // this rule matched before the am/pm rule below. Centro Aloha offered Javier
+  // "Hoy 19 hay disponibilidad a las 3 p.m." and he was told three in the
+  // morning. The lookahead hands anything carrying am or pm to that rule.
+  m = s.match(/\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])(?!\s*[ap]\.?\s?m)/i);
+  if (m) {
+    const h = parseInt(m[1], 10);
+    // A bare "a las 3" is the afternoon. No studio in Madrid opens at 03:00,
+    // and 1 to 7 written without a marker always means the second half of the
+    // day here. 8 and later are read as written.
+    return `${String(h >= 1 && h <= 7 ? h + 12 : h).padStart(2, "0")}:00`;
+  }
   // v77: "19 horas" is a time and did not parse, because \b after h failed on
   // the "o". TornaSol answered "19 horas" for Asim on 9 September, it was never
   // recorded, and a studio that could do the exact evening slot he wanted was

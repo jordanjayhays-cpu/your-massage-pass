@@ -530,6 +530,27 @@ for (const [lang, want] of [["en", "Sorry, I did not catch that."], ["es", "Perd
 }
 
 // ---------------------------------------------------------------------------
+// "a las 3 p.m." is fifteen hundred, not three in the morning (19 Sept).
+// Centro Aloha wrote "Hoy 19 hay disponibilidad a las 3 p.m." and Javier was
+// offered 03:00.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["Hoy 19 hay disponibilidad a las 3 p.m.", "15:00", "Centro Aloha, the message that started this"],
+  ["a las 3 pm", "15:00", ""],
+  ["a las 3", "15:00", "bare, and no studio in Madrid opens at 03:00"],
+  ["a las 7", "19:00", "evening, not dawn"],
+  ["a las 9", "09:00", "9 and later are read as written"],
+  ["a las 10", "10:00", ""],
+  ["a las 20", "20:00", ""],
+  ["a las 16:30", "16:30", "an exact time still wins"],
+  ["Tenemos disponibilidad hasta las 14:00 horas", "14:00", "Calma this morning"],
+  ["19 horas", "19:00", "the v77 case still works"],
+  ["si coges 1h", "", "a duration, not 01:00"],
+]) {
+  check("offered time", JSON.stringify(msg), parseOfferedTime(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
