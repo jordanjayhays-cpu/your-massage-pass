@@ -220,9 +220,15 @@ type Candidate = { id: string; business_name: string; area: string | null; wa: s
 
 // v6: the honest leverage, in the ask itself. Several studios really are asked,
 // and the client really does go with the best offer.
-const BEST_OFFER_LINE = "Consultamos a varios centros de la zona y el cliente irá con la mejor oferta. Si podéis hacerle un 10% de descuento, escribid 10% al confirmar.";
+// v28 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
+// studio there price after our potential discount." Both lines used to ask only
+// for a percentage, so the first reply never carried a number we were allowed
+// to quote and the customer's offer went out with no price at all. They now ask
+// for the final price for the client, with an example in the format wa-bot
+// parses. This is a template variable, not template text, so no Meta review.
+const BEST_OFFER_LINE = "Consultamos a varios centros y el cliente va con la mejor oferta. Al confirmar, escribid hora y precio final para el cliente, con un 10% de Massage Club si podéis. Ej: 17:00, 45€.";
 // v8: a price hunt says what the client is looking for and takes any discount.
-const PRICE_HUNT_LINE = "El cliente busca el mejor precio por 60 min (presupuesto en torno a 35-40 EUR). Consultamos a varios centros y se irá con la mejor oferta: al confirmar, escribid el descuento que podéis hacerle (10%, 15%, 20%).";
+const PRICE_HUNT_LINE = "El cliente busca el mejor precio por 60 min y va con la mejor oferta de la zona. Al confirmar, escribid el precio final para el cliente con vuestro descuento. Ej: 38€ con el 10%.";
 
 // v12 (6 Sept): the studio reads the day with its date. "Mañana" tapped at 1am
 // meant Sunday to the customer and Monday to every studio (request #55).
