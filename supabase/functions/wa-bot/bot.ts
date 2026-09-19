@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/37647ce/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/0188860/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -1957,8 +1957,10 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   // a studio already chosen is handled by the studio-ask trigger, and fanning
   // out as well would message five studios about a booking that has one.
   if (id && !s.data.chosen) {
-    // v81: the first message in the whole flow that gives instead of asks.
-    await sendText(from, COPY[L].onIt);
+    // v108 (Jordan, 19 Sept, case 05): the "Done, ..." message just above
+    // already says what happens next, in hours and out of them. The second
+    // line only repeated it, and at midnight it contradicted the honest
+    // out-of-hours sentence two seconds after we sent it.
     await dispatchRequest(id);
   }
 }
@@ -2618,6 +2620,18 @@ const handleInner = async (req: Request) => {
     // set step="blocked" and never speak to them again. Ten people ended up
     // there, more than have ever completed a booking, and two of them were real
     // customers who had already been through the whole funnel.
+    // v108 (Jordan, case 02): a home visit is not something we sell. Say so
+    // plainly and keep them moving, rather than answering "Good choice" and
+    // routing them into a studio booking they never asked for.
+    if (text && HOME_VISIT_RE.test(text) && !s.data.toldNoHome) {
+      s.data.toldNoHome = new Date().toISOString();
+      if (!s.data.area) s.step = "await_area";
+      await saveSession(s);
+      await sendText(from, COPY[s.data.lang === "es" ? "es" : "en"].noHomeVisit);
+      await logEvent(from, "home_visit_declined", { said: String(text).slice(0, 80) });
+      await notifyJordanWa(`+${from} asked for a home visit. Told them we book in person and asked for their area.`, from).catch(() => {});
+      return new Response("OK", { status: 200 });
+    }
     if ((text && EROTIC_RE.test(text)) || (btnText && EROTIC_RE.test(btnText))) {
       const said = String(text || btnText);
       // v106 (19 Sept, 03:15 Madrid): asking once can be someone testing the
@@ -3053,6 +3067,14 @@ const handleInner = async (req: Request) => {
             s.data.miss = (s.data.missAt === s.step ? Number(s.data.miss || 0) : 0) + 1;
             s.data.missAt = s.step;
             await saveSession(s);
+            // v108 (Jordan, case 04): name what they sent before asking again.
+            // Someone who sends a link is showing us something, not failing to
+            // answer, and the first thing they should read is that it arrived.
+            if (LINK_ONLY_RE.test(String(text || ""))) {
+              await sendText(from, COPY[L].gotLink);
+              await logEvent(from, "got_link", { at: "await_day" });
+              break;
+            }
             if (s.data.miss >= 2) {
               await sendText(from, COPY[L].notCaught);
               await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
