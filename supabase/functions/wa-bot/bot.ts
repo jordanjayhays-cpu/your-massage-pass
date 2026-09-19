@@ -2620,10 +2620,27 @@ const handleInner = async (req: Request) => {
     // customers who had already been through the whole funnel.
     if ((text && EROTIC_RE.test(text)) || (btnText && EROTIC_RE.test(btnText))) {
       const said = String(text || btnText);
+      // v106 (19 Sept, 03:15 Madrid): asking once can be someone testing the
+      // water, and v81 is right that one refusal plus the question again gives
+      // them a chance to book a real massage. Asking a SECOND time, after a
+      // plain no, is not a misunderstanding. Tonight someone asked twice about
+      // a "final feliz" and both times the bot answered the line and then
+      // cheerfully asked which day suited them, which is the flow trying to
+      // sell a studio appointment to a person the studio must never receive.
+      // Jordan's standing rule is the shutdown line and no further replies, so
+      // the second strike ends the conversation instead of re-asking it.
+      s.data.eroticHits = Number(s.data.eroticHits || 0) + 1;
       await sendText(from, s.data.lang === "es" ? BLOCK_LINE_ES : BLOCK_LINE_EN);
-      await logEvent(from, "offer_declined_neutral", { text: said.slice(0, 120) });
-      // Keep them exactly where they were and ask the question again, so the
-      // booking they were halfway through is not thrown away.
+      await logEvent(from, "offer_declined_neutral", { text: said.slice(0, 120), hit: s.data.eroticHits });
+      if (s.data.eroticHits >= 2) {
+        s.step = "muted";
+        await saveSession(s);
+        await notifyJordanWa(`Muted +${from} after a second off-menu request. They asked twice: ${said.slice(0, 100)}`, from).catch(() => {});
+        return new Response("OK", { status: 200 });
+      }
+      await saveSession(s);
+      // First time only: keep them exactly where they were and ask the question
+      // again, so a booking they were halfway through is not thrown away.
       await reAsk(s, from, s.data.lang === "es" ? "es" : "en");
       return new Response("OK", { status: 200 });
     }
