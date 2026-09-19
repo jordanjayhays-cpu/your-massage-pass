@@ -565,6 +565,59 @@ async function notifyStudios(requestId: number, text: string, short?: string, on
   return out;
 }
 
+// v31 (Jordan, 19 Sept): nothing ever chased a studio, and nothing ever told
+// one how an ask ended. 66 asks were sitting at pending with no ending at all
+// and 19 of those studios had written to us and got nothing back. Private Spa
+// answered Al with a price and a time; Calma and Centro Aloha said yes to the
+// same request at 09:09 and 09:45 and were never asked for an hour, so Al heard
+// nothing all day. Two cases, each once per ask, inside studio hours:
+//
+//   A. They said yes and never named an hour or a price. We ask, once, naming
+//      the client and the hour we put to them. This is the one that turns a
+//      "sí, tengo hueco" into something a customer can actually be offered.
+//   B. The request is over (someone else got it, or it was cancelled or
+//      dismissed) and their row is still open. We tell them so and close it.
+//      A studio that hears how it ended keeps answering; one that never hears
+//      stops, which is what Masajes Chamberi and Samsara have already done.
+async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> {
+  const waiting: string[] = [];
+  const closed: string[] = [];
+  const since = new Date(Date.now() - 72 * 3600e3).toISOString();
+  const ripe = new Date(Date.now() - 45 * 60e3).toISOString();
+
+  // B first: a dead request must never produce a chase for an hour.
+  const deadRows = await sq(`request_dispatch?outcome=in.(pending,accepted)&chased_at=is.null&created_at=gte.${since}&order=created_at.desc&limit=40&select=id,request_id,partner_id,phone`);
+  for (const d of (Array.isArray(deadRows) ? deadRows : [])) {
+    const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=id,first_name,time1,proposed_time,confirmed_time,stage&limit=1`))[0];
+    if (!rq || !["confirmed", "cancelled", "dismissed", "no_show"].includes(String(rq.stage || ""))) continue;
+    const to = digits(String(d.phone || ""));
+    const line = rq.stage === "confirmed"
+      ? "Gracias por responder. Esta reserva ya la ha cogido otro centro, así que no hace falta que hagáis nada. Os avisamos con la próxima. Massage Club"
+      : "Gracias por responder. El cliente finalmente no sigue adelante, así que esta solicitud queda anulada y no hace falta que hagáis nada. Sentimos haberos hecho perder el tiempo y os avisamos con la próxima. Massage Club";
+    if (!dryRun && to) await sendStudioNote(to, line, rq.stage === "confirmed" ? "la reserva ya la ha cogido otro centro, no hace falta que hagáis nada" : "el cliente no sigue adelante, la solicitud queda anulada", rq);
+    if (!dryRun) await sq(`request_dispatch?id=eq.${d.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "stood_down", chased_at: new Date().toISOString() }) });
+    closed.push(`#${d.request_id} ${to}`);
+  }
+
+  // A: they said yes, we never got an hour out of them.
+  const yesRows = await sq(`request_dispatch?outcome=eq.accepted&offered_time=is.null&chased_at=is.null&created_at=gte.${since}&created_at=lte.${ripe}&order=created_at.desc&limit=20&select=id,request_id,partner_id,phone,quoted_price`);
+  for (const d of (Array.isArray(yesRows) ? yesRows : [])) {
+    const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=id,first_name,day1,time1,proposed_time,stage,client_phone,message_text&limit=1`))[0];
+    if (!rq || !["new", "dispatching", "studio_asked", "studio_replied", "bidding", "offered"].includes(String(rq.stage || ""))) continue;
+    if (isTestCustomer(rq)) continue;
+    const to = digits(String(d.phone || ""));
+    if (!to || JORDAN_NUMBERS.includes(to)) continue;
+    const hour = String(rq.proposed_time || "") || concreteTime(rq.time1);
+    const name = String(rq.first_name || "el cliente");
+    const day = dayLabelEs(rq.day1, rq.message_text);
+    const line = `Hola, sobre ${name}, ${day}${hour ? " a las " + hour : ""}: nos dijisteis que sí y seguimos esperando dos datos para podérselo proponer. ¿Nos confirmáis la hora y el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo? Con eso se lo decimos ahora mismo. Massage Club`;
+    if (!dryRun) await sendStudioNote(to, line, `sobre ${name}: ¿nos confirmáis hora y precio final para el cliente?`, rq);
+    if (!dryRun) await sq(`request_dispatch?id=eq.${d.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ chased_at: new Date().toISOString() }) });
+    waiting.push(`#${d.request_id} ${name} ${to}`);
+  }
+  return { chased_for_time: waiting, told_it_ended: closed };
+}
+
 // v17: two requests from the same person are the same booking when the four
 // fields a studio actually reads agree. A blank on the newer row means "not
 // restated", not "changed": the web form and the WhatsApp chat it opens fill in
@@ -867,6 +920,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // trigger used to flip new requests to studio_asked, which hid them from
     // this sweep for good (request #44, 3 Sept).
     requests = await sq(`whatsapp_requests?dispatched_at=is.null&partner_id=is.null&stage=in.(new,dispatching,studio_asked)&created_at=gte.${since}&order=id.desc&limit=10&select=*`);
+  } else if (body.chase === true) {
+    // v31: ops-only. Runs on its own cron inside studio hours.
+    const out = await chaseOpenAsks(dryRun);
+    return new Response(JSON.stringify({ ok: true, ...out }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
   } else if (body.widen === true) {
     // v29 (Jordan, 19 Sept): the second wave. A request whose first four
     // studios have said nothing for WIDEN_AFTER_MS gets the rest of the panel.
