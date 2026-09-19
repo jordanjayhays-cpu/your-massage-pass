@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/dbe3385/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, parseQuotedPrice, euro, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/d453804/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -722,7 +722,9 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
             method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
             body: JSON.stringify({ stage: "bidding", settle_after: settleAfter, studio_reply: `Disponible (${partner.business_name})`, stage_updated_at: new Date().toISOString() }),
           });
-          await sendText(from, drow.discount_pct ? `Gracias, lo tenemos: ${drow.discount_pct}% de descuento. Os confirmamos en unos minutos. Massage Club` : BID_ASK);
+          // v110: a discount on file is not a price. Without a confirmed price
+          // there is nothing we may quote, so ask for it instead of going quiet.
+          await sendText(from, drow.discount_pct ? (drow.quoted_price ? `Gracias, lo tenemos: ${drow.discount_pct}% de descuento, ${euro(Number(drow.quoted_price))}. Os confirmamos en unos minutos. Massage Club` : `Gracias, lo tenemos: ${drow.discount_pct}% de descuento. ${PRICE_ASK}`) : BID_ASK);
           await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name });
           return;
         }
@@ -787,6 +789,25 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         }
       }
     } catch (e) { console.log("[studio] gender parse failed", String(e)); }
+    // v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
+    // studio there price after our potential discount." A figure this studio
+    // wrote about this booking is the only price we are ever allowed to quote,
+    // so it is captured the moment it arrives and written against the dispatch
+    // row. Pure capture: it sends nothing, moves no stage and does not return,
+    // because one message is usually both ("17:00, 45€") and the discount and
+    // offered-time branches below still have to run on it.
+    const quotedNow = parseQuotedPrice(freeText);
+    if (quotedNow !== null) {
+      try {
+        const sinceP = new Date(Date.now() - 48 * 3600e3).toISOString();
+        const pd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${sinceP}&order=created_at.desc&limit=1&select=id`, { headers: H() });
+        const pdr = (await pd.json().catch(() => []))[0] || null;
+        if (pdr) {
+          await patchDispatch(pdr.id, { quoted_price: quotedNow, replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) });
+          console.log("[studio] quoted price", quotedNow, "from", partner.business_name);
+        }
+      } catch (e) { console.log("[studio] price capture failed", String(e)); }
+    }
     // v46: a written discount is an offer on the open request. 10% or more wins
     // the booking at once; less waits for the window to close.
     const pct = parseDiscount(freeText);
@@ -795,14 +816,14 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       const od = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted)&created_at=gte.${since48}&order=created_at.desc&limit=1&select=id,request_id,outcome,accepted_at`, { headers: H() });
       const odr = (await od.json().catch(() => []))[0] || null;
       if (odr) {
-        await patchDispatch(odr.id, { discount_pct: pct, outcome: "accepted", accepted_at: odr.accepted_at || new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500), offer_note: freeText.slice(0, 200) });
+        await patchDispatch(odr.id, { discount_pct: pct, ...(quotedNow !== null ? { quoted_price: quotedNow } : {}), outcome: "accepted", accepted_at: odr.accepted_at || new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500), offer_note: freeText.slice(0, 200) });
         await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partner.id)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ mc_discount_pct: pct, mc_discount_confirmed_at: new Date().toISOString(), mc_discount_note: `WhatsApp: ${freeText.slice(0, 200)}` }) }).catch(() => {});
         const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
         const rqrow = (await rq.json().catch(() => []))[0] || null;
         if (rqrow && pct >= 10) { await awardWinner(rqrow, partner, from, pct); return; }
         if (rqrow) {
           await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${rqrow.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "bidding", settle_after: rqrow.settle_after || new Date(Date.now() + BID_WINDOW_MS).toISOString(), studio_reply: `${partner.business_name}: ${pct}% dto`, stage_updated_at: new Date().toISOString() }) });
-          await sendText(from, `Gracias, anotado: ${pct}% de descuento. Os confirmamos en unos minutos. Massage Club`);
+          await sendText(from, quotedNow !== null ? `Gracias, anotado: ${pct}% de descuento, ${euro(quotedNow)}. Os confirmamos en unos minutos. Massage Club` : `Gracias, anotado: ${pct}% de descuento. ${PRICE_ASK}`);
           return;
         }
       }
@@ -1078,7 +1099,13 @@ const DECLINE_RE = /\b(not going to|won'?t be|no longer|not any ?more|leaving ma
 
 // ---- v46: best offer wins ----
 const BID_WINDOW_MS = 10 * 60 * 1000;
-const BID_ASK = "Gracias. Estamos consultando a varios centros de la zona y el cliente irá con la mejor oferta. Si podéis hacerle un 10% de descuento, escribid 10% ahora y le confirmamos con vosotros. Si no, os decimos algo en unos minutos. Massage Club";
+// v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
+// studio there price after our potential discount." The old ask only asked for
+// a percentage, so the bot never held a price it was allowed to quote and the
+// offer went out with no number at all. Now one message asks for both, and the
+// example shows the format we can parse.
+const BID_ASK = "Gracias. Estamos consultando a varios centros de la zona y el cliente irá con la mejor oferta. Decidnos dos cosas y se las pasamos ahora mismo: la hora que le podéis dar y el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo. Por ejemplo: 17:00, 45€. Massage Club";
+const PRICE_ASK = "¿Y cuál sería el precio final para el cliente con ese descuento, en 60 min? Con ese dato se lo proponemos ya. Massage Club";
 const isSameDayReq = (req: any) => /^(today|hoy)$/i.test(String(req?.day1 || "").trim());
 
 // v48: "hora y media" is a 90 minute request, not a 60 minute one (6 Sept, 02:54).
@@ -1102,7 +1129,7 @@ const reqDuration = (req: any): number => {
 // A dropped tap is invisible and costs a booking, so this never returns empty
 // quietly: if nothing matches at all, it says so in the log.
 async function dispatchRowFor(requestId: number, partnerId: string, fromDigits = ""): Promise<any | null> {
-  const sel = "id,outcome,phone,discount_pct,accepted_at,partner_id";
+  const sel = "id,outcome,phone,discount_pct,quoted_price,accepted_at,partner_id";
   if (partnerId) {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&partner_id=eq.${encodeURIComponent(partnerId)}&order=created_at.desc&limit=1&select=${sel}`, { headers: H() });
     const rows = await r.json().catch(() => []);
@@ -1670,28 +1697,29 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   const asked = offerMatchesAsk(time, offerDay, String(req.day1 || ""), String(req.time1 || ""))
     ? ""
     : [req.day1, req.time1].filter(Boolean).join(" ");
-  // v81: if this studio confirmed both a price and a discount in writing, the
-  // customer hears what we got them. Only then. A studio that gave a price and
-  // ducked the discount produces the plain offer and no mention that we asked,
-  // because "we tried and they said no" makes us look weak and them look mean.
-  // memberLine stays empty unless every number came from the studio itself.
-  let memberLine = "";
+  // v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
+  // studio there price after our potential discount." The v81 line took the
+  // listed price off partners and multiplied it by the discount. Nobody had
+  // confirmed that number for this booking, so it could be wrong at the till,
+  // and it is gone. The only price that reaches a customer is one this studio
+  // wrote: the figure stored on the dispatch row, or one in the very message
+  // that carried this offer. No confirmed price means no price in the message.
+  let priceLine = "";
   try {
     const dsp = await dispatchRowFor(req.id, partner.id, studioFrom);
-    const pct = dsp && dsp.discount_pct ? Number(dsp.discount_pct) : 0;
-    const listPrice = Number(req.price || 0);
-    if (pct > 0 && listPrice > 0) {
+    const quoted = Number((dsp && dsp.quoted_price) || parseQuotedPrice(freeText) || 0);
+    if (quoted > 0) {
       // whatsapp_requests has no duration column; 60 is the standard booking and
-      // the only length any price we hold is quoted against.
-      const mins = 60;
-      // Rounded to the cent the customer will actually be charged, never up to
-      // a tidier number: 10% off 60 is 54.
-      const now = Math.round(listPrice * (100 - pct)) / 100;
-      memberLine = "\n\n" + COPY[L].memberRate(listPrice, now, mins);
+      // the length the studios quote against.
+      const pct = dsp && dsp.discount_pct ? Number(dsp.discount_pct) : 0;
+      // "Massage Club rate" only when this same studio also confirmed the
+      // discount in writing. A studio that gave a price and ducked the discount
+      // gets the plain line: "we asked and they said no" makes us look weak.
+      priceLine = "\n\n" + COPY[L].priceLine(quoted, 60, pct > 0);
     }
-  } catch (e) { console.log("[wa] member rate skipped", String(e)); }
+  } catch (e) { console.log("[wa] price line skipped", String(e)); }
   await sendButtons(clientNum,
-    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked) + memberLine,
+    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked) + priceLine,
     [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }]);
   cs.data.prevStep = cs.step;
   cs.step = "await_offer";
