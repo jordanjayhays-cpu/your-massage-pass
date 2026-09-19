@@ -336,6 +336,15 @@ export const looksLikeQuestion = (t: string): boolean => {
 // "How does this work?" in its many forms - deserves an answer, not a menu.
 export const HOWWORKS_RE = /(how (does (this|it) work|this works?|do (you|i))|how it works|what is this|what do you do|who are you|is this real|qu[eé] es esto|c[oó]mo funciona|qui[eé]nes sois|qu[eé] hac[eé]is|es real)/i;
 
+// v112 (Jordan, 19 Sept): "why would you ask what day???" Someone came off the
+// ad at 16:41 Madrid asking "What type of massage you provide?", got the price
+// and the day buttons, asked "What type?" again, and was answered "Good choice.
+// Which day suits you?". They asked the same question twice and never saw a
+// list. A question about what we offer is answered with what we offer.
+// OTHERTYPE_RE did not catch it because it wants "another" or "different" in
+// front of the word type, and a plain "What type?" has neither.
+export const SERVICEQ_RE = /^\s*(?:what|which|qu[eé]|cu[aá]l(?:es)?)\s*(?:type|types|kind|tipo|tipos)\s*\??\s*$|\b(?:what|which|qu[eé]|cu[aá]l(?:es)?)\b[^?.]{0,30}\b(?:types?|kinds?|sorts?|massages|services|tipos?|clases?|masajes|servicios)\b|\bwhat\s+(?:do\s+you|you)\s+(?:provide|offer|have|do)\b|\b(?:tipos?\s+de\s+masaje|qu[eé]\s+masajes)\b/i;
+
 export const MAIN_SERVICES = [
   { id: "svc_relax", en: "Relaxing massage", tEn: "Relaxing", tEs: "Relajante" },
   { id: "svc_deep", en: "Deep tissue massage", tEn: "Deep tissue", tEs: "Descontracturante" },
@@ -476,6 +485,13 @@ export const COPY: Record<string, any> = {
     emailAskPost: "One more thing: want this confirmation by email, plus your bookings saved so next time takes one tap? Reply with your email and your free account is ready.",
     emailSaved: "Done! Check your inbox: your confirmation and account link are on their way. 📫",
     rebookLater: "No problem, we'll be here when you need us. 🙌",
+    // v112: the answer to "what type?" is the list, not another question. Built
+    // from MAIN_SERVICES and MORE_SERVICES so it can never drift from the
+    // picker that follows it.
+    servicesAnswer: "We book these at professional studios in Madrid:\n\n"
+      + MAIN_SERVICES.filter((x) => x.id !== "svc_unsure").map((x) => "\u00b7 " + x.tEn).join("\n")
+      + "\n\nAlso available: " + MORE_SERVICES.map((x) => x.tEn).join(", ")
+      + ".\n\nWhich one would you like? If you are not sure, I can help you pick.",
     howItWorks: "Happy to explain! It is simple:\n\n1. Tell us what massage you would like and when\n2. We confirm the time and price with one of Madrid's best studios for you, everything in English\n3. You just show up and pay the studio directly. No fee from us, and your time is only booked once the studio confirms.\n\nAll our studios with photos and prices: book.massageclub.io - but you're very welcome to keep everything right here in the chat, we handle it for you.",
     human: `No problem. A Massage Club representative will message you personally in a few minutes from our main number ${JORDAN_MAIN_NUMBER}. You can also just reply here, we see everything.`,
     menuTitle: "What would you like to do?",
@@ -618,6 +634,10 @@ export const COPY: Record<string, any> = {
     emailAskPost: "Una cosa más: ¿quieres la confirmación por email y tus reservas guardadas para repetir en un toque? Responde con tu email y tu cuenta gratis queda lista.",
     emailSaved: "¡Listo! Mira tu correo: te llegan la confirmación y el enlace de tu cuenta. 📫",
     rebookLater: "Sin problema, aquí estaremos cuando te apetezca. 🙌",
+    servicesAnswer: "Reservamos estos en centros profesionales de Madrid:\n\n"
+      + MAIN_SERVICES.filter((x) => x.id !== "svc_unsure").map((x) => "\u00b7 " + x.tEs).join("\n")
+      + "\n\nTambién: " + MORE_SERVICES.map((x) => x.tEs).join(", ")
+      + ".\n\n¿Cuál te apetece? Si no lo tienes claro, te ayudo a elegir.",
     howItWorks: "¡Te lo explicamos! Es muy fácil:\n\n1. Dinos qué masaje quieres y cuándo\n2. Confirmamos hora y precio con uno de los mejores centros de Madrid por ti\n3. Solo tienes que ir y pagar directamente en el centro. Sin comisión, y tu hora queda reservada cuando el centro confirma.\n\nTodos nuestros centros con fotos y precios: book.massageclub.io - aunque puedes seguirlo todo por aquí mismo, nosotros nos encargamos.",
     human: `Sin problema. Un representante de Massage Club te escribe personalmente en unos minutos desde nuestro número principal ${JORDAN_MAIN_NUMBER}. También puedes responder aquí, lo vemos todo.`,
     menuTitle: "¿Qué quieres hacer?",

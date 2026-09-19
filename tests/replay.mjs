@@ -17,7 +17,7 @@
 import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
-  AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro,
+  AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -662,6 +662,45 @@ for (const lang of ["en", "es"]) {
   check("price line", `${lang} no em dash`, /\u2014/.test(COPY[lang].priceLine(45, 60, true)), false, "");
   check("no list-price member rate", `${lang}`, COPY[lang].memberRate === undefined, true,
     "removed 19 Sept: it multiplied a listed price by the discount and nobody had confirmed the result");
+}
+
+// ---------------------------------------------------------------------------
+// "What type?" (Jordan, 19 Sept: "why would you ask what day???"). Someone came
+// off the ad asking what types of massage we provide, asked again when the
+// first answer was the day buttons, and was told "Good choice. Which day suits
+// you?". The rejections below are the ones that would hijack a booking already
+// in progress.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["What type?", true, "the real message, 19 Sept 16:41 Madrid"],
+  ["What type of massage you provide?", true, "his first message, same person"],
+  ["what types of massage do you have", true, ""],
+  ["which massages do you offer", true, ""],
+  ["what kind of massage", true, ""],
+  ["What do you offer?", true, ""],
+  ["what do you provide", true, ""],
+  ["¿Qué tipos de masaje tenéis?", true, ""],
+  ["que masajes ofreceis", true, ""],
+  ["tipos de masaje", true, ""],
+  ["Which day suits you", false, "our own question must never match"],
+  ["what time do you open", false, ""],
+  ["what area are you in", false, ""],
+  ["how much is it", false, "a price question, answered elsewhere"],
+  ["Tomorrow", false, ""],
+  ["relaxing massage please", false, "they have named it, do not send them back to the menu"],
+  ["", false, ""],
+]) {
+  check("what do you offer", JSON.stringify(msg), SERVICEQ_RE.test(msg), want, note);
+}
+
+// The answer names every service the picker offers, in both languages.
+for (const lang of ["en", "es"]) {
+  const a = COPY[lang].servicesAnswer;
+  check("services answer", `${lang} lists deep tissue`, /Deep tissue|Descontracturante/.test(a), true, "");
+  check("services answer", `${lang} lists thai`, /Thai|Tailand/.test(a), true, "");
+  check("services answer", `${lang} lists couples`, /Couples|pareja/.test(a), true, "");
+  check("services answer", `${lang} no em dash`, /\u2014/.test(a), false, "");
+  check("services answer", `${lang} no asterisks`, a.includes("*"), false, "");
 }
 
 // ---------------------------------------------------------------------------
