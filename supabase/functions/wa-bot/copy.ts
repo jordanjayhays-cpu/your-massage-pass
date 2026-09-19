@@ -186,6 +186,15 @@ export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive
 // Asking about clothing is often a genuine modesty question, so it gets a
 // straight answer about how professional studios work rather than a block. If
 // the next message crosses the line, EROTIC_RE catches it.
+// v108 (Jordan, 19 Sept, case 02): we book in person only. A French lead wrote
+// "Home services" on 18 Sept and the bot answered "Good choice", then quietly
+// set them up for a studio appointment they had not asked for.
+// A request for us to come to them, not a person saying where they are.
+// "I am at my hotel in Sol, which studios are near" is a location, not an
+// outcall, so the phrases that only describe a place need a verb in front.
+export const HOME_VISIT_RE = /\b(?:home\s*(?:service|visit)s?|(?:home|in[-\s]?home|out)\s?call|(?:massage|masaje)\s+(?:at|in|en)\s+(?:my|mi)\s+(?:home|house|hotel|room|casa|habitaci[oó]n)|(?:come|travel|send|bring)(?:\s+\w+){0,2}?\s+(?:to|round\s+to)\s+(?:my|our|the)\s+(?:home|house|hotel|room|place|flat|apartment)|a\s+domicilio|en\s+mi\s+(?:casa|domicilio)|servicio\s+a\s+domicilio|(?:ven[ií]r|desplaz\w+)\s+a\s+mi\s+(?:casa|hotel|habitaci[oó]n))\b/i;
+// A message that is nothing but a link. Case 04: four Instagram links in a row.
+export const LINK_ONLY_RE = /^\s*(?:https?:\/\/|www\.)\S+\s*$/i;
 export const MODESTY_RE = /\b(desnud\w*|sin\s*ropa|naked|nude|undress\w*|ropa\s*interior)\b/i;
 // v81 (Jordan, 10 and 12 Sept): stop blocking, persuade instead. The old lines
 // below ended the conversation and set the session to "blocked" forever. Ten
@@ -367,6 +376,10 @@ export const COPY: Record<string, any> = {
     // links and got "Good choice. Which day suits you?" four times, word for
     // word. From the second miss at a step we say so first.
     notCaught: "Sorry, I did not catch that.",
+    gotLink: "Thank you for the link. Would you like to continue with booking a massage?",
+    // Jordan, 19 Sept, case 02: we book in person only. Say so, then ask the
+    // one question that keeps them moving.
+    noHomeVisit: "We only book massages in person, at professional studios. I can find you one close by. Which part of Madrid are you in? You can also share your location.",
     dayUnsure: "No problem, that's what we're here for. We'll match you with the right massage and studio. Which day suits you?",
     dayBtns: [{ id: "day_today", title: "Today" }, { id: "day_tomorrow", title: "Tomorrow" }, { id: "day_other", title: "Another day" }],
     dayAsk: "Which day? Just type it, for example Saturday or 3 September.",
@@ -391,7 +404,7 @@ export const COPY: Record<string, any> = {
     gotItSvc: (svc: string) => `Got it, ${svc}. 👌`,
     // v81: after four taps we stop asking and go to work. This is the first
     // message in the whole flow the customer receives instead of gives.
-    onIt: "Give me a few minutes, I'm asking studios near you now.",
+
     jobSeeker: "Thanks for writing! We do not hire directly, but we work with Madrid's best studios and sometimes they look for good therapists. Send your name, experience and the neighbourhoods you cover, and we will keep you in mind. 🙏",
     otherTypeAck: "Of course, let us change the massage. Your day, time and area are saved.",
     areaAgain: "Type your area, for example Chamberí, Sol or Retiro. Or tap share location.",
@@ -453,7 +466,7 @@ export const COPY: Record<string, any> = {
     confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
       `Done, ${n}. ${sN}, ${w}, ${st}.\n\nThe studios are closed right now. I'll ask them the moment they open at 09:00 and write here as soon as one confirms. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
-      `Update on your ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} can take you at *${time}* ${day}${asked ? " instead of " + asked : ""}. Does that work?`,
+      `Update on your ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} can take you at ${time} ${day}.\n\nDoes that work?`,
     // v81 (Jordan, 12 Sept): the member rate. We ask every studio for a Massage
     // Club rate, so when one gives it in writing the customer hears what we got
     // them, not just a price. It is truthful only because that is literally how
@@ -512,6 +525,8 @@ export const COPY: Record<string, any> = {
     backRow: { title: "Volver", desc: "lista principal" },
     day: "Buena elección. ¿Qué día te viene bien?",
     notCaught: "Perdona, no te he entendido.",
+    gotLink: "Gracias por el enlace. ¿Quieres seguir con la reserva del masaje?",
+    noHomeVisit: "Solo reservamos masajes presenciales, en centros profesionales. Te busco uno cerca. ¿En qué zona de Madrid estás? También puedes compartir tu ubicación.",
     dayUnsure: "Sin problema, para eso estamos. Te buscamos el masaje y el centro perfectos. ¿Qué día te viene bien?",
     dayBtns: [{ id: "day_today", title: "Hoy" }, { id: "day_tomorrow", title: "Mañana" }, { id: "day_other", title: "Otro día" }],
     dayAsk: "¿Qué día? Escríbelo, por ejemplo sábado o 3 de septiembre.",
@@ -531,7 +546,7 @@ export const COPY: Record<string, any> = {
     areaOtherDesc: "escríbela o comparte tu ubicación",
     areaShare: "Escribe tu zona, por ejemplo Arganzuela o Tetuán, o comparte tu ubicación.",
     gotItSvc: (svc: string) => `Perfecto, ${svc}. 👌`,
-    onIt: "Dame unos minutos, estoy preguntando a centros cerca de ti.",
+
     jobSeeker: "¡Gracias por escribir! No contratamos directamente, pero trabajamos con los mejores centros de Madrid y a veces buscan buenos masajistas. Envíanos tu nombre, experiencia y las zonas que cubres, y te tendremos en cuenta. 🙏",
     otherTypeAck: "Claro, cambiamos el masaje. Tu día, hora y zona quedan guardados.",
     areaAgain: "Escribe tu zona, por ejemplo Chamberí, Sol o Retiro. O toca compartir ubicación.",
@@ -585,7 +600,7 @@ export const COPY: Record<string, any> = {
     confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
-      `Novedades sobre tu ${svcN}${n ? ", " + n : ""}: *${studio}*${where ? " (" + where + ")" : ""} puede atenderte a las *${time}* ${day}${asked ? " en vez de " + asked : ""}. ¿Te va bien?`,
+      `Novedades sobre tu ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} puede atenderte a las ${time} ${day}.\n\n¿Te va bien?`,
     fallbackAck: "Recibido, gracias. Lo miro y te digo algo enseguida.",
     reviewAsk: (studio: string, link: string) =>
       `¿Qué tal ${studio || "ha ido"}? Valóralo aquí, son 10 segundos:\n${link}`,

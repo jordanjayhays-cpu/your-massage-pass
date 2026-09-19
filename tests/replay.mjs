@@ -16,7 +16,7 @@
 
 import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
-  HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
+  HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
@@ -287,9 +287,13 @@ for (const lang of ["en", "es"]) {
     "37 people got a wall of text and never replied");
   // The third button has to lead somewhere, not dead-end the undecided.
   check("third button opens the rest", `${lang}: ${btns[2].id}`, btns[2].id, "svc_more", "");
-  // The "we are on it" line is the first thing in the flow that gives rather
-  // than asks. Losing it puts the customer back to five questions for nothing.
-  check("on-it line exists", `${lang}`, typeof COPY[lang].onIt === "string" && COPY[lang].onIt.length > 10, true, "");
+  // v108 (Jordan, 19 Sept, case 05): the "we are on it" line is gone on
+  // purpose. The "Done, ..." confirmation right above it already says what
+  // happens next, and at midnight this line contradicted the honest
+  // out-of-hours sentence two seconds after it was sent. The confirmation is
+  // what now has to carry the promise, so that is what this checks.
+  check("no duplicate on-it line", `${lang}`, COPY[lang].onIt === undefined, true,
+    "removed 19 Sept; the Done confirmation says it once");
   check("member join line asks for both", `${lang}`,
     /email/i.test(COPY[lang].memberJoin) && /(name|nombre)/i.test(COPY[lang].memberJoin), true,
     "the email moved here, to the moment they accept a slot");
@@ -549,6 +553,40 @@ for (const [msg, want, note] of [
 ]) {
   check("offered time", JSON.stringify(msg), parseOfferedTime(msg), want, note);
 }
+
+// ---------------------------------------------------------------------------
+// Jordan's corrections, 19 Sept (Bot School cases 01, 02, 04, 11).
+// ---------------------------------------------------------------------------
+for (const lang of ["en", "es"]) {
+  const line = COPY[lang].offer("Javier", "Centro Aloha", "Malasaña", lang === "es" ? "masaje relajante" : "relaxing massage", "15:00", lang === "es" ? "hoy" : "Today", "Today Afternoon (13-18)");
+  check("offer has no asterisks", lang, line.includes("*"), false, "case 11: send it normally");
+  check("offer drops instead-of", lang, /instead of|en vez de/.test(line), false, "case 01");
+  check("offer has line breaks", lang, line.split("\n").length >= 3, true, "case 01: room to read");
+  check("offer names the time", lang, line.includes("15:00"), true, "");
+}
+for (const [msg, want, note] of [
+  ["Home services", true, "the French lead, 18 Sept"],
+  ["home service", true, ""],
+  ["Can you come to my hotel?", true, ""],
+  ["massage at my hotel", true, ""],
+  ["send someone to my house", true, ""],
+  ["masaje a domicilio", true, ""],
+  ["outcall", true, ""],
+  ["I am at my hotel in Sol, which studios are near", false, "saying where they are is not asking for a home visit"],
+  ["Relaxing massage", false, ""],
+]) {
+  check("home visit asked for", JSON.stringify(msg), HOME_VISIT_RE.test(msg), want, note);
+}
+for (const [msg, want] of [
+  ["https://www.instagram.com/p/DdbYKQzAsK6/", true],
+  ["www.samsarawellness.es", true],
+  ["look at this https://x.com/a and tell me", false],
+  ["Saturday", false],
+]) {
+  check("message is only a link", JSON.stringify(msg), LINK_ONLY_RE.test(msg), want, "case 04");
+}
+check("we answer a home visit", "en", COPY.en.noHomeVisit.includes("in person"), true, "case 02");
+check("we answer a home visit", "es", COPY.es.noHomeVisit.includes("presenciales"), true, "case 02");
 
 // ---------------------------------------------------------------------------
 // Report
