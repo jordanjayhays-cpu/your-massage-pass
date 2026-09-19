@@ -246,6 +246,34 @@ const BEST_OFFER_LINE = "Consultamos a varios centros y el cliente va con la mej
 // v8: a price hunt says what the client is looking for and takes any discount.
 const PRICE_HUNT_LINE = "El cliente busca el mejor precio por 60 min y va con la mejor oferta de la zona. Al confirmar, escribid el precio final para el cliente con vuestro descuento. Ej: 38€ con el 10%.";
 
+// v30 (Jordan, 19 Sept): "just a button for yes or no. Something simple."
+// A studio cannot answer yes or no to "por la tarde-noche (18:00-21:00)", so a
+// tap on "Sí, tengo hueco" was never a bookable answer and we had to write back
+// and ask them to type a time. That second round trip is where most of them go
+// quiet. Every ask now carries one concrete hour, so the three template buttons
+// mean exactly what they say. We take the start of the band because it is the
+// slot most likely to be free and the least presumptuous; "Otra hora" is right
+// there for a studio that wants a different one. The customer's own time1 is
+// never overwritten, so nothing downstream loses what they actually asked for.
+const BANDS: Array<[RegExp, string]> = [
+  [/morning|ma[nñ]ana/i, "10:00"],
+  [/afternoon|tarde-noche|tarde\s*-\s*noche/i, ""],
+  [/evening|night|noche/i, "18:00"],
+  [/afternoon|tarde/i, "16:00"],
+];
+function concreteTime(t: unknown): string {
+  const s = String(t || "").trim();
+  if (!s) return "";
+  // An exact time the customer typed is already concrete.
+  const exact = s.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  if (exact) return `${exact[1].padStart(2, "0")}:${exact[2]}`;
+  // "Evening (18-21)" and "(13-18)" carry their own start hour; trust it.
+  const range = s.match(/\((\d{1,2})\s*-\s*\d{1,2}\)/);
+  if (range) return `${range[1].padStart(2, "0")}:00`;
+  for (const [re, hh] of BANDS) if (hh && re.test(s)) return hh;
+  return "";
+}
+
 // v12 (6 Sept): the studio reads the day with its date. "Mañana" tapped at 1am
 // meant Sunday to the customer and Monday to every studio (request #55).
 const ES_DAY = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
@@ -465,7 +493,11 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   const genderAsk = r.therapist_gender === "male" ? " Una cosa más: prefiere masajista chico, ¿tenéis a esa hora?"
     : r.therapist_gender === "female" ? " Una cosa más: prefiere masajista chica, ¿tenéis a esa hora?" : "";
   const service = param(`${svcEs(r.service_name)} ${reqDuration(r)} min${r.price ? " · " + r.price + " EUR" : ""}${genderAsk}${cheapest ? ". " + PRICE_HUNT_LINE : (sameDay ? "" : ". " + BEST_OFFER_LINE)}`, 300);
-  const when = param(`${dayLabelEs(r.day1, r.message_text)}${r.time1 ? ", " + r.time1 : ""}`);
+  // v30: one concrete hour, so "Sí, tengo hueco" is a complete answer. Falls
+  // back to whatever the customer wrote when we cannot make an hour of it.
+  const hour = String(r.proposed_time || "") || concreteTime(r.time1);
+  const whenText = hour ? `a las ${hour}` : String(r.time1 || "");
+  const when = param(`${dayLabelEs(r.day1, r.message_text)}${whenText ? ", " + whenText : ""}`);
 
   const res = await fetch(GRAPH, {
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
@@ -710,6 +742,9 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
         studio_asked_at: new Date().toISOString(),
         dispatched_at: new Date().toISOString(),
         dispatch_count: sent,
+        // v30: remember the hour we actually put to them, so a tap on
+        // "Sí, tengo hueco" resolves to the same time the studio read.
+        ...(concreteTime(r.time1) && !r.proposed_time ? { proposed_time: concreteTime(r.time1) } : {}),
         stage_note: `${opts.cheapest ? "price hunt, " : ""}dispatched to ${sent}: ${sentNames.join(", ")}`.slice(0, 500),
       }),
     });

@@ -659,12 +659,25 @@ async function helpInstead(s: Session, from: string, L: string, text: string) {
   await continueFromKnown(s, from, L);
 }
 
+// v114 (Jordan, 19 Sept): "just a button for yes or no. Something simple."
+// The one hour we actually put to the studios. dispatch-studios v30 writes it
+// on the request when the customer chose a band, so a tap on "Sí, tengo hueco"
+// resolves to the same time the studio read in the template. An exact time the
+// customer typed needs no translation. Anything else is not a time, and a tap
+// on it is availability, not a booking.
+function exactTime(req: any): string {
+  const p = String(req?.proposed_time || "").trim();
+  if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(p)) return p.padStart(5, "0");
+  const m = String(req?.time1 || "").match(/^\s*([01]?\d|2[0-3])[:.]([0-5]\d)\s*$/);
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : "";
+}
+
 // A studio replied (template button or free text). Never enters the customer flow.
 async function handleStudioReply(from: string, payloadId: string, btnText: string, freeText: string, partner: { id: string; business_name: string } | null) {
   const m = payloadId.match(/^studio_(confirm|other|no)_(\d+)$/);
   if (m) {
     const requestId = Number(m[2]);
-    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
+    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
     const rows = await rr.json().catch(() => []);
     const req = Array.isArray(rows) && rows[0] ? rows[0] : null;
     if (!req) { console.log("[studio] request not found", requestId); return; }
@@ -695,7 +708,9 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       // v43: a Confirmado on a request with no exact time is an offer of
       // availability, not a booking. On 5 Sept KamAI tapped Confirmado on Viko's
       // "flexible evening" request and the bot announced a booking with no time.
-      if (!req.time1 || !/\d/.test(String(req.time1))) {
+      // v114: "Evening (18-21)" has digits in it but is not a time. Only an
+      // hour we actually put to this studio counts as one.
+      if (!exactTime(req)) {
         await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&stage=neq.confirmed`, {
           method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
           body: JSON.stringify({ stage: "studio_replied", partner_id: partner ? partner.id : req.partner_id || null, studio_name: partner ? partner.business_name : req.studio_name, studio_reply: `Disponible (Confirmado sin hora fija, ${partner ? partner.business_name : from})`, stage_updated_at: new Date().toISOString() }),
@@ -711,21 +726,21 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         });
         return;
       }
-      // v46: not for today and no partner assigned yet: open the bidding window
-      // instead of handing the booking to the fastest tap.
+      // v114 (Jordan, 19 Sept): "just a button for yes or no. Something simple."
+      // A tap at a concrete hour is a complete answer, so it goes straight to
+      // the customer instead of opening a ten minute bidding window the studio
+      // could not see and the customer was never told about. The v46 window
+      // bought a better discount and cost every booking ten minutes, and a
+      // studio that tapped yes got no sign their tap had done anything.
+      // We still ask this studio for their price and the Massage Club rate,
+      // but that question no longer holds the booking up.
       if (partner && !isSameDayReq(req) && !req.partner_id) {
         const drow = await dispatchRowFor(requestId, partner.id, from);
         if (drow && drow.outcome !== "won") {
           if (drow.outcome !== "accepted") await patchDispatch(drow.id, { outcome: "accepted", accepted_at: new Date().toISOString(), replied_at: new Date().toISOString() });
-          const settleAfter = req.settle_after || new Date(Date.now() + BID_WINDOW_MS).toISOString();
-          await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&stage=in.(new,studio_asked,studio_replied,offered,bidding)`, {
-            method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
-            body: JSON.stringify({ stage: "bidding", settle_after: settleAfter, studio_reply: `Disponible (${partner.business_name})`, stage_updated_at: new Date().toISOString() }),
-          });
-          // v110: a discount on file is not a price. Without a confirmed price
-          // there is nothing we may quote, so ask for it instead of going quiet.
-          await sendText(from, drow.discount_pct ? (drow.quoted_price ? `Gracias, lo tenemos: ${drow.discount_pct}% de descuento, ${euro(Number(drow.quoted_price))}. Os confirmamos en unos minutos. Massage Club` : `Gracias, lo tenemos: ${drow.discount_pct}% de descuento. ${PRICE_ASK}`) : BID_ASK);
-          await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name });
+          await forwardOffer(req, partner, String(drow.id), exactTime(req), "Sí, tengo hueco (botón)", from);
+          if (!drow.quoted_price) await sendText(from, PRICE_ASK);
+          await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name, time: exactTime(req) });
           return;
         }
       }
@@ -1098,14 +1113,15 @@ async function handleCustomerReconfirm(kind: "yes" | "change" | "cancel", reqId:
 const DECLINE_RE = /\b(not going to|won'?t be|no longer|not any ?more|leaving madrid|leaving (the )?city|no voy a|ya no (voy|quiero|puedo)|no podr[eé]|me voy de madrid|no me interesa|no quiero|forget it|never ?mind|don'?t need|no (lo )?necesito|not (be )?(having|coming|going))\b/i;
 
 // ---- v46: best offer wins ----
+// v114 (Jordan, 19 Sept): a tap no longer opens this window. It still holds the
+// requests where a studio writes a discount in free text, which is the only
+// remaining way a booking waits for a better offer.
 const BID_WINDOW_MS = 10 * 60 * 1000;
 // v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
-// studio there price after our potential discount." The old ask only asked for
-// a percentage, so the bot never held a price it was allowed to quote and the
-// offer went out with no number at all. Now one message asks for both, and the
-// example shows the format we can parse.
-const BID_ASK = "Gracias. Estamos consultando a varios centros de la zona y el cliente irá con la mejor oferta. Decidnos dos cosas y se las pasamos ahora mismo: la hora que le podéis dar y el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo. Por ejemplo: 17:00, 45€. Massage Club";
-const PRICE_ASK = "¿Y cuál sería el precio final para el cliente con ese descuento, en 60 min? Con ese dato se lo proponemos ya. Massage Club";
+// studio there price after our potential discount." This is the only thing we
+// still ask a studio for after they have said yes, and it no longer holds the
+// booking up: the customer already has the offer by the time it goes out.
+const PRICE_ASK = "¿Y cuál sería el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo? Se lo decimos en cuanto nos lo digáis. Massage Club";
 const isSameDayReq = (req: any) => /^(today|hoy)$/i.test(String(req?.day1 || "").trim());
 
 // v48: "hora y media" is a 90 minute request, not a 60 minute one (6 Sept, 02:54).
