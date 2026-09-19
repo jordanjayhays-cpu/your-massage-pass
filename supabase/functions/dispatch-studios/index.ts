@@ -80,13 +80,29 @@ let GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 
 // How many studios one request goes out to. Raising this raises how many
 // businesses we message per customer, so change it deliberately.
-const DEFAULT_FANOUT = 5;
-// v22 (8 Sept): a same-day request goes to more studios. Across 83 asks only 35%
-// of studios replied at all, and the average reply took 6 and a half hours. Five
-// studios therefore buys roughly 1.7 answers by tomorrow morning, which is no
-// use to someone who wants a massage this afternoon: Sharo J asked at 15:17,
-// five studios were asked, and not one could take her.
-const SAMEDAY_FANOUT = 9;
+//
+// v29 (Jordan, 19 Sept): four, then widen. In 45 days we sent 151 asks and won
+// 6 bookings, 25 asks per booking, and the recent requests went to eight or
+// nine studios each. Calma had been asked 15 times and won nothing, Masajes
+// Chamberí 12 times and had stopped replying, and Centro Aloha said out loud
+// what the rest were thinking: "No me fío de vosotros". There are about ten
+// studios answering us at all, so every fan-out spends nine relationships on
+// one customer who has not committed to anything yet. Four go out first and the
+// rest only if those four go quiet, which is what WIDEN_AFTER_MS is for.
+const DEFAULT_FANOUT = 4;
+// v22 (8 Sept): a same-day request used to go to nine studios. Across 83 asks
+// only 35% of studios replied at all and the average reply took six and a half
+// hours, so five bought roughly 1.7 answers by the next morning, no use to
+// someone who wants a massage this afternoon: Sharo J asked at 15:17, five were
+// asked, and not one could take her.
+// v29: the answer to that is the second wave twenty minutes later, not nine
+// messages at once. A same-day request starts at four like everything else and
+// widens first, because it is the one most likely to still be unanswered.
+const SAMEDAY_FANOUT = 4;
+// v29: how long the first four get before the rest are asked. Jordan set this.
+const WIDEN_AFTER_MS = 20 * 60 * 1000;
+// How many the second wave adds. Four plus six is the whole panel that answers.
+const WIDEN_FANOUT = 6;
 
 const OPEN_HOUR = 9;
 const CLOSE_HOUR = 21;
@@ -604,15 +620,20 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       wa: toWa(String(p.whatsapp || p.phone || "")), km: null, rank: i + 1, widened: false, score: 0,
     })).filter((c: Candidate) => c.wa.length >= 9);
   } else {
+    // v29: a second wave has to ask for more rows than it needs. Both candidate
+    // functions return the best `p_limit` studios, which on a widen are exactly
+    // the ones already asked, so filtering afterwards left nothing and the wave
+    // contacted nobody. Ask for the already-asked count on top, then filter,
+    // then trim back to the width we actually want.
+    const seen = opts.extra
+      ? new Set(((await sq(`request_dispatch?request_id=eq.${requestId}&select=partner_id`)) as any[] || []).map((x: any) => String(x.partner_id)))
+      : new Set<string>();
+    const want_n = fanout + seen.size;
     candidates = (opts.cheapest
-      ? await rpc("cheapest_candidates", { p_limit: fanout })
-      : await rpc("dispatch_candidates", { p_area: area || null, p_want: want || null, p_limit: fanout })) as Candidate[];
-  }
-  // v10: never ask the same studio twice for one request.
-  if (opts.extra) {
-    const prior = await sq(`request_dispatch?request_id=eq.${requestId}&select=partner_id`);
-    const seen = new Set((Array.isArray(prior) ? prior : []).map((x: any) => String(x.partner_id)));
-    candidates = candidates.filter((c) => !seen.has(String(c.id)));
+      ? await rpc("cheapest_candidates", { p_limit: want_n })
+      : await rpc("dispatch_candidates", { p_area: area || null, p_want: want || null, p_limit: want_n })) as Candidate[];
+    // v10: never ask the same studio twice for one request.
+    if (seen.size) candidates = candidates.filter((c) => !seen.has(String(c.id))).slice(0, fanout);
   }
   // v16: never ask a studio its own hours say is closed for that day or time.
   const skippedClosed: string[] = [];
@@ -733,7 +754,9 @@ async function handleRequest(req: Request): Promise<Response> {
     return new Response("forbidden", { status: 403 });
   }
 
-  const fanout = Math.max(1, Math.min(Number(body.fanout || DEFAULT_FANOUT), 10));
+  // v29: a widen deliberately goes wider than the first wave. The first four
+  // are the best match; the second wave is the rest of the panel that is open.
+  const fanout = Math.max(1, Math.min(Number(body.fanout || (body.widen === true ? WIDEN_FANOUT : DEFAULT_FANOUT)), 10));
   const dryRun = body.dry_run === true;
   const force = body.force === true;
   const cheapest = body.cheapest === true;
@@ -743,7 +766,10 @@ async function handleRequest(req: Request): Promise<Response> {
   // and the duplicate rule, never re-asks a studio that already has a row for
   // this request, and can take an explicit partner_ids list instead of
   // dispatch_candidates. The customer hears "N more studios", not a fresh count.
-  const extra = body.extra === true;
+  // v29: a widen is a second wave, so it rides on exactly the same rules:
+  // skips the already-dispatched guard, never re-asks a studio that already has
+  // a row for this request, and tells the customer "N more studios".
+  const extra = body.extra === true || body.widen === true;
   const partnerIds = Array.isArray(body.partner_ids) ? (body.partner_ids as unknown[]).map(String).filter(Boolean) : [];
 
   // v11: a note to every studio still in play on a request (free text while
@@ -806,8 +832,35 @@ async function handleRequest(req: Request): Promise<Response> {
     // trigger used to flip new requests to studio_asked, which hid them from
     // this sweep for good (request #44, 3 Sept).
     requests = await sq(`whatsapp_requests?dispatched_at=is.null&partner_id=is.null&stage=in.(new,dispatching,studio_asked)&created_at=gte.${since}&order=id.desc&limit=10&select=*`);
+  } else if (body.widen === true) {
+    // v29 (Jordan, 19 Sept): the second wave. A request whose first four
+    // studios have said nothing for WIDEN_AFTER_MS gets the rest of the panel.
+    // Three things keep this honest: a request is widened once and never again
+    // (widened_at), a request where a studio has already offered a time is left
+    // alone because it is in play, and a request whose customer we cannot reach
+    // is not widened at all, because the reachability guard below would refuse
+    // it anyway and it would only spend more goodwill.
+    const cutoff = new Date(Date.now() - WIDEN_AFTER_MS).toISOString();
+    const floor = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    const cand = await sq(`whatsapp_requests?dispatched_at=lte.${cutoff}&dispatched_at=gte.${floor}&widened_at=is.null&partner_id=is.null&dispatch_count=gt.0&stage=in.(new,dispatching,studio_asked,studio_replied)&order=id.desc&limit=10&select=*`);
+    const open: Record<string, unknown>[] = [];
+    for (const r of (Array.isArray(cand) ? cand : [])) {
+      const live = await sq(`request_dispatch?request_id=eq.${Number(r.id)}&or=(offered_time.not.is.null,outcome.eq.won)&limit=1&select=id`);
+      if (Array.isArray(live) && live.length) {
+        console.log(`[dispatch] widen skipped #${r.id}: a studio has already offered a time`);
+        continue;
+      }
+      open.push(r);
+    }
+    requests = open;
+    if (!dryRun && requests.length) {
+      await Promise.all(requests.map((r) => sq(`whatsapp_requests?id=eq.${Number(r.id)}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ widened_at: new Date().toISOString() }),
+      })));
+    }
   } else {
-    return new Response(JSON.stringify({ error: "pass request_id, sweep or won" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "pass request_id, sweep, widen or won" }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   if (!Array.isArray(requests) || !requests.length) {
