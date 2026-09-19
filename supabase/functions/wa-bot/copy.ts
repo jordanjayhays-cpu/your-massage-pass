@@ -197,11 +197,27 @@ export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive
 // from a studio's own written reply about this booking, never from a listed or
 // scraped figure. A number without a currency marker is not a price: "a las
 // 16:00" and "10% de descuento" must never be read as one.
+// Two real messages set the floor and the veto. Sinergia38 wrote "podemos
+// hacerle el 10€" on 9 Sept and meant 10 percent, and Centro Aloha's deposit is
+// 10 EUR by Bizum. Neither is what the client pays for the massage, so nothing
+// under 20 EUR counts and a figure sitting next to a deposit or a discount is
+// skipped rather than trusted. A message often carries the discount and the
+// final price together ("17:00, 45€ con el 10%"), which is exactly what we ask
+// for, so a percentage elsewhere in the sentence is not a veto.
 export const parseQuotedPrice = (t: string): number | null => {
-  const m = String(t || "").match(/(?:^|[^\d])(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:€|eur\b|euros?\b)|(?:precio|price|cuesta|son|queda|sale|total)\D{0,12}(\d{1,3}(?:[.,]\d{1,2})?)/i);
-  if (!m) return null;
-  const v = parseFloat(String(m[1] || m[2]).replace(",", "."));
-  return v >= 10 && v <= 400 ? v : null;
+  const s = String(t || "");
+  const re = /(?:^|[^\d])(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:€|eur\b|euros?\b)|(?:precio|price|cuesta|son|queda|sale|total)\D{0,12}(\d{1,3}(?:[.,]\d{1,2})?)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    const v = parseFloat(String(m[1] || m[2]).replace(",", "."));
+    if (!(v >= 20 && v <= 400)) continue;
+    const before = s.slice(Math.max(0, m.index - 24), m.index);
+    const after = s.slice(m.index + m[0].length, m.index + m[0].length + 18);
+    if (/dep[oó]sito|se[ñn]al\b|fianza|adelanto|anticipo/i.test(before + " " + after)) continue;
+    if (/^\s*(?:de\s+)?(?:descuento|dto)\b/i.test(after)) continue;
+    return v;
+  }
+  return null;
 };
 export const euro = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2)) + " EUR";
 export const HOME_VISIT_RE = /\b(?:home\s*(?:service|visit)s?|(?:home|in[-\s]?home|out)\s?call|(?:massage|masaje)\s+(?:at|in|en)\s+(?:my|mi)\s+(?:home|house|hotel|room|casa|habitaci[oó]n)|(?:come|travel|send|bring)(?:\s+\w+){0,2}?\s+(?:to|round\s+to)\s+(?:my|our|the)\s+(?:home|house|hotel|room|place|flat|apartment)|a\s+domicilio|en\s+mi\s+(?:casa|domicilio)|servicio\s+a\s+domicilio|(?:ven[ií]r|desplaz\w+)\s+a\s+mi\s+(?:casa|hotel|habitaci[oó]n))\b/i;

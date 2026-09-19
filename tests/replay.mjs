@@ -632,7 +632,15 @@ for (const [msg, want, note] of [
   ["Tenemos disponibilidad hasta las 14:00 horas", null, ""],
   ["Sí, tengo hueco", null, ""],
   ["", null, ""],
-  ["9€", null, "under 10 EUR is not a massage price, it is a typo or a deposit"],
+  ["9€", null, "no massage in Madrid costs this"],
+  ["podemos hacerle el 10€ pero hoy no nos queda disponibilidd", null,
+    "Sinergia38, 9 Sept: they meant 10 percent and typed a euro sign"],
+  ["Hay que dejar un depósito de 30€ por Bizum", null,
+    "Centro Aloha's deposit is not the price of the massage"],
+  ["Le hacemos 45€ de descuento", null, "a discount attached to the number is not the price"],
+  ["Sí, con el 10% se queda en 54 euros", 54,
+    "the discount and the final price in one message is exactly what we ask for"],
+  ["17:00, 45€ con el 10% de Massage Club", 45, ""],
   ["500 euros", null, "over 400 EUR is not one massage"],
 ]) {
   check("studio quoted price", JSON.stringify(msg), parseQuotedPrice(msg), want, note);
