@@ -234,6 +234,28 @@ async function founderEmail(subject: string, lines: string[]) {
 
 type Candidate = { id: string; business_name: string; area: string | null; wa: string; km: number | null; rank: number; widened: boolean; score: number };
 
+// v34 (Jordan, 20 Sept): "start doing abcdefg testing and let's see what flow
+// books more customers", and on the studio side too. This is the first studio
+// experiment and it targets the number that actually loses us bookings: a
+// studio takes 297 minutes on average to answer, and roughly one ask in five
+// gets a reply inside the hour. Everything else we could tune is downstream of
+// that wait.
+//
+// S1a is the ask exactly as it was. S1b adds one line: when the client decides,
+// and what saying yes early gets them. Assigned per ask rather than per studio,
+// so one centre having a slow week cannot decide the result, and read on a
+// single metric: did they reply within 60 minutes.
+const STUDIO_ARMS = ["S1a", "S1b"] as const;
+const pickArm = () => STUDIO_ARMS[Math.random() < 0.5 ? 0 : 1];
+const DEADLINE_LINE = (h: string) => `El cliente decide sobre las ${h}. Si nos decís que sí antes, es vuestro.`;
+// The deadline is real or it is a lie, so it is computed, never invented: two
+// hours from now, rounded to the hour, and never past the studio's closing time.
+function deadlineHour(): string {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).formatToParts(new Date());
+  const h = parseInt(parts.find((p) => p.type === "hour")?.value || "0", 10);
+  return `${String(Math.min(h + 2, CLOSE_HOUR)).padStart(2, "0")}:00`;
+}
+
 // v6: the honest leverage, in the ask itself. Several studios really are asked,
 // and the client really does go with the best offer.
 // v28 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
@@ -496,7 +518,7 @@ async function sendTemplate(to: string, name: string, params: string[], payloads
   return { ok: res.ok, status: res.status, out };
 }
 
-async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean): Promise<{ ok: boolean; error?: string }> {
+async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean, arm: string = "S1a"): Promise<{ ok: boolean; error?: string }> {
   const sameDay = /^(today|hoy)$/i.test(String(r.day1 || "").trim());
   const client = param(String(r.first_name || "Cliente"), 40);
 
@@ -548,7 +570,18 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   // written yes, so the bot later offered to ask a question already answered.
   const genderAsk = r.therapist_gender === "male" ? " Una cosa más: prefiere masajista chico, ¿tenéis a esa hora?"
     : r.therapist_gender === "female" ? " Una cosa más: prefiere masajista chica, ¿tenéis a esa hora?" : "";
-  const service = param(`${svcEs(r.service_name)} ${reqDuration(r)} min${r.price ? " · " + r.price + " EUR" : ""}${genderAsk}${cheapest ? ". " + PRICE_HUNT_LINE : (sameDay ? "" : ". " + BEST_OFFER_LINE)}`, 300);
+  // v34: S1b carries the deadline. It rides in the service parameter because
+  // that is the only one with room, and it goes last so nothing else is pushed
+  // out by the 300 character cap.
+  const deadline = arm === "S1b" && !sameDay && !cheapest ? " " + DEADLINE_LINE(deadlineHour()) : "";
+  // The parameter is capped at 300 and the deadline sits last, so on a request
+  // that also carries a therapist preference the cap would quietly eat it and
+  // turn S1b back into S1a without saying so. Both lines are there to make a
+  // studio answer now, so on those requests the deadline replaces the longer
+  // one rather than being appended to it. Roughly one request in ten.
+  const tail = deadline && genderAsk ? deadline : `${cheapest ? ". " + PRICE_HUNT_LINE : (sameDay ? "" : ". " + BEST_OFFER_LINE)}${deadline}`;
+  const service = param(`${svcEs(r.service_name)} ${reqDuration(r)} min${r.price ? " · " + r.price + " EUR" : ""}${genderAsk}${tail}`, 300);
+  if (service.length >= 300) console.log(`[dispatch] WARNING req=${r.id} arm=${arm} service param hit the 300 cap, the arm may be corrupted`);
   // v30: one concrete hour, so "Sí, tengo hueco" is a complete answer. Falls
   // back to whatever the customer wrote when we cannot make an hour of it.
   const hour = String(r.proposed_time || "") || concreteTime(r.time1);
@@ -819,13 +852,14 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       console.log(`[dispatch] req=${requestId} test customer, skipping real studio ${c.business_name}`);
       continue;
     }
+    const arm = pickArm();
     const ins = await sq(`request_dispatch?on_conflict=request_id,partner_id`, {
       method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ request_id: requestId, partner_id: c.id, phone: c.wa, rank: c.rank, outcome: "pending" }),
+      body: JSON.stringify({ request_id: requestId, partner_id: c.id, phone: c.wa, rank: c.rank, outcome: "pending", arm }),
     });
     const rowId = Array.isArray(ins) && ins[0] ? ins[0].id : null;
 
-    const res = await askOneStudio(r, c, opts.cheapest);
+    const res = await askOneStudio(r, c, opts.cheapest, arm);
     if (rowId) {
       await sq(`request_dispatch?id=eq.${rowId}`, {
         method: "PATCH", headers: { Prefer: "return=minimal" },
