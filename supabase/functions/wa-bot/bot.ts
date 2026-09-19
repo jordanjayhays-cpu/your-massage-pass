@@ -2902,7 +2902,7 @@ const handleInner = async (req: Request) => {
 
     // Therapists looking for work reach us through the same ads. Answer them
     // properly once, then hand over to a human instead of looping the menu.
-    if (text && !freeTextStep && JOB_RE.test(text) && !/book|reserv|appointment|cita/i.test(text)) {
+    if (text && JOB_RE.test(text) && !/book|reserv|appointment|cita/i.test(text)) {
       s.step = "human"; await saveSession(s);
       await sendText(from, COPY[L].jobSeeker);
       await notifyHuman(s, text);

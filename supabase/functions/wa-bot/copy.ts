@@ -280,7 +280,16 @@ export function studioGenderReply(text: string, wanted: "male" | "female"): bool
   return null;
 }
 // People asking for a job, not a massage (the ads reach therapists too).
-export const JOB_RE = /(\b(hiring|apply|applying|job|vacancy|vacancies|cv|resume|curriculum)\b|massage therapist\b.*\b(available|looking)|\b(soy|busco)\s+(masajista|trabajo|empleo)|\bcontrat(ais|an|amos)\b|\bcurriculum\b)/i;
+// v109 (19 Sept): the first real job seeker reached us through the ads and
+// this missed him, because it knew "massage therapist" and "masajista" but not
+// "masseur". He asked three times whether we needed one, was answered with the
+// therapist-gender line each time, and the flow built him two bookings and
+// asked four studios to hold slots for him.
+//
+// The distinction that matters is who needs whom. "Do YOU need a masseur" is
+// someone offering their labour. "I need a masseur" is a customer, and must
+// never be caught here.
+export const JOB_RE = /(\b(hiring|apply|applying|vacancy|vacancies|cv|resume|curriculum)\b|\bjob\b|\b(i|i'm|im|we)\s+(am\s+)?(a\s+)?(masseur|masseuse|massage\s+therapist|masajista|terapeuta)\b|\bwork(ing)?\s+as\s+(a\s+)?(masseur|masseuse|massage\s+therapist|therapist|masajista|terapeuta)\b|\b(do|dont|don't|if)\s+(you|they)\s+(need|want|require)\s+(a\s+)?(masseur|masseuse|massage\s+therapist|masajista|terapeuta)\b|\b(you|they)\s+need\s+(a\s+)?(masseur|masseuse|masajista)\b|\b(soy|busco)\s+(masajista|terapeuta|trabajo|empleo)\b|\bcontrat(ais|an|amos)\b|\bofrezco\s+mis\s+servicios\b)/i;
 // "Any of them" / "you choose" typed instead of tapped.
 export const ANY_RE = /^(any|anyone|any of them|anywhere|whichever|whatever|you (choose|pick|decide)|the best|best one|cualquiera|el que sea|elige tu|elegid|lo que sea|me da igual)\b/i;
 // "I want a different type of massage" at the studio step.

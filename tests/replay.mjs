@@ -589,6 +589,27 @@ check("we answer a home visit", "en", COPY.en.noHomeVisit.includes("in person"),
 check("we answer a home visit", "es", COPY.es.noHomeVisit.includes("presenciales"), true, "case 02");
 
 // ---------------------------------------------------------------------------
+// Job seekers (19 Sept). A masseur asked three times whether we needed one and
+// was sold a massage instead. Who needs whom is the whole distinction.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["Don't you need a masseur? I work as a masseur.", true, "Red, 19 Sept, the one we missed"],
+  ["I ask you if you need masseur", true, ""],
+  ["Ask them if they need masseur", true, ""],
+  ["Im a masseuse with 5 years experience", true, ""],
+  ["soy masajista", true, ""],
+  ["busco trabajo", true, ""],
+  ["I am a massage therapist looking for work", true, ""],
+  ["do you have any vacancies", true, ""],
+  ["I need a masseur for my back", false, "a customer, not an applicant"],
+  ["I would like a female masseuse please", false, "a preference, not a CV"],
+  ["Can I book a massage with a male masseur?", false, ""],
+  ["do you need my email?", false, ""],
+]) {
+  check("job seeker", JSON.stringify(msg), JOB_RE.test(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
