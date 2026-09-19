@@ -407,6 +407,27 @@ function requestDate(r: Record<string, unknown>): Date | null {
 }
 const ES_WEEKDAY = ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"];
 const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+// v31 (Jordan, 19 Sept): "remember the rule, for example Calma is closed on
+// Sunday, don't reach out to them." closedReason answers a different question:
+// can this studio take the booking the customer wants. This one answers whether
+// anyone is there to read us right now. A chase or a stand-down is not urgent
+// enough to land on a shut studio, and Calma would have been written to on a
+// Sunday morning they are closed. Unknown hours mean we say nothing either way,
+// because 160 of our studios have none on file and silence is not a closure.
+function closedNowReason(hoursText: unknown): string | null {
+  const hours = parseHours(hoursText);
+  if (!hours) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const get = (t: string) => parts.find((x) => x.type === t)?.value || "";
+  const dow = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(get("weekday").slice(0, 3).toLowerCase());
+  if (dow < 0) return null;
+  const slot = hours.get(dow);
+  if (!slot) return `cerrado los ${ES_WEEKDAY[dow]}`;
+  const now = parseInt(get("hour"), 10) * 60 + parseInt(get("minute"), 10);
+  if (now < slot[0] || now >= slot[1]) return `fuera de su horario (${hm(slot[0])}-${hm(slot[1])})`;
+  return null;
+}
+
 // Why this studio should not be asked for this request, or null if it may be.
 function closedReason(hoursText: unknown, r: Record<string, unknown>): string | null {
   const hours = parseHours(hoursText);
@@ -582,6 +603,17 @@ async function notifyStudios(requestId: number, text: string, short?: string, on
 async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> {
   const waiting: string[] = [];
   const closed: string[] = [];
+  const skipped: string[] = [];
+  // One hours lookup per studio per run, not per row.
+  const shutCache = new Map<string, string | null>();
+  const shutNow = async (partnerId: string): Promise<string | null> => {
+    if (!partnerId) return null;
+    if (shutCache.has(partnerId)) return shutCache.get(partnerId) ?? null;
+    const pr = await sq(`partners?id=eq.${encodeURIComponent(partnerId)}&select=opening_hours&limit=1`);
+    const why = closedNowReason(Array.isArray(pr) && pr[0] ? pr[0].opening_hours : null);
+    shutCache.set(partnerId, why);
+    return why;
+  };
   const since = new Date(Date.now() - 72 * 3600e3).toISOString();
   const ripe = new Date(Date.now() - 45 * 60e3).toISOString();
 
@@ -591,6 +623,7 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=id,first_name,time1,proposed_time,confirmed_time,stage&limit=1`))[0];
     if (!rq || !["confirmed", "cancelled", "dismissed", "no_show"].includes(String(rq.stage || ""))) continue;
     const to = digits(String(d.phone || ""));
+    if (await shutNow(String(d.partner_id || ""))) { skipped.push(`#${d.request_id} ${to} closed`); continue; }
     const line = rq.stage === "confirmed"
       ? "Gracias por responder. Esta reserva ya la ha cogido otro centro, así que no hace falta que hagáis nada. Os avisamos con la próxima. Massage Club"
       : "Gracias por responder. El cliente finalmente no sigue adelante, así que esta solicitud queda anulada y no hace falta que hagáis nada. Sentimos haberos hecho perder el tiempo y os avisamos con la próxima. Massage Club";
@@ -607,6 +640,8 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     if (isTestCustomer(rq)) continue;
     const to = digits(String(d.phone || ""));
     if (!to || JORDAN_NUMBERS.includes(to)) continue;
+    const shut = await shutNow(String(d.partner_id || ""));
+    if (shut) { skipped.push(`#${d.request_id} ${to} ${shut}`); continue; }
     const hour = String(rq.proposed_time || "") || concreteTime(rq.time1);
     const name = String(rq.first_name || "el cliente");
     const day = dayLabelEs(rq.day1, rq.message_text);
@@ -615,7 +650,7 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     if (!dryRun) await sq(`request_dispatch?id=eq.${d.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ chased_at: new Date().toISOString() }) });
     waiting.push(`#${d.request_id} ${name} ${to}`);
   }
-  return { chased_for_time: waiting, told_it_ended: closed };
+  return { chased_for_time: waiting, told_it_ended: closed, skipped_closed: skipped };
 }
 
 // v17: two requests from the same person are the same booking when the four
