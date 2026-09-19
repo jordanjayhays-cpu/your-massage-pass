@@ -428,6 +428,41 @@ function closedNowReason(hoursText: unknown): string | null {
   return null;
 }
 
+// v33 (Jordan, 19 Sept): "you should have an automatic rule, I mean this is
+// common sense." Quite right. The Sunday rule lived in the dispatch path and
+// nowhere else, so every new way of writing to a studio had to remember it and
+// the chase sweep did not. This is the one gate every outbound studio message
+// passes through, so a new feature gets the rule for free instead of having to
+// know about it.
+//
+// The one exception is a reply. If a studio wrote to us in the last two hours
+// we answer them whatever their listed hours say, because someone is plainly
+// there and leaving a question hanging is worse than writing out of hours. That
+// is also how a studio open later than its own opening_hours claims still gets
+// a conversation: they only have to write first.
+const REPLY_GRACE_MS = 2 * 3600e3;
+const shutCache = new Map<string, { why: string | null; at: number }>();
+async function studioShutNow(toDigits: string): Promise<string | null> {
+  const d = digits(toDigits);
+  if (!d) return null;
+  const cached = shutCache.get(d);
+  if (cached && Date.now() - cached.at < 60e3) return cached.why;
+  const local = d.startsWith("34") && d.length === 11 ? d.slice(2) : d;
+  const rows = await sq(`partners?or=(whatsapp.ilike.*${local}*,phone.ilike.*${local}*)&select=business_name,opening_hours&limit=1`);
+  const p = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  // Not a studio at all (a customer), or no hours on file: this gate says
+  // nothing. 160 of our studios have no hours and silence is not a closure.
+  let why: string | null = p ? closedNowReason(p.opening_hours) : null;
+  if (why) {
+    const lastIn = await sq(`wa_messages?phone=eq.${d}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
+    const t = Array.isArray(lastIn) && lastIn[0]?.created_at ? Date.parse(lastIn[0].created_at) : 0;
+    if (t && Date.now() - t < REPLY_GRACE_MS) why = null; // they just wrote; answer them
+  }
+  shutCache.set(d, { why, at: Date.now() });
+  if (why) console.log(`[dispatch] not writing to ${p?.business_name || d}: ${why}`);
+  return why;
+}
+
 // Why this studio should not be asked for this request, or null if it may be.
 function closedReason(hoursText: unknown, r: Record<string, unknown>): string | null {
   const hours = parseHours(hoursText);
@@ -554,8 +589,15 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
 // hanging: The Organic Spa and Masajes Chamberí were asked about Fernando on
 // 8 September, never heard that it was covered, and the only trace was a
 // delivery-failure alert nobody could act on.
-async function sendStudioNote(to: string, text: string, short: string, rq: Record<string, unknown>): Promise<{ how: string; ok: boolean }> {
+async function sendStudioNote(to: string, text: string, short: string, rq: Record<string, unknown>, dry = false): Promise<{ how: string; ok: boolean; why?: string }> {
   if (!to) return { how: "none", ok: false };
+  // v33: the automatic rule. Everything that writes to a studio comes through
+  // here or through the send op, and both refuse a studio that is shut. The
+  // check runs on a dry run too, so a dry run tells the truth about who would
+  // actually have been written to.
+  const shut = await studioShutNow(to);
+  if (shut) return { how: "skipped", ok: false, why: shut };
+  if (dry) return { how: "would send", ok: true };
   const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
   const openWindow = Array.isArray(lastIn) && lastIn[0]?.created_at && (Date.now() - Date.parse(lastIn[0].created_at)) < 23.5 * 3600e3;
   if (openWindow && await sendText(to, text)) return { how: "text", ok: true };
@@ -603,17 +645,10 @@ async function notifyStudios(requestId: number, text: string, short?: string, on
 async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> {
   const waiting: string[] = [];
   const closed: string[] = [];
+  // v33: no hours check of its own. sendStudioNote refuses a shut studio and
+  // says why, so this only has to report it and leave the row alone for the
+  // next run that falls inside that studio's own hours.
   const skipped: string[] = [];
-  // One hours lookup per studio per run, not per row.
-  const shutCache = new Map<string, string | null>();
-  const shutNow = async (partnerId: string): Promise<string | null> => {
-    if (!partnerId) return null;
-    if (shutCache.has(partnerId)) return shutCache.get(partnerId) ?? null;
-    const pr = await sq(`partners?id=eq.${encodeURIComponent(partnerId)}&select=opening_hours&limit=1`);
-    const why = closedNowReason(Array.isArray(pr) && pr[0] ? pr[0].opening_hours : null);
-    shutCache.set(partnerId, why);
-    return why;
-  };
   const since = new Date(Date.now() - 72 * 3600e3).toISOString();
   const ripe = new Date(Date.now() - 45 * 60e3).toISOString();
 
@@ -623,11 +658,11 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=id,first_name,time1,proposed_time,confirmed_time,stage&limit=1`))[0];
     if (!rq || !["confirmed", "cancelled", "dismissed", "no_show"].includes(String(rq.stage || ""))) continue;
     const to = digits(String(d.phone || ""));
-    if (await shutNow(String(d.partner_id || ""))) { skipped.push(`#${d.request_id} ${to} closed`); continue; }
     const line = rq.stage === "confirmed"
       ? "Gracias por responder. Esta reserva ya la ha cogido otro centro, así que no hace falta que hagáis nada. Os avisamos con la próxima. Massage Club"
       : "Gracias por responder. El cliente finalmente no sigue adelante, así que esta solicitud queda anulada y no hace falta que hagáis nada. Sentimos haberos hecho perder el tiempo y os avisamos con la próxima. Massage Club";
-    if (!dryRun && to) await sendStudioNote(to, line, rq.stage === "confirmed" ? "la reserva ya la ha cogido otro centro, no hace falta que hagáis nada" : "el cliente no sigue adelante, la solicitud queda anulada", rq);
+    const sent = to ? await sendStudioNote(to, line, rq.stage === "confirmed" ? "la reserva ya la ha cogido otro centro, no hace falta que hagáis nada" : "el cliente no sigue adelante, la solicitud queda anulada", rq, dryRun) : { how: "none", ok: false, why: "no number" };
+    if (sent.how === "skipped") { skipped.push(`#${d.request_id} ${to} ${sent.why}`); continue; }
     if (!dryRun) await sq(`request_dispatch?id=eq.${d.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "stood_down", chased_at: new Date().toISOString() }) });
     closed.push(`#${d.request_id} ${to}`);
   }
@@ -640,13 +675,12 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     if (isTestCustomer(rq)) continue;
     const to = digits(String(d.phone || ""));
     if (!to || JORDAN_NUMBERS.includes(to)) continue;
-    const shut = await shutNow(String(d.partner_id || ""));
-    if (shut) { skipped.push(`#${d.request_id} ${to} ${shut}`); continue; }
     const hour = String(rq.proposed_time || "") || concreteTime(rq.time1);
     const name = String(rq.first_name || "el cliente");
     const day = dayLabelEs(rq.day1, rq.message_text);
     const line = `Hola, sobre ${name}, ${day}${hour ? " a las " + hour : ""}: nos dijisteis que sí y seguimos esperando dos datos para podérselo proponer. ¿Nos confirmáis la hora y el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo? Con eso se lo decimos ahora mismo. Massage Club`;
-    if (!dryRun) await sendStudioNote(to, line, `sobre ${name}: ¿nos confirmáis hora y precio final para el cliente?`, rq);
+    const sent = await sendStudioNote(to, line, `sobre ${name}: ¿nos confirmáis hora y precio final para el cliente?`, rq, dryRun);
+    if (sent.how === "skipped") { skipped.push(`#${d.request_id} ${name} ${to} ${sent.why}`); continue; }
     if (!dryRun) await sq(`request_dispatch?id=eq.${d.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ chased_at: new Date().toISOString() }) });
     waiting.push(`#${d.request_id} ${name} ${to}`);
   }
@@ -913,6 +947,8 @@ async function handleRequest(req: Request): Promise<Response> {
     if (isTestPhone(to)) return new Response(JSON.stringify({ ok: false, reason: "test number" }), { status: 200, headers: { "Content-Type": "application/json" } });
     const prior = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&limit=1&select=id`);
     if (!Array.isArray(prior) || !prior.length) return new Response(JSON.stringify({ ok: false, reason: "number never wrote to the bot" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    const shut = await studioShutNow(to);
+    if (shut) return new Response(JSON.stringify({ ok: false, reason: `studio is shut: ${shut}` }), { status: 200, headers: { "Content-Type": "application/json" } });
     const ok = await sendText(to, String(c.text));
     return new Response(JSON.stringify({ ok }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
