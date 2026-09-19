@@ -640,10 +640,30 @@ for (const [msg, want, note] of [
   ["Le hacemos 45€ de descuento", null, "a discount attached to the number is not the price"],
   ["Sí, con el 10% se queda en 54 euros", 54,
     "the discount and the final price in one message is exactly what we ask for"],
+  ["Masaje de 40 minutos 60€ \n1h 80€\nEl horario a las 18:00 bien", 80,
+    "Private Spa Madrid, 19 Sept 18:16 Madrid, on Al's 60 minute request. The first price in the message is the 40 minute one"],
+  ["Masaje de 40 minutos 60€", null,
+    "they priced 40 minutes and we book 60, so we have no price we may quote"],
+  ["60 min 45€", 45, ""],
+  ["30 minutos 35€\n60 minutos 55€", 55, "the menu line that matches the booking wins"],
   ["17:00, 45€ con el 10% de Massage Club", 45, ""],
   ["500 euros", null, "over 400 EUR is not one massage"],
 ]) {
   check("studio quoted price", JSON.stringify(msg), parseQuotedPrice(msg), want, note);
+}
+
+// A time with an acceptance word after it is an offer, even in a sentence
+// carrying the word "horario". Private Spa's "El horario a las 18:00 bien" was
+// swallowed by the opening-hours guard and Al never heard about the one studio
+// that named him a slot.
+for (const [msg, want, note] of [
+  ["El horario a las 18:00 bien", "18:00", "the real message, 19 Sept"],
+  ["Masaje de 40 minutos 60€ \n1h 80€\nEl horario a las 18:00 bien", "18:00", ""],
+  ["Nuestro horario es de 10:00 a 20:00", "", "opening hours are still not an offer"],
+  ["Hoy cerramos a las 15:00", "", ""],
+  ["Abrimos de lunes a viernes", "", ""],
+]) {
+  check("offered time vs opening hours", JSON.stringify(msg), parseOfferedTime(msg), want, note);
 }
 
 check("euro", "45", euro(45), "45 EUR", "no stray decimals on a whole number");

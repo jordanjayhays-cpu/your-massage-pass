@@ -92,7 +92,11 @@ export const mcMadridHour = (): number => parseInt(new Intl.DateTimeFormat("en-G
 // about when the doors are open; only an explicit offer beside them makes it a
 // real time. When in doubt the reply goes to a founder card, never to a client.
 export const HOURS_STATEMENT_RE = /\b(abrimos|abre|abierto|cerramos|cierra|cerrad[oa]s?|horario|de lunes a viernes|lun(es)?\s*[-a]\s*vie(rnes)?|todos los d[ií]as|we (open|close)|opening hours|closed on|mon(day)?\s*(-|to)\s*(fri|sat|sun))/i;
-const OFFER_MARKER_RE = /\b(podemos|podr[ií]amos|tenemos (hueco|libre|disponible)|hay hueco|disponible|(nos|os|le) va bien|s[ií],?\s*a\s+las|vale\s+a\s+las|ok\s+a\s+las|puede venir|os espero|te esperamos|reservad[oa])\b/i;
+// v113 (19 Sept): a time followed by an acceptance word is an offer, even in a
+// sentence that also carries the word horario. Private Spa Madrid answered
+// "El horario a las 18:00 bien" for Al, the opening-hours guard swallowed it,
+// and the one studio that named a slot never reached him.
+const OFFER_MARKER_RE = /\b(podemos|podr[ií]amos|tenemos (hueco|libre|disponible)|hay hueco|disponible|(nos|os|le) va bien|s[ií],?\s*a\s+las|vale\s+a\s+las|ok\s+a\s+las|puede venir|os espero|te esperamos|reservad[oa])\b|\d{1,2}(?:[:.]\d{2})?\s*(?:h|horas?)?\s*(?:bien|perfecto|ok|vale|genial|correcto|sin\s+problema)\b/i;
 // v84: a studio that offers several times. FISIOBARICA answered Asim's request
 // on 9 September with "17h, 18h y 20h" and only 17:00 was kept, so two thirds of
 // the availability they volunteered was thrown away. When he asked for 7pm an
@@ -204,8 +208,7 @@ export const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive
 // skipped rather than trusted. A message often carries the discount and the
 // final price together ("17:00, 45€ con el 10%"), which is exactly what we ask
 // for, so a percentage elsewhere in the sentence is not a veto.
-export const parseQuotedPrice = (t: string): number | null => {
-  const s = String(t || "");
+const priceIn = (s: string): number | null => {
   const re = /(?:^|[^\d])(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:€|eur\b|euros?\b)|(?:precio|price|cuesta|son|queda|sale|total)\D{0,12}(\d{1,3}(?:[.,]\d{1,2})?)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s)) !== null) {
@@ -218,6 +221,27 @@ export const parseQuotedPrice = (t: string): number | null => {
     return v;
   }
   return null;
+};
+// v113 (19 Sept): a studio that answers with its menu. Private Spa Madrid was
+// asked for a 60 minute massage for Al and wrote "Masaje de 40 minutos 60€ /
+// 1h 80€ / El horario a las 18:00 bien". The first price in that message is the
+// 40 minute one, and quoting 60 EUR for an hour would have been wrong at the
+// till, which is the single thing this function exists to prevent. So when the
+// studio names durations, only the line matching the booking counts, and if
+// they never priced that length we say nothing rather than guess.
+export const parseQuotedPrice = (t: string, mins = 60): number | null => {
+  const s = String(t || "");
+  const byDuration = new Map<number, number>();
+  for (const line of s.split(/[\n;]+/)) {
+    const mm = line.match(/(\d{1,3})\s*min(?:uto)?s?\b/i);
+    const hh = mm ? null : line.match(/\b(\d)\s*h(?:oras?)?\b/i);
+    if (!mm && !hh) continue;
+    const dur = mm ? parseInt(mm[1], 10) : parseInt(hh![1], 10) * 60;
+    const p = priceIn(line);
+    if (p !== null && dur > 0) byDuration.set(dur, p);
+  }
+  if (byDuration.size) return byDuration.has(mins) ? byDuration.get(mins)! : null;
+  return priceIn(s);
 };
 export const euro = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2)) + " EUR";
 export const HOME_VISIT_RE = /\b(?:home\s*(?:service|visit)s?|(?:home|in[-\s]?home|out)\s?call|(?:massage|masaje)\s+(?:at|in|en)\s+(?:my|mi)\s+(?:home|house|hotel|room|casa|habitaci[oó]n)|(?:come|travel|send|bring)(?:\s+\w+){0,2}?\s+(?:to|round\s+to)\s+(?:my|our|the)\s+(?:home|house|hotel|room|place|flat|apartment)|a\s+domicilio|en\s+mi\s+(?:casa|domicilio)|servicio\s+a\s+domicilio|(?:ven[ií]r|desplaz\w+)\s+a\s+mi\s+(?:casa|hotel|habitaci[oó]n))\b/i;
