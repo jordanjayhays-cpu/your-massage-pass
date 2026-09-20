@@ -853,7 +853,23 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // attached it to David's request from the 5th, which was still pending, and
     // offered David a slot at 01:00.
     const drSince = new Date(Date.now() - 48 * 3600e3).toISOString();
-    const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${drSince}&order=created_at.desc&limit=1&select=id,request_id`, { headers: H() });
+    // v115 (20 Sept): if we chased this studio in the last three hours, their
+    // reply is about the request we chased, not whatever of theirs is newest.
+    // This morning the chase asked Centro Aloha about Al's Monday, they wrote
+    // back "a las 18.15h si hay disponibilidad mañana lunes", and the bot filed
+    // it against Javier because his row was newer. Javier was sent an offer for
+    // a slot nobody had offered him, Centro Aloha was told we would confirm
+    // with Javier when they had been asked about Al, and Al never heard about
+    // the one real slot he had. The chase makes this far more likely, because
+    // it deliberately prompts studios about older requests, so the prompt has
+    // to decide where the answer lands.
+    const chaseSince = new Date(Date.now() - 3 * 3600e3).toISOString();
+    const chased = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&chased_at=gte.${chaseSince}&order=chased_at.desc&limit=1&select=id,request_id`, { headers: H() });
+    const chasedRow = (await chased.json().catch(() => []))[0] || null;
+    if (chasedRow) console.log(`[studio] reply attributed to the chased request #${chasedRow.request_id}`);
+    const dr = chasedRow
+      ? { json: async () => [chasedRow] } as unknown as Response
+      : await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${drSince}&order=created_at.desc&limit=1&select=id,request_id`, { headers: H() });
     const drows = await dr.json().catch(() => []);
     const drow = Array.isArray(drows) && drows[0] ? drows[0] : null;
     if (drow) {
