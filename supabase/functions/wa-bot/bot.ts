@@ -863,7 +863,14 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // the one real slot he had. The chase makes this far more likely, because
     // it deliberately prompts studios about older requests, so the prompt has
     // to decide where the answer lands.
-    const chaseSince = new Date(Date.now() - 3 * 3600e3).toISOString();
+    // v116 (21 Sept): three hours was too narrow and the same bug fired again.
+    // Centro Aloha was chased about Al at 09:00, answered at 10:40, and answered
+    // AGAIN at 15:45 with the price. By then the chase was six hours old, the
+    // window had lapsed, and their 60 EUR landed on Javier a second time. The
+    // age of the chase was never the point: what matters is that we asked them
+    // a question and are still waiting on the answer. An open chase owns the
+    // studio's replies until that request is closed or another is chased.
+    const chaseSince = new Date(Date.now() - 48 * 3600e3).toISOString();
     const chased = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&chased_at=gte.${chaseSince}&order=chased_at.desc&limit=1&select=id,request_id`, { headers: H() });
     const chasedRow = (await chased.json().catch(() => []))[0] || null;
     if (chasedRow) console.log(`[studio] reply attributed to the chased request #${chasedRow.request_id}`);
