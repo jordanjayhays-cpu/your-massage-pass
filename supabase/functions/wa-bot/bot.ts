@@ -1720,6 +1720,26 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
     body: JSON.stringify({ offered_time: time, offered_times: parseOfferedTimes(freeText), offered_at: new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
   });
+  // v117 (21 Sept): never send a customer a worse price than one they already
+  // have. Al turned down 80 EUR, was offered 60 at Centro Aloha, and ninety
+  // minutes later Calma answered the chase with 85 and the bot forwarded it
+  // straight to him. A dearer slot arriving after a cheaper live one is not an
+  // option, it is a reason to stop trusting the price we quote. The dearer
+  // offer is still recorded, and the studio is still thanked, so nothing is
+  // lost if the cheaper one falls through.
+  try {
+    const mine = parseQuotedPrice(freeText) || 0;
+    if (mine > 0) {
+      const bq = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${req.id}&id=neq.${rowId}&offered_at=not.is.null&quoted_price=not.is.null&outcome=in.(pending,accepted,won)&order=quoted_price.asc&limit=1&select=quoted_price,partner_id`, { headers: H() });
+      const best = (await bq.json().catch(() => []))[0] || null;
+      if (best && Number(best.quoted_price) < mine) {
+        console.log(`[wa] offer withheld: ${partner.business_name} at ${euro(mine)} is dearer than the live ${euro(Number(best.quoted_price))} already with the customer`);
+        await sendText(studioFrom, `Gracias, lo anotamos: ${time}, ${euro(mine)}. Ahora mismo el cliente tiene una oferta a mejor precio, así que no os guardéis el hueco. Si cambia algo os escribimos enseguida.`);
+        await logEvent(clientNum, "offer_withheld_dearer", { request_id: req.id, studio: partner.business_name, price: mine, best: Number(best.quoted_price) });
+        return;
+      }
+    }
+  } catch (e) { console.log("[wa] dearer-offer check skipped", String(e)); }
   await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=neq.confirmed`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
     body: JSON.stringify({ stage: "offered", studio_reply: `${partner.business_name}: ${freeText}`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
