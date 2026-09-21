@@ -17,7 +17,7 @@
 import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
-  AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE,
+  AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE, ACK_ONLY_RE,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -721,6 +721,29 @@ for (const lang of ["en", "es"]) {
   check("services answer", `${lang} lists couples`, /Couples|pareja/.test(a), true, "");
   check("services answer", `${lang} no em dash`, /\u2014/.test(a), false, "");
   check("services answer", `${lang} no asterisks`, a.includes("*"), false, "");
+}
+
+// ---------------------------------------------------------------------------
+// A studio closing the thread is not asking a question. Calma sent "A vosotros"
+// and then "De acuerdo" two minutes apart on 21 Sept; both got the holding line
+// and both alerted Jordan's phone. Bare agreement only counts on its own: a
+// studio writing "vale, a las 17:00" is making an offer.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["De acuerdo", true, "Calma, 21 Sept 11:23"],
+  ["A vosotros", true, "Calma, 21 Sept 11:22"],
+  ["Ok", true, "Centro Aloha, 21 Sept 11:41"],
+  ["Vale", true, ""],
+  ["Entendido", true, ""],
+  ["Perfecto!", true, ""],
+  ["👍", true, ""],
+  ["vale, a las 17:00", false, "an offer, must reach the offer branch"],
+  ["ok pero a las 18", false, ""],
+  ["De acuerdo, 45€", false, "carries a price, must be parsed"],
+  ["Sí", false, "a studio saying yes is an answer, not a sign-off"],
+  ["No puedo", false, ""],
+]) {
+  check("thread closed", JSON.stringify(msg), ACK_ONLY_RE.test(msg), want, note);
 }
 
 // ---------------------------------------------------------------------------

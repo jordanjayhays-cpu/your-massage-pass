@@ -78,7 +78,13 @@ export const BOOKAGAIN_RE = /\b(book again|another massage|otra vez|otro masaje|
 export const digitsOf = (s: string) => String(s || "").replace(/[^0-9]/g, "");
 export const CHANGE_RE = /\b(tomorrow|ma[nñ]ana|another (day|time)|otro d[ií]a|otra hora|change|cambiar|cambio|reschedule|postpone|move it|m[aá]s tarde|can'?t make it|cannot make it|no puedo|no voy a poder|not today|hoy no)\b/i;
 // "hasta mañana", "see you tomorrow", "thanks" are goodbyes, not changes.
+// v118 (21 Sept): a studio agreeing or thanking us is closing the thread, not
+// asking a question. "De acuerdo", "A vosotros", "Vale" and a bare "Ok" all fell
+// through to the holding line, and each one also alerted Jordan's phone. Calma
+// did it twice in two minutes. Bare agreement only counts on its own: "vale, a
+// las 17:00" is an offer and must keep reaching the offer branch.
 export const GOODBYE_RE = /(hasta (ma[nñ]ana|luego|pronto|ahora)|see you|nos vemos|thank|gracias|perfect|great|genial)/i;
+export const ACK_ONLY_RE = /^\s*(?:de acuerdo|a vosotros|a ti|vale|ok(?:ay)?|okey|entendido|correcto|sin problema|perfecto|genial|estupendo|muy bien|bien|👍|👌|🙏|✅)[\s.!¡]*$/i;
 export const CANCEL_RE = /\b(cancel|cancelar|cancela|anular|forget it|no longer|ya no)\b/i;
 export const ARRIVED_RE = /(ha llegado|ya est[aá] aqu[ií]|ya ha venido|ya vino|en cabina|ya est[aá] con nosotros|acaba de llegar)/i;
 export const NOSHOW_RE = /(no ha llegado|no ha venido|no vino|no aparece|no se ha presentado|no puedas venir|no vais a venir|plant[oó]n|sin venir)/i;
