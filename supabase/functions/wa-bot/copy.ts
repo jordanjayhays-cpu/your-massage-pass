@@ -47,6 +47,73 @@ export const LOST_ES_RE = /\bno\s+(?:te\s+|le\s+|lo\s+)?(?:entiendo|entiendes|en
 // the first branch wants an English word after the verb, and the second wants
 // "in Spanish", which is a request, not a refusal.
 export const NO_ENGLISH_RE = /\b(?:do\s*not|do\s*n[o']?t|dont|can\s*not|cant|can[o']?t|no|not)\s+(?:speak|talk|understand|understan|read|write|know)\s+(?:any\s+|much\s+|the\s+)?(?:engl|ingl)\w*|\b(?:in|en)\s+(?:spanish|spanich|spanis|espa[nñ]ol|castellano)\b|\b(?:i\s*am|i'?m|am)\s+(?:spanish|espa[nñ]ola?)\b|\bno\s+ingl[eé]s\b/i;
+// v119 (22 Sept, live): an offer must never echo the relative word the customer
+// typed last night. Nell asked on Monday evening for "tomorrow". On Tuesday
+// morning TornaSol and Calma both said yes, and both offers still read
+// "Tomorrow", which by then meant Wednesday. She was being invited to the wrong
+// day for a booking that was happening in two hours. The request already
+// carries the real date in message_text ("Fecha: tuesday 22 september"), which
+// is exactly what dispatch-studios reads to tell the studios "hoy, martes 22 de
+// septiembre". This says the same thing to the customer, in their language.
+//
+// When the date cannot be worked out this returns "", never the stale word, so
+// the caller falls back to "that day" instead of naming a day that is wrong.
+const MONTH_IDX: Record<string, number> = {
+  jan: 0, ene: 0, feb: 1, mar: 2, apr: 3, abr: 3, may: 4, jun: 5, jul: 6,
+  aug: 7, ago: 7, sep: 8, oct: 9, nov: 10, dec: 11, dic: 11,
+};
+const WEEKDAY_IDX: Record<string, number> = {
+  sun: 0, dom: 0, mon: 1, lun: 1, tue: 2, mar: 2, wed: 3, mie: 3,
+  thu: 4, jue: 4, fri: 5, vie: 5, sat: 6, sab: 6,
+};
+const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const ES_DAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const ES_MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// Midnight in Madrid, expressed as a UTC date, so two of these can be compared.
+export function madridMidnight(now: Date = new Date()): Date {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const g = (k: string) => Number(p.find((x) => x.type === k)?.value || 0);
+  return new Date(Date.UTC(g("year"), g("month") - 1, g("day")));
+}
+
+export function resolveRequestDate(day1: unknown, messageText?: unknown, now: Date = new Date()): Date | null {
+  const today = madridMidnight(now);
+  const plus = (n: number) => new Date(today.getTime() + n * 86400e3);
+  const fecha = String(messageText || "").match(/Fecha:\s*([^|]+)/)?.[1] || "";
+  for (const raw of [fecha, String(day1 || "")]) {
+    const t = stripAcc(String(raw).toLowerCase()).trim();
+    if (!t) continue;
+    if (/^(hoy|today)\b/.test(t)) return today;
+    if (/^(manana|tomorrow)\b/.test(t)) return plus(1);
+    const dm = t.match(/(\d{1,2})\s*(?:de\s+)?([a-z]{3})[a-z]*/);
+    if (dm && MONTH_IDX[dm[2]] !== undefined) {
+      let dt = new Date(Date.UTC(today.getUTCFullYear(), MONTH_IDX[dm[2]], parseInt(dm[1], 10)));
+      // A date more than a month behind us is next year's, not last year's.
+      if (dt.getTime() < today.getTime() - 30 * 86400e3) dt = new Date(Date.UTC(today.getUTCFullYear() + 1, MONTH_IDX[dm[2]], parseInt(dm[1], 10)));
+      return dt;
+    }
+    const wd = t.match(/\b(sun|dom|mon|lun|tue|mar|wed|mie|thu|jue|fri|vie|sat|sab)[a-z]*\b/);
+    if (wd && WEEKDAY_IDX[wd[1]] !== undefined) {
+      for (let n = 0; n < 7; n++) { const d = plus(n); if (d.getUTCDay() === WEEKDAY_IDX[wd[1]]) return d; }
+    }
+  }
+  return null;
+}
+
+export function dayLabelFor(day1: unknown, messageText: unknown, L: string, now: Date = new Date()): string {
+  const d = resolveRequestDate(day1, messageText, now);
+  if (!d) return "";
+  const today = madridMidnight(now);
+  const days = Math.round((d.getTime() - today.getTime()) / 86400e3);
+  if (days === 0) return L === "es" ? "Hoy" : "Today";
+  if (days === 1) return L === "es" ? "Mañana" : "Tomorrow";
+  return L === "es"
+    ? `${ES_DAYS[d.getUTCDay()]} ${d.getUTCDate()} de ${ES_MONTHS[d.getUTCMonth()]}`
+    : `${EN_DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${EN_MONTHS[d.getUTCMonth()]}`;
+}
+
 export function strongSpanish(t: string): boolean {
   const s = String(t).toLowerCase();
   if (AD_OPENER_RE.test(s.trim())) return false; // the ad's canned line, not the person's words
