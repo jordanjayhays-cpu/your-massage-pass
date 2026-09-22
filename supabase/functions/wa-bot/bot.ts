@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, parseQuotedPrice, euro, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/b7aca0f/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, parseQuotedPrice, euro, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/f3aaa4a/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -2025,6 +2025,36 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   const id = await createRequest(s);
   const svcName = s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage");
   const studioLine = s.data.chosen ? `${s.data.chosen.name}${s.data.chosen.price ? " · " + Number(s.data.chosen.price) + " EUR" : ""}` : (s.data.customStudio ? s.data.customStudio : (s.data.area && s.data.area !== "anywhere" ? (L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`) : (L === "es" ? "en Madrid" : "in Madrid")));
+  // v119 (Jordan, 22 Sept): "you must be positive the clients want to book a
+  // massage. confirm and then send it to the masage places." A fan-out spends
+  // four studios' goodwill, and until now the only thing standing between a
+  // stray tap and four studios was the tap itself. Pilar, 82, tapped her way
+  // through an English flow she could not read to make it stop, and Calma,
+  // Sinergia38, Centro Aloha and Selvarrosa were all asked to hold 18:00 for
+  // an appointment she had never wanted. Centro Aloha left the next message.
+  // Read it back, wait for a yes, and only then knock on any door. The request
+  // is parked at stage awaiting_go, which the dispatch sweep does not pick up.
+  // The gate is deliberately NOT on everyone. Jordan, 22 Sept: "you're ruining
+  // the flow how come?" He is right that an extra tap on every booking costs
+  // more than it saves, because the funnel already loses most people before
+  // this point. A booking where the bot understood every answer goes straight
+  // out as it always did. A conversation it fumbled twice or more is the one
+  // that produced Pilar, and that one has to say yes out loud first.
+  const confused = Number(s.data.missTotal || 0) >= 2;
+  if (id && !s.data.chosen && confused) {
+    s.step = "await_go";
+    s.data.pendingReq = id;
+    await saveSession(s);
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify({ stage: "awaiting_go", stage_note: "waiting for the customer to confirm before any studio is asked" }),
+    });
+    const svcLabelGo = trSvc(svcName, L) + (s.data.duration && s.data.duration !== 60 ? ` ${s.data.duration} min` : "");
+    const whenLabelGo = [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", ");
+    await sendButtons(from, COPY[L].askGo(String(s.data.name || s.wa_name || "").split(" ")[0], svcLabelGo, whenLabelGo, studioLine), COPY[L].askGoBtns);
+    await logEvent(from, "go_asked", { id, misses: Number(s.data.missTotal || 0) });
+    return;
+  }
   // v36: outside studio hours the honest line is "at 09:00", not "right now".
   const h = mcMadridHour();
   const confirmCopy = (!s.data.chosen && (h < 9 || h >= 21)) ? COPY[L].confirmLater : COPY[L].confirm;
@@ -2579,6 +2609,30 @@ const handleInner = async (req: Request) => {
     const from = String(msg.from || "");
     const profileName = value?.contacts?.[0]?.profile?.name || "";
     if (!from) return new Response("OK", { status: 200 });
+
+    // v119 (22 Sept): Meta redelivers a webhook when our reply is slow, and
+    // nothing here used to notice. On 21 Sept Calma's one "Si, tengo hueco" on
+    // request #89 was handled twice, so they got two acknowledgements and two
+    // price asks, and Selvarrosa and Centro Aloha each got their decline
+    // answered twice. Claim the message id first: the insert ignores duplicates
+    // and returns nothing when the id is already there, so a redelivery is
+    // logged as handled and dropped. A claim that errors is let through, since
+    // answering twice is better than not answering at all.
+    const wamid = String(msg.id || "");
+    if (wamid) {
+      try {
+        const claim = await fetch(`${SUPABASE_URL}/rest/v1/wa_inbound_seen`, {
+          method: "POST",
+          headers: { ...H(), Prefer: "resolution=ignore-duplicates,return=representation" },
+          body: JSON.stringify({ wamid, phone: from }),
+        });
+        const rows = await claim.json().catch(() => null);
+        if (claim.ok && Array.isArray(rows) && !rows.length) {
+          console.log(`[wa] duplicate webhook for ${wamid} from ${from}, already handled`);
+          return new Response("OK", { status: 200 });
+        }
+      } catch (_e) { /* a dedupe we cannot reach must not silence the bot */ }
+    }
 
     let replyId = "", text = "";
     let loc: { latitude?: number; longitude?: number } | null = null;
@@ -3167,6 +3221,13 @@ const handleInner = async (req: Request) => {
             // understand before asking again.
             s.data.miss = (s.data.missAt === s.step ? Number(s.data.miss || 0) : 0) + 1;
             s.data.missAt = s.step;
+            // v119: s.data.miss resets whenever the step changes, so it cannot
+            // see a conversation that is confused all the way through. Pilar
+            // missed six times across three different steps and every one of
+            // them looked like a first miss. This one never resets, and it is
+            // what decides whether we read the booking back before spending
+            // four studios on it.
+            s.data.missTotal = Number(s.data.missTotal || 0) + 1;
             await saveSession(s);
             // v108 (Jordan, case 04): name what they sent before asking again.
             // Someone who sends a link is showing us something, not failing to
@@ -3339,6 +3400,59 @@ const handleInner = async (req: Request) => {
         else { s.data.chosen = null; s.data.customStudio = typed; }
         await logEvent(from, "studio_chosen", { how: "typed" });
         await askNameOrFinalize(s, from, L);
+        break;
+      }
+      // v119: the confirmation gate. Only a conversation the bot fumbled twice
+      // or more ever lands here, and nothing has been sent to a single studio
+      // when it does. Yes releases the fan-out; anything else keeps the request
+      // parked at awaiting_go, which the dispatch sweep does not pick up, so
+      // silence here costs a studio nothing.
+      case "await_go": {
+        const goId = Number(s.data.pendingReq || 0);
+        const yes = replyId === "go_yes" || (!!text && /^\s*(?:s[ií]|si|yes|yep|yeah|ok(?:ay)?|vale|venga|adelante|perfecto|claro|dale|go|please do|hazlo|pregunta)\b/i.test(text));
+        const change = replyId === "go_change" || (!!text && /\b(?:no|cambiar|cambia|espera|wait|stop|otra|otro|change|cancel|anula)\b/i.test(text));
+        if (yes && !change && goId) {
+          s.step = "done"; await saveSession(s);
+          await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${goId}`, {
+            method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+            body: JSON.stringify({ stage: "new", stage_note: "customer confirmed before dispatch" }),
+          });
+          const hGo = mcMadridHour();
+          const svcGo = s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage");
+          const whereGo = s.data.customStudio ? s.data.customStudio : (s.data.area && s.data.area !== "anywhere" ? (L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`) : (L === "es" ? "en Madrid" : "in Madrid"));
+          const copyGo = (hGo < 9 || hGo >= 21) ? COPY[L].confirmLater : COPY[L].confirm;
+          await sendText(from, copyGo(
+            String(s.data.name || s.wa_name || "").split(" ")[0],
+            trSvc(svcGo, L) + (s.data.duration && s.data.duration !== 60 ? ` ${s.data.duration} min` : ""),
+            [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", "),
+            whereGo, goId));
+          await logEvent(from, "go_confirmed", { id: goId });
+          await dispatchRequest(goId);
+          break;
+        }
+        if (change) {
+          // Nothing was sent, so nothing has to be unsent. Close the parked
+          // request and put them back at the day question.
+          if (goId) {
+            await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${goId}`, {
+              method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+              body: JSON.stringify({ stage: "dismissed", stage_note: "customer changed their mind at the confirmation, no studio was asked" }),
+            });
+          }
+          s.data.pendingReq = null;
+          s.data.miss = 0; s.data.missTotal = 0;
+          s.step = "await_day"; await saveSession(s);
+          await sendText(from, COPY[L].goChanged);
+          await askDay(from, L);
+          await logEvent(from, "go_changed", { id: goId });
+          break;
+        }
+        await sendText(from, COPY[L].goWaiting);
+        await sendButtons(from, COPY[L].askGo(
+          String(s.data.name || s.wa_name || "").split(" ")[0],
+          trSvc(s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage"), L),
+          [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", "),
+          s.data.area && s.data.area !== "anywhere" ? (L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`) : (L === "es" ? "en Madrid" : "in Madrid")), COPY[L].askGoBtns);
         break;
       }
       case "await_name": {

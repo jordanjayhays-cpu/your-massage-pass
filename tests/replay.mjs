@@ -18,6 +18,7 @@ import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE, ACK_ONLY_RE,
+  NO_ENGLISH_RE,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -744,6 +745,53 @@ for (const [msg, want, note] of [
   ["No puedo", false, ""],
 ]) {
   check("thread closed", JSON.stringify(msg), ACK_ONLY_RE.test(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// Someone telling us, in English, that they cannot read English. Pilar, 82,
+// wrote four of these on 21 September and the bot answered "Sorry, I did not
+// catch that" in English six times, then read her escape taps as a booking and
+// asked four studios to hold 18:00. Every line below is hers or a near miss of
+// hers, plus the cases that must NOT flip, because a person who cannot read
+// English is very different from a person who cannot read Spanish.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["I dont speak inglesi", true, "Pilar, first message, live 21 Sept"],
+  ["I dont speak englis", true, "Pilar, live"],
+  ["Said in spanich", true, "Pilar, live"],
+  ["Please am española", true, "Pilar, live"],
+  ["i don't speak english", true, ""],
+  ["I do not speak English", true, ""],
+  ["no speak english", true, ""],
+  ["cant understand english", true, ""],
+  ["I dont understand inglés", true, ""],
+  ["can you answer in spanish", true, ""],
+  ["reply in castellano please", true, ""],
+  ["im spanish", true, ""],
+  ["I am española", true, ""],
+  ["no inglés", true, ""],
+  // Must not flip. These are English speakers.
+  ["I don't speak Spanish", false, "the opposite person, must stay in English"],
+  ["I do not understand Spanish", false, ""],
+  ["sorry I only speak english", false, "states English, does not deny it"],
+  ["english please", false, "asking FOR English"],
+  ["Hi, I'd like to book a massage", false, ""],
+  ["do you have anyone who speaks english", false, "asking about the studio, not the bot"],
+]) {
+  check("cannot read English", JSON.stringify(msg), NO_ENGLISH_RE.test(msg), want, note);
+}
+
+// strongSpanish must inherit the whole of that, because it is the function the
+// bot actually asks, and it must not have been broken for the plain cases.
+for (const [msg, want, note] of [
+  ["I dont speak inglesi", true, "the live miss, through the real entry point"],
+  ["Said in spanich", true, ""],
+  ["Hola, quiero un masaje", true, ""],
+  ["Hi, I'd like to book a massage. I saw you on Facebook.", false, "the ad opener is not the person's words"],
+  ["I don't speak Spanish", false, ""],
+  ["tomorrow evening please", false, ""],
+]) {
+  check("strongSpanish", JSON.stringify(msg), strongSpanish(msg), want, note);
 }
 
 // ---------------------------------------------------------------------------

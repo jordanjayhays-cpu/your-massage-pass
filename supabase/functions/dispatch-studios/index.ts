@@ -1065,8 +1065,31 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   const results = [];
+  // v35 (22 Sept): requests this run claimed, so a run that ends up sending
+  // nothing can hand the request back to the sweep instead of burying it.
+  const claimed = new Set<number>();
   for (const r of requests) {
-    if (!dryRun && r.dispatched_at && !extra) { results.push({ requestId: r.id, skipped: "already dispatched" }); continue; }
+    // v35: this guard used to be a plain read of dispatched_at, which is only
+    // written once every studio has already been messaged. Two invocations of
+    // the same request therefore both read null, both passed, and both sent the
+    // whole panel: on 21 Sept request #89 reached four studios twice, one
+    // second apart, and Centro Aloha left over it. The row insert deduplicates
+    // on (request_id, partner_id), so the double never showed up in the data.
+    // Claim the request instead. The PATCH only matches while dispatched_at is
+    // still null, so exactly one run gets a row back and the loser stands down.
+    if (!dryRun && !extra) {
+      if (r.dispatched_at) { results.push({ requestId: r.id, skipped: "already dispatched" }); continue; }
+      const claim = await sq(`whatsapp_requests?id=eq.${r.id}&dispatched_at=is.null`, {
+        method: "PATCH", headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ dispatched_at: new Date().toISOString() }),
+      });
+      if (!Array.isArray(claim) || !claim.length) {
+        console.log(`[dispatch] req=${r.id} claimed by another run, standing down`);
+        results.push({ requestId: r.id, skipped: "claimed by another run" });
+        continue;
+      }
+      claimed.add(Number(r.id));
+    }
     // v4: one customer, one fan-out. The same person often arrives twice within
     // minutes (web form, then the WhatsApp chat it opens: #45 and #46, 3 Sept).
     // A second request rides on the first instead of asking five more studios.
@@ -1143,7 +1166,20 @@ async function handleRequest(req: Request): Promise<Response> {
         continue;
       }
     }
-    results.push(await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds }));
+    const outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds });
+    // v35: the claim marked the request dispatched before a single studio was
+    // written to. If nothing actually went out (no candidates, every send
+    // failed) that mark would hide the request from the sweep forever, so give
+    // it back. A test customer keeps the mark on purpose: dispatchOne has
+    // already set it so the sweep stops re-picking a request that sends nothing.
+    if (claimed.has(Number(r.id)) && !Number(outcome.sent) && !(outcome as { testCustomer?: boolean }).testCustomer) {
+      await sq(`whatsapp_requests?id=eq.${r.id}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ dispatched_at: null }),
+      });
+      console.log(`[dispatch] req=${r.id} nothing sent, claim released`);
+    }
+    results.push(outcome);
   }
 
   const totalSent = results.reduce((n, x) => n + (Number((x as { sent?: number }).sent) || 0), 0);
