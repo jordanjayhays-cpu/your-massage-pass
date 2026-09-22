@@ -37,6 +37,16 @@ const ES_COMMON = new Set(["el", "la", "los", "las", "un", "una", "unos", "unas"
 const EN_COMMON = new Set(["the", "an", "i", "you", "your", "is", "are", "was", "to", "for", "and", "of", "my", "can", "could", "would", "should", "want", "need", "please", "book", "booking", "massage", "tomorrow", "today", "tonight", "hi", "hello", "what", "when", "where", "which", "how", "much", "many", "do", "does", "did", "have", "has", "provide", "service", "male", "female", "there", "here", "with", "from", "about", "time", "day", "price", "cheap", "near", "nearest"]);
 // "I don't understand", in the forms people actually type it.
 export const LOST_ES_RE = /\bno\s+(?:te\s+|le\s+|lo\s+)?(?:entiendo|entiendes|entiende|comprendo)\b|\bno\s+hablo\s+ingl[eé]s\b|\bhablas?\s+espa[nñ]ol\b|\ben\s+espa[nñ]ol\b/i;
+// v119 (22 Sept, live): Pilar, 82, opened with "I dont speak inglesi", then
+// "I dont speak englis", "Said in spanich" and "Please am española", and was
+// answered "Sorry, I did not catch that" in English six times before she gave
+// up and tapped buttons at random. Every one of those sentences is built from
+// English words, so every language test we had scored them English. The tell is
+// not which language the words are in, it is what they say. Spelled any way at
+// all, this settles it. "I don't speak Spanish" deliberately does NOT match:
+// the first branch wants an English word after the verb, and the second wants
+// "in Spanish", which is a request, not a refusal.
+export const NO_ENGLISH_RE = /\b(?:do\s*not|do\s*n[o']?t|dont|can\s*not|cant|can[o']?t|no|not)\s+(?:speak|talk|understand|understan|read|write|know)\s+(?:any\s+|much\s+|the\s+)?(?:engl|ingl)\w*|\b(?:in|en)\s+(?:spanish|spanich|spanis|espa[nñ]ol|castellano)\b|\b(?:i\s*am|i'?m|am)\s+(?:spanish|espa[nñ]ola?)\b|\bno\s+ingl[eé]s\b/i;
 export function strongSpanish(t: string): boolean {
   const s = String(t).toLowerCase();
   if (AD_OPENER_RE.test(s.trim())) return false; // the ad's canned line, not the person's words
@@ -47,6 +57,8 @@ export function strongSpanish(t: string): boolean {
   // message is the strongest language signal there is, so it settles it on its
   // own, whatever else is in the sentence.
   if (LOST_ES_RE.test(s)) return true;
+  // v119: the same thing said in English. See NO_ENGLISH_RE above.
+  if (NO_ENGLISH_RE.test(s)) return true;
   const words = ["hola", "buenas", "quiero", "masaje", "reservar", "cuanto", "cuánto", "precio", "gracias", "por", "favor", "mañana", "hoy", "para", "una", "cita", "hora", "tarde", "noche", "zona", "donde", "dónde"];
   // v48: the massage words themselves are Spanish too. "Relajante de hora y media"
   // (6 Sept, 02:54) scored as English and got the English day question.
@@ -546,6 +558,16 @@ export const COPY: Record<string, any> = {
     priceInfo: "Good question. At our studios 60 minutes is usually between 40 and 85 EUR, and 90 minutes between 60 and 100 EUR, depending on the studio and the type of massage. We always send you the exact price before you confirm, and you pay the studio directly. No fee from us.",
     ackReply: "🙌 We'll update you here as soon as the studio replies.",
     cardIntro: (url: string) => `Massage Club here. Book in three taps, no login, and watch the studios reply live:\n${url}\n\nOr just tell me what you would like and I will handle it right here.`,
+    // v119 (Jordan, 22 Sept): "you must be positive the clients want to book a
+    // massage. confirm and then send it to the masage places." Nothing goes to
+    // a studio until the person says yes to this. Pilar tapped buttons at
+    // random to make an English bot stop talking at her, and four studios were
+    // asked for an appointment she had never wanted.
+    askGo: (name: string, svc: string, when: string, where: string) =>
+      `Let me read that back, ${name}: ${svc}, ${when}, ${where}.\n\nShall I ask the studios now?`,
+    askGoBtns: [{ id: "go_yes", title: "Yes, ask them" }, { id: "go_change", title: "Change something" }],
+    goChanged: "No problem, nothing has been sent. Let's fix it.",
+    goWaiting: "Nothing has gone out yet. Tap Yes and I ask the studios, or tell me what to change.",
     confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
       `Done, ${n}. ${sN}, ${w}, ${st}.\n\nThe studios are closed right now. I'll ask them the moment they open at 09:00 and write here as soon as one confirms. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
@@ -692,6 +714,12 @@ export const COPY: Record<string, any> = {
     priceInfo: "Buena pregunta. En nuestros centros 60 minutos suele costar entre 40 y 85 EUR, y 90 minutos entre 60 y 100 EUR, según el centro y el tipo de masaje. Te enviamos el precio exacto antes de confirmar y pagas directamente en el centro. Sin comisión.",
     ackReply: "🙌 Te avisamos por aquí en cuanto responda el centro.",
     cardIntro: (url: string) => `Somos Massage Club. Reserva en tres toques, sin registro, y mira cómo responden los centros en directo:\n${url}\n\nO dime qué quieres y lo gestiono por aquí mismo.`,
+    // v119: ver la nota en la version inglesa.
+    askGo: (name: string, svc: string, when: string, where: string) =>
+      `Te lo repito, ${name}: ${svc}, ${when}, ${where}.\n\n¿Pregunto ya a los centros?`,
+    askGoBtns: [{ id: "go_yes", title: "Sí, pregunta" }, { id: "go_change", title: "Cambiar algo" }],
+    goChanged: "Sin problema, no hemos enviado nada. Lo cambiamos.",
+    goWaiting: "Todavía no ha salido nada. Toca Sí y pregunto a los centros, o dime qué cambiamos.",
     confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
