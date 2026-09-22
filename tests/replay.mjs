@@ -18,7 +18,7 @@ import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE, ACK_ONLY_RE,
-  NO_ENGLISH_RE,
+  NO_ENGLISH_RE, dayLabelFor,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -792,6 +792,35 @@ for (const [msg, want, note] of [
   ["tomorrow evening please", false, ""],
 ]) {
   check("strongSpanish", JSON.stringify(msg), strongSpanish(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// The day named in an offer. Nell asked on Monday 21 September at 22:41 Madrid
+// for "tomorrow" morning. On Tuesday 22nd at 09:17 and 09:56 TornaSol and Calma
+// both said yes, and both offers read "Tomorrow", which by then meant the 23rd.
+// She was invited to the wrong day for a booking two hours away. The word the
+// customer typed goes stale; the date does not.
+// ---------------------------------------------------------------------------
+{
+  // Tuesday 22 September 2026, 09:56 Madrid.
+  const tueMorning = new Date("2026-09-22T07:56:00Z");
+  const nellMsg = "Quiere: Relaxing massage | Cuando: tomorrow Morning (10-13) | Zona: Alarcon pozuelo | Fecha: tuesday 22 september | Origen: whatsapp-bot";
+  for (const [day1, msg, L, want, note] of [
+    ["tomorrow", nellMsg, "en", "Today", "Nell, live 22 Sept. Was 'Tomorrow', which meant the 23rd"],
+    ["tomorrow", nellMsg, "es", "Hoy", ""],
+    ["tomorrow", "", "en", "Tomorrow", "no date on file, the word is all we have"],
+    ["today", "", "en", "Today", ""],
+    ["hoy", "", "es", "Hoy", ""],
+    ["mañana", "", "es", "Mañana", ""],
+    ["", "Quiere: X | Fecha: wednesday 23 september | Origen: whatsapp-bot", "en", "Tomorrow", "the day after Nell's"],
+    ["", "Quiere: X | Fecha: friday 25 september | Origen: whatsapp-bot", "en", "Friday 25 September", "far enough out to name"],
+    ["", "Quiere: X | Fecha: viernes 25 de septiembre | Origen: whatsapp-bot", "es", "viernes 25 de septiembre", ""],
+    ["25 september", "", "en", "Friday 25 September", "date typed straight into day1"],
+    ["next week sometime", "", "en", "", "unresolvable, must NOT echo the words back"],
+    ["", "", "en", "", "nothing at all"],
+  ]) {
+    check("offer day", JSON.stringify([day1, L]), dayLabelFor(day1, msg, L, tueMorning), want, note);
+  }
 }
 
 // ---------------------------------------------------------------------------

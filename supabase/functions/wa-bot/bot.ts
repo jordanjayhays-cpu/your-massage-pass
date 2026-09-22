@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, parseQuotedPrice, euro, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/f3aaa4a/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, parseQuotedPrice, euro, dayLabelFor, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/90d6966/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -677,7 +677,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
   const m = payloadId.match(/^studio_(confirm|other|no)_(\d+)$/);
   if (m) {
     const requestId = Number(m[2]);
-    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
+    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
     const rows = await rr.json().catch(() => []);
     const req = Array.isArray(rows) && rows[0] ? rows[0] : null;
     if (!req) { console.log("[studio] request not found", requestId); return; }
@@ -833,7 +833,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       if (odr) {
         await patchDispatch(odr.id, { discount_pct: pct, ...(quotedNow !== null ? { quoted_price: quotedNow } : {}), outcome: "accepted", accepted_at: odr.accepted_at || new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500), offer_note: freeText.slice(0, 200) });
         await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partner.id)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ mc_discount_pct: pct, mc_discount_confirmed_at: new Date().toISOString(), mc_discount_note: `WhatsApp: ${freeText.slice(0, 200)}` }) }).catch(() => {});
-        const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
+        const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
         const rqrow = (await rq.json().catch(() => []))[0] || null;
         if (rqrow && pct >= 10) { await awardWinner(rqrow, partner, from, pct); return; }
         if (rqrow) {
@@ -884,14 +884,14 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
         body: JSON.stringify({ replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) }),
       });
-      const r1 = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${drow.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,day1,time1,client_phone,languages,contact_email,area`, { headers: H() });
+      const r1 = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${drow.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,day1,time1,client_phone,languages,contact_email,area,message_text`, { headers: H() });
       const rows1 = await r1.json().catch(() => []);
       if (Array.isArray(rows1) && rows1[0]) req = rows1[0];
     }
     // v37: a studio changing the time on a booking it already won. Baan Bua
     // did exactly this (12:15 became 12:45) and it landed as a plain note.
     if (!req && drow) {
-      const rc = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${drow.request_id}&stage=eq.confirmed&partner_id=eq.${encodeURIComponent(partner.id)}&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,client_phone,languages,contact_email,area`, { headers: H() });
+      const rc = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${drow.request_id}&stage=eq.confirmed&partner_id=eq.${encodeURIComponent(partner.id)}&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,client_phone,languages,contact_email,area,message_text`, { headers: H() });
       const rcs = await rc.json().catch(() => []);
       const creq = Array.isArray(rcs) && rcs[0] ? rcs[0] : null;
       const newTime = creq ? parseOfferedTime(freeText) : "";
@@ -911,7 +911,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       if (live && live.client_phone) { await handleLiveStudioMessage(live, partner, freeText, from); return; }
     }
     if (!req) {
-      const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=in.(studio_asked,studio_replied,bidding)&order=created_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1,price,client_phone,languages`, { headers: H() });
+      const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=in.(studio_asked,studio_replied,bidding)&order=created_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1,price,client_phone,languages,message_text`, { headers: H() });
       const rows = await rr.json().catch(() => []);
       req = Array.isArray(rows) && rows[0] ? rows[0] : null;
     }
@@ -928,7 +928,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // saying nothing, so a live booking closes that branch entirely.
     let liveBooking: any = null;
     if (!req) {
-      const lb = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=eq.confirmed&order=stage_updated_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,client_phone,languages,contact_email,area,share_ok,stage_updated_at`, { headers: H() });
+      const lb = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?partner_id=eq.${encodeURIComponent(partner.id)}&stage=eq.confirmed&order=stage_updated_at.desc&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,client_phone,languages,contact_email,area,message_text,share_ok,stage_updated_at`, { headers: H() });
       const lbs = await lb.json().catch(() => []);
       const cand = Array.isArray(lbs) && lbs[0] ? lbs[0] : null;
       // A booking from last month is not what they are writing about.
@@ -1659,7 +1659,7 @@ async function askForReviews(): Promise<number> {
 }
 
 async function settleBids(): Promise<number> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
   const reqs = await r.json().catch(() => []);
   let n = 0;
   for (const req of Array.isArray(reqs) ? reqs : []) {
@@ -1750,7 +1750,14 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   // v51: a studio's "mañana a las 10" is an offer for TOMORROW. Selvarrosa wrote
   // exactly that on 6 Sept and David was told "10:00 today" (already past).
   const offerDay = offerDayFromText(freeText, L);
-  const day = offerDay || req.day1 || (L === "es" ? "ese día" : "that day");
+  // v119: never echo req.day1 here. It holds the word the customer typed, and
+  // a word like "tomorrow" ages: Nell asked on Monday night for tomorrow, and
+  // on Tuesday morning both offers still said "Tomorrow", pointing her at
+  // Wednesday for a booking that was two hours away. dayLabelFor resolves the
+  // real date the same way dispatch-studios does for the studios, and returns
+  // "" rather than a stale word when it cannot, so we say "that day" instead of
+  // naming the wrong one.
+  const day = offerDay || dayLabelFor(req.day1, req.message_text, L) || (L === "es" ? "ese día" : "that day");
   // v102: only say "instead of" when it really is instead of. 17:00 offered
   // against a 13-18 band is the thing they asked for, not a compromise.
   const asked = offerMatchesAsk(time, offerDay, String(req.day1 || ""), String(req.time1 || ""))
