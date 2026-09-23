@@ -70,6 +70,7 @@
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let OPS_KEY = Deno.env.get("OPS_KEY") || "";
+let STUDIO_OUTREACH_PAUSED = false;
 const FROM_EMAIL = "Massage Club <support@massageclub.io>";
 const SUPPORT = ["support@massageclub.io"];
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -464,6 +465,18 @@ function closedNowReason(hoursText: unknown): string | null {
 // a conversation: they only have to write first.
 const REPLY_GRACE_MS = 2 * 3600e3;
 const shutCache = new Map<string, { why: string | null; at: number }>();
+// v36: is this number one of our studios? The pause has to know the difference
+// between a studio and a customer, because it stops the first and not the
+// second. A number we cannot resolve is treated as a studio, so the pause fails
+// closed.
+async function studioNameFor(toDigits: string): Promise<string | null> {
+  const d = digits(toDigits);
+  if (!d) return null;
+  const local = d.startsWith("34") && d.length === 11 ? d.slice(2) : d;
+  const rows = await sq(`partners?or=(whatsapp.ilike.*${local}*,phone.ilike.*${local}*)&select=business_name&limit=1`);
+  return Array.isArray(rows) && rows[0] ? String(rows[0].business_name || "a studio") : null;
+}
+
 async function studioShutNow(toDigits: string): Promise<string | null> {
   const d = digits(toDigits);
   if (!d) return null;
@@ -519,6 +532,12 @@ async function sendTemplate(to: string, name: string, params: string[], payloads
 }
 
 async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean, arm: string = "S1a"): Promise<{ ok: boolean; error?: string }> {
+  // v36: the pause covers the template ask too, not only free text. See the
+  // note in sendStudioNote.
+  if (STUDIO_OUTREACH_PAUSED) {
+    console.log(`[dispatch] studio outreach is PAUSED, not asking ${c.business_name}`);
+    return { ok: false, error: "studio outreach paused by Jordan" };
+  }
   const sameDay = /^(today|hoy)$/i.test(String(r.day1 || "").trim());
   const client = param(String(r.first_name || "Cliente"), 40);
 
@@ -624,6 +643,15 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
 // delivery-failure alert nobody could act on.
 async function sendStudioNote(to: string, text: string, short: string, rq: Record<string, unknown>, dry = false): Promise<{ how: string; ok: boolean; why?: string }> {
   if (!to) return { how: "none", ok: false };
+  // v36 (Jordan, 23 Sept): "i need you stop any outreach to the studios."
+  // One switch in front of every path that can write to a studio, set in the
+  // deployed loader. Two days running the bot spent studio goodwill on people
+  // who had not asked for a massage, and Centro Aloha left over it. Nothing
+  // reaches a studio until Jordan turns this back off.
+  if (STUDIO_OUTREACH_PAUSED) {
+    console.log(`[dispatch] studio outreach is PAUSED, not writing to ${to}`);
+    return { how: "paused", ok: false, why: "studio outreach paused by Jordan" };
+  }
   // v33: the automatic rule. Everything that writes to a studio comes through
   // here or through the send op, and both refuse a studio that is shut. The
   // check runs on a dry run too, so a dry run tells the truth about who would
@@ -983,6 +1011,11 @@ async function handleRequest(req: Request): Promise<Response> {
     if (!Array.isArray(prior) || !prior.length) return new Response(JSON.stringify({ ok: false, reason: "number never wrote to the bot" }), { status: 200, headers: { "Content-Type": "application/json" } });
     const shut = await studioShutNow(to);
     if (shut) return new Response(JSON.stringify({ ok: false, reason: `studio is shut: ${shut}` }), { status: 200, headers: { "Content-Type": "application/json" } });
+    // v36: the pause covers the manual send op as well, so neither a cron, nor
+    // the bot, nor I can write to a studio while it is on.
+    if (STUDIO_OUTREACH_PAUSED && (await studioNameFor(to))) {
+      return new Response(JSON.stringify({ ok: false, reason: "studio outreach paused by Jordan" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     const ok = await sendText(to, String(c.text));
     return new Response(JSON.stringify({ ok }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
@@ -1198,8 +1231,9 @@ async function handleRequest(req: Request): Promise<Response> {
 // deployed function is an eight-line loader that pins one commit of this file
 // and passes the keys in. Deno.env.set is not supported in the edge runtime, so
 // they arrive as arguments rather than as a faked environment.
-export function start(opts: { opsKey: string; resendKey: string; waToken: string; phoneId?: string }) {
+export function start(opts: { opsKey: string; resendKey: string; waToken: string; phoneId?: string; studioOutreachPaused?: boolean }) {
   OPS_KEY = opts.opsKey;
+  if (opts.studioOutreachPaused) STUDIO_OUTREACH_PAUSED = true;
   RESEND_API_KEY = opts.resendKey;
   WA_TOKEN = opts.waToken;
   if (opts.phoneId) PHONE_ID = opts.phoneId;
