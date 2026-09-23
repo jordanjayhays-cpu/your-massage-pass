@@ -114,6 +114,32 @@ export function dayLabelFor(day1: unknown, messageText: unknown, L: string, now:
     : `${EN_DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${EN_MONTHS[d.getUTCMonth()]}`;
 }
 
+// v121 (23 Sept, live): the name step took the whole message. Manju answered
+// "Me llamo Manju" and became "Me", and four studios were asked to hold an hour
+// for "Me". People answer this question in sentences, not with a bare word, so
+// strip the sentence and keep the name. Anything left that is not a plausible
+// name is rejected, and the caller asks again rather than storing a phrase.
+const NAME_LEAD_RE = /^\s*(?:me\s+llamo|mi\s+nombre\s+es|my\s+name\s+is|i\s*am|i'?m|im|soy|it'?s|this\s+is|call\s+me|name\s*[:.]?)\s+/i;
+const NAME_TRAIL_RE = /[\s,.!¡¿?]+$/;
+export function parseName(t: string): string {
+  let s = String(t || "").trim().replace(NAME_LEAD_RE, "").replace(NAME_TRAIL_RE, "");
+  // "Manju, encantada" / "Manju :)" - the name is what comes before the aside.
+  s = s.split(/[,;\n]/)[0].trim();
+  if (!s) return "";
+  const words = s.split(/\s+/);
+  // A name is one to four words. Longer than that is a sentence, not a name.
+  if (words.length > 4) return "";
+  // Digits, @ and urls are never names.
+  if (/[0-9@]|https?:/i.test(s)) return "";
+  // Words that never sit inside a person's name but do sit inside the answers
+  // people give to other questions. Manju's area answer, "Vivo en Urgel, cerca
+  // del metro", survived the comma split as "Vivo en Urgel" and would have gone
+  // to a studio as a name. Deliberately narrow: "de", "la" and "del" are left
+  // out because real names carry them (Ana de la Cruz).
+  if (/\b(?:vivo|vive|cerca|calle|avenida|plaza|metro|barrio|zona|minutos?|en|soy\s+de|live|living|near|street|road|avenue|from|looking|work|trabajo|masaje|massage)\b/i.test(s)) return "";
+  if (s.length > 60) return "";
+  return s;
+}
 export function strongSpanish(t: string): boolean {
   const s = String(t).toLowerCase();
   if (AD_OPENER_RE.test(s.trim())) return false; // the ad's canned line, not the person's words
