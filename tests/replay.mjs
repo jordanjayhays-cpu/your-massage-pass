@@ -18,7 +18,7 @@ import {
   parseOfferedTime, parseOfferedTimes, GOODBYE_RE, detectTime, detectDay, strongSpanish, isEmail,
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE, ACK_ONLY_RE,
-  NO_ENGLISH_RE, dayLabelFor,
+  NO_ENGLISH_RE, dayLabelFor, parseName,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -821,6 +821,34 @@ for (const [msg, want, note] of [
   ]) {
     check("offer day", JSON.stringify([day1, L]), dayLabelFor(day1, msg, L, tueMorning), want, note);
   }
+}
+
+// ---------------------------------------------------------------------------
+// The name step. Manju answered "Me llamo Manju" on 22 September and was
+// recorded as "Me". Four studios were asked to hold an hour for "Me". People
+// answer this question in sentences; the name is inside the sentence.
+// ---------------------------------------------------------------------------
+for (const [said, want, note] of [
+  ["Me llamo Manju", "Manju", "live, 22 Sept. Was 'Me'"],
+  ["me llamo Ana Garcia", "Ana Garcia", ""],
+  ["Mi nombre es Carlos", "Carlos", ""],
+  ["My name is Sarah", "Sarah", ""],
+  ["I'm Tom", "Tom", ""],
+  ["im nell", "nell", ""],
+  ["Soy Pilar", "Pilar", ""],
+  ["Call me Dave", "Dave", ""],
+  ["Manju", "Manju", "the bare answer still works"],
+  ["Ana Maria Lopez", "Ana Maria Lopez", "three words is a name"],
+  ["Manju, encantada", "Manju", "the aside is dropped"],
+  ["Name: Jordan", "Jordan", ""],
+  // Rejected, so the bot asks again instead of sending a phrase to a studio.
+  ["Vivo en Urgel, cerca del metro, a unos 5 minutos", "", "an address, not a name"],
+  ["I am looking for work as a masseuse", "", "too long to be a name"],
+  ["test@example.com", "", "an email is not a name"],
+  ["+34612474827", "", "a phone is not a name"],
+  ["", "", ""],
+]) {
+  check("name", JSON.stringify(said), parseName(said), want, note);
 }
 
 // ---------------------------------------------------------------------------
