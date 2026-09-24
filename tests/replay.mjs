@@ -852,6 +852,36 @@ for (const [said, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// Does the offer match what they asked for? Every one of these is a real offer
+// we sent between 17 and 22 September. In nine days not one offer carrying
+// "instead of" was ever accepted, and forwardOffer now refuses to send them.
+// ---------------------------------------------------------------------------
+for (const [offered, offerDay, day1, time1, want, note] of [
+  // Javier, 19 Sept. Asked for today 13-18, sent all of these.
+  ["03:00", null, "Today", "Afternoon (13-18)", false, "three in the morning, live 19 Sept"],
+  ["11:00", null, "Today", "Afternoon (13-18)", false, "Selvarrosa, live"],
+  ["20:00", null, "Today", "Afternoon (13-18)", false, "Samsara, live"],
+  ["14:00", null, "Today", "Afternoon (13-18)", true, "Calma, the one that actually fitted"],
+  ["15:00", null, "Today", "Afternoon (13-18)", true, ""],
+  // Manas, 19 Sept. Asked for the evening, offered late morning.
+  ["11:45", null, "Today", "Evening (18-21)", false, "live"],
+  ["18:30", null, "Today", "Evening (18-21)", true, ""],
+  // The edges of each band.
+  ["13:00", null, "Today", "Afternoon (13-18)", true, "first hour of the band"],
+  ["17:59", null, "Today", "Afternoon (13-18)", true, ""],
+  ["18:00", null, "Today", "Afternoon (13-18)", false, "one minute past the band"],
+  ["12:59", null, "Today", "Afternoon (13-18)", false, ""],
+  // An exact hour the customer typed has to be that hour.
+  ["19:00", null, "Today", "19:00", true, ""],
+  ["18:00", null, "Today", "19:00", false, "Asim, 9 Sept: he wanted 19:00 and Calma offered 18:00"],
+  // A different day never matches, whatever the hour.
+  ["15:00", "Tomorrow", "Today", "Afternoon (13-18)", false, "right hour, wrong day"],
+]) {
+  check("offer fits the ask", JSON.stringify([offered, offerDay, day1, time1]),
+    offerMatchesAsk(offered, offerDay, day1, time1), want, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

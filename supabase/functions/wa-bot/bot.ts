@@ -1784,6 +1784,43 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
       priceLine = "\n\n" + COPY[L].priceLine(quoted, 60, pct > 0);
     }
   } catch (e) { console.log("[wa] price line skipped", String(e)); }
+  // v122 (24 Sept): an offer that misses the window the customer asked for does
+  // not go to the customer at all. It goes back to the studio.
+  //
+  // Javier asked for today between 13:00 and 18:00 on 19 September. He was sent
+  // seven offers: 11:00, 20:00, 03:00, 14:00 today, 15:00 tomorrow, 15:00 today.
+  // Three in the morning. He never answered one of them. Manas asked for the
+  // evening and was offered 11:45. Alvaro asked for anything from 12:00 and got
+  // three offers all labelled "instead of". Every one of them went silent, and
+  // in nine days not a single offer that carried "instead of" was ever accepted.
+  //
+  // The old behaviour computed the mismatch, glued "instead of" onto the message
+  // and sent it anyway. `asked` above is exactly that label. We have the answer
+  // already; we were just choosing to ignore it and let the customer do the
+  // filtering. Now the studio does, which is where the knowledge is.
+  //
+  // Same-day is the one exception: when someone wants a massage today, a slot an
+  // hour outside their window is still worth showing, because the alternative is
+  // nothing at all today.
+  // v122: one live offer at a time. Javier had six sent to him inside 30 hours,
+  // each one a fresh "Does that work?" about a different studio and a different
+  // hour. That does not read as helpful, it reads as noise, and he answered
+  // none of them. If there is already an offer in front of this customer that
+  // they have not answered, the new one waits.
+  const liveOffer = cs.step === "await_offer" && cs.data.offer && Number(cs.data.offer.request) === Number(req.id);
+  if (liveOffer && String(cs.data.offer.row) !== String(rowId)) {
+    console.log(`[wa] offer queued: ${partner.business_name} ${time}, ${req.first_name} still has ${cs.data.offer.studio} ${cs.data.offer.time} open`);
+    await sendText(studioFrom, `Gracias, anotado: ${time}. ${req.first_name || "El cliente"} está mirando ahora mismo otra propuesta, así que no guardéis el hueco todavía. Os decimos algo en cuanto conteste.`);
+    await logEvent(clientNum, "offer_queued_behind_live", { request_id: req.id, studio: partner.business_name, time, live: cs.data.offer.studio });
+    return;
+  }
+  const sameDayReq = /^(today|hoy)$/i.test(String(req.day1 || "").trim());
+  if (asked && !sameDayReq) {
+    console.log(`[wa] offer withheld: ${partner.business_name} ${time} misses ${req.day1} ${req.time1} for req=${req.id}`);
+    await sendText(studioFrom, `Gracias. ${req.first_name || "El cliente"} ha pedido ${String(req.time1 || "otra franja")}, así que las ${time} se le quedan fuera. ¿Podéis en esa franja? Si no, no pasa nada y os escribimos con la siguiente.`);
+    await logEvent(clientNum, "offer_withheld_mismatch", { request_id: req.id, studio: partner.business_name, offered: time, asked: `${req.day1 || ""} ${req.time1 || ""}`.trim() });
+    return;
+  }
   await sendButtons(clientNum,
     COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked) + priceLine,
     [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }]);
