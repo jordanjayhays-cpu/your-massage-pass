@@ -2060,9 +2060,25 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   // WhatsApp is reachable for 24 hours, so dispatching is safe; Sharo J was
   // unreachable because she arrived through the website and never wrote to the
   // bot at all, and dispatch-studios already refuses that case outright.
-  if (!s.data.email && !s.data.emailRefused && !(await canFreeform(digitsOf(from)))) {
+  // v123 (24 Sept): ALWAYS ask. This used to be gated on the customer being
+  // unreachable by free text, and anyone who has just finished the chat is
+  // reachable by free text, so the condition was always false and the question
+  // never fired. Sixteen requests over fourteen days, one email on file, and
+  // that one came from the website. Zero email_asked events in the funnel.
+  //
+  // The gate was written to shorten the flow, on the reasoning that someone
+  // mid-conversation on WhatsApp is reachable for 24 hours. True, and then the
+  // 24 hours end. Nell, Garry, Al, Javier, Pedro, Manas, Alvaro and Juan were
+  // every one of them lost that way: a studio said yes, the window closed, and
+  // there was no second way to reach them.
+  //
+  // Refusing is still fine. Jordan's rule is that a WhatsApp customer who will
+  // not give an address still gets their booking, because the thread reaches
+  // them; they just have no second channel and he is told so.
+  if (!s.data.email && !s.data.emailRefused) {
     s.step = "await_email_req"; await saveSession(s);
     await sendText(from, COPY[L].email);
+    await logEvent(from, "email_asked", { reachable: await canFreeform(digitsOf(from)) });
     return;
   }
   s.step = "done"; await saveSession(s);
@@ -3523,6 +3539,10 @@ const handleInner = async (req: Request) => {
         if (replyId && !text) { await sendText(from, COPY[L].email); break; }
         if (text && isEmail(text)) {
           s.data.email = text.trim().toLowerCase();
+          // v123: both outcomes are logged so the share of requests that end up
+          // with a second channel can actually be read, instead of being found
+          // out fourteen days later by counting nulls.
+          await logEvent(from, "email_given", {});
           await finalizeBooking(s, from, L);
           break;
         }
@@ -3536,6 +3556,7 @@ const handleInner = async (req: Request) => {
           break;
         }
         s.data.emailRefused = true; await saveSession(s);
+        await logEvent(from, "email_refused", { said: String(text || "").slice(0, 60) });
         await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} would not give an email (${text ? text.slice(0, 60) : "no answer"}). Booking went ahead because they are reachable on WhatsApp, but there is no second channel.`, from);
         await sendText(from, L === "es"
           ? "Sin problema, seguimos sin email. Entonces todo te lo cuento por aquí, así que echa un ojo a este chat."
