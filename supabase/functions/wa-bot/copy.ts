@@ -340,6 +340,17 @@ export function parseOfferedTime(t: string): string {
 }
 export const AUTOREPLY_RE = /gracias por (contactar|comunicarte|comunicarse|escribir|tu mensaje)|te responderemos|responderemos lo antes|te atenderemos|nos pondremos en contacto|contestar lo antes|hemos recibido tu mensaje|ahora no podemos responder|en este momento estamos ocupados|get back to you|currently busy|horario de atenci[o\u00f3]n|thank you for contacting|thanks for your message/i;
 export const EMAIL_IN_TEXT_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+// v125 (25 Sept, live): Hatem answered the email question with "Hatem", which
+// was his NAME, because he was one question behind the whole way through. The
+// bot logged email_refused and moved on, and nine seconds later he typed
+// Hatem@vitasnacafe.com and that went in the bin too. He booked for the next
+// afternoon with no email on file, which is the exact thing Jordan wrote in
+// capitals on 8 September.
+//
+// Only these words are a refusal now. Anything else that is not an address gets
+// the question once more, because a one word answer is far more likely to be an
+// answer to the last question than a no.
+export const EMAIL_REFUSE_RE = /^\s*(?:no|nope|nah|skip|later|luego|m[aá]s tarde|paso|ninguno|nada|sin email|no tengo|i\s*do\s*n[o']?t\s*have|dont have|no quiero|prefiero no|prefer not|rather not|no thanks?|no gracias)\b/i;
 // "Special massage" probes - one standard line, then permanent silence.
 // "Extra services" is the other English euphemism: Jasper asked twice on
 // 11 Sept and the bot answered "Good choice. Which day suits you?" both times,
@@ -668,6 +679,9 @@ export const COPY: Record<string, any> = {
     name: "Almost done: what is your name?",
     email: "Last thing before I ask the studios: what is your email? The studio's confirmation goes there as well as here, so nothing gets lost if it cannot reach you on WhatsApp.",
     emailBad: "That does not look like an email address. Could you send it again? It is the one thing that guarantees your confirmation reaches you.",
+    // v125: an address that turns up later, at any step. Hatem sent his nine
+    // seconds after we had given up asking and it was read as a menu tap.
+    emailLate: (addr: string) => `Got it, thank you. I have put ${addr} on your booking, so the confirmation reaches you there as well as here.`,
     emailAskPost: "One more thing: want this confirmation by email, plus your bookings saved so next time takes one tap? Reply with your email and your free account is ready.",
     emailSaved: "Done! Check your inbox: your confirmation and account link are on their way. 📫",
     rebookLater: "No problem, we'll be here when you need us. 🙌",
@@ -837,6 +851,8 @@ export const COPY: Record<string, any> = {
     name: "Casi listo: ¿cómo te llamas?",
     email: "Última cosa antes de preguntar a los centros: ¿cuál es tu email? Ahí te llega también la confirmación del centro, así no se pierde nada si por lo que sea no te llega por WhatsApp.",
     emailBad: "Eso no parece un email. ¿Me lo puedes escribir otra vez? Es lo que garantiza que te llegue la confirmación.",
+    // v125: ver la nota en la versión inglesa.
+    emailLate: (addr: string) => `Perfecto, gracias. He añadido ${addr} a tu reserva, así la confirmación te llega también por ahí.`,
     emailAskPost: "Una cosa más: ¿quieres la confirmación por email y tus reservas guardadas para repetir en un toque? Responde con tu email y tu cuenta gratis queda lista.",
     emailSaved: "¡Listo! Mira tu correo: te llegan la confirmación y el enlace de tu cuenta. 📫",
     rebookLater: "Sin problema, aquí estaremos cuando te apetezca. 🙌",
