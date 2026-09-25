@@ -114,6 +114,57 @@ export function dayLabelFor(day1: unknown, messageText: unknown, L: string, now:
     : `${EN_DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${EN_MONTHS[d.getUTCMonth()]}`;
 }
 
+// v124 (25 Sept): "Lo confirmaria un dia antes." ("I would confirm it the day
+// before.") Juan wrote exactly that to a studio offer on 15 September and was
+// never contacted again. It is not a no. It is a yes with a date on it, and the
+// only thing it needed was somebody to come back to him the day before.
+//
+// Deliberately narrow. A confirm verb has to sit within one clause of a
+// day-before phrase, so "can you confirm the address?" and a bare "confirmo"
+// (which is an acceptance and must keep going straight to acceptOffer) do not
+// match. It is checked only at the offer step, where the alternative today is
+// repeating the same offer at them and filing a card.
+const CL_VERB = "confirm[a-záéíóúñ]*|avis[a-záéíóúñ]*|te\\s+digo|let\\s+you\\s+know|tell\\s+you|get\\s+back\\s+to\\s+you";
+const CL_WHEN = "(?:d[ií]a|day|night|noche)\\s+(?:before|antes)|v[ií]spera|closer\\s+to\\s+the\\s+(?:day|date|time)";
+export const CONFIRM_LATER_RE = new RegExp(
+  `(?:${CL_VERB})[^.!?\\n]{0,40}?(?:${CL_WHEN})|(?:${CL_WHEN})[^.!?\\n]{0,30}?(?:${CL_VERB})`,
+  "i",
+);
+
+// The UTC instant of a wall-clock hour in Madrid on a given Madrid day. The
+// second pass is what makes it right on the two days a year the offset moves.
+export function madridInstant(day: Date, hour: number): Date {
+  const naive = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour);
+  const off = (at: number) => {
+    const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(at));
+    const g = (k: string) => Number(p.find((x) => x.type === k)?.value || 0);
+    return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour") % 24, g("minute")) - at;
+  };
+  return new Date(naive - off(naive - off(naive)));
+}
+
+// When the day-before reminder should go out. 11:00 Madrid the day before the
+// massage. If that moment has already gone (they said it the day before, or on
+// the day itself) it is two hours from now instead, never before 10:00 and
+// never after 20:00, and never after the massage, because a reminder that
+// arrives late is worse than none at all. Returns null when the day cannot be
+// worked out, so the caller promises nothing it cannot keep.
+export const CL_REMIND_HOUR = 11;
+export function confirmLaterRemindAt(day1: unknown, messageText: unknown, now: Date = new Date()): Date | null {
+  const d = resolveRequestDate(day1, messageText, now);
+  if (!d) return null;
+  const at = madridInstant(new Date(d.getTime() - 86400e3), CL_REMIND_HOUR);
+  if (at.getTime() > now.getTime() + 30 * 60e3) return at;
+  const soon = new Date(now.getTime() + 2 * 3600e3);
+  const today = madridMidnight(soon);
+  const floor = madridInstant(today, 10);
+  const ceil = madridInstant(today, 20);
+  if (soon.getTime() < floor.getTime()) return floor;
+  if (soon.getTime() <= ceil.getTime()) return soon;
+  const next = madridInstant(new Date(today.getTime() + 86400e3), 10);
+  return next.getTime() < madridInstant(d, 22).getTime() ? next : null;
+}
+
 // v121 (23 Sept, live): the name step took the whole message. Manju answered
 // "Me llamo Manju" and became "Me", and four studios were asked to hold an hour
 // for "Me". People answer this question in sentences, not with a bare word, so
@@ -701,6 +752,16 @@ export const COPY: Record<string, any> = {
     offerDeclined: "No problem, we keep asking the other studios and will message you with the next option.",
     offerGone: "That slot has just been taken, sorry. We are still on it and will message you with the next option.",
     offerRemind: (studio: string, time: string) => `Just so we do not lose it: *${studio}* can do *${time}*. Tap Yes to book it, or Another time and we keep looking.`,
+    // v124: what Juan should have heard. Honest about what is and is not being
+    // held, and when the reminder is switched on it commits us to exactly one
+    // more message, on a day we can name. With it switched off it promises
+    // nothing, because a promise we do not keep is how we lost him.
+    confirmLaterAck: (armed: boolean) =>
+      armed
+        ? `Understood, I will write here the day before so you can confirm then.\n\nNothing is booked yet and the studio is not holding the time for you, so if you decide sooner just tap *Yes* on the message above and it is done.`
+        : `Understood. Nothing is booked yet and the studio is not holding the time for you. Whenever you are ready, tap *Yes* on the message above, or tell me a time and I will ask them again.`,
+    confirmLaterNudge: (n: string, studio: string, time: string, day: string) =>
+      `Hello${n ? " " + n : ""}, you said you would confirm the day before, so here it is.\n\n${studio} at ${time}${day ? " " + day : ""}. Shall I book it?`,
     sameDay: "Quick heads-up: most Madrid studios open at 11:00 or 12:00, so the earliest they can usually confirm today is around 12:00. What would you prefer?",
     sameDayBtns: (t: string) => [{ id: "sd_earliest", title: "Earliest today" }, { id: "sd_tomorrow", title: "Tomorrow morning" }, { id: "sd_keep", title: `Keep ${t}`.slice(0, 20) }],
     earliestToday: "Earliest available (from 12:00)",
@@ -832,6 +893,13 @@ export const COPY: Record<string, any> = {
     offerDeclined: "Sin problema, seguimos preguntando a los demás centros y te escribimos con la siguiente opción.",
     offerGone: "Esa hora acaba de ocuparse, lo sentimos. Seguimos en ello y te escribimos con la siguiente opción.",
     offerRemind: (studio: string, time: string) => `Para que no se pierda: *${studio}* puede a las *${time}*. Toca Sí para reservarla, u Otra hora y seguimos buscando.`,
+    // v124: ver la nota en la versión inglesa.
+    confirmLaterAck: (armed: boolean) =>
+      armed
+        ? `Entendido, te escribo por aquí el día antes para que lo confirmes entonces.\n\nNo hay nada reservado todavía y el centro no te está guardando la hora, así que si lo decides antes, toca *Sí* en el mensaje de arriba y listo.`
+        : `Entendido. No hay nada reservado todavía y el centro no te está guardando la hora. Cuando lo tengas claro, toca *Sí* en el mensaje de arriba, o dime una hora y se la pregunto.`,
+    confirmLaterNudge: (n: string, studio: string, time: string, day: string) =>
+      `Hola${n ? " " + n : ""}, me dijiste que lo confirmabas el día antes, así que aquí lo tienes.\n\n${studio} a las ${time}${day ? " " + day : ""}. ¿Te la reservo?`,
     sameDay: "Aviso rápido: la mayoría de los centros de Madrid abren a las 11:00 o 12:00, así que lo más temprano que suelen confirmar hoy es sobre las 12:00. ¿Qué prefieres?",
     sameDayBtns: (t: string) => [{ id: "sd_earliest", title: "Lo antes posible hoy" }, { id: "sd_tomorrow", title: "Mañana por la mañana" }, { id: "sd_keep", title: `Mantener ${t}`.slice(0, 20) }],
     earliestToday: "Lo antes posible (desde 12:00)",
