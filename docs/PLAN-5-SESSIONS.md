@@ -82,3 +82,69 @@ Per the lane rules: a reimbursed test is a paid experiment, not revenue.
 
 Five customers have had a session and the `bookings` row says `completed` — not confirmed,
 completed. And step 3 has named why 13 requests stalled.
+
+---
+
+# ROOT CAUSE FOUND — 2026-09-25
+
+I was wrong twice on the way here, so both corrections are recorded.
+
+**Wrong once:** I said "60 edge functions and 19 crons run constantly and produce nothing." Not true.
+**Wrong twice:** I said the n8n stall digest duplicated `stuck-booking-rescue`. Also not true.
+
+## The actual bug is one line
+
+`stuck-booking-rescue` runs every 30 minutes and does watch `whatsapp_requests` at exactly the
+stages that matter (`new, studio_asked, studio_replied, offered`). It is a serious piece of work —
+version 10, with guards for customers who said no, customers owed an answer, quiet hours, and
+duplicate sends.
+
+But its query is bounded at both ends:
+
+```
+created_at=lt.${cutStuck}   -- older than 1 hour
+created_at=gt.${cutMax}     -- AND NEWER THAN 24 HOURS
+```
+
+**`cutMax` is 24 hours.** A request that is still unresolved after one day falls out of the window
+and nothing looks at it again, ever.
+
+**All 13 cold requests are 4 to 20 days old.** They aged out of the only system watching them.
+They were not stuck in a broken machine; they fell off the end of the conveyor belt.
+
+## Why the reminder system looked broken and was not
+
+`booking-reminders` fires 96 times a day and has reminded 2 people ever, most recently 28 August.
+That is correct behaviour: **there are zero bookings dated today or later.** The latest booking date
+in the table is 2026-09-11. You cannot remind someone about an appointment that does not exist.
+
+The whole chain reads:
+
+1. Requests arrive — still happening, newest 22 Sept ✅
+2. Studios are asked and reply — still happening ✅
+3. **Somebody turns the studio's yes into a booking row** ❌ *nobody owns this after day one*
+4. Reminders, calendar invites, review requests — all correct, all idle for lack of input
+
+Step 3 is a human step. The concierge step. It has no owner past the 24-hour mark.
+
+## What was built
+
+**`mc_cold_requests_digest()`** on `jglftdstrowwckwqmpue`, scheduled as `mc-cold-requests-daily`
+(`0 7 * * *`, 09:00 Madrid). It finds requests at `studio_replied` or `offered` **older than 24
+hours** — precisely the blind spot — skips anyone flagged cancelled or change_requested, and posts a
+digest to the n8n webhook, which emails Jordan. It sends nothing on a clean day.
+
+Verified end to end on 2026-09-25: the function found 13, the webhook fired, n8n ran
+`Webhook → Any stalled? → Email Jordan`, and the mail was sent.
+
+**This does not message customers.** After five days of silence an automated message is worse than
+a human one, and `THE-13.md` already has a drafted message per person.
+
+## The order of work is now unambiguous
+
+1. Send the 13 messages from `THE-13.md`.
+2. Each yes becomes a booking row.
+3. The existing stack — reminders, calendar, review requests, rebook nudges — wakes up on its own,
+   because it was never broken.
+
+Nothing else needs building.
