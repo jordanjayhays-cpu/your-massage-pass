@@ -21,6 +21,7 @@ import {
   NO_ENGLISH_RE, dayLabelFor, parseName,
   CONFIRM_LATER_RE, confirmLaterRemindAt, madridInstant,
   EMAIL_REFUSE_RE, EMAIL_IN_TEXT_RE,
+  firstNameFromProfile, detectArea, detectService,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -1013,6 +1014,65 @@ for (const [msg, want, note] of [
 ]) {
   const m = msg.match(EMAIL_IN_TEXT_RE);
   check("email in any message", msg, m ? m[0].toLowerCase() : null, want, note);
+}
+
+// ---------------------------------------------------------------------------
+// The name we never have to ask for. Jordan, 25 September: "i need you to be
+// very simple when they ask for a massage." WhatsApp sends the profile name on
+// every inbound. On 24 September it sent "Hatem", the bot asked him his name
+// anyway, and filed "Retiro" under it.
+//
+// Every case below is a real wa_sessions.wa_name from the last thirty days.
+// ---------------------------------------------------------------------------
+for (const [profile, want, note] of [
+  ["Hatem", "Hatem", "24 Sept. We had his name before we asked for it"],
+  ["Nell Anthony", "Nell", "a first name is enough to book a massage"],
+  ["Bakary Camara", "Bakary", ""],
+  ["Paco Balaguer Molinero", "Paco", "three surnames, one greeting"],
+  ["José Angel", "José", "accents survive"],
+  ["Ash", "Ash", "three letters is a name"],
+  ["Paulo", "Paulo", ""],
+  ["Dev", "Dev", ""],
+  ["Monchi", "Monchi", ""],
+  ["قیصر", "قیصر", "a script with no capitals must not be thrown away"],
+  // Not names. These fall through to asking, exactly as today.
+  ["la vida", "", "a lowercase phrase is a handle, not a name"],
+  ["ibra Yatusave", "", "same"],
+  ["🇪🇸SALADO 🇪🇸", "", "flags stripped, SALADO is a nickname in caps"],
+  ["👩🏼‍🦰🦋", "", "nothing but emoji"],
+  ["J̣̌ÅŢìŇ..:", "", ""],
+  ["H.V.", "", "initials"],
+  ["JM", "", "initials"],
+  ["H", "", "one letter"],
+  ["", "", ""],
+  [null, "", ""],
+  ["Massage Madrid", "", "a business, and the stoplist catches it"],
+]) {
+  check("name from WhatsApp profile", String(profile), firstNameFromProfile(profile), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// An answer belongs to the field it plainly IS, not to the question that
+// happens to be open. Hatem answered the area question with his service and the
+// name question with his area, and both were stored where they landed.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["Retiro", true, "Hatem, 24 Sept, typed at the NAME question and stored as his name"],
+  ["Chamberí", true, ""],
+  ["Salamanca", true, ""],
+  ["Hatem", false, "his actual name must still read as a name"],
+  ["Nell", false, ""],
+]) {
+  check("is this an area", msg, !!detectArea(msg), want, note);
+}
+for (const [msg, want, note] of [
+  ["Relaxing massage", true, "Hatem, 24 Sept, typed at the AREA question and stored as his neighbourhood"],
+  ["masaje relajante", true, ""],
+  ["deep tissue", true, ""],
+  ["Retiro", false, "an area is not a service"],
+  ["Hatem", false, ""],
+]) {
+  check("is this a service", msg, !!detectService(msg), want, note);
 }
 
 // ---------------------------------------------------------------------------

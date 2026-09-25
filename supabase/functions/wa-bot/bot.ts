@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/2bfc08b/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/8e11423/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -2384,6 +2384,21 @@ async function askNameOrFinalize(s: Session, from: string, L: string) {
     await finalizeBooking(s, from, L);
     return;
   }
+  // v126 (Jordan, 25 Sept): "i need you to be very simple when they ask for a
+  // massage." The shortest question is the one we never ask. WhatsApp sends the
+  // profile name on every inbound, and on 24 September it sent us "Hatem" while
+  // the bot asked him his name anyway and filed "Retiro" under it. When the
+  // profile name is a real one we use it and the question disappears; when it
+  // is "la vida" or an emoji, firstNameFromProfile returns "" and we ask as
+  // before. They can still correct it: the summary reads the name back.
+  const fromProfile = firstNameFromProfile(s.wa_name);
+  if (fromProfile) {
+    s.data.name = fromProfile;
+    await saveSession(s);
+    await logEvent(from, "name_from_profile", { name: fromProfile });
+    await finalizeBooking(s, from, L);
+    return;
+  }
   s.step = "await_name"; await saveSession(s);
   await sendText(from, COPY[L].name);
 }
@@ -3516,10 +3531,18 @@ const handleInner = async (req: Request) => {
             // known area but is recognisably a day or a time, keep it as that
             // and ask the area again. Same fault that swallowed Jorge's area.
             if (!hit) {
+              // v126: absorbOffStep only reports fields it FILLED, so once the
+              // ad had set Hatem's service to relax, his answer "Relaxing
+              // massage" filled nothing, reported nothing, and fell through to
+              // become his neighbourhood. What a message plainly IS matters
+              // more than what we happen to be missing: a service is never an
+              // area, and neither is a day or a time.
+              const isSvc = !!(UNSURE_RE.test(text) || detectService(text));
+              const isWhen = !!(detectDay(text, L) || detectTime(text, L));
               const got = absorbOffStep(s, text, L, "area");
-              if (got.length) {
+              if (got.length || isSvc || isWhen) {
                 await saveSession(s);
-                await logEvent(from, "offstep_absorbed", { at: "await_area", got });
+                await logEvent(from, "offstep_absorbed", { at: "await_area", got, isSvc, isWhen });
                 await sendText(from, COPY[L].gotItSvc([s.data.day, s.data.time].filter(Boolean).join(" · ")));
                 await askArea(from, L);
                 break;
@@ -3634,6 +3657,26 @@ const handleInner = async (req: Request) => {
         // sentence people actually answer with and rejects anything that is
         // not a plausible name, so we ask again instead of sending a phrase to
         // a studio.
+        // v126: "Retiro" is a neighbourhood. Hatem answered this question with
+        // his area, because he was one question behind the whole way through,
+        // and a bare plausible word sails through parseName. Anything that is
+        // plainly a slot value goes to its own field and we ask again. Once
+        // only: somebody really called Salamanca must not be stuck in a loop.
+        const asArea = detectArea(text);
+        const asSvc = UNSURE_RE.test(text) ? "svc_unsure" : detectService(text);
+        const asDay = detectDay(text, L);
+        const asTime = detectTime(text, L);
+        if ((asArea || asSvc || asDay || asTime) && !s.data.nameOffstep) {
+          s.data.nameOffstep = true;
+          if (asArea && !s.data.area) s.data.area = asArea;
+          if (asSvc && !s.data.service) s.data.service = asSvc;
+          if (asDay && !s.data.day) s.data.day = asDay;
+          if (asTime && !s.data.time) { s.data.time = asTime; s.data.timeBand = /\(/.test(asTime) ? asTime : null; }
+          await saveSession(s);
+          await logEvent(from, "offstep_absorbed", { at: "await_name", area: asArea || null, service: asSvc || null, day: asDay || null, time: asTime || null });
+          await sendText(from, COPY[L].name);
+          break;
+        }
         const parsedName = parseName(text);
         if (!parsedName) { await sendText(from, COPY[L].name); break; }
         s.data.name = parsedName.slice(0, 80);
