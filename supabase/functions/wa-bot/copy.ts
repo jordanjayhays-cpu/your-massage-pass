@@ -7,7 +7,7 @@ export const UNSURE_RE = /(no s[eé] (qu[eé]|cu[aá]l)|not sure|don'?t know|no 
 // v59: people ask where we are without a question mark. "What street in madrid"
 // and "Que calle o zona en madrid" both got the service menu instead of an
 // answer on 7 Sept, the second time in the same conversation.
-export const ZONEQ_RE = /(d[oó]nde est[aá]is|d[oó]nde (est[aá]n|se encuentran|sois)|en qu[eé] (zona|barrio|calle|parte|sitio)|qu[eé] (zona|zonas|barrio|calle|direcci[oó]n|parte de madrid)|vuestra direcci[oó]n|direcci[oó]n del centro|ubicaci[oó]n|where are you (located|based)|which area|what area|which street|what street|where is it|your address)/i;
+export const ZONEQ_RE = /(^\s*[¿?]?\s*(?:d[oó]nde|where)\s*[?¿]?\s*$|d[oó]nde est[aá]is|d[oó]nde (est[aá]n|se encuentran|sois)|en qu[eé] (zona|barrio|calle|parte|sitio)|qu[eé] (zona|zonas|barrio|calle|direcci[oó]n|parte de madrid)|vuestra direcci[oó]n|direcci[oó]n del centro|ubicaci[oó]n|where are you (located|based)|which area|what area|which street|what street|where is it|your address)/i;
 export function detectDay(t: string, L: string): string {
   const s = stripAcc(t);
   if (/\b(hoy|today|tonight|esta noche|esta tarde)\b/.test(s)) return L === "es" ? "Hoy" : "Today";
@@ -208,7 +208,7 @@ export function strongSpanish(t: string): boolean {
   const words = ["hola", "buenas", "quiero", "masaje", "reservar", "cuanto", "cuánto", "precio", "gracias", "por", "favor", "mañana", "hoy", "para", "una", "cita", "hora", "tarde", "noche", "zona", "donde", "dónde"];
   // v48: the massage words themselves are Spanish too. "Relajante de hora y media"
   // (6 Sept, 02:54) scored as English and got the English day question.
-  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera"];
+  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera", "donde", "dónde", "direccion", "dirección"];
   const toks = s.split(/[^a-záéíóúñü]+/).filter(Boolean);
   const found = new Set<string>();
   for (const w of toks) if (words.includes(w)) found.add(w);
