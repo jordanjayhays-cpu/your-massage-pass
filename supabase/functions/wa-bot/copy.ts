@@ -708,6 +708,9 @@ export const COPY: Record<string, any> = {
     emailBad: "That does not look like an email address. Could you send it again? It is the one thing that guarantees your confirmation reaches you.",
     // v125: an address that turns up later, at any step. Hatem sent his nine
     // seconds after we had given up asking and it was read as a menu tap.
+    // v128: the Flow invitation. See the note in the Spanish version.
+    flowBody: "Tell me which massage, which day and which part of Madrid, and I will get prices from the studios near you. One short form, about 20 seconds.",
+    flowCta: "Book a massage",
     emailLate: (addr: string) => `Got it, thank you. I have put ${addr} on your booking, so the confirmation reaches you there as well as here.`,
     emailAskPost: "One more thing: want this confirmation by email, plus your bookings saved so next time takes one tap? Reply with your email and your free account is ready.",
     emailSaved: "Done! Check your inbox: your confirmation and account link are on their way. 📫",
@@ -878,6 +881,10 @@ export const COPY: Record<string, any> = {
     name: "Casi listo: ¿cómo te llamas?",
     email: "Última cosa antes de preguntar a los centros: ¿cuál es tu email? Ahí te llega también la confirmación del centro, así no se pierde nada si por lo que sea no te llega por WhatsApp.",
     emailBad: "Eso no parece un email. ¿Me lo puedes escribir otra vez? Es lo que garantiza que te llegue la confirmación.",
+    // v128: the Flow invitation. Short, because the form itself does the
+    // explaining, and honest about how long it takes.
+    flowBody: "Dime qué masaje quieres, qué día y en qué zona, y le pido precio a los centros que tengas cerca. Es un formulario corto, unos 20 segundos.",
+    flowCta: "Reservar masaje",
     // v125: ver la nota en la versión inglesa.
     emailLate: (addr: string) => `Perfecto, gracias. He añadido ${addr} a tu reserva, así la confirmación te llega también por ahí.`,
     emailAskPost: "Una cosa más: ¿quieres la confirmación por email y tus reservas guardadas para repetir en un toque? Responde con tu email y tu cuenta gratis queda lista.",
