@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/4e744c8/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/61920bc/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -139,6 +139,50 @@ const sendButtons = (to: string, body: string, buttons: Array<{ id: string; titl
   waSend(to, { type: "interactive", interactive: { type: "button", body: { text: body }, action: { buttons: buttons.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id, title: b.title.slice(0, 20) } })) } } }, body + " [" + buttons.map((b) => b.title).join("/") + "]", "buttons");
 const sendList = (to: string, body: string, button: string, rows: Array<{ id: string; title: string; description?: string }>) =>
   waSend(to, { type: "interactive", interactive: { type: "list", body: { text: body }, action: { button: button.slice(0, 20), sections: [{ title: "Massage Club", rows: rows.slice(0, 10).map((r) => ({ id: r.id, title: r.title.slice(0, 24), description: (r.description || "").slice(0, 72) })) }] } } }, body + " [" + rows.map((r) => r.title).join("/") + "]", "list");
+// v128 (25 Sept): WhatsApp Flows. The booking flow is six questions asked one
+// at a time, and 39 of the 85 people who have ever written are frozen at the
+// first or second of them. A Flow is one form inside WhatsApp: every field on
+// screen at once, each one labelled. Hatem could not have been a question
+// behind, because there is no queue. Andres could not have typed "Y tu" into
+// the email box, because it is a labelled field.
+//
+// "Massage booking v1", flow 2519994188477304, is built and validates clean.
+// SENDING IS OFF until the loader passes bookingFlowId, because the flow is
+// still DRAFT and sending a draft fails. The REPLY handler below is always on:
+// it costs nothing and means the moment the flow is published, a completed form
+// is read correctly rather than falling through as an unknown message.
+let BOOKING_FLOW_ID = "";
+const FLOW_SERVICE: Record<string, string> = {
+  relaxing: "svc_relax", deep_tissue: "svc_deep", thai: "svc_thai",
+  sports: "svc_sports", hot_stone: "svc_stone", unsure: "svc_unsure",
+};
+const FLOW_AREA: Record<string, string> = {
+  centro: "Centro", chamberi: "Chamberí", salamanca: "Salamanca", retiro: "Retiro",
+  chamartin: "Chamartín", malasana: "Malasaña", other: "", anywhere: "anywhere",
+};
+const FLOW_TIME: Record<string, string> = {
+  morning: "time_morning", afternoon: "time_afternoon", evening: "time_evening", flexible: "",
+};
+const sendBookingFlow = (to: string, L: string) =>
+  waSend(to, {
+    type: "interactive",
+    interactive: {
+      type: "flow",
+      body: { text: COPY[L].flowBody },
+      action: {
+        name: "flow",
+        parameters: {
+          flow_message_version: "3",
+          flow_token: `mc-${to}-${Date.now()}`,
+          flow_id: BOOKING_FLOW_ID,
+          flow_cta: COPY[L].flowCta,
+          flow_action: "navigate",
+          flow_action_payload: { screen: "BOOKING" },
+        },
+      },
+    },
+  }, COPY[L].flowBody + " [flow: " + COPY[L].flowCta + "]", "flow");
+
 const sendLocationRequest = (to: string, body: string) =>
   waSend(to, { type: "interactive", interactive: { type: "location_request_message", body: { text: body }, action: { name: "send_location" } } }, body + " [share location]", "location_request");
 
@@ -181,7 +225,11 @@ async function sendTemplate(to: string, name: string, lang: string, params: stri
 // single best evidenced change available here. Everything else, including the
 // undecided, lives behind "Something else", which opens the full list, so
 // nothing is lost and the three easy answers stay one tap away.
-const askService = (to: string, L: string) => sendButtons(to, COPY[L].intro, COPY[L].introBtns);
+// v128: when a Flow is configured this is one form instead of six questions.
+// Falls back to the buttons whenever no flow is published, so nothing depends
+// on it existing.
+const askService = (to: string, L: string) =>
+  BOOKING_FLOW_ID ? sendBookingFlow(to, L) : sendButtons(to, COPY[L].intro, COPY[L].introBtns);
 // "Something else" now carries the undecided as well as the rarer massages, so
 // "Help me figure it out" leads the list rather than hiding at the bottom of it.
 const askServiceMore = (to: string, L: string) =>
@@ -2464,7 +2512,8 @@ const handler = async (req: Request) => {
   return res;
 };
 
-export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string; confirmLaterReminders?: boolean } = {}) {
+export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string; confirmLaterReminders?: boolean; bookingFlowId?: string } = {}) {
+  if (cfg.bookingFlowId) BOOKING_FLOW_ID = cfg.bookingFlowId;
   if (cfg.confirmLaterReminders) CONFIRM_LATER_REMINDERS = true;
   if (cfg.aiKey) AI_KEY = cfg.aiKey;
   if (cfg.waToken) WA_TOKEN = cfg.waToken;
@@ -2798,6 +2847,14 @@ const handleInner = async (req: Request) => {
     let replyId = "", text = "";
     let loc: { latitude?: number; longitude?: number } | null = null;
     let btnText = "";
+    // v128: a completed Flow arrives as one message carrying every answer.
+    let flowAnswers: Record<string, string> | null = null;
+    if (msg.type === "interactive" && msg.interactive?.type === "nfm_reply") {
+      try {
+        const parsed = JSON.parse(String(msg.interactive?.nfm_reply?.response_json || "{}"));
+        if (parsed && typeof parsed === "object") flowAnswers = parsed as Record<string, string>;
+      } catch (e) { console.log("[wa] flow reply could not be read", String(e)); }
+    }
     if (msg.type === "interactive") replyId = msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || "";
     else if (msg.type === "button") { replyId = msg.button?.payload || ""; btnText = msg.button?.text || ""; }
     else if (msg.type === "text") text = String(msg.text?.body || "").trim();
@@ -3050,6 +3107,37 @@ const handleInner = async (req: Request) => {
       else if (s.data.lang === "es" && !strongSpanish(text) && looksEnglish(text)) s.data.lang = "en";
     }
     const L: string = s.data.lang === "es" ? "es" : "en";
+
+    // v128: a Flow came back complete. Every answer the six questions would
+    // have collected, in one message, each in its own field. Anything the form
+    // could not settle ("this week", "somewhere else", "flexible") is asked as
+    // ONE question, not six.
+    if (flowAnswers) {
+      const svc = FLOW_SERVICE[String(flowAnswers.service || "")] || "";
+      if (svc) s.data.service = svc;
+      const dayId = String(flowAnswers.day || "");
+      if (dayId === "today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); }
+      else if (dayId === "tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); }
+      const bandId = FLOW_TIME[String(flowAnswers.time_pref || "")] || "";
+      if (bandId) { s.data.timeBandId = bandId; s.data.time = L === "es" ? HOURS[bandId].labelEs : HOURS[bandId].label; s.data.timeBand = s.data.time; }
+      const areaName = FLOW_AREA[String(flowAnswers.area || "")] || "";
+      if (areaName) s.data.area = areaName;
+      const nm = parseName(String(flowAnswers.name || ""));
+      if (nm) s.data.name = nm.slice(0, 80);
+      const em = String(flowAnswers.email || "").trim();
+      if (em && isEmail(em)) s.data.email = em.toLowerCase();
+      else s.data.emailRefused = true;
+      await saveSession(s);
+      await logEvent(from, "flow_completed", {
+        service: s.data.service || null, day: s.data.day || null, time: s.data.time || null,
+        area: s.data.area || null, email: !!s.data.email,
+      });
+      if (!s.data.day) { s.step = "await_day"; await saveSession(s); await askDay(from, L); return new Response("OK", { status: 200 }); }
+      if (!s.data.time) { s.step = "await_time"; await saveSession(s); await askTime(from, L); return new Response("OK", { status: 200 }); }
+      if (!s.data.area) { s.step = "await_area"; await saveSession(s); await askArea(from, L); return new Response("OK", { status: 200 }); }
+      await finalizeBooking(s, from, L);
+      return new Response("OK", { status: 200 });
+    }
 
     // v125 (25 Sept, live): an email address is an email address wherever it
     // turns up. Hatem typed Hatem@vitasnacafe.com nine seconds after the bot had
