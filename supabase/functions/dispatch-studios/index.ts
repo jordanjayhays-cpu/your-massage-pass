@@ -457,8 +457,21 @@ async function silentIds(ids: string[]): Promise<Set<string>> {
   return out;
 }
 
+// v38 (25 Sept): "Hoy" is a word, not a date. It means the day the customer
+// typed it, and this read it as the day the sweep happened to run. Andres wrote
+// "Hoy" on Friday evening; a sweep on Saturday morning would have asked two
+// Alcala studios to hold Saturday for a booking he made about Friday, and
+// Hatem's "Tomorrow" would have become Sunday. Same fault the customer copy had
+// until Tuesday. Anchor to created_at, fall back to today only when there is no
+// timestamp to anchor to.
+function madridDayOf(iso: unknown): Date {
+  const t = Date.parse(String(iso || ""));
+  if (!t) return madridToday();
+  const [y, m, d] = MADRID_YMD.format(new Date(t)).split("-").map((x) => parseInt(x, 10));
+  return new Date(Date.UTC(y, m - 1, d));
+}
 function requestDate(r: Record<string, unknown>): Date | null {
-  const today = madridToday();
+  const today = madridDayOf(r.created_at);
   const plus = (n: number) => new Date(today.getTime() + n * 86400e3);
   const texts = [String(r.message_text || "").match(/Fecha: ([^|]+)/)?.[1] || "", String(r.day1 || "")];
   for (const t0 of texts) {
@@ -869,6 +882,33 @@ async function reachableCustomer(r: Record<string, unknown>): Promise<{ ok: bool
 async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[] }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
+  // v38: a request for a day that has already been and gone reaches nobody.
+  // With relative words now anchored to when they were typed, an old "Hoy"
+  // resolves to a past date instead of quietly becoming today, and a past date
+  // is not something to ask a studio about. It is something to ask the customer
+  // about.
+  const reqD = requestDate(r);
+  const stale = !!reqD && reqD.getTime() < madridToday().getTime();
+  if (stale && !opts.extra && !opts.partnerIds?.length) {
+    const ymd = MADRID_YMD.format(reqD!);
+    console.log(`[dispatch] req=${requestId} asked for ${ymd}, which has passed. Asking nobody.`);
+    if (!opts.dryRun) {
+      await sq(`whatsapp_requests?id=eq.${requestId}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ stage: "stale", stage_note: `No studio asked. The day they asked for (${ymd}) has passed.`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
+      });
+      const sp = toWa(String(r.client_phone || ""));
+      if (sp && !isTestCustomer(r)) {
+        const es = String(r.languages || "").toLowerCase().startsWith("es");
+        const who = String(r.first_name || "").trim();
+        await sendText(sp, es
+          ? `${who ? who + ", p" : "P"}erdona la espera. El día que pediste ya ha pasado y no quiero buscarte hueco para un día que no has elegido.\n\n¿Qué día te viene bien ahora? Dímelo y pregunto a los centros de tu zona.\n\nMassage Club`
+          : `Sorry for the wait${who ? ", " + who : ""}. The day you asked for has now passed, and I do not want to go looking for a slot on a day you did not choose.\n\nWhat day suits you now? Tell me and I will ask the studios near you.\n\nMassage Club`);
+        await logEvent(sp, "dispatch_stale", { request_id: requestId, asked_for: ymd });
+      }
+    }
+    return { requestId, sent: 0, reason: "stale", askedFor: ymd };
+  }
   // v37: nothing goes out for a window that has already gone. The customer
   // hears the truth and is asked for a day we can actually sell.
   const late = tooLateReason(r);
