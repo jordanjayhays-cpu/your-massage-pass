@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/6c67f6d/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/4f9e71c/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -84,6 +84,13 @@ const SUPPORT = ["support@massageclub.io"];
 const JORDAN = ["jordan@massageclub.io", "jordanjayhays@gmail.com"]; // v39: "wants a person" must reach the Gmail too (Jordan, 5 Sept)
 const LOGO_URL = "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png";
 let OPS_KEY = Deno.env.get("MC_OPS_KEY") || "";
+// v124 (25 Sept): the day-before reminder ships OFF. It is a new automated
+// message to a customer, and Jordan's standing rule is that those are his call,
+// not mine. The detection, the schedule and the founder card all run either way
+// so he can see what it would have done; only the message to the customer is
+// behind this. Turn it on with start({ confirmLaterReminders: true }) in the
+// loader, the same shape as the studio outreach pause in dispatch-studios.
+let CONFIRM_LATER_REMINDERS = false;
 const APP = "https://book.massageclub.io";
 
 let WA_TOKEN = Deno.env.get("WHATSAPP_TOKEN") || "";
@@ -1658,6 +1665,73 @@ async function askForReviews(): Promise<number> {
   return sent;
 }
 
+// v124 (25 Sept): the day-before reminder, riding the same five minute sweep as
+// the bid settlement so there is no new cron to schedule and none to forget.
+//
+// The diary is funnel_events, not a new column: a confirm_later event carries
+// the request, the offer row and the minute it should fire, and a matching
+// confirm_later_reminded event is what stops it firing twice. One reminder per
+// request, ever, and only while the request is still waiting on the customer.
+//
+// Dormant until the loader passes confirmLaterReminders. See the note on
+// CONFIRM_LATER_REMINDERS.
+async function remindConfirmLater(): Promise<number> {
+  if (!CONFIRM_LATER_REMINDERS) return 0;
+  const now = Date.now();
+  const since = new Date(now - 30 * 86400e3).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=in.(confirm_later,confirm_later_reminded)&created_at=gte.${since}&order=created_at.asc&limit=500&select=phone,event,meta`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  if (!Array.isArray(rows) || !rows.length) return 0;
+  const done = new Set<string>(rows.filter((x: any) => x?.event === "confirm_later_reminded").map((x: any) => String(x?.meta?.request_id || "")));
+  let sent = 0;
+  for (const ev of rows) {
+    if (ev?.event !== "confirm_later") continue;
+    const m = (ev.meta || {}) as Record<string, any>;
+    const reqId = String(m.request_id || "");
+    const at = Date.parse(String(m.remind_at || ""));
+    if (!reqId || done.has(reqId) || !at || at > now) continue;
+    done.add(reqId);
+    const phone = digitsOf(String(ev.phone || ""));
+    if (!phone || TEST_PHONES.includes(phone)) continue;
+    const qr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${reqId}&select=id,first_name,stage,day1,message_text,languages`, { headers: H() });
+    const req = (await qr.json().catch(() => []))[0] || null;
+    // Only a request still waiting on this customer gets a nudge. Confirmed,
+    // cancelled and dismissed ones are closed and must never be reopened.
+    if (!req || !["offered", "studio_replied", "studio_asked", "bidding"].includes(String(req.stage || ""))) continue;
+    // Marked before sending, so a failure cannot become a loop that messages
+    // the same person on every sweep.
+    const open = await canFreeform(phone);
+    await logEvent(phone, "confirm_later_reminded", { request_id: reqId, row: m.row || null, window_open: open });
+    if (!open) {
+      console.log(`[wa] confirm-later window shut for ${phone}, request ${reqId}`);
+      await founderCard(`🗓 Cannot remind ${req.first_name || "+" + phone} · #${reqId}`, {
+        badge: "WINDOW SHUT",
+        title: `${req.first_name || "The customer"} asked to be reminded the day before and WhatsApp will not carry it`,
+        paras: [`They have not written for over 24 hours, so free text does not reach them and no template is approved for this. ${m.studio || "The studio"} at ${m.time || "?"} is still open on the board. Their number is below.`],
+        waNum: phone, to: JORDAN,
+      });
+      continue;
+    }
+    const L = String(m.lang || "") === "es" || req.languages === "es" ? "es" : "en";
+    const day = dayLabelFor(req.day1, req.message_text, L) || String(m.day || "");
+    const row = String(m.row || "");
+    const studio = String(m.studio || (L === "es" ? "el centro" : "the studio"));
+    const body = COPY[L].confirmLaterNudge(String(req.first_name || ""), studio, String(m.time || ""), day);
+    if (row) {
+      await sendButtons(phone, body, [{ id: `offer_yes_${row}`, title: COPY[L].offerYes(String(m.time || "")) }, { id: `offer_no_${row}`, title: COPY[L].offerNo }]);
+      const cs = await getSession(phone);
+      cs.data.prevStep = cs.step;
+      cs.step = "await_offer";
+      cs.data.offer = { row, time: m.time || "", studio, request: Number(reqId), day: m.day || null };
+      await saveSession(cs);
+    } else {
+      await sendText(phone, body);
+    }
+    sent++;
+  }
+  return sent;
+}
+
 async function settleBids(): Promise<number> {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
   const reqs = await r.json().catch(() => []);
@@ -2366,7 +2440,8 @@ const handler = async (req: Request) => {
   return res;
 };
 
-export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string } = {}) {
+export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string; confirmLaterReminders?: boolean } = {}) {
+  if (cfg.confirmLaterReminders) CONFIRM_LATER_REMINDERS = true;
   if (cfg.aiKey) AI_KEY = cfg.aiKey;
   if (cfg.waToken) WA_TOKEN = cfg.waToken;
   if (cfg.resendKey) RESEND_API_KEY = cfg.resendKey;
@@ -2391,7 +2466,9 @@ const handleInner = async (req: Request) => {
       const settled = await settleBids();
       // v83: the review ask rides on the same sweep rather than its own cron.
       const reviewed = await askForReviews();
-      return new Response(JSON.stringify({ ok: true, settled, reviewed }), { status: 200, headers: { "Content-Type": "application/json" } });
+      // v124: the day-before reminder rides here too. Returns 0 while it is off.
+      const reminded = await remindConfirmLater();
+      return new Response(JSON.stringify({ ok: true, settled, reviewed, reminded }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     // v66: read a message and return the reading, sending nothing. For checking
     // the interpreter against real sentences without a customer in the loop.
@@ -3644,6 +3721,46 @@ const handleInner = async (req: Request) => {
                 quote: text, waNum: cnum, prefill: await customerPrefill(s.phone), to: JORDAN,
               });
             }
+            break;
+          }
+          // v124 (25 Sept): "Lo confirmaria un dia antes." Juan wrote exactly
+          // that to a studio offer on 15 September. The bot read it as noise,
+          // repeated the same offer at him and filed a card, and nobody ever
+          // came back to him. It is not a no. It is a yes with a date on it,
+          // and the only thing it needed was a reminder in the diary.
+          if (CONFIRM_LATER_RE.test(text)) {
+            const cnum = s.phone.replace(/[^0-9]/g, "");
+            const clReq = Number(s.data.offer?.request || 0);
+            let remindAt: Date | null = null;
+            if (clReq) {
+              const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${clReq}&select=day1,message_text`, { headers: H() });
+              const rrow = (await rr.json().catch(() => []))[0] || null;
+              remindAt = confirmLaterRemindAt(rrow?.day1, rrow?.message_text);
+            }
+            const armed = CONFIRM_LATER_REMINDERS && !!remindAt;
+            await logEvent(from, "confirm_later", {
+              request_id: clReq || null, row: s.data.offer?.row || null,
+              studio: s.data.offer?.studio || "", time: s.data.offer?.time || "",
+              day: s.data.offer?.day || null, lang: L, armed,
+              remind_at: remindAt ? remindAt.toISOString() : null, said: text.slice(0, 200),
+            });
+            await sendText(from, COPY[L].confirmLaterAck(armed));
+            // The studio hears nothing from here. It was told we would come back
+            // when the customer answers, which is still true, and studio
+            // outreach is paused (Jordan, 23 Sept).
+            await founderCard(`🗓 ${s.wa_name || "+" + cnum} will confirm the day before · #${clReq || "?"}`, {
+              badge: armed ? "REMINDER SET" : "REMINDER OFF",
+              title: `${s.wa_name || "The customer"} is not saying no, they are saying later`,
+              paras: [
+                `Offer on the table: ${s.data.offer?.studio || "the studio"} at ${s.data.offer?.time || "?"} (request #${clReq || "?"}). Nothing has been promised to the studio and no slot is being held.`,
+                armed
+                  ? `The bot re-offers it with the Yes / Another time buttons at ${remindAt!.toISOString()}, which is 11:00 Madrid the day before, or the next sensible hour if that has gone. One reminder, then it stops.`
+                  : remindAt
+                  ? `The day-before reminder is switched OFF, so nothing else goes out. It would have fired at ${remindAt.toISOString()}. Turn it on with confirmLaterReminders in the wa-bot loader.`
+                  : `No date can be read off this request, so there is no day to remind them on. Worth a look.`,
+              ],
+              quote: text, waNum: cnum, prefill: await customerPrefill(s.phone), to: JORDAN,
+            });
             break;
           }
           const num = s.phone.replace(/[^0-9]/g, "");

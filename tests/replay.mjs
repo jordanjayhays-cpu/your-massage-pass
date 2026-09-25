@@ -19,6 +19,7 @@ import {
   HI_RE, ARRIVED_RE, genderWanted, genderBare, offerMatchesAsk, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, BLOCK_LINE_EN, BLOCK_LINE_ES, NOSHOW_RE, AD_OPENER_RE, ANY_RE, CANCEL_RE,
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE, ACK_ONLY_RE,
   NO_ENGLISH_RE, dayLabelFor, parseName,
+  CONFIRM_LATER_RE, confirmLaterRemindAt, madridInstant,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -880,6 +881,91 @@ for (const [offered, offerDay, day1, time1, want, note] of [
   check("offer fits the ask", JSON.stringify([offered, offerDay, day1, time1]),
     offerMatchesAsk(offered, offerDay, day1, time1), want, note);
 }
+
+// ---------------------------------------------------------------------------
+// "I will confirm the day before". Juan, 15 September: he answered a studio
+// offer with "Lo confirmaria un dia antes" and was never contacted again. The
+// reply is a yes with a date on it, and reading it as noise cost the booking.
+//
+// The regex has to be narrow enough that a plain acceptance and a question
+// about the address both keep going where they went before.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["Lo confirmaria un dia antes", true, "Juan, 15 Sept, his exact words. This is the one that has to fire"],
+  ["Lo confirmaría un día antes", true, "the same sentence with its accents"],
+  ["lo confirmo un dia antes", true, ""],
+  ["Te confirmo el día antes", true, ""],
+  ["un día antes te confirmo", true, "said the other way round"],
+  ["Te aviso el día antes", true, ""],
+  ["Os aviso la víspera", true, ""],
+  ["I'll confirm the day before", true, ""],
+  ["I will confirm a day before", true, ""],
+  ["Let me confirm the day before please", true, ""],
+  ["I'd rather confirm closer to the date", true, ""],
+  ["I'll confirm closer to the day", true, ""],
+  ["I'll let you know the day before", true, ""],
+  ["I'll get back to you the night before", true, ""],
+  ["Can I confirm the day before?", true, ""],
+  // Must not fire. These already go somewhere better.
+  ["Yes", false, "a plain acceptance goes straight to acceptOffer"],
+  ["Confirmo", false, "so does this one"],
+  ["confirmado", false, ""],
+  ["Can you confirm the address?", false, "a question about the studio, not about when"],
+  ["Please confirm the price before I book", false, "'before' is about the price, not a day"],
+  ["7pm?", false, "Asim's counter-offer still belongs to the time branch"],
+  ["No, otra hora", false, ""],
+  ["The day before yesterday I called them", false, "day before, but nobody is confirming anything"],
+]) {
+  check("confirm the day before", msg, CONFIRM_LATER_RE.test(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// When that reminder should land. 11:00 Madrid the day before the massage,
+// and never after the massage itself.
+// ---------------------------------------------------------------------------
+// Monday 21 September 2026, 16:00 Madrid (CEST, UTC+2).
+const clNow = new Date("2026-09-21T14:00:00Z");
+for (const [day1, messageText, want, note] of [
+  ["Thursday", "", "2026-09-23T09:00:00.000Z", "massage Thursday the 24th, reminder 11:00 Madrid on Wednesday the 23rd"],
+  ["", "Fecha: 24 september | Hora: 19:00", "2026-09-23T09:00:00.000Z", "the date out of message_text wins, same answer"],
+  ["Tomorrow", "", "2026-09-21T16:00:00.000Z", "massage tomorrow, so 11:00 the day before has gone: two hours from now"],
+  ["Today", "", "2026-09-21T16:00:00.000Z", "said it on the day itself, still worth one nudge two hours out"],
+  ["whenever", "", null, "no day can be read, so we promise nothing"],
+  ["", "", null, "nothing to go on at all"],
+]) {
+  const got = confirmLaterRemindAt(day1, messageText, clNow);
+  check("day-before reminder time", JSON.stringify([day1, messageText]), got ? got.toISOString() : null, want, note);
+}
+
+// Late at night the nudge waits for the morning, and if the massage is already
+// over by then there is no nudge at all.
+{
+  // Monday 21 September 2026, 21:30 Madrid.
+  const late = new Date("2026-09-21T19:30:00Z");
+  check("day-before reminder time", "tomorrow, asked at 21:30 Madrid",
+    confirmLaterRemindAt("Tomorrow", "", late).toISOString(), "2026-09-22T08:00:00.000Z",
+    "10:00 Madrid the next morning, which is the morning of the massage");
+  check("day-before reminder time", "today, asked at 21:30 Madrid",
+    confirmLaterRemindAt("Today", "", late), null,
+    "the massage is today and the morning is too late, so nothing goes out");
+  // The massage is today and they wrote at dawn: the nudge waits for 10:00.
+  const dawn = new Date("2026-09-22T04:00:00Z"); // 06:00 Madrid
+  check("day-before reminder time", "today, asked at 06:00 Madrid",
+    confirmLaterRemindAt("Today", "", dawn).toISOString(), "2026-09-22T08:00:00.000Z",
+    "two hours from now would be 08:00 Madrid, which is too early to write to somebody");
+  // Early morning: never before 10:00 Madrid.
+  const early = new Date("2026-09-22T04:00:00Z"); // 06:00 Madrid
+  check("day-before reminder time", "tomorrow, asked at 06:00 Madrid",
+    confirmLaterRemindAt("Tomorrow", "", early).toISOString(), "2026-09-22T09:00:00.000Z",
+    "11:00 Madrid today is still ahead of us, so it waits for it rather than writing at 06:00");
+}
+
+// Madrid moved off summer time on 25 October 2026, so the same wall clock hour
+// is a different instant either side of it.
+check("Madrid wall clock", "11:00 on 23 September 2026",
+  madridInstant(new Date(Date.UTC(2026, 8, 23)), 11).toISOString(), "2026-09-23T09:00:00.000Z", "CEST, UTC+2");
+check("Madrid wall clock", "11:00 on 23 November 2026",
+  madridInstant(new Date(Date.UTC(2026, 10, 23)), 11).toISOString(), "2026-11-23T10:00:00.000Z", "CET, UTC+1");
 
 // ---------------------------------------------------------------------------
 // Report
