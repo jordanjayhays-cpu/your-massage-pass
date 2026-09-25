@@ -170,6 +170,8 @@ export function confirmLaterRemindAt(day1: unknown, messageText: unknown, now: D
 // for "Me". People answer this question in sentences, not with a bare word, so
 // strip the sentence and keep the name. Anything left that is not a plausible
 // name is rejected, and the caller asks again rather than storing a phrase.
+// Words that are never somebody's name: an address, a service, or a job ask.
+const NAME_STOP_RE = /\b(?:vivo|vive|cerca|calle|avenida|plaza|metro|barrio|zona|minutos?|en|soy\s+de|live|living|near|street|road|avenue|from|looking|work|trabajo|masaje|massage|relaxing|relajante|deep|descontracturante)\b/i;
 const NAME_LEAD_RE = /^\s*(?:me\s+llamo|mi\s+nombre\s+es|my\s+name\s+is|i\s*am|i'?m|im|soy|it'?s|this\s+is|call\s+me|name\s*[:.]?)\s+/i;
 const NAME_TRAIL_RE = /[\s,.!¡¿?]+$/;
 export function parseName(t: string): string {
@@ -187,7 +189,7 @@ export function parseName(t: string): string {
   // del metro", survived the comma split as "Vivo en Urgel" and would have gone
   // to a studio as a name. Deliberately narrow: "de", "la" and "del" are left
   // out because real names carry them (Ana de la Cruz).
-  if (/\b(?:vivo|vive|cerca|calle|avenida|plaza|metro|barrio|zona|minutos?|en|soy\s+de|live|living|near|street|road|avenue|from|looking|work|trabajo|masaje|massage)\b/i.test(s)) return "";
+  if (NAME_STOP_RE.test(s)) return "";
   if (s.length > 60) return "";
   return s;
 }
@@ -350,6 +352,31 @@ export const EMAIL_IN_TEXT_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/
 // Only these words are a refusal now. Anything else that is not an address gets
 // the question once more, because a one word answer is far more likely to be an
 // answer to the last question than a no.
+// v126 (Jordan, 25 Sept): "i need you to be very simple when they ask for a
+// massage." The shortest question is the one never asked. WhatsApp hands us the
+// profile name on every single inbound, and on 24 September it handed us
+// "Hatem" while the bot asked him his name anyway and stored "Retiro".
+//
+// Profile names are not all usable: the last thirty on file include "la vida",
+// an emoji flower, "H.V." and "JM". The rules below keep the real ones and drop
+// the rest, and the cost of a miss is only that we ask, as we do today.
+// A first name is enough; nobody needs three surnames to book a massage.
+export function firstNameFromProfile(raw: unknown): string {
+  const cleaned = String(raw || "")
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}️‍]/gu, " ")
+    .replace(/[^\p{L}\s'-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const first = cleaned.split(" ")[0] || "";
+  // A lowercase opener is a handle or a phrase, not how people write their name
+  // ("la vida", "ibra Yatusave"). Scripts without case are unaffected.
+  if (/^\p{Ll}/u.test(first)) return "";
+  // All caps is a nickname or initials ("SALADO", "JM").
+  if (/^\p{Lu}+$/u.test(first)) return "";
+  if ([...first].length < 3) return "";
+  if (NAME_STOP_RE.test(first)) return "";
+  return first.slice(0, 40);
+}
 export const EMAIL_REFUSE_RE = /^\s*(?:no|nope|nah|skip|later|luego|m[aá]s tarde|paso|ninguno|nada|sin email|no tengo|i\s*do\s*n[o']?t\s*have|dont have|no quiero|prefiero no|prefer not|rather not|no thanks?|no gracias)\b/i;
 // "Special massage" probes - one standard line, then permanent silence.
 // "Extra services" is the other English euphemism: Jasper asked twice on
