@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/8e11423/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/4e744c8/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -203,11 +203,20 @@ const LONG_ES = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", we
 const LONG_EN = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
 const shortDate = (L: string, plusDays: number) => (L === "es" ? SHORT_ES : SHORT_EN).format(new Date(Date.now() + plusDays * 86400e3)).replace(/[.,]/g, "");
 const longDate = (L: string, plusDays: number) => (L === "es" ? LONG_ES : LONG_EN).format(new Date(Date.now() + plusDays * 86400e3)).replace(/,/g, "");
-const dayBtns = (L: string) => [
-  { id: "day_today", title: `${L === "es" ? "Hoy" : "Today"} (${shortDate(L, 0)})` },
-  { id: "day_tomorrow", title: `${L === "es" ? "Mañana" : "Tomorrow"} (${shortDate(L, 1)})` },
-  { id: "day_other", title: L === "es" ? "Otro día" : "Another day" },
-];
+// v127 (25 Sept, live): never offer a day that is already over. At 21:25
+// tonight a Facebook lead was offered "Today (Fri 25)", took it, was then
+// offered "Afternoon (13-18)" and took that too. Every studio in Madrid had
+// been shut for hours. He spent four taps building a request that could not
+// exist. A massage has to finish by 21:00 and needs an hour plus notice, so
+// after 19:00 Madrid there is no "today" left to sell and the button goes.
+const dayBtns = (L: string) => {
+  const btns = [
+    { id: "day_today", title: `${L === "es" ? "Hoy" : "Today"} (${shortDate(L, 0)})` },
+    { id: "day_tomorrow", title: `${L === "es" ? "Mañana" : "Tomorrow"} (${shortDate(L, 1)})` },
+    { id: "day_other", title: L === "es" ? "Otro día" : "Another day" },
+  ];
+  return mcMadridHour() >= 19 ? btns.slice(1) : btns;
+};
 // v60: an email we sent ("your massage is still open") carries a code. When
 // they tap through, WhatsApp opens with that code already typed, so the very
 // first thing the bot sees identifies their request. Pick the thread back up

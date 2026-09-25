@@ -22,6 +22,7 @@ import {
   CONFIRM_LATER_RE, confirmLaterRemindAt, madridInstant,
   EMAIL_REFUSE_RE, EMAIL_IN_TEXT_RE,
   firstNameFromProfile, detectArea, detectService,
+  ZONEQ_RE,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -1073,6 +1074,29 @@ for (const [msg, want, note] of [
   ["Hatem", false, ""],
 ]) {
   check("is this a service", msg, !!detectService(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// "Donde". A Facebook lead typed exactly that at 21:25 on 25 September and was
+// answered "Sorry, I did not catch that" in English. It is one word, it is
+// unmistakably Spanish, and it is a question we have a good answer for.
+// ---------------------------------------------------------------------------
+for (const [msg, zone, es, note] of [
+  ["Donde", true, true, "+34 602 819 908, 25 Sept 21:25, his exact message"],
+  ["donde?", true, true, ""],
+  ["¿Dónde?", true, true, ""],
+  ["Donde estais", true, true, "already worked, must keep working"],
+  ["Where", true, false, "same question in English, and it stays English"],
+  ["where?", true, false, ""],
+  ["where are you located", true, false, ""],
+  // Must not fire.
+  ["I am in Chamberi", false, false, "an answer to the area question, not a question"],
+  ["Another day", false, false, ""],
+  ["wonder where to go", false, false, "'where' inside a sentence is not the bare question"],
+  ["nowhere", false, false, ""],
+]) {
+  check("bare location question", msg, ZONEQ_RE.test(msg), zone, note);
+  check("bare location question", msg + " (language)", strongSpanish(msg), es, note);
 }
 
 // ---------------------------------------------------------------------------
