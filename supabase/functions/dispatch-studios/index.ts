@@ -405,6 +405,58 @@ function madridToday(): Date {
   const [y, m, d] = MADRID_YMD.format(new Date()).split("-").map((x) => parseInt(x, 10));
   return new Date(Date.UTC(y, m - 1, d));
 }
+// v37 (Jordan, 25 Sept): "just be smart when sending out studios."
+//
+// Andres finished his booking at 19:51 tonight asking for the 18-21 band. Nine
+// minutes of that band were left, and a massage needs an hour, so there was no
+// slot for anyone to say yes to. Asking four studios to fill it spends goodwill
+// on something none of them could have done, and an ask like that is how a
+// studio learns to stop reading us. Centro Aloha left over two of these.
+//
+// Only today can be too late. LEAD_MINUTES is the notice a studio needs plus
+// the time it takes the customer to get there.
+const LEAD_MINUTES = 45;
+const MASSAGE_MINUTES = 60;
+function madridNowMinutes(): number {
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(new Date());
+  const g = (k: string) => Number(p.find((x) => x.type === k)?.value || 0);
+  return (g("hour") % 24) * 60 + g("minute");
+}
+function tooLateReason(r: Record<string, unknown>): string | null {
+  const d = requestDate(r);
+  if (!d || d.getTime() !== madridToday().getTime()) return null;
+  const t = String(r.time1 || "");
+  const range = t.match(/\((\d{1,2})\s*-\s*(\d{1,2})\)/);
+  const exact = concreteTime(t);
+  // The last minute a massage could still start and finish inside what they asked for.
+  const endMin = range ? parseInt(range[2], 10) * 60 : (exact ? parseInt(exact.slice(0, 2), 10) * 60 + parseInt(exact.slice(3), 10) + MASSAGE_MINUTES : 0);
+  if (!endMin) return null;
+  const lastStart = endMin - MASSAGE_MINUTES;
+  const now = madridNowMinutes();
+  if (now + LEAD_MINUTES <= lastStart) return null;
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return `asked for ${t || "today"}, last possible start ${hhmm(lastStart)}, it is ${hhmm(now)} in Madrid`;
+}
+
+// v37: a studio asked three times that has never once written back is not a
+// candidate, it is a number we are burning, and every silent template costs a
+// little of the WhatsApp quality rating the whole account runs on.
+const SILENT_LIMIT = 3;
+async function silentIds(ids: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (!ids.length) return out;
+  const rows = await sq(`request_dispatch?partner_id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&sent_at=not.is.null&select=partner_id,replied_at`);
+  const asked = new Map<string, number>();
+  const replied = new Set<string>();
+  for (const x of (Array.isArray(rows) ? rows : []) as any[]) {
+    const pid = String(x.partner_id);
+    asked.set(pid, (asked.get(pid) || 0) + 1);
+    if (x.replied_at) replied.add(pid);
+  }
+  for (const [pid, n] of asked) if (n >= SILENT_LIMIT && !replied.has(pid)) out.add(pid);
+  return out;
+}
+
 function requestDate(r: Record<string, unknown>): Date | null {
   const today = madridToday();
   const plus = (n: number) => new Date(today.getTime() + n * 86400e3);
@@ -817,6 +869,28 @@ async function reachableCustomer(r: Record<string, unknown>): Promise<{ ok: bool
 async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[] }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
+  // v37: nothing goes out for a window that has already gone. The customer
+  // hears the truth and is asked for a day we can actually sell.
+  const late = tooLateReason(r);
+  if (late && !opts.extra && !opts.partnerIds?.length) {
+    console.log(`[dispatch] req=${requestId} too late, asking nobody: ${late}`);
+    if (!opts.dryRun) {
+      await sq(`whatsapp_requests?id=eq.${requestId}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ stage: "too_late", stage_note: `No studio asked. ${late}`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
+      });
+      const cp = toWa(String(r.client_phone || ""));
+      if (cp && !isTestCustomer(r)) {
+        const es = String(r.languages || "").toLowerCase().startsWith("es");
+        const who = String(r.first_name || "").trim();
+        await sendText(cp, es
+          ? `${who ? who + ", t" : "T"}e soy sincero: para hoy en esa franja ya no da tiempo a que un centro confirme y te dé el masaje entero. Prefiero decírtelo a dejarte esperando por algo que no iba a salir.\n\n¿Te viene bien mañana? Dime el día y la hora y lo pregunto en cuanto abran.\n\nMassage Club`
+          : `Being straight with you${who ? ", " + who : ""}: for that window today there is no longer enough time for a studio to confirm and give you the full massage. I would rather say so than leave you waiting on something that was not going to happen.\n\nDoes tomorrow work? Tell me the day and time and I will ask the moment they open.\n\nMassage Club`);
+        await logEvent(cp, "dispatch_too_late", { request_id: requestId, why: late });
+      }
+    }
+    return { requestId, sent: 0, reason: "too_late", why: late };
+  }
   const want = String(r.service_name || "");
   // Today needs more doors knocked on, because most of them will not open in time.
   const reqDay = requestDate(r);
@@ -862,14 +936,27 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       return !why;
     });
   }
+  // v37: rest the studios that have never answered. Never over the last one
+  // standing, because a silent studio still beats asking nobody.
+  const skippedSilent: string[] = [];
+  if (candidates.length > 1) {
+    const silent = await silentIds(candidates.map((x) => String(x.id)));
+    if (silent.size) {
+      const kept = candidates.filter((x) => !silent.has(String(x.id)));
+      if (kept.length) {
+        for (const x of candidates) if (silent.has(String(x.id))) { skippedSilent.push(x.business_name); console.log(`[dispatch] req=${requestId} resting ${x.business_name}, ${SILENT_LIMIT}+ asks and never a reply`); }
+        candidates = kept;
+      }
+    }
+  }
   if (!candidates.length) {
     console.log(`[dispatch] req=${requestId} no reachable studios`);
-    return { requestId, sent: 0, candidates: [], skippedClosed, reason: "no_candidates" };
+    return { requestId, sent: 0, candidates: [], skippedClosed, skippedSilent, reason: "no_candidates" };
   }
 
   const testCustomer = isTestCustomer(r);
   if (opts.dryRun) {
-    return { requestId, sent: 0, dryRun: true, testCustomer, sameDay: isSameDay, fanout, skippedClosed, requestDate: requestDate(r)?.toISOString().slice(0, 10) || null, candidates: candidates.map((c) => ({ name: c.business_name, area: c.area, km: c.km, wa: c.wa, widened: c.widened, score: c.score })) };
+    return { requestId, sent: 0, dryRun: true, testCustomer, sameDay: isSameDay, fanout, skippedClosed, skippedSilent, requestDate: requestDate(r)?.toISOString().slice(0, 10) || null, candidates: candidates.map((c) => ({ name: c.business_name, area: c.area, km: c.km, wa: c.wa, widened: c.widened, score: c.score })) };
   }
 
   let sent = 0;
