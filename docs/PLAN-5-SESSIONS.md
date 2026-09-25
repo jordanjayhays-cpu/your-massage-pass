@@ -148,3 +148,43 @@ a human one, and `THE-13.md` already has a drafted message per person.
    because it was never broken.
 
 Nothing else needs building.
+
+## Built but DISARMED — Jordan's call, 2026-09-25
+
+Everything above is built, tested end to end, and then deliberately switched off.
+
+| Piece | State |
+| --- | --- |
+| `mc_cold_requests_digest()` function | Exists on `jglftdstrowwckwqmpue`. Callable by hand, fires nothing on its own |
+| `mc-cold-requests-daily` cron (jobid 38) | **INACTIVE.** Schedule `0 7 * * *` preserved |
+| n8n `Massage Club — warm requests going cold` (`pKeG5ceHBacESt5k`) | **INACTIVE** |
+
+### To arm it — two commands
+
+```sql
+-- 1. wake the daily sweep (09:00 Madrid)
+select cron.alter_job(38, active := true);
+```
+
+```bash
+# 2. wake the workflow that turns the digest into an email
+curl -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" \
+  https://neuromatch.app.n8n.cloud/api/v1/workflows/pKeG5ceHBacESt5k/activate
+```
+
+Swap `activate` for `deactivate` and `true` for `false` to put it back to sleep.
+
+### To run it once, by hand, without arming anything
+
+```sql
+select mc_cold_requests_digest();
+```
+
+Returns the count and the full summary text. It only sends an email if the n8n workflow above is
+active, so with the workflow off this is a pure read.
+
+### What is still active in n8n, and why it cannot fire
+
+`Amigo Sales — send as jordan@amigosales.com` and `Board — urgent task landed` are active, but both
+are webhook-only. Nothing currently POSTs to either, so neither can fire by itself. They are tools
+waiting to be called, not jobs waiting to run.
