@@ -20,6 +20,7 @@ import {
   AUTOREPLY_RE, EROTIC_RE, JOB_RE, HOURS_STATEMENT_RE, looksLikeQuestion, parseQuotedPrice, euro, SERVICEQ_RE, ACK_ONLY_RE,
   NO_ENGLISH_RE, dayLabelFor, parseName,
   CONFIRM_LATER_RE, confirmLaterRemindAt, madridInstant,
+  EMAIL_REFUSE_RE, EMAIL_IN_TEXT_RE,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -966,6 +967,53 @@ check("Madrid wall clock", "11:00 on 23 September 2026",
   madridInstant(new Date(Date.UTC(2026, 8, 23)), 11).toISOString(), "2026-09-23T09:00:00.000Z", "CEST, UTC+2");
 check("Madrid wall clock", "11:00 on 23 November 2026",
   madridInstant(new Date(Date.UTC(2026, 10, 23)), 11).toISOString(), "2026-11-23T10:00:00.000Z", "CET, UTC+1");
+
+// ---------------------------------------------------------------------------
+// Who is actually refusing to give an email. Hatem, 24 September: asked for his
+// email, he typed "Hatem", which was his name, because he had been one question
+// behind since the start. It was logged as a refusal, and nine seconds later he
+// sent Hatem@vitasnacafe.com and that was thrown away too. He booked for the
+// next afternoon with no second channel.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  // Real refusals. These must still be taken at their word.
+  ["no", true, ""],
+  ["No thanks", true, ""],
+  ["nope", true, ""],
+  ["skip", true, ""],
+  ["No gracias", true, ""],
+  ["paso", true, ""],
+  ["no tengo", true, ""],
+  ["I don't have one", true, ""],
+  ["prefiero no darlo", true, ""],
+  ["rather not", true, ""],
+  ["later", true, ""],
+  // Not refusals. Every one of these used to end the question.
+  ["Hatem", false, "Hatem, 24 Sept, his exact answer. His name, not a no"],
+  ["Retiro", false, "the answer to the question before that one"],
+  ["Relaxing massage", false, "and the one before that"],
+  ["que?", false, "they did not understand the question"],
+  ["?", false, ""],
+  ["ok", false, ""],
+  ["Juan Perez", false, ""],
+  ["whats that for", false, ""],
+  ["hatem arroba vitasnacafe punto com", false, "spelled out, still not a refusal"],
+]) {
+  check("email refusal", msg, EMAIL_REFUSE_RE.test(msg), want, note);
+}
+
+// An address is an address wherever it turns up in the message.
+for (const [msg, want, note] of [
+  ["Hatem@vitasnacafe.com", "hatem@vitasnacafe.com", "Hatem, 24 Sept, nine seconds too late and binned"],
+  ["my email is jordan.hays@student.ie.edu thanks", "jordan.hays@student.ie.edu", "buried in a sentence"],
+  ["Es ana.lopez+spa@gmail.com", "ana.lopez+spa@gmail.com", "a plus address is a real address"],
+  ["Hatem", null, ""],
+  ["no", null, ""],
+  ["call me at 612474827", null, "a phone number is not an email"],
+]) {
+  const m = msg.match(EMAIL_IN_TEXT_RE);
+  check("email in any message", msg, m ? m[0].toLowerCase() : null, want, note);
+}
 
 // ---------------------------------------------------------------------------
 // Report

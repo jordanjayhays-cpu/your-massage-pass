@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/4f9e71c/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/2bfc08b/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -3027,6 +3027,42 @@ const handleInner = async (req: Request) => {
     }
     const L: string = s.data.lang === "es" ? "es" : "en";
 
+    // v125 (25 Sept, live): an email address is an email address wherever it
+    // turns up. Hatem typed Hatem@vitasnacafe.com nine seconds after the bot had
+    // given up asking, and because he was at the menu by then it was read as a
+    // menu selection and thrown away. He booked for the next afternoon with no
+    // second channel, which is exactly what Jordan wrote in capitals on 8
+    // September. The email steps do their own handling and are left alone.
+    if (text && !["await_email", "await_email_req", "muted"].includes(s.step)) {
+      const em = text.match(EMAIL_IN_TEXT_RE);
+      const addr = em ? em[0].toLowerCase() : "";
+      if (addr && !s.data.email) {
+        s.data.email = addr;
+        s.data.emailRefused = false;
+        await saveSession(s);
+        // Onto the open request too, not just the session. A session is a
+        // conversation; the request is what the studio and the confirmation
+        // read from. Only fills a blank, never overwrites one they gave us.
+        const pr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&contact_email=is.null&stage=not.in.(cancelled,dismissed)&order=created_at.desc&limit=1&select=id`, { headers: H() });
+        const prow = (await pr.json().catch(() => []))[0] || null;
+        if (prow?.id) {
+          await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${prow.id}`, {
+            method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+            body: JSON.stringify({ contact_email: addr }),
+          }).catch((e) => console.log("[wa] late email not saved to request", String(e)));
+        }
+        await logEvent(from, "email_given", { late: true, step: s.step, request_id: prow?.id || null });
+        // A message that is nothing but the address gets an answer and the
+        // question they were on. One that carries other words is saved quietly
+        // and carries on being read as whatever else it was.
+        if (isEmail(text)) {
+          await sendText(from, COPY[L].emailLate(addr));
+          await reAsk(s, from, L);
+          return new Response("OK", { status: 200 });
+        }
+      }
+    }
+
     // v55: a sticker, photo or voice note mid-flow is not an answer. On 6 Sept
     // two stickers at 23:09 got the full welcome twice. Say what we can read,
     // ask the current question again, and never repeat that within ten minutes.
@@ -3627,9 +3663,16 @@ const handleInner = async (req: Request) => {
         // refusal does not lose us the customer: they are in a WhatsApp thread,
         // so we can still reach them. It is logged and Jordan is told, because
         // an exception nobody can see is the same as no rule at all.
-        if (text && text.includes("@") && !s.data.emailRetried) {
+        // v125 (25 Sept): this retry used to need an "@" in the message, so only
+        // a mangled address got a second chance. Hatem answered with "Hatem",
+        // his own name, because he was one question behind the whole way
+        // through, and a name is not a no. Anything that is not an address and
+        // not one of the refusal words now gets the question once more; the
+        // second miss is still a refusal, so it cannot loop.
+        if (text && !EMAIL_REFUSE_RE.test(text) && !s.data.emailRetried) {
           s.data.emailRetried = true; await saveSession(s);
           await sendText(from, COPY[L].emailBad);
+          await logEvent(from, "email_reasked", { said: text.slice(0, 60) });
           break;
         }
         s.data.emailRefused = true; await saveSession(s);
