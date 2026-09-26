@@ -758,8 +758,15 @@ export const COPY: Record<string, any> = {
     goWaiting: "Nothing has gone out yet. Tap Yes and I ask the studios, or tell me what to change.",
     confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
       `Done, ${n}. ${sN}, ${w}, ${st}.\n\nThe studios are closed right now. I'll ask them the moment they open at 09:00 and write here as soon as one confirms. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
-    offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
-      `Update on your ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} can take you at ${time} ${day}.\n\nDoes that work?`,
+    // v129 (26 Sept): the address. partnerCard has always looked it up and the
+    // offer has always thrown it away, so somebody deciding whether to cross
+    // Madrid was told a name and a neighbourhood and nothing else. 66 studio
+    // answers have become 6 bookings. Plain text, not a map link, because
+    // customer-facing links are massageclub.io only and WhatsApp makes an
+    // address tappable on its own. No bold either: Jordan, 19 Sept, case 11,
+    // "send it normally", which is what the replay check on this line guards.
+    offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string, addr = "") =>
+      `Update on your ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} can take you at ${time} ${day}.${addr ? "\n" + addr : ""}\n\nDoes that work?`,
     // v81 (Jordan, 12 Sept): the member rate. We ask every studio for a Massage
     // Club rate, so when one gives it in writing the customer hears what we got
     // them, not just a price. It is truthful only because that is literally how
@@ -926,8 +933,9 @@ export const COPY: Record<string, any> = {
     goWaiting: "Todavía no ha salido nada. Toca Sí y pregunto a los centros, o dime qué cambiamos.",
     confirmLater: (n: string, sN: string, w: string, st: string, _id: number | null) =>
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nAhora mismo los centros están cerrados. Les pregunto en cuanto abran a las 09:00 y te escribo aquí en cuanto uno confirme. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
-    offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string) =>
-      `Novedades sobre tu ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} puede atenderte a las ${time} ${day}.\n\n¿Te va bien?`,
+    // v129: ver la nota en la versión inglesa.
+    offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string, addr = "") =>
+      `Novedades sobre tu ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} puede atenderte a las ${time} ${day}.${addr ? "\n" + addr : ""}\n\n¿Te va bien?`,
     fallbackAck: "Recibido, gracias. Lo miro y te digo algo enseguida.",
     reviewAsk: (studio: string, link: string) =>
       `¿Qué tal ${studio || "ha ido"}? Valóralo aquí, son 10 segundos:\n${link}`,
