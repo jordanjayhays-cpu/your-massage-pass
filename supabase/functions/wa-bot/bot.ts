@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/61920bc/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/0676986/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -1953,7 +1953,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     return;
   }
   await sendButtons(clientNum,
-    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked) + priceLine,
+    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked, pc.address) + priceLine,
     [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }]);
   cs.data.prevStep = cs.step;
   cs.step = "await_offer";
