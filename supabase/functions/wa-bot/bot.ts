@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/0676986/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/0676986/supabase/functions/wa-bot/copy.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -3266,6 +3266,7 @@ const handleInner = async (req: Request) => {
     // again. Never store someone's question as their name, day or area.
     if (text && freeTextStep && !isEmail(text) && looksLikeQuestion(text)) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
+      else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
       else {
@@ -3298,8 +3299,9 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || HOWWORKS_RE.test(text) || ZONEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
+    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || HOWWORKS_RE.test(text) || ZONEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
+      else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
       else {
@@ -3343,6 +3345,27 @@ const handleInner = async (req: Request) => {
         s.step = "await_service"; await saveSession(s);
         await askService(from, L);
       }
+      return new Response("OK", { status: 200 });
+    }
+
+    // v129 (26 Sept 23:14, live): "Buenas noches, cual es el precio de los
+    // masajes" was a first message, so the step was "start" and the button-step
+    // branch above never ran. SERVICEQ_RE matched "cual ... masajes" and he was
+    // sent the service menu with no price in it. A price question is answered
+    // wherever it is asked, and only then do we carry on.
+    if (text && !freeTextStep && PRICEQ_RE.test(text)) {
+      await sendText(from, COPY[L].priceInfo);
+      await logEvent(from, "price_asked", { said: String(text).slice(0, 80) });
+      await continueFromKnown(s, from, L);
+      return new Response("OK", { status: 200 });
+    }
+
+    // v129 (27 Sept 05:00, live): three tries in two languages for photos and
+    // the bot had no answer for any of them.
+    if (text && !freeTextStep && PHOTOQ_RE.test(text)) {
+      await sendText(from, COPY[L].photoAnswer);
+      await logEvent(from, "photos_asked", { said: String(text).slice(0, 80) });
+      await continueFromKnown(s, from, L);
       return new Response("OK", { status: 200 });
     }
 

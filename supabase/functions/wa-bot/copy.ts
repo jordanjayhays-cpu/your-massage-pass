@@ -208,7 +208,7 @@ export function strongSpanish(t: string): boolean {
   const words = ["hola", "buenas", "quiero", "masaje", "reservar", "cuanto", "cuánto", "precio", "gracias", "por", "favor", "mañana", "hoy", "para", "una", "cita", "hora", "tarde", "noche", "zona", "donde", "dónde"];
   // v48: the massage words themselves are Spanish too. "Relajante de hora y media"
   // (6 Sept, 02:54) scored as English and got the English day question.
-  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera", "donde", "dónde", "direccion", "dirección"];
+  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera", "donde", "dónde", "direccion", "dirección", "fotos", "foto", "imagenes", "imágenes", "galeria", "galería", "tienes", "tiene", "valor", "coste", "muestrame", "muéstrame", "ensename", "enséñame"];
   const toks = s.split(/[^a-záéíóúñü]+/).filter(Boolean);
   const found = new Set<string>();
   for (const w of toks) if (words.includes(w)) found.add(w);
@@ -549,7 +549,9 @@ export const OTHERTYPE_RE = /(different|another|other|specific|change).{0,20}(ma
 // A question asked in the middle of the flow must be answered, not stored as
 // an answer. MRB asked "How much for 90 minutes?" at the area step and the bot
 // filed it as his neighbourhood.
-export const PRICEQ_RE = /(how much|price|cost|charges|rates?|cu[aá]nto|precio|cuesta|tarifa)/i;
+// v129 (26 Sept, 23:17, live): "Y el valor" was a price question and matched
+// nothing here, so it fell through to the day buttons with no answer at all.
+export const PRICEQ_RE = /(how much|price|cost|charges|rates?|cu[aá]nto|precio|cuesta|tarifa|valor|coste|importe|cobr[aá]is|cobran|qu[eé] vale|cu[aá]l es el valor)/i;
 export const QUESTION_RE = /(how much|how many|how long|price|cost|charges|what (is|are|do)|do you|can i|is it|cu[aá]nto|precio|cuesta|tarifa|qu[eé] incluye|puedo|se puede)/i;
 export const looksLikeQuestion = (t: string): boolean => {
   const q = String(t || "").trim();
@@ -567,6 +569,11 @@ export const HOWWORKS_RE = /(how (does (this|it) work|this works?|do (you|i))|ho
 // list. A question about what we offer is answered with what we offer.
 // OTHERTYPE_RE did not catch it because it wants "another" or "different" in
 // front of the word type, and a plain "What type?" has neither.
+// v129 (27 Sept, live): +34640032448 wrote "Tienes fotos", then "Fotos", then
+// "Photo", and got the day question twice and "Sorry, I did not catch that"
+// once. There was no photo question in the bot at all. Every studio we book
+// has its page on the site, so we can answer this honestly.
+export const PHOTOQ_RE = /\b(?:photos?|pics?|pictures?|images?|gallery|see the (?:place|studio|room)|fotos?|im[aá]genes?|im[aá]gen|galer[ií]a|ver el (?:sitio|centro|local|cuarto)|ens[eé][nñ]a|mu[eé]strame|muestrame)\b/i;
 export const SERVICEQ_RE = /^\s*(?:what|which|qu[eé]|cu[aá]l(?:es)?)\s*(?:type|types|kind|tipo|tipos)\s*\??\s*$|\b(?:what|which|qu[eé]|cu[aá]l(?:es)?)\b[^?.]{0,30}\b(?:types?|kinds?|sorts?|massages|services|tipos?|clases?|masajes|servicios)\b|\bwhat\s+(?:do\s+you|you)\s+(?:provide|offer|have|do)\b|\b(?:tipos?\s+de\s+masaje|qu[eé]\s+masajes)\b/i;
 
 export const MAIN_SERVICES = [
@@ -640,7 +647,13 @@ export const COPY: Record<string, any> = {
     moreTitle: "More massages:",
     moreRow: { title: "More massages", desc: "Balinese, shiatsu, reflexology..." },
     backRow: { title: "Back", desc: "main massage list" },
-    day: "Good choice. Which day suits you?",
+    // v129 (27 Sept, live): "Good choice." was baked into the day question, so
+    // every re-ask claimed a choice. +34640032448 asked for photos three times
+    // and was told "Good choice" three times, and the same misfire is recorded
+    // five times in the comments above and was never fixed at the source. The
+    // service confirmation ("Nice, relaxing 👌") is already its own message, so
+    // the day question does not need to congratulate anyone.
+    day: "Which day suits you?",
     // v105: repeating the same question at someone who sent something we could
     // not read makes the bot look broken. On 18 Sept a lead sent four Instagram
     // links and got "Good choice. Which day suits you?" four times, word for
@@ -832,6 +845,10 @@ export const COPY: Record<string, any> = {
     // does the treatment, and both got "which massage would you like?".
     willFindOut: "Good question. I would rather check than guess, so I am finding out for you now and I will come straight back here with the answer.",
     noHuman: "I can sort this out right here. Tell me the massage you would like, the day, and the part of Madrid, in one message if you like. 60 minutes is 40 to 85 EUR depending on the studio, paid directly there, no fee from us.",
+    // v129: an honest answer. We do not hold photos of every studio here in the
+    // chat, but the site has the studio pages, and the offer we send names the
+    // studio and its address so it can be looked up.
+    photoAnswer: "You can see the studios, with photos and prices, at book.massageclub.io. When I have a studio for your day and time I send you its name and address, so you can look it up before you say yes.",
     zoneAnswer: "We are not a single studio. We book you into professional studios all over Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña and more) and you pick the area that suits you.",
   },
   es: {
@@ -841,7 +858,7 @@ export const COPY: Record<string, any> = {
     moreTitle: "Más masajes:",
     moreRow: { title: "Más masajes", desc: "balinés, shiatsu, reflexología..." },
     backRow: { title: "Volver", desc: "lista principal" },
-    day: "Buena elección. ¿Qué día te viene bien?",
+    day: "¿Qué día te viene bien?",
     notCaught: "Perdona, no te he entendido.",
     gotLink: "Gracias por el enlace. ¿Quieres seguir con la reserva del masaje?",
     noHomeVisit: "Solo reservamos masajes presenciales, en centros profesionales. Te busco uno cerca. ¿En qué zona de Madrid estás? También puedes compartir tu ubicación.",
@@ -973,6 +990,7 @@ export const COPY: Record<string, any> = {
     reconfirmRemind: (studio: string, time: string) => `Una cosa rápida: ¿sigues contando con ir a ${studio} a las ${time}? Responde *sí*, o dinos qué cambiar.`,
     willFindOut: "Buena pregunta. Prefiero confirmarlo antes que darte un dato a medias, así que lo consulto ahora mismo y te digo aquí.",
     noHuman: "Te lo resuelvo aquí mismo. Dime qué masaje quieres, qué día y en qué zona de Madrid, en un solo mensaje si quieres. 60 minutos cuesta entre 40 y 85 EUR según el centro, se paga allí directamente, sin comisión.",
+    photoAnswer: "Puedes ver los centros, con fotos y precios, en book.massageclub.io. Cuando tenga un centro para tu día y tu hora te envío el nombre y la dirección, así lo puedes mirar antes de decir que sí.",
     zoneAnswer: "No somos un solo centro. Te reservamos en centros profesionales de todo Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña y más) y tú eliges la zona que te venga bien.",
   },
 };

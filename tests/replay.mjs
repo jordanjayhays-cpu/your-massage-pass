@@ -22,7 +22,7 @@ import {
   CONFIRM_LATER_RE, confirmLaterRemindAt, madridInstant,
   EMAIL_REFUSE_RE, EMAIL_IN_TEXT_RE,
   firstNameFromProfile, detectArea, detectService,
-  ZONEQ_RE,
+  ZONEQ_RE, PRICEQ_RE, PHOTOQ_RE,
   COPY,
 } from "../supabase/functions/wa-bot/copy.ts";
 
@@ -1097,6 +1097,67 @@ for (const [msg, zone, es, note] of [
 ]) {
   check("bare location question", msg, ZONEQ_RE.test(msg), zone, note);
   check("bare location question", msg + " (language)", strongSpanish(msg), es, note);
+}
+
+// ---------------------------------------------------------------------------
+// Price questions. Two live failures on the night of 26 September, both from
+// +34 601 015 258, who asked twice and never got a number.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["Buenas noches , cual es el precio de los masajes.", true, "26 Sept 23:14, his exact first message. Got the service menu, no price"],
+  ["Y el valor", true, "26 Sept 23:17, his second try. Matched nothing at all"],
+  ["¿Cuál es el valor?", true, ""],
+  ["cuanto cuesta", true, "already worked, must keep working"],
+  ["Que precio es?", true, "6 Sept, already covered"],
+  ["how much is a massage", true, ""],
+  ["what is the cost", true, ""],
+  ["¿cuánto cobráis?", true, ""],
+  ["cual es el coste", true, ""],
+  ["el importe total", true, ""],
+  // Must not fire. A price answer thrown at these is a non sequitur.
+  ["Relajante", false, "a service, not a question"],
+  ["Vale", false, "'vale' alone is Spanish for ok, never a price question"],
+  ["vale, gracias", false, "ok thanks, closing the thread"],
+  ["Chamberi", false, ""],
+  ["mañana por la tarde", false, ""],
+]) {
+  check("price question", msg, PRICEQ_RE.test(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
+// Photo questions. Until 27 September the bot had no answer for these at all.
+// +34 640 032 448 asked three times in two languages at 05:00 and 05:35 and got
+// the day question twice and "Sorry, I did not catch that" once.
+// ---------------------------------------------------------------------------
+for (const [msg, photo, es, note] of [
+  ["Tienes fotos", true, true, "27 Sept 05:00, his exact message. Answered in English"],
+  ["Fotos", true, true, "27 Sept 05:01, his second try"],
+  ["Photo", true, false, "27 Sept 05:35, his third try, in English"],
+  ["photos?", true, false, ""],
+  ["do you have pictures", true, false, ""],
+  ["¿tienes imágenes del centro?", true, true, ""],
+  ["can I see the studio", true, false, ""],
+  ["muéstrame el sitio", true, true, ""],
+  ["any pics", true, false, ""],
+  // Must not fire.
+  ["Relaxing", false, false, ""],
+  ["photographer", false, false, "not a request to see the studio"],
+  ["Chamberi", false, false, ""],
+  ["mañana", false, true, ""],
+]) {
+  check("photo question", msg, PHOTOQ_RE.test(msg), photo, note);
+  check("photo question", msg + " (language)", strongSpanish(msg), es, note);
+}
+
+// ---------------------------------------------------------------------------
+// The day question must not congratulate anyone. "Good choice." was baked into
+// it, so every re-ask claimed a choice that had not happened. Recorded five
+// times in copy.ts comments before it was finally taken out of the string.
+// ---------------------------------------------------------------------------
+for (const L of ["en", "es"]) {
+  check("day question claims no choice", `COPY.${L}.day`, /good choice|buena elecci/i.test(COPY[L].day), false,
+    "27 Sept: asked for photos three times, told 'Good choice' three times");
+  check("day question still asks the day", `COPY.${L}.day`, /d[ií]a|day/i.test(COPY[L].day), true, "");
 }
 
 // ---------------------------------------------------------------------------
