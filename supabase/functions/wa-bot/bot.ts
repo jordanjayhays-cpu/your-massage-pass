@@ -2625,8 +2625,12 @@ const handleInner = async (req: Request) => {
         people: set.size,
         ad: [...set].filter((ph) => adPeople.has(ph)).length,
       });
+      // "Said hello" must be people who actually started a booking chat, not
+      // every phone that sent us anything: studios reply on the same number and
+      // would pad the top of the funnel with their own messages. flow_started is
+      // logged once when a customer opens a conversation, so that is the unit.
       const steps = [
-        step("Said hello", people),
+        step("Said hello", anyOf("flow_started")),
         step("Chose a massage", anyOf("service_chosen")),
         step("Chose a day", anyOf("day_chosen")),
         step("Chose a time", anyOf("time_chosen")),
@@ -2642,7 +2646,7 @@ const handleInner = async (req: Request) => {
       return new Response(JSON.stringify({
         ok: true, from, to,
         rows: { messages: msgs.length, events: evs.length },
-        people: people.size, adPeople: adPeople.size,
+        inboundPhones: people.size, adPeople: adPeople.size,
         steps, allEvents: counts,
       }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
