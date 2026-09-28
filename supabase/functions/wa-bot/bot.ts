@@ -2643,11 +2643,37 @@ const handleInner = async (req: Request) => {
       ];
       const counts: Record<string, number> = {};
       for (const k of Object.keys(byEvent)) counts[k] = byEvent[k].size;
+      // funnel_events only starts on 1 September 2026, the day the instrumentation
+      // was added. For any window before that the steps above are all zero and the
+      // only honest history is in the tables that predate it, so read those too.
+      const reqs = await pull(`whatsapp_requests?select=id,created_at,client_phone,first_name,contact_email,stage,service_name,studio_name&created_at=gte.${lo}&created_at=lte.${hi}`);
+      const bks = await pull(`bookings?select=id,created_at,booking_date,status,is_test,client_name,client_email,spa_name&created_at=gte.${lo}&created_at=lte.${hi}`);
+      const reqStage: Record<string, number> = {};
+      const reqPhones = new Set<string>();
+      let reqWithEmail = 0;
+      for (const r of reqs) {
+        const ph = digitsOf(String(r.client_phone || ""));
+        if (ph && isTestPhone(ph)) continue;
+        if (ph) reqPhones.add(ph);
+        reqStage[String(r.stage || "none")] = (reqStage[String(r.stage || "none")] || 0) + 1;
+        if (String(r.contact_email || "").includes("@")) reqWithEmail++;
+      }
+      const bkStatus: Record<string, number> = {};
+      const realBookings: Record<string, unknown>[] = [];
+      for (const b of bks) {
+        if (b.is_test === true) continue;
+        bkStatus[String(b.status || "none")] = (bkStatus[String(b.status || "none")] || 0) + 1;
+        realBookings.push({ date: b.booking_date, status: b.status, spa: b.spa_name, who: b.client_name });
+      }
+      const history = {
+        requests: { total: reqs.length, people: reqPhones.size, withEmail: reqWithEmail, byStage: reqStage },
+        bookings: { total: realBookings.length, byStatus: bkStatus, rows: realBookings.slice(0, 40) },
+      };
       return new Response(JSON.stringify({
         ok: true, from, to,
         rows: { messages: msgs.length, events: evs.length },
         inboundPhones: people.size, adPeople: adPeople.size,
-        steps, allEvents: counts,
+        steps, allEvents: counts, history,
       }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
