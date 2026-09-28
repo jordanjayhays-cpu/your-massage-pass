@@ -2570,6 +2570,83 @@ const handleInner = async (req: Request) => {
     //
     // Reports once per firing and only when something is wrong, so a quiet day
     // costs no email. { ops: "watchdog", key, dry } lists without sending.
+    // v132 (Jordan, 28 Sept): the funnel report, counted rather than estimated.
+    // This session has no SQL, so the monthly funnel could not be rebuilt at all.
+    // One narrow read behind the ops key beats being blind: it takes a date
+    // range and returns distinct PEOPLE per step, which is the only honest unit
+    // (one person tapping twice is not two people).
+    if (payload?.ops === "funnel") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const from = String(payload.from || "").slice(0, 10) || "2026-09-01";
+      const to = String(payload.to || "").slice(0, 10) || "2026-12-31";
+      const lo = `${from}T00:00:00Z`, hi = `${to}T23:59:59Z`;
+      // Test traffic never counts. Jordan's own two numbers, the friend testers,
+      // and the +86 number ending 997.
+      const TESTNUM = ["34612474827", "15622355063", "17867276503"];
+      const isTestPhone = (ph: string) => {
+        const d = digitsOf(ph);
+        return TESTNUM.includes(d) || (d.startsWith("86") && d.endsWith("997"));
+      };
+      const pull = async (path: string) => {
+        const out: Record<string, unknown>[] = [];
+        for (let off = 0; off < 40000; off += 1000) {
+          const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}&offset=${off}&limit=1000`, { headers: H() });
+          if (!r.ok) break;
+          const rows = await r.json().catch(() => []);
+          if (!Array.isArray(rows) || !rows.length) break;
+          out.push(...rows);
+          if (rows.length < 1000) break;
+        }
+        return out;
+      };
+      const msgs = await pull(`wa_messages?select=phone,direction,body,created_at&created_at=gte.${lo}&created_at=lte.${hi}&direction=eq.in`);
+      const evs = await pull(`funnel_events?select=phone,event,created_at&created_at=gte.${lo}&created_at=lte.${hi}`);
+      const people = new Set<string>(), adPeople = new Set<string>();
+      for (const m of msgs) {
+        const ph = digitsOf(String(m.phone || ""));
+        if (!ph || isTestPhone(ph)) continue;
+        people.add(ph);
+        if (/\[via ad\]/i.test(String(m.body || ""))) adPeople.add(ph);
+      }
+      const byEvent: Record<string, Set<string>> = {};
+      for (const e of evs) {
+        const ph = digitsOf(String(e.phone || ""));
+        const ev = String(e.event || "");
+        if (!ph || !ev || isTestPhone(ph)) continue;
+        (byEvent[ev] ||= new Set<string>()).add(ph);
+      }
+      const anyOf = (...names: string[]) => {
+        const u = new Set<string>();
+        for (const n of names) for (const ph of byEvent[n] || []) u.add(ph);
+        return u;
+      };
+      const step = (label: string, set: Set<string>) => ({
+        label,
+        people: set.size,
+        ad: [...set].filter((ph) => adPeople.has(ph)).length,
+      });
+      const steps = [
+        step("Said hello", people),
+        step("Chose a massage", anyOf("service_chosen")),
+        step("Chose a day", anyOf("day_chosen")),
+        step("Chose a time", anyOf("time_chosen")),
+        step("Gave an area", anyOf("area_given")),
+        step("Request created", anyOf("request_created")),
+        step("A studio offered them a time", anyOf("studio_offered", "offer_forwarded")),
+        step("A studio said yes", anyOf("studio_accepted")),
+        step("Booking confirmed", anyOf("confirmed", "go_confirmed")),
+        step("Walked in the door", anyOf("arrived", "customer_arrived")),
+      ];
+      const counts: Record<string, number> = {};
+      for (const k of Object.keys(byEvent)) counts[k] = byEvent[k].size;
+      return new Response(JSON.stringify({
+        ok: true, from, to,
+        rows: { messages: msgs.length, events: evs.length },
+        people: people.size, adPeople: adPeople.size,
+        steps, allEvents: counts,
+      }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
     if (payload?.ops === "watchdog") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const dry = !!payload.dry;
