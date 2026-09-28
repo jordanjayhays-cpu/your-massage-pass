@@ -541,7 +541,7 @@ export function studioGenderReply(text: string, wanted: "male" | "female"): bool
 // The distinction that matters is who needs whom. "Do YOU need a masseur" is
 // someone offering their labour. "I need a masseur" is a customer, and must
 // never be caught here.
-export const JOB_RE = /(\b(hiring|apply|applying|vacancy|vacancies|cv|resume|curriculum)\b|\bjob\b|\b(i|i'm|im|we)\s+(am\s+)?(a\s+)?(masseur|masseuse|massage\s+therapist|masajista|terapeuta)\b|\bwork(ing)?\s+as\s+(a\s+)?(masseur|masseuse|massage\s+therapist|therapist|masajista|terapeuta)\b|\b(do|dont|don't|if)\s+(you|they)\s+(need|want|require)\s+(a\s+)?(masseur|masseuse|massage\s+therapist|masajista|terapeuta)\b|\b(you|they)\s+need\s+(a\s+)?(masseur|masseuse|masajista)\b|\b(soy|busco)\s+(masajista|terapeuta|trabajo|empleo)\b|\bcontrat(ais|an|amos)\b|\bofrezco\s+mis\s+servicios\b)/i;
+export const JOB_RE = /(\b(hiring|apply|applying|vacancy|vacancies|cv|resume|curriculum)\b|\bjob\b|\b(i|i'm|im|we)\s+(am\s+)?(a\s+)?(masseur|masseuse|massage\s+therapist|masajista|terapeuta)\b|\bwork(ing)?\s+as\s+(a\s+)?(masseur|masseuse|massage\s+therapist|therapist|masajista|terapeuta)\b|\b(do|dont|don't|if)\s+(you|they)\s+(need|want|require)\s+(a\s+)?(masseur|masseuse|massage\s+therapist|masajista|terapeuta)\b|\b(you|they)\s+need\s+(a\s+)?(masseur|masseuse|masajista)\b|\b(soy|busco)\s+(masajista|terapeuta|trabajo|empleo)\b|\bvacantes?\b|\b(un|algun|alg[uú]n|alguna)\s+(puesto|plaza|vacante)\b|\bpuesto\s+de\s+(masajista|terapeuta)\b|\bbolsa\s+de\s+trabajo\b|\b(enviar|mandar|adjunto|dejar)\s+(mi\s+)?(cv|curriculum|curr[ií]culum)\b|\btrabajar\s+(con|en)\s+(vosotros|ustedes|vuestro|su)\b|\bcontrat(ais|an|amos)\b|\bofrezco\s+mis\s+servicios\b)/i;
 // "Any of them" / "you choose" typed instead of tapped.
 export const ANY_RE = /^(any|anyone|any of them|anywhere|whichever|whatever|you (choose|pick|decide)|the best|best one|cualquiera|el que sea|elige tu|elegid|lo que sea|me da igual)\b/i;
 // "I want a different type of massage" at the studio step.
@@ -1013,8 +1013,14 @@ export function detectService(t: string): string {
   for (const [re, id] of SERVICE_HINTS) if (re.test(s)) return id;
   return "";
 }
+// v135 (28 Sept, live): a job seeker wrote "Hay alguna vacante en su centro?"
+// and the bot answered "Perfecto, Centro." "Centro" is a Madrid district and
+// also the ordinary Spanish word for an establishment, so a possessive in front
+// of it means their premises, not the neighbourhood. Only that reading is
+// stripped: "estoy en el centro" still means the district and still matches.
+const THEIR_PREMISES_RE = /\b(su|sus|vuestro|vuestros|tu|tus|nuestro)\s+centros?\b/gi;
 export function detectArea(t: string): string {
-  const s = stripAcc(String(t || ""));
+  const s = stripAcc(String(t || "")).replace(THEIR_PREMISES_RE, " ");
   if (!s) return "";
   for (const a of AREAS) if (s.includes(stripAcc(a))) return a;
   if (/\bsol\b|gran via|puerta del sol/i.test(s)) return "Centro";

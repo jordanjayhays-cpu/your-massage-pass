@@ -1180,6 +1180,30 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// Therapists looking for work reach us through the same ads. +34 632 487 014,
+// 28 Sept 20:48, asked in Spanish whether there was a vacancy. JOB_RE carried
+// the English "vacancy" but not the Spanish "vacante", so he was pushed into
+// the booking flow. Worse, "en su centro" (at your establishment) was mined for
+// a Madrid district and he was greeted "Perfecto, Centro."
+// ---------------------------------------------------------------------------
+for (const [msg, job, area, note] of [
+  ["Hola. Estoy interesado en un puesto de terapeuta de masaje. \u00bfHay alguna vacante en su centro? Le agradecer\u00eda que me informara. Gracias de antemano.", true, "", "28 Sept 20:48, his exact message"],
+  ["\u00bfTen\u00e9is alguna vacante?", true, "", ""],
+  ["Busco un puesto de masajista", true, "", ""],
+  ["Quiero trabajar con vosotros", true, "", ""],
+  ["Quiero dejar mi curriculum", true, "", ""],
+  // The district must survive. "Centro" only stops counting after a possessive.
+  ["Estoy en el centro", false, "Centro", "the district, not their premises"],
+  ["Centro", false, "Centro", ""],
+  ["Un masaje relajante en Chamberi", false, "Chamber\u00ed", ""],
+  ["Un masaje en Salamanca", false, "Salamanca", ""],
+  ["Quiero reservar un masaje", false, "", "a customer, not a job seeker"],
+]) {
+  check("job seeker in Spanish", msg, JOB_RE.test(msg), job, note);
+  check("job seeker in Spanish", msg + " (area)", detectArea(msg), area, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
