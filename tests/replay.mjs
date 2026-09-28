@@ -1161,6 +1161,25 @@ for (const L of ["en", "es"]) {
 }
 
 // ---------------------------------------------------------------------------
+// "What do you offer" must be recognised as a service question even when it is
+// asked standing at another question. +34 613 617 839, 28 Sept 10:42, arrived
+// through the Facebook ad and asked at the day step. The bot had no case for it
+// there, promised to find out, and never came back.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["what type of massage you offer ?", true, "28 Sept 10:43, his exact message. Got a stall and a broken promise"],
+  ["what massages do you have", true, ""],
+  ["which types do you do", true, ""],
+  ["¿qué tipos de masaje ofrecen?", true, ""],
+  // Must not fire: he has already named the massage he wants.
+  ["I want a relaxing massage", false, "names the service, must not be sent back to the menu"],
+  ["Today", false, ""],
+  ["alright", false, "an acknowledgement, not a question"],
+]) {
+  check("what do you offer, asked mid-flow", msg, SERVICEQ_RE.test(msg) && !detectService(msg), want, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

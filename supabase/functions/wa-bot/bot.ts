@@ -3299,11 +3299,21 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || HOWWORKS_RE.test(text) || ZONEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
+    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || HOWWORKS_RE.test(text) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
+      // v131 (28 Sept 10:43, live): "what type of massage you offer ?" arrived
+      // at the day question. This chain had no case for it, so a question we
+      // answer from a constant fell through to the model, which stalled with
+      // "I am finding out for you now and I will come straight back here with
+      // the answer" and then never came back. He waited, said "gracias" and
+      // went quiet. The answer was in COPY all along.
+      else if (SERVICEQ_RE.test(text) && !detectService(text)) {
+        await sendText(from, COPY[L].servicesAnswer);
+        await logEvent(from, "services_asked", { said: String(text).slice(0, 80), at: s.step });
+      }
       else {
         const stepBefore = s.step;
         if (await lastResort(s, from, L, text)) {
