@@ -1204,6 +1204,37 @@ for (const [msg, job, area, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// A bare hour needs a lead-in, and "a las" was the only one we accepted.
+// +595 961 330 360, 29 Sept 02:12, deep in the flow and answering properly:
+// "A partir de las 17". It read as no time at all and he got the time question
+// back. He had already answered the day and asked for a photo by then.
+// ---------------------------------------------------------------------------
+for (const [msg, want, note] of [
+  ["A partir de las 17", "17:00", "29 Sept 02:12, his exact message"],
+  ["a partir de las 17", "17:00", ""],
+  ["desde las 17", "17:00", ""],
+  ["despues de las 17", "17:00", ""],
+  ["sobre las 19", "19:00", ""],
+  ["las 18", "18:00", ""],
+  ["after 17", "17:00", ""],
+  ["from 18", "18:00", ""],
+  // Already worked, must keep working.
+  ["a las 20", "20:00", ""],
+  ["a las 20:30", "20:30", ""],
+  ["A partir de las 17:00", "17:00", ""],
+  ["18h", "18:00", ""],
+  // A bare number with no time lead-in is not a time. These are the ones that
+  // would quietly book somebody at 03:00 if the guard were dropped.
+  ["3 de septiembre", "", "a date"],
+  ["el 3 de octubre", "", "a date"],
+  ["2 de octubre", "", "a date"],
+  ["somos 2 personas", "", "a count"],
+  ["Calle Mayor 15", "", "a street number"],
+]) {
+  check("a bare hour needs a lead-in", msg, detectTime(msg, "es"), want, note);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

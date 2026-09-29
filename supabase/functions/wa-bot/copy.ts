@@ -21,9 +21,14 @@ export function detectDay(t: string, L: string): string {
   if (m) return `${m[1]} ${m[2]}`;
   return "";
 }
+// v136 (29 Sept 02:12, live): "A partir de las 17" read as no time at all and
+// the customer got the time question again. The bare-hour branch only accepted
+// "a las", so "de las", "desde las" and "a partir de las" all missed. A bare
+// number still needs one of these lead-ins before it counts as a time, so
+// "3 de septiembre" and "Calle Mayor 15" stay untouched.
 export function detectTime(t: string, L: string): string {
   const s = stripAcc(t);
-  const hm = s.match(/\b(?:a las?\s*)?([01]?\d|2[0-3])[:.h]([0-5]\d)\b/) || s.match(/\ba las?\s*([01]?\d|2[0-3])\b(?![:.\d])/) || s.match(/\b([01]?\d|2[0-3])\s*(pm|am|h)\b/);
+  const hm = s.match(/\b(?:a las?\s*)?([01]?\d|2[0-3])[:.h]([0-5]\d)\b/) || s.match(/\b(?:a\s+partir\s+de\s+las?|a\s+partir\s+de|desde\s+las?|sobre\s+las?|despues\s+de\s+las?|a\s+las?|las?|after|from|around)\s+([01]?\d|2[0-3])\b(?![:.\d])/) || s.match(/\b([01]?\d|2[0-3])\s*(pm|am|h)\b/);
   if (hm) { let h = parseInt(hm[1], 10); const mm = /^\d{2}$/.test(hm[2] || "") ? hm[2] : "00"; if (/pm/.test(hm[2] || "") && h < 12) h += 12; return `${String(h).padStart(2, "0")}:${mm}`; }
   if (/\b(noche|evening|tarde-noche|after work|por la tarde noche)\b/.test(s)) return L === "es" ? HOURS.time_evening.labelEs : HOURS.time_evening.label;
   if (/\b(tarde|afternoon|mediodia|midday|lunch)\b/.test(s)) return L === "es" ? HOURS.time_afternoon.labelEs : HOURS.time_afternoon.label;
