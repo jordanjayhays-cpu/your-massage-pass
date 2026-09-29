@@ -2575,6 +2575,56 @@ const handleInner = async (req: Request) => {
     // One narrow read behind the ops key beats being blind: it takes a date
     // range and returns distinct PEOPLE per step, which is the only honest unit
     // (one person tapping twice is not two people).
+    // v137 (Jordan, 29 Sept): "learn from all the data we have so far".
+    // Every gap found this week was found the same way: read one conversation,
+    // notice that an ordinary sentence was answered with the wrong thing. That
+    // does not scale and it is why there were five in four days. This op is the
+    // scalable version: it hands back every inbound CUSTOMER message ever
+    // recorded, so the whole lexicon in copy.ts can be run over the whole corpus
+    // offline and the messages that match nothing can be listed. Read-only, ops
+    // key, no writes, no sends. Studios and test numbers are stripped: a studio
+    // saying "vale" is not a customer the bot failed to understand.
+    if (payload?.ops === "corpus") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const from = String(payload.from || "").slice(0, 10) || "2026-01-01";
+      const to = String(payload.to || "").slice(0, 10) || "2099-12-31";
+      const lo = `${from}T00:00:00Z`, hi = `${to}T23:59:59Z`;
+      const TESTNUM = ["34612474827", "15622355063", "17867276503"];
+      const isTestPhone = (ph: string) => {
+        const d = digitsOf(ph);
+        return TESTNUM.includes(d) || (d.startsWith("86") && d.endsWith("997"));
+      };
+      const out: Record<string, unknown>[] = [];
+      for (let off = 0; off < 60000; off += 1000) {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?select=phone,direction,body,msg_type,created_at&direction=eq.in&created_at=gte.${lo}&created_at=lte.${hi}&order=created_at.asc&offset=${off}&limit=1000`, { headers: H() });
+        if (!r.ok) break;
+        const rows = await r.json().catch(() => []);
+        if (!Array.isArray(rows) || !rows.length) break;
+        out.push(...rows);
+        if (rows.length < 1000) break;
+      }
+      const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=phone,whatsapp&limit=800`, { headers: H() });
+      const prows = await pr.json().catch(() => []);
+      const studioNums = new Set((Array.isArray(prows) ? prows : []).flatMap((x: any) => [digitsOf(x.whatsapp), digitsOf(x.phone)]).filter(Boolean));
+      let skippedStudio = 0, skippedTest = 0;
+      const msgs: Array<{ phone: string; at: string; type: string; body: string }> = [];
+      for (const m of out) {
+        const ph = digitsOf(String(m.phone || ""));
+        if (!ph) continue;
+        if (isTestPhone(ph)) { skippedTest++; continue; }
+        if (studioNums.has(ph)) { skippedStudio++; continue; }
+        const body = String(m.body || "");
+        if (!body.trim()) continue;
+        msgs.push({ phone: ph, at: String(m.created_at || ""), type: String(m.msg_type || "text"), body });
+      }
+      return new Response(JSON.stringify({
+        ok: true, from, to,
+        total: out.length, skippedStudio, skippedTest,
+        people: new Set(msgs.map((m) => m.phone)).size,
+        messages: msgs,
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
     if (payload?.ops === "funnel") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const from = String(payload.from || "").slice(0, 10) || "2026-09-01";
