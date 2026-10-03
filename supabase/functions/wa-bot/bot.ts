@@ -840,12 +840,12 @@ function quickReplies(es: boolean, first: string): Array<[string, string]> {
 // the incoming side, one per send for the outgoing side. Both fail soft: no
 // translation shown, or the text sent exactly as typed is never the result of a
 // failure (a failed outgoing translation stops the send instead).
-async function aiText(system: string, user: string, maxTokens = 1500): Promise<string | null> {
+async function aiText(system: string, user: string, maxTokens = 1500, timeoutMs = 12000): Promise<string | null> {
   const key = await aiKey();
   if (!key) return null;
   try {
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 12000);
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST", signal: ctl.signal,
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
@@ -857,27 +857,46 @@ async function aiText(system: string, user: string, maxTokens = 1500): Promise<s
     return String(out?.content?.[0]?.text || "");
   } catch (_e) { return null; }
 }
-// English for every incoming message that is not already English, by index.
-async function translateIncoming(thread: Array<{ dir: string; body: string }>): Promise<Map<number, string>> {
+// English for every message that is not already English, by index.
+// v149 (Jordan, 3 Oct: "all chats need to have an English translation"): each
+// message is translated once and saved in wa_messages.body_en (NULL = not yet,
+// "" = already English), so a page view only translates what is new, and a
+// failed batch is retried instead of leaving the whole page without English.
+const TRANSLATE_SYSTEM = "Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. If a message is already in English, use an empty string for it. Reply with one JSON object only, mapping each message number to its translation, like {\"1\": \"...\", \"2\": \"\"}. Every number must be present. No commentary.";
+async function translateIncoming(thread: Array<{ id?: number; dir: string; body: string; en?: string | null }>): Promise<Map<number, string>> {
   const out = new Map<number, string>();
-  // v148: both directions. Jordan reads the bot's Spanish too.
-  const idx = thread.map((m, i) => ({ m, i })).filter(({ m }) => /[a-záéíóúñü]/i.test(m.body) && !/^\[(tap|template|reaction|location)/.test(m.body)).slice(-80);
-  if (!idx.length) return out;
-  // Batches of 20 in parallel: one call for 80 messages can run past the
-  // timeout, and then nothing at all gets translated.
+  const want = thread.map((m, i) => ({ m, i })).filter(({ m }) => /[a-záéíóúñü]/i.test(m.body) && !/^\[(tap|template|reaction|location)/.test(m.body));
+  const todo: typeof want = [];
+  for (const w of want) {
+    if (typeof w.m.en === "string") { if (w.m.en) out.set(w.i, w.m.en); }
+    else todo.push(w);
+  }
+  if (!todo.length) return out;
   const clean = (b: string) => b.replace(/\s*\[via ad\]$/, "").replace(/\s*\[[^\[\]]*\/[^\[\]]*\]$/, "").replace(/^\[solicitud[^\]]*\]\s*/, "").replace(/\s+/g, " ").slice(0, 500);
-  const batches: Array<typeof idx> = [];
-  for (let k = 0; k < idx.length; k += 20) batches.push(idx.slice(k, k + 20));
-  await Promise.all(batches.map(async (b) => {
+  const batches: Array<typeof todo> = [];
+  for (let k = 0; k < Math.min(todo.length, 120); k += 12) batches.push(todo.slice(k, k + 12));
+  const saves: Array<Promise<unknown>> = [];
+  await Promise.all(batches.map(async (b, bi) => {
     const list = b.map(({ m }, k) => `${k + 1}. ${clean(m.body)}`).join("\n");
-    const raw = await aiText("Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. If a message is already in English, use an empty string for it. Reply with a JSON array of strings only, one per message, same order and same length. No commentary.", list, 2500);
-    const m = raw && raw.match(/\[[\s\S]*\]/);
-    if (!m) return;
-    try {
-      const arr = JSON.parse(m[0]);
-      if (Array.isArray(arr) && arr.length === b.length) b.forEach(({ i }, k) => { const t = String(arr[k] || "").trim(); if (t) out.set(i, t); });
-    } catch (_e) { /* that batch shows no translations */ }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 700 * attempt + bi * 150));
+      const raw = await aiText(TRANSLATE_SYSTEM, list, 2500, 20000);
+      const jm = raw && raw.match(/\{[\s\S]*\}/);
+      if (!jm) continue;
+      let obj: Record<string, unknown>;
+      try { obj = JSON.parse(jm[0]); } catch (_e) { continue; }
+      if (!obj || typeof obj !== "object") continue;
+      b.forEach(({ m, i }, k) => {
+        const v = obj[String(k + 1)];
+        if (typeof v !== "string") return;
+        const t = noDashes(v).trim();
+        if (t && !sameText(t, clean(m.body))) out.set(i, t);
+        if (m.id) saves.push(fetch(`${SUPABASE_URL}/rest/v1/wa_messages?id=eq.${m.id}`, { method: "PATCH", headers: { ...H(), "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify({ body_en: t && !sameText(t, clean(m.body)) ? t : "" }) }).catch(() => null));
+      });
+      return;
+    }
   }));
+  await Promise.all(saves);
   return out;
 }
 // Spanish (Spain) version of what Jordan typed, or null when it could not be done.
@@ -889,10 +908,10 @@ const sameText = (a: string, b: string) => a.replace(/\s+/g, " ").trim().toLower
 
 // v141 (Jordan, 3 Oct): the reply page shows the WHOLE conversation, with the
 // day and the Madrid time on every message, not just the last dozen.
-async function fullThread(phone: string): Promise<Array<{ dir: string; body: string; at: string }>> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=500&select=direction,body,created_at`, { headers: H() });
+async function fullThread(phone: string): Promise<Array<{ id: number; dir: string; body: string; at: string; en: string | null }>> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=500&select=id,direction,body,created_at,body_en`, { headers: H() });
   const rows = await r.json().catch(() => []);
-  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ dir: String(x.direction || ""), body: String(x.body || ""), at: String(x.created_at || "") }));
+  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ id: Number(x.id) || 0, dir: String(x.direction || ""), body: String(x.body || ""), at: String(x.created_at || ""), en: typeof x.body_en === "string" ? x.body_en : null }));
 }
 const madridDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
 const madridTime = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
