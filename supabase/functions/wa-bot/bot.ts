@@ -696,6 +696,7 @@ Rules, all of them hard:
 - Never invent a discount, a price, a studio name, a time slot or availability. Never promise the therapist speaks English. Never claim massage detoxes, cures or boosts immunity.
 - If they ask for anything sexual, "special", "extras", "happy ending", tantra or similar, the message is exactly: "We book therapeutic massage at licensed studios, nothing else." (Spanish: "Reservamos masajes terapéuticos en centros con licencia, nada más.") and nothing more.
 - Never say you are handing them to a person or a representative.
+- Never claim we already asked a studio, checked availability, booked or did anything else unless the conversation above shows it happened.
 - No em dashes, no en dashes, no links, no emoji, no bullet points. Under 60 words.
 - Start with "Hi <first name>, Massage Club here." (Spanish: "Hola <nombre>, somos Massage Club.") using their first name if you know it, otherwise without a name.
 Output only the message text.`;
@@ -708,7 +709,7 @@ Rules, all hard:
 - Spanish, short, warm and professional, tú form. Under 50 words. No em dashes, no en dashes, no emoji, no links.
 - Answer or acknowledge what the studio last said, then ask the one thing still needed to close the booking (an exact start time, the final price for 60 minutes, or whether they can take it at all).
 - Never confirm a booking, a time or the client's attendance on the client's behalf. Only the client confirms. If the studio offered a slot, say you are checking with the client and will confirm.
-- Never invent a client name, time, price or discount. If asking about price, you may ask for the final price for 60 minutes with a 10% Massage Club rate if they can do it.
+- Never invent a client name, time, price or discount, and never claim something was done unless the conversation shows it. If asking about price, you may ask for the final price for 60 minutes with a 10% Massage Club rate if they can do it.
 - If the client cancelled or the request is no longer needed, say so plainly, thank them, and say you will send the next one.
 - No signature unless this is the first message ever to this studio, in which case end with "Jordan, de Massage Club".
 Output only the message text.`;
@@ -771,6 +772,7 @@ const PAGE_CSS = `*{box-sizing:border-box}body{margin:0;background:${C.page};fon
 a{color:inherit}main{max-width:600px;margin:0 auto;padding:0 0 260px}
 .day{align-self:center;margin:14px 0 6px;font-size:11.5px;font-weight:700;letter-spacing:1px;color:${C.muted};background:#fff;border:1px solid ${C.line};border-radius:999px;padding:4px 12px}
 .tm{display:block;text-align:right;font-size:10.5px;color:${C.muted};margin-top:3px}
+.en{display:block;margin-top:6px;padding-top:6px;border-top:1px dashed ${C.dash};font-size:13px;color:#5E7A64;font-style:italic}
 .btns{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.btns span{font-size:12px;font-weight:600;color:${C.clay};background:#fff;border:1px solid ${C.dash};border-radius:999px;padding:3px 9px}
 .top{position:sticky;top:0;z-index:5;background:${C.page}ee;backdrop-filter:blur(8px);padding:14px 16px 10px;display:flex;align-items:center;gap:12px;border-bottom:1px solid ${C.dash}}
 .top img{width:36px;height:36px;border-radius:50%}.top .t{flex:1;min-width:0}.brand{font-size:10.5px;font-weight:700;letter-spacing:3px;color:${C.clay}}
@@ -829,6 +831,50 @@ function quickReplies(es: boolean, first: string): Array<[string, string]> {
   ];
 }
 
+// v145 (Jordan, 3 Oct): "I need to type and it auto translate into Spanish,
+// and you translate what they say into English." One model call per page for
+// the incoming side, one per send for the outgoing side. Both fail soft: no
+// translation shown, or the text sent exactly as typed is never the result of a
+// failure (a failed outgoing translation stops the send instead).
+async function aiText(system: string, user: string, maxTokens = 1500): Promise<string | null> {
+  const key = await aiKey();
+  if (!key) return null;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 12000);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal: ctl.signal,
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const out = await res.json();
+    return String(out?.content?.[0]?.text || "");
+  } catch (_e) { return null; }
+}
+// English for every incoming message that is not already English, by index.
+async function translateIncoming(thread: Array<{ dir: string; body: string }>): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  const idx = thread.map((m, i) => ({ m, i })).filter(({ m }) => m.dir === "in" && /[a-záéíóúñü]/i.test(m.body) && !/^\[tap:/.test(m.body)).slice(-80);
+  if (!idx.length) return out;
+  const list = idx.map(({ m }, k) => `${k + 1}. ${m.body.replace(/\s*\[via ad\]$/, "").replace(/\s+/g, " ").slice(0, 500)}`).join("\n");
+  const raw = await aiText("Translate each numbered WhatsApp message into natural English. If a message is already in English, use an empty string for it. Reply with a JSON array of strings only, one per message, same order and same length. No commentary.", list, 3000);
+  const m = raw && raw.match(/\[[\s\S]*\]/);
+  if (!m) return out;
+  try {
+    const arr = JSON.parse(m[0]);
+    if (Array.isArray(arr)) idx.forEach(({ i }, k) => { const t = String(arr[k] || "").trim(); if (t) out.set(i, t); });
+  } catch (_e) { /* no translations shown */ }
+  return out;
+}
+// Spanish (Spain) version of what Jordan typed, or null when it could not be done.
+async function toSpanish(text: string, studio: boolean): Promise<string | null> {
+  const raw = await aiText(`Translate the message into natural Spanish from Spain for WhatsApp, written to ${studio ? "a massage studio we work with (use vosotros where it addresses the studio)" : "a customer (use tú)"}. If it is already Spanish, return it unchanged. Keep names, times, prices and addresses exactly. No em dashes, no en dashes. Output only the message.`, text, 800);
+  return raw === null ? null : noDashes(raw).replace(/^["']|["']$/g, "").trim() || null;
+}
+const sameText = (a: string, b: string) => a.replace(/\s+/g, " ").trim().toLowerCase() === b.replace(/\s+/g, " ").trim().toLowerCase();
+
 // v141 (Jordan, 3 Oct): the reply page shows the WHOLE conversation, with the
 // day and the Madrid time on every message, not just the last dozen.
 async function fullThread(phone: string): Promise<Array<{ dir: string; body: string; at: string }>> {
@@ -839,15 +885,16 @@ async function fullThread(phone: string): Promise<Array<{ dir: string; body: str
 const madridDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
 const madridTime = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
-function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean }): string {
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean; trans?: Map<number, string>; notice?: string }): string {
   const first = o.studio ? String(o.name || "STUDIO") : (String(o.name || "").trim().split(/\s+/)[0] || "");
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
     : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
     : `<span class="pill warn">WINDOW CLOSED</span>`;
   const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">${o.studio ? "Studio · " : ""}+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">All chats</a></div>`;
   let lastDay = "";
-  const bubbles = o.thread.map((m) => {
+  const bubbles = o.thread.map((m, mi) => {
     const them = m.dir === "in";
+    const en = o.trans?.get(mi);
     let body = m.body.replace(/\s*\[via ad\]$/, "").slice(0, 1500);
     // A message sent with buttons is logged as "text [A/B/C]"; show the buttons.
     let btns = "";
@@ -862,9 +909,11 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     const divider = day && day !== lastDay ? `<div class="day">${esc(day)}</div>` : "";
     if (day) lastDay = day;
     const time = m.at ? `<span class="tm">${madridTime(m.at)}</span>` : "";
-    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}${btns}${time}</div>`;
+    const enLine = en ? `<span class="en">EN: ${esc(en)}</span>` : "";
+    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}${enLine}${btns}${time}</div>`;
   }).join("");
-  const notes = (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
+  const notes = (o.notice ? `<div class="note done">${o.notice}</div>` : "")
+    + (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
     + (o.error ? `<div class="note err">${esc(o.error)}</div>` : "")
     + (!o.open && !o.muted ? `<div class="note err">It has been over 24 hours since they last wrote, so WhatsApp will not deliver a normal message. Only an approved template can reach them now.</div>` : "")
     + (o.muted ? `<div class="note err">This number is muted. Nothing is ever sent to it.</div>` : "");
@@ -873,7 +922,7 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     `<button type="button" class="chip" data-t="${esc(text)}">${esc(label)}</button>`).join("");
   const compose = `<form class="compose" method="post" action="${esc(o.action)}"><div class="in">${can ? `<div class="chips">${chips}</div>` : ""}
 <div class="row"><textarea id="t" name="text" rows="3" ${can ? "" : "disabled"} placeholder="Write your reply">${esc(o.draft)}</textarea><button class="send" type="submit" ${can ? "" : "disabled"}>Send</button></div>
-<div class="hint">${can ? (o.studio ? "Suggested reply above. Edit freely. Sends from +34 613 977 900. Studios only get messages between 09:00 and 21:00 Madrid." : "Suggested reply above. Edit freely. Sends from +34 613 977 900 as Massage Club.") : "Sending is off for this chat."}</div></div></form>`;
+<div class="hint">${can ? (o.es ? "Write in English or Spanish. English is translated to Spanish first so you can check it, then press Send again. " : "") + (o.studio ? "Sends from +34 613 977 900. Studios only get messages between 09:00 and 21:00 Madrid." : "Sends from +34 613 977 900 as Massage Club.") : "Sending is off for this chat."}</div></div></form>`;
   const js = `<script>document.querySelectorAll('.chip').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById('t');t.value=b.getAttribute('data-t');t.focus();});});
 document.querySelector('.compose')&&document.querySelector('.compose').addEventListener('submit',function(e){var b=this.querySelector('.send');if(!document.getElementById('t').value.trim()){e.preventDefault();return;}b.disabled=true;b.textContent='Sending';});
 window.scrollTo(0,document.body.scrollHeight);</script>`;
@@ -974,26 +1023,43 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
   const name = studio ? studio.business_name : (s.wa_name || "");
   const inbox = (await inboxUrl()) + (studio ? "&tab=studios" : "");
   let error = "";
+  // Every page view shows the conversation with English under each incoming
+  // message that was not in English.
+  const render = async (o: { draft: string | Promise<string>; sent: boolean; error: string; notice?: string }) => {
+    const thread = await fullThread(phone);
+    // The suggestion and the translation are separate model calls; run together.
+    const [trans, draft] = await Promise.all([translateIncoming(thread), Promise.resolve(o.draft)]);
+    return html(replyHtml({ phone, name, studio: !!studio, thread, trans, open, hoursLeft, muted, action, inbox, es, sent: o.sent, error: o.error, notice: o.notice, draft }));
+  };
   if (req.method === "POST") {
     const form = await req.formData().catch(() => null);
-    const text = noDashes(String(form?.get("text") || "")).slice(0, 1500);
+    let text = noDashes(String(form?.get("text") || "")).slice(0, 1500);
     if (!text) error = "The message was empty, so nothing was sent.";
     else if (muted) error = "This number is muted. Nothing was sent.";
     else if (!open) error = "The 24 hour window is closed, so WhatsApp would not deliver this. Nothing was sent.";
     else if (studio && (mcMadridHour() < 9 || mcMadridHour() >= 21)) error = "Studios only get messages between 09:00 and 21:00 Madrid. Nothing was sent; try again after 09:00.";
     else {
+      // Spanish chats: English goes back to Jordan translated, for a second
+      // press. Only text that is already Spanish goes out on the first press.
+      if (es) {
+        const esText = await toSpanish(text, !!studio);
+        if (esText === null) return render({ draft: text, sent: false, error: "The translation did not work, so nothing was sent. Try again, or write it in Spanish." });
+        if (!sameText(esText, text)) {
+          return render({ draft: esText, sent: false, error: "", notice: `Translated to Spanish. Nothing has been sent yet. Check it below and press Send again.<br><span style="color:${C.muted};font-size:13px;">You wrote: ${esc(text)}</span>` });
+        }
+        text = esText;
+      }
       const ok = await sendText(phone, text);
       if (ok) {
         await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step });
-        return html(replyHtml({ phone, name, studio: !!studio, thread: await fullThread(phone), draft: "", open, hoursLeft, muted, sent: true, error: "", action, inbox, es }));
+        return render({ draft: "", sent: true, error: "" });
       }
       error = "WhatsApp refused the message. Nothing was sent; check the bot logs.";
     }
-    return html(replyHtml({ phone, name, studio: !!studio, thread: await fullThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action, inbox, es }));
+    return render({ draft: text, sent: false, error });
   }
   const sent = url.searchParams.get("sent") === "1";
-  const draft = sent ? "" : await suggestReply(phone, studio);
-  return html(replyHtml({ phone, name, studio: !!studio, thread: await fullThread(phone), draft, open, hoursLeft, muted, sent, error, action, inbox, es }));
+  return render({ draft: sent ? "" : suggestReply(phone, studio), sent, error });
 }
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
