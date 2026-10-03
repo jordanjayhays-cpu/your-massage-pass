@@ -862,7 +862,7 @@ async function aiText(system: string, user: string, maxTokens = 1500, timeoutMs 
 // message is translated once and saved in wa_messages.body_en (NULL = not yet,
 // "" = already English), so a page view only translates what is new, and a
 // failed batch is retried instead of leaving the whole page without English.
-const TRANSLATE_SYSTEM = "Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. If a message is already in English, use an empty string for it. Reply with one JSON object only, mapping each message number to its translation, like {\"1\": \"...\", \"2\": \"\"}. Every number must be present. No commentary.";
+const TRANSLATE_SYSTEM = "Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. Use an empty string only when a message is entirely in English; if any part is Spanish, translate the whole message. Reply with one JSON object only, mapping each message number to its translation, like {\"1\": \"...\", \"2\": \"\"}. Every number must be present. No commentary.";
 async function translateIncoming(thread: Array<{ id?: number; dir: string; body: string; en?: string | null }>): Promise<Map<number, string>> {
   const out = new Map<number, string>();
   const want = thread.map((m, i) => ({ m, i })).filter(({ m }) => /[a-záéíóúñü]/i.test(m.body) && !/^\[(tap|template|reaction|location)/.test(m.body));
