@@ -769,7 +769,7 @@ async function suggestReply(phone: string, studio?: { business_name: string } | 
 // v139: the founder pages. Mobile first, Massage Club palette, no external
 // assets, so they load instantly on a phone from an alert.
 const PAGE_CSS = `*{box-sizing:border-box}body{margin:0;background:${C.page};font-family:${SANS};color:${C.ink};-webkit-font-smoothing:antialiased}
-a{color:inherit}main{max-width:600px;margin:0 auto;padding:0 0 260px}
+a{color:inherit}main{max-width:760px;margin:0 auto;padding:0 0 20px}
 .day{align-self:center;margin:14px 0 6px;font-size:11.5px;font-weight:700;letter-spacing:1px;color:${C.muted};background:#fff;border:1px solid ${C.line};border-radius:999px;padding:4px 12px}
 .tm{display:block;text-align:right;font-size:10.5px;color:${C.muted};margin-top:3px}
 .en{display:block;margin-top:6px;padding-top:6px;border-top:1px dashed ${C.dash};font-size:13px;color:#5E7A64;font-style:italic}
@@ -785,8 +785,12 @@ a{color:inherit}main{max-width:600px;margin:0 auto;padding:0 0 260px}
 .msg.them{align-self:flex-start;background:#fff;border-bottom-left-radius:5px}.msg.us{align-self:flex-end;background:#F6E7DC;border-bottom-right-radius:5px}
 .who{display:block;font-size:10.5px;font-weight:700;letter-spacing:1px;margin-bottom:2px}.them .who{color:${C.clay}}.us .who{color:${C.muted}}
 .note{border-radius:14px;padding:11px 14px;font-size:14px;margin:12px 16px 0}.note.done{background:#E6F4EA;color:#1F7A45}.note.err{background:#FBE9E3;color:#9A3B1E}
-.compose{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid ${C.dash};padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
-.compose .in{max-width:600px;margin:0 auto}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.compose{position:sticky;bottom:0;background:#fff;border-top:1px solid ${C.dash};padding:10px 12px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -6px 18px rgba(38,32,25,.06)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;color:${C.muted};margin:0 0 4px 4px;text-transform:uppercase}
+.two textarea{width:100%;min-height:96px}@media (max-width:620px){.two{grid-template-columns:1fr}.two textarea{min-height:70px}}
+.row2{display:flex;align-items:center;gap:10px;margin-top:8px}.lang{flex:1;font-size:13px;color:${C.ink};display:flex;gap:12px;align-items:center;flex-wrap:wrap}.lang label{display:flex;gap:4px;align-items:center;font-weight:600}
+.busy{opacity:.55}
+.compose .in{max-width:760px;margin:0 auto}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;border:1px solid ${C.dash};background:${C.cream};color:${C.ink};border-radius:999px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
 .row{display:flex;gap:8px;align-items:flex-end}textarea{flex:1;min-height:46px;max-height:40vh;resize:vertical;border:1px solid ${C.dash};border-radius:18px;padding:11px 14px;font:15px/1.45 ${SANS};color:${C.ink};background:${C.cream}}
 textarea:focus{outline:2px solid ${C.clay}33;border-color:${C.clay}}
@@ -856,16 +860,24 @@ async function aiText(system: string, user: string, maxTokens = 1500): Promise<s
 // English for every incoming message that is not already English, by index.
 async function translateIncoming(thread: Array<{ dir: string; body: string }>): Promise<Map<number, string>> {
   const out = new Map<number, string>();
-  const idx = thread.map((m, i) => ({ m, i })).filter(({ m }) => m.dir === "in" && /[a-záéíóúñü]/i.test(m.body) && !/^\[tap:/.test(m.body)).slice(-80);
+  // v148: both directions. Jordan reads the bot's Spanish too.
+  const idx = thread.map((m, i) => ({ m, i })).filter(({ m }) => /[a-záéíóúñü]/i.test(m.body) && !/^\[(tap|template|reaction|location)/.test(m.body)).slice(-80);
   if (!idx.length) return out;
-  const list = idx.map(({ m }, k) => `${k + 1}. ${m.body.replace(/\s*\[via ad\]$/, "").replace(/\s+/g, " ").slice(0, 500)}`).join("\n");
-  const raw = await aiText("Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. If a message is already in English, use an empty string for it. Reply with a JSON array of strings only, one per message, same order and same length. No commentary.", list, 3000);
-  const m = raw && raw.match(/\[[\s\S]*\]/);
-  if (!m) return out;
-  try {
-    const arr = JSON.parse(m[0]);
-    if (Array.isArray(arr)) idx.forEach(({ i }, k) => { const t = String(arr[k] || "").trim(); if (t) out.set(i, t); });
-  } catch (_e) { /* no translations shown */ }
+  // Batches of 20 in parallel: one call for 80 messages can run past the
+  // timeout, and then nothing at all gets translated.
+  const clean = (b: string) => b.replace(/\s*\[via ad\]$/, "").replace(/\s*\[[^\[\]]*\/[^\[\]]*\]$/, "").replace(/^\[solicitud[^\]]*\]\s*/, "").replace(/\s+/g, " ").slice(0, 500);
+  const batches: Array<typeof idx> = [];
+  for (let k = 0; k < idx.length; k += 20) batches.push(idx.slice(k, k + 20));
+  await Promise.all(batches.map(async (b) => {
+    const list = b.map(({ m }, k) => `${k + 1}. ${clean(m.body)}`).join("\n");
+    const raw = await aiText("Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. If a message is already in English, use an empty string for it. Reply with a JSON array of strings only, one per message, same order and same length. No commentary.", list, 2500);
+    const m = raw && raw.match(/\[[\s\S]*\]/);
+    if (!m) return;
+    try {
+      const arr = JSON.parse(m[0]);
+      if (Array.isArray(arr) && arr.length === b.length) b.forEach(({ i }, k) => { const t = String(arr[k] || "").trim(); if (t) out.set(i, t); });
+    } catch (_e) { /* that batch shows no translations */ }
+  }));
   return out;
 }
 // Spanish (Spain) version of what Jordan typed, or null when it could not be done.
@@ -919,13 +931,22 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     + (o.muted ? `<div class="note err">This number is muted. Nothing is ever sent to it.</div>` : "");
   const can = o.open && !o.muted;
   const chips = (o.studio ? studioQuickReplies() : quickReplies(o.es, first)).map(([label, text]) =>
-    `<button type="button" class="chip" data-t="${esc(text)}">${esc(label)}</button>`).join("");
+    `<button type="button" class="chip" data-l="${o.studio || o.es ? "es" : "en"}" data-t="${esc(text)}">${esc(label)}</button>`).join("");
+  // v148 (Jordan, 3 Oct): side by side. He writes in English on the left, the
+  // Spanish appears live on the right (editable), and the box he picks is what
+  // gets sent. bot.html does the live translation through mode=translate.
+  const sendEs = o.es;
   const compose = `<form class="compose" method="post" action="${esc(o.action)}"><div class="in">${can ? `<div class="chips">${chips}</div>` : ""}
-<div class="row"><textarea id="t" name="text" rows="3" ${can ? "" : "disabled"} placeholder="Write your reply">${esc(o.draft)}</textarea><button class="send" type="submit" ${can ? "" : "disabled"}>Send</button></div>
-<div class="hint">${can ? (o.es ? "Write in English or Spanish. English is translated to Spanish first so you can check it, then press Send again. " : "") + (o.studio ? "Sends from +34 613 977 900. Studios only get messages between 09:00 and 21:00 Madrid." : "Sends from +34 613 977 900 as Massage Club.") : "Sending is off for this chat."}</div></div></form>`;
-  const js = `<script>document.querySelectorAll('.chip').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById('t');t.value=b.getAttribute('data-t');t.focus();});});
-document.querySelector('.compose')&&document.querySelector('.compose').addEventListener('submit',function(e){var b=this.querySelector('.send');if(!document.getElementById('t').value.trim()){e.preventDefault();return;}b.disabled=true;b.textContent='Sending';});
-window.scrollTo(0,document.body.scrollHeight);</script>`;
+<div class="two">
+<div><label for="src">You write (English)</label><textarea id="src" rows="4" ${can ? "" : "disabled"} placeholder="Type in English. The Spanish appears on the right.">${sendEs ? "" : esc(o.draft)}</textarea></div>
+<div><label for="t">Spanish (edit freely)</label><textarea id="t" rows="4" ${can ? "" : "disabled"} placeholder="La traducción aparece aquí.">${sendEs ? esc(o.draft) : ""}</textarea></div>
+</div>
+<div class="row2"><span class="lang">Send:
+<label><input type="radio" name="lang" value="es" ${sendEs ? "checked" : ""} ${can ? "" : "disabled"}> Spanish</label>
+<label><input type="radio" name="lang" value="en" ${sendEs ? "" : "checked"} ${can ? "" : "disabled"}> English</label></span>
+<button class="send" type="submit" ${can ? "" : "disabled"}>Send</button></div>
+<div class="hint">${can ? (o.studio ? "Sends from +34 613 977 900. Studios only get messages between 09:00 and 21:00 Madrid." : "Sends from +34 613 977 900 as Massage Club.") + " Only the box you pick under Send goes out." : "Sending is off for this chat."}</div></div></form>`;
+  const js = "";
   return pageShell(`Reply · ${o.name || "+" + o.phone}`, top, `${notes}<div class="wrap"><div class="thread">${bubbles || `<p class="empty">No messages yet.</p>`}</div></div>`, compose + js);
 }
 
@@ -1037,6 +1058,16 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
   };
   if (req.method === "POST") {
     const form = await req.formData().catch(() => null);
+    // v148: live translation for the side-by-side composer. Sends nothing.
+    if (String(form?.get("mode") || "") === "translate") {
+      const src = String(form?.get("text") || "").slice(0, 1500);
+      const to = String(form?.get("to") || "es");
+      const out = !src.trim() ? "" : to === "en"
+        ? noDashes(String((await aiText("Translate this WhatsApp message into natural English. Keep Madrid place names, names, times and prices exactly. Output only the translation.", src, 800)) || "")).trim()
+        : (await toSpanish(src, !!studio)) || "";
+      return new Response(JSON.stringify({ out }), { status: 200, headers: { ...CORS, "Content-Type": "application/json" } });
+    }
+    const raw = String(form?.get("raw") || "") === "1";
     let text = noDashes(String(form?.get("text") || "")).slice(0, 1500);
     if (!text) error = "The message was empty, so nothing was sent.";
     else if (muted) error = "This number is muted. Nothing was sent.";
@@ -1045,7 +1076,7 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
     else {
       // Spanish chats: English goes back to Jordan translated, for a second
       // press. Only text that is already Spanish goes out on the first press.
-      if (es) {
+      if (es && !raw) {
         const esText = await toSpanish(text, !!studio);
         if (esText === null) return render({ draft: text, sent: false, error: "The translation did not work, so nothing was sent. Try again, or write it in Spanish." });
         if (!sameText(esText, text)) {
