@@ -735,7 +735,10 @@ async function suggestReply(phone: string): Promise<string> {
 // v139: the founder pages. Mobile first, Massage Club palette, no external
 // assets, so they load instantly on a phone from an alert.
 const PAGE_CSS = `*{box-sizing:border-box}body{margin:0;background:${C.page};font-family:${SANS};color:${C.ink};-webkit-font-smoothing:antialiased}
-a{color:inherit}main{max-width:600px;margin:0 auto;padding:0 0 120px}
+a{color:inherit}main{max-width:600px;margin:0 auto;padding:0 0 260px}
+.day{align-self:center;margin:14px 0 6px;font-size:11.5px;font-weight:700;letter-spacing:1px;color:${C.muted};background:#fff;border:1px solid ${C.line};border-radius:999px;padding:4px 12px}
+.tm{display:block;text-align:right;font-size:10.5px;color:${C.muted};margin-top:3px}
+.btns{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.btns span{font-size:12px;font-weight:600;color:${C.clay};background:#fff;border:1px solid ${C.dash};border-radius:999px;padding:3px 9px}
 .top{position:sticky;top:0;z-index:5;background:${C.page}ee;backdrop-filter:blur(8px);padding:14px 16px 10px;display:flex;align-items:center;gap:12px;border-bottom:1px solid ${C.dash}}
 .top img{width:36px;height:36px;border-radius:50%}.top .t{flex:1;min-width:0}.brand{font-size:10.5px;font-weight:700;letter-spacing:3px;color:${C.clay}}
 .top h1{margin:1px 0 0;font-family:${SERIF};font-size:19px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -784,16 +787,40 @@ function quickReplies(es: boolean, first: string): Array<[string, string]> {
   ];
 }
 
-function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean }): string {
+// v141 (Jordan, 3 Oct): the reply page shows the WHOLE conversation, with the
+// day and the Madrid time on every message, not just the last dozen.
+async function fullThread(phone: string): Promise<Array<{ dir: string; body: string; at: string }>> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=500&select=direction,body,created_at`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ dir: String(x.direction || ""), body: String(x.body || ""), at: String(x.created_at || "") }));
+}
+const madridDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
+const madridTime = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean }): string {
   const first = String(o.name || "").trim().split(/\s+/)[0] || "";
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
     : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
     : `<span class="pill warn">WINDOW CLOSED</span>`;
   const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">Inbox</a></div>`;
+  let lastDay = "";
   const bubbles = o.thread.map((m) => {
     const them = m.dir === "in";
-    const body = m.body.replace(/\s*\[via ad\]$/, "").slice(0, 700);
-    return `<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}</div>`;
+    let body = m.body.replace(/\s*\[via ad\]$/, "").slice(0, 1500);
+    // A message sent with buttons is logged as "text [A/B/C]"; show the buttons.
+    let btns = "";
+    const bm = body.match(/^([\s\S]*?)\s*\[([^\[\]]{1,300})\]$/);
+    if (!them && bm && bm[2].includes("/") && !/^template /.test(bm[2])) {
+      body = bm[1];
+      btns = `<span class="btns">${bm[2].split("/").map((b) => `<span>${esc(b.trim())}</span>`).join("")}</span>`;
+    }
+    const tap = them && /^\[tap: ?([^\]]*)\]$/.exec(body);
+    if (tap) body = tap[1] ? `Tapped: ${tap[1].replace(/_/g, " ")}` : "Sent a voice note or media";
+    const day = m.at ? madridDay(m.at) : "";
+    const divider = day && day !== lastDay ? `<div class="day">${esc(day)}</div>` : "";
+    if (day) lastDay = day;
+    const time = m.at ? `<span class="tm">${madridTime(m.at)}</span>` : "";
+    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}${btns}${time}</div>`;
   }).join("");
   const notes = (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
     + (o.error ? `<div class="note err">${esc(o.error)}</div>` : "")
@@ -874,15 +901,15 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
       const ok = await sendText(phone, text);
       if (ok) {
         await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step });
-        return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft: "", open, hoursLeft, muted, sent: true, error: "", action, inbox, es }));
+        return html(replyHtml({ phone, name: s.wa_name || "", thread: await fullThread(phone), draft: "", open, hoursLeft, muted, sent: true, error: "", action, inbox, es }));
       }
       error = "WhatsApp refused the message. Nothing was sent; check the bot logs.";
     }
-    return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action, inbox, es }));
+    return html(replyHtml({ phone, name: s.wa_name || "", thread: await fullThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action, inbox, es }));
   }
   const sent = url.searchParams.get("sent") === "1";
   const draft = sent ? "" : await suggestReply(phone);
-  return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft, open, hoursLeft, muted, sent, error, action, inbox, es }));
+  return html(replyHtml({ phone, name: s.wa_name || "", thread: await fullThread(phone), draft, open, hoursLeft, muted, sent, error, action, inbox, es }));
 }
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
