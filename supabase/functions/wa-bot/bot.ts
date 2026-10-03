@@ -700,8 +700,41 @@ Rules, all of them hard:
 - Start with "Hi <first name>, Massage Club here." (Spanish: "Hola <nombre>, somos Massage Club.") using their first name if you know it, otherwise without a name.
 Output only the message text.`;
 
-async function suggestReply(phone: string): Promise<string> {
+// v142 (Jordan, 3 Oct): the same page answers STUDIOS, so the studio side of a
+// booking can be handled without leaving it.
+const STUDIO_REPLY_SYSTEM = `You write ONE WhatsApp message in Spanish from Massage Club to a partner massage studio in Madrid. Massage Club sends them clients; the studio's reply decides whether a booking happens. The founder reads your draft, may edit it, and sends it.
+
+Rules, all hard:
+- Spanish, short, warm and professional, tú form. Under 50 words. No em dashes, no en dashes, no emoji, no links.
+- Answer or acknowledge what the studio last said, then ask the one thing still needed to close the booking (an exact start time, the final price for 60 minutes, or whether they can take it at all).
+- Never confirm a booking, a time or the client's attendance on the client's behalf. Only the client confirms. If the studio offered a slot, say you are checking with the client and will confirm.
+- Never invent a client name, time, price or discount. If asking about price, you may ask for the final price for 60 minutes with a 10% Massage Club rate if they can do it.
+- If the client cancelled or the request is no longer needed, say so plainly, thank them, and say you will send the next one.
+- No signature unless this is the first message ever to this studio, in which case end with "Jordan, de Massage Club".
+Output only the message text.`;
+
+async function suggestReply(phone: string, studio?: { business_name: string } | null): Promise<string> {
   const s = await getSession(digitsOf(phone));
+  if (studio) {
+    const fb = "Gracias por responder. ¿Me confirmas la hora exacta y el precio final de 60 min?";
+    const key = await aiKey();
+    if (!key) return fb;
+    try {
+      const thread = await recentThread(phone);
+      const convo = thread.map((m) => `${m.dir === "in" ? "Studio" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 9000);
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", signal: ctl.signal,
+        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({ model: AI_MODEL, max_tokens: 300, system: STUDIO_REPLY_SYSTEM, messages: [{ role: "user", content: `Studio: ${studio.business_name}\n\nConversation, oldest first:\n${convo}\n\nWrite the reply.` }] }),
+      });
+      clearTimeout(timer);
+      if (!res.ok) return fb;
+      const out = await res.json();
+      return noDashes(String(out?.content?.[0]?.text || "")).replace(/^["']|["']$/g, "") || fb;
+    } catch (_e) { return fb; }
+  }
   const es = s.data?.lang === "es";
   const first = String(s.wa_name || "").trim().split(/\s+/)[0] || "";
   const fallback = es
@@ -768,6 +801,15 @@ function pageShell(title: string, top: string, body: string, extra = ""): string
 
 // One-tap answers Jordan reaches for most. Inserted into the box, never sent
 // on their own, so he can still edit before tapping Send.
+function studioQuickReplies(): Array<[string, string]> {
+  return [
+    ["Hora exacta", "Gracias. ¿Me confirmas la hora exacta de inicio?"],
+    ["Precio final", "¿Y cuál sería el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo?"],
+    ["Lo confirmo", "Perfecto, gracias. Lo confirmo con el cliente y os digo algo en cuanto me conteste."],
+    ["Ya no hace falta", "Gracias por responder. Al final el cliente ya no lo necesita, así que podéis liberar el hueco. Os escribo con la siguiente."],
+    ["Gracias", "Muchas gracias por la rapidez."],
+  ];
+}
 function quickReplies(es: boolean, first: string): Array<[string, string]> {
   const hi = es ? `Hola${first ? " " + first : ""}, somos Massage Club. ` : `Hi${first ? " " + first : ""}, Massage Club here. `;
   return es ? [
@@ -797,12 +839,12 @@ async function fullThread(phone: string): Promise<Array<{ dir: string; body: str
 const madridDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
 const madridTime = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
-function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean }): string {
-  const first = String(o.name || "").trim().split(/\s+/)[0] || "";
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean }): string {
+  const first = o.studio ? String(o.name || "STUDIO") : (String(o.name || "").trim().split(/\s+/)[0] || "");
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
     : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
     : `<span class="pill warn">WINDOW CLOSED</span>`;
-  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">Inbox</a></div>`;
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">${o.studio ? "Studio · " : ""}+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">Inbox</a></div>`;
   let lastDay = "";
   const bubbles = o.thread.map((m) => {
     const them = m.dir === "in";
@@ -827,11 +869,11 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     + (!o.open && !o.muted ? `<div class="note err">It has been over 24 hours since they last wrote, so WhatsApp will not deliver a normal message. Only an approved template can reach them now.</div>` : "")
     + (o.muted ? `<div class="note err">This number is muted. Nothing is ever sent to it.</div>` : "");
   const can = o.open && !o.muted;
-  const chips = quickReplies(o.es, first).map(([label, text]) =>
+  const chips = (o.studio ? studioQuickReplies() : quickReplies(o.es, first)).map(([label, text]) =>
     `<button type="button" class="chip" data-t="${esc(text)}">${esc(label)}</button>`).join("");
   const compose = `<form class="compose" method="post" action="${esc(o.action)}"><div class="in">${can ? `<div class="chips">${chips}</div>` : ""}
 <div class="row"><textarea id="t" name="text" rows="3" ${can ? "" : "disabled"} placeholder="Write your reply">${esc(o.draft)}</textarea><button class="send" type="submit" ${can ? "" : "disabled"}>Send</button></div>
-<div class="hint">${can ? "Suggested reply above. Edit freely. Sends from +34 613 977 900 as Massage Club." : "Sending is off for this chat."}</div></div></form>`;
+<div class="hint">${can ? (o.studio ? "Suggested reply above. Edit freely. Sends from +34 613 977 900. Studios only get messages between 09:00 and 21:00 Madrid." : "Suggested reply above. Edit freely. Sends from +34 613 977 900 as Massage Club.") : "Sending is off for this chat."}</div></div></form>`;
   const js = `<script>document.querySelectorAll('.chip').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById('t');t.value=b.getAttribute('data-t');t.focus();});});
 document.querySelector('.compose')&&document.querySelector('.compose').addEventListener('submit',function(e){var b=this.querySelector('.send');if(!document.getElementById('t').value.trim()){e.preventDefault();return;}b.disabled=true;b.textContent='Sending';});
 window.scrollTo(0,document.body.scrollHeight);</script>`;
@@ -854,25 +896,28 @@ async function inboxPage(url: URL): Promise<Response> {
     if (!e.lastIn && m.direction === "in") e.lastIn = m;
     byPhone.set(p, e);
   }
-  const items: Array<{ phone: string; name: string; waiting: boolean; hoursLeft: number; quote: string; at: number; step: string }> = [];
+  const items: Array<{ phone: string; name: string; waiting: boolean; hoursLeft: number; quote: string; at: number; step: string; studio?: boolean }> = [];
   for (const [p, e] of byPhone) {
     if (!e.lastIn || TEST_PHONES.includes(p)) continue;
-    if (await findPartnerByNumber(p)) continue;
+    const partner = await findPartnerByNumber(p);
     const s = await getSession(p);
     if (s.step === "muted") continue;
     const inAt = Date.parse(e.lastIn.created_at);
-    items.push({ phone: p, name: s.wa_name || "", waiting: e.last.direction === "in", hoursLeft: Math.max(0, (inAt + 24 * 3600 * 1000 - Date.now()) / 3600000), quote: String(e.lastIn.body || "").replace(/\s*\[via ad\]$/, ""), at: Date.parse(e.last.created_at), step: s.step });
+    items.push({ studio: !!partner, phone: p, name: partner ? partner.business_name : (s.wa_name || ""), waiting: e.last.direction === "in", hoursLeft: Math.max(0, (inAt + 24 * 3600 * 1000 - Date.now()) / 3600000), quote: String(e.lastIn.body || "").replace(/\s*\[via ad\]$/, ""), at: Date.parse(e.last.created_at), step: s.step });
   }
   items.sort((a, b) => Number(b.waiting) - Number(a.waiting) || b.at - a.at);
   const card = async (i: typeof items[number]) => {
     const ago = Math.round((Date.now() - i.at) / 60000);
     const agoTxt = ago < 60 ? `${ago} min ago` : `${Math.round(ago / 60)} h ago`;
-    return `<a class="card" href="${esc(await replyUrl(i.phone))}"><div class="h"><span class="n">${esc(i.name || "+" + i.phone)}</span>${i.waiting ? `<span class="pill wait">WAITING ON US</span>` : ""}<span class="pill ${i.hoursLeft < 3 ? "warn" : "ok"}">${Math.floor(i.hoursLeft)}h left</span></div><p class="q">"${esc(i.quote.slice(0, 160))}"</p><div class="m">+${esc(i.phone)} · ${agoTxt} · bot step: ${esc(i.step.replace(/^await_/, ""))}</div></a>`;
+    return `<a class="card" href="${esc(await replyUrl(i.phone))}"><div class="h"><span class="n">${esc(i.name || "+" + i.phone)}</span>${i.waiting ? `<span class="pill wait">WAITING ON US</span>` : ""}<span class="pill ${i.hoursLeft < 3 ? "warn" : "ok"}">${Math.floor(i.hoursLeft)}h left</span></div><p class="q">"${esc(i.quote.slice(0, 160))}"</p><div class="m">+${esc(i.phone)} · ${agoTxt}${i.studio ? "" : ` · bot step: ${esc(i.step.replace(/^await_/, ""))}`}</div></a>`;
   };
-  const waiting = items.filter((i) => i.waiting), rest = items.filter((i) => !i.waiting);
-  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Inbox</h1><div class="sub">${items.length} customer${items.length === 1 ? "" : "s"} you can still message · ${waiting.length} waiting on us</div></div></div>`;
+  const studios = items.filter((i) => i.studio);
+  const people = items.filter((i) => !i.studio);
+  const waiting = people.filter((i) => i.waiting), rest = people.filter((i) => !i.waiting);
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Inbox</h1><div class="sub">${people.length} customer${people.length === 1 ? "" : "s"} · ${studios.length} studio${studios.length === 1 ? "" : "s"} · ${waiting.length + studios.filter((i) => i.waiting).length} waiting on us</div></div></div>`;
   const body = (waiting.length ? `<div class="sec">WAITING ON US</div>${(await Promise.all(waiting.map(card))).join("")}` : "")
     + (rest.length ? `<div class="sec">BOT REPLIED LAST</div>${(await Promise.all(rest.map(card))).join("")}` : "")
+    + (studios.length ? `<div class="sec">STUDIOS</div>${(await Promise.all(studios.map(card))).join("")}` : "")
     + (items.length ? "" : `<p class="empty">Nobody has written in the last 24 hours.</p>`);
   return pageOut(url, pageShell("Inbox · Massage Club", top, body));
 }
@@ -888,7 +933,9 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
   const last = await lastInboundMs(phone);
   const open = last !== null && Date.now() - last < 23.5 * 3600 * 1000;
   const hoursLeft = last !== null ? Math.max(0, Math.round((last + 24 * 3600 * 1000 - Date.now()) / 360000) / 10) : null;
-  const es = s.data?.lang === "es";
+  const studio = await findPartnerByNumber(phone);
+  const es = !!studio || s.data?.lang === "es";
+  const name = studio ? studio.business_name : (s.wa_name || "");
   const inbox = await inboxUrl();
   let error = "";
   if (req.method === "POST") {
@@ -897,19 +944,20 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
     if (!text) error = "The message was empty, so nothing was sent.";
     else if (muted) error = "This number is muted. Nothing was sent.";
     else if (!open) error = "The 24 hour window is closed, so WhatsApp would not deliver this. Nothing was sent.";
+    else if (studio && (mcMadridHour() < 9 || mcMadridHour() >= 21)) error = "Studios only get messages between 09:00 and 21:00 Madrid. Nothing was sent; try again after 09:00.";
     else {
       const ok = await sendText(phone, text);
       if (ok) {
         await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step });
-        return html(replyHtml({ phone, name: s.wa_name || "", thread: await fullThread(phone), draft: "", open, hoursLeft, muted, sent: true, error: "", action, inbox, es }));
+        return html(replyHtml({ phone, name, studio: !!studio, thread: await fullThread(phone), draft: "", open, hoursLeft, muted, sent: true, error: "", action, inbox, es }));
       }
       error = "WhatsApp refused the message. Nothing was sent; check the bot logs.";
     }
-    return html(replyHtml({ phone, name: s.wa_name || "", thread: await fullThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action, inbox, es }));
+    return html(replyHtml({ phone, name, studio: !!studio, thread: await fullThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action, inbox, es }));
   }
   const sent = url.searchParams.get("sent") === "1";
-  const draft = sent ? "" : await suggestReply(phone);
-  return html(replyHtml({ phone, name: s.wa_name || "", thread: await fullThread(phone), draft, open, hoursLeft, muted, sent, error, action, inbox, es }));
+  const draft = sent ? "" : await suggestReply(phone, studio);
+  return html(replyHtml({ phone, name, studio: !!studio, thread: await fullThread(phone), draft, open, hoursLeft, muted, sent, error, action, inbox, es }));
 }
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
