@@ -931,8 +931,10 @@ async function inboxPage(url: URL): Promise<Response> {
   const shown = items.filter((i) => (tab === "studios") === i.studio);
   const tidy = (b: string) => {
     let t = b.replace(/\s*\[via ad\]$/, "");
-    const tm = /^\[template ([^\]/]+)\/[a-z]+\]\s*(.*)$/s.exec(t);
-    if (tm) t = `${tm[1] === "solicitud_reserva_v3" || tm[1].startsWith("solicitud_reserva") ? "Booking request" : "Template"}: ${tm[2]}`;
+    // Templates are logged as "[template name/lang] ..." or "[name] ...".
+    const tm = /^\[(?:template )?([a-z0-9_]+)(?:\/[a-z_]+)?\]\s*(.*)$/s.exec(t);
+    const TPL: Record<string, string> = { solicitud_reserva: "Booking request sent", booking_unfinished: "Unfinished-booking reminder", founder_alert: "Alert to Jordan" };
+    if (tm) { const k = Object.keys(TPL).find((x) => tm[1].startsWith(x)); t = `${k ? TPL[k] : "Template " + tm[1]}: ${tm[2]}`; }
     const tap = /^\[tap: ?([^\]]*)\]$/.exec(t);
     if (tap) t = tap[1] ? `Tapped: ${tap[1].replace(/_/g, " ")}` : "Sent a voice note or media";
     return t;
