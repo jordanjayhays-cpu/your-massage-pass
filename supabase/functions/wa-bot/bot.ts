@@ -632,29 +632,160 @@ async function founderCard(subject: string, o: { badge: string; title: string; p
       }).join("") + `</td></tr></table>`
     : "";
   const waHref = o.waNum ? `https://wa.me/${digitsOf(o.waNum)}${o.prefill ? `?text=${encodeURIComponent(o.prefill)}` : ""}` : "";
+  // v139: the main button now replies AS THE BOT, from the bot number. Writing
+  // from Jordan's own phone stays as a smaller link underneath.
+  const botHref = o.waNum ? await replyUrl(o.waNum) : "";
   const waBtn = o.waNum
-    ? `<tr><td style="padding:20px 34px 0;text-align:center;"><a href="${waHref}" style="display:inline-block;background:#1FA855;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:999px;">${esc(o.waLabel || "Reply on WhatsApp")}</a>${o.prefill ? `<p style="margin:8px 0 0;color:${C.muted};font-size:11.5px;">Opens with a ready-made draft you can edit before sending.</p>` : ""}</td></tr>`
+    ? `<tr><td style="padding:20px 34px 0;text-align:center;"><a href="${botHref}" style="display:inline-block;background:#1FA855;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:999px;">Reply as the bot</a><p style="margin:8px 0 0;color:${C.muted};font-size:11.5px;">Opens a suggested answer you can edit. Sends from the bot number as Massage Club.</p><p style="margin:10px 0 0;font-size:12px;"><a href="${waHref}" style="color:${C.muted};">${esc(o.waLabel || "Or write from your own WhatsApp")}</a></p></td></tr>`
     : "";
   const chatLink = o.waNum
     ? `<tr><td style="padding:12px 34px 0;text-align:center;"><a href="${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">View full conversation</a></td></tr>`
     : "";
   const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center">\n  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;">\n    <tr><td style="padding:26px 34px 0;text-align:center;">\n      <img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;">\n      <p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p>\n    </td></tr>\n    <tr><td style="padding:22px 34px 0;text-align:center;">\n      <span style="display:inline-block;background:${C.cream};color:${C.clay};font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">${esc(o.badge)}</span>\n      <h1 style="margin:14px 0 0;color:${C.ink};font-size:23px;line-height:1.3;font-family:${SERIF};font-weight:700;">${esc(o.title)}</h1>\n    </td></tr>\n    <tr><td style="padding:4px 34px 0;">${paras}${quote}${transcript}</td></tr>\n    ${waBtn}\n    ${chatLink}\n    <tr><td style="padding:22px 34px 26px;">\n      <div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div>\n      <p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Founder alert · WhatsApp bot · +34 613 97 79 00</p>\n    </td></tr>\n  </table>\n</td></tr></table>`;
-  const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.transcript || []), waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
+  const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.transcript || []), botHref ? `Reply as the bot: ${botHref}` : "", waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
   await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: FROM_EMAIL, to: o.to || SUPPORT, subject, html, text: plain }),
   });
 }
 
+// v139 (Jordan, 3 Oct): "I need to be able to reply as the bot, not as Jordan."
+// The founder alert's only button opened wa.me on Jordan's own phone, so every
+// answer he gave came from a different number and handed the customer over to a
+// person. This page sends from the bot number instead, signed Massage Club, and
+// leaves the session where it is so the bot carries on the booking.
+//
+//   GET  ?reply=<phone>&sig=<sig>   the thread, a suggested answer, a Send box
+//   POST same URL, form field text  sends it, then redirects back with &sent=1
+//
+// The sig is an HMAC of the phone under the ops key, so a link opens exactly one
+// customer's thread and cannot be pointed at anyone else. The ops key itself
+// never appears in the page or the email.
+async function replySig(phone: string): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(OPS_KEY + ":bot-reply"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(digitsOf(phone))));
+  return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function replyUrl(phone: string): Promise<string> {
+  return `${SUPABASE_URL}/functions/v1/wa-bot?reply=${digitsOf(phone)}&sig=${await replySig(phone)}`;
+}
+// No em or en dashes in anything a customer reads (standing rule).
+const noDashes = (s: string) => String(s || "").replace(/\s*[—–]\s*/g, ", ").trim();
+
+const REPLY_SYSTEM = `You write ONE WhatsApp message for Massage Club, a concierge in Madrid that books massages at professional studios for people, mostly English speakers. The founder will read your draft, may edit it, and sends it from the Massage Club WhatsApp number.
+
+Rules, all of them hard:
+- Write in the customer's language (Spanish if they write Spanish, otherwise English).
+- First answer the thing they actually asked, plainly. Then move the booking one step on by asking the single next question for where they stopped (which day, what time, which area of Madrid, or their email).
+- Facts you may use: a 60 minute relaxing massage at a professional studio is usually 45 to 60 EUR, paid directly at the studio, no fee from us. We ask several studios at once, send the customer the options and get them the best offer. Studios are all over Madrid (Centro, Salamanca, Chamberi, Retiro, Chamartin, Malasana and more).
+- Never invent a discount, a price, a studio name, a time slot or availability. Never promise the therapist speaks English. Never claim massage detoxes, cures or boosts immunity.
+- If they ask for anything sexual, "special", "extras", "happy ending", tantra or similar, the message is exactly: "We book therapeutic massage at licensed studios, nothing else." (Spanish: "Reservamos masajes terapéuticos en centros con licencia, nada más.") and nothing more.
+- Never say you are handing them to a person or a representative.
+- No em dashes, no en dashes, no links, no emoji, no bullet points. Under 60 words.
+- Start with "Hi <first name>, Massage Club here." (Spanish: "Hola <nombre>, somos Massage Club.") using their first name if you know it, otherwise without a name.
+Output only the message text.`;
+
+async function suggestReply(phone: string): Promise<string> {
+  const s = await getSession(digitsOf(phone));
+  const es = s.data?.lang === "es";
+  const first = String(s.wa_name || "").trim().split(/\s+/)[0] || "";
+  const fallback = es
+    ? `Hola${first ? " " + first : ""}, somos Massage Club. ¿Qué día te viene bien para el masaje?`
+    : `Hi${first ? " " + first : ""}, Massage Club here. Which day works for your massage?`;
+  const key = await aiKey();
+  if (!key) return fallback;
+  try {
+    const thread = await recentThread(phone);
+    const st = await bookingState(phone);
+    const convo = thread.map((m) => `${m.dir === "in" ? "Customer" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
+    const user = `Customer's WhatsApp name: ${s.wa_name || "unknown"}\nBot step they are on: ${s.step}\nBooking: ${st.line}\n\nConversation, oldest first:\n${convo}\n\nWrite the reply.`;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 9000);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal: ctl.signal,
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: AI_MODEL, max_tokens: 300, system: REPLY_SYSTEM, messages: [{ role: "user", content: user }] }),
+    });
+    clearTimeout(timer);
+    if (!res.ok) return fallback;
+    const out = await res.json();
+    const text = noDashes(String(out?.content?.[0]?.text || "")).replace(/^["']|["']$/g, "");
+    return text || fallback;
+  } catch (e) {
+    console.log("[wa] suggestReply failed", String(e));
+    return fallback;
+  }
+}
+
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string }): string {
+  const bubbles = o.thread.map((m) => {
+    const them = m.dir === "in";
+    return `<div style="display:flex;justify-content:${them ? "flex-start" : "flex-end"};margin:6px 0;"><div style="max-width:82%;background:${them ? "#fff" : C.cream};border:1px solid ${C.line};border-radius:14px;padding:9px 12px;font-size:14px;line-height:1.45;color:${C.ink};white-space:pre-wrap;"><b style="font-size:11px;color:${them ? C.clay : C.muted};letter-spacing:1px;">${them ? "THEM" : "BOT"}</b><br>${esc(m.body.slice(0, 600))}</div></div>`;
+  }).join("");
+  const status = o.muted
+    ? `<p class="warn">This number is muted. The bot never writes to it, and neither does this page.</p>`
+    : o.open
+    ? `<p class="ok">Window open${o.hoursLeft !== null ? `: about ${o.hoursLeft} h left` : ""}. Free text will deliver.</p>`
+    : `<p class="warn">The 24 hour window is closed, so WhatsApp will not deliver free text. Only an approved template can reach them now.</p>`;
+  const can = o.open && !o.muted;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reply as the bot</title>
+<style>body{margin:0;background:${C.page};font-family:${SANS};color:${C.ink}}main{max-width:560px;margin:0 auto;padding:20px 16px 40px}h1{font-family:${SERIF};font-size:22px;margin:6px 0 2px}.sub{color:${C.muted};font-size:13px;margin:0 0 14px}.card{background:#fff;border:1px solid ${C.line};border-radius:18px;padding:14px}textarea{width:100%;box-sizing:border-box;min-height:150px;border:1px solid ${C.dash};border-radius:12px;padding:12px;font:15px/1.5 ${SANS};color:${C.ink}}button{width:100%;margin-top:10px;background:${C.clay};color:#fff;border:0;border-radius:999px;padding:14px;font-size:15px;font-weight:700}button:disabled{background:#cbbfb2}.ok{color:#1F7A45;font-size:13px;margin:10px 0}.warn{color:#9A3B1E;font-size:13px;margin:10px 0}.done{background:#E6F4EA;color:#1F7A45;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}.err{background:#FBE9E3;color:#9A3B1E;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}.fine{color:${C.muted};font-size:12px;margin-top:8px}</style></head>
+<body><main><p style="margin:0;font-size:11px;font-weight:700;letter-spacing:3px;">MASSAGE CLUB</p>
+<h1>Reply as the bot</h1><p class="sub">${esc(o.name || "Customer")} · +${esc(o.phone)}</p>
+${o.sent ? `<div class="done">Sent from the bot number. The bot carries on from here.</div>` : ""}${o.error ? `<div class="err">${esc(o.error)}</div>` : ""}
+<div class="card">${bubbles || `<p class="sub">No messages yet.</p>`}</div>
+${status}
+<form method="post" action="${esc(o.action)}"><textarea name="text" ${can ? "" : "disabled"}>${esc(o.draft)}</textarea>
+<button type="submit" ${can ? "" : "disabled"}>Send as Massage Club</button></form>
+<p class="fine">Sends from +34 613 977 900, signed Massage Club. The draft above was written for you from this conversation; read it before sending. Em dashes are removed automatically.</p>
+</main></body></html>`;
+}
+
+async function replyPage(req: Request, url: URL): Promise<Response> {
+  const phone = digitsOf(url.searchParams.get("reply") || "");
+  const sig = String(url.searchParams.get("sig") || "");
+  if (!phone || sig !== (await replySig(phone))) return new Response("This link is not valid.", { status: 403 });
+  const html = (body: string, status = 200) => new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  const action = `${SUPABASE_URL}/functions/v1/wa-bot?reply=${phone}&sig=${sig}`;
+  const s = await getSession(phone);
+  const muted = s.step === "muted";
+  const last = await lastInboundMs(phone);
+  const open = last !== null && Date.now() - last < 23.5 * 3600 * 1000;
+  const hoursLeft = last !== null ? Math.max(0, Math.round((last + 24 * 3600 * 1000 - Date.now()) / 360000) / 10) : null;
+  let error = "";
+  if (req.method === "POST") {
+    const form = await req.formData().catch(() => null);
+    const text = noDashes(String(form?.get("text") || "")).slice(0, 1500);
+    if (!text) error = "The message was empty, so nothing was sent.";
+    else if (muted) error = "This number is muted. Nothing was sent.";
+    else if (!open) error = "The 24 hour window is closed, so WhatsApp would not deliver this. Nothing was sent.";
+    else {
+      const ok = await sendText(phone, text);
+      if (ok) {
+        await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step });
+        return new Response(null, { status: 303, headers: { Location: `${action}&sent=1` } });
+      }
+      error = "WhatsApp refused the message. Nothing was sent; check the bot logs.";
+    }
+    return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action }));
+  }
+  const sent = url.searchParams.get("sent") === "1";
+  const draft = sent ? "" : await suggestReply(phone);
+  return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft, open, hoursLeft, muted, sent, error, action }));
+}
+
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
 // offers went to die. Short, with a link to the chat.
 async function notifyJordanWa(text: string, aboutPhone?: string) {
   try {
-    const link = aboutPhone ? `\n${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(aboutPhone)}` : "";
+    // v139: the phone alert links straight to the reply-as-bot page.
+    const link = aboutPhone ? ` Reply as the bot: ${await replyUrl(aboutPhone)}` : "";
     // v45: free text to Jordan failed on 5 Sept (131047) because test messages
     // from his own number make canFreeform() true while Meta's window is closed.
     // The approved template always delivers, so use it every time.
-    await sendTemplate(digitsOf(JORDAN_MAIN_NUMBER), "founder_alert_v1", "en", [text.slice(0, 500)], [], text);
+    // The template parameter is capped at 300 characters (tp), so the alert
+    // text gives way to keep the link whole.
+    await sendTemplate(digitsOf(JORDAN_MAIN_NUMBER), "founder_alert_v1", "en", [text.slice(0, Math.max(60, 300 - link.length)) + link], [], text);
   } catch (e) { console.log("[wa] jordan wa failed", String(e)); }
 }
 
@@ -2485,6 +2616,15 @@ async function sendStatus(to: string, L: string, phone: string) {
 // because a fallback firing means a branch somewhere answered nothing.
 const handler = async (req: Request) => {
   sentThisTurn = false;
+  // v139: the founder's reply-as-bot page. Not a Meta webhook, so it is routed
+  // before the webhook body is read and never reaches the fallback below.
+  const url = new URL(req.url);
+  if (url.searchParams.has("reply")) {
+    try { return await replyPage(req, url); } catch (e) {
+      console.log("[wa] reply page failed", String(e));
+      return new Response("Something went wrong loading this page.", { status: 500 });
+    }
+  }
   let raw = "";
   try { raw = await req.text(); } catch { /* empty body */ }
   const res = await handleInner(new Request(req.url, { method: req.method, headers: req.headers, body: raw || null }));
