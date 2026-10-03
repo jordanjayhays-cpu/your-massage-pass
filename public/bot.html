@@ -116,6 +116,25 @@
     });
 
     if (!form) return;
+    // Closed 24h window: the bot number cannot send free text, but Jordan's own
+    // WhatsApp Business app can. Hand him the chosen box in his WhatsApp.
+    var phone = new URLSearchParams(location.search).get("reply");
+    var sendBtn = form.querySelector(".send");
+    if (phone && sendBtn && sendBtn.disabled && document.querySelector(".pill.warn")) {
+      [src, dst].forEach(function (b) { if (b) b.disabled = false; });
+      document.querySelectorAll("input[name=lang]").forEach(function (r) { r.disabled = false; });
+      var wa = document.createElement("a");
+      wa.className = "send"; wa.target = "_blank"; wa.rel = "noopener";
+      wa.textContent = "Open in my WhatsApp";
+      wa.style.cssText = "text-decoration:none;display:inline-flex;align-items:center;width:auto;padding:0 16px";
+      wa.addEventListener("click", function () {
+        var box = sendLang() === "en" ? src : dst;
+        wa.href = "https://wa.me/" + phone.replace(/\D/g, "") + "?text=" + encodeURIComponent((box && box.value || "").trim());
+      });
+      sendBtn.replaceWith(wa);
+      var hint = form.querySelector(".hint");
+      if (hint) hint.textContent = "The 24 hour window is closed, so the bot number cannot send this. The button opens it in your own WhatsApp (+34 612 474 827), which has no 24 hour limit.";
+    }
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var box = sendLang() === "en" ? src : dst;
