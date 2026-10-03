@@ -714,7 +714,7 @@ Rules, all hard:
 - No signature unless this is the first message ever to this studio, in which case end with "Jordan, de Massage Club".
 Output only the message text.`;
 
-async function suggestReply(phone: string, studio?: { business_name: string } | null): Promise<string> {
+async function suggestReply(phone: string, studio?: { business_name: string } | null, esHint = false): Promise<string> {
   const s = await getSession(digitsOf(phone));
   if (studio) {
     const fb = "Gracias por responder. ¿Me confirmas la hora exacta y el precio final de 60 min?";
@@ -724,7 +724,7 @@ async function suggestReply(phone: string, studio?: { business_name: string } | 
       const thread = await recentThread(phone);
       const convo = thread.map((m) => `${m.dir === "in" ? "Studio" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
       const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 9000);
+      const timer = setTimeout(() => ctl.abort(), 14000);
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST", signal: ctl.signal,
         headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
@@ -736,7 +736,7 @@ async function suggestReply(phone: string, studio?: { business_name: string } | 
       return noDashes(String(out?.content?.[0]?.text || "")).replace(/^["']|["']$/g, "") || fb;
     } catch (_e) { return fb; }
   }
-  const es = s.data?.lang === "es";
+  const es = esHint || s.data?.lang === "es";
   const first = String(s.wa_name || "").trim().split(/\s+/)[0] || "";
   const fallback = es
     ? `Hola${first ? " " + first : ""}, somos Massage Club. ¿Qué día te viene bien para el masaje?`
@@ -749,7 +749,7 @@ async function suggestReply(phone: string, studio?: { business_name: string } | 
     const convo = thread.map((m) => `${m.dir === "in" ? "Customer" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
     const user = `Customer's WhatsApp name: ${s.wa_name || "unknown"}\nBot step they are on: ${s.step}\nBooking: ${st.line}\n\nConversation, oldest first:\n${convo}\n\nWrite the reply.`;
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 9000);
+    const timer = setTimeout(() => ctl.abort(), 14000);
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST", signal: ctl.signal,
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
@@ -1019,7 +1019,11 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
   const open = last !== null && Date.now() - last < 23.5 * 3600 * 1000;
   const hoursLeft = last !== null ? Math.max(0, Math.round((last + 24 * 3600 * 1000 - Date.now()) / 360000) / 10) : null;
   const studio = await findPartnerByNumber(phone);
-  const es = !!studio || s.data?.lang === "es";
+  // The chat's language is what the customer is writing NOW: Stonelove started
+  // in English and switched to Spanish, and his session still said English.
+  const lastIn = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=3&select=body`, { headers: H() }).then((r) => r.json()).catch(() => []);
+  const recentEs = (Array.isArray(lastIn) ? lastIn : []).some((m: any) => strongSpanish(String(m.body || "").replace(/\s*\[via ad\]$/, "")));
+  const es = !!studio || recentEs || s.data?.lang === "es";
   const name = studio ? studio.business_name : (s.wa_name || "");
   const inbox = (await inboxUrl()) + (studio ? "&tab=studios" : "");
   let error = "";
@@ -1059,7 +1063,7 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
     return render({ draft: text, sent: false, error });
   }
   const sent = url.searchParams.get("sent") === "1";
-  return render({ draft: sent ? "" : suggestReply(phone, studio), sent, error });
+  return render({ draft: sent ? "" : suggestReply(phone, studio, es), sent, error });
 }
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
