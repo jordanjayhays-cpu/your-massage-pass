@@ -10,13 +10,15 @@
 <body>
 <p id="mc-loading">Loading…</p>
 <script>
-// Founder reply pages (reply as the bot, inbox). Supabase shows HTML from its
-// own domain as plain text, so this shell lives on massageclub.io and fetches
-// the rendered page from the wa-bot function as JSON. Nothing secret is here:
-// every link carries its own signature, checked on the server.
+// Founder reply pages (reply as the bot, conversations). Supabase shows HTML
+// from its own domain as plain text, so this shell lives on massageclub.io and
+// fetches the rendered page from the wa-bot function as JSON. Nothing secret
+// is here: every link carries its own signature, checked on the server.
 (function () {
   var API = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/wa-bot";
   var styled = false;
+
+  function apiUrl() { return API + location.search + (location.search ? "&" : "?") + "fmt=json"; }
 
   function render(html) {
     var doc = new DOMParser().parseFromString(html, "text/html");
@@ -34,8 +36,7 @@
   }
 
   function call(opts) {
-    var q = location.search + (location.search ? "&" : "?") + "fmt=json";
-    return fetch(API + q, opts)
+    return fetch(apiUrl(), opts)
       .then(function (r) { return r.json(); })
       .then(function (j) { render(j.html || "<p style='padding:20px'>Could not load this page.</p>"); })
       .catch(function () {
@@ -43,25 +44,83 @@
       });
   }
 
+  // Live translation for the side-by-side composer. Sends nothing.
+  function translate(text, to) {
+    var body = new URLSearchParams();
+    body.set("mode", "translate"); body.set("text", text); body.set("to", to);
+    return fetch(apiUrl(), { method: "POST", body: body })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { return j.out || ""; })
+      .catch(function () { return null; });
+  }
+
   function wire() {
-    var box = document.getElementById("t");
+    var src = document.getElementById("src");   // English, what Jordan types
+    var dst = document.getElementById("t");     // Spanish, editable
+    var form = document.querySelector("form.compose");
+    var timer = null, seq = 0;
+
+    function sendLang() {
+      var r = document.querySelector("input[name=lang]:checked");
+      return r ? r.value : "es";
+    }
+
+    if (src && dst) {
+      // Type English, the Spanish fills in on the right.
+      src.addEventListener("input", function () {
+        clearTimeout(timer);
+        var mine = ++seq;
+        timer = setTimeout(function () {
+          var t = src.value.trim();
+          if (!t) { dst.value = ""; return; }
+          dst.classList.add("busy");
+          translate(t, "es").then(function (out) {
+            if (mine !== seq) return;
+            dst.classList.remove("busy");
+            if (out !== null) dst.value = out;
+          });
+        }, 650);
+      });
+      // A Spanish draft already on the right gets its English on the left.
+      if (dst.value.trim() && !src.value.trim()) {
+        src.classList.add("busy");
+        translate(dst.value.trim(), "en").then(function (out) {
+          src.classList.remove("busy");
+          if (out && !src.value.trim()) src.value = out;
+        });
+      }
+    }
+
     document.querySelectorAll(".chip").forEach(function (b) {
       b.addEventListener("click", function () {
-        if (!box) return;
-        box.value = b.getAttribute("data-t");
-        box.focus();
+        var text = b.getAttribute("data-t");
+        if (b.getAttribute("data-l") === "es" && dst) {
+          dst.value = text;
+          if (src) {
+            src.value = "";
+            src.classList.add("busy");
+            translate(text, "en").then(function (out) { src.classList.remove("busy"); if (out) src.value = out; });
+          }
+          dst.focus();
+        } else if (src) {
+          src.value = text;
+          src.dispatchEvent(new Event("input"));
+          src.focus();
+        }
       });
     });
-    var form = document.querySelector("form.compose");
+
     if (!form) return;
     form.addEventListener("submit", function (e) {
       e.preventDefault();
+      var box = sendLang() === "en" ? src : dst;
       var text = (box && box.value || "").trim();
-      if (!text) return;
+      if (!text) { if (box) box.focus(); return; }
       var btn = form.querySelector(".send");
       if (btn) { btn.disabled = true; btn.textContent = "Sending"; }
       var body = new URLSearchParams();
       body.set("text", text);
+      body.set("raw", "1");   // exactly what is in the chosen box, no re-translation
       call({ method: "POST", body: body });
     });
   }
