@@ -670,7 +670,10 @@ async function replySig(phone: string): Promise<string> {
 // saw raw code on 3 Oct), so the pages live at book.massageclub.io/bot.html, a
 // static shell that fetches the rendered page from here as JSON (fmt=json) and
 // posts replies back as a form. Nothing secret is in the shell.
-const REPLY_BASE = "https://book.massageclub.io/bot.html";
+// v150 (Jordan, 3 Oct): founder links use the vercel.app address of the same
+// page, which opens on networks that block massageclub.io. Founder only; links
+// sent to customers stay on massageclub.io.
+const REPLY_BASE = "https://your-massage-pass-o5fo.vercel.app/bot.html";
 async function replyUrl(phone: string): Promise<string> {
   return `${REPLY_BASE}?reply=${digitsOf(phone)}&sig=${await replySig(phone)}`;
 }
