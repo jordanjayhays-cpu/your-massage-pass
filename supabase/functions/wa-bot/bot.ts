@@ -639,7 +639,7 @@ async function founderCard(subject: string, o: { badge: string; title: string; p
     ? `<tr><td style="padding:20px 34px 0;text-align:center;"><a href="${botHref}" style="display:inline-block;background:#1FA855;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:999px;">Reply as the bot</a><p style="margin:8px 0 0;color:${C.muted};font-size:11.5px;">Opens a suggested answer you can edit. Sends from the bot number as Massage Club.</p><p style="margin:10px 0 0;font-size:12px;"><a href="${waHref}" style="color:${C.muted};">${esc(o.waLabel || "Or write from your own WhatsApp")}</a></p></td></tr>`
     : "";
   const chatLink = o.waNum
-    ? `<tr><td style="padding:12px 34px 0;text-align:center;"><a href="${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">View full conversation</a></td></tr>`
+    ? `<tr><td style="padding:12px 34px 0;text-align:center;"><a href="${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">View full conversation</a> <span style="color:${C.dash};">·</span> <a href="${await inboxUrl()}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">Open inbox</a></td></tr>`
     : "";
   const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center">\n  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;">\n    <tr><td style="padding:26px 34px 0;text-align:center;">\n      <img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;">\n      <p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p>\n    </td></tr>\n    <tr><td style="padding:22px 34px 0;text-align:center;">\n      <span style="display:inline-block;background:${C.cream};color:${C.clay};font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">${esc(o.badge)}</span>\n      <h1 style="margin:14px 0 0;color:${C.ink};font-size:23px;line-height:1.3;font-family:${SERIF};font-weight:700;">${esc(o.title)}</h1>\n    </td></tr>\n    <tr><td style="padding:4px 34px 0;">${paras}${quote}${transcript}</td></tr>\n    ${waBtn}\n    ${chatLink}\n    <tr><td style="padding:22px 34px 26px;">\n      <div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div>\n      <p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Founder alert · WhatsApp bot · +34 613 97 79 00</p>\n    </td></tr>\n  </table>\n</td></tr></table>`;
   const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.transcript || []), botHref ? `Reply as the bot: ${botHref}` : "", waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
@@ -666,8 +666,23 @@ async function replySig(phone: string): Promise<string> {
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(digitsOf(phone))));
   return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+// Supabase serves every HTML response from *.supabase.co as text/plain (Jordan
+// saw raw code on 3 Oct), so the pages live at book.massageclub.io/bot.html, a
+// static shell that fetches the rendered page from here as JSON (fmt=json) and
+// posts replies back as a form. Nothing secret is in the shell.
+const REPLY_BASE = "https://book.massageclub.io/bot.html";
 async function replyUrl(phone: string): Promise<string> {
-  return `${SUPABASE_URL}/functions/v1/wa-bot?reply=${digitsOf(phone)}&sig=${await replySig(phone)}`;
+  return `${REPLY_BASE}?reply=${digitsOf(phone)}&sig=${await replySig(phone)}`;
+}
+async function inboxUrl(): Promise<string> {
+  return `${REPLY_BASE}?inbox=1&sig=${await replySig("inbox")}`;
+}
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "content-type" };
+// fmt=json wraps the page for the bot.html shell; without it, raw HTML (useful
+// for checking the page with curl).
+function pageOut(url: URL, html: string, status = 200): Response {
+  if (url.searchParams.get("fmt") === "json") return new Response(JSON.stringify({ html }), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+  return new Response(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 // No em or en dashes in anything a customer reads (standing rule).
 const noDashes = (s: string) => String(s || "").replace(/\s*[—–]\s*/g, ", ").trim();
@@ -717,41 +732,137 @@ async function suggestReply(phone: string): Promise<string> {
   }
 }
 
-function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string }): string {
+// v139: the founder pages. Mobile first, Massage Club palette, no external
+// assets, so they load instantly on a phone from an alert.
+const PAGE_CSS = `*{box-sizing:border-box}body{margin:0;background:${C.page};font-family:${SANS};color:${C.ink};-webkit-font-smoothing:antialiased}
+a{color:inherit}main{max-width:600px;margin:0 auto;padding:0 0 120px}
+.top{position:sticky;top:0;z-index:5;background:${C.page}ee;backdrop-filter:blur(8px);padding:14px 16px 10px;display:flex;align-items:center;gap:12px;border-bottom:1px solid ${C.dash}}
+.top img{width:36px;height:36px;border-radius:50%}.top .t{flex:1;min-width:0}.brand{font-size:10.5px;font-weight:700;letter-spacing:3px;color:${C.clay}}
+.top h1{margin:1px 0 0;font-family:${SERIF};font-size:19px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .sub{color:${C.muted};font-size:12.5px}.back{text-decoration:none;font-size:13px;font-weight:700;color:${C.clay};white-space:nowrap}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:4px 10px;border-radius:999px}
+.pill.ok{background:#E6F4EA;color:#1F7A45}.pill.warn{background:#FBE9E3;color:#9A3B1E}.pill.wait{background:${C.clay};color:#fff}.pill.mute{background:#EEE7DD;color:${C.muted}}
+.wrap{padding:14px 16px}.thread{display:flex;flex-direction:column;gap:6px}
+.msg{max-width:84%;padding:9px 12px 7px;border-radius:16px;font-size:14.5px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.msg.them{align-self:flex-start;background:#fff;border-bottom-left-radius:5px}.msg.us{align-self:flex-end;background:#F6E7DC;border-bottom-right-radius:5px}
+.who{display:block;font-size:10.5px;font-weight:700;letter-spacing:1px;margin-bottom:2px}.them .who{color:${C.clay}}.us .who{color:${C.muted}}
+.note{border-radius:14px;padding:11px 14px;font-size:14px;margin:12px 16px 0}.note.done{background:#E6F4EA;color:#1F7A45}.note.err{background:#FBE9E3;color:#9A3B1E}
+.compose{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid ${C.dash};padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+.compose .in{max-width:600px;margin:0 auto}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid ${C.dash};background:${C.cream};color:${C.ink};border-radius:999px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+.row{display:flex;gap:8px;align-items:flex-end}textarea{flex:1;min-height:46px;max-height:40vh;resize:vertical;border:1px solid ${C.dash};border-radius:18px;padding:11px 14px;font:15px/1.45 ${SANS};color:${C.ink};background:${C.cream}}
+textarea:focus{outline:2px solid ${C.clay}33;border-color:${C.clay}}
+.send{border:0;background:${C.clay};color:#fff;border-radius:999px;height:46px;padding:0 18px;font-size:15px;font-weight:700;cursor:pointer}.send:disabled{background:#cbbfb2}
+.hint{color:${C.muted};font-size:11.5px;margin-top:6px}
+.card{display:block;text-decoration:none;background:#fff;border:1px solid ${C.line};border-radius:18px;padding:14px 16px;margin:10px 16px 0}
+.card .h{display:flex;align-items:center;gap:8px}.card .n{font-weight:700;font-size:15.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .q{margin:8px 0 0;color:${C.ink};font-size:14px;line-height:1.45;font-style:italic}.card .m{margin-top:8px;color:${C.muted};font-size:12px}
+.sec{margin:20px 16px 0;font-size:11px;font-weight:700;letter-spacing:2.5px;color:${C.muted}}.empty{margin:30px 16px;color:${C.muted};text-align:center;font-size:14px}`;
+
+function pageShell(title: string, top: string, body: string, extra = ""): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${PAGE_CSS}</style></head><body><main>${top}${body}</main>${extra}</body></html>`;
+}
+
+// One-tap answers Jordan reaches for most. Inserted into the box, never sent
+// on their own, so he can still edit before tapping Send.
+function quickReplies(es: boolean, first: string): Array<[string, string]> {
+  const hi = es ? `Hola${first ? " " + first : ""}, somos Massage Club. ` : `Hi${first ? " " + first : ""}, Massage Club here. `;
+  return es ? [
+    ["Qué día", hi + "¿Qué día te viene bien para el masaje?"],
+    ["Qué hora", hi + "¿A qué hora te viene mejor? Por ejemplo, las 18:00."],
+    ["Qué zona", hi + "¿En qué zona de Madrid estás? Así busco el centro más cercano."],
+    ["Precio", hi + "Un masaje relajante de 60 min en un centro profesional suele costar entre 45 y 60 EUR. Pagas directamente en el centro, sin comisión."],
+    ["Mejor oferta", hi + "Preguntamos a varios centros a la vez, te mandamos las opciones y te conseguimos la mejor oferta. ¿Qué día te viene bien?"],
+    ["Solo terapéutico", "Reservamos masajes terapéuticos en centros con licencia, nada más."],
+  ] : [
+    ["Which day", hi + "Which day works for your massage?"],
+    ["What time", hi + "What time suits you? For example 18:00."],
+    ["Which area", hi + "Which part of Madrid are you in? Then I can find the closest studio."],
+    ["Price", hi + "A 60 min relaxing massage at a professional studio is usually 45 to 60 EUR, paid directly at the studio, no fee from us."],
+    ["Best offer", hi + "We ask several studios at once, send you the options and get you the best offer. Which day works for you?"],
+    ["Therapeutic only", "We book therapeutic massage at licensed studios, nothing else."],
+  ];
+}
+
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean }): string {
+  const first = String(o.name || "").trim().split(/\s+/)[0] || "";
+  const pill = o.muted ? `<span class="pill mute">MUTED</span>`
+    : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
+    : `<span class="pill warn">WINDOW CLOSED</span>`;
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">Inbox</a></div>`;
   const bubbles = o.thread.map((m) => {
     const them = m.dir === "in";
-    return `<div style="display:flex;justify-content:${them ? "flex-start" : "flex-end"};margin:6px 0;"><div style="max-width:82%;background:${them ? "#fff" : C.cream};border:1px solid ${C.line};border-radius:14px;padding:9px 12px;font-size:14px;line-height:1.45;color:${C.ink};white-space:pre-wrap;"><b style="font-size:11px;color:${them ? C.clay : C.muted};letter-spacing:1px;">${them ? "THEM" : "BOT"}</b><br>${esc(m.body.slice(0, 600))}</div></div>`;
+    const body = m.body.replace(/\s*\[via ad\]$/, "").slice(0, 700);
+    return `<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}</div>`;
   }).join("");
-  const status = o.muted
-    ? `<p class="warn">This number is muted. The bot never writes to it, and neither does this page.</p>`
-    : o.open
-    ? `<p class="ok">Window open${o.hoursLeft !== null ? `: about ${o.hoursLeft} h left` : ""}. Free text will deliver.</p>`
-    : `<p class="warn">The 24 hour window is closed, so WhatsApp will not deliver free text. Only an approved template can reach them now.</p>`;
+  const notes = (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
+    + (o.error ? `<div class="note err">${esc(o.error)}</div>` : "")
+    + (!o.open && !o.muted ? `<div class="note err">It has been over 24 hours since they last wrote, so WhatsApp will not deliver a normal message. Only an approved template can reach them now.</div>` : "")
+    + (o.muted ? `<div class="note err">This number is muted. Nothing is ever sent to it.</div>` : "");
   const can = o.open && !o.muted;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reply as the bot</title>
-<style>body{margin:0;background:${C.page};font-family:${SANS};color:${C.ink}}main{max-width:560px;margin:0 auto;padding:20px 16px 40px}h1{font-family:${SERIF};font-size:22px;margin:6px 0 2px}.sub{color:${C.muted};font-size:13px;margin:0 0 14px}.card{background:#fff;border:1px solid ${C.line};border-radius:18px;padding:14px}textarea{width:100%;box-sizing:border-box;min-height:150px;border:1px solid ${C.dash};border-radius:12px;padding:12px;font:15px/1.5 ${SANS};color:${C.ink}}button{width:100%;margin-top:10px;background:${C.clay};color:#fff;border:0;border-radius:999px;padding:14px;font-size:15px;font-weight:700}button:disabled{background:#cbbfb2}.ok{color:#1F7A45;font-size:13px;margin:10px 0}.warn{color:#9A3B1E;font-size:13px;margin:10px 0}.done{background:#E6F4EA;color:#1F7A45;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}.err{background:#FBE9E3;color:#9A3B1E;border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}.fine{color:${C.muted};font-size:12px;margin-top:8px}</style></head>
-<body><main><p style="margin:0;font-size:11px;font-weight:700;letter-spacing:3px;">MASSAGE CLUB</p>
-<h1>Reply as the bot</h1><p class="sub">${esc(o.name || "Customer")} · +${esc(o.phone)}</p>
-${o.sent ? `<div class="done">Sent from the bot number. The bot carries on from here.</div>` : ""}${o.error ? `<div class="err">${esc(o.error)}</div>` : ""}
-<div class="card">${bubbles || `<p class="sub">No messages yet.</p>`}</div>
-${status}
-<form method="post" action="${esc(o.action)}"><textarea name="text" ${can ? "" : "disabled"}>${esc(o.draft)}</textarea>
-<button type="submit" ${can ? "" : "disabled"}>Send as Massage Club</button></form>
-<p class="fine">Sends from +34 613 977 900, signed Massage Club. The draft above was written for you from this conversation; read it before sending. Em dashes are removed automatically.</p>
-</main></body></html>`;
+  const chips = quickReplies(o.es, first).map(([label, text]) =>
+    `<button type="button" class="chip" data-t="${esc(text)}">${esc(label)}</button>`).join("");
+  const compose = `<form class="compose" method="post" action="${esc(o.action)}"><div class="in">${can ? `<div class="chips">${chips}</div>` : ""}
+<div class="row"><textarea id="t" name="text" rows="3" ${can ? "" : "disabled"} placeholder="Write your reply">${esc(o.draft)}</textarea><button class="send" type="submit" ${can ? "" : "disabled"}>Send</button></div>
+<div class="hint">${can ? "Suggested reply above. Edit freely. Sends from +34 613 977 900 as Massage Club." : "Sending is off for this chat."}</div></div></form>`;
+  const js = `<script>document.querySelectorAll('.chip').forEach(function(b){b.addEventListener('click',function(){var t=document.getElementById('t');t.value=b.getAttribute('data-t');t.focus();});});
+document.querySelector('.compose')&&document.querySelector('.compose').addEventListener('submit',function(e){var b=this.querySelector('.send');if(!document.getElementById('t').value.trim()){e.preventDefault();return;}b.disabled=true;b.textContent='Sending';});
+window.scrollTo(0,document.body.scrollHeight);</script>`;
+  return pageShell(`Reply · ${o.name || "+" + o.phone}`, top, `${notes}<div class="wrap"><div class="thread">${bubbles || `<p class="empty">No messages yet.</p>`}</div></div>`, compose + js);
+}
+
+// v139: everyone Jordan could still answer, newest first, the ones whose last
+// message is theirs on top. Customers only: studios and test numbers are left out.
+async function inboxPage(url: URL): Promise<Response> {
+  if (String(url.searchParams.get("sig") || "") !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${since}&order=created_at.desc&limit=600&select=phone,direction,body,created_at`, { headers: H() });
+  const rows: any[] = await r.json().catch(() => []);
+  const byPhone = new Map<string, { last: any; lastIn: any }>();
+  for (const m of Array.isArray(rows) ? rows : []) {
+    const p = digitsOf(String(m.phone || ""));
+    if (!p) continue;
+    const e = byPhone.get(p) || { last: null, lastIn: null };
+    if (!e.last) e.last = m;
+    if (!e.lastIn && m.direction === "in") e.lastIn = m;
+    byPhone.set(p, e);
+  }
+  const items: Array<{ phone: string; name: string; waiting: boolean; hoursLeft: number; quote: string; at: number; step: string }> = [];
+  for (const [p, e] of byPhone) {
+    if (!e.lastIn || TEST_PHONES.includes(p)) continue;
+    if (await findPartnerByNumber(p)) continue;
+    const s = await getSession(p);
+    if (s.step === "muted") continue;
+    const inAt = Date.parse(e.lastIn.created_at);
+    items.push({ phone: p, name: s.wa_name || "", waiting: e.last.direction === "in", hoursLeft: Math.max(0, (inAt + 24 * 3600 * 1000 - Date.now()) / 3600000), quote: String(e.lastIn.body || "").replace(/\s*\[via ad\]$/, ""), at: Date.parse(e.last.created_at), step: s.step });
+  }
+  items.sort((a, b) => Number(b.waiting) - Number(a.waiting) || b.at - a.at);
+  const card = async (i: typeof items[number]) => {
+    const ago = Math.round((Date.now() - i.at) / 60000);
+    const agoTxt = ago < 60 ? `${ago} min ago` : `${Math.round(ago / 60)} h ago`;
+    return `<a class="card" href="${esc(await replyUrl(i.phone))}"><div class="h"><span class="n">${esc(i.name || "+" + i.phone)}</span>${i.waiting ? `<span class="pill wait">WAITING ON US</span>` : ""}<span class="pill ${i.hoursLeft < 3 ? "warn" : "ok"}">${Math.floor(i.hoursLeft)}h left</span></div><p class="q">"${esc(i.quote.slice(0, 160))}"</p><div class="m">+${esc(i.phone)} · ${agoTxt} · bot step: ${esc(i.step.replace(/^await_/, ""))}</div></a>`;
+  };
+  const waiting = items.filter((i) => i.waiting), rest = items.filter((i) => !i.waiting);
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Inbox</h1><div class="sub">${items.length} customer${items.length === 1 ? "" : "s"} you can still message · ${waiting.length} waiting on us</div></div></div>`;
+  const body = (waiting.length ? `<div class="sec">WAITING ON US</div>${(await Promise.all(waiting.map(card))).join("")}` : "")
+    + (rest.length ? `<div class="sec">BOT REPLIED LAST</div>${(await Promise.all(rest.map(card))).join("")}` : "")
+    + (items.length ? "" : `<p class="empty">Nobody has written in the last 24 hours.</p>`);
+  return pageOut(url, pageShell("Inbox · Massage Club", top, body));
 }
 
 async function replyPage(req: Request, url: URL): Promise<Response> {
   const phone = digitsOf(url.searchParams.get("reply") || "");
   const sig = String(url.searchParams.get("sig") || "");
-  if (!phone || sig !== (await replySig(phone))) return new Response("This link is not valid.", { status: 403 });
-  const html = (body: string, status = 200) => new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
-  const action = `${SUPABASE_URL}/functions/v1/wa-bot?reply=${phone}&sig=${sig}`;
+  if (!phone || sig !== (await replySig(phone))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
+  const html = (body: string, status = 200) => pageOut(url, body, status);
+  const action = `${REPLY_BASE}?reply=${phone}&sig=${sig}`;
   const s = await getSession(phone);
   const muted = s.step === "muted";
   const last = await lastInboundMs(phone);
   const open = last !== null && Date.now() - last < 23.5 * 3600 * 1000;
   const hoursLeft = last !== null ? Math.max(0, Math.round((last + 24 * 3600 * 1000 - Date.now()) / 360000) / 10) : null;
+  const es = s.data?.lang === "es";
+  const inbox = await inboxUrl();
   let error = "";
   if (req.method === "POST") {
     const form = await req.formData().catch(() => null);
@@ -763,15 +874,15 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
       const ok = await sendText(phone, text);
       if (ok) {
         await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step });
-        return new Response(null, { status: 303, headers: { Location: `${action}&sent=1` } });
+        return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft: "", open, hoursLeft, muted, sent: true, error: "", action, inbox, es }));
       }
       error = "WhatsApp refused the message. Nothing was sent; check the bot logs.";
     }
-    return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action }));
+    return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft: text, open, hoursLeft, muted, sent: false, error, action, inbox, es }));
   }
   const sent = url.searchParams.get("sent") === "1";
   const draft = sent ? "" : await suggestReply(phone);
-  return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft, open, hoursLeft, muted, sent, error, action }));
+  return html(replyHtml({ phone, name: s.wa_name || "", thread: await recentThread(phone), draft, open, hoursLeft, muted, sent, error, action, inbox, es }));
 }
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
@@ -2619,6 +2730,13 @@ const handler = async (req: Request) => {
   // v139: the founder's reply-as-bot page. Not a Meta webhook, so it is routed
   // before the webhook body is read and never reaches the fallback below.
   const url = new URL(req.url);
+  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply"))) return new Response(null, { status: 204, headers: CORS });
+  if (url.searchParams.has("inbox")) {
+    try { return await inboxPage(url); } catch (e) {
+      console.log("[wa] inbox page failed", String(e));
+      return new Response("Something went wrong loading the inbox.", { status: 500 });
+    }
+  }
   if (url.searchParams.has("reply")) {
     try { return await replyPage(req, url); } catch (e) {
       console.log("[wa] reply page failed", String(e));
