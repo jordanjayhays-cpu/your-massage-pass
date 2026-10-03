@@ -844,7 +844,7 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
     : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
     : `<span class="pill warn">WINDOW CLOSED</span>`;
-  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">${o.studio ? "Studio · " : ""}+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">Inbox</a></div>`;
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>${esc(o.name || "Customer")}</h1><div class="sub">${o.studio ? "Studio · " : ""}+${esc(o.phone)} · ${pill}</div></div><a class="back" href="${esc(o.inbox)}">All chats</a></div>`;
   let lastDay = "";
   const bubbles = o.thread.map((m) => {
     const them = m.dir === "in";
@@ -880,46 +880,80 @@ window.scrollTo(0,document.body.scrollHeight);</script>`;
   return pageShell(`Reply · ${o.name || "+" + o.phone}`, top, `${notes}<div class="wrap"><div class="thread">${bubbles || `<p class="empty">No messages yet.</p>`}</div></div>`, compose + js);
 }
 
-// v139: everyone Jordan could still answer, newest first, the ones whose last
-// message is theirs on top. Customers only: studios and test numbers are left out.
+// v143 (Jordan, 3 Oct): ONE link to watch everything. Every conversation from
+// the last 7 days, customers and studios on separate tabs, showing the last
+// message either way (so he sees what the bot is SENDING, not only what came
+// in), whether he can still write freely, and one tap into the chat to step in.
 async function inboxPage(url: URL): Promise<Response> {
-  if (String(url.searchParams.get("sig") || "") !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${since}&order=created_at.desc&limit=600&select=phone,direction,body,created_at`, { headers: H() });
+  const sig = String(url.searchParams.get("sig") || "");
+  if (sig !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
+  const tab = url.searchParams.get("tab") === "studios" ? "studios" : "customers";
+  const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${since}&order=created_at.desc&limit=3000&select=phone,direction,body,created_at`, { headers: H() });
   const rows: any[] = await r.json().catch(() => []);
-  const byPhone = new Map<string, { last: any; lastIn: any }>();
+  const byPhone = new Map<string, { last: any; lastIn: any; n: number }>();
   for (const m of Array.isArray(rows) ? rows : []) {
     const p = digitsOf(String(m.phone || ""));
     if (!p) continue;
-    const e = byPhone.get(p) || { last: null, lastIn: null };
+    const e = byPhone.get(p) || { last: null, lastIn: null, n: 0 };
     if (!e.last) e.last = m;
     if (!e.lastIn && m.direction === "in") e.lastIn = m;
+    e.n++;
     byPhone.set(p, e);
   }
-  const items: Array<{ phone: string; name: string; waiting: boolean; hoursLeft: number; quote: string; at: number; step: string; studio?: boolean }> = [];
+  // Studios and sessions in two reads, not two per phone.
+  const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=business_name,phone,whatsapp,status&limit=1000`, { headers: H() });
+  const partners: any[] = await pr.json().catch(() => []);
+  const studioOf = new Map<string, string>();
+  for (const pt of Array.isArray(partners) ? partners : []) {
+    for (const raw of [pt.whatsapp, pt.phone]) {
+      let d = digitsOf(String(raw || ""));
+      if (d.length === 9) d = "34" + d;
+      if (d.length >= 9 && (!studioOf.has(d) || pt.status === "active")) studioOf.set(d, String(pt.business_name || ""));
+    }
+  }
+  const phones = [...byPhone.keys()];
+  const sr = phones.length ? await fetch(`${SUPABASE_URL}/rest/v1/wa_sessions?phone=in.(${phones.join(",")})&select=phone,step,wa_name`, { headers: H() }) : null;
+  const sess = new Map<string, any>();
+  for (const x of sr ? ((await sr.json().catch(() => [])) as any[]) : []) sess.set(digitsOf(String(x.phone || "")), x);
+  type Item = { phone: string; name: string; studio: boolean; waiting: boolean; open: boolean; hoursLeft: number; lastBody: string; lastDir: string; at: number; step: string };
+  const items: Item[] = [];
   for (const [p, e] of byPhone) {
-    if (!e.lastIn || TEST_PHONES.includes(p)) continue;
-    const partner = await findPartnerByNumber(p);
-    const s = await getSession(p);
+    if (TEST_PHONES.includes(p)) continue;
+    const s = sess.get(p) || {};
     if (s.step === "muted") continue;
-    const inAt = Date.parse(e.lastIn.created_at);
-    items.push({ studio: !!partner, phone: p, name: partner ? partner.business_name : (s.wa_name || ""), waiting: e.last.direction === "in", hoursLeft: Math.max(0, (inAt + 24 * 3600 * 1000 - Date.now()) / 3600000), quote: String(e.lastIn.body || "").replace(/\s*\[via ad\]$/, ""), at: Date.parse(e.last.created_at), step: s.step });
+    const studioName = studioOf.get(p);
+    const inAt = e.lastIn ? Date.parse(e.lastIn.created_at) : 0;
+    const left = inAt ? (inAt + 24 * 3600 * 1000 - Date.now()) / 3600000 : 0;
+    items.push({ phone: p, name: studioName || s.wa_name || "", studio: !!studioName, waiting: e.last.direction === "in", open: left > 0.5, hoursLeft: Math.max(0, left), lastBody: String(e.last.body || ""), lastDir: String(e.last.direction || ""), at: Date.parse(e.last.created_at), step: String(s.step || "") });
   }
   items.sort((a, b) => Number(b.waiting) - Number(a.waiting) || b.at - a.at);
-  const card = async (i: typeof items[number]) => {
-    const ago = Math.round((Date.now() - i.at) / 60000);
-    const agoTxt = ago < 60 ? `${ago} min ago` : `${Math.round(ago / 60)} h ago`;
-    return `<a class="card" href="${esc(await replyUrl(i.phone))}"><div class="h"><span class="n">${esc(i.name || "+" + i.phone)}</span>${i.waiting ? `<span class="pill wait">WAITING ON US</span>` : ""}<span class="pill ${i.hoursLeft < 3 ? "warn" : "ok"}">${Math.floor(i.hoursLeft)}h left</span></div><p class="q">"${esc(i.quote.slice(0, 160))}"</p><div class="m">+${esc(i.phone)} · ${agoTxt}${i.studio ? "" : ` · bot step: ${esc(i.step.replace(/^await_/, ""))}`}</div></a>`;
+  const shown = items.filter((i) => (tab === "studios") === i.studio);
+  const tidy = (b: string) => {
+    let t = b.replace(/\s*\[via ad\]$/, "");
+    const tm = /^\[template ([^\]/]+)\/[a-z]+\]\s*(.*)$/s.exec(t);
+    if (tm) t = `${tm[1] === "solicitud_reserva_v3" || tm[1].startsWith("solicitud_reserva") ? "Booking request" : "Template"}: ${tm[2]}`;
+    const tap = /^\[tap: ?([^\]]*)\]$/.exec(t);
+    if (tap) t = tap[1] ? `Tapped: ${tap[1].replace(/_/g, " ")}` : "Sent a voice note or media";
+    return t;
   };
-  const studios = items.filter((i) => i.studio);
-  const people = items.filter((i) => !i.studio);
-  const waiting = people.filter((i) => i.waiting), rest = people.filter((i) => !i.waiting);
-  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Inbox</h1><div class="sub">${people.length} customer${people.length === 1 ? "" : "s"} · ${studios.length} studio${studios.length === 1 ? "" : "s"} · ${waiting.length + studios.filter((i) => i.waiting).length} waiting on us</div></div></div>`;
-  const body = (waiting.length ? `<div class="sec">WAITING ON US</div>${(await Promise.all(waiting.map(card))).join("")}` : "")
-    + (rest.length ? `<div class="sec">BOT REPLIED LAST</div>${(await Promise.all(rest.map(card))).join("")}` : "")
-    + (studios.length ? `<div class="sec">STUDIOS</div>${(await Promise.all(studios.map(card))).join("")}` : "")
-    + (items.length ? "" : `<p class="empty">Nobody has written in the last 24 hours.</p>`);
-  return pageOut(url, pageShell("Inbox · Massage Club", top, body));
+  const card = async (i: Item) => {
+    const ago = Math.round((Date.now() - i.at) / 60000);
+    const agoTxt = ago < 60 ? `${ago} min ago` : ago < 1440 ? `${Math.round(ago / 60)} h ago` : `${Math.round(ago / 1440)} d ago`;
+    const pill = i.waiting ? `<span class="pill wait">WAITING ON US</span>` : "";
+    const win = i.open ? `<span class="pill ${i.hoursLeft < 3 ? "warn" : "ok"}">${Math.floor(i.hoursLeft)}h to reply</span>` : `<span class="pill mute">read only</span>`;
+    const who = i.lastDir === "in" ? (i.studio ? "Studio" : "Them") : "Us";
+    return `<a class="card" href="${esc(await replyUrl(i.phone))}"><div class="h"><span class="n">${esc(i.name || "+" + i.phone)}</span>${pill}${win}</div><p class="q"><b style="font-style:normal;color:${i.lastDir === "in" ? C.clay : C.muted};">${who}:</b> ${esc(tidy(i.lastBody).slice(0, 180))}</p><div class="m">+${esc(i.phone)} · ${agoTxt}${i.studio || !i.step ? "" : ` · bot step: ${esc(i.step.replace(/^await_/, ""))}`}</div></a>`;
+  };
+  const base = await inboxUrl();
+  const nC = items.filter((i) => !i.studio).length, nS = items.filter((i) => i.studio).length;
+  const wC = items.filter((i) => !i.studio && i.waiting).length, wS = items.filter((i) => i.studio && i.waiting).length;
+  const tabBtn = (key: string, label: string, n: number, w: number) =>
+    `<a href="${esc(base + (key === "studios" ? "&tab=studios" : ""))}" style="flex:1;text-align:center;text-decoration:none;padding:9px 6px;border-radius:999px;font-size:13.5px;font-weight:700;${tab === key ? `background:${C.clay};color:#fff;` : `background:#fff;color:${C.ink};border:1px solid ${C.dash};`}">${label} ${n}${w ? ` · <span style="${tab === key ? "" : `color:${C.clay};`}">${w} waiting</span>` : ""}</a>`;
+  const top = `<div class="top" style="flex-wrap:wrap;"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Conversations</h1><div class="sub">Last 7 days · newest first · waiting on us at the top</div></div><a class="back" href="${esc(base + (tab === "studios" ? "&tab=studios" : ""))}">Refresh</a>
+<div style="display:flex;gap:8px;width:100%;margin-top:10px;">${tabBtn("customers", "Customers", nC, wC)}${tabBtn("studios", "Studios", nS, wS)}</div></div>`;
+  const body = shown.length ? (await Promise.all(shown.map(card))).join("") : `<p class="empty">Nothing in the last 7 days.</p>`;
+  return pageOut(url, pageShell("Conversations · Massage Club", top, body));
 }
 
 async function replyPage(req: Request, url: URL): Promise<Response> {
@@ -936,7 +970,7 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
   const studio = await findPartnerByNumber(phone);
   const es = !!studio || s.data?.lang === "es";
   const name = studio ? studio.business_name : (s.wa_name || "");
-  const inbox = await inboxUrl();
+  const inbox = (await inboxUrl()) + (studio ? "&tab=studios" : "");
   let error = "";
   if (req.method === "POST") {
     const form = await req.formData().catch(() => null);
