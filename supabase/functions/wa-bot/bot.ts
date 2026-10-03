@@ -859,7 +859,7 @@ async function translateIncoming(thread: Array<{ dir: string; body: string }>): 
   const idx = thread.map((m, i) => ({ m, i })).filter(({ m }) => m.dir === "in" && /[a-záéíóúñü]/i.test(m.body) && !/^\[tap:/.test(m.body)).slice(-80);
   if (!idx.length) return out;
   const list = idx.map(({ m }, k) => `${k + 1}. ${m.body.replace(/\s*\[via ad\]$/, "").replace(/\s+/g, " ").slice(0, 500)}`).join("\n");
-  const raw = await aiText("Translate each numbered WhatsApp message into natural English. If a message is already in English, use an empty string for it. Reply with a JSON array of strings only, one per message, same order and same length. No commentary.", list, 3000);
+  const raw = await aiText("Translate each numbered WhatsApp message into natural English. These are customers and massage studios in Madrid: keep place and neighbourhood names as they are (Sol, Centro, Chueca, Salamanca, Retiro and so on), and keep names, times and prices exactly. If a message is already in English, use an empty string for it. Reply with a JSON array of strings only, one per message, same order and same length. No commentary.", list, 3000);
   const m = raw && raw.match(/\[[\s\S]*\]/);
   if (!m) return out;
   try {
