@@ -31,6 +31,11 @@
     Array.prototype.forEach.call(doc.body.childNodes, function (n) {
       if (n.nodeName !== "SCRIPT") document.body.appendChild(document.importNode(n, true));
     });
+    // Same page is also served on *.vercel.app for networks that block
+    // massageclub.io; keep in-page links on whichever host was opened.
+    document.querySelectorAll("a[href^='https://book.massageclub.io/bot.html']").forEach(function (a) {
+      a.setAttribute("href", a.getAttribute("href").replace("https://book.massageclub.io/bot.html", location.origin + location.pathname));
+    });
     wire();
     window.scrollTo(0, document.body.scrollHeight);
   }
