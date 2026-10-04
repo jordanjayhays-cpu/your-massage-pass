@@ -792,7 +792,9 @@ a{color:inherit}main{max-width:760px;margin:0 auto;padding:0 0 20px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;color:${C.muted};margin:0 0 4px 4px;text-transform:uppercase}
 .two textarea{width:100%;min-height:96px}@media (max-width:620px){.two{grid-template-columns:1fr}.two textarea{min-height:70px}}
 .row2{display:flex;align-items:center;gap:10px;margin-top:8px}.lang{flex:1;font-size:13px;color:${C.ink};display:flex;gap:12px;align-items:center;flex-wrap:wrap}.lang label{display:flex;gap:4px;align-items:center;font-weight:600}
-.busy{opacity:.55}
+.busy{opacity:.55}.btnrow{margin-top:8px}.btnrow .bl{display:block;font-size:11px;font-weight:700;letter-spacing:1px;color:${C.muted};margin:0 0 4px 4px;text-transform:uppercase}
+.bi{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.bi input{min-width:0;border:1px solid ${C.dash};border-radius:999px;padding:8px 12px;font:14px ${SANS};color:${C.ink};background:${C.cream}}
+.presets{margin-top:6px;padding-bottom:0}.chip.preset{background:#fff}
 .compose .in{max-width:760px;margin:0 auto}.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;border:1px solid ${C.dash};background:${C.cream};color:${C.ink};border-radius:999px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
 .row{display:flex;gap:8px;align-items:flex-end}textarea{flex:1;min-height:46px;max-height:40vh;resize:vertical;border:1px solid ${C.dash};border-radius:18px;padding:11px 14px;font:15px/1.45 ${SANS};color:${C.ink};background:${C.cream}}
@@ -919,6 +921,12 @@ async function fullThread(phone: string): Promise<Array<{ id: number; dir: strin
 const madridDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
 const madridTime = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 
+// v151: ready-made button sets for the reply page, in the chat's language.
+function buttonPresets(es: boolean): Array<[string, string[]]> {
+  return es
+    ? [["Sí / No", ["Sí", "No"]], ["Hoy / Mañana", ["Hoy", "Mañana", "Otro día"]], ["Franja", ["Mañana (10-13)", "Tarde (13-18)", "Noche (18-21)"]], ["Reservar", ["Sí, reservar", "Otra hora"]]]
+    : [["Yes / No", ["Yes", "No"]], ["Today / Tomorrow", ["Today", "Tomorrow", "Another day"]], ["Time of day", ["Morning (10-13)", "Afternoon (13-18)", "Evening (18-21)"]], ["Book it", ["Yes, book it", "Another time"]]];
+}
 function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean; trans?: Map<number, string>; notice?: string }): string {
   const first = o.studio ? String(o.name || "STUDIO") : (String(o.name || "").trim().split(/\s+/)[0] || "");
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
@@ -963,6 +971,9 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
 <div><label for="src">You write (English)</label><textarea id="src" rows="4" ${can ? "" : "disabled"} placeholder="Type in English. The Spanish appears on the right.">${sendEs ? "" : esc(o.draft)}</textarea></div>
 <div><label for="t">Spanish (edit freely)</label><textarea id="t" rows="4" ${can ? "" : "disabled"} placeholder="La traducción aparece aquí.">${sendEs ? esc(o.draft) : ""}</textarea></div>
 </div>
+<div class="btnrow"><span class="bl">Tap buttons (optional, up to 3, max 20 letters each)</span>
+<div class="bi"><input name="b1" maxlength="20" ${can ? "" : "disabled"} placeholder="Button 1"><input name="b2" maxlength="20" ${can ? "" : "disabled"} placeholder="Button 2"><input name="b3" maxlength="20" ${can ? "" : "disabled"} placeholder="Button 3"></div>
+${can ? `<div class="chips presets">${buttonPresets(o.studio || o.es).map(([label, set]) => `<button type="button" class="chip preset" data-b="${esc(set.join("|"))}">${esc(label)}</button>`).join("")}<button type="button" class="chip preset" data-b="">Clear</button></div>` : ""}</div>
 <div class="row2"><span class="lang">Send:
 <label><input type="radio" name="lang" value="es" ${sendEs ? "checked" : ""} ${can ? "" : "disabled"}> Spanish</label>
 <label><input type="radio" name="lang" value="en" ${sendEs ? "" : "checked"} ${can ? "" : "disabled"}> English</label></span>
@@ -1106,9 +1117,14 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
         }
         text = esText;
       }
-      const ok = await sendText(phone, text);
+      // v151 (Jordan, 4 Oct): up to three tap buttons under the message. Ids
+      // start with fx_ so a tap comes back to the bot as the button's words.
+      const btns = ["b1", "b2", "b3"].map((k) => noDashes(String(form?.get(k) || "")).trim().slice(0, 20)).filter(Boolean);
+      const ok = btns.length
+        ? await sendButtons(phone, text, btns.map((title, i) => ({ id: `fx_${i + 1}`, title })))
+        : await sendText(phone, text);
       if (ok) {
-        await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step });
+        await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step, buttons: btns.length });
         return render({ draft: "", sent: true, error: "" });
       }
       error = "WhatsApp refused the message. Nothing was sent; check the bot logs.";
@@ -3505,6 +3521,9 @@ const handleInner = async (req: Request) => {
       } catch (e) { console.log("[wa] flow reply could not be read", String(e)); }
     }
     if (msg.type === "interactive") replyId = msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || "";
+    // v151: buttons Jordan adds on the reply page carry fx_ ids. A tap on one
+    // is the customer saying those words, so it goes through as typed text.
+    if (/^fx_/.test(replyId)) { text = String(msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || "").trim(); replyId = ""; }
     else if (msg.type === "button") { replyId = msg.button?.payload || ""; btnText = msg.button?.text || ""; }
     else if (msg.type === "text") text = String(msg.text?.body || "").trim();
     else if (msg.type === "location") loc = { latitude: Number(msg.location?.latitude), longitude: Number(msg.location?.longitude) };

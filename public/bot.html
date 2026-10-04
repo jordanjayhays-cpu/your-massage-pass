@@ -115,6 +115,17 @@
       });
     });
 
+    // Button presets fill the three tap-button boxes ("Clear" empties them).
+    document.querySelectorAll(".chip.preset").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var set = (b.getAttribute("data-b") || "").split("|");
+        ["b1", "b2", "b3"].forEach(function (n, i) {
+          var el = document.querySelector("input[name=" + n + "]");
+          if (el) el.value = set[i] || "";
+        });
+      });
+    });
+
     if (!form) return;
     // Closed 24h window: the bot number cannot send free text, but Jordan's own
     // WhatsApp Business app can. Hand him the chosen box in his WhatsApp.
@@ -145,6 +156,10 @@
       var body = new URLSearchParams();
       body.set("text", text);
       body.set("raw", "1");   // exactly what is in the chosen box, no re-translation
+      ["b1", "b2", "b3"].forEach(function (n) {
+        var el = form.querySelector("input[name=" + n + "]");
+        if (el && el.value.trim()) body.set(n, el.value.trim());
+      });
       call({ method: "POST", body: body });
     });
   }
