@@ -1027,6 +1027,138 @@ ${can ? `<div class="chips presets">${buttonPresets(o.studio || o.es).map(([labe
 // the last 7 days, customers and studios on separate tabs, showing the last
 // message either way (so he sees what the bot is SENDING, not only what came
 // in), whether he can still write freely, and one tap into the chat to step in.
+// v153 (Jordan, 4 Oct): "Invoice, tracking the customer, confirming the appt,
+// auto invoice at the end of the month." The money side of the platform.
+//
+//   ?billing=1&sig=<inbox sig>     Jordan's page: every booking with whether it
+//                                  happened and the fee it owes, the monthly
+//                                  invoices, and the one-tap actions.
+//   ?invoice=<id>&t=<view_token>   the invoice as the studio sees it (Spanish).
+//
+// The ledger is the mc_booking_ledger view, the drafts come from
+// generate_monthly_invoices() (pg_cron, 1st of the month). Nothing reaches a
+// studio until Jordan taps "Approve and send", and that refuses while the
+// issuer details in billing_settings still read "TO FILL".
+const MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const eur2 = (n: unknown) => `${Number(n || 0).toFixed(2).replace(".", ",")} EUR`;
+async function billingSettings(): Promise<any> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/billing_settings?id=eq.1&select=*`, { headers: H() });
+  return ((await r.json().catch(() => [])) || [])[0] || {};
+}
+async function billingUrl(): Promise<string> {
+  return `${REPLY_BASE}?billing=1&sig=${await replySig("inbox")}`;
+}
+function invoiceUrl(inv: { id: number; view_token: string }): string {
+  return `https://book.massageclub.io/bot.html?invoice=${inv.id}&t=${inv.view_token}`;
+}
+
+async function invoicePage(url: URL): Promise<Response> {
+  const id = Number(url.searchParams.get("invoice") || 0);
+  const t = String(url.searchParams.get("t") || "");
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/studio_invoices?id=eq.${id}&select=*`, { headers: H() });
+  const inv = ((await r.json().catch(() => [])) || [])[0];
+  if (!inv || !t || t !== inv.view_token || inv.status === "void") return pageOut(url, pageShell("Factura", "", `<p class="empty">Este enlace no es válido.</p>`), 404);
+  const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${inv.partner_id}&select=business_name,billing_name,billing_tax_id,billing_address,address`, { headers: H() });
+  const p = ((await pr.json().catch(() => [])) || [])[0] || {};
+  const st = await billingSettings();
+  const per = new Date(inv.period_start + "T12:00:00Z");
+  const lines = (Array.isArray(inv.lines) ? inv.lines : []).map((l: any) =>
+    `<tr><td style="padding:7px 0;border-bottom:1px solid ${C.line};">${esc(String(l.date || "").slice(0, 10))}</td><td style="padding:7px 6px;border-bottom:1px solid ${C.line};">Cliente Massage Club: ${esc(String(l.client || "").split(" ")[0])} · ${esc(l.service || "masaje")}</td><td style="padding:7px 0;border-bottom:1px solid ${C.line};text-align:right;white-space:nowrap;">${eur2(l.fee)}</td></tr>`).join("");
+  const body = `<div style="background:#fff;margin:16px;border-radius:18px;padding:22px 20px;font-size:14px;line-height:1.5;">
+<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div><div style="font-size:11px;font-weight:700;letter-spacing:3px;color:${C.clay};">MASSAGE CLUB</div><h1 style="margin:4px 0 0;font-family:Georgia,serif;font-size:24px;">Factura ${esc(inv.number || "")}</h1></div>
+<div style="text-align:right;color:${C.muted};font-size:13px;">Fecha: ${esc(inv.issued_on || "")}<br>Vencimiento: ${esc(inv.due_on || "")}<br>${inv.status === "paid" ? `<b style="color:#1F7A45;">PAGADA</b>` : ""}</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;font-size:13px;">
+<div><b>Emisor</b><br>${esc(st.issuer_name)}<br>${esc(st.issuer_tax_id)}<br>${esc(st.issuer_address)}<br>${esc(st.issuer_email)}</div>
+<div><b>Cliente</b><br>${esc(p.billing_name || p.business_name || "")}<br>${esc(p.billing_tax_id || "")}<br>${esc(p.billing_address || p.address || "")}</div></div>
+<p style="margin:18px 0 6px;"><b>Concepto:</b> comisión por clientes enviados por Massage Club en ${MONTHS_ES[per.getUTCMonth()]} de ${per.getUTCFullYear()}, solo citas realizadas.</p>
+<table style="width:100%;border-collapse:collapse;font-size:13px;">${lines}</table>
+<table style="width:100%;margin-top:12px;font-size:14px;"><tr><td>Base imponible</td><td style="text-align:right;">${eur2(inv.subtotal)}</td></tr><tr><td>IVA (${Number(inv.vat_rate)}%)</td><td style="text-align:right;">${eur2(inv.vat)}</td></tr><tr><td style="padding-top:6px;"><b>Total</b></td><td style="text-align:right;padding-top:6px;"><b>${eur2(inv.total)}</b></td></tr></table>
+<p style="margin:18px 0 0;font-size:13px;color:${C.muted};">Pago por transferencia a ${esc(st.iban)} indicando ${esc(inv.number || "")}. Gracias por trabajar con Massage Club.</p></div>`;
+  return pageOut(url, pageShell(`Factura ${inv.number || ""}`, "", body));
+}
+
+async function billingPage(url: URL): Promise<Response> {
+  const sig = String(url.searchParams.get("sig") || "");
+  if (sig !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
+  const base = await billingUrl();
+  const act = String(url.searchParams.get("do") || "");
+  let note = "", noteErr = false;
+  const patch = (table: string, q: string, body: unknown) => fetch(`${SUPABASE_URL}/rest/v1/${table}?${q}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(body) });
+  const st = await billingSettings();
+  const unfilled = ["issuer_name", "issuer_tax_id", "issuer_address", "iban"].filter((k) => /^TO FILL/i.test(String(st[k] || "")));
+  // One-tap actions. GET so the bot.html shell can run them; each is safe to
+  // repeat (a sent invoice is not sent twice, a completed booking stays so).
+  if (act === "done" || act === "noshow") {
+    const b = Number(url.searchParams.get("b") || 0);
+    if (b) {
+      await patch("bookings", `id=eq.${b}&invoice_id=is.null`, act === "done" ? { completed_at: new Date().toISOString(), completed_source: "founder", no_show_at: null } : { no_show_at: new Date().toISOString(), completed_at: null });
+      note = act === "done" ? `Booking ${b} marked as happened. It will be on next month's invoice.` : `Booking ${b} marked as a no-show. No fee.`;
+    }
+  } else if (act === "generate") {
+    const m = String(url.searchParams.get("m") || "");
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/generate_monthly_invoices`, { method: "POST", headers: H(), body: JSON.stringify(/^\d{4}-\d{2}-01$/.test(m) ? { p_month: m } : {}) });
+    const n = await res.json().catch(() => null);
+    note = res.ok ? `${Number(n) || 0} new draft invoice${Number(n) === 1 ? "" : "s"} created.` : "Could not create invoices; check the logs.";
+    noteErr = !res.ok;
+  } else if (act === "send" || act === "paid" || act === "void") {
+    const i = Number(url.searchParams.get("i") || 0);
+    const ir = await fetch(`${SUPABASE_URL}/rest/v1/studio_invoices?id=eq.${i}&select=*`, { headers: H() });
+    const inv = ((await ir.json().catch(() => [])) || [])[0];
+    if (!inv) { note = "Invoice not found."; noteErr = true; }
+    else if (act === "paid") { await patch("studio_invoices", `id=eq.${i}`, { status: "paid", paid_at: new Date().toISOString() }); note = `${inv.number} marked as paid.`; }
+    else if (act === "void") {
+      if (inv.status === "draft") {
+        await patch("bookings", `invoice_id=eq.${i}`, { invoice_id: null });
+        await fetch(`${SUPABASE_URL}/rest/v1/studio_invoices?id=eq.${i}`, { method: "DELETE", headers: H() });
+        note = `Draft ${inv.number} deleted; its bookings are free to invoice again.`;
+      } else { await patch("studio_invoices", `id=eq.${i}`, { status: "void" }); note = `${inv.number} voided.`; }
+    } else if (inv.status !== "draft") { note = `${inv.number} was already sent.`; }
+    else if (unfilled.length) { note = `Not sent. Fill in your invoice details first (${unfilled.join(", ")}) in billing_settings.`; noteErr = true; }
+    else {
+      const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${inv.partner_id}&select=business_name,billing_email,email`, { headers: H() });
+      const p = ((await pr.json().catch(() => [])) || [])[0] || {};
+      const to = String(p.billing_email || p.email || "").trim();
+      if (!to || !RESEND_API_KEY) { note = `Not sent: ${p.business_name || "this studio"} has no email on file.`; noteErr = true; }
+      else {
+        const per = new Date(inv.period_start + "T12:00:00Z");
+        const month = `${MONTHS_ES[per.getUTCMonth()]} de ${per.getUTCFullYear()}`;
+        const text = `Hola,\n\nOs enviamos la factura ${inv.number} de Massage Club por los clientes que os enviamos en ${month} y que vinieron a su cita: ${(inv.lines || []).length} cita${(inv.lines || []).length === 1 ? "" : "s"}, ${eur2(inv.total)} IVA incluido.\n\nLa factura completa: ${invoiceUrl(inv)}\n\nVencimiento: ${inv.due_on}. Cualquier duda, respondednos a este correo.\n\nGracias,\nJordan, de Massage Club`;
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject: `Factura ${inv.number} · Massage Club · ${month}`, text }),
+        }).catch(() => null);
+        if (res && res.ok) { await patch("studio_invoices", `id=eq.${i}&status=eq.draft`, { status: "sent", sent_at: new Date().toISOString(), sent_to: to }); note = `${inv.number} sent to ${to}.`; }
+        else { note = "The email did not go out. Nothing was marked as sent."; noteErr = true; }
+      }
+    }
+  }
+  const lr = await fetch(`${SUPABASE_URL}/rest/v1/mc_booking_ledger?select=*&order=start_at.desc&limit=200`, { headers: H() });
+  const ledger: any[] = await lr.json().catch(() => []);
+  const ivr = await fetch(`${SUPABASE_URL}/rest/v1/studio_invoices?select=*,partners(business_name)&order=created_at.desc&limit=60`, { headers: H() });
+  const invoices: any[] = await ivr.json().catch(() => []);
+  const now = new Date();
+  const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
+  const pill = (a: string) => a === "completed" ? `<span class="pill ok">HAPPENED</span>` : a === "to_confirm" ? `<span class="pill wait">TO CONFIRM</span>` : a === "upcoming" ? `<span class="pill mute">UPCOMING</span>` : `<span class="pill warn">${esc(a.replace("_", " ").toUpperCase())}</span>`;
+  const btn = (href: string, label: string, strong = false) => `<a href="${esc(href)}" style="display:inline-block;text-decoration:none;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;margin:6px 6px 0 0;${strong ? `background:${C.clay};color:#fff;` : `background:#fff;color:${C.ink};border:1px solid ${C.dash};`}">${label}</a>`;
+  const owed = (Array.isArray(ledger) ? ledger : []).filter((l) => l.attendance === "completed" && !l.invoice_id);
+  const owedSum = owed.reduce((a, l) => a + Number(l.fee || 0), 0);
+  const fmtWhen = (iso: string) => iso ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "";
+  const ledgerCards = (Array.isArray(ledger) ? ledger : []).map((l) => `<div class="card"><div class="h"><span class="n">${esc(l.business_name || "")}</span>${pill(String(l.attendance))}</div>
+<div class="m">${esc(fmtWhen(l.start_at))} · ${esc(String(l.client_name || "").split(" ")[0])} · ${esc(l.service || "")}${l.price ? ` · ${esc(String(l.price))} EUR` : ""} · fee <b>${eur2(l.fee)}</b>${l.invoice_id ? " · invoiced" : ""}</div>
+${!l.invoice_id && (l.attendance === "to_confirm" || l.attendance === "completed" || l.attendance === "no_show") ? `<div>${l.attendance !== "completed" ? btn(`${base}&do=done&b=${l.booking_id}`, "It happened") : ""}${l.attendance !== "no_show" ? btn(`${base}&do=noshow&b=${l.booking_id}`, "No-show") : ""}</div>` : ""}</div>`).join("");
+  const invCards = (Array.isArray(invoices) ? invoices : []).map((v) => `<div class="card"><div class="h"><span class="n">${esc(v.number || "")} · ${esc(v.partners?.business_name || "")}</span><span class="pill ${v.status === "paid" ? "ok" : v.status === "sent" ? "wait" : v.status === "void" ? "mute" : "warn"}">${esc(String(v.status).toUpperCase())}</span></div>
+<div class="m">${esc(v.period_start)} to ${esc(v.period_end)} · ${(v.lines || []).length} booking${(v.lines || []).length === 1 ? "" : "s"} · <b>${eur2(v.total)}</b> incl. IVA${v.sent_to ? ` · sent to ${esc(v.sent_to)}` : ""}</div>
+<div>${btn(invoiceUrl(v), "View")}${v.status === "draft" ? btn(`${base}&do=send&i=${v.id}`, "Approve and send", true) + btn(`${base}&do=void&i=${v.id}`, "Delete draft") : ""}${v.status === "sent" ? btn(`${base}&do=paid&i=${v.id}`, "Mark paid", true) : ""}</div></div>`).join("");
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Billing</h1><div class="sub">Studios pay ${eur2(st.default_fee_eur)} per booking that happened · IVA ${Number(st.vat_rate || 0)}%</div></div><a class="back" href="${esc(await inboxUrl())}">All chats</a></div>`;
+  const body = `${note ? `<div class="note ${noteErr ? "err" : "done"}">${esc(note)}</div>` : ""}
+${unfilled.length ? `<div class="note err">Invoices cannot be sent until your details are filled in: ${esc(unfilled.join(", "))} (Supabase, table billing_settings). Drafts still get made.</div>` : ""}
+<div class="card"><div class="h"><span class="n">Not yet invoiced</span><b>${eur2(owedSum)}</b></div><div class="m">${owed.length} booking${owed.length === 1 ? "" : "s"} that happened. Drafts are made automatically on the 1st of each month for the month before.</div><div>${btn(`${base}&do=generate&m=${lastMonth}`, "Make last month's drafts now")}${btn(`${base}&do=generate&m=${now.toISOString().slice(0, 8)}01`, "Make this month's drafts")}</div></div>
+<div class="sec">INVOICES</div>${invCards || `<p class="empty">No invoices yet.</p>`}
+<div class="sec">BOOKINGS</div>${ledgerCards || `<p class="empty">No bookings yet.</p>`}
+<p class="empty"><a href="${esc(base)}">Refresh</a></p>`;
+  return pageOut(url, pageShell("Billing · Massage Club", top, body));
+}
+
 async function inboxPage(url: URL): Promise<Response> {
   const sig = String(url.searchParams.get("sig") || "");
   if (sig !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
@@ -1095,7 +1227,7 @@ async function inboxPage(url: URL): Promise<Response> {
   const wC = items.filter((i) => !i.studio && i.waiting).length, wS = items.filter((i) => i.studio && i.waiting).length;
   const tabBtn = (key: string, label: string, n: number, w: number) =>
     `<a href="${esc(base + (key === "studios" ? "&tab=studios" : ""))}" style="flex:1;text-align:center;text-decoration:none;padding:9px 6px;border-radius:999px;font-size:13.5px;font-weight:700;${tab === key ? `background:${C.clay};color:#fff;` : `background:#fff;color:${C.ink};border:1px solid ${C.dash};`}">${label} ${n}${w ? ` · <span style="${tab === key ? "" : `color:${C.clay};`}">${w} waiting</span>` : ""}</a>`;
-  const top = `<div class="top" style="flex-wrap:wrap;"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Conversations</h1><div class="sub">Last 7 days · newest first · waiting on us at the top</div></div><a class="back" href="${esc(base + (tab === "studios" ? "&tab=studios" : ""))}">Refresh</a>
+  const top = `<div class="top" style="flex-wrap:wrap;"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Conversations</h1><div class="sub">Last 7 days · newest first · waiting on us at the top</div></div><a class="back" href="${esc(await billingUrl())}" style="margin-right:12px;">Billing</a><a class="back" href="${esc(base + (tab === "studios" ? "&tab=studios" : ""))}">Refresh</a>
 <div style="display:flex;gap:8px;width:100%;margin-top:10px;">${tabBtn("customers", "Customers", nC, wC)}${tabBtn("studios", "Studios", nS, wS)}</div></div>`;
   const body = shown.length ? (await Promise.all(shown.map(card))).join("") : `<p class="empty">Nothing in the last 7 days.</p>`;
   return pageOut(url, pageShell("Conversations · Massage Club", top, body));
@@ -1680,6 +1812,8 @@ async function handleArrival(from: string, replyId: string, partner: { id: strin
   const studio = partner?.business_name || req.studio_name || "";
   if (m[1] === "yes") {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ arrival_status: "arrived", customer_flag: null }) });
+    // v153: the studio's "ha llegado" is what makes a booking billable.
+    await fetch(`${SUPABASE_URL}/rest/v1/bookings?booking_ref=eq.wa-${req.id}&completed_at=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ completed_at: new Date().toISOString(), completed_source: "studio" }) });
     await sendText(from, "¡Gracias! Que vaya bien.");
     await logEvent(digitsOf(req.client_phone || from), "arrived", { id: req.id, studio });
     return;
@@ -3035,7 +3169,13 @@ const handler = async (req: Request) => {
   // v139: the founder's reply-as-bot page. Not a Meta webhook, so it is routed
   // before the webhook body is read and never reaches the fallback below.
   const url = new URL(req.url);
-  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply"))) return new Response(null, { status: 204, headers: CORS });
+  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply") || url.searchParams.has("billing") || url.searchParams.has("invoice"))) return new Response(null, { status: 204, headers: CORS });
+  if (url.searchParams.has("billing") || url.searchParams.has("invoice")) {
+    try { return url.searchParams.has("billing") ? await billingPage(url) : await invoicePage(url); } catch (e) {
+      console.log("[wa] billing page failed", String(e));
+      return new Response("Something went wrong loading this page.", { status: 500 });
+    }
+  }
   if (url.searchParams.has("inbox")) {
     try { return await inboxPage(url); } catch (e) {
       console.log("[wa] inbox page failed", String(e));
