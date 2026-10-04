@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+body{background:#fff;font-family:'Liberation Sans',sans-serif}
+.banner{width:750px;height:300px;position:relative;overflow:hidden;border-radius:0;background:#F1EBE2}
+.banner .blob1{position:absolute;width:420px;height:420px;border-radius:50%;background:#B85C38;right:-120px;top:-160px;opacity:.95}
+.banner .blob2{position:absolute;width:260px;height:260px;border-radius:50%;background:#E8B79E;right:150px;bottom:-150px}
+.banner .blob3{position:absolute;width:140px;height:140px;border-radius:50%;background:#A9BFA6;right:40px;bottom:30px}
+.banner .brand{position:absolute;left:44px;top:40px;font-weight:700;letter-spacing:6px;font-size:20px;color:#B85C38}
+.banner .step{position:absolute;left:44px;top:72px;font-size:18px;color:#8A7F73;letter-spacing:2px}
+.banner h1{position:absolute;left:42px;bottom:44px;width:470px;font-family:'Liberation Serif',Georgia,serif;font-size:54px;line-height:1.02;color:#262019;font-weight:700}
+.banner .dots{position:absolute;left:44px;top:104px;display:flex;gap:8px}
+.banner .dots i{display:block;width:34px;height:8px;border-radius:8px;background:#E4D9CB}
+.banner .dots i.on{background:#B85C38}
+.icon{width:120px;height:120px;border-radius:30px;display:flex;align-items:center;justify-content:center}
+.icon svg{width:70px;height:70px}
+</style></head><body>
+<div id="out"></div>
+<script>
+const B=[
+ ["b1","1",["What kind of","massage?"]],
+ ["b2","2",["When do you","want it?"]],
+ ["b3","3",["What time","suits you?"]],
+ ["b4","4",["Where in","Madrid?"]],
+ ["b5","5",["Last step,","almost there"]],
+];
+const out=document.getElementById('out');
+for(const [id,n,t] of B){
+ const d=document.createElement('div');d.className='banner';d.id=id;
+ d.innerHTML=`<div class=blob1></div><div class=blob2></div><div class=blob3></div><div class=brand>MASSAGE CLUB</div><div class=step>STEP ${n} OF 5</div><div class=dots>${[1,2,3,4,5].map(i=>`<i class="${i<=+n?'on':''}"></i>`).join('')}</div><h1>${t.join('<br>')}</h1>`;
+ out.appendChild(d);
+}
+const S='stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+const I={
+ relaxing:['#B85C38',`<path ${S} d="M10 52c12-6 22-6 30 0s18 6 30 0"/><path ${S} d="M22 38c6-10 14-14 22-14s14 6 14 14"/><circle cx="40" cy="16" r="6" fill="#fff"/>`],
+ deep_tissue:['#8C4A2F',`<circle cx="26" cy="36" r="12" ${S}/><circle cx="54" cy="36" r="12" ${S}/><path ${S} d="M14 62h52"/>`],
+ thai:['#C9824F',`<path ${S} d="M40 10v18M22 22l10 10M58 22 48 32M14 46h52M24 62c4-8 10-12 16-12s12 4 16 12"/>`],
+ sports:['#5E7A64',`<path ${S} d="M12 50l14-20 14 14 14-26 14 32"/><circle cx="54" cy="16" r="6" fill="#fff"/>`],
+ hot_stone:['#7A5C4A',`<ellipse cx="40" cy="58" rx="24" ry="8" fill="#fff"/><ellipse cx="40" cy="44" rx="18" ry="7" fill="#fff" opacity=".85"/><ellipse cx="40" cy="32" rx="12" ry="6" fill="#fff" opacity=".7"/><path ${S} d="M32 18c0-6 6-6 6-12M46 18c0-6 6-6 6-12"/>`],
+ unsure:['#A9BFA6',`<path ${S} d="M28 28c0-8 6-12 12-12s12 4 12 11c0 9-12 9-12 19"/><circle cx="40" cy="60" r="4" fill="#fff"/>`],
+ today:['#B85C38',`<rect x="12" y="18" width="56" height="48" rx="8" ${S}/><path ${S} d="M12 32h56M26 10v14M54 10v14"/><circle cx="40" cy="48" r="7" fill="#fff"/>`],
+ tomorrow:['#C9824F',`<rect x="12" y="18" width="56" height="48" rx="8" ${S}/><path ${S} d="M12 32h56M26 10v14M54 10v14M34 48h14m-6-6 6 6-6 6"/>`],
+ this_week:['#5E7A64',`<rect x="12" y="18" width="56" height="48" rx="8" ${S}/><path ${S} d="M12 32h56M26 10v14M54 10v14"/><circle cx="26" cy="46" r="3" fill="#fff"/><circle cx="40" cy="46" r="3" fill="#fff"/><circle cx="54" cy="46" r="3" fill="#fff"/><circle cx="26" cy="57" r="3" fill="#fff"/><circle cx="40" cy="57" r="3" fill="#fff"/>`],
+ flexible_day:['#A9BFA6',`<path ${S} d="M16 40c0-14 10-22 24-22 10 0 18 5 22 12M64 40c0 14-10 22-24 22-10 0-18-5-22-12"/><path ${S} d="M62 18v12H50M18 62V50h12"/>`],
+ morning:['#E0A15B',`<circle cx="40" cy="48" r="12" fill="#fff"/><path ${S} d="M40 18v8M18 48h-6M68 48h-6M24 30l5 5M56 30l-5 5M10 64h60"/>`],
+ afternoon:['#C9824F',`<circle cx="40" cy="40" r="14" fill="#fff"/><path ${S} d="M40 10v8M40 62v8M10 40h8M62 40h8M19 19l6 6M55 55l6 6M61 19l-6 6M25 55l-6 6"/>`],
+ evening:['#5B4A6E',`<path d="M50 14a26 26 0 1 0 16 40A22 22 0 0 1 50 14z" fill="#fff"/><circle cx="22" cy="20" r="3" fill="#fff"/><circle cx="64" cy="26" r="2.5" fill="#fff"/>`],
+ flexible_time:['#A9BFA6',`<circle cx="40" cy="40" r="26" ${S}/><path ${S} d="M40 24v16l11 7"/>`],
+ pin:['#B85C38',`<path d="M40 70s22-22 22-38a22 22 0 0 0-44 0c0 16 22 38 22 38z" fill="#fff"/><circle cx="40" cy="32" r="8" fill="#B85C38"/>`],
+};
+for(const [k,[bg,svg]] of Object.entries(I)){
+ const d=document.createElement('div');d.className='icon';d.id='i_'+k;d.style.background=bg;
+ d.innerHTML=`<svg viewBox="0 0 80 80">${svg}</svg>`;out.appendChild(d);
+}
+</script></body></html>
