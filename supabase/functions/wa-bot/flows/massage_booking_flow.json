@@ -1,0 +1,383 @@
+{
+ "version": "6.3",
+ "screens": [
+  {
+   "id": "SERVICE",
+   "title": "Massage Club",
+   "layout": {
+    "type": "SingleColumnLayout",
+    "children": [
+     {
+      "type": "TextHeading",
+      "text": "What kind of massage?"
+     },
+     {
+      "type": "TextBody",
+      "text": "Pick one. You can change it later."
+     },
+     {
+      "type": "Form",
+      "name": "f",
+      "children": [
+       {
+        "type": "RadioButtonsGroup",
+        "name": "service",
+        "label": "Choose one",
+        "required": true,
+        "data-source": [
+         {
+          "id": "relaxing",
+          "title": "Relaxing",
+          "description": "Gentle, to switch off"
+         },
+         {
+          "id": "deep_tissue",
+          "title": "Deep tissue",
+          "description": "Firm, for knots and tension"
+         },
+         {
+          "id": "thai",
+          "title": "Thai",
+          "description": "Stretching, done clothed"
+         },
+         {
+          "id": "sports",
+          "title": "Sports",
+          "description": "For training and recovery"
+         },
+         {
+          "id": "hot_stone",
+          "title": "Hot stone",
+          "description": "Warm stones, very relaxing"
+         },
+         {
+          "id": "unsure",
+          "title": "Not sure",
+          "description": "We will help you choose"
+         }
+        ]
+       },
+       {
+        "type": "Footer",
+        "label": "Next",
+        "on-click-action": {
+         "name": "navigate",
+         "next": {
+          "type": "screen",
+          "name": "WHEN"
+         },
+         "payload": {
+          "service": "${form.service}"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "data": {}
+  },
+  {
+   "id": "WHEN",
+   "title": "Massage Club",
+   "layout": {
+    "type": "SingleColumnLayout",
+    "children": [
+     {
+      "type": "TextHeading",
+      "text": "When?"
+     },
+     {
+      "type": "Form",
+      "name": "f",
+      "children": [
+       {
+        "type": "RadioButtonsGroup",
+        "name": "day",
+        "label": "Choose a day",
+        "required": true,
+        "data-source": [
+         {
+          "id": "today",
+          "title": "Today"
+         },
+         {
+          "id": "tomorrow",
+          "title": "Tomorrow"
+         },
+         {
+          "id": "this_week",
+          "title": "Later this week"
+         },
+         {
+          "id": "flexible",
+          "title": "I am flexible"
+         }
+        ]
+       },
+       {
+        "type": "Footer",
+        "label": "Next",
+        "on-click-action": {
+         "name": "navigate",
+         "next": {
+          "type": "screen",
+          "name": "TIME"
+         },
+         "payload": {
+          "service": "${data.service}",
+          "day": "${form.day}"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "data": {
+    "service": {
+     "type": "string",
+     "__example__": "x"
+    }
+   }
+  },
+  {
+   "id": "TIME",
+   "title": "Massage Club",
+   "layout": {
+    "type": "SingleColumnLayout",
+    "children": [
+     {
+      "type": "TextHeading",
+      "text": "What time suits you?"
+     },
+     {
+      "type": "Form",
+      "name": "f",
+      "children": [
+       {
+        "type": "RadioButtonsGroup",
+        "name": "time_pref",
+        "label": "Choose a time",
+        "required": true,
+        "data-source": [
+         {
+          "id": "morning",
+          "title": "Morning",
+          "description": "10:00 to 13:00"
+         },
+         {
+          "id": "afternoon",
+          "title": "Afternoon",
+          "description": "13:00 to 18:00"
+         },
+         {
+          "id": "evening",
+          "title": "Evening",
+          "description": "18:00 to 21:00"
+         },
+         {
+          "id": "flexible",
+          "title": "Any time"
+         }
+        ]
+       },
+       {
+        "type": "Footer",
+        "label": "Next",
+        "on-click-action": {
+         "name": "navigate",
+         "next": {
+          "type": "screen",
+          "name": "AREA"
+         },
+         "payload": {
+          "service": "${data.service}",
+          "day": "${data.day}",
+          "time_pref": "${form.time_pref}"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "data": {
+    "service": {
+     "type": "string",
+     "__example__": "x"
+    },
+    "day": {
+     "type": "string",
+     "__example__": "x"
+    }
+   }
+  },
+  {
+   "id": "AREA",
+   "title": "Massage Club",
+   "layout": {
+    "type": "SingleColumnLayout",
+    "children": [
+     {
+      "type": "TextHeading",
+      "text": "Where in Madrid?"
+     },
+     {
+      "type": "TextBody",
+      "text": "We find a studio close to you."
+     },
+     {
+      "type": "Form",
+      "name": "f",
+      "children": [
+       {
+        "type": "RadioButtonsGroup",
+        "name": "area",
+        "label": "Choose an area",
+        "required": true,
+        "data-source": [
+         {
+          "id": "centro",
+          "title": "Centro / Sol"
+         },
+         {
+          "id": "malasana",
+          "title": "Malasaña / Chueca"
+         },
+         {
+          "id": "chamberi",
+          "title": "Chamberí"
+         },
+         {
+          "id": "salamanca",
+          "title": "Salamanca"
+         },
+         {
+          "id": "retiro",
+          "title": "Retiro"
+         },
+         {
+          "id": "chamartin",
+          "title": "Chamartín"
+         },
+         {
+          "id": "anywhere",
+          "title": "Anywhere in Madrid"
+         },
+         {
+          "id": "other",
+          "title": "Somewhere else"
+         }
+        ]
+       },
+       {
+        "type": "Footer",
+        "label": "Next",
+        "on-click-action": {
+         "name": "navigate",
+         "next": {
+          "type": "screen",
+          "name": "YOU"
+         },
+         "payload": {
+          "service": "${data.service}",
+          "day": "${data.day}",
+          "time_pref": "${data.time_pref}",
+          "area": "${form.area}"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "data": {
+    "service": {
+     "type": "string",
+     "__example__": "x"
+    },
+    "day": {
+     "type": "string",
+     "__example__": "x"
+    },
+    "time_pref": {
+     "type": "string",
+     "__example__": "x"
+    }
+   }
+  },
+  {
+   "id": "YOU",
+   "title": "Massage Club",
+   "terminal": true,
+   "data": {
+    "service": {
+     "type": "string",
+     "__example__": "x"
+    },
+    "day": {
+     "type": "string",
+     "__example__": "x"
+    },
+    "time_pref": {
+     "type": "string",
+     "__example__": "x"
+    },
+    "area": {
+     "type": "string",
+     "__example__": "x"
+    }
+   },
+   "layout": {
+    "type": "SingleColumnLayout",
+    "children": [
+     {
+      "type": "TextHeading",
+      "text": "Last step"
+     },
+     {
+      "type": "TextBody",
+      "text": "We ask the studios and send you the best offer here. You pay the studio directly, no fee from us."
+     },
+     {
+      "type": "Form",
+      "name": "f",
+      "children": [
+       {
+        "type": "TextInput",
+        "name": "name",
+        "label": "Your name",
+        "input-type": "text",
+        "required": true
+       },
+       {
+        "type": "TextInput",
+        "name": "email",
+        "label": "Email",
+        "helper-text": "Your confirmation goes here too",
+        "input-type": "email",
+        "required": true
+       },
+       {
+        "type": "Footer",
+        "label": "Find me a studio",
+        "on-click-action": {
+         "name": "complete",
+         "payload": {
+          "service": "${data.service}",
+          "day": "${data.day}",
+          "time_pref": "${data.time_pref}",
+          "area": "${data.area}",
+          "name": "${form.name}",
+          "email": "${form.email}"
+         }
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
