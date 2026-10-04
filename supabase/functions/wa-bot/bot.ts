@@ -487,7 +487,10 @@ async function askStudioList(to: string, L: string, s: Session): Promise<boolean
 // price is its own menu; anyone else's is a listing, so it reads "about".
 // Nothing here says the studio is free: that is the studio's yes to give.
 async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
-  const svcRow = ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service));
+  // No service chosen yet means relaxing, the default everywhere else. Without
+  // this CG (4 Oct) was offered "Sports" and "Shiatsu", the cheapest 60 min
+  // rows, for a plain massage.
+  const svcRow = ALL_SERVICES.find((x) => x.id === (!s.data.service || s.data.service === "svc_unsure" ? "svc_relax" : s.data.service));
   const area = s.data.area && s.data.area !== "anywhere" ? s.data.area : "";
   let rows: any[] = [];
   try {
