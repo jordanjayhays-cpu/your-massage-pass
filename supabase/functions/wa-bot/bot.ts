@@ -479,6 +479,46 @@ async function askStudioList(to: string, L: string, s: Session): Promise<boolean
   return true;
 }
 
+// v152 (Jordan, 4 Oct): "lead with an offer, not a questionnaire." Once we know
+// when and where, the customer sees two real studios with their prices and taps
+// one; that studio is asked straight away, with the other as backup. The two
+// come from offer_studios, which is the same ranking that decides who gets
+// asked, so we never offer a studio that never answers. A registered studio's
+// price is its own menu; anyone else's is a listing, so it reads "about".
+// Nothing here says the studio is free: that is the studio's yes to give.
+async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
+  const svcRow = ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service));
+  const area = s.data.area && s.data.area !== "anywhere" ? s.data.area : "";
+  let rows: any[] = [];
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/offer_studios`, {
+      method: "POST", headers: H(), body: JSON.stringify({ p_area: area || null, p_want: svcRow ? svcRow.en : null, p_limit: 3 }),
+    });
+    const j = await res.json().catch(() => []);
+    rows = Array.isArray(j) ? j : [];
+  } catch (_e) { rows = []; }
+  if (rows.length < 2) return false;
+  s.data.picks = rows.map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
+  s.data.offerMode = true;
+  s.step = "await_studio"; await saveSession(s);
+  const es = L === "es";
+  const when = [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", ");
+  const where = area ? (es ? `cerca de ${area}` : `near ${area}`) : (es ? "en Madrid" : "in Madrid");
+  const lines = s.data.picks.slice(0, 2).map((o: any) =>
+    `· *${o.name}* (${o.area}): ${trSvcLow(o.svc, L)} ${o.duration} min, ${o.registered ? "" : (es ? "unos " : "about ")}${euro(o.price)}`);
+  const body = es
+    ? `${when ? when.charAt(0).toUpperCase() + when.slice(1) + ", " : ""}${where}, estas son las mejores opciones:\n\n${lines.join("\n")}\n\nToca uno y se lo pregunto ahora mismo. O toca *Mejor precio* y pregunto a varios y te traigo la mejor oferta. Pagas en el centro, sin comisión.`
+    : `${when ? when.charAt(0).toUpperCase() + when.slice(1) + ", " : ""}${where}, here are the best options:\n\n${lines.join("\n")}\n\nTap one and I'll ask them right now. Or tap *Best price* and I'll ask a few and bring back the best offer. You pay at the studio, no fee from us.`;
+  const short = (n: string) => n.replace(/\s+(Relax and Beauty|Wellness Studio|Madrid Spa|Masajes?|Spa|Studio)$/i, "").slice(0, 20);
+  await sendButtons(from, body, [
+    { id: "studio_0", title: short(s.data.picks[0].name) },
+    { id: "studio_1", title: short(s.data.picks[1].name) },
+    { id: "studio_any", title: es ? "Mejor precio" : "Best price" },
+  ]);
+  await logEvent(from, "studio_offered", { variant: "offer_first", picks: s.data.picks.slice(0, 2).map((o: any) => o.name) });
+  return true;
+}
+
 // The booking card link. The token is the login, minted once per number and
 // reused, so "your booking page" is always the same address.
 async function bookingLink(phone: string, lang: string): Promise<string | null> {
@@ -2654,7 +2694,7 @@ async function createRequest(s: Session): Promise<number | null> {
       // a man, Centro Aloha said yes in writing, and nothing could remember it.
       therapist_gender: d.therapistGender === "male" || d.therapistGender === "female" ? d.therapistGender : null,
       languages: d.lang === "es" ? "es" : "en",
-      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : "")}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
+      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : (Array.isArray(d.prefer) && d.prefer.length ? " | Prefiere: " + d.prefer.map((x: any) => x.name).join(", ") : ""))}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
       stage: "new",
     }),
   });
@@ -2698,7 +2738,11 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   // Refusing is still fine. Jordan's rule is that a WhatsApp customer who will
   // not give an address still gets their booking, because the thread reaches
   // them; they just have no second channel and he is told so.
-  if (!s.data.email && !s.data.emailRefused) {
+  // v152 (Jordan, 4 Oct): in the offer-first flow the email is asked right
+  // after the studio is asked, while they wait, not before. The booking still
+  // never confirms without the question: accepting an offer asks it again.
+  const emailAfter = !!s.data.offerMode;
+  if (!emailAfter && !s.data.email && !s.data.emailRefused) {
     s.step = "await_email_req"; await saveSession(s);
     await sendText(from, COPY[L].email);
     await logEvent(from, "email_asked", { reachable: await canFreeform(digitsOf(from)) });
@@ -2707,7 +2751,10 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   s.step = "done"; await saveSession(s);
   const id = await createRequest(s);
   const svcName = s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage");
-  const studioLine = s.data.chosen ? `${s.data.chosen.name}${s.data.chosen.price ? " · " + Number(s.data.chosen.price) + " EUR" : ""}` : (s.data.customStudio ? s.data.customStudio : (s.data.area && s.data.area !== "anywhere" ? (L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`) : (L === "es" ? "en Madrid" : "in Madrid")));
+  const preferList = Array.isArray(s.data.prefer) ? s.data.prefer : [];
+  const studioLine = preferList.length
+    ? (L === "es" ? `${preferList[0].name}${preferList[1] ? ` (y ${preferList[1].name} de reserva)` : ""}` : `${preferList[0].name}${preferList[1] ? ` (with ${preferList[1].name} as backup)` : ""}`)
+    : s.data.chosen ? `${s.data.chosen.name}${s.data.chosen.price ? " · " + Number(s.data.chosen.price) + " EUR" : ""}` : (s.data.customStudio ? s.data.customStudio : (s.data.area && s.data.area !== "anywhere" ? (L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`) : (L === "es" ? "en Madrid" : "in Madrid")));
   // v119 (Jordan, 22 Sept): "you must be positive the clients want to book a
   // massage. confirm and then send it to the masage places." A fan-out spends
   // four studios' goodwill, and until now the only thing standing between a
@@ -2761,17 +2808,25 @@ async function finalizeBooking(s: Session, from: string, L: string) {
     // already says what happens next, in hours and out of them. The second
     // line only repeated it, and at midnight it contradicted the honest
     // out-of-hours sentence two seconds after we sent it.
-    await dispatchRequest(id);
+    await dispatchRequest(id, preferList.map((x: any) => String(x.id)));
+  }
+  if (emailAfter && id && !s.data.email && !s.data.emailRefused) {
+    s.step = "await_email_post"; await saveSession(s);
+    await sendText(from, L === "es"
+      ? "Mientras el centro contesta: ¿cuál es tu email? Ahí te llega también la confirmación, así no se pierde nada."
+      : "While the studio checks: what is your email? The confirmation goes there too, so nothing gets lost.");
+    await logEvent(from, "email_asked", { when: "after_dispatch" });
   }
 }
 
 // Fire and forget: a dispatch failure must never break the customer's
 // confirmation, and the sweep will retry anything that did not go out.
-async function dispatchRequest(requestId: number) {
+async function dispatchRequest(requestId: number, partnerIds: string[] = []) {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/dispatch-studios?key=${OPS_KEY}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request_id: requestId }),
+      // v152: an offer-first pick asks the chosen studio and its backups only.
+      body: JSON.stringify(partnerIds.length ? { request_id: requestId, partner_ids: partnerIds } : { request_id: requestId }),
     });
     console.log(`[wa] dispatch request=${requestId} status=${res.status} ${(await res.text()).slice(0, 200)}`);
   } catch (e) { console.log("[wa] dispatch failed", String(e)); }
@@ -4352,10 +4407,10 @@ const handleInner = async (req: Request) => {
         if (area) {
           s.data.area = area;
           await logEvent(from, "area_given", { area });
-          // v35: no studio question. Choosing a studio was where the funnel
-          // died (4 of 4 customers saw options, 1 picked), so we take the job
-          // on ourselves and go ask several studios instead.
-          await askNameOrFinalize(s, from, L);
+          // v35 took the studio question out (4 of 4 saw a list, 1 picked).
+          // v152 (Jordan, 4 Oct) brings back an offer, not a list: two studios
+          // with prices as buttons, plus "Best price" for the v35 behaviour.
+          if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
         } else await sendText(from, COPY[L].areaAgain);
         break;
       }
@@ -4366,8 +4421,22 @@ const handleInner = async (req: Request) => {
           else await askStudio(from, L, s);
         }
         else if (replyId === "pick_more") { await askStudioList(from, L, s); }
-        else if (replyId === "studio_any") { s.data.chosen = null; s.data.customStudio = null; await logEvent(from, "studio_chosen", { how: "any" }); await askNameOrFinalize(s, from, L); }
+        else if (replyId === "studio_any") { s.data.chosen = null; s.data.customStudio = null; s.data.prefer = null; await logEvent(from, "studio_chosen", { how: "any" }); await askNameOrFinalize(s, from, L); }
         else if (replyId === "studio_other") { s.step = "await_studio_text"; await saveSession(s); await sendText(from, COPY[L].otherStudioAsk); }
+        else if (replyId.startsWith("studio_") && s.data.offerMode) {
+          // v152: the tapped studio is asked first, the other offered studios
+          // are the backup, all in one dispatch. The request stays unassigned
+          // until a studio says yes, so the old single-studio path never runs.
+          const idx = Number(replyId.split("_")[1]);
+          const picks = Array.isArray(s.data.picks) ? s.data.picks : [];
+          const p = picks[idx];
+          if (p) {
+            s.data.chosen = null; s.data.customStudio = null;
+            s.data.prefer = [p, ...picks.filter((_x: any, i: number) => i !== idx)].map((x: any) => ({ id: x.id, name: x.name }));
+            await logEvent(from, "studio_chosen", { how: "offer_first", studio: p.name });
+            await askNameOrFinalize(s, from, L);
+          } else if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+        }
         else if (replyId.startsWith("studio_")) {
           const idx = Number(replyId.split("_")[1]);
           const p = (s.data.picks || [])[idx];
@@ -4383,7 +4452,8 @@ const handleInner = async (req: Request) => {
           s.data.service = detectService(text); s.data.picks = null; await saveSession(s);
           const offered = await askStudio(from, L, s);
           if (!offered) await askNameOrFinalize(s, from, L);
-        } else await askStudio(from, L, s);
+        } else if (s.data.offerMode) { if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L); }
+        else await askStudio(from, L, s);
         break;
       }
       case "await_studio_text": {
@@ -4421,7 +4491,7 @@ const handleInner = async (req: Request) => {
             [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", "),
             whereGo, goId));
           await logEvent(from, "go_confirmed", { id: goId });
-          await dispatchRequest(goId);
+          await dispatchRequest(goId, (Array.isArray(s.data.prefer) ? s.data.prefer : []).map((x: any) => String(x.id)));
           break;
         }
         if (change) {
