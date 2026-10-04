@@ -3041,8 +3041,35 @@ async function awardRequest(requestId: number, partnerId: string | null) {
   } catch (e) { console.log("[wa] award failed", String(e)); }
 }
 
+// v154 (4 Oct): put the live offer back in front of the customer, with the
+// address, instead of starting the booking again. On 3 Oct TornaSol said yes
+// to Stonelove for 10:00; he asked "¿Qué calle?" and two questions later the
+// bot rebuilt his request from scratch, cancelled TornaSol's yes and asked two
+// other studios. A question about an offer is a question, not a new booking.
+async function reshowOffer(s: Session, from: string, L: string, why: string): Promise<boolean> {
+  const o = s.data.offer;
+  if (!o || !o.row) return false;
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(o.row))}&select=partner_id,offered_time,outcome`, { headers: H() });
+  const d = ((await dr.json().catch(() => [])) || [])[0];
+  // Only an offer still on the table: pending or accepted by the studio, not
+  // stood down, expired, declined, failed, or already won.
+  if (!d || !d.offered_time || !["", "pending", "accepted"].includes(String(d.outcome || ""))) return false;
+  const pc = d.partner_id ? await partnerCard(d.partner_id) : { business_name: o.studio, address: "", phone: "", neighbourhood: "" };
+  const es = L === "es";
+  const where = [pc.address, pc.neighbourhood && !String(pc.address || "").includes(pc.neighbourhood) ? pc.neighbourhood : ""].filter(Boolean).join(", ");
+  const body = es
+    ? `Tu oferta sigue en pie: *${pc.business_name || o.studio}* a las *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nDirección: ${where}` : ""}\n\n¿Te la reservo?`
+    : `Your offer is still open: *${pc.business_name || o.studio}* at *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nAddress: ${where}` : ""}\n\nShall I book it?`;
+  await sendButtons(from, body, [{ id: `offer_yes_${o.row}`, title: COPY[L].offerYes(o.time) }, { id: `offer_no_${o.row}`, title: COPY[L].offerNo }]);
+  await logEvent(from, "offer_reshown", { why, studio: o.studio, time: o.time });
+  return true;
+}
+const ADDRESS_Q_RE = /\b(calle|direcci[oó]n|d[oó]nde (est[aá]|queda|es)|ubicaci[oó]n|metro|address|street|where (is|are) (it|they)|location)\b/i;
+
 // v39: after reading a sentence, ask only for what is still missing.
 async function continueFromKnown(s: Session, from: string, L: string) {
+  // v154: with a studio's offer waiting for an answer, never rebuild the request.
+  if (s.step === "await_offer" && s.data.offer?.row && await reshowOffer(s, from, L, "continue_from_known")) return;
   if (!s.data.service) { s.step = "await_service"; await saveSession(s); await askService(from, L); return; }
   if (!s.data.day) { s.step = "await_day"; await saveSession(s); if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L); return; }
   if (!s.data.time) { s.step = "await_time"; await saveSession(s); await askTime(from, L); return; }
@@ -4083,6 +4110,8 @@ const handleInner = async (req: Request) => {
         const bare = text.trim().toLowerCase().replace(/[.!¡¿?]/g, "");
         if (/^(yes|yeah|yep|ok|okay|sure|si|sí|vale|perfecto|perfect|great|book it|reserva|reservar|confirm|confirmo|1)$/.test(bare)) { await acceptOffer(String(s.data.offer.row), from, L, s); return new Response("OK", { status: 200 }); }
         if (/^(no|nope|another|otra|other|otra hora|another time|2)$/.test(bare)) { await declineOffer(String(s.data.offer.row), from, L, s); return new Response("OK", { status: 200 }); }
+        // v154: "¿Qué calle?" about the offered studio gets its address.
+        if (ADDRESS_Q_RE.test(text) && await reshowOffer(s, from, L, "address_question")) return new Response("OK", { status: 200 });
       }
     }
 
