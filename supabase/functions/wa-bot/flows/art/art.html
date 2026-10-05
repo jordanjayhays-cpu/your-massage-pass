@@ -20,13 +20,16 @@ const B=[
  ["b1","1",["What kind of","massage?"]],
  ["b2","2",["When do you","want it?"]],
  ["b3","3",["What time","suits you?"]],
- ["b4","4",["Where in","Madrid?"]],
- ["b5","5",["Last step,","almost there"]],
+ ["b4","4",["Got a backup","day?"]],
+ ["b4t","4",["Backup:","what time?"]],
+ ["b5","5",["Where in","Madrid?"]],
+ ["b6","6",["Last step,","almost there"]],
 ];
+const N=6;
 const out=document.getElementById('out');
 for(const [id,n,t] of B){
  const d=document.createElement('div');d.className='banner';d.id=id;
- d.innerHTML=`<div class=blob1></div><div class=blob2></div><div class=blob3></div><div class=brand>MASSAGE CLUB</div><div class=step>STEP ${n} OF 5</div><div class=dots>${[1,2,3,4,5].map(i=>`<i class="${i<=+n?'on':''}"></i>`).join('')}</div><h1>${t.join('<br>')}</h1>`;
+ d.innerHTML=`<div class=blob1></div><div class=blob2></div><div class=blob3></div><div class=brand>MASSAGE CLUB</div><div class=step>STEP ${n} OF ${N}</div><div class=dots>${Array.from({length:N},(_,i)=>i+1).map(i=>`<i class="${i<=+n?'on':''}"></i>`).join('')}</div><h1>${t.join('<br>')}</h1>`;
  out.appendChild(d);
 }
 const S='stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"';

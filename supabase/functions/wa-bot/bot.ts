@@ -163,6 +163,41 @@ const FLOW_AREA: Record<string, string> = {
 const FLOW_TIME: Record<string, string> = {
   morning: "time_morning", afternoon: "time_afternoon", evening: "time_evening", flexible: "",
 };
+// v156 (5 Oct, Jordan): "like the website, picking the time and then a back up
+// time." The form asks the day from real dates, the way the website wizard
+// does, so the dates are built here each time the form is sent and travel in
+// flow_action_payload. Ids are Madrid ISO dates; "flexible" and, for the
+// backup list, "none". Same rule as the day buttons: after 19:00 there is no
+// "today" left to sell.
+const ISO_MADRID = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
+const FLOW_DAY_FMT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric", month: "short" });
+function flowDays() {
+  const days: Array<{ id: string; title: string; description?: string }> = [];
+  for (let i = mcMadridHour() >= 19 ? 1 : 0; i <= 6; i++) {
+    const t = new Date(Date.now() + i * 86400e3);
+    const label = FLOW_DAY_FMT.format(t).replace(/,/g, "");
+    if (i === 0) days.push({ id: ISO_MADRID.format(t), title: "Today", description: label });
+    else if (i === 1) days.push({ id: ISO_MADRID.format(t), title: "Tomorrow", description: label });
+    else days.push({ id: ISO_MADRID.format(t), title: label });
+  }
+  days.push({ id: "flexible", title: "I am flexible", description: "Whenever a studio has room" });
+  return { days, days2: [{ id: "none", title: "No backup", description: "Just my first choice" }, ...days] };
+}
+// A day the form sent back. Today and tomorrow keep their words plus the date
+// (the date is what the studio reads, v50); a later day is its full date. A
+// date already past (the form was opened yesterday) is no answer at all.
+function flowDay(id: string, L: string): { day: string; dayDate: string | null; es: string } | null {
+  if (id === "flexible") return { day: L === "es" ? "Cualquier día (flexible)" : "Any day (flexible)", dayDate: null, es: "cualquier día (flexible)" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(id)) return null;
+  const t = new Date(id + "T12:00:00Z");
+  const plus = Math.round((t.getTime() - new Date(ISO_MADRID.format(new Date()) + "T12:00:00Z").getTime()) / 86400e3);
+  if (!(plus >= 0)) return null;
+  const long = (L === "es" ? LONG_ES : LONG_EN).format(t).replace(/,/g, "");
+  const es = LONG_ES.format(t).replace(/,/g, "");
+  if (plus === 0) return { day: L === "es" ? "Hoy" : "Today", dayDate: long, es: `hoy, ${es}` };
+  if (plus === 1) return { day: L === "es" ? "Mañana" : "Tomorrow", dayDate: long, es: `mañana, ${es}` };
+  return { day: long, dayDate: null, es };
+}
 const sendBookingFlow = (to: string, L: string) =>
   waSend(to, {
     type: "interactive",
@@ -177,7 +212,7 @@ const sendBookingFlow = (to: string, L: string) =>
           flow_id: BOOKING_FLOW_ID,
           flow_cta: COPY[L].flowCta,
           flow_action: "navigate",
-          flow_action_payload: { screen: "BOOKING" },
+          flow_action_payload: { screen: "SERVICE", data: flowDays() },
         },
       },
     },
@@ -2825,13 +2860,13 @@ async function createRequest(s: Session): Promise<number | null> {
       client_phone: "+" + s.phone.replace(/[^0-9]/g, ""),
       contact_email: d.email || null,
       day1: d.day || null, time1: d.time || null,
-      day2: d.day || null, time2: d.timeBand && d.timeBand !== d.time ? d.timeBand : null,
+      day2: d.backup ? d.backup : (d.day || null), time2: d.backup ? null : (d.timeBand && d.timeBand !== d.time ? d.timeBand : null),
       // v81: carried so the studio ask can include it and so an answer, once a
       // studio gives one in writing, has somewhere to live. Fernando asked for
       // a man, Centro Aloha said yes in writing, and nothing could remember it.
       therapist_gender: d.therapistGender === "male" || d.therapistGender === "female" ? d.therapistGender : null,
       languages: d.lang === "es" ? "es" : "en",
-      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : (Array.isArray(d.prefer) && d.prefer.length ? " | Prefiere: " + d.prefer.map((x: any) => x.name).join(", ") : ""))}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
+      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : (Array.isArray(d.prefer) && d.prefer.length ? " | Prefiere: " + d.prefer.map((x: any) => x.name).join(", ") : ""))}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""}${d.backup ? " | Alternativa: " + d.backup : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
       stage: "new",
     }),
   });
@@ -2887,6 +2922,8 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   }
   s.step = "done"; await saveSession(s);
   const id = await createRequest(s);
+  // v156: the form's backup and name belong to this request only.
+  if (s.data.backup || s.data.nameFromFlow) { s.data.backup = null; s.data.nameFromFlow = false; await saveSession(s); }
   const svcName = s.data.chosen && s.data.chosen.svc ? s.data.chosen.svc : (ALL_SERVICES.find((x) => x.id === (s.data.service === "svc_unsure" ? "svc_relax" : s.data.service))?.en || "Massage");
   const preferList = Array.isArray(s.data.prefer) ? s.data.prefer : [];
   const studioLine = preferList.length
@@ -3146,6 +3183,8 @@ async function afterTime(s: Session, from: string, L: string) {
 
 // Reaching the name step: known customers skip name+email and finish directly.
 async function askNameOrFinalize(s: Session, from: string, L: string) {
+  // v156: the form asked their name and email; neither is asked again.
+  if (s.data.nameFromFlow && s.data.name) { await finalizeBooking(s, from, L); return; }
   if (s.data.known?.name) {
     s.data.name = s.data.known.name;
     s.data.email = s.data.known.email || null;
@@ -4008,27 +4047,43 @@ const handleInner = async (req: Request) => {
     if (flowAnswers) {
       const svc = FLOW_SERVICE[String(flowAnswers.service || "")] || "";
       if (svc) s.data.service = svc;
-      const dayId = String(flowAnswers.day || "");
-      if (dayId === "today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); }
-      else if (dayId === "tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); }
+      const fd = flowDay(String(flowAnswers.day || ""), L);
+      if (fd) { s.data.day = fd.day; s.data.dayDate = fd.dayDate; }
       const bandId = FLOW_TIME[String(flowAnswers.time_pref || "")] || "";
       if (bandId) { s.data.timeBandId = bandId; s.data.time = L === "es" ? HOURS[bandId].labelEs : HOURS[bandId].label; s.data.timeBand = s.data.time; }
-      const areaName = FLOW_AREA[String(flowAnswers.area || "")] || "";
+      // v156: the backup day and time, in Spanish because studios read it.
+      const fd2 = flowDay(String(flowAnswers.day2 || ""), L);
+      const band2 = FLOW_TIME[String(flowAnswers.time2 || "")] || "";
+      s.data.backup = fd2 ? [fd2.es, band2 ? HOURS[band2].labelEs : ""].filter(Boolean).join(", ") : null;
+      const areaId = String(flowAnswers.area || "");
+      const areaName = FLOW_AREA[areaId] || "";
       if (areaName) s.data.area = areaName;
       const nm = parseName(String(flowAnswers.name || ""));
-      if (nm) s.data.name = nm.slice(0, 80);
+      if (nm) { s.data.name = nm.slice(0, 80); s.data.nameFromFlow = true; }
       const em = String(flowAnswers.email || "").trim();
       if (em && isEmail(em)) s.data.email = em.toLowerCase();
       else s.data.emailRefused = true;
       await saveSession(s);
       await logEvent(from, "flow_completed", {
         service: s.data.service || null, day: s.data.day || null, time: s.data.time || null,
-        area: s.data.area || null, email: !!s.data.email,
+        backup: s.data.backup || null, area: s.data.area || areaId || null, email: !!s.data.email,
       });
       if (!s.data.day) { s.step = "await_day"; await saveSession(s); await askDay(from, L); return new Response("OK", { status: 200 }); }
       if (!s.data.time) { s.step = "await_time"; await saveSession(s); await askTime(from, L); return new Response("OK", { status: 200 }); }
+      // v156 (Jordan): "find location should be able to happen". A form cannot
+      // read the phone's location, so "Use my location" is answered by
+      // WhatsApp's own share-location button straight after it; the pin lands
+      // in await_area, which already turns a pin into the nearest area.
+      if (areaId === "locate") {
+        s.step = "await_area"; await saveSession(s);
+        await sendLocationRequest(from, L === "es"
+          ? "Toca el botón de abajo para compartir tu ubicación y busco los centros más cercanos. También puedes escribir tu barrio."
+          : "Tap the button below to share your location and I'll find the closest studios. You can also type your neighbourhood.");
+        return new Response("OK", { status: 200 });
+      }
       if (!s.data.area) { s.step = "await_area"; await saveSession(s); await askArea(from, L); return new Response("OK", { status: 200 }); }
-      await finalizeBooking(s, from, L);
+      // Offer first (v152), the same as a typed booking that reaches its area.
+      if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
       return new Response("OK", { status: 200 });
     }
 
