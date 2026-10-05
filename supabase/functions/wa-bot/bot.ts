@@ -2382,16 +2382,22 @@ async function agentFacts(): Promise<string> {
   try { const r = await fetch(FACTS_URL); if (r.ok) factsCache = await r.text(); } catch { /* use what we have */ }
   return factsCache;
 }
-async function openRouterAgent(body: Record<string, unknown>): Promise<{ reply?: string; mode?: string } | null> {
-  const key = await appSecret("OPENROUTER_API_KEY");
+// v168: one OpenAI-style caller for both brains. OpenRouter (default), or
+// Hermes on Railway when AGENT_URL ends in /v1 (the hermes-api-relay service,
+// with AGENT_KEY). Hermes gets X-Hermes-Session-Id per customer, which is what
+// gives it a memory of each person across conversations.
+async function openRouterAgent(body: Record<string, unknown>, hermes?: { url: string; key: string }): Promise<{ reply?: string; mode?: string } | null> {
+  const key = hermes ? hermes.key : await appSecret("OPENROUTER_API_KEY");
   if (!key) return null;
   const facts = await agentFacts();
   if (!facts) return null;
   const system = `You answer WhatsApp messages for Massage Club, a massage concierge in Madrid. These are your facts and rules; follow them exactly:\n\n${facts}\n\nWrite ONE short WhatsApp reply (at most 3 sentences) in the customer's language (lang). Answer only what they asked. Do NOT ask the next booking question (day, time, area): the bot sends it with buttons right after your answer. Plain text, no markdown, no emojis beyond one if natural. Return JSON only: {"reply": "...", "mode": "send" or "draft"}. Use "draft" whenever you are not sure, the question is about a specific booking, a complaint, money, or anything not in the facts.`;
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST", signal: AbortSignal.timeout(15000),
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://book.massageclub.io", "X-Title": "Massage Club bot" },
-    body: JSON.stringify({ model: (await appSecret("AGENT_MODEL")) || "qwen/qwen3.5-122b-a10b", max_tokens: 700, temperature: 0.3, response_format: { type: "json_object" },
+  const res = await fetch(hermes ? `${hermes.url.replace(/\/$/, "")}/chat/completions` : "https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST", signal: AbortSignal.timeout(hermes ? 10000 : 15000),
+    headers: hermes
+      ? { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Hermes-Session-Id": `wa-${String(body.phone || "")}` }
+      : { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://book.massageclub.io", "X-Title": "Massage Club bot" },
+    body: JSON.stringify(hermes ? { model: "massage-club", stream: false, messages: [{ role: "system", content: system + " Do not use any tools." }, { role: "user", content: JSON.stringify(body) }] } : { model: (await appSecret("AGENT_MODEL")) || "qwen/qwen3.5-122b-a10b", max_tokens: 700, temperature: 0.3, response_format: { type: "json_object" },
       // Thinking off: with it on Qwen took 22 and 93 seconds on 5 Oct, past
       // the 15 second budget; off it answers in about 1.5 seconds.
       reasoning: { enabled: false },
@@ -2408,7 +2414,11 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
   try {
     const payload = { phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL };
     let j: any = null;
-    if (url) {
+    if (url && /\/v1\/?$/.test(url)) {
+      j = await openRouterAgent(payload, { url, key: await appSecret("AGENT_KEY") }).catch((e) => { console.log("[wa] hermes failed", String(e)); return null; });
+      if (!j) j = await openRouterAgent(payload); // Hermes down or slow: Qwen answers
+      if (!j) return false;
+    } else if (url) {
       const res = await fetch(url, {
         method: "POST", signal: AbortSignal.timeout(15000),
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${await appSecret("AGENT_KEY")}` },
