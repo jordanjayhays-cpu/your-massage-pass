@@ -360,6 +360,25 @@ async function webHandoff(s: Session, from: string, text: string): Promise<boole
   return true;
 }
 
+// v162 (5 Oct, Jordan chose: "WhatsApp bot sends it"): a new chat also gets
+// the booking page as a "Book now" button, after the greeting with prices. It
+// opens inside WhatsApp's own browser at book.massageclub.io/reserve with their
+// number and first name filled in. The chat questions still work for anyone
+// who would rather answer here. Once per customer, never to a returning one
+// (they get the welcome-back menu) and never when the greeting was held back.
+async function sendReservePage(s: Session, from: string) {
+  if (s.step === "start" || s.step === "returning_choice" || s.step === "muted" || s.data.pageSent) return;
+  const L = s.data.lang === "es" ? "es" : "en";
+  const name = firstNameFromProfile(s.wa_name);
+  const url = `https://book.massageclub.io/reserve?p=${digitsOf(from)}${name ? "&n=" + encodeURIComponent(name) : ""}&lang=${L}&src=wa`;
+  const body = L === "es"
+    ? "O resérvalo en unos toques: elige masaje, día, hora y zona, y preguntamos a los centros por ti. Pagas en el centro, sin comisión."
+    : "Or book it in a few taps: pick the massage, day, time and area, and we ask the studios for you. You pay at the studio, no fee from us.";
+  await waSend(from, { type: "interactive", interactive: { type: "cta_url", body: { text: body }, action: { name: "cta_url", parameters: { display_text: L === "es" ? "Reservar ahora" : "Book now", url } } } }, body + " [Book now: " + url + "]", "cta_url");
+  s.data.pageSent = true; await saveSession(s);
+  await logEvent(from, "reserve_page_sent", { lang: L });
+}
+
 // They tapped the link but the text carries no code, so find their own most
 // recent request by the number they wrote from.
 async function resumeFromPhone(s: Session, from: string): Promise<boolean> {
@@ -4281,7 +4300,7 @@ const handleInner = async (req: Request) => {
     // that has written in). Nobody else sees either until Jordan says so.
     if (text && !replyId && ["34612474827", "15622355063"].includes(digitsOf(from)) && /^(page|pagina|página|form|formulario)$/i.test(text.trim())) {
       if (/^(page|pagina|página)$/i.test(text.trim())) {
-        const url = `https://book.massageclub.io/go.html?n=Jordan&p=${digitsOf(from)}&lang=en&nt=1`;
+        const url = `https://book.massageclub.io/reserve?n=Jordan&p=${digitsOf(from)}&lang=en&nt=1&src=wa`;
         await waSend(from, { type: "interactive", interactive: { type: "cta_url", body: { text: "Book a massage in a few taps. Pick the massage, the day, the time and the area, and we ask the studios for you. You pay at the studio, no fee from us." }, action: { name: "cta_url", parameters: { display_text: "Book now", url } } } }, "[test: booking page button] " + url, "cta_url");
       } else {
         await waSend(from, { type: "interactive", interactive: { type: "flow", body: { text: COPY.en.flowBody }, action: { name: "flow", parameters: {
@@ -4508,6 +4527,7 @@ const handleInner = async (req: Request) => {
     switch (s.step) {
       case "start": {
         await greet(s, from, text);
+        await sendReservePage(s, from);
         break;
       }
       case "returning_choice": {
