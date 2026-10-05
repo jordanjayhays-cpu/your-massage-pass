@@ -2412,12 +2412,34 @@ async function agentFacts(): Promise<string> {
 // Hermes on Railway when AGENT_URL ends in /v1 (the hermes-api-relay service,
 // with AGENT_KEY). Hermes gets X-Hermes-Session-Id per customer, which is what
 // gives it a memory of each person across conversations.
+function agentSystem(facts: string): string {
+  return `You answer WhatsApp messages for Massage Club, a massage concierge in Madrid. These are your facts and rules; follow them exactly:\n\n${facts}\n\nWrite ONE short WhatsApp reply (at most 3 sentences) in the customer's language (lang). Answer only what they asked. Do NOT ask the next booking question (day, time, area): the bot sends it with buttons right after your answer. Plain text, no markdown, no emojis beyond one if natural. Return JSON only: {"reply": "...", "mode": "send" or "draft"}. Use "draft" whenever you are not sure, the question is about a specific booking, a complaint, money, or anything not in the facts.`;
+}
+// v173 (Jordan, 5 Oct: "go with option 1"). Claude is the second opinion: when
+// Hermes or Qwen drafts, fails a check, or does not answer, Claude gets the
+// same question and the same rules. Its answer goes out only if it passes the
+// same checks; otherwise Jordan gets both drafts.
+async function claudeAgent(body: Record<string, unknown>): Promise<{ reply?: string; mode?: string } | null> {
+  const key = await aiKey();
+  const facts = await agentFacts();
+  if (!key || !facts) return null;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", signal: AbortSignal.timeout(9000),
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+    body: JSON.stringify({ model: AI_MODEL, max_tokens: 500, temperature: 0.2, system: agentSystem(facts), messages: [{ role: "user", content: JSON.stringify(body) }] }),
+  });
+  if (!res.ok) { console.log("[wa] claude agent http", res.status, (await res.text()).slice(0, 160)); return null; }
+  const out = await res.json().catch(() => ({}));
+  const m = String(out?.content?.[0]?.text || "").match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
 async function openRouterAgent(body: Record<string, unknown>, hermes?: { url: string; key: string }): Promise<{ reply?: string; mode?: string } | null> {
   const key = hermes ? hermes.key : await appSecret("OPENROUTER_API_KEY");
   if (!key) return null;
   const facts = await agentFacts();
   if (!facts) return null;
-  const system = `You answer WhatsApp messages for Massage Club, a massage concierge in Madrid. These are your facts and rules; follow them exactly:\n\n${facts}\n\nWrite ONE short WhatsApp reply (at most 3 sentences) in the customer's language (lang). Answer only what they asked. Do NOT ask the next booking question (day, time, area): the bot sends it with buttons right after your answer. Plain text, no markdown, no emojis beyond one if natural. Return JSON only: {"reply": "...", "mode": "send" or "draft"}. Use "draft" whenever you are not sure, the question is about a specific booking, a complaint, money, or anything not in the facts.`;
+  const system = agentSystem(facts);
   const res = await fetch(hermes ? `${hermes.url.replace(/\/$/, "")}/chat/completions` : "https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", signal: AbortSignal.timeout(hermes ? 10000 : 15000),
     headers: hermes
@@ -2448,8 +2470,7 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
     if (url && /\/v1\/?$/.test(url)) {
       via = "hermes";
       j = await openRouterAgent(payload, { url, key: await appSecret("AGENT_KEY") }).catch((e) => { console.log("[wa] hermes failed", String(e)); return null; });
-      if (!j) { via = "openrouter_fallback"; j = await openRouterAgent(payload); } // Hermes down or slow: Qwen answers
-      if (!j) return false;
+      if (!j) { via = "openrouter_fallback"; j = await openRouterAgent(payload).catch(() => null); } // Hermes down or slow: Qwen answers
     } else if (url) {
       const res = await fetch(url, {
         method: "POST", signal: AbortSignal.timeout(15000),
@@ -2458,16 +2479,31 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
       });
       j = await res.json().catch(() => ({}));
     } else {
-      j = await openRouterAgent(payload);
-      if (!j) return false;
+      j = await openRouterAgent(payload).catch(() => null);
     }
-    const reply = String(j?.reply || "").trim();
-    if (!reply) return false;
     const draftOnly = (await appSecret("AGENT_MODE")) === "draft";
-    const ok = !draftOnly && j?.mode === "send" && agentReplyOk(reply) && !(await namesAStudio(reply));
-    await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length, via, reply: reply.slice(0, 300) });
-    if (ok) { await sendText(from, reply); return true; }
-    await notifyJordanWa(`Agent draft for +${digitsOf(from)} (not sent): ${reply.slice(0, 300)}`, from).catch(() => {});
+    const passes = async (x: any): Promise<string> => {
+      const r = String(x?.reply || "").trim();
+      return r && x?.mode === "send" && agentReplyOk(r) && !(await namesAStudio(r)) ? r : "";
+    };
+    const first = String(j?.reply || "").trim();
+    let sendNow = draftOnly ? "" : await passes(j);
+    if (first) await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: !!sendNow, chars: first.length, via, reply: first.slice(0, 300) });
+    let second = "";
+    if (!sendNow && !draftOnly) {
+      const c = await claudeAgent(payload).catch((e) => { console.log("[wa] claude agent failed", String(e)); return null; });
+      second = String(c?.reply || "").trim();
+      if (second) {
+        sendNow = await passes(c);
+        await logEvent(from, "agent_reply", { mode: c?.mode || null, sent: !!sendNow, chars: second.length, via: "claude_second", reply: second.slice(0, 300) });
+      }
+    }
+    if (sendNow) { await sendText(from, sendNow); return true; }
+    // Template text cannot hold line breaks and is cut near 180 characters
+    // once the reply link is on, so Claude's draft (usually the better one)
+    // leads; both are in the agent_reply events and the reply page.
+    const drafts = [second && `Claude: ${second}`, first && `${via}: ${first}`].filter(Boolean);
+    if (drafts.length) await notifyJordanWa(`Not sent to +${digitsOf(from)}. ${drafts.join(" | ")}`.replace(/\s+/g, " "), from).catch(() => {});
     return false;
   } catch (e) {
     console.log("[wa] agent handoff failed", String(e));
