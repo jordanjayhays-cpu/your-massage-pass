@@ -329,6 +329,37 @@ const RESUME_LINE = (L: string, name: string, svc: string, area: string) =>
     ? `Hola${name ? " " + name : ""}, seguimos donde lo dejamos: ${svc}${area ? " por " + area : ""}. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien?`
     : `Hi${name ? " " + name : ""}, picking up where we left off: ${svc}${area ? " around " + area : ""}. You pay the studio, no fee from us.\n\nWhich day works for you?`;
 
+// v160 (5 Oct): the booking page (go.html) ends on "Get my offers on WhatsApp",
+// which opens this chat with "...on the website (#104)..." already typed. That
+// message is the customer joining the request they just made, and it opens the
+// 24 hour window so we can send them the offers. Without this it read as a new
+// customer: "Welcome back! What would you like to do? [Book a massage]", and a
+// tap there would have started a second request. Only a request made from this
+// same number in the last day counts.
+const WEB_HANDOFF_RE = /(?:website|la web|web)\b[^#]{0,40}\(#(\d{2,7})\)/i;
+async function webHandoff(s: Session, from: string, text: string): Promise<boolean> {
+  const m = text.match(WEB_HANDOFF_RE);
+  if (!m) return false;
+  const since = new Date(Date.now() - 24 * 3600e3).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${m[1]}&client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&created_at=gte.${since}&select=id,first_name,service_name,day1,area,stage,contact_email,languages&limit=1`, { headers: H() });
+  const req = (await r.json().catch(() => []))[0];
+  if (!req || ["dismissed", "cancelled"].includes(String(req.stage))) return false;
+  const es = strongSpanish(text) || /^hola\b/i.test(text.trim());
+  s.data.lang = es ? "es" : "en";
+  s.data.webRequest = req.id;
+  if (req.contact_email && !s.data.email) s.data.email = req.contact_email;
+  if (req.first_name && !s.data.name) s.data.name = String(req.first_name).slice(0, 80);
+  s.step = "done"; await saveSession(s);
+  await logEvent(from, "web_handoff", { request_id: req.id, stage: req.stage });
+  const name = String(req.first_name || "").split(" ")[0];
+  const svc = trSvcLow(String(req.service_name || "Massage"), s.data.lang);
+  const where = req.area && !/^(anywhere|me da igual|madrid)$/i.test(String(req.area)) ? (es ? ` cerca de ${req.area}` : ` near ${req.area}`) : "";
+  await sendText(from, es
+    ? `Perfecto${name ? ", " + name : ""}. Tu solicitud #${req.id} ya está con los centros: ${svc}, ${req.day1 || ""}${where}. Te escribo aquí en cuanto uno diga que sí. No se reserva nada hasta que tú lo confirmes. Massage Club`
+    : `Got it${name ? ", " + name : ""}. Your request #${req.id} is with the studios: ${svc}, ${req.day1 || ""}${where}. I'll message you here as soon as one says yes. Nothing is booked until you confirm. Massage Club`);
+  return true;
+}
+
 // They tapped the link but the text carries no code, so find their own most
 // recent request by the number they wrote from.
 async function resumeFromPhone(s: Session, from: string): Promise<boolean> {
@@ -4248,6 +4279,7 @@ const handleInner = async (req: Request) => {
     if (text && !replyId) {
       const rc = text.match(RESUME_RE);
       if (rc && await resumeFromCode(s, from, rc[1])) return new Response("OK", { status: 200 });
+      if (!rc && await webHandoff(s, from, text)) return new Response("OK", { status: 200 });
       if (!rc && RESUME_PHRASE_RE.test(text) && await resumeFromPhone(s, from)) return new Response("OK", { status: 200 });
     }
 
