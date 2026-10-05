@@ -118,6 +118,10 @@ async function logMsg(phone: string, direction: "in" | "out", body: string, msg_
 // whisper-large-v3, an open-weight model). A transcript is then read exactly
 // as if they had typed it.
 async function appSecret(key: string): Promise<string> {
+  // An Edge Function secret (Supabase dashboard, Edge Functions, Secrets)
+  // works too and wins over the app_secrets table.
+  const env = Deno.env.get(key);
+  if (env) return env.trim();
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.${encodeURIComponent(key)}&select=value&limit=1`, { headers: H() });
     const rows = await r.json().catch(() => []);
