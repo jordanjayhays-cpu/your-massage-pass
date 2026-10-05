@@ -537,6 +537,7 @@ async function askStudioList(to: string, L: string, s: Session): Promise<boolean
 // price is its own menu; anyone else's is a listing, so it reads "about".
 // Nothing here says the studio is free: that is the studio's yes to give.
 async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
+  if (await staleDay(s, from, L)) return true;
   // No service chosen yet means relaxing, the default everywhere else. Without
   // this CG (4 Oct) was offered "Sports" and "Shiatsu", the cheapest 60 min
   // rows, for a plain massage.
@@ -2874,7 +2875,9 @@ async function createRequest(s: Session): Promise<number | null> {
       area,
       client_phone: "+" + s.phone.replace(/[^0-9]/g, ""),
       contact_email: d.email || null,
-      day1: d.day || null, time1: d.time || null,
+      // v159: "Earliest available (from 12:00)" reached Calma and KamAI as
+      // "a las Earliest available (from 12:00)". The studio reads 12:00.
+      day1: d.day || null, time1: d.time === COPY.en.earliestToday || d.time === COPY.es.earliestToday ? "12:00" : (d.time || null),
       day2: d.backup ? d.backup : (d.day || null), time2: d.backup ? null : (d.timeBand && d.timeBand !== d.time ? d.timeBand : null),
       // v81: carried so the studio ask can include it and so an answer, once a
       // studio gives one in writing, has somewhere to live. Fernando asked for
@@ -2892,7 +2895,30 @@ async function createRequest(s: Session): Promise<number | null> {
 
 // Create the request and send the confirmation - shared by the normal flow end
 // and the shortcuts that skip name/email for known customers.
+// v159 (5 Oct, live): "Today" is the day they said it. Abdelatif chose
+// "Today" on Saturday 3 Oct, came back on Monday 5 Oct through the unfinished-
+// booking reminder, answered the remaining questions, and Calma and KamAI were
+// asked for "sábado 3 de octubre", a day already gone. Before anything is
+// offered or sent, a Today/Tomorrow whose stored date is not today's or
+// tomorrow's is asked again; yesterday's "Tomorrow" simply becomes Today.
+async function staleDay(s: Session, from: string, L: string): Promise<boolean> {
+  const d = String(s.data.day || "");
+  if (!s.data.dayDate || !/^(today|hoy|tomorrow|mañana|manana)$/i.test(d)) return false;
+  const today = [longDate("en", 0), longDate("es", 0)], tomorrow = [longDate("en", 1), longDate("es", 1)];
+  const isToday = /^(today|hoy)$/i.test(d);
+  if (isToday && today.includes(s.data.dayDate)) return false;
+  if (!isToday && tomorrow.includes(s.data.dayDate)) return false;
+  if (!isToday && today.includes(s.data.dayDate)) {
+    s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); await saveSession(s); return false;
+  }
+  await logEvent(from, "stale_day_reasked", { day: d, dayDate: s.data.dayDate });
+  s.data.day = null; s.data.dayDate = null; s.step = "await_day"; await saveSession(s);
+  await askDay(from, L);
+  return true;
+}
+
 async function finalizeBooking(s: Session, from: string, L: string) {
+  if (await staleDay(s, from, L)) return;
   // v67 (Jordan, 8 Sept): every booking needs an email. Sharo J asked for a
   // couples massage through the website with no email and no WhatsApp history,
   // five studios were asked, and she could not be told a single thing. WhatsApp
@@ -4647,6 +4673,15 @@ const handleInner = async (req: Request) => {
                 await askArea(from, L);
                 break;
               }
+            }
+            // v159: "Estoy fuera de Madrid" became Abdelatif's area and two
+            // studios were asked for a customer who is not in Madrid.
+            if (!hit && /\b(fuera de madrid|no estoy en madrid|outside( of)? madrid|not in madrid)\b/i.test(stripAcc(text))) {
+              await logEvent(from, "outside_madrid", { text: text.slice(0, 80) });
+              await sendText(from, L === "es"
+                ? "Trabajamos con centros en Madrid y alrededores. ¿En qué zona o pueblo estás? Si hay un centro cerca, te lo busco."
+                : "We work with studios in Madrid and nearby. Which area or town are you in? If there is a studio close by, I'll find it.");
+              break;
             }
             area = hit || text.slice(0, 40);
           }
