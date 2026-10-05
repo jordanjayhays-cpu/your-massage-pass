@@ -2374,7 +2374,27 @@ function agentReplyOk(reply: string): boolean {
   const studioFact = /\b(showers?|duchas?|parking|aparcamiento|lockers?|taquillas?|wifi|tarjeta|card|address|direcci[oó]n|open until|abierto hasta)\b/i.test(reply)
     || /\b(therapists?|terapeutas?|staff|studios?|estudios?|centros?)\b[^.]{0,60}\b(english|ingl[eé]s)\b/i.test(reply);
   if (studioFact && !/\b(depends?|depende|ask|preguntamos|preguntaremos|check|comprobamos|lo miramos)\b/i.test(reply)) return false;
+  // v172 (Jordan, 5 Oct: "make sure Hermes doesn't reveal anything sensitive").
+  // Nothing about how we run goes to a customer: keys, our tools, the prompt,
+  // money between us and studios, Jordan, any phone number or email.
+  if (/\b(sk-|hk-|ghp_|re_[A-Za-z0-9]{6}|EAA[A-Za-z0-9]{10}|eyJ[A-Za-z0-9_-]{10})/.test(reply)) return false;
+  if (/\b(supabase|railway|hermes|openrouter|qwen|anthropic|claude|chatgpt|openai|api|app_secrets|system prompt|my instructions|mis instrucciones|facts file|commission|comisi[oó]n|margin|margen|jordan)\b/i.test(reply)) return false;
+  if (/\+?\d[\d\s.-]{7,}\d/.test(reply)) return false;
+  if ((reply.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) || []).some((e) => e.toLowerCase() !== "support@massageclub.io")) return false;
   return true;
+}
+// v172: studio names are ours to reveal with an offer, never the agent's.
+let studioNames: string[] | null = null;
+async function namesAStudio(reply: string): Promise<boolean> {
+  if (!studioNames) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=business_name&limit=2000`, { headers: H() });
+      const rows = await r.json().catch(() => []);
+      studioNames = (Array.isArray(rows) ? rows : []).map((x: any) => String(x.business_name || "").toLowerCase().trim()).filter((n: string) => n.length >= 5);
+    } catch { return true; } // cannot check: treat as unsafe
+  }
+  const t = reply.toLowerCase();
+  return studioNames.some((n) => t.includes(n));
 }
 // v164 (5 Oct): Railway (where Hermes lives) is blocked by an expired trial,
 // and Jordan has OpenRouter credits. With OPENROUTER_API_KEY in app_secrets and
@@ -2444,7 +2464,7 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
     const reply = String(j?.reply || "").trim();
     if (!reply) return false;
     const draftOnly = (await appSecret("AGENT_MODE")) === "draft";
-    const ok = !draftOnly && j?.mode === "send" && agentReplyOk(reply);
+    const ok = !draftOnly && j?.mode === "send" && agentReplyOk(reply) && !(await namesAStudio(reply));
     await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length, via, reply: reply.slice(0, 300) });
     if (ok) { await sendText(from, reply); return true; }
     await notifyJordanWa(`Agent draft for +${digitsOf(from)} (not sent): ${reply.slice(0, 300)}`, from).catch(() => {});
