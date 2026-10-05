@@ -3,13 +3,13 @@
     python3 build_flow.py <dir with the rendered art jpgs>
 
 The art comes from art/art.html, rendered to jpg (banners b*.jpg, icons i_*.jpg).
-One question per screen, like the website wizard: massage, day, time, a backup
-day and times as tap-to-pick chips (up to 3), a backup day and times (skippable), area, then name and email.
+One question per screen, like the website wizard: massage, day, a time as
+tap-to-pick chips (more only if flexible), area, then name and email.
 
 The day lists are not in this file. Real dates ("Wed 7 Oct") change every day,
-so wa-bot sends them as `days` / `days2` in flow_action_payload each time it
+so wa-bot sends them as `days` in flow_action_payload each time it
 sends the form (flowDays() in bot.ts). Option ids are ISO dates or "flexible";
-days2 starts with "none" (no backup).
+
 """
 import base64, json, os, sys
 
@@ -32,7 +32,6 @@ DAYS_EX = [{"id": "2026-10-05", "title": "Today", "description": "Mon 5 Oct"},
            {"id": "2026-10-07", "title": "Wed 7 Oct"},
            {"id": "flexible", "title": "I am flexible", "description": "Whenever a studio has room"}]
 DAYS = dict(DAY_ITEMS, __example__=DAYS_EX)
-DAYS2 = dict(DAY_ITEMS, __example__=[{"id": "none", "title": "No backup", "description": "Just my first choice"}] + DAYS_EX)
 
 SERVICES = [
     ("relaxing", "Relaxing", "Gentle, to switch off"),
@@ -91,49 +90,36 @@ def screen(sid, data, children, terminal=False):
 carry = lambda *keys: {k: "${data.%s}" % k for k in keys}
 
 screens = [
-    screen("SERVICE", {"days": DAYS, "days2": DAYS2}, [
-        banner("b1", "Massage Club, step 1 of 6"),
+    screen("SERVICE", {"days": DAYS}, [
+        banner("b1", "Massage Club, step 1 of 5"),
         {"type": "TextBody", "text": "Professional studios in Madrid. You pay the studio directly, no fee from us."},
         form([radio("service", "Pick one", opts(SERVICES)),
-              nav("Next", "DAY", dict(service="${form.service}", **carry("days", "days2")))],
+              nav("Next", "DAY", dict(service="${form.service}", **carry("days")))],
              {"service": "relaxing"}),
     ]),
-    screen("DAY", {"service": S, "days": DAYS, "days2": DAYS2}, [
-        banner("b2", "Massage Club, step 2 of 6"),
+    screen("DAY", {"service": S, "days": DAYS}, [
+        banner("b2", "Massage Club, step 2 of 5"),
         form([radio("day", "Pick a day", "${data.days}"),
-              nav("Next", "TIME", dict(day="${form.day}", **carry("service", "days2")))]),
+              nav("Next", "TIME", dict(day="${form.day}", **carry("service")))]),
     ]),
-    screen("TIME", {"service": S, "day": S, "days2": DAYS2}, [
-        banner("b3", "Massage Club, step 3 of 6"),
-        form([chips("time_pref", "Pick the times that work", "Tap up to 3. More times, faster yes.", 3),
-              nav("Next", "BACKUP", dict(time_pref="${form.time_pref}", **carry("service", "day", "days2")))]),
+    screen("TIME", {"service": S, "day": S}, [
+        banner("b3", "Massage Club, step 3 of 5"),
+        form([chips("time_pref", "Pick a time", "Tap one. Add more only if you are flexible.", 3),
+              nav("Next", "AREA", dict(time_pref="${form.time_pref}", **carry("service", "day")))]),
     ]),
-    screen("BACKUP", {"service": S, "day": S, "time_pref": HOURS_T, "days2": DAYS2}, [
-        banner("b4", "Massage Club, step 4 of 6, backup day"),
-        {"type": "TextBody", "text": "Studios say yes faster when you give them two options."},
-        form([radio("day2", "Pick a backup day", "${data.days2}"),
-              {"type": "If", "condition": "${form.day2} == 'none'",
-               "then": [nav("Next", "AREA", dict(day2="none", time2=[], **carry("service", "day", "time_pref")))],
-               "else": [nav("Next", "BACKUP_TIME", dict(day2="${form.day2}", **carry("service", "day", "time_pref")))]}]),
-    ]),
-    screen("BACKUP_TIME", {"service": S, "day": S, "time_pref": HOURS_T, "day2": S}, [
-        banner("b4t", "Massage Club, step 4 of 6, backup time"),
-        form([chips("time2", "Pick the backup times", "Tap up to 3.", 3),
-              nav("Next", "AREA", dict(time2="${form.time2}", **carry("service", "day", "time_pref", "day2")))]),
-    ]),
-    screen("AREA", {"service": S, "day": S, "time_pref": HOURS_T, "day2": S, "time2": HOURS_T}, [
-        banner("b5", "Massage Club, step 5 of 6"),
+    screen("AREA", {"service": S, "day": S, "time_pref": HOURS_T}, [
+        banner("b4", "Massage Club, step 4 of 5"),
         form([radio("area", "Pick an area", opts(AREAS, icons=False)),
-              nav("Next", "YOU", dict(area="${form.area}", **carry("service", "day", "time_pref", "day2", "time2")))],
+              nav("Next", "YOU", dict(area="${form.area}", **carry("service", "day", "time_pref")))],
              {"area": "locate"}),
     ]),
-    screen("YOU", {"service": S, "day": S, "time_pref": HOURS_T, "day2": S, "time2": HOURS_T, "area": S}, [
-        banner("b6", "Massage Club, step 6 of 6"),
+    screen("YOU", {"service": S, "day": S, "time_pref": HOURS_T, "area": S}, [
+        banner("b5", "Massage Club, step 5 of 5"),
         {"type": "TextBody", "text": "We ask the best studios near you and send you their offer right here in WhatsApp. Nothing is booked until you say yes."},
         form([{"type": "TextInput", "name": "name", "label": "Your first name", "input-type": "text", "required": True},
               {"type": "TextInput", "name": "email", "label": "Email", "helper-text": "Your confirmation goes here too", "input-type": "email", "required": True},
               {"type": "Footer", "label": "Find me a studio", "on-click-action": {"name": "complete", "payload": dict(
-                  name="${form.name}", email="${form.email}", **carry("service", "day", "time_pref", "day2", "time2", "area"))}}]),
+                  name="${form.name}", email="${form.email}", **carry("service", "day", "time_pref", "area"))}}]),
     ], terminal=True),
 ]
 

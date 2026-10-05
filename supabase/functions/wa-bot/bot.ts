@@ -181,7 +181,8 @@ function flowDays() {
     else days.push({ id: ISO_MADRID.format(t), title: label });
   }
   days.push({ id: "flexible", title: "I am flexible", description: "Whenever a studio has room" });
-  return { days, days2: [{ id: "none", title: "No backup", description: "Just my first choice" }, ...days] };
+  // 5 Oct (Jordan): no backup day; the studio is asked for exactly this time.
+  return { days };
 }
 // A day the form sent back. Today and tomorrow keep their words plus the date
 // (the date is what the studio reads, v50); a later day is its full date. A

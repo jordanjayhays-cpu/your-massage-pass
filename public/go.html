@@ -195,20 +195,8 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <h2 data-t="q3"></h2>
       <p class="sub" id="timeSub"></p>
       <div class="hours" id="times"></div>
-      <button class="cta" id="timeNext" disabled data-t="next"></button>
-    </section>
-
-    <!-- 4 · backup -->
-    <section class="screen" data-s="backup">
-      <div class="kicker" data-t="k4"></div>
-      <h2 data-t="q4"></h2>
-      <p class="sub" data-t="s4"></p>
-      <div class="label" data-t="day"></div>
-      <div class="chips" id="days2"></div>
-      <div class="label" data-t="time"></div>
-      <div class="hours" id="times2"></div>
-      <button class="cta" id="addBackup" disabled data-t="addBackup"></button>
-      <button class="skip" id="skipBackup" data-t="skip"></button>
+      <button class="skip" id="moreTimes" data-t="moreTimes"></button>
+      <button class="cta" id="timeNext" disabled data-t="next" style="display:none"></button>
     </section>
 
     <!-- 5 · where -->
@@ -278,23 +266,21 @@ const T = {
     f2: "Offers on WhatsApp", f2s: "We ask the studios, you pick",
     f3: "Pay at the studio", f3s: "No fee from us, ever",
     start: "Let's go",
-    k1: "1 of 7", q1: "What kind of massage?", s1: "Tap one. You can change it later.",
-    k2: "2 of 7", q2: "Which day?", s2: "Pick the day that suits you best.",
-    k3: "3 of 7", q3: "What time?", s3: "Tap every time that works, up to 3. More times, faster yes.", s3for: "For {d}. ",
-    k4: "4 of 7", q4: "Got a backup?", s4: "Studios say yes faster when you give them two options.",
-    day: "Day", time: "Time", addBackup: "Add backup", skip: "Skip, just my first choice",
-    k5: "5 of 7", q5: "Where in Madrid?", s5: "We look for a studio close to you.",
+    k1: "1 of 6", q1: "What kind of massage?", s1: "Tap one. You can change it later.",
+    k2: "2 of 6", q2: "Which day?", s2: "Pick the day that suits you best.",
+    k3: "3 of 6", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", moreTimes: "+ Add another time", oneTime: "Just one time",
+    k5: "4 of 6", q5: "Where in Madrid?", s5: "We look for a studio close to you.",
     locate: "Use my location", locating: "Finding you…", located: "Near {a}", locDenied: "No problem, pick an area below.", orPick: "Or pick an area",
-    anywhere: "Anywhere", k6: "6 of 7", q6: "Who's coming?", s6: "So the studio knows who to expect, and we can send you the offers.",
+    anywhere: "Anywhere", k6: "5 of 6", q6: "Who's coming?", s6: "So the studio knows who to expect, and we can send you the offers.",
     name: "First name", phone: "WhatsApp number", email: "Email", next: "Next",
     errName: "What should we call you?", errPhone: "Add your WhatsApp number, with the country code.", errEmail: "That email doesn't look right.",
-    k7: "7 of 7", q7: "Next time, one tap.", s7: "Tell us how you like it and we'll remember for the studio and for next time.",
+    k7: "6 of 6", q7: "Next time, one tap.", s7: "Tell us how you like it and we'll remember for the studio and for next time.",
     pressure: "Pressure", therapist: "Therapist", remind: "Remind me to rebook",
     consent: "If you pick a reminder, Massage Club will message you on WhatsApp or email when it's time to book again. Reply STOP anytime.",
     send: "Find my studio ✨", sending: "Sending…", sendErr: "That didn't go through. Try again, or message us on WhatsApp.",
     doneTitle: "You're on the list.", doneSub: "We're asking the studios now. Their offers come to your WhatsApp.",
     wa: "Get my offers on WhatsApp", fine: "Tap the green button so we can message you. Nothing is booked until you say yes, and you pay at the studio.",
-    req: "Request #{n}", kMassage: "Massage", kWhen: "When", kBackup: "Backup", kWhere: "Where", kNext: "Next time",
+    req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kNext: "Next time",
     today: "Today", tomorrow: "Tomorrow", flexible: "I'm flexible", flexibleS: "Whenever a studio has room",
     waText: "Hi, it's {name}. I just asked for a {want} on the website{ref}. Can you send me the offers here?",
     every: { 14: "Every 2 weeks", 30: "Every month", 60: "Every 2 months", 0: "No reminders" },
@@ -305,23 +291,21 @@ const T = {
     f2: "Ofertas por WhatsApp", f2s: "Preguntamos a los centros, tú eliges",
     f3: "Pagas en el centro", f3s: "Sin comisión, nunca",
     start: "Vamos",
-    k1: "1 de 7", q1: "¿Qué masaje te apetece?", s1: "Toca uno. Puedes cambiarlo luego.",
-    k2: "2 de 7", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
-    k3: "3 de 7", q3: "¿A qué hora?", s3: "Toca todas las horas que te van bien, hasta 3. Más horas, antes te dicen que sí.", s3for: "Para {d}. ",
-    k4: "4 de 7", q4: "¿Tienes otra opción?", s4: "Los centros dicen que sí antes cuando les das dos opciones.",
-    day: "Día", time: "Hora", addBackup: "Añadir opción", skip: "Saltar, solo la primera",
-    k5: "5 de 7", q5: "¿En qué zona?", s5: "Buscamos un centro cerca de ti.",
+    k1: "1 de 6", q1: "¿Qué masaje te apetece?", s1: "Toca uno. Puedes cambiarlo luego.",
+    k2: "2 de 6", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
+    k3: "3 de 6", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
+    k5: "4 de 6", q5: "¿En qué zona?", s5: "Buscamos un centro cerca de ti.",
     locate: "Usar mi ubicación", locating: "Buscándote…", located: "Cerca de {a}", locDenied: "Sin problema, elige una zona abajo.", orPick: "O elige una zona",
-    anywhere: "Me da igual", k6: "6 de 7", q6: "¿Quién viene?", s6: "Para que el centro sepa a quién esperar y podamos enviarte las ofertas.",
+    anywhere: "Me da igual", k6: "5 de 6", q6: "¿Quién viene?", s6: "Para que el centro sepa a quién esperar y podamos enviarte las ofertas.",
     name: "Nombre", phone: "Número de WhatsApp", email: "Email", next: "Siguiente",
     errName: "¿Cómo te llamamos?", errPhone: "Añade tu WhatsApp con el prefijo del país.", errEmail: "Ese email no parece correcto.",
-    k7: "7 de 7", q7: "La próxima, con un toque.", s7: "Dinos cómo te gusta y lo recordamos para el centro y para la próxima vez.",
+    k7: "6 de 6", q7: "La próxima, con un toque.", s7: "Dinos cómo te gusta y lo recordamos para el centro y para la próxima vez.",
     pressure: "Presión", therapist: "Masajista", remind: "Recordarme para volver",
     consent: "Si eliges un recordatorio, Massage Club te escribirá por WhatsApp o email cuando toque volver. Responde STOP cuando quieras.",
     send: "Buscar mi centro ✨", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o escríbenos por WhatsApp.",
     doneTitle: "Ya estás en la lista.", doneSub: "Estamos preguntando a los centros. Las ofertas te llegan por WhatsApp.",
     wa: "Recibir mis ofertas por WhatsApp", fine: "Toca el botón verde para que podamos escribirte. No se reserva nada hasta que digas que sí, y pagas en el centro.",
-    req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kBackup: "Alternativa", kWhere: "Dónde", kNext: "La próxima vez",
+    req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kNext: "La próxima vez",
     today: "Hoy", tomorrow: "Mañana", flexible: "Me adapto", flexibleS: "Cuando el centro tenga hueco",
     waText: "Hola, soy {name}. Acabo de pedir un {want} en la web{ref}. ¿Me mandáis las ofertas por aquí?",
     every: { 14: "Cada 2 semanas", 30: "Cada mes", 60: "Cada 2 meses", 0: "Sin recordatorios" },
@@ -353,9 +337,9 @@ const AREAS = [
 const PRESSURE = { en: ["Light", "Medium", "Firm"], es: ["Suave", "Media", "Fuerte"] };
 const THERAPIST = { en: [["any", "No preference"], ["female", "Woman"], ["male", "Man"]], es: [["any", "Me da igual"], ["female", "Mujer"], ["male", "Hombre"]] };
 
-const ORDER = ["hello", "massage", "day", "time", "backup", "where", "you", "later", "done"];
+const ORDER = ["hello", "massage", "day", "time", "where", "you", "later", "done"];
 const S = {
-  massage: null, day: null, times: [], day2: null, times2: [], area: null, loc: null,
+  massage: null, day: null, times: [], multi: false, area: null, loc: null,
   pressure: null, therapist: null, every: null,
 };
 let cur = 0;
@@ -393,11 +377,9 @@ function paint() {
   const hourChip = (h, sel) => `<button class="chip${sel.includes(h) ? " sel" : ""}" data-v="${h}">${h}:00<small>${hourIcon(h)}</small></button>`;
   $("times").innerHTML = HOURS.filter((h) => !today || h > hour).map((h) => hourChip(h, S.times)).join("");
   $("timeNext").disabled = !S.times.length;
-  $("timeSub").textContent = (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t("s3");
-  $("days2").innerHTML = days.filter((d) => d.i !== 99).map((d) => `<button class="chip${S.day2 && S.day2.iso === d.iso ? " sel" : ""}" data-v="${d.iso}">${esc(d.title)}${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</button>`).join("");
-  const today2 = S.day2 && S.day2.i === 0;
-  $("times2").innerHTML = HOURS.filter((h) => !today2 || h > hour).map((h) => hourChip(h, S.times2)).join("");
-  $("addBackup").disabled = !(S.day2 && S.times2.length);
+  $("timeNext").style.display = S.multi ? "" : "none";
+  $("moreTimes").textContent = S.multi ? t("oneTime") : t("moreTimes");
+  $("timeSub").textContent = (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t(S.multi ? "s3multi" : "s3");
   $("areas").innerHTML = [...AREAS.map((a) => a.n), t("anywhere")].map((n) => `<button class="chip${S.area === n && !S.loc ? " sel" : ""}" data-v="${esc(n)}">${esc(n)}</button>`).join("");
   $("pressure").innerHTML = PRESSURE[L].map((p, i) => `<button class="chip${S.pressure === PRESSURE.en[i] ? " sel" : ""}" data-v="${PRESSURE.en[i]}">${p}</button>`).join("");
   $("therapist").innerHTML = THERAPIST[L].map(([v, l]) => `<button class="chip${S.therapist === v ? " sel" : ""}" data-v="${v}">${l}</button>`).join("");
@@ -434,12 +416,16 @@ $("days").onclick = (e) => {
 };
 // Tap to add, tap again to remove; a fourth tap replaces the oldest.
 const toggle = (arr, h) => { const i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1); else { arr.push(h); if (arr.length > 3) arr.shift(); } arr.sort((a, b) => a - b); };
-$("times").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; toggle(S.times, Number(b.dataset.v)); paint(); };
-$("timeNext").onclick = () => go("backup");
-$("days2").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.day2 = dayList().find((d) => d.iso === b.dataset.v); S.times2 = S.times2.filter((h) => S.day2.i !== 0 || h > madridNow().getHours()); paint(); };
-$("times2").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; toggle(S.times2, Number(b.dataset.v)); paint(); };
-$("addBackup").onclick = () => go("where");
-$("skipBackup").onclick = () => { S.day2 = null; S.times2 = []; paint(); go("where"); };
+// One tap picks the time and moves on: the studio is asked for exactly that.
+// "+ Add another time" switches to picking up to three, with a Next button.
+$("times").onclick = (e) => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  const h = Number(b.dataset.v);
+  if (S.multi) { toggle(S.times, h); paint(); return; }
+  S.times = [h]; advance("where");
+};
+$("moreTimes").onclick = () => { S.multi = !S.multi; if (!S.multi) S.times = S.times.slice(0, 1); paint(); };
+$("timeNext").onclick = () => go("where");
 $("areas").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.area = b.dataset.v; S.loc = null; $("locate").classList.remove("done"); $("locNote").textContent = ""; advance("you"); };
 
 const km = (a, b) => {
@@ -502,11 +488,16 @@ $("send").onclick = async () => {
   const notes = [
     S.pressure ? `Presión: ${{ Light: "suave", Medium: "media", Firm: "fuerte" }[S.pressure]}` : "",
     S.therapist === "female" ? "Prefiere masajista mujer" : S.therapist === "male" ? "Prefiere masajista hombre" : "",
+    S.times.length > 1 ? `También le va: ${S.times.slice(1).map((h) => h + ":00").join(", ")}` : "",
     S.loc ? `Ubicación: ${S.loc.lat.toFixed(5)},${S.loc.lng.toFixed(5)}` : "",
   ].filter(Boolean).join("; ");
   const body = {
     want: S.massage, area: S.area || "Madrid",
-    when: slot(S.day, S.times), when2: S.day2 ? slot(S.day2, S.times2) : undefined,
+    when: slot(S.day, S.times),
+    // Structured, so the studio reads "a las 18:00" and is only asked if it is
+    // open at that hour (dispatch-studios v16).
+    date: S.day && S.day.iso !== "Flexible" ? S.day.iso : undefined,
+    time1: S.times.length ? `${String(S.times[0]).padStart(2, "0")}:00` : undefined,
     name, first_name: name.split(" ")[0], phone, email, lang: L, source: "go-page", notes: notes || undefined,
     prefs: {
       service: S.massage, pressure: S.pressure, therapist_gender: S.therapist && S.therapist !== "any" ? S.therapist : null,
@@ -533,7 +524,6 @@ function done(id, name) {
   $("summary").innerHTML = [
     row(m.e, t("kMassage"), m[L][0]),
     row("🗓️", t("kWhen"), [S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ")),
-    S.day2 ? row("🔁", t("kBackup"), [S.day2.title + (S.day2.sub ? ", " + S.day2.sub : ""), hm(S.times2)].filter(Boolean).join(" · ")) : "",
     row("📍", t("kWhere"), S.area === T[L].anywhere ? T[L].anywhere : (S.loc ? t("located").replace("{a}", S.area) : S.area)),
     S.every ? row("✨", t("kNext"), T[L].every[S.every]) : "",
   ].join("");
