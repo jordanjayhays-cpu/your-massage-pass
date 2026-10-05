@@ -2373,7 +2373,7 @@ function agentReplyOk(reply: string): boolean {
 // v164 (5 Oct): Railway (where Hermes lives) is blocked by an expired trial,
 // and Jordan has OpenRouter credits. With OPENROUTER_API_KEY in app_secrets and
 // no AGENT_URL, the bot asks an open-weight model on OpenRouter directly
-// (AGENT_MODEL, default deepseek/deepseek-v3.2), with docs/agent/facts.md as
+// (AGENT_MODEL, default qwen/qwen3.5-122b-a10b, thinking off), with docs/agent/facts.md as
 // its instructions. Same contract and same checks as the Hermes hand-off.
 // AGENT_MODE=draft in app_secrets turns every answer into a draft for Jordan.
 let factsCache = "";
@@ -2391,7 +2391,10 @@ async function openRouterAgent(body: Record<string, unknown>): Promise<{ reply?:
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST", signal: AbortSignal.timeout(15000),
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://book.massageclub.io", "X-Title": "Massage Club bot" },
-    body: JSON.stringify({ model: (await appSecret("AGENT_MODEL")) || "deepseek/deepseek-v3.2", max_tokens: 400, temperature: 0.3, response_format: { type: "json_object" },
+    body: JSON.stringify({ model: (await appSecret("AGENT_MODEL")) || "qwen/qwen3.5-122b-a10b", max_tokens: 700, temperature: 0.3, response_format: { type: "json_object" },
+      // Thinking off: with it on Qwen took 22 and 93 seconds on 5 Oct, past
+      // the 15 second budget; off it answers in about 1.5 seconds.
+      reasoning: { enabled: false },
       messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify(body) }] }),
   });
   const j = await res.json().catch(() => ({}));
