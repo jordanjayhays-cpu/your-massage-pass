@@ -1512,9 +1512,13 @@ const wantsHuman = (t: string) => /\b(human|person|agent|jordan|persona|humano|a
 // v55: message types the bot cannot read. WhatsApp also sends "unsupported"
 // for things like polls and view-once media.
 const MEDIA_TYPES = ["image", "sticker", "audio", "video", "document", "contacts", "unsupported", "order"];
+// v178 (Jordan, 5 Oct: "this should be auto"). Ad leads open with the English
+// autofill, so a Spanish speaker who only sends voice notes was answered in
+// English (+34 610 393 816, eight notes). Until voice is transcribed the
+// English line carries Spanish first.
 const MEDIA_LINE: Record<string, string> = {
-  es: "Aquí solo puedo leer texto y botones, no imágenes ni audios. Escríbeme lo que necesitas o toca una opción.",
-  en: "I can only read text and buttons here, not images or voice notes. Type what you need or tap an option.",
+  es: "Perdona, aquí no podemos escuchar audios ni ver imágenes. ¿Nos lo escribes en un mensaje? O toca una opción.",
+  en: "Perdona, aquí no podemos escuchar audios ni ver imágenes. ¿Nos lo escribes en un mensaje?\n\nSorry, we can't listen to voice notes or open images here. Could you type it instead?",
 };
 const STUDIO_MEDIA_LINE = "Gracias. Aquí no puedo abrir imágenes, audios ni documentos. Si es la hora o el precio, escribídmelo en texto y se lo paso al cliente ahora mismo.";
 // True if we sent this exact line to this number within the window.
