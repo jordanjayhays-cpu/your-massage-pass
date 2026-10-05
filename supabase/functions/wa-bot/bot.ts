@@ -2368,6 +2368,12 @@ function agentReplyOk(reply: string): boolean {
   if (/https?:\/\/(?!(book\.)?massageclub\.io)/i.test(reply)) return false;       // massageclub.io links only
   if (/\b(detox|toxin|toxinas|cure|cura|immun|inmun)\b/i.test(reply)) return false; // no health claims
   if (/\b(confirmed|confirmado|reservado|booked for you)\b/i.test(reply)) return false; // only the flow confirms
+  // v171 (Jordan, 5 Oct: "I don't want made up stuff"). A studio fact the
+  // facts file does not hold (Hermes without the rules said "el centro cuenta
+  // con duchas privadas") only goes out as "it depends, we will ask".
+  const studioFact = /\b(showers?|duchas?|parking|aparcamiento|lockers?|taquillas?|wifi|tarjeta|card|address|direcci[oó]n|open until|abierto hasta)\b/i.test(reply)
+    || /\b(therapists?|terapeutas?|staff|studios?|estudios?|centros?)\b[^.]{0,60}\b(english|ingl[eé]s)\b/i.test(reply);
+  if (studioFact && !/\b(depends?|depende|ask|preguntamos|preguntaremos|check|comprobamos|lo miramos)\b/i.test(reply)) return false;
   return true;
 }
 // v164 (5 Oct): Railway (where Hermes lives) is blocked by an expired trial,
