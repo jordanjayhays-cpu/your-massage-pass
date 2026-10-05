@@ -198,6 +198,20 @@ function flowDay(id: string, L: string): { day: string; dayDate: string | null; 
   if (plus === 1) return { day: L === "es" ? "Mañana" : "Tomorrow", dayDate: long, es: `mañana, ${es}` };
   return { day: long, dayDate: null, es };
 }
+// Chip ids are start hours ("18"). An old form (v4) answered with a band id.
+function flowHours(v: unknown, isToday: boolean): string[] {
+  const ids = Array.isArray(v) ? v.map(String) : (v ? [String(v)] : []);
+  const out: string[] = [];
+  for (const id of ids) {
+    const band = FLOW_TIME[id];
+    if (band) { out.push(HOURS[band].hours[0]); continue; }
+    const h = Number(id);
+    if (!Number.isInteger(h) || h < 9 || h > 21) continue;
+    if (isToday && h <= mcMadridHour()) continue;
+    out.push(`${h}:00`);
+  }
+  return [...new Set(out.filter(Boolean))].sort((a, b) => parseInt(a) - parseInt(b)).slice(0, 3);
+}
 const sendBookingFlow = (to: string, L: string) =>
   waSend(to, {
     type: "interactive",
@@ -4049,12 +4063,17 @@ const handleInner = async (req: Request) => {
       if (svc) s.data.service = svc;
       const fd = flowDay(String(flowAnswers.day || ""), L);
       if (fd) { s.data.day = fd.day; s.data.dayDate = fd.dayDate; }
-      const bandId = FLOW_TIME[String(flowAnswers.time_pref || "")] || "";
-      if (bandId) { s.data.timeBandId = bandId; s.data.time = L === "es" ? HOURS[bandId].labelEs : HOURS[bandId].label; s.data.timeBand = s.data.time; }
-      // v156: the backup day and time, in Spanish because studios read it.
+      // v157 (Jordan, "make it easier to pick a time"): the form offers real
+      // start times as chips, up to three. The first is the time we ask for,
+      // the rest ride along as the customer's flexibility. For today, a time
+      // already gone is dropped; if none is left the time is asked again.
+      const times = flowHours(flowAnswers.time_pref, !!fd && fd.day === (L === "es" ? "Hoy" : "Today"));
+      if (times.length) { s.data.time = times[0]; s.data.timeBandId = null; s.data.timeBand = times.length > 1 ? times.join(" / ") : null; }
+      else { s.data.time = null; s.data.timeBand = null; s.data.timeBandId = null; }
+      // v156: the backup day and times, in Spanish because studios read it.
       const fd2 = flowDay(String(flowAnswers.day2 || ""), L);
-      const band2 = FLOW_TIME[String(flowAnswers.time2 || "")] || "";
-      s.data.backup = fd2 ? [fd2.es, band2 ? HOURS[band2].labelEs : ""].filter(Boolean).join(", ") : null;
+      const times2 = flowHours(flowAnswers.time2, false);
+      s.data.backup = fd2 ? [fd2.es, times2.length ? (times2.length > 1 ? "a las " + times2.join(" / ") : "a las " + times2[0]) : ""].filter(Boolean).join(", ") : null;
       const areaId = String(flowAnswers.area || "");
       const areaName = FLOW_AREA[areaId] || "";
       if (areaName) s.data.area = areaName;

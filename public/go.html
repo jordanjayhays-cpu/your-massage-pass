@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Book a massage · Massage Club</title>
+<meta name="description" content="Book a massage in Madrid in a few taps. We ask the best studios near you and send you their offers on WhatsApp. You pay at the studio, no fee.">
+<meta name="theme-color" content="#B85C38">
+<meta property="og:title" content="Your massage, sorted">
+<meta property="og:description" content="A few taps. Offers from Madrid's best studios on WhatsApp. Pay at the studio, no fee.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<!--
+  go.html (5 Oct, Jordan): "partiful.com and book.massageclub.io, i want to mix
+  these. Aesthetically pleasing to book a massage and simple, while capturing
+  the info to rebook them next month."
+
+  One question per screen, most answered with a single tap that moves on by
+  itself. Same backend as the website wizard: POST to the `lead` function,
+  which writes whatsapp_requests and starts the studio asks. The rebooking
+  answers (pressure, therapist, how often) travel as `prefs`, and the reminder
+  is only ever opt-in: nothing is preselected.
+
+  Prefill from the URL: ?n=<first name>&p=<phone>&e=<email>&lang=es
+-->
+<style>
+:root{
+  --clay:#B85C38; --clay-d:#9A4A2C; --peach:#E8B79E; --sage:#A9BFA6; --plum:#5B4A6E;
+  --cream:#F6F1EA; --ink:#262019; --muted:#7C7166; --line:rgba(38,32,25,.10);
+  --glass:rgba(255,252,248,.78); --chip:#fff;
+}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'DM Sans',-apple-system,system-ui,sans-serif;color:var(--ink);background:var(--cream);overflow-x:hidden}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input{font:inherit;color:inherit}
+
+/* The Partiful "theme": a slow, living gradient behind everything. */
+.bg{position:fixed;inset:-20%;z-index:-1;background:var(--cream);filter:blur(60px) saturate(115%)}
+.bg i{position:absolute;border-radius:50%;opacity:.85;animation:drift 18s ease-in-out infinite alternate}
+.bg i:nth-child(1){width:60vmax;height:60vmax;background:var(--clay);top:-12%;right:-18%}
+.bg i:nth-child(2){width:48vmax;height:48vmax;background:var(--peach);bottom:-10%;left:-12%;animation-duration:22s}
+.bg i:nth-child(3){width:30vmax;height:30vmax;background:var(--sage);bottom:18%;right:4%;animation-duration:26s}
+.bg i:nth-child(4){width:22vmax;height:22vmax;background:#F2D3B8;top:30%;left:20%;animation-duration:30s}
+@keyframes drift{to{transform:translate(6%,8%) scale(1.12)}}
+@media (prefers-reduced-motion:reduce){.bg i{animation:none}}
+
+.app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+.top{display:flex;align-items:center;gap:12px;height:44px}
+.back{width:40px;height:40px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);display:grid;place-items:center;font-size:18px;visibility:hidden}
+.back.on{visibility:visible}
+.bar{flex:1;height:6px;border-radius:6px;background:rgba(255,255,255,.55);overflow:hidden}
+.bar b{display:block;height:100%;width:0;background:var(--ink);border-radius:6px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.lang{font-size:13px;font-weight:700;padding:8px 12px;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px)}
+
+.stage{flex:1;position:relative;margin-top:14px}
+.screen{display:none;animation:in .38s cubic-bezier(.2,.8,.2,1)}
+.screen.on{display:block}
+.screen.backwards{animation-name:inback}
+@keyframes in{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes inback{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+
+.card{background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border:1px solid rgba(255,255,255,.6);border-radius:28px;padding:24px 20px;box-shadow:0 18px 50px rgba(80,40,20,.14)}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--clay)}
+h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:800;letter-spacing:-.02em;line-height:1.02}
+h1{font-size:clamp(42px,12vw,56px);margin-top:10px}
+h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
+.sub{color:rgba(38,32,25,.74);font-size:16px;line-height:1.45;margin-bottom:18px}
+
+/* Invite poster */
+.poster{position:relative;border-radius:28px;overflow:hidden;aspect-ratio:1/1.05;background:linear-gradient(160deg,#C96A43 0%,#B85C38 45%,#8E4428 100%);color:#FFF6EE;padding:26px 22px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 24px 60px rgba(120,50,20,.35)}
+.poster .o{position:absolute;border-radius:50%}
+.poster .o1{width:66%;aspect-ratio:1;background:var(--peach);right:-20%;top:-20%;opacity:.9}
+.poster .o2{width:26%;aspect-ratio:1;background:var(--sage);right:30%;top:9%}
+.poster .o3{width:56%;aspect-ratio:1;background:rgba(255,246,238,.16);left:-20%;top:-20%}
+.poster .kicker{color:#FFE3D1;position:relative}
+.poster h1{position:relative;color:#FFF6EE;text-shadow:0 2px 24px rgba(0,0,0,.12)}
+.host{position:relative;display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:500;font-size:15px;color:#FFE9DC}
+.host span{width:26px;height:26px;border-radius:50%;background:#FFF6EE;color:var(--clay);display:grid;place-items:center;font-size:14px}
+.facts{margin:16px 0 18px;display:grid;gap:10px}
+.fact{display:flex;align-items:center;gap:14px;font-size:16px;font-weight:500}
+.fact .e{width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:21px;flex:none;box-shadow:0 4px 14px rgba(80,40,20,.08)}
+.fact small{display:block;color:var(--muted);font-weight:400;font-size:13.5px}
+
+/* Tap targets */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--chip);border-radius:22px;padding:16px 14px;text-align:left;border:2px solid transparent;box-shadow:0 6px 18px rgba(80,40,20,.07);transition:transform .12s,border-color .15s,background .15s}
+.tile:active{transform:scale(.97)}
+.tile .e{font-size:30px;display:block;margin-bottom:8px}
+.tile b{display:block;font-size:16.5px}
+.tile small{color:var(--muted);font-size:13px;line-height:1.3;display:block;margin-top:2px}
+.tile.sel{border-color:var(--ink);background:#FFFDFB}
+.list{display:grid;gap:10px}
+.row{display:flex;align-items:center;gap:14px;background:var(--chip);border-radius:20px;padding:14px 16px;border:2px solid transparent;text-align:left;box-shadow:0 6px 18px rgba(80,40,20,.07);transition:transform .12s,border-color .15s}
+.row:active{transform:scale(.98)}
+.row .e{font-size:24px;width:30px;text-align:center}
+.row b{font-size:16.5px;display:block}
+.row small{color:var(--muted);font-size:13.5px}
+.row.sel{border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--chip);border-radius:999px;padding:11px 16px;font-weight:500;font-size:15px;border:2px solid transparent;box-shadow:0 4px 12px rgba(80,40,20,.06);transition:transform .12s,border-color .15s}
+.chip:active{transform:scale(.96)}
+.chip.sel{border-color:var(--ink);background:#FFFDFB}
+.chip small{color:var(--muted);font-weight:400;margin-left:4px}
+.hours{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hours .chip{padding:16px 0;font-size:17px;font-weight:700;text-align:center}
+.hours .chip small{display:block;margin:2px 0 0;font-size:12px;font-weight:500}
+.label{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+.locate{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--ink);color:#fff;border-radius:20px;padding:17px;font-weight:700;font-size:16.5px;margin-bottom:6px}
+.locate.done{background:var(--sage);color:var(--ink)}
+.note{font-size:13.5px;color:var(--muted);margin-top:8px;min-height:18px}
+
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:0 0 6px 4px}
+.field input{width:100%;background:#fff;border:2px solid transparent;border-radius:16px;padding:15px 16px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.field input:focus{border-color:var(--clay)}
+.field input.bad{border-color:#C0392B}
+
+.cta{width:100%;background:var(--clay);color:#fff;border-radius:999px;padding:18px;font-weight:700;font-size:17px;margin-top:18px;box-shadow:0 12px 28px rgba(184,92,56,.35);transition:transform .12s,opacity .2s}
+.cta:active{transform:scale(.98)}
+.cta[disabled]{opacity:.45;box-shadow:none}
+.cta.dark{background:var(--ink);box-shadow:0 12px 28px rgba(38,32,25,.25)}
+.cta.wa{background:#1FA855;box-shadow:0 12px 28px rgba(31,168,85,.32)}
+.skip{display:block;width:100%;text-align:center;margin-top:14px;font-weight:700;color:var(--muted);padding:6px}
+.consent{font-size:13px;color:var(--muted);line-height:1.45;margin-top:12px}
+.err{color:#B03A2E;font-size:14px;margin-top:10px;min-height:18px;text-align:center}
+
+/* The ticket */
+.ticket{background:#FFFDFB;border-radius:26px;overflow:hidden;box-shadow:0 24px 60px rgba(80,40,20,.18)}
+.ticket .head{background:linear-gradient(150deg,#C96A43,#8E4428);color:#FFF6EE;padding:22px 22px 26px;position:relative;overflow:hidden}
+.ticket .head .o{position:absolute;width:150px;height:150px;border-radius:50%;background:var(--peach);right:-40px;top:-50px;opacity:.85}
+.ticket .head .o2{position:absolute;width:70px;height:70px;border-radius:50%;background:var(--sage);right:46px;top:50px}
+.ticket .head h2{position:relative;color:#FFF6EE}
+.ticket .head p{position:relative;color:#FFE3D1;font-size:15px;margin-top:6px}
+.perf{height:22px;position:relative;background:radial-gradient(circle at 0 50%,transparent 11px,#FFFDFB 12px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 11px,#FFFDFB 12px) right/51% 100% no-repeat}
+.perf:after{content:"";position:absolute;left:22px;right:22px;top:50%;border-top:2px dashed #E4D9CB}
+.ticket .body{padding:4px 22px 22px}
+.kv{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15.5px}
+.kv:last-child{border:0}
+.kv .e{width:26px;text-align:center}
+.kv small{display:block;color:var(--muted);font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.fine{text-align:center;color:var(--muted);font-size:13.5px;margin-top:14px;line-height:1.45}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:5}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<div class="app">
+  <div class="top">
+    <button class="back" id="back" aria-label="Back">←</button>
+    <div class="bar" aria-hidden="true"><b id="bar"></b></div>
+    <button class="lang" id="lang">ES</button>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <!-- 0 · the invite -->
+    <section class="screen" data-s="hello">
+      <div class="poster">
+        <i class="o o3"></i><i class="o o1"></i><i class="o o2"></i>
+        <div class="kicker" data-t="kick"></div>
+        <h1 data-t="title"></h1>
+        <div class="host"><span>✦</span><em data-t="host" style="font-style:normal"></em></div>
+      </div>
+      <div class="facts">
+        <div class="fact"><div class="e">📍</div><div><span data-t="f1"></span><small data-t="f1s"></small></div></div>
+        <div class="fact"><div class="e">💬</div><div><span data-t="f2"></span><small data-t="f2s"></small></div></div>
+        <div class="fact"><div class="e">💶</div><div><span data-t="f3"></span><small data-t="f3s"></small></div></div>
+      </div>
+      <button class="cta dark" data-go="massage" data-t="start"></button>
+    </section>
+
+    <!-- 1 · massage -->
+    <section class="screen" data-s="massage">
+      <div class="kicker" data-t="k1"></div>
+      <h2 data-t="q1"></h2>
+      <p class="sub" data-t="s1"></p>
+      <div class="grid" id="massages"></div>
+    </section>
+
+    <!-- 2 · day -->
+    <section class="screen" data-s="day">
+      <div class="kicker" data-t="k2"></div>
+      <h2 data-t="q2"></h2>
+      <p class="sub" data-t="s2"></p>
+      <div class="list" id="days"></div>
+    </section>
+
+    <!-- 3 · time -->
+    <section class="screen" data-s="time">
+      <div class="kicker" data-t="k3"></div>
+      <h2 data-t="q3"></h2>
+      <p class="sub" id="timeSub"></p>
+      <div class="hours" id="times"></div>
+      <button class="cta" id="timeNext" disabled data-t="next"></button>
+    </section>
+
+    <!-- 4 · backup -->
+    <section class="screen" data-s="backup">
+      <div class="kicker" data-t="k4"></div>
+      <h2 data-t="q4"></h2>
+      <p class="sub" data-t="s4"></p>
+      <div class="label" data-t="day"></div>
+      <div class="chips" id="days2"></div>
+      <div class="label" data-t="time"></div>
+      <div class="hours" id="times2"></div>
+      <button class="cta" id="addBackup" disabled data-t="addBackup"></button>
+      <button class="skip" id="skipBackup" data-t="skip"></button>
+    </section>
+
+    <!-- 5 · where -->
+    <section class="screen" data-s="where">
+      <div class="kicker" data-t="k5"></div>
+      <h2 data-t="q5"></h2>
+      <p class="sub" data-t="s5"></p>
+      <button class="locate" id="locate"><span>📍</span><span data-t="locate"></span></button>
+      <div class="note" id="locNote"></div>
+      <div class="label" data-t="orPick"></div>
+      <div class="chips" id="areas"></div>
+    </section>
+
+    <!-- 6 · you -->
+    <section class="screen" data-s="you">
+      <div class="kicker" data-t="k6"></div>
+      <h2 data-t="q6"></h2>
+      <p class="sub" data-t="s6"></p>
+      <label class="field"><span data-t="name"></span><input id="name" autocomplete="given-name" autocapitalize="words"></label>
+      <label class="field"><span data-t="phone"></span><input id="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000"></label>
+      <label class="field"><span data-t="email"></span><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@email.com"></label>
+      <div class="err" id="youErr"></div>
+      <button class="cta" id="youNext" data-t="next"></button>
+    </section>
+
+    <!-- 7 · next time -->
+    <section class="screen" data-s="later">
+      <div class="kicker" data-t="k7"></div>
+      <h2 data-t="q7"></h2>
+      <p class="sub" data-t="s7"></p>
+      <div class="label" data-t="pressure"></div>
+      <div class="chips" id="pressure"></div>
+      <div class="label" data-t="therapist"></div>
+      <div class="chips" id="therapist"></div>
+      <div class="label" data-t="remind"></div>
+      <div class="chips" id="remind"></div>
+      <p class="consent" data-t="consent"></p>
+      <div class="err" id="sendErr"></div>
+      <button class="cta" id="send" disabled data-t="send"></button>
+    </section>
+
+    <!-- 8 · the ticket -->
+    <section class="screen" data-s="done">
+      <div class="ticket">
+        <div class="head"><i class="o"></i><i class="o2"></i><div class="kicker" style="color:#FFE3D1;position:relative" id="reqNo"></div><h2 data-t="doneTitle"></h2><p data-t="doneSub"></p></div>
+        <div class="perf"></div>
+        <div class="body" id="summary"></div>
+      </div>
+      <a class="cta wa" id="wa" style="display:block;text-align:center;text-decoration:none" data-t="wa"></a>
+      <p class="fine" data-t="fine"></p>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(() => {
+const LEAD = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
+const BOT = "34613977900";
+const q = new URLSearchParams(location.search);
+let L = (q.get("lang") || (navigator.language || "en")).toLowerCase().startsWith("es") ? "es" : "en";
+
+const T = {
+  en: {
+    kick: "Massage Club · Madrid", title: "Your massage, sorted.", host: "Hosted by Massage Club",
+    f1: "A studio near you", f1s: "Licensed studios across Madrid",
+    f2: "Offers on WhatsApp", f2s: "We ask the studios, you pick",
+    f3: "Pay at the studio", f3s: "No fee from us, ever",
+    start: "Let's go",
+    k1: "1 of 7", q1: "What kind of massage?", s1: "Tap one. You can change it later.",
+    k2: "2 of 7", q2: "Which day?", s2: "Pick the day that suits you best.",
+    k3: "3 of 7", q3: "What time?", s3: "Tap every time that works, up to 3. More times, faster yes.", s3for: "For {d}. ",
+    k4: "4 of 7", q4: "Got a backup?", s4: "Studios say yes faster when you give them two options.",
+    day: "Day", time: "Time", addBackup: "Add backup", skip: "Skip, just my first choice",
+    k5: "5 of 7", q5: "Where in Madrid?", s5: "We look for a studio close to you.",
+    locate: "Use my location", locating: "Finding you…", located: "Near {a}", locDenied: "No problem, pick an area below.", orPick: "Or pick an area",
+    anywhere: "Anywhere", k6: "6 of 7", q6: "Who's coming?", s6: "So the studio knows who to expect, and we can send you the offers.",
+    name: "First name", phone: "WhatsApp number", email: "Email", next: "Next",
+    errName: "What should we call you?", errPhone: "Add your WhatsApp number, with the country code.", errEmail: "That email doesn't look right.",
+    k7: "7 of 7", q7: "Next time, one tap.", s7: "Tell us how you like it and we'll remember for the studio and for next time.",
+    pressure: "Pressure", therapist: "Therapist", remind: "Remind me to rebook",
+    consent: "If you pick a reminder, Massage Club will message you on WhatsApp or email when it's time to book again. Reply STOP anytime.",
+    send: "Find my studio ✨", sending: "Sending…", sendErr: "That didn't go through. Try again, or message us on WhatsApp.",
+    doneTitle: "You're on the list.", doneSub: "We're asking the studios now. Their offers come to your WhatsApp.",
+    wa: "Get my offers on WhatsApp", fine: "Tap the green button so we can message you. Nothing is booked until you say yes, and you pay at the studio.",
+    req: "Request #{n}", kMassage: "Massage", kWhen: "When", kBackup: "Backup", kWhere: "Where", kNext: "Next time",
+    today: "Today", tomorrow: "Tomorrow", flexible: "I'm flexible", flexibleS: "Whenever a studio has room",
+    waText: "Hi, it's {name}. I just asked for a {want} on the website{ref}. Can you send me the offers here?",
+    every: { 14: "Every 2 weeks", 30: "Every month", 60: "Every 2 months", 0: "No reminders" },
+  },
+  es: {
+    kick: "Massage Club · Madrid", title: "Tu masaje, resuelto.", host: "Organiza Massage Club",
+    f1: "Un centro cerca de ti", f1s: "Centros profesionales por todo Madrid",
+    f2: "Ofertas por WhatsApp", f2s: "Preguntamos a los centros, tú eliges",
+    f3: "Pagas en el centro", f3s: "Sin comisión, nunca",
+    start: "Vamos",
+    k1: "1 de 7", q1: "¿Qué masaje te apetece?", s1: "Toca uno. Puedes cambiarlo luego.",
+    k2: "2 de 7", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
+    k3: "3 de 7", q3: "¿A qué hora?", s3: "Toca todas las horas que te van bien, hasta 3. Más horas, antes te dicen que sí.", s3for: "Para {d}. ",
+    k4: "4 de 7", q4: "¿Tienes otra opción?", s4: "Los centros dicen que sí antes cuando les das dos opciones.",
+    day: "Día", time: "Hora", addBackup: "Añadir opción", skip: "Saltar, solo la primera",
+    k5: "5 de 7", q5: "¿En qué zona?", s5: "Buscamos un centro cerca de ti.",
+    locate: "Usar mi ubicación", locating: "Buscándote…", located: "Cerca de {a}", locDenied: "Sin problema, elige una zona abajo.", orPick: "O elige una zona",
+    anywhere: "Me da igual", k6: "6 de 7", q6: "¿Quién viene?", s6: "Para que el centro sepa a quién esperar y podamos enviarte las ofertas.",
+    name: "Nombre", phone: "Número de WhatsApp", email: "Email", next: "Siguiente",
+    errName: "¿Cómo te llamamos?", errPhone: "Añade tu WhatsApp con el prefijo del país.", errEmail: "Ese email no parece correcto.",
+    k7: "7 de 7", q7: "La próxima, con un toque.", s7: "Dinos cómo te gusta y lo recordamos para el centro y para la próxima vez.",
+    pressure: "Presión", therapist: "Masajista", remind: "Recordarme para volver",
+    consent: "Si eliges un recordatorio, Massage Club te escribirá por WhatsApp o email cuando toque volver. Responde STOP cuando quieras.",
+    send: "Buscar mi centro ✨", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o escríbenos por WhatsApp.",
+    doneTitle: "Ya estás en la lista.", doneSub: "Estamos preguntando a los centros. Las ofertas te llegan por WhatsApp.",
+    wa: "Recibir mis ofertas por WhatsApp", fine: "Toca el botón verde para que podamos escribirte. No se reserva nada hasta que digas que sí, y pagas en el centro.",
+    req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kBackup: "Alternativa", kWhere: "Dónde", kNext: "La próxima vez",
+    today: "Hoy", tomorrow: "Mañana", flexible: "Me adapto", flexibleS: "Cuando el centro tenga hueco",
+    waText: "Hola, soy {name}. Acabo de pedir un {want} en la web{ref}. ¿Me mandáis las ofertas por aquí?",
+    every: { 14: "Cada 2 semanas", 30: "Cada mes", 60: "Cada 2 meses", 0: "Sin recordatorios" },
+  },
+};
+
+// `want` is what the studios read, so it stays the website's English label.
+const MASSAGES = [
+  { v: "Relaxing", e: "🌿", en: ["Relaxing", "Gentle, to switch off"], es: ["Relajante", "Suave, para desconectar"] },
+  { v: "Deep tissue", e: "💪", en: ["Deep tissue", "Firm, for knots"], es: ["Descontracturante", "Firme, para contracturas"] },
+  { v: "Thai", e: "🧘", en: ["Thai", "Stretching, clothed"], es: ["Tailandés", "Estiramientos, con ropa"] },
+  { v: "Sports recovery", e: "🏃", en: ["Sports", "Training and recovery"], es: ["Deportivo", "Entreno y recuperación"] },
+  { v: "Hot stone", e: "🔥", en: ["Hot stone", "Warm and deep"], es: ["Piedras calientes", "Calor y calma"] },
+  { v: "Couples", e: "💞", en: ["Couples", "Side by side"], es: ["En pareja", "Uno al lado del otro"] },
+  { v: "Not sure", e: "🤷", en: ["Not sure", "We'll help you pick"], es: ["No lo sé", "Te ayudamos a elegir"] },
+];
+// Jordan (5 Oct): "make it easier to pick a time". Real start times, tap
+// every one that works. 20:00 is the last start: studios close at 21:00.
+const HOURS = Array.from({ length: 11 }, (_, i) => 10 + i);
+const hourIcon = (h) => (h < 13 ? "🌅" : h < 18 ? "☀️" : "🌙");
+const AREAS = [
+  { n: "Centro", lat: 40.4155, lng: -3.7074 }, { n: "Malasaña", lat: 40.4257, lng: -3.7040 },
+  { n: "Chueca", lat: 40.4224, lng: -3.6968 }, { n: "Chamberí", lat: 40.4353, lng: -3.7038 },
+  { n: "Salamanca", lat: 40.4283, lng: -3.6790 }, { n: "Retiro", lat: 40.4130, lng: -3.6790 },
+  { n: "La Latina", lat: 40.4110, lng: -3.7100 }, { n: "Lavapiés", lat: 40.4090, lng: -3.7010 },
+  { n: "Argüelles/Moncloa", lat: 40.4300, lng: -3.7160 }, { n: "Chamartín", lat: 40.4600, lng: -3.6800 },
+  { n: "Tetuán", lat: 40.4600, lng: -3.6990 },
+];
+const PRESSURE = { en: ["Light", "Medium", "Firm"], es: ["Suave", "Media", "Fuerte"] };
+const THERAPIST = { en: [["any", "No preference"], ["female", "Woman"], ["male", "Man"]], es: [["any", "Me da igual"], ["female", "Mujer"], ["male", "Hombre"]] };
+
+const ORDER = ["hello", "massage", "day", "time", "backup", "where", "you", "later", "done"];
+const S = {
+  massage: null, day: null, times: [], day2: null, times2: [], area: null, loc: null,
+  pressure: null, therapist: null, every: null,
+};
+let cur = 0;
+const $ = (id) => document.getElementById(id);
+const t = (k) => T[L][k];
+const madridNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// Seven real days, like the website. After 19:00 there is no today left: a
+// massage has to finish by 21:00.
+function dayList() {
+  const now = madridNow();
+  const out = [];
+  for (let i = now.getHours() >= 19 ? 1 : 0; i <= 6; i++) {
+    const d = new Date(now); d.setDate(now.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const short = d.toLocaleDateString(L === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
+    const long = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" }).replace(/,/g, "");
+    out.push({ iso, i, title: i === 0 ? t("today") : i === 1 ? t("tomorrow") : short, sub: i <= 1 ? short : "", long });
+  }
+  out.push({ iso: "Flexible", i: 99, title: t("flexible"), sub: t("flexibleS"), long: "Flexible" });
+  return out;
+}
+
+function paint() {
+  document.documentElement.lang = L;
+  $("lang").textContent = L === "es" ? "EN" : "ES";
+  document.querySelectorAll("[data-t]").forEach((el) => { const v = T[L][el.dataset.t]; if (typeof v === "string") el.textContent = v; });
+
+  $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e">${m.e}</span><b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
+  const days = dayList();
+  $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span><div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
+  const today = S.day && S.day.i === 0;
+  const hour = madridNow().getHours();
+  const hourChip = (h, sel) => `<button class="chip${sel.includes(h) ? " sel" : ""}" data-v="${h}">${h}:00<small>${hourIcon(h)}</small></button>`;
+  $("times").innerHTML = HOURS.filter((h) => !today || h > hour).map((h) => hourChip(h, S.times)).join("");
+  $("timeNext").disabled = !S.times.length;
+  $("timeSub").textContent = (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t("s3");
+  $("days2").innerHTML = days.filter((d) => d.i !== 99).map((d) => `<button class="chip${S.day2 && S.day2.iso === d.iso ? " sel" : ""}" data-v="${d.iso}">${esc(d.title)}${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</button>`).join("");
+  const today2 = S.day2 && S.day2.i === 0;
+  $("times2").innerHTML = HOURS.filter((h) => !today2 || h > hour).map((h) => hourChip(h, S.times2)).join("");
+  $("addBackup").disabled = !(S.day2 && S.times2.length);
+  $("areas").innerHTML = [...AREAS.map((a) => a.n), t("anywhere")].map((n) => `<button class="chip${S.area === n && !S.loc ? " sel" : ""}" data-v="${esc(n)}">${esc(n)}</button>`).join("");
+  $("pressure").innerHTML = PRESSURE[L].map((p, i) => `<button class="chip${S.pressure === PRESSURE.en[i] ? " sel" : ""}" data-v="${PRESSURE.en[i]}">${p}</button>`).join("");
+  $("therapist").innerHTML = THERAPIST[L].map(([v, l]) => `<button class="chip${S.therapist === v ? " sel" : ""}" data-v="${v}">${l}</button>`).join("");
+  $("remind").innerHTML = [30, 14, 60, 0].map((n) => `<button class="chip${S.every === n ? " sel" : ""}" data-v="${n}">${T[L].every[n]}</button>`).join("");
+  $("send").disabled = S.every === null;
+}
+
+function show(i, backwards) {
+  cur = i;
+  document.querySelectorAll(".screen").forEach((el) => {
+    const on = el.dataset.s === ORDER[i];
+    el.classList.toggle("on", on);
+    el.classList.toggle("backwards", on && !!backwards);
+  });
+  $("bar").style.width = `${Math.round((i / (ORDER.length - 1)) * 100)}%`;
+  $("back").classList.toggle("on", i > 0 && ORDER[i] !== "done");
+  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+}
+const go = (name) => show(ORDER.indexOf(name));
+// A single tap answers and moves on, with a beat to see the selection land.
+const advance = (name) => { paint(); setTimeout(() => go(name), 220); };
+
+$("back").onclick = () => {
+  let i = cur - 1;
+  show(Math.max(0, i), true);
+};
+$("lang").onclick = () => { L = L === "es" ? "en" : "es"; paint(); };
+document.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
+
+$("massages").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.massage = b.dataset.v; advance("day"); };
+$("days").onclick = (e) => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  S.day = dayList().find((d) => d.iso === b.dataset.v); S.times = []; advance("time");
+};
+// Tap to add, tap again to remove; a fourth tap replaces the oldest.
+const toggle = (arr, h) => { const i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1); else { arr.push(h); if (arr.length > 3) arr.shift(); } arr.sort((a, b) => a - b); };
+$("times").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; toggle(S.times, Number(b.dataset.v)); paint(); };
+$("timeNext").onclick = () => go("backup");
+$("days2").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.day2 = dayList().find((d) => d.iso === b.dataset.v); S.times2 = S.times2.filter((h) => S.day2.i !== 0 || h > madridNow().getHours()); paint(); };
+$("times2").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; toggle(S.times2, Number(b.dataset.v)); paint(); };
+$("addBackup").onclick = () => go("where");
+$("skipBackup").onclick = () => { S.day2 = null; S.times2 = []; paint(); go("where"); };
+$("areas").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.area = b.dataset.v; S.loc = null; $("locate").classList.remove("done"); $("locNote").textContent = ""; advance("you"); };
+
+const km = (a, b) => {
+  const R = 6371, r = Math.PI / 180;
+  const x = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lng - a.lng) * r / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+};
+$("locate").onclick = () => {
+  if (!navigator.geolocation) { $("locNote").textContent = t("locDenied"); return; }
+  $("locNote").textContent = t("locating");
+  navigator.geolocation.getCurrentPosition((p) => {
+    const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+    let best = AREAS[0];
+    for (const a of AREAS) if (km(here, a) < km(here, best)) best = a;
+    // Far from all of them (Pozuelo, a hotel by the airport): keep the pin and
+    // say Madrid, the studios are ranked by distance from the pin anyway.
+    S.area = km(here, best) <= 4 ? best.n : "Madrid";
+    S.loc = here;
+    $("locate").classList.add("done");
+    $("locNote").textContent = t("located").replace("{a}", S.area === "Madrid" ? "you" : S.area);
+    setTimeout(() => go("you"), 650);
+  }, () => { $("locNote").textContent = t("locDenied"); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
+};
+
+// Prefill from the bot's link, so a WhatsApp customer types nothing twice.
+$("name").value = q.get("n") || "";
+$("phone").value = q.get("p") ? "+" + String(q.get("p")).replace(/[^0-9]/g, "") : "";
+$("email").value = q.get("e") || "";
+$("youNext").onclick = () => {
+  const name = $("name").value.trim(), phone = $("phone").value.replace(/[^0-9+]/g, ""), email = $("email").value.trim();
+  ["name", "phone", "email"].forEach((k) => $(k).classList.remove("bad"));
+  let err = "";
+  if (!name) { err = t("errName"); $("name").classList.add("bad"); }
+  else if (phone.replace(/\D/g, "").length < 9) { err = t("errPhone"); $("phone").classList.add("bad"); }
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { err = t("errEmail"); $("email").classList.add("bad"); }
+  $("youErr").textContent = err;
+  if (!err) go("later");
+};
+$("pressure").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.pressure = b.dataset.v; paint(); } };
+$("therapist").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.therapist = b.dataset.v; paint(); } };
+$("remind").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.every = Number(b.dataset.v); paint(); } };
+
+// The same words the website wizard sends, so studios read one format.
+const hm = (hs) => hs.map((h) => `${h}:00`).join(" / ");
+const slot = (d, hs) => [d ? d.long : "", hs && hs.length ? hm(hs) : ""].filter(Boolean).join(", ");
+
+$("send").onclick = async () => {
+  const btn = $("send");
+  btn.disabled = true; btn.textContent = t("sending"); $("sendErr").textContent = "";
+  const name = $("name").value.trim(), phone = $("phone").value.replace(/[^0-9+]/g, ""), email = $("email").value.trim().toLowerCase();
+  const notes = [
+    S.pressure ? `Presión: ${{ Light: "suave", Medium: "media", Firm: "fuerte" }[S.pressure]}` : "",
+    S.therapist === "female" ? "Prefiere masajista mujer" : S.therapist === "male" ? "Prefiere masajista hombre" : "",
+    S.loc ? `Ubicación: ${S.loc.lat.toFixed(5)},${S.loc.lng.toFixed(5)}` : "",
+  ].filter(Boolean).join("; ");
+  const body = {
+    want: S.massage, area: S.area || "Madrid",
+    when: slot(S.day, S.times), when2: S.day2 ? slot(S.day2, S.times2) : undefined,
+    name, first_name: name.split(" ")[0], phone, email, lang: L, source: "go-page", notes: notes || undefined,
+    prefs: {
+      service: S.massage, pressure: S.pressure, therapist_gender: S.therapist && S.therapist !== "any" ? S.therapist : null,
+      every_days: S.every || null, remind_ok: !!S.every, day1: S.day && S.day.iso !== "Flexible" ? S.day.iso : null,
+      lat: S.loc ? S.loc.lat : null, lng: S.loc ? S.loc.lng : null,
+      consent_text: S.every ? T[L].consent : null,
+    },
+  };
+  try {
+    const r = await fetch(LEAD, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || r.status);
+    done(j.id, name);
+  } catch (e) {
+    $("sendErr").textContent = t("sendErr");
+    btn.textContent = t("send"); btn.disabled = false;
+  }
+};
+
+function done(id, name) {
+  const m = MASSAGES.find((x) => x.v === S.massage);
+  const row = (e, k, v) => `<div class="kv"><span class="e">${e}</span><div><small>${k}</small>${esc(v)}</div></div>`;
+  $("reqNo").textContent = id ? t("req").replace("{n}", id) : "Massage Club";
+  $("summary").innerHTML = [
+    row(m.e, t("kMassage"), m[L][0]),
+    row("🗓️", t("kWhen"), [S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ")),
+    S.day2 ? row("🔁", t("kBackup"), [S.day2.title + (S.day2.sub ? ", " + S.day2.sub : ""), hm(S.times2)].filter(Boolean).join(" · ")) : "",
+    row("📍", t("kWhere"), S.area === T[L].anywhere ? T[L].anywhere : (S.loc ? t("located").replace("{a}", S.area) : S.area)),
+    S.every ? row("✨", t("kNext"), T[L].every[S.every]) : "",
+  ].join("");
+  const want = (m[L][0] || "").toLowerCase() + (L === "es" ? "" : " massage");
+  const text = t("waText").replace("{name}", name.split(" ")[0]).replace("{want}", want).replace("{ref}", id ? ` (#${id})` : "");
+  $("wa").href = `https://wa.me/${BOT}?text=${encodeURIComponent(text)}`;
+  go("done");
+  confetti();
+}
+
+// A short burst in the club's colours. Partiful's signature, kept brief.
+function confetti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const c = $("confetti"), x = c.getContext("2d");
+  const W = (c.width = innerWidth * devicePixelRatio), H = (c.height = innerHeight * devicePixelRatio);
+  const cols = ["#B85C38", "#E8B79E", "#A9BFA6", "#5B4A6E", "#F2D3B8", "#262019"];
+  const P = Array.from({ length: 140 }, () => ({
+    x: W / 2 + (Math.random() - .5) * W * .3, y: H * .35, vx: (Math.random() - .5) * 16 * devicePixelRatio,
+    vy: (-Math.random() * 16 - 6) * devicePixelRatio, s: (6 + Math.random() * 7) * devicePixelRatio,
+    r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: cols[(Math.random() * cols.length) | 0],
+  }));
+  let f = 0;
+  (function tick() {
+    x.clearRect(0, 0, W, H);
+    for (const p of P) {
+      p.vy += .45 * devicePixelRatio; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.r += p.vr;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .66); x.restore();
+    }
+    if (++f < 150) requestAnimationFrame(tick); else x.clearRect(0, 0, W, H);
+  })();
+}
+
+paint();
+show(0);
+})();
+</script>
+</body>
+</html>

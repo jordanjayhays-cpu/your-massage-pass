@@ -4,7 +4,7 @@
 
 The art comes from art/art.html, rendered to jpg (banners b*.jpg, icons i_*.jpg).
 One question per screen, like the website wizard: massage, day, time, a backup
-day and time (recommended, skippable), area, then name and email.
+day and times as tap-to-pick chips (up to 3), a backup day and times (skippable), area, then name and email.
 
 The day lists are not in this file. Real dates ("Wed 7 Oct") change every day,
 so wa-bot sends them as `days` / `days2` in flow_action_payload each time it
@@ -42,11 +42,15 @@ SERVICES = [
     ("hot_stone", "Hot stone", "Warm stones, deeply relaxing"),
     ("unsure", "Not sure yet", "We will help you choose"),
 ]
-TIMES = [
-    ("morning", "Morning", "10:00 to 13:00"),
-    ("afternoon", "Afternoon", "13:00 to 18:00"),
-    ("evening", "Evening", "18:00 to 21:00"),
-]
+# 5 Oct (Jordan): "make it easier to pick a time". Real start times as chips,
+# tap every one that works (up to 3), no bands and no radio buttons. 20:00 is
+# the last start: a massage has to finish by 21:00.
+HOURS = [{"id": str(h), "title": f"{h}:00"} for h in range(10, 21)]
+HOURS_T = {"type": "array", "items": {"type": "string"}, "__example__": ["18"]}
+
+def chips(name, label, desc, max_n):
+    return {"type": "ChipsSelector", "name": name, "label": label, "description": desc,
+            "min-selected-items": 1, "max-selected-items": max_n, "required": True, "data-source": HOURS}
 AREAS = [
     ("locate", "📍 Use my location", "We find the studios closest to you"),
     ("centro", "Centro / Sol", "Sol, Ópera, La Latina"),
@@ -101,30 +105,29 @@ screens = [
     ]),
     screen("TIME", {"service": S, "day": S, "days2": DAYS2}, [
         banner("b3", "Massage Club, step 3 of 6"),
-        form([radio("time_pref", "Pick a time", opts(TIMES)),
-              nav("Next", "BACKUP", dict(time_pref="${form.time_pref}", **carry("service", "day", "days2")))],
-             {"time_pref": "evening"}),
+        form([chips("time_pref", "Pick the times that work", "Tap up to 3. More times, faster yes.", 3),
+              nav("Next", "BACKUP", dict(time_pref="${form.time_pref}", **carry("service", "day", "days2")))]),
     ]),
-    screen("BACKUP", {"service": S, "day": S, "time_pref": S, "days2": DAYS2}, [
+    screen("BACKUP", {"service": S, "day": S, "time_pref": HOURS_T, "days2": DAYS2}, [
         banner("b4", "Massage Club, step 4 of 6, backup day"),
         {"type": "TextBody", "text": "Studios say yes faster when you give them two options."},
         form([radio("day2", "Pick a backup day", "${data.days2}"),
               {"type": "If", "condition": "${form.day2} == 'none'",
-               "then": [nav("Next", "AREA", dict(day2="none", time2="", **carry("service", "day", "time_pref")))],
+               "then": [nav("Next", "AREA", dict(day2="none", time2=[], **carry("service", "day", "time_pref")))],
                "else": [nav("Next", "BACKUP_TIME", dict(day2="${form.day2}", **carry("service", "day", "time_pref")))]}]),
     ]),
-    screen("BACKUP_TIME", {"service": S, "day": S, "time_pref": S, "day2": S}, [
+    screen("BACKUP_TIME", {"service": S, "day": S, "time_pref": HOURS_T, "day2": S}, [
         banner("b4t", "Massage Club, step 4 of 6, backup time"),
-        form([radio("time2", "Pick a backup time", opts(TIMES)),
+        form([chips("time2", "Pick the backup times", "Tap up to 3.", 3),
               nav("Next", "AREA", dict(time2="${form.time2}", **carry("service", "day", "time_pref", "day2")))]),
     ]),
-    screen("AREA", {"service": S, "day": S, "time_pref": S, "day2": S, "time2": S}, [
+    screen("AREA", {"service": S, "day": S, "time_pref": HOURS_T, "day2": S, "time2": HOURS_T}, [
         banner("b5", "Massage Club, step 5 of 6"),
         form([radio("area", "Pick an area", opts(AREAS, icons=False)),
               nav("Next", "YOU", dict(area="${form.area}", **carry("service", "day", "time_pref", "day2", "time2")))],
              {"area": "locate"}),
     ]),
-    screen("YOU", {"service": S, "day": S, "time_pref": S, "day2": S, "time2": S, "area": S}, [
+    screen("YOU", {"service": S, "day": S, "time_pref": HOURS_T, "day2": S, "time2": HOURS_T, "area": S}, [
         banner("b6", "Massage Club, step 6 of 6"),
         {"type": "TextBody", "text": "We ask the best studios near you and send you their offer right here in WhatsApp. Nothing is booked until you say yes."},
         form([{"type": "TextInput", "name": "name", "label": "Your first name", "input-type": "text", "required": True},
