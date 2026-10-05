@@ -482,6 +482,15 @@ $("pressure").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) 
 $("therapist").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.therapist = b.dataset.v; paint(); } };
 $("remind").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.every = Number(b.dataset.v); paint(); } };
 
+// Every request elsewhere stores "+<country><number>". A Spanish mobile typed
+// without a prefix ("612 474 827") is +34; "0034..." is "+34...".
+const intl = (v) => {
+  let d = String(v).replace(/[^0-9+]/g, "");
+  if (d.startsWith("00")) d = "+" + d.slice(2);
+  if (d.startsWith("+")) return "+" + d.slice(1).replace(/\D/g, "");
+  return /^[6789]\d{8}$/.test(d) ? "+34" + d : "+" + d;
+};
+
 // The same words the website wizard sends, so studios read one format.
 const hm = (hs) => hs.map((h) => `${h}:00`).join(" / ");
 const slot = (d, hs) => [d ? d.long : "", hs && hs.length ? hm(hs) : ""].filter(Boolean).join(", ");
@@ -489,7 +498,7 @@ const slot = (d, hs) => [d ? d.long : "", hs && hs.length ? hm(hs) : ""].filter(
 $("send").onclick = async () => {
   const btn = $("send");
   btn.disabled = true; btn.textContent = t("sending"); $("sendErr").textContent = "";
-  const name = $("name").value.trim(), phone = $("phone").value.replace(/[^0-9+]/g, ""), email = $("email").value.trim().toLowerCase();
+  const name = $("name").value.trim(), phone = intl($("phone").value), email = $("email").value.trim().toLowerCase();
   const notes = [
     S.pressure ? `Presión: ${{ Light: "suave", Medium: "media", Firm: "fuerte" }[S.pressure]}` : "",
     S.therapist === "female" ? "Prefiere masajista mujer" : S.therapist === "male" ? "Prefiere masajista hombre" : "",
