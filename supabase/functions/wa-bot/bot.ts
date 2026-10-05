@@ -2366,20 +2366,57 @@ function agentReplyOk(reply: string): boolean {
   if (/\b(confirmed|confirmado|reservado|booked for you)\b/i.test(reply)) return false; // only the flow confirms
   return true;
 }
+// v164 (5 Oct): Railway (where Hermes lives) is blocked by an expired trial,
+// and Jordan has OpenRouter credits. With OPENROUTER_API_KEY in app_secrets and
+// no AGENT_URL, the bot asks an open-weight model on OpenRouter directly
+// (AGENT_MODEL, default deepseek/deepseek-v3.2), with docs/agent/facts.md as
+// its instructions. Same contract and same checks as the Hermes hand-off.
+// AGENT_MODE=draft in app_secrets turns every answer into a draft for Jordan.
+let factsCache = "";
+async function agentFacts(): Promise<string> {
+  if (factsCache) return factsCache;
+  try { const r = await fetch(FACTS_URL); if (r.ok) factsCache = await r.text(); } catch { /* use what we have */ }
+  return factsCache;
+}
+async function openRouterAgent(body: Record<string, unknown>): Promise<{ reply?: string; mode?: string } | null> {
+  const key = await appSecret("OPENROUTER_API_KEY");
+  if (!key) return null;
+  const facts = await agentFacts();
+  if (!facts) return null;
+  const system = `You answer WhatsApp messages for Massage Club, a massage concierge in Madrid. These are your facts and rules; follow them exactly:\n\n${facts}\n\nWrite ONE short WhatsApp reply (at most 3 sentences) in the customer's language (lang). Answer what they asked, then bring them back to the booking with one question (which day, what time, or which area), unless the booking step shows they are past that. Plain text, no markdown, no emojis beyond one if natural. Return JSON only: {"reply": "...", "mode": "send" or "draft"}. Use "draft" whenever you are not sure, the question is about a specific booking, a complaint, money, or anything not in the facts.`;
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST", signal: AbortSignal.timeout(15000),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://book.massageclub.io", "X-Title": "Massage Club bot" },
+    body: JSON.stringify({ model: (await appSecret("AGENT_MODEL")) || "deepseek/deepseek-v3.2", max_tokens: 400, temperature: 0.3, response_format: { type: "json_object" },
+      messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify(body) }] }),
+  });
+  const j = await res.json().catch(() => ({}));
+  const content = String(j?.choices?.[0]?.message?.content || "");
+  const m = content.match(/\{[\s\S]*\}/);
+  if (!m) { console.log("[wa] openrouter agent: no JSON", res.status, content.slice(0, 160)); return null; }
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
   const url = await appSecret("AGENT_URL");
-  if (!url) return false;
   try {
-    const res = await fetch(url, {
-      method: "POST", signal: AbortSignal.timeout(15000),
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${await appSecret("AGENT_KEY")}` },
-      body: JSON.stringify({ phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL }),
-    });
-    const j = await res.json().catch(() => ({}));
+    const payload = { phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL };
+    let j: any = null;
+    if (url) {
+      const res = await fetch(url, {
+        method: "POST", signal: AbortSignal.timeout(15000),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await appSecret("AGENT_KEY")}` },
+        body: JSON.stringify(payload),
+      });
+      j = await res.json().catch(() => ({}));
+    } else {
+      j = await openRouterAgent(payload);
+      if (!j) return false;
+    }
     const reply = String(j?.reply || "").trim();
     if (!reply) return false;
-    const ok = j?.mode === "send" && agentReplyOk(reply);
-    await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length });
+    const draftOnly = (await appSecret("AGENT_MODE")) === "draft";
+    const ok = !draftOnly && j?.mode === "send" && agentReplyOk(reply);
+    await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length, via: url ? "agent_url" : "openrouter", reply: reply.slice(0, 300) });
     if (ok) { await sendText(from, reply); return true; }
     await notifyJordanWa(`Agent draft for +${digitsOf(from)} (not sent): ${reply.slice(0, 300)}`, from).catch(() => {});
     return false;
