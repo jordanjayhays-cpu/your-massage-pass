@@ -2457,6 +2457,7 @@ async function openRouterAgent(body: Record<string, unknown>, hermes?: { url: st
   if (!m) { console.log("[wa] openrouter agent: no JSON", res.status, content.slice(0, 160)); return null; }
   try { return JSON.parse(m[0]); } catch { return null; }
 }
+const COMPLAINT_RE = /(refund|money back|reembolso|devoluci[oó]n|devu[eé]lv|me devolv|complain|complaint|queja|reclamaci[oó]n|reclamar|bad experience|mala experiencia|(was|were|it's|is) (terrible|awful|horrible|disgusting)|(fue|era|ha sido) (horrible|fatal|terrible|un desastre|asqueros)|\brude\b|maleducad|unprofessional|poco profesional|never again|nunca m[aá]s)/i;
 const JORDAN_TEST_NUMS = ["34612474827", "15622355063"];
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
   // v170 (Jordan, 5 Oct: "just do it only if you're confident"): Hermes answers
@@ -4066,7 +4067,9 @@ const handleInner = async (req: Request) => {
         const err = Array.isArray(st.errors) && st.errors[0] ? st.errors[0] : {};
         const line = `DELIVERY FAILED (${err.code || "?"}): ${err.title || err.message || "unknown"}${err.error_data?.details ? " · " + String(err.error_data.details).slice(0, 160) : ""}`;
         if (to) await logMsg(to, "out", line, "status_failed");
-        if (to && to !== digitsOf(JORDAN_MAIN_NUMBER)) await notifyJordanWa(`message to +${to} was NOT delivered: ${err.title || err.code || "unknown"}${Number(err.code) === 131047 ? " (24h window closed, only a template reaches them now)" : ""}.`, to);
+        // v174: the 34600000xxx numbers are our own fake test customers; their
+        // failures are expected and were buzzing Jordan's phone.
+        if (to && to !== digitsOf(JORDAN_MAIN_NUMBER) && !/^3460000\d{4}$/.test(to)) await notifyJordanWa(`message to +${to} was NOT delivered: ${err.title || err.code || "unknown"}${Number(err.code) === 131047 ? " (24h window closed, only a template reaches them now)" : ""}.`, to);
       }
       return new Response("OK", { status: 200 });
     }
@@ -4573,6 +4576,15 @@ const handleInner = async (req: Request) => {
 
     // A question at a free-text step gets answered, then we ask our question
     // again. Never store someone's question as their name, day or area.
+    // v174 (5 Oct test): "My last massage was terrible, I want my money back"
+    // is not a question, so it got "Which day suits you?". A complaint gets an
+    // apology, goes straight to Jordan, and the booking is not pushed at them.
+    if (text && !replyId && COMPLAINT_RE.test(text)) {
+      await sendText(from, L === "es" ? "Siento mucho oír eso. Lo revisamos y te respondemos aquí lo antes posible." : "I'm really sorry to hear that. We are looking into it and will reply here as soon as we can.");
+      await notifyJordanWa(`COMPLAINT from ${s.wa_name || "+" + digitsOf(from)}: ${text.slice(0, 160)}. Bot apologised and said we will reply; nothing else sent.`, from);
+      await logEvent(from, "complaint", { step: s.step, text: text.slice(0, 300) });
+      return new Response("OK", { status: 200 });
+    }
     if (text && freeTextStep && !isEmail(text) && looksLikeQuestion(text)) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
