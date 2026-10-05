@@ -109,6 +109,51 @@ async function logMsg(phone: string, direction: "in" | "out", body: string, msg_
   } catch (e) { console.log("[wa] log failed", String(e)); }
 }
 
+// v163 (5 Oct): voice notes. Four customers sent them this week and all the
+// bot could say was "I can only read text"; +34 610 393 816 sent eight in a
+// row. Each one is now saved (storage bucket wa-media, private) so Jordan can
+// play it on the reply page, and transcribed when a speech-to-text key is set
+// in app_secrets: TRANSCRIBE_API_KEY, optionally TRANSCRIBE_URL and
+// TRANSCRIBE_MODEL (any OpenAI-compatible endpoint; the default is Groq's
+// whisper-large-v3, an open-weight model). A transcript is then read exactly
+// as if they had typed it.
+async function appSecret(key: string): Promise<string> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.${encodeURIComponent(key)}&select=value&limit=1`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    return Array.isArray(rows) && rows[0]?.value ? String(rows[0].value).trim() : "";
+  } catch { return ""; }
+}
+async function handleVoice(mediaId: string, from: string): Promise<{ path: string | null; transcript: string }> {
+  let path: string | null = null, transcript = "";
+  try {
+    const meta = await (await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(mediaId)}`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } })).json().catch(() => ({}));
+    if (!meta?.url) return { path, transcript };
+    const audio = await fetch(String(meta.url), { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+    if (!audio.ok) return { path, transcript };
+    const bytes = new Uint8Array(await audio.arrayBuffer());
+    const mime = String(meta.mime_type || "audio/ogg").split(";")[0];
+    const ext = /mpeg|mp3/.test(mime) ? "mp3" : /mp4|m4a|aac/.test(mime) ? "m4a" : /amr/.test(mime) ? "amr" : "ogg";
+    const p = `${digitsOf(from)}/${Date.now()}.${ext}`;
+    const up = await fetch(`${SUPABASE_URL}/storage/v1/object/wa-media/${p}`, { method: "POST", headers: { ...H(), "Content-Type": mime, "x-upsert": "true" }, body: bytes });
+    if (up.ok) path = p; else console.log("[wa] voice upload failed", up.status, (await up.text()).slice(0, 200));
+    const key = await appSecret("TRANSCRIBE_API_KEY");
+    if (key) {
+      const fd = new FormData();
+      fd.append("file", new Blob([bytes], { type: mime }), `voice.${ext}`);
+      fd.append("model", (await appSecret("TRANSCRIBE_MODEL")) || "whisper-large-v3");
+      fd.append("response_format", "json");
+      const t = await fetch((await appSecret("TRANSCRIBE_URL")) || "https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST", headers: { Authorization: `Bearer ${key}` }, body: fd, signal: AbortSignal.timeout(20000),
+      });
+      const j = await t.json().catch(() => ({}));
+      transcript = String(j?.text || "").trim().slice(0, 1500);
+      if (!t.ok) console.log("[wa] transcription failed", t.status, JSON.stringify(j).slice(0, 200));
+    }
+  } catch (e) { console.log("[wa] voice note failed", String(e)); }
+  return { path, transcript };
+}
+
 // Funnel instrumentation: one row per step so conversion is measurable.
 async function logEvent(phone: string, event: string, meta: Record<string, unknown> = {}) {
   try {
@@ -1071,7 +1116,7 @@ function buttonPresets(es: boolean): Array<[string, string[]]> {
     ? [["Sí / No", ["Sí", "No"]], ["Hoy / Mañana", ["Hoy", "Mañana", "Otro día"]], ["Franja", ["Mañana (10-13)", "Tarde (13-18)", "Noche (18-21)"]], ["Reservar", ["Sí, reservar", "Otra hora"]]]
     : [["Yes / No", ["Yes", "No"]], ["Today / Tomorrow", ["Today", "Tomorrow", "Another day"]], ["Time of day", ["Morning (10-13)", "Afternoon (13-18)", "Evening (18-21)"]], ["Book it", ["Yes, book it", "Another time"]]];
 }
-function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean; trans?: Map<number, string>; notice?: string }): string {
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean; trans?: Map<number, string>; notice?: string; mediaSig?: string }): string {
   const first = o.studio ? String(o.name || "STUDIO") : (String(o.name || "").trim().split(/\s+/)[0] || "");
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
     : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
@@ -1089,6 +1134,13 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
       body = bm[1];
       btns = `<span class="btns">${bm[2].split("/").map((b) => `<span>${esc(b.trim())}</span>`).join("")}</span>`;
     }
+    // v163: a saved voice note plays here, with its transcript if there is one.
+    let player = "";
+    const vn = them && /^\[voice note(?: ([0-9]+\/[0-9]+\.[a-z0-9]+))?\]\s*([\s\S]*)$/.exec(body);
+    if (vn) {
+      body = vn[2] ? `🎤 ${vn[2]}` : "🎤 Voice note (not transcribed yet)";
+      if (vn[1] && o.mediaSig) player = `<audio controls preload="none" style="display:block;width:100%;margin-top:6px" src="${SUPABASE_URL}/functions/v1/wa-bot?media=${encodeURIComponent(vn[1])}&sig=${o.mediaSig}"></audio>`;
+    }
     const tap = them && /^\[tap: ?([^\]]*)\]$/.exec(body);
     if (tap) body = tap[1] ? `Tapped: ${tap[1].replace(/_/g, " ")}` : "Sent a voice note or media";
     const day = m.at ? madridDay(m.at) : "";
@@ -1096,7 +1148,7 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     if (day) lastDay = day;
     const time = m.at ? `<span class="tm">${madridTime(m.at)}</span>` : "";
     const enLine = en ? `<span class="en">EN: ${esc(en)}</span>` : "";
-    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}${enLine}${btns}${time}</div>`;
+    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}${player}${enLine}${btns}${time}</div>`;
   }).join("");
   const notes = (o.notice ? `<div class="note done">${o.notice}</div>` : "")
     + (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
@@ -1363,7 +1415,7 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
     const thread = await fullThread(phone);
     // The suggestion and the translation are separate model calls; run together.
     const [trans, draft] = await Promise.all([translateIncoming(thread), Promise.resolve(o.draft)]);
-    return html(replyHtml({ phone, name, studio: !!studio, thread, trans, open, hoursLeft, muted, action, inbox, es, sent: o.sent, error: o.error, notice: o.notice, draft }));
+    return html(replyHtml({ phone, name, studio: !!studio, thread, trans, open, hoursLeft, muted, action, inbox, es, sent: o.sent, error: o.error, notice: o.notice, draft, mediaSig: sig }));
   };
   if (req.method === "POST") {
     const form = await req.formData().catch(() => null);
@@ -2296,10 +2348,56 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
 }
 
 // The single entry point the give-up branches call.
+// v163 (5 Oct, Jordan: "use openclaw or hermes to use openweight models to
+// help you with the customers"). The hand-off to the customer agent. When
+// app_secrets holds AGENT_URL (and AGENT_KEY), anything the bot cannot answer
+// by itself goes there first with the conversation, the booking and the facts
+// file (docs/agent/facts.md). The agent answers { reply, mode }. "send" goes
+// out only if it passes the house rules below; everything else, and every
+// "draft", goes to Jordan instead and the bot carries on as before. With no
+// AGENT_URL nothing changes.
+const FACTS_URL = "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/main/docs/agent/facts.md";
+function agentReplyOk(reply: string): boolean {
+  if (!reply || reply.length > 700) return false;
+  if (/\u2014|\u2013/.test(reply)) return false;                                   // no em or en dashes
+  if (/descuento|discount|\d+\s?%/i.test(reply)) return false;                      // never quote a discount
+  if (/https?:\/\/(?!(book\.)?massageclub\.io)/i.test(reply)) return false;       // massageclub.io links only
+  if (/\b(detox|toxin|toxinas|cure|cura|immun|inmun)\b/i.test(reply)) return false; // no health claims
+  if (/\b(confirmed|confirmado|reservado|booked for you)\b/i.test(reply)) return false; // only the flow confirms
+  return true;
+}
+async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
+  const url = await appSecret("AGENT_URL");
+  if (!url) return false;
+  try {
+    const res = await fetch(url, {
+      method: "POST", signal: AbortSignal.timeout(15000),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${await appSecret("AGENT_KEY")}` },
+      body: JSON.stringify({ phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL }),
+    });
+    const j = await res.json().catch(() => ({}));
+    const reply = String(j?.reply || "").trim();
+    if (!reply) return false;
+    const ok = j?.mode === "send" && agentReplyOk(reply);
+    await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length });
+    if (ok) { await sendText(from, reply); return true; }
+    await notifyJordanWa(`Agent draft for +${digitsOf(from)} (not sent): ${reply.slice(0, 300)}`, from).catch(() => {});
+    return false;
+  } catch (e) {
+    console.log("[wa] agent handoff failed", String(e));
+    return false;
+  }
+}
+
 async function lastResort(s: Session, from: string, L: string, text: string): Promise<boolean> {
-  if (!text || !(await aiKey())) return false;
+  if (!text) return false;
+  if (!(await aiKey())) {
+    const [thread0, st0] = await Promise.all([recentThread(from), bookingState(from)]);
+    return await agentHandoff(s, from, L, text, thread0, st0.line);
+  }
   try {
     const [thread, st] = await Promise.all([recentThread(from), bookingState(from)]);
+    if (await agentHandoff(s, from, L, text, thread, st.line)) return true;
     const r = await interpret(text, thread, st.line);
     if (!r) return false;
     return await actOnReading(r, s, from, L, st.req, text);
@@ -3342,6 +3440,17 @@ const handler = async (req: Request) => {
       return new Response("Something went wrong loading the inbox.", { status: 500 });
     }
   }
+  // v163: a saved voice note, for the reply page's player. The sig is the
+  // same per-customer signature as the reply link, so it opens only that
+  // customer's own recordings.
+  if (url.searchParams.has("media")) {
+    const mp = String(url.searchParams.get("media") || "");
+    const m = /^([0-9]{6,15})\/[0-9]+\.(ogg|mp3|m4a|amr)$/.exec(mp);
+    if (!m || String(url.searchParams.get("sig") || "") !== (await replySig(m[1]))) return new Response("not found", { status: 404 });
+    const obj = await fetch(`${SUPABASE_URL}/storage/v1/object/wa-media/${mp}`, { headers: H() });
+    if (!obj.ok) return new Response("not found", { status: 404 });
+    return new Response(obj.body, { status: 200, headers: { "Content-Type": obj.headers.get("content-type") || "audio/ogg", "Cache-Control": "private, max-age=3600", "Access-Control-Allow-Origin": "*" } });
+  }
   if (url.searchParams.has("reply")) {
     try { return await replyPage(req, url); } catch (e) {
       console.log("[wa] reply page failed", String(e));
@@ -3366,9 +3475,13 @@ const handler = async (req: Request) => {
         // partner number gets Spanish.
         const isStudio = !!(await findPartnerByNumber(from));
         const L = (s.data.lang === "es" || isStudio) ? "es" : "en";
-        await sendText(from, COPY[L].fallbackAck);
-        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120) });
-        await notifyJordanWa(`Nothing was sent back to +${from} (step ${s.step}), so they got the holding line. They said: ${said.slice(0, 140)}`, from).catch(() => {});
+        // v163: the holding line once per ten minutes, not once per message.
+        // +34 610 393 816 sent eight voice notes and got it six times. Jordan
+        // still hears about every one.
+        const repeat = await sentRecently(from, COPY[L].fallbackAck, 10 * 60e3) || (MEDIA_TYPES.includes(String(m?.type)) && await sentRecently(from, MEDIA_LINE[L], 10 * 60e3));
+        if (!repeat) await sendText(from, COPY[L].fallbackAck);
+        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120), held: repeat, type: m?.type });
+        await notifyJordanWa(`${repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
       }
     }
   } catch (e) { console.log("[wa] fallback check failed", String(e)); }
@@ -3883,6 +3996,11 @@ const handleInner = async (req: Request) => {
     else if (msg.type === "text") text = String(msg.text?.body || "").trim();
     else if (msg.type === "location") loc = { latitude: Number(msg.location?.latitude), longitude: Number(msg.location?.longitude) };
     const reactionEmoji = msg.type === "reaction" ? String(msg.reaction?.emoji || "") : "";
+    let voice: { path: string | null; transcript: string } | null = null;
+    if (msg.type === "audio" && msg.audio?.id) {
+      voice = await handleVoice(String(msg.audio.id), from);
+      if (voice.transcript) text = voice.transcript;
+    }
 
     // Click-to-WhatsApp ad attribution: Meta attaches the ad to the first message.
     const ref = msg.referral || null;
@@ -3898,7 +4016,7 @@ const handleInner = async (req: Request) => {
       if (Array.isArray(prows) && prows[0]?.created_at) priorLastAt = Date.parse(prows[0].created_at);
     } catch (_e) { /* alert heuristics only */ }
 
-    await logMsg(from, "in", (text || btnText || (msg.type === "reaction" ? `[reaction ${reactionEmoji}]`.trim() : "") || (loc ? `[location ${loc.latitude},${loc.longitude}]` : `[tap: ${replyId}]`)) + (ref ? ` [via ad]` : ""), msg.type, replyId);
+    await logMsg(from, "in", (voice ? `[voice note${voice.path ? " " + voice.path : ""}]${voice.transcript ? " " + voice.transcript : ""}` : "") || (text || btnText || (msg.type === "reaction" ? `[reaction ${reactionEmoji}]`.trim() : "") || (loc ? `[location ${loc.latitude},${loc.longitude}]` : `[tap: ${replyId}]`)) + (ref ? ` [via ad]` : ""), msg.type, replyId);
 
     // A reaction (someone tapping a thumbs up on our message) is not an answer.
     if (msg.type === "reaction") return new Response("OK", { status: 200 });
