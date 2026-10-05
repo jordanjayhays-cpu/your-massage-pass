@@ -1134,7 +1134,14 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     // A message sent with buttons is logged as "text [A/B/C]"; show the buttons.
     let btns = "";
     const bm = body.match(/^([\s\S]*?)\s*\[([^\[\]]{1,300})\]$/);
-    if (!them && bm && bm[2].includes("/") && !/^template /.test(bm[2])) {
+    // v177: a link button is logged as "[Book now: https://...]". Its "/"s are
+    // part of the address, not separators: show one button, as the customer
+    // sees it in WhatsApp.
+    const link = !them && bm ? /^([^:\/]{1,40}):\s*(https?:\/\/\S+)$/.exec(bm[2]) : null;
+    if (link) {
+      body = bm![1];
+      btns = `<span class="btns"><a href="${esc(link[2])}" target="_blank" rel="noopener" style="text-decoration:none"><span>${esc(link[1].trim())} ↗</span></a></span>`;
+    } else if (!them && bm && bm[2].includes("/") && !/^template /.test(bm[2])) {
       body = bm[1];
       btns = `<span class="btns">${bm[2].split("/").map((b) => `<span>${esc(b.trim())}</span>`).join("")}</span>`;
     }
