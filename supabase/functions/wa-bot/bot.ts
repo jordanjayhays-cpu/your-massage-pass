@@ -2409,14 +2409,20 @@ async function openRouterAgent(body: Record<string, unknown>, hermes?: { url: st
   if (!m) { console.log("[wa] openrouter agent: no JSON", res.status, content.slice(0, 160)); return null; }
   try { return JSON.parse(m[0]); } catch { return null; }
 }
+const JORDAN_TEST_NUMS = ["34612474827", "15622355063"];
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
-  const url = await appSecret("AGENT_URL");
+  // v170 (Jordan, 5 Oct: "just do it only if you're confident"): Hermes answers
+  // Jordan's own test numbers only, through HERMES_URL_STANDBY, until it has
+  // proved itself. Customers keep AGENT_URL (unset) and so Qwen on OpenRouter.
+  const url = JORDAN_TEST_NUMS.includes(digitsOf(from)) ? (await appSecret("HERMES_URL_STANDBY")) || (await appSecret("AGENT_URL")) : await appSecret("AGENT_URL");
   try {
     const payload = { phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL };
     let j: any = null;
+    let via = url ? "agent_url" : "openrouter";
     if (url && /\/v1\/?$/.test(url)) {
+      via = "hermes";
       j = await openRouterAgent(payload, { url, key: await appSecret("AGENT_KEY") }).catch((e) => { console.log("[wa] hermes failed", String(e)); return null; });
-      if (!j) j = await openRouterAgent(payload); // Hermes down or slow: Qwen answers
+      if (!j) { via = "openrouter_fallback"; j = await openRouterAgent(payload); } // Hermes down or slow: Qwen answers
       if (!j) return false;
     } else if (url) {
       const res = await fetch(url, {
@@ -2433,7 +2439,7 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
     if (!reply) return false;
     const draftOnly = (await appSecret("AGENT_MODE")) === "draft";
     const ok = !draftOnly && j?.mode === "send" && agentReplyOk(reply);
-    await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length, via: url ? "agent_url" : "openrouter", reply: reply.slice(0, 300) });
+    await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: ok, chars: reply.length, via, reply: reply.slice(0, 300) });
     if (ok) { await sendText(from, reply); return true; }
     await notifyJordanWa(`Agent draft for +${digitsOf(from)} (not sent): ${reply.slice(0, 300)}`, from).catch(() => {});
     return false;
@@ -4092,7 +4098,11 @@ const handleInner = async (req: Request) => {
       await handleArrival(from, replyId, partner);
       return new Response("OK", { status: 200 });
     }
-    if (/^studio_(confirm|other)_\d+$/.test(replyId)) {
+    // v170: "no" was missing here, so a studio's "No puedo" tap fell through
+    // to the holding line and the decline was never recorded (Sinergia38 on
+    // #90 and #91, 22 Sept, and #107, 5 Oct). handleStudioReply has always
+    // handled it.
+    if (/^studio_(confirm|other|no)_\d+$/.test(replyId)) {
       const partner = await findPartnerByNumber(digitsOf(from));
       await handleStudioReply(from, replyId, btnText, text, partner);
       return new Response("OK", { status: 200 });
