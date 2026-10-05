@@ -2502,6 +2502,9 @@ function jevShadow(s: Session, from: string, text: string) {
   })().catch((e) => console.log("[wa] jev shadow failed", String(e)));
   try { (globalThis as any).EdgeRuntime?.waitUntil?.(run); } catch { /* runs anyway */ }
 }
+// v176 (5 Oct 19:34, live: Fermin from the ad wrote "No sé quién eres" and
+// "Dime quién eres" and got "Perdona, no te he entendido" twice).
+const WHO_RE = /(qui[eé]n(es)? (eres|sois|es esto|me escribe)|no s[eé] (qui[eé]n|qu[eé] es|nada)|who (are you|is this|r u)|what is this|qu[eé] es esto|de qu[eé] va esto|no te conozco|don'?t know (you|who))/i;
 const COMPLAINT_RE = /(refund|money back|reembolso|devoluci[oó]n|devu[eé]lv|me devolv|complain|complaint|queja|reclamaci[oó]n|reclamar|bad experience|mala experiencia|(was|were|it's|is) (terrible|awful|horrible|disgusting)|(fue|era|ha sido) (horrible|fatal|terrible|un desastre|asqueros)|\brude\b|maleducad|unprofessional|poco profesional|never again|nunca m[aá]s)/i;
 const JORDAN_TEST_NUMS = ["34612474827", "15622355063"];
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
@@ -4634,7 +4637,7 @@ const handleInner = async (req: Request) => {
     if (text && freeTextStep && !isEmail(text) && looksLikeQuestion(text)) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
-      else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
+      else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
       else {
         // v71: the regexes above cover price, how it works and zone. Everything
@@ -4666,10 +4669,10 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || HOWWORKS_RE.test(text) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
+    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
-      else if (HOWWORKS_RE.test(text)) await sendText(from, COPY[L].howItWorks);
+      else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
       // v131 (28 Sept 10:43, live): "what type of massage you offer ?" arrived
       // at the day question. This chain had no case for it, so a question we
@@ -4716,7 +4719,7 @@ const handleInner = async (req: Request) => {
 
     // "How does this work?" gets a real answer anywhere outside free-text steps,
     // then the flow continues where it left off.
-    if (text && !freeTextStep && HOWWORKS_RE.test(text)) {
+    if (text && !freeTextStep && (HOWWORKS_RE.test(text) || WHO_RE.test(text))) {
       await sendText(from, COPY[L].howItWorks);
       if (["start", "await_service", "returning_choice", "done"].includes(s.step)) {
         s.step = "await_service"; await saveSession(s);
@@ -4923,7 +4926,12 @@ const handleInner = async (req: Request) => {
               await logEvent(from, "got_link", { at: "await_day" });
               break;
             }
-            if (s.data.miss >= 2) {
+            // v176: a sentence we cannot place goes to the agent (Qwen, then
+            // Claude) before we ever say we did not understand.
+            const stepNow = s.step;
+            if (text && text.trim().split(/\s+/).length >= 2 && await lastResort(s, from, L, text)) {
+              if (s.step !== stepNow) break;
+            } else if (s.data.miss >= 2) {
               await sendText(from, COPY[L].notCaught);
               await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
             }
