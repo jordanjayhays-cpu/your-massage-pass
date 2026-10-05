@@ -2457,6 +2457,51 @@ async function openRouterAgent(body: Record<string, unknown>, hermes?: { url: st
   if (!m) { console.log("[wa] openrouter agent: no JSON", res.status, content.slice(0, 160)); return null; }
   try { return JSON.parse(m[0]); } catch { return null; }
 }
+// v175 (Jordan, 5 Oct, TypeSafe docs): SHADOW MODE. When TYPESAFE_API_KEY is
+// in app_secrets, every customer text is also read by Jev (a model that picks
+// from a fixed list with a confidence) and logged as funnel_events "jev_shadow"
+// beside what the bot's own word lists said. It never changes a reply. After a
+// week we compare: where Jev is sure and the word lists missed (the v174
+// complaint), Jev can take that decision over. No key, nothing happens.
+const JEV_INTENTS: Record<string, string> = {
+  booking_info: "Answers or gives booking details: massage type, day, time, area, name, email or phone",
+  question: "Asks a question about the service, prices, studios or how it works",
+  complaint: "Complains about a massage, studio or our service, or asks for a refund",
+  cancel: "Wants to cancel a booking or says they no longer want it",
+  change: "Wants to change the day, time or place of an existing booking",
+  special: "Asks for a sexual, erotic, happy ending or 'special' massage",
+  job: "A therapist or masseuse looking for work",
+  smalltalk: "Greeting, thanks, ok, emoji or goodbye with nothing else",
+  other: "None of the above",
+};
+function jevShadow(s: Session, from: string, text: string) {
+  const run = (async () => {
+    const key = await appSecret("TYPESAFE_API_KEY");
+    if (!key) return;
+    const t0 = Date.now();
+    const res = await fetch("https://api.typesafe.ai/v1/systemone", {
+      method: "POST", signal: AbortSignal.timeout(4000),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "jev-latest",
+        state: `A customer of Massage Club (a massage booking service in Madrid) wrote on WhatsApp. The bot had just asked them for: ${s.step}.\nTheir message: ${text.slice(0, 600)}`,
+        questions: {
+          intent: { type: "choice", instructions: "What is the customer doing with this message", criteria: JEV_INTENTS },
+          complaint: { type: "noul", instructions: "The customer is unhappy with a massage, a studio or our service" },
+          wants_person: { type: "noul", instructions: "The customer asks to talk to a real person" },
+        },
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    const a = j?.answers || {};
+    await logEvent(from, "jev_shadow", {
+      ms: Date.now() - t0, http: res.status, step: s.step, text: text.slice(0, 300),
+      jev: { intent: a.intent?.choice ?? null, conf: a.intent?.confidence ?? null, probs: a.intent?.probabilities ?? null, complaint: a.complaint?.noul ?? null, wants_person: a.wants_person?.noul ?? null },
+      rules: { complaint: COMPLAINT_RE.test(text), question: looksLikeQuestion(text), cancel: CANCEL_RE.test(text), change: CHANGE_RE.test(text), special: EROTIC_RE.test(text), job: JOB_RE.test(text), human: wantsHuman(text) },
+    });
+  })().catch((e) => console.log("[wa] jev shadow failed", String(e)));
+  try { (globalThis as any).EdgeRuntime?.waitUntil?.(run); } catch { /* runs anyway */ }
+}
 const COMPLAINT_RE = /(refund|money back|reembolso|devoluci[oó]n|devu[eé]lv|me devolv|complain|complaint|queja|reclamaci[oó]n|reclamar|bad experience|mala experiencia|(was|were|it's|is) (terrible|awful|horrible|disgusting)|(fue|era|ha sido) (horrible|fatal|terrible|un desastre|asqueros)|\brude\b|maleducad|unprofessional|poco profesional|never again|nunca m[aá]s)/i;
 const JORDAN_TEST_NUMS = ["34612474827", "15622355063"];
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
@@ -4576,6 +4621,7 @@ const handleInner = async (req: Request) => {
 
     // A question at a free-text step gets answered, then we ask our question
     // again. Never store someone's question as their name, day or area.
+    if (text && !replyId) jevShadow(s, from, text);
     // v174 (5 Oct test): "My last massage was terrible, I want my money back"
     // is not a question, so it got "Which day suits you?". A complaint gets an
     // apology, goes straight to Jordan, and the booking is not pushed at them.
