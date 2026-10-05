@@ -34,6 +34,10 @@
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/pick?t=:token"
     },
     {
+      "source": "/reserve",
+      "destination": "/go.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
