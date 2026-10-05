@@ -4274,6 +4274,24 @@ const handleInner = async (req: Request) => {
       }
     }
 
+    // v161 (5 Oct, Jordan: "i want to test it out"): Jordan's own numbers can
+    // pull up the two new booking screens inside WhatsApp. "page" sends the
+    // booking page as a button that opens in WhatsApp's own browser; "form"
+    // sends the native form in draft mode (Meta lets a draft go to a number
+    // that has written in). Nobody else sees either until Jordan says so.
+    if (text && !replyId && ["34612474827", "15622355063"].includes(digitsOf(from)) && /^(page|pagina|página|form|formulario)$/i.test(text.trim())) {
+      if (/^(page|pagina|página)$/i.test(text.trim())) {
+        const url = `https://book.massageclub.io/go.html?n=Jordan&p=${digitsOf(from)}&lang=en&nt=1`;
+        await waSend(from, { type: "interactive", interactive: { type: "cta_url", body: { text: "Book a massage in a few taps. Pick the massage, the day, the time and the area, and we ask the studios for you. You pay at the studio, no fee from us." }, action: { name: "cta_url", parameters: { display_text: "Book now", url } } } }, "[test: booking page button] " + url, "cta_url");
+      } else {
+        await waSend(from, { type: "interactive", interactive: { type: "flow", body: { text: COPY.en.flowBody }, action: { name: "flow", parameters: {
+          flow_message_version: "3", mode: "draft", flow_token: `mc-${digitsOf(from)}-${Date.now()}`, flow_id: "2519994188477304",
+          flow_cta: COPY.en.flowCta, flow_action: "navigate", flow_action_payload: { screen: "SERVICE", data: flowDays() } } } } }, "[test: booking form, draft]", "flow");
+      }
+      await logEvent(from, "jordan_test_screen", { which: text.trim().toLowerCase() });
+      return new Response("OK", { status: 200 });
+    }
+
     // Must run before the greeting and the "hola" branch: the prefilled text
     // starts with a greeting, and that would restart them from scratch.
     if (text && !replyId) {
