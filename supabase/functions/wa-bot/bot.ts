@@ -2516,6 +2516,14 @@ function jevShadow(s: Session, from: string, text: string) {
 // v176 (5 Oct 19:34, live: Fermin from the ad wrote "No sé quién eres" and
 // "Dime quién eres" and got "Perdona, no te he entendido" twice).
 const WHO_RE = /(qui[eé]n(es)? (eres|sois|es esto|me escribe)|no s[eé] (qui[eé]n|qu[eé] es|nada)|who (are you|is this|r u)|what is this|qu[eé] es esto|de qu[eé] va esto|no te conozco|don'?t know (you|who))/i;
+// v179 (Jordan, 6 Oct: "go for it"). Six things the 5-6 Oct chats got wrong.
+// "Home serves" (Vinzma29) slipped past HOME_VISIT_RE.
+const HOME_EXTRA_RE = /(\bhome\s*serv\w*|\bdomicilio\b|\ba\s+mi\s+casa\b|\b(to|at|in)\s+my\s+(home|house|hotel|flat|apartment|room)\b|\bhotel\s+massage\b)/i;
+// "couples means" / "deep tissue means" (Mehedi) were taken as a choice.
+const MEANING_RE = /\b(means?|meaning|what\s+(is|are)|what'?s|qu[eé]\s+es|qu[eé]\s+significa|significa|explain|expl[ií]ca(me)?)\b/i;
+// "Ya no gracias" (Adrian) and a "No" tap (Vinzma29) were read as answers.
+const NOTHANKS_RE = /^(no|nope|nah|ya no|no,? gracias|ya no,? gracias|no thanks?|no,? thank you|not now|ahora no|no me interesa|not interested|ya no hace falta|no hace falta|d[eé]jalo|olv[ií]dalo)[\s.!,]*(gracias|thanks|thank you|thx)?[\s.!]*$/i;
+const DECLINE_STEPS = ["start", "menu", "await_service", "await_day", "await_day_text", "await_time", "await_time_text", "await_hour", "await_area"];
 const COMPLAINT_RE = /(refund|money back|reembolso|devoluci[oó]n|devu[eé]lv|me devolv|complain|complaint|queja|reclamaci[oó]n|reclamar|bad experience|mala experiencia|(was|were|it's|is) (terrible|awful|horrible|disgusting)|(fue|era|ha sido) (horrible|fatal|terrible|un desastre|asqueros)|\brude\b|maleducad|unprofessional|poco profesional|never again|nunca m[aá]s)/i;
 const JORDAN_TEST_NUMS = ["34612474827", "15622355063"];
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
@@ -2579,7 +2587,15 @@ async function lastResort(s: Session, from: string, L: string, text: string): Pr
   }
   try {
     const [thread, st] = await Promise.all([recentThread(from), bookingState(from)]);
-    if (await agentHandoff(s, from, L, text, thread, st.line)) return true;
+    if (await agentHandoff(s, from, L, text, thread, st.line)) {
+      // v179: the agent answered, but whatever they told us (area, day, time,
+      // massage) is still booking information. Keep it, except the slot the
+      // current question owns, which its own branch handles.
+      const own = /await_service/.test(s.step) ? "service" : /await_day/.test(s.step) ? "day" : /await_(time|hour)/.test(s.step) ? "time" : /await_area/.test(s.step) ? "area" : null;
+      const got = own ? absorbOffStep(s, text, L, own) : (absorbSentence(s, text, L) ? ["some"] : []);
+      if (got.length) { await saveSession(s); await logEvent(from, "agent_turn_absorbed", { got, step: s.step }); }
+      return true;
+    }
     const r = await interpret(text, thread, st.line);
     if (!r) return false;
     return await actOnReading(r, s, from, L, st.req, text);
@@ -3505,7 +3521,7 @@ function absorbOffStep(s: Session, text: string, L: string, skip: "service" | "d
   }
   if (skip !== "day") { const d = detectDay(text, L); if (d && !s.data.day) { s.data.day = d; got.push("day"); } }
   if (skip !== "time") { const t = detectTime(text, L); if (t && !s.data.time) { s.data.time = t; s.data.timeBand = /\(/.test(t) ? t : null; got.push("time"); } }
-  if (skip !== "area") { const a = detectArea(text); if (a && !s.data.area) { s.data.area = a; got.push("area"); } }
+  if (skip !== "area") { const a = detectArea(text); if (a && !s.data.area) { s.data.area = a; s.data.areaAt = Date.now(); got.push("area"); } }
   const dur = detectDuration(text); if (dur && !s.data.duration) s.data.duration = dur;
   return got;
 }
@@ -3517,7 +3533,7 @@ function absorbSentence(s: Session, text: string, L: string): boolean {
   if (svc && !s.data.service) { s.data.service = svc; got = true; }
   const day = detectDay(text, L); if (day && !s.data.day) { s.data.day = day; got = true; }
   const time = detectTime(text, L); if (time && !s.data.time) { s.data.time = time; s.data.timeBand = /\(/.test(time) ? time : null; got = true; }
-  const area = detectArea(text); if (area && !s.data.area) { s.data.area = area; got = true; }
+  const area = detectArea(text); if (area && !s.data.area) { s.data.area = area; s.data.areaAt = Date.now(); got = true; }
   const dur = detectDuration(text); if (dur && !s.data.duration) s.data.duration = dur;
   return got;
 }
@@ -3547,6 +3563,13 @@ async function afterTime(s: Session, from: string, L: string) {
     s.data.name = s.data.known.name;
     s.data.email = s.data.known.email || null;
     await finalizeBooking(s, from, L);
+    return;
+  }
+  // v179: Javier said "Estoy en la zona de Lavapiés" and was asked his area
+  // again three questions later. An area given in this conversation stands.
+  if (s.data.area && s.data.areaAt && Date.now() - Number(s.data.areaAt) < 3 * 3600e3) {
+    s.step = "await_area"; await saveSession(s); await logEvent(from, "time_chosen", { time: s.data.time, areaKnown: s.data.area });
+    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
     return;
   }
   s.step = "await_area"; await saveSession(s); await logEvent(from, "time_chosen", { time: s.data.time }); await askArea(from, L);
@@ -4311,7 +4334,7 @@ const handleInner = async (req: Request) => {
     // v108 (Jordan, case 02): a home visit is not something we sell. Say so
     // plainly and keep them moving, rather than answering "Good choice" and
     // routing them into a studio booking they never asked for.
-    if (text && HOME_VISIT_RE.test(text) && !s.data.toldNoHome) {
+    if (text && (HOME_VISIT_RE.test(text) || HOME_EXTRA_RE.test(text)) && !s.data.toldNoHome) {
       s.data.toldNoHome = new Date().toISOString();
       if (!s.data.area) s.step = "await_area";
       await saveSession(s);
@@ -4639,13 +4662,19 @@ const handleInner = async (req: Request) => {
     // v174 (5 Oct test): "My last massage was terrible, I want my money back"
     // is not a question, so it got "Which day suits you?". A complaint gets an
     // apology, goes straight to Jordan, and the booking is not pushed at them.
+    if (text && !replyId && NOTHANKS_RE.test(text.trim()) && DECLINE_STEPS.includes(s.step)) {
+      s.step = "done"; await saveSession(s);
+      await sendText(from, COPY[L].rebookLater);
+      await logEvent(from, "declined_flow", { said: text.slice(0, 60) });
+      return new Response("OK", { status: 200 });
+    }
     if (text && !replyId && COMPLAINT_RE.test(text)) {
       await sendText(from, L === "es" ? "Siento mucho oír eso. Lo revisamos y te respondemos aquí lo antes posible." : "I'm really sorry to hear that. We are looking into it and will reply here as soon as we can.");
       await notifyJordanWa(`COMPLAINT from ${s.wa_name || "+" + digitsOf(from)}: ${text.slice(0, 160)}. Bot apologised and said we will reply; nothing else sent.`, from);
       await logEvent(from, "complaint", { step: s.step, text: text.slice(0, 300) });
       return new Response("OK", { status: 200 });
     }
-    if (text && freeTextStep && !isEmail(text) && looksLikeQuestion(text)) {
+    if (text && freeTextStep && !isEmail(text) && (looksLikeQuestion(text) || MEANING_RE.test(text))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
@@ -4680,7 +4709,7 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)))) {
+    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
@@ -4825,6 +4854,15 @@ const handleInner = async (req: Request) => {
     if (text && !freeTextStep && !replyId && !HI_RE.test(text.trim())) {
       const liveReq = await lastRequestFor(from);
       const liveStage = String(liveReq?.stage || "");
+      // v179: Javier tapped "Ahora no", then clicked the ad again. The ad's
+      // opener and "Quiero un masaje" went to the agent as chat. With nothing
+      // live, wanting a massage starts a booking.
+      if (s.step === "done" && !["confirmed", "offered", "bidding", "studio_replied"].includes(liveStage)
+          && (AD_OPENER_RE.test(text) || /^(hola,?\s*)?(quiero|quisiera|i want|i'?d like)( (un|a|to book a))? (masaje|massage)\b/i.test(text))) {
+        s.data = { lang: s.data.lang || "", adRef: s.data.adRef || null };
+        await greet(s, from, text);
+        return new Response("OK", { status: 200 });
+      }
       if (["confirmed", "offered", "bidding", "studio_replied"].includes(liveStage) || s.step === "done" || s.step === "human") {
         if (await lastResort(s, from, L, text)) return new Response("OK", { status: 200 });
       }
@@ -5074,6 +5112,8 @@ const handleInner = async (req: Request) => {
                 : "We work with studios in Madrid and nearby. Which area or town are you in? If there is a studio close by, I'll find it.");
               break;
             }
+            // v179: a bare yes/ok is not a neighbourhood ("near No", Vinzma29).
+            if (!hit && /^(no|nope|nah|yes|yeah|yep|s[ií]|ok|okay|vale|claro)[\s.!]*$/i.test(text.trim())) { await sendText(from, COPY[L].areaAgain); break; }
             area = hit || text.slice(0, 40);
           }
         }
