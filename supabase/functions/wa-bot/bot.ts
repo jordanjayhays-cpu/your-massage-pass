@@ -2524,6 +2524,16 @@ const MEANING_RE = /\b(means?|meaning|what\s+(is|are)|what'?s|qu[eé]\s+es|qu[e�
 // "Ya no gracias" (Adrian) and a "No" tap (Vinzma29) were read as answers.
 const NOTHANKS_RE = /^(no|nope|nah|ya no|no,? gracias|ya no,? gracias|no thanks?|no,? thank you|not now|ahora no|no me interesa|not interested|ya no hace falta|no hace falta|d[eé]jalo|olv[ií]dalo)[\s.!,]*(gracias|thanks|thank you|thx)?[\s.!]*$/i;
 const DECLINE_STEPS = ["start", "menu", "await_service", "await_day", "await_day_text", "await_time", "await_time_text", "await_hour", "await_area"];
+// v179: detectArea (copy.ts) knows the big districts only. "Estoy en la zona
+// de Lavapiés" found nothing, so Javier's area was never kept. These are the
+// neighbourhoods and towns customers actually name (facts.md lists several).
+const EXTRA_AREAS = ["Lavapiés", "Arganzuela", "Tetuán", "Moncloa", "Argüelles", "Usera", "Carabanchel", "Vallecas", "Moratalaz", "Ciudad Lineal", "Hortaleza", "Barajas", "Fuencarral", "Chueca", "Huertas", "Embajadores", "Delicias", "Legazpi", "Atocha", "Prosperidad", "Goya", "Arturo Soria", "Cuatro Caminos", "Pozuelo", "Majadahonda", "Alcobendas", "Las Rozas", "Getafe", "Leganés", "Alcorcón", "Móstoles", "Orcasitas", "Plaza Castilla", "Castellana", "Ópera", "Aravaca", "Boadilla", "San Sebastián de los Reyes", "Rivas", "Fuenlabrada", "Parla", "Torrejón", "Alcalá de Henares"];
+function detectAreaPlus(t: string): string {
+  const a = detectArea(t);
+  if (a) return a;
+  const low = stripAcc(String(t || "")).toLowerCase();
+  return EXTRA_AREAS.find((x) => new RegExp(`\\b${stripAcc(x).toLowerCase()}\\b`).test(low)) || "";
+}
 const COMPLAINT_RE = /(refund|money back|reembolso|devoluci[oó]n|devu[eé]lv|me devolv|complain|complaint|queja|reclamaci[oó]n|reclamar|bad experience|mala experiencia|(was|were|it's|is) (terrible|awful|horrible|disgusting)|(fue|era|ha sido) (horrible|fatal|terrible|un desastre|asqueros)|\brude\b|maleducad|unprofessional|poco profesional|never again|nunca m[aá]s)/i;
 const JORDAN_TEST_NUMS = ["34612474827", "15622355063"];
 async function agentHandoff(s: Session, from: string, L: string, text: string, thread: Array<{ dir: string; body: string }>, booking: string): Promise<boolean> {
@@ -3521,7 +3531,7 @@ function absorbOffStep(s: Session, text: string, L: string, skip: "service" | "d
   }
   if (skip !== "day") { const d = detectDay(text, L); if (d && !s.data.day) { s.data.day = d; got.push("day"); } }
   if (skip !== "time") { const t = detectTime(text, L); if (t && !s.data.time) { s.data.time = t; s.data.timeBand = /\(/.test(t) ? t : null; got.push("time"); } }
-  if (skip !== "area") { const a = detectArea(text); if (a && !s.data.area) { s.data.area = a; s.data.areaAt = Date.now(); got.push("area"); } }
+  if (skip !== "area") { const a = detectAreaPlus(text); if (a && !s.data.area) { s.data.area = a; s.data.areaAt = Date.now(); got.push("area"); } }
   const dur = detectDuration(text); if (dur && !s.data.duration) s.data.duration = dur;
   return got;
 }
@@ -3533,7 +3543,7 @@ function absorbSentence(s: Session, text: string, L: string): boolean {
   if (svc && !s.data.service) { s.data.service = svc; got = true; }
   const day = detectDay(text, L); if (day && !s.data.day) { s.data.day = day; got = true; }
   const time = detectTime(text, L); if (time && !s.data.time) { s.data.time = time; s.data.timeBand = /\(/.test(time) ? time : null; got = true; }
-  const area = detectArea(text); if (area && !s.data.area) { s.data.area = area; s.data.areaAt = Date.now(); got = true; }
+  const area = detectAreaPlus(text); if (area && !s.data.area) { s.data.area = area; s.data.areaAt = Date.now(); got = true; }
   const dur = detectDuration(text); if (dur && !s.data.duration) s.data.duration = dur;
   return got;
 }
