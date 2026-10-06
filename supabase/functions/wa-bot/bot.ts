@@ -153,6 +153,27 @@ async function handleVoice(mediaId: string, from: string): Promise<{ path: strin
       const j = await t.json().catch(() => ({}));
       transcript = String(j?.text || "").trim().slice(0, 1500);
       if (!t.ok) console.log("[wa] transcription failed", t.status, JSON.stringify(j).slice(0, 200));
+    } else if (["ogg", "mp3", "m4a"].includes(ext)) {
+      // v181 (Jordan, 6 Oct: no new Groq account). Transcribe through the
+      // OpenRouter credits already paid for: Gemini Flash-Lite hears audio,
+      // tested on an OGG/Opus Spanish note at 1.2 s and $0.0001 a note.
+      const orKey = await appSecret("OPENROUTER_API_KEY");
+      if (orKey) {
+        let bin = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        const t = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST", signal: AbortSignal.timeout(20000),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${orKey}`, "HTTP-Referer": "https://book.massageclub.io", "X-Title": "Massage Club bot" },
+          body: JSON.stringify({ model: (await appSecret("TRANSCRIBE_MODEL_OR")) || "google/gemini-2.5-flash-lite", temperature: 0, messages: [{ role: "user", content: [
+            { type: "text", text: "Transcribe this WhatsApp voice note exactly, in its original language. Return only the transcript. If there is no speech, return nothing." },
+            { type: "input_audio", input_audio: { data: btoa(bin), format: ext } },
+          ] }] }),
+        });
+        const j = await t.json().catch(() => ({}));
+        const out = String(j?.choices?.[0]?.message?.content || "").trim();
+        transcript = /^\[?(no speech|silence|inaudible|sin voz)/i.test(out) ? "" : out.slice(0, 1500);
+        if (!t.ok) console.log("[wa] openrouter transcription failed", t.status, JSON.stringify(j).slice(0, 200));
+      }
     }
   } catch (e) { console.log("[wa] voice note failed", String(e)); }
   return { path, transcript };
