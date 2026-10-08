@@ -59,6 +59,7 @@
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
 import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/c7b225f/supabase/functions/wa-bot/copy.ts";
+import { readMessage, type Reading as Reading2 } from "./read.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -2538,6 +2539,49 @@ function jevShadow(s: Session, from: string, text: string) {
   })().catch((e) => console.log("[wa] jev shadow failed", String(e)));
   try { (globalThis as any).EdgeRuntime?.waitUntil?.(run); } catch { /* runs anyway */ }
 }
+// v184 (8 Oct): the new reader in shadow. Every customer free-text message is
+// read by Claude into a structured Reading (see read.ts) and logged next to
+// what the bot actually did, as funnel_events reader_shadow. Nothing it reads
+// is acted on yet. READER in app_secrets: off | shadow (default) | on.
+// READER_MODEL overrides the model.
+let readerModeCache: { mode: string; model: string; at: number } | null = null;
+async function readerConfig(): Promise<{ mode: string; model: string }> {
+  if (readerModeCache && Date.now() - readerModeCache.at < 60_000) return readerModeCache;
+  const mode = ((await appSecret("READER")) || "shadow").toLowerCase();
+  const model = (await appSecret("READER_MODEL")) || AI_MODEL;
+  readerModeCache = { mode, model, at: Date.now() };
+  return readerModeCache;
+}
+function madridNowLabel(): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+}
+function knownSlots(s: Session): Record<string, unknown> {
+  const d = s.data || {};
+  const k: Record<string, unknown> = {};
+  for (const [a, b] of [["day", d.day], ["time", d.time], ["area", d.area], ["service", d.service], ["therapist_gender", d.therapistGender], ["language", d.lang], ["name", d.name], ["has_email", d.email ? true : null], ["live_offer", d.offer ? `${d.offer.studio} at ${d.offer.time}` : null]] as Array<[string, unknown]>) {
+    if (b !== undefined && b !== null && b !== "") k[a] = b;
+  }
+  return k;
+}
+async function readFor(s: Session, from: string, text: string, model: string): Promise<{ reading: Reading2 | null; ms: number; usage?: unknown; error?: string; lastAsked: string }> {
+  const thread = await recentThread(from);
+  // The message being read is already logged; leave it out of the history.
+  const hist = thread.length && thread[thread.length - 1].dir === "in" && thread[thread.length - 1].body === text ? thread.slice(0, -1) : thread;
+  const lastOut = [...hist].reverse().find((m) => m.dir === "out");
+  const r = await readMessage({ key: await aiKey(), model, text, step: s.step, lastAsked: lastOut ? lastOut.body : "", known: knownSlots(s), history: hist, madridNow: madridNowLabel() });
+  return { ...r, lastAsked: lastOut ? lastOut.body.slice(0, 200) : "" };
+}
+function readerShadow(s: Session, from: string, text: string) {
+  const stepBefore = s.step;
+  const knownBefore = knownSlots(s);
+  const run = (async () => {
+    const cfg = await readerConfig();
+    if (cfg.mode === "off") return;
+    const r = await readFor(s, from, text, cfg.model);
+    await logEvent(from, "reader_shadow", { text: text.slice(0, 400), step: stepBefore, known: knownBefore, last_asked: r.lastAsked, ms: r.ms, model: cfg.model, reading: r.reading, error: r.error || null, usage: r.usage || null });
+  })().catch((e) => console.log("[wa] reader shadow failed", String(e)));
+  try { (globalThis as any).EdgeRuntime?.waitUntil?.(run); } catch { /* runs anyway */ }
+}
 // v176 (5 Oct 19:34, live: Fermin from the ad wrote "No sé quién eres" and
 // "Dime quién eres" and got "Perdona, no te he entendido" twice).
 const WHO_RE = /(qui[eé]n(es)? (eres|sois|es esto|me escribe)|no s[eé] (qui[eé]n|qu[eé] es|nada)|who (are you|is this|r u)|what is this|qu[eé] es esto|de qu[eé] va esto|no te conozco|don'?t know (you|who))/i;
@@ -4089,6 +4133,20 @@ const handleInner = async (req: Request) => {
       }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
+    // v184: evaluate the reader on recorded cases without sending anything.
+    // POST {"ops":"read_test","key":OPS,"model"?:..., "cases":[{"text","step","last_asked","known","history"}]}
+    if (payload?.ops === "read_test") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const cases = Array.isArray(payload.cases) ? payload.cases.slice(0, 40) : [];
+      const model = String(payload.model || (await readerConfig()).model);
+      const key = await aiKey();
+      const out = await Promise.all(cases.map((c: any) => readMessage({
+        key, model, text: String(c.text || ""), step: String(c.step || "await_day"), lastAsked: String(c.last_asked || ""),
+        known: c.known || {}, history: Array.isArray(c.history) ? c.history : [], madridNow: String(c.madrid_now || madridNowLabel()),
+      })));
+      return new Response(JSON.stringify({ ok: true, model, results: out }), { headers: { "Content-Type": "application/json" } });
+    }
+
     if (payload?.ops === "watchdog") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const dry = !!payload.dry;
@@ -4508,6 +4566,9 @@ const handleInner = async (req: Request) => {
         to: [...SUPPORT, ...JORDAN],
       }).catch((e) => console.log("[wa] chat alert failed", String(e)));
     }
+
+    // v184: every customer free-text message is read by the new reader, in shadow.
+    if (text && !replyId) readerShadow(s, from, text);
 
     // v81 (Jordan, 10 and 12 Sept): answer neutrally and carry on. This used to
     // set step="blocked" and never speak to them again. Ten people ended up
