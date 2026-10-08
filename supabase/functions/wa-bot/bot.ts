@@ -2467,7 +2467,8 @@ async function claudeAgent(body: Record<string, unknown>): Promise<{ reply?: str
   });
   if (!res.ok) { console.log("[wa] claude agent http", res.status, (await res.text()).slice(0, 160)); return null; }
   const out = await res.json().catch(() => ({}));
-  const m = String(out?.content?.[0]?.text || "").match(/\{[\s\S]*\}/);
+  const txt = (Array.isArray(out?.content) ? out.content : []).filter((b: any) => b?.type === "text").map((b: any) => String(b.text || "")).join("");
+  const m = txt.match(/\{[\s\S]*\}/);
   if (!m) return null;
   try { return JSON.parse(m[0]); } catch { return null; }
 }
@@ -2631,7 +2632,7 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
     if (url && /\/v1\/?$/.test(url)) {
       via = "hermes";
       j = await openRouterAgent(payload, { url, key: await appSecret("AGENT_KEY") }).catch((e) => { console.log("[wa] hermes failed", String(e)); return null; });
-      if (!j) { via = "openrouter_fallback"; j = await openRouterAgent(payload).catch(() => null); } // Hermes down or slow: Qwen answers
+      if (!j) { via = "claude_fallback"; j = await claudeAgent(payload).catch(() => null); } // Hermes down or slow: Claude answers
     } else if (url) {
       const res = await fetch(url, {
         method: "POST", signal: AbortSignal.timeout(15000),
@@ -2640,7 +2641,11 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
       });
       j = await res.json().catch(() => ({}));
     } else {
-      j = await openRouterAgent(payload).catch(() => null);
+      // v186 (8 Oct, Jordan: "we want to replace openrouter"): text answers come
+      // from Claude, which already had the same facts and checks as the second
+      // opinion. OpenRouter now only transcribes voice notes (Jordan's choice).
+      via = "claude";
+      j = await claudeAgent(payload).catch((e) => { console.log("[wa] claude agent failed", String(e)); return null; });
     }
     const draftOnly = (await appSecret("AGENT_MODE")) === "draft";
     const passes = async (x: any): Promise<string> => {
@@ -2651,7 +2656,7 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
     let sendNow = draftOnly ? "" : await passes(j);
     if (first) await logEvent(from, "agent_reply", { mode: j?.mode || null, sent: !!sendNow, chars: first.length, via, reply: first.slice(0, 300) });
     let second = "";
-    if (!sendNow && !draftOnly) {
+    if (!sendNow && !draftOnly && via !== "claude" && via !== "claude_fallback") {
       const c = await claudeAgent(payload).catch((e) => { console.log("[wa] claude agent failed", String(e)); return null; });
       second = String(c?.reply || "").trim();
       if (second) {
