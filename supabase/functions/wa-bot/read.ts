@@ -64,6 +64,9 @@ Rules:
 5. area: the Madrid neighbourhood or town as a normal name ("Chamberí", "Tetuán", "Pozuelo"). service: one of relax, deep, thai, sports, couples, hot_stone, pregnancy, reflexology, shiatsu, balinese, lymphatic, other. duration_min: 30, 45, 60, 90 or 120. therapist_gender: female or male. people: a number.
 6. intents can be several. price_objection only when they say it is too expensive or want something cheaper, NOT when they ask the price ("¿Es caro?" or "how much?" is ask_question with question price). decline only when they turn down what we offered or the whole booking. special_request is any sexual or "happy ending" request, including veiled ones ("good girl for me", "man to man", "sensitivo", "with extras"). unsupported_language when the message is mostly in a language other than English or Spanish.
 7. changes_earlier_answer is true when they replace something they told us before ("actually Saturday", "mejor a las 8").
+7a. home_visit: they want the massage at their home, hotel or office ("home service", "home serves", "a domicilio", "en mi casa", "to my hotel", "can you come to me").
+7b. wants_person: they ask to speak to a human, an agent, the owner or "a real person". A therapist gender preference is NOT wants_person.
+7c. Short questions count: "Donde", "¿dónde?", "where?", "address?" after an offer is question address_location. "Who are you", "quién eres", "no sé quién eres", "what is this", "how does it work" is question how_it_works. "X means?", "what is X", "qué es X" about a type of massage is question massage_types.
 8. answers_last_question is true when the message answers what we just asked.
 9. confidence from 0 to 1. Below 0.6 means you are guessing.
 
