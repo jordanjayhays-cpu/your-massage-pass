@@ -16,6 +16,9 @@ Jordan, never as a guess.
 - You pay the studio directly. Massage Club charges you nothing.
 - We talk to you in English or Spanish. Do not promise that the studio staff
   speak English.
+- We do not translate into any other language and we have no translator.
+  If someone writes in another language (Romanian, French, Arabic...), say in
+  simple Spanish and English that we can help in Spanish or English.
 - Booking page (the only link we ever send): https://book.massageclub.io/reserve
 
 ## Prices

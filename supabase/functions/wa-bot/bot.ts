@@ -585,7 +585,7 @@ async function findPartnerByNumber(fromDigits: string): Promise<{ id: string; bu
 }
 async function lastRequestFor(phone: string): Promise<any | null> {
   const num = "+" + digitsOf(phone);
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=id,first_name,last_name,contact_email,service_name,studio_name,partner_id,slug,price,languages,day1,time1,confirmed_day,confirmed_time,stage,therapist_gender`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=id,first_name,last_name,contact_email,service_name,studio_name,partner_id,slug,price,languages,day1,time1,confirmed_day,confirmed_time,stage,therapist_gender,created_at`, { headers: H() });
   const rows = await r.json().catch(() => []);
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
@@ -677,7 +677,7 @@ async function offerStudios(s: Session, from: string, L: string): Promise<boolea
   // both shown Calma at 85 EUR at the top and left over price. The ranking
   // still decides WHICH studios are offered; price decides the order.
   s.data.picks.sort((a: any, b: any) => (Number(a.price) || 999) - (Number(b.price) || 999));
-  s.data.offerMode = true;
+  s.data.offerMode = true; s.data.cheapPick = null;
   s.step = "await_studio"; await saveSession(s);
   const es = L === "es";
   const when = [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", ");
@@ -2548,7 +2548,20 @@ const HOME_EXTRA_RE = /(\bhome\s*serv\w*|\bdomicilio\b|\ba\s+mi\s+casa\b|\b(to|a
 const MEANING_RE = /\b(means?|meaning|what\s+(is|are)|what'?s|qu[eé]\s+es|qu[eé]\s+significa|significa|explain|expl[ií]ca(me)?)\b/i;
 // "Ya no gracias" (Adrian) and a "No" tap (Vinzma29) were read as answers.
 const NOTHANKS_RE = /^(no|nope|nah|ya no|no,? gracias|ya no,? gracias|no thanks?|no,? thank you|not now|ahora no|no me interesa|not interested|ya no hace falta|no hace falta|d[eé]jalo|olv[ií]dalo)[\s.!,]*(gracias|thanks|thank you|thx)?[\s.!]*$/i;
-const SOFT_ACK_RE = /^\s*(s[ií]+|s[ií]\s*s[ií]|sisi+|yes|yes yes|yep|yeah|ok(ay)?|okey|vale|claro|perfecto|genial|bien|gracias|muchas gracias|thanks|thank you|thx|ok gracias|vale gracias|s[ií],? gracias)[\s.,!¡👍🙏]*$/i;
+// v183: "¡Gracias!", "Si, si" and acks with any emoji (skin tones too) count.
+const SOFT_ACK_RE = /^[\s¡]*(s[ií]+|s[ií],?\s*s[ií]|sisi+|yes|yes,? yes|yep|yeah|ok(ay)?|okey|vale|claro|perfecto|genial|bien|gracias|muchas gracias|thanks|thank you|thx|ok,? gracias|vale,? gracias|s[ií],? gracias)[\s.,!¡\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]*$/iu;
+// v183 (review): a message that is only a gender word, said without being
+// asked. Symmetric for "A girl" / "A man", tolerant of "por favor", commas and
+// emoji. A bare "Hombre!" or "Man!" is an interjection, so those two only count
+// with an article or a please ("a man", "hombre, por favor").
+function bareGenderWord(t: string): "male" | "female" | null {
+  const said = String(t || "").trim();
+  const m = said.match(/^(?:a\s+|una?\s+)?(girl|woman|lady|chica|mujer|se[nñ]ora|female|femenin[oa]|boy|chico|male|masculin[oa]|man|hombre|guy)[\s,.!¡\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]*(?:please|pls|por\s*favor|porfa|gracias|thanks|thx|therapist|masajista)?[\s.!\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]*$/iu);
+  if (!m) return null;
+  const w = m[1].toLowerCase();
+  if (/^(man|hombre|guy)$/.test(w) && !/^\s*(a|un)\s+|please|pls|por\s*favor|porfa|therapist|masajista/i.test(said)) return null;
+  return /^(girl|woman|lady|chica|mujer|se[nñ]ora|female|femenin[oa])$/.test(w) ? "female" : "male";
+}
 const DECLINE_STEPS = ["start", "menu", "await_service", "await_day", "await_day_text", "await_time", "await_time_text", "await_hour", "await_area"];
 // v179: detectArea (copy.ts) knows the big districts only. "Estoy en la zona
 // de Lavapiés" found nothing, so Javier's area was never kept. These are the
@@ -3541,7 +3554,9 @@ async function reshowOffer(s: Session, from: string, L: string, why: string): Pr
 }
 // v182: Paulo wrote "Adresss?" and Javier "Donde" to an offer, and both got
 // nothing useful. A bare "where?" / "¿dónde?" counts too.
-const ADDRESS_Q_RE = /(\b(calle|direcci[oó]n|d[oó]nde (est[aá]|queda|es)|ubicaci[oó]n|metro|addr?ess+|adress+|street|where (is|are) (it|they)|location)\b|^\s*[¿]?\s*(d[oó]nde|where)\s*[?!.]*\s*$)/i;
+// v183: "¿Dónde está?" never matched: \\b after the accented á needs a letter
+// class of its own. "Where is the studio?" and "¿Y dónde?" count too.
+const ADDRESS_Q_RE = /((?<![a-zñáéíóú])(calle|direcci[oó]n|d[oó]nde (est[aá]|queda|es)|ubicaci[oó]n|metro|addr?ess+|adress+|street|where (is|are) (it|they|that|the studio|this place|the place)|location)(?![a-zñáéíóú])|^\s*¿?\s*(y|ok|vale|and)?\s*,?\s*(d[oó]nde|where)\s*[?!.]*\s*$)/iu;
 
 // v182 (7 Oct): no offer without a price. The studio's own figure for this
 // booking wins; without one, the price on its menu for this massage, labelled
@@ -3582,47 +3597,81 @@ async function offerPriceText(requestId: number, partnerId: string, svcName: str
 // that". On 6 Oct the first got the same list back with Calma at 85 EUR on top,
 // and the second got "Sorry, I did not catch that". A price objection gets the
 // cheapest real option we have, and a way out, never a repeat.
-const PRICE_OBJ_RE = /(\bcar[ií]sim[oa]s?\b|\bmuy caro\b|\bes caro\b|\bdemasiado caro\b|\bqu[eé] caro\b|^\s*caro\b|\bun robo\b|\bes un robo\b|\bexpensive\b|\btoo much\b|\btoo pricey\b|\boverpriced\b|\bpricey\b|\bm[aá]s barat[oa]\b|\bm[aá]s econ[oó]mic[oa]\b|\bcheaper\b)/i;
+const PRICE_OBJ_RE = /((?<![a-zñáéíóú])(car[ií]sim[oa]s?|muy car[oa]|es car[oa]|demasiado car[oa]|qu[eé] car[oa]|un robo|expensive|too pricey|overpriced|pricey|too much money|m[aá]s barat[oa]|m[aá]s econ[oó]mic[oa]|cheaper)(?![a-zñáéíóú])|^[\s¡]*car[oa](?![a-zñáéíóú]))/iu;
+// v183 (review of v182): a regex hit is not an objection. "No es caro",
+// "not too expensive", "que no sea muy caro" are the opposite, and "¿Es caro?"
+// / "Is it expensive?" / "how expensive" are questions about the price. Only a
+// plain, un-negated objection counts. "más barato" / "cheaper" as a question
+// ("¿hay algo más barato?") is a request for the cheapest option and counts.
+function isPriceObjection(t: string): boolean {
+  const s = String(t || "").trim();
+  if (!PRICE_OBJ_RE.test(s)) return false;
+  const low = stripAcc(s).toLowerCase();
+  if (/\b(no|not|nada|nothing|isn'?t|ni|que no sea|sin ser)\s+(es\s+|is\s+|sea\s+)?(too\s+|muy\s+|tan\s+|so\s+|demasiado\s+)?(expensive|car[oa]|pricey)\b/.test(low)) return false;
+  const cheaperAsk = /\b(mas barat[oa]|mas economic[oa]|cheaper)\b/.test(low);
+  const strong = /\b(carisim[oa]s?|un robo|overpriced)\b/.test(low);
+  const question = s.includes("?") || /^\s*¿/.test(s) || /\b(is it|is that|how expensive|es caro|es cara|seria caro|sera caro)\b/.test(low);
+  if (question && !cheaperAsk && !strong) return false;
+  return true;
+}
 async function priceObjection(s: Session, from: string, L: string): Promise<void> {
   const es = L === "es";
-  let picks: any[] = Array.isArray(s.data.picks) ? s.data.picks.filter((p: any) => Number(p.price) > 0) : [];
-  if (!picks.length) {
-    const svcRow = ALL_SERVICES.find((x) => x.id === (!s.data.service || s.data.service === "svc_unsure" ? "svc_relax" : s.data.service));
-    const area = s.data.area && s.data.area !== "anywhere" ? s.data.area : "";
+  const svcRow = ALL_SERVICES.find((x) => x.id === (!s.data.service || s.data.service === "svc_unsure" ? "svc_relax" : s.data.service));
+  const area = s.data.area && s.data.area !== "anywhere" ? s.data.area : "";
+  const fetchPicks = async (a: string, n: number): Promise<any[]> => {
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/offer_studios`, { method: "POST", headers: H(), body: JSON.stringify({ p_area: area || null, p_want: svcRow ? svcRow.en : null, p_limit: 5 }) });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/offer_studios`, { method: "POST", headers: H(), body: JSON.stringify({ p_area: a || null, p_want: svcRow ? svcRow.en : null, p_limit: n }) });
       const j = await res.json().catch(() => []);
-      picks = (Array.isArray(j) ? j : []).map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
-    } catch (_e) { picks = []; }
+      return (Array.isArray(j) ? j : []).map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
+    } catch (_e) { return []; }
+  };
+  const ok = (p: any) => Number(p.price) > 0 && !(Number(p.duration) >= 50 && Number(p.price) < 30);
+  // v183: never reorder s.data.picks; buttons already on screen index into it.
+  const shown: any[] = Array.isArray(s.data.picks) ? s.data.picks.filter(ok) : [];
+  let pool: any[] = shown.length ? [...shown] : (await fetchPicks(area, 5)).filter(ok);
+  pool.sort((a: any, b: any) => Number(a.price) - Number(b.price));
+  let c = pool[0];
+  // The cheapest on screen is what they just called too dear: look wider for
+  // something cheaper before repeating it.
+  const firstShown = s.step === "await_studio" && shown.length ? [...shown].sort((a: any, b: any) => Number(a.price) - Number(b.price))[0] : null;
+  if (c && firstShown && String(c.id) === String(firstShown.id)) {
+    const wider = (await fetchPicks("", 5)).filter(ok).filter((p: any) => Number(p.price) < Number(c.price));
+    wider.sort((a: any, b: any) => Number(a.price) - Number(b.price));
+    if (wider[0]) c = wider[0];
+    else c = null;
   }
-  picks = picks.filter((p: any) => !(Number(p.duration) >= 50 && Number(p.price) < 30));
-  picks.sort((a: any, b: any) => Number(a.price) - Number(b.price));
-  const c = picks[0];
-  await logEvent(from, "price_objection", { step: s.step, cheapest: c ? c.name : null, price: c ? c.price : null });
+  await logEvent(from, "price_objection", { step: s.step, cheapest: c ? c.name : null, price: c ? c.price : null, lowest_already_shown: !c && !!firstShown });
+  if (!c && firstShown) {
+    await sendButtons(from, es
+      ? `Entendido. ${firstShown.name}, a unos ${euro(Number(firstShown.price))}, ya es lo más económico que tengo ahora mismo cerca de ti. Si quieres, pregunto a varios centros y te traigo la mejor oferta, sin compromiso.`
+      : `Understood. ${firstShown.name}, at about ${euro(Number(firstShown.price))}, is already the most affordable I have near you right now. If you like, I'll ask several studios and bring back the best offer, no obligation.`,
+      [{ id: "studio_any", title: es ? "Mejor precio" : "Best price" }, { id: "rebook_later", title: es ? "No, gracias" : "No, thanks" }]);
+    return;
+  }
   if (!c) {
     await sendText(from, es
       ? "Entendido. Cada centro pone su precio. Si quieres, pregunto a varios y te traigo la oferta más económica, sin compromiso."
       : "Understood. Each studio sets its own price. If you like, I'll ask several and bring back the most affordable offer, no obligation.");
-    await reAsk(s, from, L);
+    await continueFromKnown(s, from, L);
     return;
   }
   const line = es
     ? `Entendido. Cada centro pone su precio. Lo más económico que tengo ahora: *${c.name}* (${c.area || "Madrid"}), ${trSvcLow(c.svc || "Massage", L)} ${c.duration || 60} min, ${c.registered ? "" : "unos "}${euro(Number(c.price))}.`
     : `Understood. Each studio sets its own price. The most affordable I have right now: *${c.name}* (${c.area || "Madrid"}), ${trSvcLow(c.svc || "Massage", L)} ${c.duration || 60} min, ${c.registered ? "" : "about "}${euro(Number(c.price))}.`;
-  // With a day and time already chosen, they can take it in one tap.
+  // With a day, time and area already chosen, they can take it in one tap.
   if (s.data.day && s.data.time && s.data.area) {
-    s.data.picks = picks.slice(0, 3);
-    s.data.offerMode = true;
+    s.data.cheapPick = { id: c.id, name: c.name };
+    s.data.cheapBackup = pool.filter((p: any) => String(p.id) !== String(c.id)).slice(0, 2).map((p: any) => ({ id: p.id, name: p.name }));
     s.step = "await_studio"; await saveSession(s);
     const short = (n: string) => n.replace(/\s+(Relax and Beauty|Wellness Studio|Madrid Spa|Masajes?|Spa|Studio)$/i, "").slice(0, 20);
     await sendButtons(from, line + (es ? "\n\n¿Se lo pregunto? Pagas en el centro, sin comisión." : "\n\nShall I ask them? You pay at the studio, no fee from us."), [
-      { id: "studio_0", title: short(c.name) },
+      { id: "cheap_pick", title: short(c.name) },
       { id: "rebook_later", title: es ? "No, gracias" : "No, thanks" },
     ]);
     return;
   }
   await sendText(from, line + (es ? " Pregunto primero a los más económicos." : " I'll ask the most affordable ones first."));
-  await reAsk(s, from, L);
+  await continueFromKnown(s, from, L);
 }
 
 // v39: after reading a sentence, ask only for what is still missing.
@@ -4522,18 +4571,25 @@ const handleInner = async (req: Request) => {
       // "depends on the studio" line three times. A message that is nothing
       // but a gender word is a preference wherever it arrives, except where we
       // asked for a name. "Boy" and "chico" count too.
-      const bareAny = s.step !== "await_name" ? (genderBare(said) || (/^\s*(a\s+)?(boy|chico|a\s+man)\s*(please|por favor)?[.!]?\s*$/i.test(said) ? "male" : null)) : null;
+      const bareAny = !["await_name", "start"].includes(s.step) ? bareGenderWord(said) : null;
       const g = genderWanted(said) || (s.data.askedGender ? genderBare(said) : null) || bareAny;
       if (g) {
-        const hadAsked = !!s.data.askedGender || !!bareAny;
+        const askedNow = !!s.data.askedGender;
+        const hadAsked = askedNow || !!bareAny;
         s.data.askedGender = null;
         if (s.data.therapistGender !== g) {
           s.data.therapistGender = g;
           await logEvent(from, "therapist_gender", { gender: g });
         }
         await saveSession(s);
-        const greq = hadAsked ? await lastRequestFor(from) : null;
-        if (greq && !["cancelled", "dismissed"].includes(String(greq.stage || "")) && String(greq.therapist_gender || "") !== g) {
+        const greq0 = hadAsked ? await lastRequestFor(from) : null;
+        // v183 (review): an unprompted "Girl" only lands on a request that is
+        // live right now, never on last month's finished booking.
+        const LIVE_GREQ = ["new", "needs_contact", "studio_asked", "studio_replied", "offered", "bidding"];
+        const greq = greq0 && (askedNow || bareAny === null
+          ? !["cancelled", "dismissed"].includes(String(greq0.stage || ""))
+          : LIVE_GREQ.includes(String(greq0.stage || "")) && Date.parse(String(greq0.created_at || 0)) > Date.now() - 3 * 86400e3) ? greq0 : null;
+        if (greq && String(greq.therapist_gender || "") !== g) {
           await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${greq.id}`, {
             method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
             body: JSON.stringify({ therapist_gender: g }),
@@ -4553,7 +4609,8 @@ const handleInner = async (req: Request) => {
           await sendText(from, gL === "es"
             ? `Anotado: masajista ${g === "male" ? "chico" : "chica"}. Se lo pedimos a los centros y solo te reservamos donde puedan.`
             : `Noted, a ${g === "male" ? "man" : "woman"} therapist. We ask the studios for that and only book you where they can.`);
-          await reAsk(s, from, gL);
+          if (s.step === "await_studio" && s.data.offerMode) { if (!(await offerStudios(s, from, gL))) await reAsk(s, from, gL); }
+          else await reAsk(s, from, gL);
           return new Response("OK", { status: 200 });
         }
       }
@@ -4725,7 +4782,7 @@ const handleInner = async (req: Request) => {
 
     // "Not now" on the rebooking nudge: warm goodbye, no sales pitch.
     if (replyId === "rebook_later") {
-      s.step = "done"; await saveSession(s);
+      s.step = "done"; s.data.cheapPick = null; await saveSession(s);
       await sendText(from, COPY[L].rebookLater);
       return new Response("OK", { status: 200 });
     }
@@ -4745,14 +4802,15 @@ const handleInner = async (req: Request) => {
         if (ADDRESS_Q_RE.test(text) && await reshowOffer(s, from, L, "address_question")) return new Response("OK", { status: 200 });
         // v182: "how much?" about the offer gets this studio's price, not the
         // generic 40 to 85 EUR range.
-        if (PRICEQ_RE.test(text) && !PRICE_OBJ_RE.test(text) && await reshowOffer(s, from, L, "price_question")) return new Response("OK", { status: 200 });
-        // v182: "too expensive" to an offer is a no to that offer, not small
-        // talk: the studio is told politely and we keep asking the others.
-        if (PRICE_OBJ_RE.test(text)) {
-          await logEvent(from, "price_objection", { step: "await_offer", studio: s.data.offer?.studio || "" });
-          await declineOffer(String(s.data.offer.row), from, L, s);
-          return new Response("OK", { status: 200 });
-        }
+        // v183 (review): a price question or objection never declines the
+        // offer from free text. "¿Es caro?" used to stand the studio down. The
+        // offer comes back with its price and the buttons; only a tap on
+        // "Another time" (or a plain "no") declines it. A different time named in
+        // the same message ("me cuesta llegar, ¿a las 7?") is left to the
+        // counter-offer handler below.
+        const namedTime = parseOfferedTime(text);
+        const otherTime = !!namedTime && namedTime !== String(s.data.offer?.time || "");
+        if (!otherTime && (PRICEQ_RE.test(text) || PRICE_OBJ_RE.test(text)) && await reshowOffer(s, from, L, PRICE_OBJ_RE.test(text) ? "price_objection" : "price_question")) return new Response("OK", { status: 200 });
       }
     }
 
@@ -4826,14 +4884,22 @@ const handleInner = async (req: Request) => {
       await logEvent(from, "declined_flow", { said: text.slice(0, 60) });
       return new Response("OK", { status: 200 });
     }
-    if (text && !replyId && PRICE_OBJ_RE.test(text) && [...DECLINE_STEPS, "await_studio", "await_sameday"].includes(s.step)) {
+    // v183 (review): not at start or menu (greet must run), only a real,
+    // un-negated objection, and never over an answer to the question we asked:
+    // "Retiro please" or "mañana a las 7" is handled by the step itself.
+    const stepAnswer = (s.step === "await_area" && !!detectAreaPlus(text || "")) || (["await_day", "await_day_text"].includes(s.step) && !!detectDay(text || "", L)) || (["await_time", "await_hour", "await_time_text", "await_sameday"].includes(s.step) && !!detectTime(text || "", L)) || (s.step === "await_service" && !!detectService(text || ""));
+    if (text && !replyId && !stepAnswer && isPriceObjection(text) && [...DECLINE_STEPS.filter((x) => x !== "start" && x !== "menu"), "await_studio", "await_sameday"].includes(s.step)) {
       await priceObjection(s, from, L);
       return new Response("OK", { status: 200 });
     }
     // v182: Vinzma29 typed "Tetuan", his area, while the bot was waiting for an
     // email, and was told "we will leave it without an email". A neighbourhood
     // at the email question is the area, and the email question still stands.
-    if (text && !replyId && ["await_email", "await_email_req", "await_email_post"].includes(s.step) && !isEmail(text) && !text.includes("@") && text.trim().split(/\s+/).length <= 4 && detectAreaPlus(text)) {
+    // v183 (review): never for a question ("¿Qué centro?", "Is it near Sol?"),
+    // and never over an area we already have: "Ana Rivas" is a name, not Rivas.
+    // Vinzma29's area was "No", which is no area at all.
+    const areaKnown = !!s.data.area && s.data.area !== "anywhere" && !!detectAreaPlus(String(s.data.area));
+    if (text && !replyId && ["await_email", "await_email_req", "await_email_post"].includes(s.step) && !areaKnown && !isEmail(text) && !text.includes("@") && !text.includes("?") && !looksLikeQuestion(text) && !MEANING_RE.test(text) && text.trim().split(/\s+/).length <= 4 && detectAreaPlus(text)) {
       const area = detectAreaPlus(text);
       s.data.area = area; s.data.areaAt = Date.now(); await saveSession(s);
       if (s.step === "await_email_post") {
@@ -5168,7 +5234,13 @@ const handleInner = async (req: Request) => {
             if (text && text.trim().split(/\s+/).length >= 2 && await lastResort(s, from, L, text)) {
               if (s.step !== stepNow) break;
             } else if (s.data.miss >= 2) {
-              await sendText(from, COPY[L].notCaught);
+              // v183 (8 Oct): Alexandru wrote in Romanian and broken Spanish
+              // ("Traslator. Romano", "Noă tindo") and got "Sorry, I did not catch
+              // that" in English three times. Say which languages we speak, in
+              // both, and make the question something he can tap.
+              await sendText(from, s.data.miss === 2
+                ? "Perdona, no te he entendido. Puedo ayudarte en español o en inglés: toca un día abajo.\nSorry, I did not catch that. I can help in Spanish or English: tap a day below."
+                : COPY[L].notCaught);
               await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
             }
           }
@@ -5315,6 +5387,24 @@ const handleInner = async (req: Request) => {
         break;
       }
       case "await_studio": {
+        // v183: the price-objection offer is id-based, so it never re-points
+        // the studio_N buttons already on screen. A typed yes takes it, a typed
+        // no closes politely.
+        if (s.data.cheapPick && !replyId && text && (SOFT_ACK_RE.test(text) || /^(yes|s[ií])\b/i.test(text.trim()))) replyId = "cheap_pick";
+        if (s.data.cheapPick && !replyId && text && NOTHANKS_RE.test(text.trim())) {
+          s.data.cheapPick = null; s.step = "done"; await saveSession(s);
+          await sendText(from, COPY[L].rebookLater);
+          break;
+        }
+        if (replyId === "cheap_pick" && s.data.cheapPick) {
+          const cp = s.data.cheapPick;
+          s.data.chosen = null; s.data.customStudio = null;
+          s.data.prefer = [cp, ...(Array.isArray(s.data.cheapBackup) ? s.data.cheapBackup : [])].map((x: any) => ({ id: x.id, name: x.name }));
+          s.data.cheapPick = null; s.data.cheapBackup = null;
+          await logEvent(from, "studio_chosen", { how: "price_objection", studio: cp.name });
+          await askNameOrFinalize(s, from, L);
+          break;
+        }
         if (replyId === "pick_yes") {
           const top = (s.data.picks || [])[0];
           if (top) { s.data.chosen = top; s.data.customStudio = null; await logEvent(from, "studio_chosen", { how: "toppick", studio: top.name }); await askNameOrFinalize(s, from, L); }
