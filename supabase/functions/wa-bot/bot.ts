@@ -5393,7 +5393,20 @@ const handleInner = async (req: Request) => {
         else if (replyId === "sd_keep") { await logEvent(from, "sameday_choice", { choice: "keep" }); await afterTime(s, from, L); }
         else if (text && /tomorrow|ma\u00f1ana/i.test(text)) { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); await afterTime(s, from, L); }
         else if (text && /earliest|soon|antes|cuanto antes|12/i.test(text)) { s.data.time = COPY[L].earliestToday; s.data.timeBand = null; s.data.timeBandId = null; await afterTime(s, from, L); }
-        else await sendButtons(from, COPY[L].sameDay, COPY[L].sameDayBtns(String(s.data.time || "")));
+        // v187 (9 Oct, live: omar faress at 02:42 tapped "Afternoon" and then
+        // "Tomorrow" on the earlier buttons and got this same warning three
+        // times). A tap on an earlier time or day button is an answer.
+        else if (HOURS[replyId]) {
+          s.data.timeBandId = replyId;
+          s.data.timeBand = L === "es" ? HOURS[replyId].labelEs : HOURS[replyId].label;
+          s.data.time = s.data.timeBand;
+          await logEvent(from, "sameday_choice", { choice: "new_band", band: replyId });
+          await afterTime(s, from, L);
+        }
+        else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); await logEvent(from, "sameday_choice", { choice: "tomorrow_tap" }); await afterTime(s, from, L); }
+        else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, COPY[L].dayAsk); }
+        else if (s.data.sameDayRepeats) { await logEvent(from, "sameday_choice", { choice: "keep_after_repeat" }); await afterTime(s, from, L); }
+        else { s.data.sameDayRepeats = 1; await saveSession(s); await sendButtons(from, COPY[L].sameDay, COPY[L].sameDayBtns(String(s.data.time || ""))); }
         break;
       }
       case "await_area": {
