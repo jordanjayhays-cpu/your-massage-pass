@@ -649,6 +649,7 @@ async function openWith(s: Session, from: string, L: string, hint: "" | "es" | "
 // The next question once something new is known: with day and time, straight
 // to the area or the studio options.
 async function nextStep(s: Session, from: string, L: string): Promise<void> {
+  dropStaleDay(s, L);
   if (s.data.service && s.data.day && s.data.time) { await afterTime(s, from, L); return; }
   await continueFromKnown(s, from, L);
 }
@@ -1115,6 +1116,7 @@ Rules, all of them hard:
 - Never invent a discount, a price, a studio name, a time slot or availability. Never promise the therapist speaks English. Never claim massage detoxes, cures or boosts immunity.
 - If they ask for anything sexual, "special", "extras", "happy ending", tantra or similar, the message is exactly: "We book therapeutic massage at licensed studios, nothing else." (Spanish: "Reservamos masajes terapéuticos en centros con licencia, nada más.") and nothing more.
 - Never say you are handing them to a person or a representative.
+- Do not include any link unless they ask what Massage Club is, for photos or for the website.
 - Never claim we already asked a studio, checked availability, booked or did anything else unless the conversation above shows it happened.
 - No em dashes, no en dashes, no links, no emoji, no bullet points. Under 60 words.
 - Start with "Hi <first name>, Massage Club here." (Spanish: "Hola <nombre>, somos Massage Club.") using their first name if you know it, otherwise without a name.
@@ -2607,6 +2609,17 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
 const FACTS_URL = import.meta.url.startsWith("https://raw.githubusercontent.com/")
   ? new URL("../../../docs/agent/facts.md", import.meta.url).href
   : "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/main/docs/agent/facts.md";
+// v196 (replay, 9 Oct): the agent added "o usar nuestro formulario rápido:
+// https://book.massageclub.io/reserve" to answers nobody asked a link for.
+// Links go only to someone asking what we are, for photos or for the website
+// (standing rule), so any sentence carrying one is dropped otherwise.
+function stripUnaskedLink(reply: string, asked: string): string {
+  if (!/massageclub\.io/i.test(reply)) return reply;
+  if (HOWWORKS_RE.test(asked) || WHO_RE.test(asked) || PHOTOQ_RE.test(asked) || /\b(web|website|p[aá]gina|link|enlace|online|fotos?|photos?|pictures?)\b/i.test(asked)) return reply;
+  const kept = reply.split(/(?<=[.!?])\s+/).filter((x) => !/massageclub\.io/i.test(x));
+  const out = kept.join(" ").trim();
+  return out.length >= 20 ? out : reply;
+}
 function agentReplyOk(reply: string): boolean {
   if (!reply || reply.length > 700) return false;
   if (/\u2014|\u2013/.test(reply)) return false;                                   // no em or en dashes
@@ -2968,7 +2981,7 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
     }
     const draftOnly = (await appSecret("AGENT_MODE")) === "draft";
     const passes = async (x: any): Promise<string> => {
-      const r = String(x?.reply || "").trim();
+      const r = stripUnaskedLink(String(x?.reply || "").trim(), text);
       return r && x?.mode === "send" && agentReplyOk(r) && !(await namesAStudio(r)) ? r : "";
     };
     const first = String(j?.reply || "").trim();
@@ -4043,7 +4056,21 @@ async function priceObjection(s: Session, from: string, L: string): Promise<void
 }
 
 // v39: after reading a sentence, ask only for what is still missing.
+// v196 (9 Oct, live): "Finish my booking" on Friday kept Thursday's "Today" and
+// asked for a time. A relative day whose stored date has passed is dropped
+// (with its time) before the flow asks its next question; yesterday's
+// "Tomorrow" simply becomes today.
+function dropStaleDay(s: Session, L: string) {
+  const d = String(s.data.day || "");
+  if (!s.data.dayDate || !/^(today|hoy|tomorrow|mañana|manana)$/i.test(d)) return;
+  const today = [longDate("en", 0), longDate("es", 0)], tomorrow = [longDate("en", 1), longDate("es", 1)];
+  const isToday = /^(today|hoy)$/i.test(d);
+  if (isToday ? today.includes(s.data.dayDate) : tomorrow.includes(s.data.dayDate)) return;
+  if (!isToday && today.includes(s.data.dayDate)) { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); return; }
+  s.data.day = null; s.data.dayDate = null; s.data.time = null; s.data.timeBand = null; s.data.timeBandId = null;
+}
 async function continueFromKnown(s: Session, from: string, L: string) {
+  dropStaleDay(s, L);
   // v154: with a studio's offer waiting for an answer, never rebuild the request.
   if (s.step === "await_offer" && s.data.offer?.row && await reshowOffer(s, from, L, "continue_from_known")) return;
   if (!s.data.service) { s.step = "await_service"; await saveSession(s); await askService(from, L); return; }
@@ -5550,6 +5577,7 @@ const handleInner = async (req: Request) => {
       // one and must not be resumed into stale answers.
       const RESUMABLE = ["await_service", "await_day", "await_day_text", "await_time", "await_hour", "await_time_text", "await_area", "await_studio", "await_studio_text", "await_name", "await_email"];
       if (replyId === "menu_book" && s.data.recoverySent && RESUMABLE.includes(String(s.step))) {
+        dropStaleDay(s, L);
         const d = s.data;
         const resumeAt = !d.service ? "service" : !d.day ? "day" : !d.time ? "time" : !d.area ? "area" : "finish";
         await logEvent(from, "flow_resumed", { via: "recovery", at: resumeAt });
