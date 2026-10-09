@@ -587,14 +587,17 @@ async function openerFacts(plusDays: number): Promise<{ lo: number; hi: number; 
 }
 // hint: "es" adds the Spanish switch line under an English opener, "en" the
 // English one under a Spanish opener, "es_word" the original "write español".
-async function firstLine(L: string, hint: "" | "es" | "en" | "es_word" = ""): Promise<string> {
+async function firstLine(L: string, hint: "" | "es" | "en" | "es_word" = "", ack = "", ask = true): Promise<string> {
   const night = mcMadridHour() >= 19;
   const f = await openerFacts(night ? 1 : 0);
   const tail = hint === "es" ? "\n\n¿Prefieres español? Escríbeme en español."
     : hint === "en" ? "\n\nPrefer English? Just write in English."
     : hint === "es_word" ? "\n\n¿Prefieres español? Escribe *español* y seguimos en español."
     : "";
-  if (!f) return (L === "es" ? FIRST_LINE.es : FIRST_LINE.en) + tail;
+  if (!f) {
+    const [intro, ...q] = (L === "es" ? FIRST_LINE.es : FIRST_LINE.en).split("\n\n");
+    return intro + (ack ? "\n\n" + ack : "") + (ask ? "\n\n" + q.join("\n\n") : "") + tail;
+  }
   const es = L === "es";
   const areas = f.areas.join(", ") + (es ? " y más" : " and more");
   const price = f.hi > f.lo
@@ -603,12 +606,14 @@ async function firstLine(L: string, hint: "" | "es" | "en" | "es_word" = ""): Pr
   if (es) {
     return `Hola, somos Massage Club. Te reservamos cita en centros de masaje profesionales de Madrid: ${areas}. Un masaje relajante de 60 min cuesta ${price}. Pagas directamente en el centro, sin comisión.`
       + (night ? "\nPara esta noche ya es tarde, pero te busco hueco para mañana." : "")
-      + "\n\n¿Qué día te viene bien? Toca un botón o escríbelo con tu zona, por ejemplo \"mañana a las 18:00 cerca de Sol\". Si prefieres descontracturante, tailandés o deportivo, dímelo."
+      + (ack ? "\n\n" + ack : "")
+      + (ask ? "\n\n¿Qué día te viene bien? Toca un botón o escríbelo con tu zona, por ejemplo \"mañana a las 18:00 cerca de Sol\". Si prefieres descontracturante, tailandés o deportivo, dímelo." : "")
       + tail;
   }
   return `Hi, this is Massage Club. We book you into professional massage studios in Madrid: ${areas}. A 60 min relaxing massage is ${price}. You pay the studio directly, no fee from us.`
     + (night ? "\nIt's too late to book for tonight, but I can line one up for tomorrow." : "")
-    + "\n\nWhich day works for you? Tap below, or write it with your area, like \"tomorrow 18:00 near Sol\". Deep tissue, Thai or sports are fine too, just say so."
+    + (ack ? "\n\n" + ack : "")
+    + (ask ? "\n\nWhich day works for you? Tap below, or write it with your area, like \"tomorrow 18:00 near Sol\". Deep tissue, Thai or sports are fine too, just say so." : "")
     + tail;
 }
 // v188: the ad's prefilled line is English whatever the person speaks, so it
@@ -625,6 +630,27 @@ function spanishName(raw: unknown): boolean {
   if (/[ñÑáíóúÁÍÓÚ]/.test(s)) return true;
   const toks = stripAcc(s).toLowerCase().split(/[^a-z]+/).filter(Boolean);
   return toks.some((t) => ES_GIVEN.has(t) || ES_SURNAME.has(t) || (t.length >= 5 && /[^aeiou]ez$/.test(t)));
+}
+// v191: the first message, with whatever the customer already told us read
+// back to them and used. Anything beyond the ad's own line is theirs.
+const AD_PREFIX_RE = /^hi,? i'?d like to book a massage\.? i saw you on (facebook|instagram)\s*\.?\s*/i;
+async function openWith(s: Session, from: string, L: string, hint: "" | "es" | "en" | "es_word", text: string, pre = ""): Promise<void> {
+  const own = String(text || "").replace(AD_PREFIX_RE, "").trim();
+  const got = own.split(/\s+/).filter(Boolean).length >= 2 ? await readerAssist(s, from, L, String(text || ""), null) : [];
+  const ack = got.length ? COPY[L].gotItSvc(understood(s, L, got)) : "";
+  const head = pre ? pre + "\n\n" : "";
+  if (got.length && s.data.day) {
+    await sendText(from, head + await firstLine(L, hint, ack, false));
+    await nextStep(s, from, L);
+    return;
+  }
+  await sendButtons(from, head + await firstLine(L, hint, ack), L === "en" && hint === "es_word" ? dayBtnsBoth() : dayBtns(L));
+}
+// The next question once something new is known: with day and time, straight
+// to the area or the studio options.
+async function nextStep(s: Session, from: string, L: string): Promise<void> {
+  if (s.data.service && s.data.day && s.data.time) { await afterTime(s, from, L); return; }
+  await continueFromKnown(s, from, L);
 }
 function adLeadLang(phone: string, waName: unknown): { L: "es" | "en"; hint: "" | "es" | "en" } {
   const d = digitsOf(phone);
@@ -932,15 +958,14 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
       await saveSession(s);
       await logEvent(from, "flow_started", { fromAd: true, oneQuestion: true, lang: knownLang, guessed: !!guess });
       await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-      const pre = firstAnswer(ft, knownLang);
-      await sendButtons(from, (pre ? pre + "\n\n" : "") + await firstLine(knownLang, guess ? guess.hint : ""), dayBtns(knownLang));
+      await openWith(s, from, knownLang, guess ? guess.hint : "", ft, firstAnswer(ft, knownLang));
       return;
     }
     s.data.service = "svc_relax"; s.data.defaultService = true; s.data.langUnset = true;
     s.step = "await_day"; await saveSession(s);
     await logEvent(from, "flow_started", { fromAd: true, langUnset: true, oneQuestion: true });
     await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-    await sendButtons(from, await firstLine("en", "es_word"), dayBtnsBoth());
+    await openWith(s, from, "en", "es_word", ft);
     return;
   }
   if (firstText && absorbSentence(s, firstText, L)) {
@@ -963,8 +988,7 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     s.data.lang = gLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day"; await saveSession(s);
     await logEvent(from, "flow_started", { oneQuestion: true, lang: gLang });
     await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-    const pre = firstAnswer(String(firstText || ""), gLang);
-    await sendButtons(from, (pre ? pre + "\n\n" : "") + await firstLine(gLang), dayBtns(gLang));
+    await openWith(s, from, gLang, "", String(firstText || ""), firstAnswer(String(firstText || ""), gLang));
     return;
   }
   // v72: one message, one question, no link. This used to send the booking link
@@ -2742,16 +2766,115 @@ async function readFor(s: Session, from: string, text: string, model: string): P
   const r = await readMessage({ key: await aiKey(), model, text, step: s.step, lastAsked: lastOut ? lastOut.body : "", known: knownSlots(s), history: hist, madridNow: madridNowLabel() });
   return { ...r, lastAsked: lastOut ? lastOut.body.slice(0, 200) : "" };
 }
+// v191: one reading per message. The shadow read starts as soon as the message
+// arrives; readerAssist below waits for that same reading instead of paying for
+// (and waiting on) a second call.
+const readings = new Map<string, Promise<Awaited<ReturnType<typeof readFor>> | null>>();
 function readerShadow(s: Session, from: string, text: string) {
   const stepBefore = s.step;
   const knownBefore = knownSlots(s);
-  const run = (async () => {
+  const key = `${from}|${text}`;
+  const reading = (async () => {
     const cfg = await readerConfig();
-    if (cfg.mode === "off") return;
+    if (cfg.mode === "off") return null;
     const r = await readFor(s, from, text, cfg.model);
     await logEvent(from, "reader_shadow", { text: text.slice(0, 400), step: stepBefore, known: knownBefore, last_asked: r.lastAsked, ms: r.ms, model: cfg.model, reading: r.reading, error: r.error || null, usage: r.usage || null });
-  })().catch((e) => console.log("[wa] reader shadow failed", String(e)));
-  try { (globalThis as any).EdgeRuntime?.waitUntil?.(run); } catch { /* runs anyway */ }
+    return r;
+  })().catch((e) => { console.log("[wa] reader shadow failed", String(e)); return null; });
+  readings.set(key, reading);
+  if (readings.size > 200) readings.delete(readings.keys().next().value as string);
+  try { (globalThis as any).EdgeRuntime?.waitUntil?.(reading); } catch { /* runs anyway */ }
+}
+
+// v191 (9 Oct, live): an Instagram lead wrote "1. Full body but with emphasis on
+// lower lattisimus pain. 2. any time 3. near Rios Rosas" under the ad's line
+// and was asked "Which day works for you?" as if they had said nothing. Every
+// regex missed all three; the reader had area and service with quotes.
+//
+// READER=assist (or on): wherever the regex parsers found nothing, the reader's
+// details are used. Only slots it can quote (validateReading already dropped
+// anything else), only empty slots unless the customer is correcting one, and
+// never on a message that declines, cancels, complains, asks for a person, a
+// home visit or something sexual: those keep their own handling.
+const READER_SVC: Record<string, string> = { relax: "svc_relax", deep: "svc_deep", thai: "svc_thai", sports: "svc_sports", couples: "svc_couples", hot_stone: "svc_stone", reflexology: "svc_reflex", shiatsu: "svc_shiatsu", balinese: "svc_bali", lymphatic: "svc_lymph" };
+const READER_HANDS_OFF = ["decline", "cancel", "complaint", "special_request", "home_visit", "wants_person", "unsupported_language"];
+const YMD_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
+function readerDay(v: string, L: string): { day: string; dayDate: string } | null {
+  const x = String(v || "").trim().toLowerCase();
+  const at = (plus: number, label?: string) => ({ day: label || longDate(L, plus), dayDate: longDate(L, plus) });
+  if (x === "today") return mcMadridHour() >= 19 ? null : at(0, L === "es" ? "Hoy" : "Today");
+  if (x === "tomorrow") return at(1, L === "es" ? "Mañana" : "Tomorrow");
+  const wd = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].indexOf(x);
+  if (wd >= 0) {
+    let plus = (wd - madridDow(0) + 7) % 7;
+    if (plus === 0 && mcMadridHour() >= 19) plus = 7;
+    return plus === 0 ? at(0, L === "es" ? "Hoy" : "Today") : plus === 1 ? at(1, L === "es" ? "Mañana" : "Tomorrow") : at(plus);
+  }
+  const m = x.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const [ty, tm, td] = YMD_FMT.format(new Date()).split("-").map((n) => parseInt(n, 10));
+    const plus = Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(ty, tm - 1, td)) / 86400e3);
+    if (plus < 0 || plus > 60) return null;
+    return plus === 0 ? readerDay("today", L) : plus === 1 ? at(1, L === "es" ? "Mañana" : "Tomorrow") : at(plus);
+  }
+  return null;
+}
+function applyReading(s: Session, r: Reading2, L: string, own: string | null): string[] {
+  const got: string[] = [];
+  const sl = r.slots || {};
+  const may = (k: string, cur: unknown) => k === own || !cur || r.changes_earlier_answer;
+  if (sl.day && may("day", s.data.day)) {
+    const d = readerDay(sl.day.value, L);
+    if (d) { s.data.day = d.day; s.data.dayDate = d.dayDate; got.push("day"); }
+  }
+  if (sl.time && may("time", s.data.time)) {
+    const v = String(sl.time.value || "").toLowerCase();
+    const band = v === "morning" ? "time_morning" : v === "afternoon" ? "time_afternoon" : v === "evening" ? "time_evening" : "";
+    const hm = v.match(/^(\d{1,2}):(\d{2})$/);
+    if (band) { s.data.timeBandId = band; s.data.timeBand = L === "es" ? HOURS[band].labelEs : HOURS[band].label; s.data.time = s.data.timeBand; got.push("time"); }
+    else if (hm && +hm[1] >= 8 && +hm[1] <= 21) { s.data.time = `${hm[1].padStart(2, "0")}:${hm[2]}`; s.data.timeBand = null; s.data.timeBandId = null; got.push("time"); }
+    else if (v === "earliest" && /^(today|hoy)$/i.test(String(s.data.day || ""))) { s.data.time = COPY[L].earliestToday; s.data.timeBand = null; s.data.timeBandId = null; got.push("time"); }
+  }
+  if (sl.area && may("area", s.data.area)) {
+    const v = String(sl.area.value || "").trim();
+    const a = detectAreaPlus(v) || detectAreaPlus(sl.area.quote) || (/^[\p{L}][\p{L} .'-]{1,39}$/u.test(v) && !/^(madrid|centro de madrid)$/i.test(v) ? v : "");
+    if (a) { s.data.area = a; s.data.areaAt = Date.now(); got.push("area"); }
+  }
+  if (sl.service && (may("service", s.data.service) || s.data.defaultService)) {
+    const id = READER_SVC[String(sl.service.value || "").toLowerCase()];
+    if (id && id !== s.data.service) { s.data.service = id; delete s.data.defaultService; got.push("service"); }
+  }
+  if (sl.duration_min && !s.data.duration && [30, 45, 60, 90, 120].includes(Number(sl.duration_min.value))) s.data.duration = Number(sl.duration_min.value);
+  if (sl.therapist_gender && !s.data.therapistGender && ["male", "female"].includes(String(sl.therapist_gender.value))) { s.data.therapistGender = String(sl.therapist_gender.value); got.push("therapist_gender"); }
+  return got;
+}
+async function readerAssist(s: Session, from: string, L: string, text: string, own: string | null): Promise<string[]> {
+  try {
+    const cfg = await readerConfig();
+    // Fake 3460000xxxx test numbers get assist while the rest is still in shadow.
+    const testNum = /^3460000\d{4}$/.test(digitsOf(from)) && cfg.mode === "shadow";
+    if (cfg.mode !== "assist" && cfg.mode !== "on" && !testNum) return [];
+    const key = `${from}|${text}`;
+    const r = await (readings.get(key) || readFor(s, from, text, cfg.model));
+    const rd = r?.reading;
+    if (!rd || rd.confidence < 0.6 || rd.intents.some((i) => READER_HANDS_OFF.includes(i))) return [];
+    // A question is answered by its own path (the agent), which keeps details too.
+    if (rd.question && rd.question !== "none") return [];
+    const got = applyReading(s, rd, L, own);
+    if (got.length) { await saveSession(s); await logEvent(from, "reader_assist", { step: s.step, got, text: text.slice(0, 200) }); }
+    return got;
+  } catch (e) { console.log("[wa] reader assist failed", String(e)); return []; }
+}
+// What we just understood, for "Got it, ...".
+function understood(s: Session, L: string, got: string[]): string {
+  const row = ALL_SERVICES.find((x) => x.id === s.data.service);
+  const parts: string[] = [];
+  if (got.includes("service") && row) parts.push(L === "es" ? String(row.tEs).toLowerCase() : String(row.tEn).toLowerCase());
+  if (got.includes("day")) parts.push(String(s.data.dayDate || s.data.day));
+  if (got.includes("time")) parts.push(String(s.data.time));
+  if (got.includes("area")) parts.push(L === "es" ? `cerca de ${s.data.area}` : `near ${s.data.area}`);
+  if (got.includes("therapist_gender")) parts.push(s.data.therapistGender === "male" ? (L === "es" ? "terapeuta hombre" : "male therapist") : (L === "es" ? "terapeuta mujer" : "female therapist"));
+  return parts.join(", ");
 }
 // v176 (5 Oct 19:34, live: Fermin from the ad wrote "No sé quién eres" and
 // "Dime quién eres" and got "Perdona, no te he entendido" twice).
@@ -5442,6 +5565,16 @@ const handleInner = async (req: Request) => {
           if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
         }
         else {
+          // v191: the reader first. "1. full body, lower back pain 2. any time
+          // 3. near Rios Rosas" has nothing a regex knows, and all of it counts.
+          const rgot = text ? await readerAssist(s, from, L, text, "day") : [];
+          if (rgot.length) {
+            await sendText(from, COPY[L].gotItSvc(understood(s, L, rgot)));
+            s.data.miss = 0;
+            if (s.data.day) await nextStep(s, from, L);
+            else { await saveSession(s); if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L); }
+            break;
+          }
           // v81: keep whatever they did tell us before repeating the question.
           const got = text ? absorbOffStep(s, text, L, "day") : [];
           if (got.length) {
@@ -5540,6 +5673,13 @@ const handleInner = async (req: Request) => {
             await saveSession(s);
             await logEvent(from, "offstep_absorbed", { at: "await_time", got });
             await sendText(from, COPY[L].gotItSvc([s.data.day, s.data.area].filter(Boolean).join(" · ")));
+          } else {
+            // v191: what no regex could place, the reader may.
+            const rgot = text ? await readerAssist(s, from, L, text, "time") : [];
+            if (rgot.length) {
+              await sendText(from, COPY[L].gotItSvc(understood(s, L, rgot)));
+              if (rgot.includes("time")) { await afterTime(s, from, L); break; }
+            }
           }
           await askTime(from, L);
         }
@@ -5632,7 +5772,12 @@ const handleInner = async (req: Request) => {
             }
             // v179: a bare yes/ok is not a neighbourhood ("near No", Vinzma29).
             if (!hit && /^(no|nope|nah|yes|yeah|yep|s[ií]|ok|okay|vale|claro)[\s.!]*$/i.test(text.trim())) { await sendText(from, COPY[L].areaAgain); break; }
-            area = hit || text.slice(0, 40);
+            // v191: "Vivo cerca se Moncloa" is Moncloa, not a 21-letter area.
+            if (!hit) {
+              const rgot = await readerAssist(s, from, L, text, "area");
+              if (rgot.includes("area")) area = String(s.data.area || "");
+            }
+            area = area || hit || text.slice(0, 40);
           }
         }
         if (area) {
