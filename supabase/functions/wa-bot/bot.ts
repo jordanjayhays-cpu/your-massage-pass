@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/3ae4c08/supabase/functions/wa-bot/copy.ts";
+import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/eaf1efa/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -922,7 +922,9 @@ async function greetedRecently(phone: string, windowMs = 60_000): Promise<boolea
 }
 
 async function greet(s: Session, from: string, firstText?: string, preAnswer = ""): Promise<void> {
-  if (await greetedRecently(from)) { await logEvent(from, "greet_suppressed", { firstText: String(firstText || "").slice(0, 80) }); return; }
+  // v195: 15 seconds, not 60. A "Hola" 30 seconds after the first message got
+  // no reply at all; the window only exists for WhatsApp's double delivery.
+  if (await greetedRecently(from, 15_000)) { await logEvent(from, "greet_suppressed", { firstText: String(firstText || "").slice(0, 80) }); return; }
   const last = await lastRequestFor(from);
   if (!s.data.lang && last && last.languages === "es") s.data.lang = "es";
   const L = s.data.lang === "es" ? "es" : "en";
@@ -2598,7 +2600,13 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
 // out only if it passes the house rules below; everything else, and every
 // "draft", goes to Jordan instead and the bot carries on as before. With no
 // AGENT_URL nothing changes.
-const FACTS_URL = "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/main/docs/agent/facts.md";
+// v195: facts.md comes from the same commit as this file, not from main. main
+// still said "40 to 85 EUR" after the branch moved to 50 to 85, so the agent
+// quoted the old range. When bot.ts is loaded from a pinned raw URL this
+// resolves to that commit's docs/agent/facts.md; run locally it falls back to main.
+const FACTS_URL = import.meta.url.startsWith("https://raw.githubusercontent.com/")
+  ? new URL("../../../docs/agent/facts.md", import.meta.url).href
+  : "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/main/docs/agent/facts.md";
 function agentReplyOk(reply: string): boolean {
   if (!reply || reply.length > 700) return false;
   if (/\u2014|\u2013/.test(reply)) return false;                                   // no em or en dashes
@@ -2855,6 +2863,14 @@ function applyReading(s: Session, r: Reading2, L: string, own: string | null): s
   if (sl.therapist_gender && !s.data.therapistGender && ["male", "female"].includes(String(sl.therapist_gender.value))) { s.data.therapistGender = String(sl.therapist_gender.value); got.push("therapist_gender"); }
   return got;
 }
+// v195: the reading of this message, waiting at most waitMs for the read the
+// shadow call already started. null when the reader is off or slow.
+async function readingFor(from: string, text: string, waitMs: number): Promise<Reading2 | null> {
+  const p = readings.get(`${from}|${text}`);
+  if (!p) return null;
+  const r = await Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), waitMs))]);
+  return r && (r as any).reading ? (r as any).reading as Reading2 : null;
+}
 async function readerAssist(s: Session, from: string, L: string, text: string, own: string | null): Promise<string[]> {
   try {
     const cfg = await readerConfig();
@@ -2890,7 +2906,10 @@ const WHO_RE = /(qui[eé]n(es)? (eres|sois|es esto|me escribe)|no s[eé] (qui[e�
 // "Home serves" (Vinzma29) slipped past HOME_VISIT_RE.
 const HOME_EXTRA_RE = /(\bhome\s*serv\w*|\bdomicilio\b|\ba\s+mi\s+casa\b|\b(to|at|in)\s+my\s+(home|house|hotel|flat|apartment|room)\b|\bhotel\s+massage\b)/i;
 // "couples means" / "deep tissue means" (Mehedi) were taken as a choice.
-const MEANING_RE = /\b(means?|meaning|what\s+(is|are)|what'?s|qu[eé]\s+es|qu[eé]\s+significa|significa|explain|expl[ií]ca(me)?)\b/i;
+// v195: "El tailandés como sería?" and "I want to know the massages description"
+// are questions about the massage, not a choice of it.
+const THERAPISTQ_RE = /(who\s+(gives?|does|will\s+(give|do)|is)\s+(the\s+)?(massage|masseuse|masseur|therapist)|who\s+is\s+the\s+mass|qui[eé]n\s+(me\s+)?(da|hace|dar[aá]|har[aá])\s+el\s+masaje|qui[eé]n\s+es\s+(el|la)\s+masajista|qui[eé]n\s+me\s+toca)/i;
+const MEANING_RE = /\b(means?|meaning|what\s+(is|are)|what'?s|qu[eé]\s+es|qu[eé]\s+significa|significa|explain|expl[ií]ca(me)?|c[oó]mo\s+(es|ser[ií]a|son|funciona)|how\s+is|what\s+.{0,20}\s+like|descripci[oó]n|description|describe)\b/i;
 // "Ya no gracias" (Adrian) and a "No" tap (Vinzma29) were read as answers.
 const NOTHANKS_RE = /^(no|nope|nah|ya no|no,? gracias|ya no,? gracias|no thanks?|no,? thank you|not now|ahora no|no me interesa|not interested|ya no hace falta|no hace falta|d[eé]jalo|olv[ií]dalo)[\s.!,]*(gracias|thanks|thank you|thx)?[\s.!]*$/i;
 // v183: "¡Gracias!", "Si, si" and acks with any emoji (skin tones too) count.
@@ -5060,11 +5079,37 @@ const handleInner = async (req: Request) => {
     // matches common words, so English only wins when there is no Spanish
     // signal at all. A brand new person with no language set gets English,
     // which is what the ads are written in.
-    if (text) {
+    // v195 (replay of 76 real chats): "Chamberí" on its own flipped an English
+    // conversation to Spanish (the accent counts as Spanish), and three English
+    // writers whose WhatsApp names looked Spanish got a Spanish first message
+    // and stayed in Spanish because "Relax is possible?" is not on the English
+    // word list. A place name alone never changes the language, and a language
+    // we only guessed is settled by the reader on the customer's first real
+    // sentence of two words or more.
+    const placeOnly = !!text && !!detectAreaPlus(text) && text.trim().split(/\s+/).length <= 3;
+    if (text && !replyId && s.data.langGuess && text.trim().split(/\s+/).length >= 2 && !AD_OPENER_RE.test(text.trim())) {
+      const rd = await readingFor(from, text, 4000);
+      const said = rd?.language;
+      if (said === "en" || said === "es") { s.data.lang = said; delete s.data.langGuess; await logEvent(from, "lang_settled", { lang: said, by: "reader" }); }
+      else if (strongSpanish(text)) { s.data.lang = "es"; delete s.data.langGuess; }
+    } else if (text && !placeOnly) {
       if (s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
       else if (s.data.lang === "es" && !strongSpanish(text) && looksEnglish(text) && !AD_OPENER_RE.test(text.trim())) s.data.lang = "en";
     }
     const L: string = s.data.lang === "es" ? "es" : "en";
+
+    // v195 (replay): "No entiendo" or "I don't speak English" after an English
+    // first message got the day question again, in Spanish but with no price
+    // and no word about who we are. Once per chat, the whole first message goes
+    // again in Spanish, with the day buttons.
+    if (text && !replyId && !s.data.esOpenerSent && ["await_day", "await_service", "await_day_text"].includes(s.step) && (LOST_ES_RE.test(text) || NO_ENGLISH_RE.test(text))) {
+      s.data.lang = "es"; s.data.esOpenerSent = true; delete s.data.langGuess; s.step = "await_day";
+      if (!s.data.service) { s.data.service = "svc_relax"; s.data.defaultService = true; }
+      await saveSession(s);
+      await logEvent(from, "spanish_opener_resent", { said: text.slice(0, 60) });
+      await sendButtons(from, await firstLine("es"), dayBtns("es"));
+      return new Response("OK", { status: 200 });
+    }
 
     // v128: a Flow came back complete. Every answer the six questions would
     // have collected, in one message, each in its own field. Anything the form
@@ -5285,6 +5330,19 @@ const handleInner = async (req: Request) => {
       await logEvent(from, "declined_flow", { said: text.slice(0, 60) });
       return new Response("OK", { status: 200 });
     }
+    // v195: "I don't need any for now" and "No I can't make it" are a no too.
+    // The word list only knows short ones; for anything with a negative in it
+    // the reader decides, and only a clear decline closes the flow.
+    if (text && !replyId && [...DECLINE_STEPS, "await_studio"].includes(s.step) && !NOTHANKS_RE.test(text.trim())
+        && /\b(no|not|don'?t|can'?t|cannot|won'?t|nunca|ya no|no puedo|no quiero|no necesito|no me|later|luego|otro d[ií]a|another time)\b/i.test(text)) {
+      const rd = await readingFor(from, text, 4000);
+      if (rd && rd.confidence >= 0.7 && rd.intents.includes("decline") && !rd.intents.includes("change_booking") && !(rd.slots && (rd.slots.day || rd.slots.time))) {
+        s.step = "done"; s.data.cheapPick = null; await saveSession(s);
+        await sendText(from, COPY[L].rebookLater);
+        await logEvent(from, "declined_flow", { said: text.slice(0, 60), by: "reader" });
+        return new Response("OK", { status: 200 });
+      }
+    }
     // v183 (review): not at start or menu (greet must run), only a real,
     // un-negated objection, and never over an answer to the question we asked:
     // "Retiro please" or "mañana a las 7" is handled by the step itself.
@@ -5356,11 +5414,18 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10))) {
+    if (text && buttonStep && !replyId && (THERAPISTQ_RE.test(text) || PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
       else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
+      // v195: "Who give the Massage ?" got a vague line from the agent. The
+      // answer we wrote for it also offers a man or a woman.
+      else if (THERAPISTQ_RE.test(text)) {
+        await sendText(from, COPY[L].therapistAnswer);
+        s.data.askedGender = new Date().toISOString(); await saveSession(s);
+        await logEvent(from, "therapist_asked", { said: String(text).slice(0, 80), at: s.step });
+      }
       // v131 (28 Sept 10:43, live): "what type of massage you offer ?" arrived
       // at the day question. This chain had no case for it, so a question we
       // answer from a constant fell through to the model, which stalled with
@@ -5598,7 +5663,7 @@ const handleInner = async (req: Request) => {
           else { s.step = "await_time"; await saveSession(s); await askTime(from, L); }
         }
         // v56: "deep tissue please" at the day question changes the assumed massage.
-        else if (text && detectService(text) && detectService(text) !== s.data.service) {
+        else if (text && detectService(text) && detectService(text) !== s.data.service && !text.includes("?") && !MEANING_RE.test(text)) {
           s.data.service = detectService(text); delete s.data.defaultService; await saveSession(s);
           await logEvent(from, "service_chosen", { service: s.data.service, typed: true });
           const row = ALL_SERVICES.find((x) => x.id === s.data.service);
@@ -5667,7 +5732,8 @@ const handleInner = async (req: Request) => {
               // both, and make the question something he can tap.
               // v188: from the third miss on, no "did not catch that" at all, in
               // any language: the day buttons below are the whole answer.
-              if (s.data.miss === 2) await sendText(from, "Perdona, no te he entendido. Puedo ayudarte en español o en inglés: toca un día abajo.\nSorry, I did not catch that. I can help in Spanish or English: tap a day below.");
+              // v195: and no "did not catch that" here either. Say what we can do.
+              if (s.data.miss === 2) await sendText(from, "Puedo ayudarte en español o en inglés. Toca un día abajo o escríbeme cuándo te viene bien, por ejemplo \"mañana a las 18:00\".\nI can help in Spanish or English. Tap a day below or write when suits you, like \"tomorrow 18:00\".");
               await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
             }
           }
