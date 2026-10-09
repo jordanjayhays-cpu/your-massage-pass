@@ -1030,6 +1030,7 @@ const SERIF = "Georgia,'Times New Roman',serif";
 const esc = (s: string) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 async function founderCard(subject: string, o: { badge: string; title: string; paras?: string[]; quote?: string; transcript?: string[]; waNum?: string; waLabel?: string; prefill?: string; to?: string[] }) {
+  if (aboutFakeCustomer(subject, o.waNum || "", o.title, o.paras || [], o.quote || "")) { console.log("[wa] founder card about a fake test number, not sent"); return; }
   const paras = (o.paras || []).filter(Boolean).map((p) =>
     `<p style="margin:10px 0 0;color:${C.ink};font-size:14px;line-height:1.6;">${esc(p)}</p>`).join("");
   const quote = o.quote
@@ -1696,7 +1697,13 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
 // offers went to die. Short, with a link to the chat.
+// v193: the fake 3460000xxxx test customers never alert Jordan, by phone or by
+// email, wherever the alert is raised. Before this only a few call sites knew,
+// so a replay of real conversations on test numbers would have paged him.
+const FAKE_NUM_RE = /(^|\D)3460000\d{4}(\D|$)/;
+const aboutFakeCustomer = (...parts: unknown[]) => parts.some((p) => { const t = typeof p === "string" ? p : JSON.stringify(p ?? ""); return FAKE_NUM_RE.test(t) || /\bprueba\b/i.test(t); });
 async function notifyJordanWa(text: string, aboutPhone?: string) {
+  if (aboutFakeCustomer(aboutPhone || "", text)) { console.log("[wa] alert about a fake test number, not sent"); return; }
   try {
     // v139: the phone alert links straight to the reply-as-bot page.
     const link = aboutPhone ? ` Reply as the bot: ${await replyUrl(aboutPhone)}` : "";
@@ -4507,7 +4514,7 @@ const handleInner = async (req: Request) => {
       const reqs = await rq.json().catch(() => []);
       for (const r of (Array.isArray(reqs) ? reqs : [])) {
         const ph = digitsOf(r.client_phone);
-        if (!ph || TEST_PHONES.includes(ph)) continue;
+        if (!ph || TEST_PHONES.includes(ph) || /^3460000\d{4}$/.test(ph)) continue;
         const who = `#${r.id} ${r.first_name || "+" + ph}`;
         // The first dry run flagged Fernando's #67, which he reconfirmed on
         // 9 September and then attended. A watchdog that reports settled
