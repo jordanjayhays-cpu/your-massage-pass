@@ -707,7 +707,7 @@ export const COPY: Record<string, any> = {
     // v79: "Who give the Massage ?" and "Provide the service male or female?".
     // True of every studio, needs no data we do not hold, and offers the thing
     // they are really asking for rather than just stating a policy.
-    therapistAnswer: "The massage is given by a qualified therapist at the studio. If you would prefer a man or a woman, just tell me and I will ask the studio before booking.",
+    therapistAnswer: "The massage is given by a professional therapist at the studio. If you would prefer a man or a woman, just tell me and I will ask the studio before booking.",
     // v77: the customer names a time at the offer step. Asim typed "7pm?" while
     // TornaSol and Calma had both already offered 19:00 on his request, and the
     // bot repeated the 18:00 he had just declined.
