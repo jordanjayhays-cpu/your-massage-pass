@@ -921,7 +921,7 @@ async function greetedRecently(phone: string, windowMs = 60_000): Promise<boolea
   return Array.isArray(rows) && rows.length > 0;
 }
 
-async function greet(s: Session, from: string, firstText?: string): Promise<void> {
+async function greet(s: Session, from: string, firstText?: string, preAnswer = ""): Promise<void> {
   if (await greetedRecently(from)) { await logEvent(from, "greet_suppressed", { firstText: String(firstText || "").slice(0, 80) }); return; }
   const last = await lastRequestFor(from);
   if (!s.data.lang && last && last.languages === "es") s.data.lang = "es";
@@ -958,7 +958,7 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
       await saveSession(s);
       await logEvent(from, "flow_started", { fromAd: true, oneQuestion: true, lang: knownLang, guessed: !!guess });
       await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-      await openWith(s, from, knownLang, guess ? guess.hint : "", ft, firstAnswer(ft, knownLang));
+      await openWith(s, from, knownLang, guess ? guess.hint : "", ft, preAnswer || firstAnswer(ft, knownLang));
       return;
     }
     s.data.service = "svc_relax"; s.data.defaultService = true; s.data.langUnset = true;
@@ -988,7 +988,7 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     s.data.lang = gLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day"; await saveSession(s);
     await logEvent(from, "flow_started", { oneQuestion: true, lang: gLang });
     await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-    await openWith(s, from, gLang, "", String(firstText || ""), firstAnswer(String(firstText || ""), gLang));
+    await openWith(s, from, gLang, "", String(firstText || ""), preAnswer || firstAnswer(String(firstText || ""), gLang));
     return;
   }
   // v72: one message, one question, no link. This used to send the booking link
@@ -5389,7 +5389,14 @@ const handleInner = async (req: Request) => {
       await helpInstead(s, from, L, text || "asked for a person");
       return new Response("OK", { status: 200 });
     }
+    // v194 (replay of 76 real chats, 9 Oct): a first message that is a question
+    // was answered and then sent the old "What type of massage would you like?"
+    // menu, skipping the first message with prices and areas. At "start" the
+    // answer now rides on top of the normal first message instead.
+    const openWithAnswer = async (pre: string) => { await greet(s, from, text, pre); await sendReservePage(s, from); };
     if (text && !freeTextStep && ZONEQ_RE.test(text)) {
+      // The first message lists the areas; say only what it does not.
+      if (s.step === "start") { await openWithAnswer(L === "es" ? "No somos un solo sitio: te reservamos en el centro que mejor te venga, y su nombre y dirección te llegan con la oferta." : "We're not one place: we book you into the studio that suits you best, and you get its name and address with the offer."); return new Response("OK", { status: 200 }); }
       await sendText(from, COPY[L].zoneAnswer);
       await continueFromKnown(s, from, L);
       return new Response("OK", { status: 200 });
@@ -5407,6 +5414,7 @@ const handleInner = async (req: Request) => {
     // "How does this work?" gets a real answer anywhere outside free-text steps,
     // then the flow continues where it left off.
     if (text && !freeTextStep && (HOWWORKS_RE.test(text) || WHO_RE.test(text))) {
+      if (s.step === "start") { await openWithAnswer(COPY[L].howItWorks); return new Response("OK", { status: 200 }); }
       await sendText(from, COPY[L].howItWorks);
       if (["start", "await_service", "returning_choice", "done"].includes(s.step)) {
         s.step = "await_service"; await saveSession(s);
@@ -5421,6 +5429,8 @@ const handleInner = async (req: Request) => {
     // sent the service menu with no price in it. A price question is answered
     // wherever it is asked, and only then do we carry on.
     if (text && !freeTextStep && PRICEQ_RE.test(text)) {
+      // The first message already carries the real price range.
+      if (s.step === "start") { await logEvent(from, "price_asked", { said: String(text).slice(0, 80), first: true }); await openWithAnswer(""); return new Response("OK", { status: 200 }); }
       await sendText(from, COPY[L].priceInfo);
       await logEvent(from, "price_asked", { said: String(text).slice(0, 80) });
       await continueFromKnown(s, from, L);
@@ -5430,6 +5440,7 @@ const handleInner = async (req: Request) => {
     // v129 (27 Sept 05:00, live): three tries in two languages for photos and
     // the bot had no answer for any of them.
     if (text && !freeTextStep && PHOTOQ_RE.test(text)) {
+      if (s.step === "start") { await logEvent(from, "photos_asked", { said: String(text).slice(0, 80), first: true }); await openWithAnswer(COPY[L].photoAnswer); return new Response("OK", { status: 200 }); }
       await sendText(from, COPY[L].photoAnswer);
       await logEvent(from, "photos_asked", { said: String(text).slice(0, 80) });
       await continueFromKnown(s, from, L);
