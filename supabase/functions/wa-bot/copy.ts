@@ -213,7 +213,7 @@ export function strongSpanish(t: string): boolean {
   const words = ["hola", "buenas", "quiero", "masaje", "reservar", "cuanto", "cuánto", "precio", "gracias", "por", "favor", "mañana", "hoy", "para", "una", "cita", "hora", "tarde", "noche", "zona", "donde", "dónde"];
   // v48: the massage words themselves are Spanish too. "Relajante de hora y media"
   // (6 Sept, 02:54) scored as English and got the English day question.
-  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera", "donde", "dónde", "direccion", "dirección", "fotos", "foto", "imagenes", "imágenes", "galeria", "galería", "tienes", "tiene", "valor", "coste", "muestrame", "muéstrame", "ensename", "enséñame"];
+  const strong = ["hola", "buenas", "quiero", "masaje", "masajes", "reservar", "reserva", "precio", "gracias", "español", "espanol", "castellano", "cuánto", "cuanto", "cuándo", "mañana", "hoy", "quisiera", "necesito", "busco", "ofrecen", "tenéis", "teneis", "hacéis", "haceis", "relajante", "relajación", "relajacion", "descontracturante", "tailandés", "tailandes", "deportivo", "hora", "minutos", "disponible", "disponibilidad", "entiendo", "entiendes", "entiende", "entender", "hablo", "hablas", "habla", "perdona", "perdon", "perdón", "ayuda", "ayudarme", "dime", "digame", "dígame", "sabes", "podrias", "podrías", "puedes", "informacion", "información", "informacion?", "quesiera", "donde", "dónde", "direccion", "dirección", "fotos", "foto", "imagenes", "imágenes", "galeria", "galería", "tienes", "tiene", "valor", "coste", "muestrame", "muéstrame", "ensename", "enséñame", "quien", "quién", "eres", "sois"];
   const toks = s.split(/[^a-záéíóúñü]+/).filter(Boolean);
   const found = new Set<string>();
   for (const w of toks) if (words.includes(w)) found.add(w);
@@ -670,7 +670,7 @@ export const COPY: Record<string, any> = {
     noHomeVisit: "We only book massages in person, at professional studios. I can find you one close by. Which part of Madrid are you in? You can also share your location.",
     dayUnsure: "No problem, that's what we're here for. We'll match you with the right massage and studio. Which day suits you?",
     dayBtns: [{ id: "day_today", title: "Today" }, { id: "day_tomorrow", title: "Tomorrow" }, { id: "day_other", title: "Another day" }],
-    dayAsk: "Which day? Just type it, for example Saturday or 3 September.",
+    dayAsk: "Which day? Just type it, for example Saturday or the 20th.",
     // v81b: exact times are invited here rather than hidden behind a fourth
     // list row. Anyone who needs 20:00 says so and gets 20:00; everyone else
     // gives a window the studio can actually fill from its own gaps.
@@ -740,7 +740,7 @@ export const COPY: Record<string, any> = {
       + MAIN_SERVICES.filter((x) => x.id !== "svc_unsure").map((x) => "\u00b7 " + x.tEn).join("\n")
       + "\n\nAlso available: " + MORE_SERVICES.map((x) => x.tEn).join(", ")
       + ".\n\nWhich one would you like? If you are not sure, I can help you pick.",
-    howItWorks: "Happy to explain! It is simple:\n\n1. Tell us what massage you would like and when\n2. We confirm the time and price with one of Madrid's best studios for you, everything in English\n3. You just show up and pay the studio directly. No fee from us, and your time is only booked once the studio confirms.\n\nAll our studios with photos and prices: book.massageclub.io - but you're very welcome to keep everything right here in the chat, we handle it for you.",
+    howItWorks: "This is Massage Club's booking assistant. You tell me the day and your area, I ask several professional studios at once and send you their times and prices here, and you tap one to book. You pay the studio directly, no fee from us, no app or login.\n\nAll our studios with photos and prices: book.massageclub.io",
     human: `No problem. A Massage Club representative will message you personally in a few minutes from our main number ${JORDAN_MAIN_NUMBER}. You can also just reply here, we see everything.`,
     menuTitle: "What would you like to do?",
     menuBtn: "Open menu",
@@ -761,7 +761,7 @@ export const COPY: Record<string, any> = {
       `Done, ${n}. ${sN}, ${w}, ${st}.\n\nI'm asking the studios right now and I'll write here the moment one confirms, usually within the hour when they're open. If nobody can do that time, I'll suggest another. You pay at the studio, no fee.`,
     studioConfirmed: (n: string, studio: string, svcN: string, when: string) =>
       `Good news ${n}! *${studio}* confirmed your ${svcN} for *${when}*.\n\nYou pay the studio directly. Enjoy!\n\nMassage Club · book.massageclub.io`,
-    priceInfo: "Good question. At our studios 60 minutes is usually between 40 and 85 EUR, and 90 minutes between 60 and 100 EUR, depending on the studio and the type of massage. We always send you the exact price before you confirm, and you pay the studio directly. No fee from us.",
+    priceInfo: "A 60 min relaxing massage is usually 50 to 85 EUR at the studio's listed price, depending on the studio and the type of massage; 90 min costs more. You get the exact price with the offer before you confirm, and you pay the studio directly. No fee from us.",
     ackReply: "🙌 We'll update you here as soon as the studio replies.",
     cardIntro: (url: string) => `Massage Club here. Book in three taps, no login, and watch the studios reply live:\n${url}\n\nOr just tell me what you would like and I will handle it right here.`,
     // v119 (Jordan, 22 Sept): "you must be positive the clients want to book a
@@ -799,7 +799,7 @@ export const COPY: Record<string, any> = {
     // v87: the line nobody should ever need. It only goes out when a branch
     // answered nothing at all, which is a bug, so it stays vague on purpose
     // rather than guessing at what they asked. Jordan is told every time.
-    fallbackAck: "Got that, thank you. Let me look into it and I will come straight back to you.",
+    fallbackAck: "Got it, thank you. I have noted it and the reply will come here.",
     reviewAsk: (studio: string, link: string) =>
       `How was ${studio || "it"}? Rate it here, takes 10 seconds:\n${link}`,
     // v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
@@ -848,13 +848,13 @@ export const COPY: Record<string, any> = {
     // for. Before this, an unanswerable question fell through to the service
     // menu: Fernando asked which metro and Asim asked whether a man or a woman
     // does the treatment, and both got "which massage would you like?".
-    willFindOut: "Good question. I would rather check than guess, so I am finding out for you now and I will come straight back here with the answer.",
-    noHuman: "I can sort this out right here. Tell me the massage you would like, the day, and the part of Madrid, in one message if you like. 60 minutes is 40 to 85 EUR depending on the studio, paid directly there, no fee from us.",
+    willFindOut: "Good question. I do not have that detail to hand. I have noted it and the answer will come here.",
+    noHuman: "I can sort this out right here. Tell me the massage you would like, the day, and the part of Madrid, in one message if you like. 60 minutes is usually 50 to 85 EUR depending on the studio, paid directly there, no fee from us.",
     // v129: an honest answer. We do not hold photos of every studio here in the
     // chat, but the site has the studio pages, and the offer we send names the
     // studio and its address so it can be looked up.
     photoAnswer: "You can see the studios, with photos and prices, at book.massageclub.io. When I have a studio for your day and time I send you its name and address, so you can look it up before you say yes.",
-    zoneAnswer: "We are not a single studio. We book you into professional studios all over Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña and more) and you pick the area that suits you.",
+    zoneAnswer: "We are not one place: we book you into professional studios across Madrid (Salamanca, Chamberí, Chamartín, Chueca, Centro and more). Tell me your area and I will find the nearest one. You get its name and address with the offer.",
   },
   es: {
     intro: "¡Hola! Somos Massage Club, te ayudamos a encontrar el mejor masaje de Madrid.\n\n¿Qué tipo de masaje quieres?",
@@ -869,7 +869,7 @@ export const COPY: Record<string, any> = {
     noHomeVisit: "Solo reservamos masajes presenciales, en centros profesionales. Te busco uno cerca. ¿En qué zona de Madrid estás? También puedes compartir tu ubicación.",
     dayUnsure: "Sin problema, para eso estamos. Te buscamos el masaje y el centro perfectos. ¿Qué día te viene bien?",
     dayBtns: [{ id: "day_today", title: "Hoy" }, { id: "day_tomorrow", title: "Mañana" }, { id: "day_other", title: "Otro día" }],
-    dayAsk: "¿Qué día? Escríbelo, por ejemplo sábado o 3 de septiembre.",
+    dayAsk: "¿Qué día? Escríbelo, por ejemplo sábado o el día 20.",
     time: "¿Qué hora te viene mejor? Toca una franja, o escribe una hora exacta como las 20:00.",
     timeBtn: "Elegir franja",
     timeCustomRow: { title: "Otra hora", desc: "escribe tu hora exacta" },
@@ -923,7 +923,7 @@ export const COPY: Record<string, any> = {
       + MAIN_SERVICES.filter((x) => x.id !== "svc_unsure").map((x) => "\u00b7 " + x.tEs).join("\n")
       + "\n\nTambién: " + MORE_SERVICES.map((x) => x.tEs).join(", ")
       + ".\n\n¿Cuál te apetece? Si no lo tienes claro, te ayudo a elegir.",
-    howItWorks: "¡Te lo explicamos! Es muy fácil:\n\n1. Dinos qué masaje quieres y cuándo\n2. Confirmamos hora y precio con uno de los mejores centros de Madrid por ti\n3. Solo tienes que ir y pagar directamente en el centro. Sin comisión, y tu hora queda reservada cuando el centro confirma.\n\nTodos nuestros centros con fotos y precios: book.massageclub.io - aunque puedes seguirlo todo por aquí mismo, nosotros nos encargamos.",
+    howItWorks: "Soy el asistente de reservas de Massage Club. Me dices el día y tu zona, pregunto a varios centros profesionales a la vez, te mando aquí sus horas y precios, y tocas uno para reservar. Pagas directamente en el centro, sin comisión, sin app ni registro.\n\nTodos nuestros centros con fotos y precios: book.massageclub.io",
     human: `Sin problema. Un representante de Massage Club te escribe personalmente en unos minutos desde nuestro número principal ${JORDAN_MAIN_NUMBER}. También puedes responder aquí, lo vemos todo.`,
     menuTitle: "¿Qué quieres hacer?",
     menuBtn: "Abrir menú",
@@ -944,7 +944,7 @@ export const COPY: Record<string, any> = {
       `Listo, ${n}. ${sN}, ${w}, ${st}.\n\nEstoy preguntando a los centros ahora mismo y te escribo aquí en cuanto uno confirme, normalmente en menos de una hora si están abiertos. Si ninguno puede a esa hora, te propongo otra. Pagas en el centro, sin comisión.`,
     studioConfirmed: (n: string, studio: string, svcN: string, when: string) =>
       `¡Buenas noticias ${n}! *${studio}* ha confirmado tu ${svcN} para *${when}*.\n\nPagas directamente en el centro. ¡Disfruta!\n\nMassage Club · book.massageclub.io`,
-    priceInfo: "Buena pregunta. En nuestros centros 60 minutos suele costar entre 40 y 85 EUR, y 90 minutos entre 60 y 100 EUR, según el centro y el tipo de masaje. Te enviamos el precio exacto antes de confirmar y pagas directamente en el centro. Sin comisión.",
+    priceInfo: "Un masaje relajante de 60 min suele costar entre 50 y 85 EUR según la tarifa del centro y el tipo de masaje; 90 min cuesta más. Te mandamos el precio exacto con la oferta antes de confirmar y pagas directamente en el centro. Sin comisión.",
     ackReply: "🙌 Te avisamos por aquí en cuanto responda el centro.",
     cardIntro: (url: string) => `Somos Massage Club. Reserva en tres toques, sin registro, y mira cómo responden los centros en directo:\n${url}\n\nO dime qué quieres y lo gestiono por aquí mismo.`,
     // v119: ver la nota en la version inglesa.
@@ -958,7 +958,7 @@ export const COPY: Record<string, any> = {
     // v129: ver la nota en la versión inglesa.
     offer: (n: string, studio: string, where: string, svcN: string, time: string, day: string, asked: string, addr = "") =>
       `Novedades sobre tu ${svcN}${n ? ", " + n : ""}:\n\n${studio}${where ? " (" + where + ")" : ""} puede atenderte a las ${time} ${day}.${addr ? "\n" + addr : ""}\n\n¿Te va bien?`,
-    fallbackAck: "Recibido, gracias. Lo miro y te digo algo enseguida.",
+    fallbackAck: "Recibido, gracias. Lo he anotado y te contestamos por aquí.",
     reviewAsk: (studio: string, link: string) =>
       `¿Qué tal ${studio || "ha ido"}? Valóralo aquí, son 10 segundos:\n${link}`,
     priceLine: (n: number, mins: number, member: boolean) =>
@@ -993,10 +993,10 @@ export const COPY: Record<string, any> = {
     missedYou: (studio: string) => `Sentimos no haberte visto hoy en ${studio || "el centro"}. Si surgió algo, responde aquí y te buscamos otra hora.`,
     studioReaching: (studio: string, time: string, text: string) => `${studio} intenta contactarte sobre tu cita de las ${time}${text ? ': "' + text.slice(0, 120) + '"' : ""}. ¿Estás de camino? Responde aquí y se lo decimos.`,
     reconfirmRemind: (studio: string, time: string) => `Una cosa rápida: ¿sigues contando con ir a ${studio} a las ${time}? Responde *sí*, o dinos qué cambiar.`,
-    willFindOut: "Buena pregunta. Prefiero confirmarlo antes que darte un dato a medias, así que lo consulto ahora mismo y te digo aquí.",
-    noHuman: "Te lo resuelvo aquí mismo. Dime qué masaje quieres, qué día y en qué zona de Madrid, en un solo mensaje si quieres. 60 minutos cuesta entre 40 y 85 EUR según el centro, se paga allí directamente, sin comisión.",
+    willFindOut: "Buena pregunta. No tengo ese dato a mano. Lo he anotado y la respuesta te llega por aquí.",
+    noHuman: "Te lo resuelvo aquí mismo. Dime qué masaje quieres, qué día y en qué zona de Madrid, en un solo mensaje si quieres. 60 minutos suele costar entre 50 y 85 EUR según el centro, se paga allí directamente, sin comisión.",
     photoAnswer: "Puedes ver los centros, con fotos y precios, en book.massageclub.io. Cuando tenga un centro para tu día y tu hora te envío el nombre y la dirección, así lo puedes mirar antes de decir que sí.",
-    zoneAnswer: "No somos un solo centro. Te reservamos en centros profesionales de todo Madrid (Centro, Salamanca, Chamberí, Retiro, Chamartín, Malasaña y más) y tú eliges la zona que te venga bien.",
+    zoneAnswer: "No somos un solo sitio: te reservamos cita en centros profesionales de todo Madrid (Salamanca, Chamberí, Chamartín, Chueca, Centro y más). Dime tu zona y te busco el más cercano. El nombre y la dirección del centro te llegan con la oferta.",
   },
 };
 export const SERVICE_HINTS: Array<[RegExp, string]> = [
