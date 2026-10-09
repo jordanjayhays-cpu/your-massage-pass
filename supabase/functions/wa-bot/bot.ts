@@ -4252,6 +4252,36 @@ const handleInner = async (req: Request) => {
       const reminded = await remindConfirmLater();
       return new Response(JSON.stringify({ ok: true, settled, reviewed, reminded }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    // v192 (9 Oct, live): William made request #110 on the website, then wrote
+    // here "Can you send me the offers here?" and was told "I'll message you
+    // here as soon as one says yes". The Nook said yes from its offer email two
+    // minutes later. studio-times emailed him (no address) and this chat heard
+    // nothing. studio-times now hands every email-tap confirmation to this
+    // endpoint: the customer is told in their open chat, with the address, the
+    // booking row is written and the other studios are stood down. The email
+    // already went from studio-times, so this is WhatsApp only, once.
+    if (payload?.ops === "email_confirmed") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const id = Number(payload.request_id || 0);
+      const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}&select=*`, { headers: H() });
+      const req = (await rr.json().catch(() => []))[0];
+      const out = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (!req || req.stage !== "confirmed" || !req.partner_id) return out({ ok: false, reason: "not a confirmed request with a studio" });
+      const seen = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=eq.email_confirm_relayed&meta->>request_id=eq.${id}&select=id&limit=1`, { headers: H() });
+      if ((await seen.json().catch(() => [])).length) return out({ ok: true, already: true });
+      await awardRequest(id, req.partner_id);
+      await ensureBooking(id);
+      const L = req.languages === "es" ? "es" : "en";
+      const pc = await partnerCard(req.partner_id);
+      const day = String(req.confirmed_day || req.day1 || ""), time = String(req.confirmed_time || req.time1 || "");
+      const when = time && day.includes(time) ? day : [day, time].filter(Boolean).join(L === "es" ? " a las " : " at ");
+      const text = COPY[L].studioConfirmed(String(req.first_name || "").split(" ")[0], req.studio_name || pc.business_name || (L === "es" ? "el centro" : "the studio"), trSvcLow(req.service_name || "massage", L), when) + (pc.address ? `\n📍 ${pc.address}` : "");
+      const phone = digitsOf(String(req.client_phone || ""));
+      let sent = false;
+      if (phone && await waWindowOpen(phone)) sent = await sendText(phone, text);
+      await logEvent(phone || "system", "email_confirm_relayed", { request_id: String(id), sent, studio: req.studio_name });
+      return out({ ok: true, sent });
+    }
     // v66: read a message and return the reading, sending nothing. For checking
     // the interpreter against real sentences without a customer in the loop.
     if (payload?.ops === "interpret") {
