@@ -26,8 +26,8 @@ Jordan, never as a guess.
 
 ## Prices
 
-- 60 minutes is usually 40 to 85 EUR; 90 minutes 60 to 100 EUR, depending on
-  the studio and the massage.
+- A 60 minute relaxing massage is usually 50 to 85 EUR at the studio's listed
+  price; 90 minutes costs more. It depends on the studio and the massage.
 - The exact price comes with the studio's offer, before anything is booked.
 - Never mention, promise or invent a discount, and never say "we don't offer
   discounts" either. Studios set their own prices; the exact price comes with

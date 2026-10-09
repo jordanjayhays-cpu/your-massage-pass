@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/c7b225f/supabase/functions/wa-bot/copy.ts";
+import { genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/3ae4c08/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -386,6 +386,18 @@ const dayBtns = (L: string) => {
   ];
   return mcMadridHour() >= 19 ? btns.slice(1) : btns;
 };
+// v188: the typed-day prompt said "for example 3 September" until 9 Oct, a
+// date already gone, in 16 conversations. The example is built from today.
+const DM_ES = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", day: "numeric", month: "long" });
+const DM_EN = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", day: "numeric", month: "long" });
+const WD_ES = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long" });
+const WD_EN = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long" });
+const dayAskText = (L: string) => {
+  const wd = new Date(Date.now() + 2 * 86400e3), dm = new Date(Date.now() + 5 * 86400e3);
+  return L === "es"
+    ? `¿Qué día? Escríbelo, por ejemplo ${WD_ES.format(wd)} o ${DM_ES.format(dm)}.`
+    : `Which day? Just type it, for example ${WD_EN.format(wd)} or ${DM_EN.format(dm)}.`;
+};
 // v60: an email we sent ("your massage is still open") carries a code. When
 // they tap through, WhatsApp opens with that code already typed, so the very
 // first thing the bot sees identifies their request. Pick the thread back up
@@ -503,8 +515,8 @@ async function resumeFromCode(s: Session, from: string, code: string): Promise<b
 
 // v56: the one-question opener for an ad lead whose language is already clear.
 const FIRST_LINE: Record<string, string> = {
-  en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 45 to 60 EUR. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
-  es: "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. Un masaje relajante de 60 min suele costar entre 45 y 60 EUR. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien? Si prefieres descontracturante, tailandés o deportivo, dímelo.",
+  en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 50 to 85 EUR, the studio's listed price. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
+  es: "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. Un masaje relajante de 60 min suele costar entre 50 y 85 EUR, según la tarifa del centro. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien? Si prefieres descontracturante, tailandés o deportivo, dímelo.",
 };
 // v75 (Jordan, 9 Sept): when the first message does not tell us the language,
 // open in ENGLISH and let anyone who wants Spanish say so. v72 sent both
@@ -512,9 +524,114 @@ const FIRST_LINE: Record<string, string> = {
 // slash through every button title without asking anything extra. The language
 // question itself stays gone: their own next words still settle it, so nobody
 // is stuck in English by writing back in Spanish.
-const FIRST_LINE_BOTH =
-  "Hi, this is Massage Club. We find you a slot at a professional studio near you. A 60 min relaxing massage is usually 45 to 60 EUR. You pay the studio, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.\n\n¿Prefieres español? Escribe *español* y seguimos en español.";
+// v188: the English opener plus this line is now firstLine("en", "es_word").
 const dayBtnsBoth = () => dayBtns("en");
+
+// v188 (9 Oct, from reading all 139 conversations): 68 of 114 real prospects
+// stopped at the first message and 33 never answered it. Price, "where are
+// you" and "who are you" were the three most asked questions. The first
+// message now quotes the real listed 60 min relaxing prices and the areas of
+// the studios that actually answer us (opener_examples: said yes at least
+// once, open on the day), instead of a fixed "45 to 60 EUR" that most offers
+// then broke. Studio names still come only with the offer (facts.md rule 12).
+// After 19:00, when the Today button is gone, it says so plainly. When the
+// studios cannot be read, the old line goes out unchanged.
+type OpenerEx = { area: string; price: number; opening_hours: string; yeses: number };
+let openerCache: { at: number; rows: OpenerEx[] } | null = null;
+const OH_DAY: Record<string, number> = { sun: 0, dom: 0, mon: 1, lun: 1, tue: 2, mar: 2, wed: 3, mie: 3, thu: 4, jue: 4, fri: 5, vie: 5, sat: 6, sab: 6 };
+// Same reading of partners.opening_hours as dispatch-studios: null means we
+// cannot tell, and unknown hours never rule a studio out.
+function openDays(text: unknown): Set<number> | null {
+  const raw = stripAcc(String(text || "").toLowerCase()).trim();
+  if (!raw) return null;
+  const out = new Set<number>();
+  for (const seg0 of raw.split(/[,;]|\s+y\s+|\s+and\s+/)) {
+    const seg = seg0.trim();
+    if (!seg) continue;
+    const m = seg.match(/^(.*?)\s*(\d{1,2}(?::\d{2})?)\s*[-–a]\s*(\d{1,2}(?::\d{2})?)\s*h?$/);
+    if (!m) return null;
+    const dayPart = m[1].trim();
+    if (dayPart === "" || /^(daily|todos los dias|every day|diario|cada dia)$/.test(dayPart)) { for (let d = 0; d < 7; d++) out.add(d); continue; }
+    for (const tok of dayPart.split(/\s*\/\s*|\s+/)) {
+      const range = tok.match(/^([a-z]{3})[a-z]*\s*[-–]\s*([a-z]{3})[a-z]*$/);
+      if (range) {
+        const a = OH_DAY[range[1]], b = OH_DAY[range[2]];
+        if (a === undefined || b === undefined) return null;
+        for (let d = a; ; d = (d + 1) % 7) { out.add(d); if (d === b) break; }
+      } else {
+        const one = tok.match(/^([a-z]{3})[a-z]*\.?$/);
+        if (!one || OH_DAY[one[1]] === undefined) return null;
+        out.add(OH_DAY[one[1]]);
+      }
+    }
+  }
+  return out.size ? out : null;
+}
+const DOW_FMT = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Madrid", weekday: "short" });
+const madridDow = (plusDays: number) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(DOW_FMT.format(new Date(Date.now() + plusDays * 86400e3)));
+async function openerFacts(plusDays: number): Promise<{ lo: number; hi: number; areas: string[] } | null> {
+  try {
+    if (!openerCache || Date.now() - openerCache.at > 10 * 60e3) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/opener_examples`, { method: "POST", headers: H(), body: JSON.stringify({ p_limit: 40 }) });
+      const rows = await r.json().catch(() => []);
+      openerCache = { at: Date.now(), rows: Array.isArray(rows) ? rows.map((x: any) => ({ area: String(x.area || ""), price: Number(x.price), opening_hours: String(x.opening_hours || ""), yeses: Number(x.yeses) || 0 })).filter((x: OpenerEx) => x.area && x.price > 0) : [] };
+    }
+    const dow = madridDow(plusDays);
+    const live = openerCache.rows.filter((x) => { if (x.yeses <= 0) return false; const d = openDays(x.opening_hours); return !d || d.has(dow); });
+    if (live.length < 2) return null;
+    const prices = live.map((x) => x.price);
+    const areas: string[] = [];
+    for (const x of [...live].sort((a, b) => b.yeses - a.yeses)) if (!areas.some((y) => stripAcc(y).toLowerCase() === stripAcc(x.area).toLowerCase())) areas.push(x.area);
+    return { lo: Math.min(...prices), hi: Math.max(...prices), areas: areas.slice(0, 4) };
+  } catch (_e) { return null; }
+}
+// hint: "es" adds the Spanish switch line under an English opener, "en" the
+// English one under a Spanish opener, "es_word" the original "write español".
+async function firstLine(L: string, hint: "" | "es" | "en" | "es_word" = ""): Promise<string> {
+  const night = mcMadridHour() >= 19;
+  const f = await openerFacts(night ? 1 : 0);
+  const tail = hint === "es" ? "\n\n¿Prefieres español? Escríbeme en español."
+    : hint === "en" ? "\n\nPrefer English? Just write in English."
+    : hint === "es_word" ? "\n\n¿Prefieres español? Escribe *español* y seguimos en español."
+    : "";
+  if (!f) return (L === "es" ? FIRST_LINE.es : FIRST_LINE.en) + tail;
+  const es = L === "es";
+  const areas = f.areas.join(", ") + (es ? " y más" : " and more");
+  const price = f.hi > f.lo
+    ? (es ? `desde ${euro(f.lo)}, normalmente entre ${f.lo} y ${euro(f.hi)} según la tarifa del centro` : `from ${euro(f.lo)}, usually ${f.lo} to ${euro(f.hi)} at the studio's listed price`)
+    : (es ? `unos ${euro(f.lo)} según la tarifa del centro` : `about ${euro(f.lo)} at the studio's listed price`);
+  if (es) {
+    return `Hola, somos Massage Club. Te reservamos cita en centros de masaje profesionales de Madrid: ${areas}. Un masaje relajante de 60 min cuesta ${price}. Pagas directamente en el centro, sin comisión.`
+      + (night ? "\nPara esta noche ya es tarde, pero te busco hueco para mañana." : "")
+      + "\n\n¿Qué día te viene bien? Toca un botón o escríbelo con tu zona, por ejemplo \"mañana a las 18:00 cerca de Sol\". Si prefieres descontracturante, tailandés o deportivo, dímelo."
+      + tail;
+  }
+  return `Hi, this is Massage Club. We book you into professional massage studios in Madrid: ${areas}. A 60 min relaxing massage is ${price}. You pay the studio directly, no fee from us.`
+    + (night ? "\nIt's too late to book for tonight, but I can line one up for tomorrow." : "")
+    + "\n\nWhich day works for you? Tap below, or write it with your area, like \"tomorrow 18:00 near Sol\". Deep tissue, Thai or sports are fine too, just say so."
+    + tail;
+}
+// v188: the ad's prefilled line is English whatever the person speaks, so it
+// says nothing about them. 33 of 46 Spanish conversations got the wrong
+// language, 28 of them at this first message, and Spanish speakers who did get
+// through booked as often as English ones. A Spanish-speaking country code, or
+// a Spain number with a clearly Spanish name, opens in Spanish with one line to
+// switch; any other Spain number opens in English with one line to switch.
+const ES_CC_RE = /^(5[1234678]|59[1358]|50[2-7]|1(809|829|849))/;
+const ES_GIVEN = new Set("jose juan antonio manuel francisco javier jesus miguel alejandro rafael pedro pablo sergio fernando jorge luis alberto alvaro diego raul enrique ramon vicente ivan ruben andres joaquin santiago eduardo roberto jaime ignacio marcos alfonso guillermo gonzalo angel emilio julian salvador agustin tomas cristian mateo nicolas rodrigo felipe ricardo arturo ernesto gustavo hector cesar mariano lorenzo eugenio borja inigo inaki unai aitor jordi xavier oriol paco pepe manolo nacho chema juanan juanma quique kike txema curro fermin efrain basilio gregorio carlos maria carmen ana isabel lucia cristina marta pilar raquel rosa silvia patricia beatriz nuria rocio teresa mercedes montserrat montse sonia monica ines lorena noelia veronica belen susana alicia esther marina angela yolanda encarnacion concepcion dolores josefa amparo inmaculada angeles angelines consuelo rosario soledad remedios milagros begona ainhoa leire maite almudena macarena paloma lourdes nerea ainara conchi merche puri luisa juana manuela francisca antonia lola paqui ximena guadalupe".split(" "));
+const ES_SURNAME = new Set("garcia munoz moreno romero navarro torres ruiz ortiz molina delgado castro ortega rubio morales serrano molinero iglesias medina garrido cortes castillo lozano guerrero cano prieto cruz calvo gallego vidal herrera marin pena flores cabrera campos vega fuentes carrasco diez caballero reyes nieto aguilar pascual santana herrero montero hidalgo ibanez ferrer duran mora vargas arias carmona crespo pastor soto velasco moya soler parra esteban bravo gallardo rojas manzano burgos arjona balaguer ibarra valenciano garzon lazcano llanos".split(" "));
+function spanishName(raw: unknown): boolean {
+  const s = String(raw || "");
+  if (/[ñÑáíóúÁÍÓÚ]/.test(s)) return true;
+  const toks = stripAcc(s).toLowerCase().split(/[^a-z]+/).filter(Boolean);
+  return toks.some((t) => ES_GIVEN.has(t) || ES_SURNAME.has(t) || (t.length >= 5 && /[^aeiou]ez$/.test(t)));
+}
+function adLeadLang(phone: string, waName: unknown): { L: "es" | "en"; hint: "" | "es" | "en" } {
+  const d = digitsOf(phone);
+  if (ES_CC_RE.test(d)) return { L: "es", hint: "en" };
+  if (d.startsWith("34")) return spanishName(waName) ? { L: "es", hint: "en" } : { L: "en", hint: "es" };
+  return { L: "en", hint: "" };
+}
 const looksEnglish = (t: string) => /\b(hi|hello|hey|i|i'd|i'm|id|im|like|book|booking|want|need|please|massage|can|could|you|tomorrow|today|tonight|near|the)\b/i.test(String(t || "")) && !/[¿¡ñ]|\b(hola|quiero|masaje|reservar|gracias)\b/i.test(String(t || ""));
 const askDay = (to: string, L: string) => sendButtons(to, COPY[L].day, dayBtns(L));
 const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsure, dayBtns(L));
@@ -598,13 +715,13 @@ async function customerPrefill(phone: string): Promise<string> {
   const sess = await getSession(digitsOf(phone));
   const es = sess.data?.lang === "es" || (b && b.languages === "es");
   if (!b) return es
-    ? "Hola, soy Jordan, de Massage Club. Encantado. ¿En qué te puedo ayudar?"
-    : "Hi, I'm Jordan, a representative with Massage Club. Hope you're well. How can I help?";
+    ? "Hola, somos Massage Club. ¿En qué te podemos ayudar?"
+    : "Hi, this is Massage Club. How can we help?";
   const when = b.stage === "confirmed" && b.confirmed_day ? [b.confirmed_day, b.confirmed_time].filter(Boolean).join(" ") : [b.day1, b.time1].filter(Boolean).join(" ");
   const svcN = es ? trSvcLow(b.service_name || "Massage", "es") : String(b.service_name || "massage").toLowerCase();
   return es
-    ? `Hola${b.first_name ? " " + b.first_name : ""}, soy Jordan, de Massage Club. Encantado.\n\nVeo que estás pendiente de tu ${svcN}${when ? " para " + when : ""}. ¿Es así? Te ayudo personalmente.`
-    : `Hi${b.first_name ? " " + b.first_name : ""}, I'm Jordan, a representative with Massage Club. Hope you're well.\n\nI see you need an update on your ${svcN}${when ? " for " + when : ""}. Is that right?`;
+    ? `Hola${b.first_name ? " " + b.first_name : ""}, somos Massage Club.\n\nVeo que estás pendiente de tu ${svcN}${when ? " para " + when : ""}. ¿Es así? Te ayudamos ahora.`
+    : `Hi${b.first_name ? " " + b.first_name : ""}, this is Massage Club.\n\nI see you need an update on your ${svcN}${when ? " for " + when : ""}. Is that right?`;
 }
 
 // The studio step used to be a five-way quiz and it converted at 25 per cent,
@@ -757,20 +874,25 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     // massage" got a Spanish-first screen with eight options at 00:28 on 7 Sept.
     // Relaxing 60 min is assumed; they can name another type at any point.
     const ft = String(firstText || "").trim();
-    const knownLang = strongSpanish(ft) ? "es" : (AD_OPENER_RE.test(ft) || looksEnglish(ft)) ? "en" : "";
+    // v188: the canned ad line is not their words; guess from the number and name.
+    const canned = AD_OPENER_RE.test(ft) || !ft;
+    const guess = canned && !strongSpanish(ft) ? adLeadLang(from, s.wa_name) : null;
+    const knownLang = strongSpanish(ft) ? "es" : guess ? guess.L : looksEnglish(ft) ? "en" : "";
     if (knownLang) {
-      s.data.lang = knownLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day"; await saveSession(s);
-      await logEvent(from, "flow_started", { fromAd: true, oneQuestion: true, lang: knownLang });
+      s.data.lang = knownLang; s.data.service = "svc_relax"; s.data.defaultService = true; s.step = "await_day";
+      if (guess) s.data.langGuess = guess.L;
+      await saveSession(s);
+      await logEvent(from, "flow_started", { fromAd: true, oneQuestion: true, lang: knownLang, guessed: !!guess });
       await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
       const pre = firstAnswer(ft, knownLang);
-      await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[knownLang], dayBtns(knownLang));
+      await sendButtons(from, (pre ? pre + "\n\n" : "") + await firstLine(knownLang, guess ? guess.hint : ""), dayBtns(knownLang));
       return;
     }
     s.data.service = "svc_relax"; s.data.defaultService = true; s.data.langUnset = true;
     s.step = "await_day"; await saveSession(s);
     await logEvent(from, "flow_started", { fromAd: true, langUnset: true, oneQuestion: true });
     await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-    await sendButtons(from, FIRST_LINE_BOTH, dayBtnsBoth());
+    await sendButtons(from, await firstLine("en", "es_word"), dayBtnsBoth());
     return;
   }
   if (firstText && absorbSentence(s, firstText, L)) {
@@ -794,7 +916,7 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
     await logEvent(from, "flow_started", { oneQuestion: true, lang: gLang });
     await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
     const pre = firstAnswer(String(firstText || ""), gLang);
-    await sendButtons(from, (pre ? pre + "\n\n" : "") + FIRST_LINE[gLang], dayBtns(gLang));
+    await sendButtons(from, (pre ? pre + "\n\n" : "") + await firstLine(gLang), dayBtns(gLang));
     return;
   }
   // v72: one message, one question, no link. This used to send the booking link
@@ -805,8 +927,8 @@ async function greet(s: Session, from: string, firstText?: string): Promise<void
   s.step = "await_day"; await saveSession(s);
   await logEvent(from, "flow_started", { oneQuestion: true, unreadable: true });
   await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-  if (s.data.lang) await sendButtons(from, FIRST_LINE[L], dayBtns(L));
-  else await sendButtons(from, FIRST_LINE_BOTH, dayBtnsBoth());
+  if (s.data.lang) await sendButtons(from, await firstLine(L), dayBtns(L));
+  else await sendButtons(from, await firstLine("en", "es_word"), dayBtnsBoth());
 }
 
 async function goBack(s: Session, to: string, L: string): Promise<boolean> {
@@ -914,7 +1036,7 @@ const REPLY_SYSTEM = `You write ONE WhatsApp message for Massage Club, a concier
 Rules, all of them hard:
 - Write in the customer's language (Spanish if they write Spanish, otherwise English).
 - First answer the thing they actually asked, plainly. Then move the booking one step on by asking the single next question for where they stopped (which day, what time, which area of Madrid, or their email).
-- Facts you may use: a 60 minute relaxing massage at a professional studio is usually 45 to 60 EUR, paid directly at the studio, no fee from us. We ask several studios at once, send the customer the options and get them the best offer. Studios are all over Madrid (Centro, Salamanca, Chamberi, Retiro, Chamartin, Malasana and more).
+- Facts you may use: a 60 minute relaxing massage at a professional studio is usually 50 to 85 EUR at the studio's listed price, paid directly at the studio, no fee from us. We ask several studios at once, send the customer the options and get them the best offer. Studios are all over Madrid (Centro, Salamanca, Chamberi, Retiro, Chamartin, Malasana and more).
 - Never invent a discount, a price, a studio name, a time slot or availability. Never promise the therapist speaks English. Never claim massage detoxes, cures or boosts immunity.
 - If they ask for anything sexual, "special", "extras", "happy ending", tantra or similar, the message is exactly: "We book therapeutic massage at licensed studios, nothing else." (Spanish: "Reservamos masajes terapéuticos en centros con licencia, nada más.") and nothing more.
 - Never say you are handing them to a person or a representative.
@@ -1046,14 +1168,14 @@ function quickReplies(es: boolean, first: string): Array<[string, string]> {
     ["Qué día", hi + "¿Qué día te viene bien para el masaje?"],
     ["Qué hora", hi + "¿A qué hora te viene mejor? Por ejemplo, las 18:00."],
     ["Qué zona", hi + "¿En qué zona de Madrid estás? Así busco el centro más cercano."],
-    ["Precio", hi + "Un masaje relajante de 60 min en un centro profesional suele costar entre 45 y 60 EUR. Pagas directamente en el centro, sin comisión."],
+    ["Precio", hi + "Un masaje relajante de 60 min en un centro profesional suele costar entre 50 y 85 EUR, según la tarifa del centro. Pagas directamente en el centro, sin comisión."],
     ["Mejor oferta", hi + "Preguntamos a varios centros a la vez, te mandamos las opciones y te conseguimos la mejor oferta. ¿Qué día te viene bien?"],
     ["Solo terapéutico", "Reservamos masajes terapéuticos en centros con licencia, nada más."],
   ] : [
     ["Which day", hi + "Which day works for your massage?"],
     ["What time", hi + "What time suits you? For example 18:00."],
     ["Which area", hi + "Which part of Madrid are you in? Then I can find the closest studio."],
-    ["Price", hi + "A 60 min relaxing massage at a professional studio is usually 45 to 60 EUR, paid directly at the studio, no fee from us."],
+    ["Price", hi + "A 60 min relaxing massage at a professional studio is usually 50 to 85 EUR at the studio's listed price, paid directly at the studio, no fee from us."],
     ["Best offer", hi + "We ask several studios at once, send you the options and get you the best offer. Which day works for you?"],
     ["Therapeutic only", "We book therapeutic massage at licensed studios, nothing else."],
   ];
@@ -1565,7 +1687,7 @@ async function reAsk(s: Session, from: string, L: string) {
     case "await_hour": await askHour(from, L, s.data.timeBandId || "time_afternoon"); break;
     case "await_area": await askArea(from, L); break;
     case "await_sameday": await sendButtons(from, COPY[L].sameDay, COPY[L].sameDayBtns(String(s.data.time || ""))); break;
-    case "await_day_text": await sendText(from, COPY[L].dayAsk); break;
+    case "await_day_text": await sendText(from, dayAskText(L)); break;
     case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
     case "await_name": await sendText(from, COPY[L].name); break;
     case "await_email": case "await_email_req": await sendText(from, COPY[L].email); break;
@@ -3914,9 +4036,14 @@ const handler = async (req: Request) => {
         // +34 610 393 816 sent eight voice notes and got it six times. Jordan
         // still hears about every one.
         const repeat = await sentRecently(from, COPY[L].fallbackAck, 10 * 60e3) || (MEDIA_TYPES.includes(String(m?.type)) && await sentRecently(from, MEDIA_LINE[L], 10 * 60e3));
-        if (!repeat) await sendText(from, COPY[L].fallbackAck);
-        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120), held: repeat, type: m?.type });
-        await notifyJordanWa(`${repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
+        // v188: a customer standing on a booking question gets that question
+        // again, not a promise to come back. 13 of the holding lines went to
+        // people at the day question.
+        const flowStep = !isStudio && ["await_service", "await_day", "await_day_text", "await_time", "await_hour", "await_time_text", "await_area", "await_name", "await_email", "await_email_req"].includes(s.step);
+        if (flowStep) { if (!(await greetedRecently(from, 90_000))) await reAsk(s, from, L); }
+        else if (!repeat) await sendText(from, COPY[L].fallbackAck);
+        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120), held: repeat, type: m?.type, reasked: flowStep });
+        await notifyJordanWa(`${flowStep ? "Nothing was sent back, so they got their booking question again" : repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
       }
     }
   } catch (e) { console.log("[wa] fallback check failed", String(e)); }
@@ -4703,7 +4830,7 @@ const handleInner = async (req: Request) => {
       switch (s.step) {
         case "done": case "menu": await sendMenu(from, NL); break;
         case "await_day": if (s.data.service === "svc_unsure") await askDayUnsure(from, NL); else await askDay(from, NL); break;
-        case "await_day_text": await sendText(from, COPY[NL].dayAsk); break;
+        case "await_day_text": await sendText(from, dayAskText(NL)); break;
         case "await_time": await askTime(from, NL); break;
         case "await_hour": await askHour(from, NL, s.data.timeBandId || "time_afternoon"); break;
         case "await_time_text": await sendText(from, COPY[NL].timeAsk); break;
@@ -4727,7 +4854,7 @@ const handleInner = async (req: Request) => {
     // which is what the ads are written in.
     if (text) {
       if (s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
-      else if (s.data.lang === "es" && !strongSpanish(text) && looksEnglish(text)) s.data.lang = "en";
+      else if (s.data.lang === "es" && !strongSpanish(text) && looksEnglish(text) && !AD_OPENER_RE.test(text.trim())) s.data.lang = "en";
     }
     const L: string = s.data.lang === "es" ? "es" : "en";
 
@@ -4836,7 +4963,7 @@ const handleInner = async (req: Request) => {
       await sendText(from, COPY[L].modesty);
       switch (s.step) {
         case "await_area": await askArea(from, L); break;
-        case "await_day_text": await sendText(from, COPY[L].dayAsk); break;
+        case "await_day_text": await sendText(from, dayAskText(L)); break;
         case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
         case "await_studio_text": await sendText(from, COPY[L].otherStudioAsk); break;
         case "await_name": await sendText(from, COPY[L].name); break;
@@ -5007,7 +5134,7 @@ const handleInner = async (req: Request) => {
       }
       switch (s.step) {
         case "await_area": await askArea(from, L); break;
-        case "await_day_text": await sendText(from, COPY[L].dayAsk); break;
+        case "await_day_text": await sendText(from, dayAskText(L)); break;
         case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
         case "await_studio_text": await sendText(from, COPY[L].otherStudioAsk); break;
         case "await_name": await sendText(from, COPY[L].name); break;
@@ -5238,13 +5365,18 @@ const handleInner = async (req: Request) => {
       case "await_day": {
         if (replyId === "day_today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "today" }); await askTime(from, L); }
         else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "tomorrow" }); await askTime(from, L); }
-        else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, COPY[L].dayAsk); }
+        else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, dayAskText(L)); }
         // v53: a typed "hoy", "mañana", "el lunes" or "12 de septiembre" at the day buttons is an answer.
         else if (text && detectDay(text, L)) {
           const d = detectDay(text, L);
           s.data.day = d;
           s.data.dayDate = /^(hoy|today)$/i.test(d) ? longDate(L, 0) : (/^(mañana|tomorrow)$/i.test(d) ? longDate(L, 1) : null);
-          s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "typed" }); await askTime(from, L);
+          // v188: the opener invites "tomorrow 18:00 near Sol". Keep the time
+          // and the area too instead of asking for them again.
+          const more = absorbOffStep(s, text, L, "day");
+          await logEvent(from, "day_chosen", { day: "typed", more });
+          if (s.data.time) { await saveSession(s); await afterTime(s, from, L); }
+          else { s.step = "await_time"; await saveSession(s); await askTime(from, L); }
         }
         // v56: "deep tissue please" at the day question changes the assumed massage.
         else if (text && detectService(text) && detectService(text) !== s.data.service) {
@@ -5304,9 +5436,9 @@ const handleInner = async (req: Request) => {
               // ("Traslator. Romano", "Noă tindo") and got "Sorry, I did not catch
               // that" in English three times. Say which languages we speak, in
               // both, and make the question something he can tap.
-              await sendText(from, s.data.miss === 2
-                ? "Perdona, no te he entendido. Puedo ayudarte en español o en inglés: toca un día abajo.\nSorry, I did not catch that. I can help in Spanish or English: tap a day below."
-                : COPY[L].notCaught);
+              // v188: from the third miss on, no "did not catch that" at all, in
+              // any language: the day buttons below are the whole answer.
+              if (s.data.miss === 2) await sendText(from, "Perdona, no te he entendido. Puedo ayudarte en español o en inglés: toca un día abajo.\nSorry, I did not catch that. I can help in Spanish or English: tap a day below.");
               await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
             }
           }
@@ -5325,12 +5457,12 @@ const handleInner = async (req: Request) => {
             await saveSession(s);
             await logEvent(from, "offstep_absorbed", { at: "await_day_text", got });
             await sendText(from, COPY[L].gotItSvc([s.data.area, s.data.time].filter(Boolean).join(" · ")));
-            await sendText(from, COPY[L].dayAsk);
+            await sendText(from, dayAskText(L));
             break;
           }
         }
         if (text) { s.data.day = text.slice(0, 60); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "typed" }); await askTime(from, L); }
-        else await sendText(from, COPY[L].dayAsk);
+        else await sendText(from, dayAskText(L));
         break;
       }
       case "await_time": {
@@ -5404,7 +5536,7 @@ const handleInner = async (req: Request) => {
           await afterTime(s, from, L);
         }
         else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); await logEvent(from, "sameday_choice", { choice: "tomorrow_tap" }); await afterTime(s, from, L); }
-        else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, COPY[L].dayAsk); }
+        else if (replyId === "day_other") { s.step = "await_day_text"; await saveSession(s); await sendText(from, dayAskText(L)); }
         else if (s.data.sameDayRepeats) { await logEvent(from, "sameday_choice", { choice: "keep_after_repeat" }); await afterTime(s, from, L); }
         else { s.data.sameDayRepeats = 1; await saveSession(s); await sendButtons(from, COPY[L].sameDay, COPY[L].sameDayBtns(String(s.data.time || ""))); }
         break;

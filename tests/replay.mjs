@@ -177,6 +177,7 @@ check("isEmail", "not an email", isEmail("not an email"), false, "");
 // When the bot cannot answer a question it sends COPY[lang].willFindOut, which
 // says we are finding out and will come back. stuck-booking-rescue v10 decides
 // whether a customer is still owed an answer by looking for these exact words
+// (v13, 9 Oct: also the v188 wording, "the answer will come here")
 // in the last thing we said to them, and stays silent if it finds them.
 //
 // That regex lives in the deployed function, not in this repo, so nothing in a
@@ -188,7 +189,7 @@ check("isEmail", "not an email", isEmail("not an email"), false, "");
 //
 // Keep this regex identical to WILL_FIND_OUT_RE in stuck-booking-rescue.
 // ---------------------------------------------------------------------------
-const RESCUE_PROMISE_RE = /(I am finding out for you now|rather check than guess|lo consulto ahora mismo y te digo|Prefiero confirmarlo antes que)/i;
+const RESCUE_PROMISE_RE = /(I am finding out for you now|rather check than guess|lo consulto ahora mismo y te digo|Prefiero confirmarlo antes que|the answer will come here|y la respuesta te llega por aqu)/i;
 for (const lang of ["en", "es"]) {
   check("rescue cron still recognises willFindOut", `${lang}: ${COPY[lang].willFindOut}`,
     RESCUE_PROMISE_RE.test(COPY[lang].willFindOut), true,
