@@ -781,6 +781,7 @@ const WEEKDAY_IDX: Array<[RegExp, number]> = [
   [/\b(thursday|jueves)\b/i, 4], [/\b(friday|viernes)\b/i, 5], [/\b(saturday|s[aá]bado)\b/i, 6],
 ];
 async function dropClosed(s: Session, from: string, rows: any[]): Promise<any[]> {
+  rows = await dropSilent(from, rows);
   const dow = requestedDow(s);
   if (dow === null || !rows.length) return rows;
   try {
@@ -791,6 +792,23 @@ async function dropClosed(s: Session, from: string, rows: any[]): Promise<any[]>
     await logEvent(from, "offer_skipped_closed", { dow, skipped: rows.filter((o: any) => shut.has(String(o.id))).map((o: any) => o.business_name || o.name) });
     return rows.filter((o: any) => !shut.has(String(o.id)));
   } catch (_e) { return rows; } // hours unreadable: offer as before
+}
+// v189: the same rest rule as dispatch-studios v37. A studio asked three times
+// that has never once written back would be skipped by dispatch, so offering
+// it to the customer only parks them on a studio nobody will ask (KamAI: 25
+// asks, no reply, still offered on 9 Oct).
+async function dropSilent(from: string, rows: any[]): Promise<any[]> {
+  if (!rows.length) return rows;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=in.(${rows.map((o: any) => o.id).join(",")})&sent_at=not.is.null&select=partner_id,replied_at`, { headers: H() });
+    const list = await r.json().catch(() => []);
+    const asked = new Map<string, number>(); const replied = new Set<string>();
+    for (const x of (Array.isArray(list) ? list : [])) { const pid = String(x.partner_id); asked.set(pid, (asked.get(pid) || 0) + 1); if (x.replied_at) replied.add(pid); }
+    const silent = new Set([...asked].filter(([pid, n]) => n >= 3 && !replied.has(pid)).map(([pid]) => pid));
+    if (!silent.size) return rows;
+    await logEvent(from, "offer_skipped_silent", { skipped: rows.filter((o: any) => silent.has(String(o.id))).map((o: any) => o.business_name || o.name) });
+    return rows.filter((o: any) => !silent.has(String(o.id)));
+  } catch (_e) { return rows; }
 }
 function requestedDow(s: Session): number | null {
   const d = String(s.data.day || "").trim();
