@@ -774,6 +774,32 @@ async function askStudioList(to: string, L: string, s: Session): Promise<boolean
 // asked, so we never offer a studio that never answers. A registered studio's
 // price is its own menu; anyone else's is a listing, so it reads "about".
 // Nothing here says the studio is free: that is the studio's yes to give.
+// v188: the weekday a request is for, in Madrid, or null when the day is not
+// a plain today, tomorrow or named weekday (then nothing is filtered).
+const WEEKDAY_IDX: Array<[RegExp, number]> = [
+  [/\b(sunday|domingo)\b/i, 0], [/\b(monday|lunes)\b/i, 1], [/\b(tuesday|martes)\b/i, 2], [/\b(wednesday|mi[eé]rcoles)\b/i, 3],
+  [/\b(thursday|jueves)\b/i, 4], [/\b(friday|viernes)\b/i, 5], [/\b(saturday|s[aá]bado)\b/i, 6],
+];
+async function dropClosed(s: Session, from: string, rows: any[]): Promise<any[]> {
+  const dow = requestedDow(s);
+  if (dow === null || !rows.length) return rows;
+  try {
+    const hr = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=in.(${rows.map((o: any) => o.id).join(",")})&select=id,opening_hours`, { headers: H() });
+    const hours = await hr.json().catch(() => []);
+    const shut = new Set((Array.isArray(hours) ? hours : []).filter((x: any) => { const d = openDays(x.opening_hours); return d && !d.has(dow); }).map((x: any) => String(x.id)));
+    if (!shut.size) return rows;
+    await logEvent(from, "offer_skipped_closed", { dow, skipped: rows.filter((o: any) => shut.has(String(o.id))).map((o: any) => o.business_name || o.name) });
+    return rows.filter((o: any) => !shut.has(String(o.id)));
+  } catch (_e) { return rows; } // hours unreadable: offer as before
+}
+function requestedDow(s: Session): number | null {
+  const d = String(s.data.day || "").trim();
+  if (/^(today|hoy)$/i.test(d)) return madridDow(0);
+  if (/^(tomorrow|ma[nñ]ana)$/i.test(d)) return madridDow(1);
+  const txt = `${s.data.dayDate || ""} ${d}`;
+  for (const [re, i] of WEEKDAY_IDX) if (re.test(txt)) return i;
+  return null;
+}
 async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
   if (await staleDay(s, from, L)) return true;
   // No service chosen yet means relaxing, the default everywhere else. Without
@@ -784,11 +810,15 @@ async function offerStudios(s: Session, from: string, L: string): Promise<boolea
   let rows: any[] = [];
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/offer_studios`, {
-      method: "POST", headers: H(), body: JSON.stringify({ p_area: area || null, p_want: svcRow ? svcRow.en : null, p_limit: 3 }),
+      method: "POST", headers: H(), body: JSON.stringify({ p_area: area || null, p_want: svcRow ? svcRow.en : null, p_limit: 6 }),
     });
     const j = await res.json().catch(() => []);
     rows = Array.isArray(j) ? j : [];
   } catch (_e) { rows = []; }
+  // v188 (9 Oct test): Saturday 18:00 offered Sinergia38, open Monday to
+  // Friday, and dispatch-studios would then refuse to ask it. A studio whose
+  // own opening_hours say it is shut that day is not offered.
+  rows = (await dropClosed(s, from, rows)).slice(0, 3);
   if (rows.length < 2) return false;
   s.data.picks = rows.map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
   // v182 (7 Oct): cheapest first. Javier and the "carísimo" lead on 6 Oct were
@@ -3793,7 +3823,7 @@ async function priceObjection(s: Session, from: string, L: string): Promise<void
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/offer_studios`, { method: "POST", headers: H(), body: JSON.stringify({ p_area: a || null, p_want: svcRow ? svcRow.en : null, p_limit: n }) });
       const j = await res.json().catch(() => []);
-      return (Array.isArray(j) ? j : []).map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
+      return await dropClosed(s, from, (Array.isArray(j) ? j : []).map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered })));
     } catch (_e) { return []; }
   };
   const ok = (p: any) => Number(p.price) > 0 && !(Number(p.duration) >= 50 && Number(p.price) < 30);
