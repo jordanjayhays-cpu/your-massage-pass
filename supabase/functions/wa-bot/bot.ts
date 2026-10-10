@@ -2162,8 +2162,9 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         }
       } catch (e) { console.log("[studio] price capture failed", String(e)); }
     }
-    // v46: a written discount is an offer on the open request. 10% or more wins
-    // the booking at once; less waits for the window to close.
+    // v46: a written discount is an offer on the open request. 10% or more goes
+    // to the customer at once (v199: as an offer they tap Yes on, never as a
+    // booking); less waits for the window to close.
     const pct = parseDiscount(freeText);
     if (pct !== null) {
       const since48 = new Date(Date.now() - 48 * 3600e3).toISOString();
@@ -2172,7 +2173,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       if (odr) {
         await patchDispatch(odr.id, { discount_pct: pct, ...(quotedNow !== null ? { quoted_price: quotedNow } : {}), outcome: "accepted", accepted_at: odr.accepted_at || new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500), offer_note: freeText.slice(0, 200) });
         await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partner.id)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ mc_discount_pct: pct, mc_discount_confirmed_at: new Date().toISOString(), mc_discount_note: `WhatsApp: ${freeText.slice(0, 200)}` }) }).catch(() => {});
-        const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
+        const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,confirmed_time,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
         const rqrow = (await rq.json().catch(() => []))[0] || null;
         if (rqrow && pct >= 10) { await awardWinner(rqrow, partner, from, pct); return; }
         if (rqrow) {
@@ -3299,25 +3300,26 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
   // time at all, and Sinergia38 was sent "Reserva confirmada" for her while she
   // had never written us a single word. A confirmation the customer never
   // receives is not a booking, it is a no-show waiting to happen.
-  const exactTime = EXACT_TIME_RE.test(String(req.confirmed_time || req.time1 || "").trim());
+  const t = exactTime(req) || (EXACT_TIME_RE.test(String(req.confirmed_time || "").trim()) ? String(req.confirmed_time).trim() : "");
+  const hasTime = !!t;
   const reachable = !!String(req.contact_email || "").trim() || await waWindowOpen(req.client_phone);
-  if (!exactTime || !reachable) {
+  if (!hasTime || !reachable) {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&stage=neq.confirmed`, {
       method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
       body: JSON.stringify({
         stage: "studio_replied",
-        studio_reply: `${partner ? partner.business_name : from}: disponible, sin confirmar (${exactTime ? "cliente ilocalizable" : "sin hora exacta"})`,
+        studio_reply: `${partner ? partner.business_name : from}: disponible, sin confirmar (${hasTime ? "cliente ilocalizable" : "sin hora exacta"})`,
         stage_updated_at: new Date().toISOString(),
       }),
     });
-    await sendText(from, exactTime
+    await sendText(from, hasTime
       ? "Gracias. Antes de confirmarlo tengo que hablar con el cliente. En cuanto me diga algo os aviso, no reservéis nada todavía."
       : "Gracias. Todavía no tengo la hora exacta del cliente, así que aún no puedo dar la reserva por hecha. Decidme qué hora os viene bien y se la propongo.");
-    await founderCard(`⚠️ Not confirmed: ${exactTime ? "customer unreachable" : "no exact time"} · #${requestId}`, {
+    await founderCard(`⚠️ Not confirmed: ${hasTime ? "customer unreachable" : "no exact time"} · #${requestId}`, {
       badge: "HELD",
       title: `${partner ? partner.business_name : "The studio"} said yes, but this is not a booking`,
       paras: [
-        exactTime
+        hasTime
           ? `${req.first_name || "The customer"} cannot be reached on WhatsApp and we have no email for them, so they cannot be told. The studio was asked to hold off.`
           : `${req.first_name || "The customer"} never gave an exact time (${String(req.time1 || "none")}), so there is nothing to confirm. The studio was asked which time suits them.`,
         `Nothing was promised to the studio. Request #${requestId} is waiting.`,
@@ -3326,69 +3328,38 @@ async function awardWinner(req: any, partner: { id: string; business_name: strin
     });
     return false;
   }
-  const studioPrefill = `Hola, soy Jordan de Massage Club, sobre la reserva de ${req.first_name || "nuestro cliente"}${when ? " (" + when + ")" : ""}: `;
-  // v35: the request is fanned out to several studios with nobody assigned, so
-  // the claim both wins the booking and names the studio. The stage filter makes
-  // that a race only one of them can win.
-  const claim = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&stage=neq.confirmed`, {
-    method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
-    body: JSON.stringify({
-      stage: "confirmed", confirmed_day: req.day1, confirmed_time: req.time1,
-      partner_id: partner ? partner.id : req.partner_id || null,
-      studio_name: partner ? partner.business_name : req.studio_name,
-      studio_reply: `Confirmado por WhatsApp (${partner ? partner.business_name : from})${discountPct ? ", " + discountPct + "% dto" : ""}`,
-      discount_pct: discountPct,
-      settle_after: null,
-      stage_updated_at: new Date().toISOString(),
-    }),
-  });
-  const claimed = await claim.json().catch(() => []);
-  if (!Array.isArray(claimed) || !claimed.length) {
-    // Someone else got there first. Say so plainly rather than silently.
-    await sendText(from, "Gracias, pero esta reserva ya la ha cogido otro centro hace un momento. No hace falta que hagáis nada. Os escribo con la siguiente.");
+  // v199 (Jordan, 10 Oct: "make sure both parties confirm ... via a tap of the
+  // button"). A studio's yes is an offer, never a booking. On 9 Oct The Nook
+  // tapped a time in its email and request #110 was marked confirmed while
+  // William had not said a word, and Calma has had a therapist and a room ready
+  // for customers who never confirmed. Every path that used to confirm here (a
+  // studio's button on a same-day request, a written 10% discount, the bidding
+  // window closing) now puts the studio's time in front of the customer with Yes
+  // and No buttons. The booking confirms only in acceptOffer, on the customer's
+  // own tap, and only then does the studio get the confirmation in writing.
+  if (!partner) {
+    await founderCard(`⚠️ A yes for #${requestId} from a number we could not match`, {
+      badge: "HELD", title: "A studio said yes but we could not tell which one",
+      paras: [`${from} answered yes to ${req.first_name || "the customer"}'s request. Nothing was sent to the customer and nothing is confirmed.`],
+      waNum: from,
+    });
     return false;
   }
-  if (partner) {
-    req.studio_name = partner.business_name;
-    const drow = await dispatchRowFor(requestId, partner.id, from);
-    if (drow) await patchDispatch(drow.id, { outcome: "won", discount_pct: discountPct ?? drow.discount_pct ?? null });
+  let drow = await dispatchRowFor(requestId, partner.id, from);
+  if (!drow) {
+    const ins = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?on_conflict=request_id,partner_id`, {
+      method: "POST", headers: { ...H(), Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ request_id: requestId, partner_id: partner.id, phone: digitsOf(from), outcome: "pending" }),
+    });
+    drow = (await ins.json().catch(() => []))[0] || null;
   }
-  await awardRequest(requestId, partner ? partner.id : null);
-  // v83: the confirmation trigger has filled confirmed_start by now, so the
-  // booking row can be written with a real date and end time.
-  await ensureBooking(requestId);
-  await logEvent(req.client_phone || from, "confirmed", { id: requestId, studio: req.studio_name, discount: discountPct });
-  const clientNum = digitsOf(req.client_phone || "");
-  const pc = partner ? await partnerCard(partner.id) : { business_name: "", address: "", phone: "", neighbourhood: "", status: "", slug: "" };
-  await sendText(from, studioConfirmCard(req, clientNum, pc, discountPct));
-  if (clientNum) {
-    const discountLine = discountPct ? (L === "es" ? `\n💶 ${discountPct}% de descuento sobre la tarifa del centro, pagas allí.` : `\n💶 ${discountPct}% off the studio's price, you pay there.`) : "";
-    const confirmText = COPY[L].studioConfirmed(req.first_name || "", req.studio_name || (L === "es" ? "el centro" : "the studio"), trSvcLow(req.service_name || "massage", L), when) + (pc.address ? `\n📍 ${pc.address}` : "") + discountLine;
-    const via = await reachCustomer(req, confirmText, L === "es" ? `Reserva confirmada: ${req.studio_name || "tu centro"}, ${when}` : `Confirmed: ${req.studio_name || "your studio"}, ${when}`);
-    if (via === "none") {
-      await founderCard(`⚠️ ${req.first_name || "The customer"} could not be told about #${requestId}`, {
-        badge: "UNDELIVERED",
-        title: "The booking is confirmed but the customer has not heard it",
-        paras: [`${req.studio_name || "The studio"} is expecting them at ${when}. WhatsApp is outside its 24 hour window and there is no email on file.`],
-        waNum: clientNum,
-      });
-    }
-    // Email-skippers get one ask at the happiest moment: booking confirmed.
-    if (!req.contact_email) {
-      const cs = await getSession(clientNum);
-      if (cs.step !== "muted") {
-        cs.step = "await_email_post"; await saveSession(cs);
-        await sendText(clientNum, COPY[L].emailAskPost);
-      }
-    }
-  }
-  await founderCard(`✅ ${req.studio_name || "Studio"} confirmed #${requestId}${discountPct ? " · " + discountPct + "% off" : ""}`, {
-    badge: "CONFIRMED",
-    title: `${req.studio_name || "The studio"} said yes${discountPct ? " with " + discountPct + "% off" : ""}`,
-    paras: [`${req.service_name || "Massage"} for ${req.first_name || "the customer"} · ${when}${pc.address ? " · " + pc.address : ""}.`, `The studio got the full card (customer first name and language, service, time${discountPct ? ", the " + discountPct + "% they offered" : ""}, how to reach the customer through us${pc.status !== "active" ? ", and the free sign-up ask" : ""}). The customer was told on WhatsApp with the address. Nothing to do.`],
-    waNum: from, waLabel: "Chat with the studio", prefill: studioPrefill,
-  });
-  return true;
+  if (!drow) { console.log("[studio] no dispatch row to carry the offer", requestId, partner.business_name); return false; }
+  if (drow.outcome === "won") return false;
+  const now = new Date().toISOString();
+  await patchDispatch(drow.id, { outcome: "accepted", accepted_at: drow.accepted_at || now, replied_at: now, ...(discountPct ? { discount_pct: discountPct } : {}) });
+  await forwardOffer(req, partner, String(drow.id), t, `Sí, a las ${t}`, from);
+  await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name, time: t, discount: discountPct, via: "award" });
+  return false;
 }
 // Cron calls this every 5 minutes: every bidding window that has closed goes to
 // the best accepted offer (highest discount, then earliest yes).
@@ -3497,7 +3468,7 @@ async function remindConfirmLater(): Promise<number> {
 }
 
 async function settleBids(): Promise<number> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,confirmed_time,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
   const reqs = await r.json().catch(() => []);
   let n = 0;
   for (const req of Array.isArray(reqs) ? reqs : []) {
@@ -3511,8 +3482,11 @@ async function settleBids(): Promise<number> {
     const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(best.partner_id)}&select=id,business_name`, { headers: H() });
     const partner = (await pr.json().catch(() => []))[0] || null;
     if (!partner) continue;
-    const ok = await awardWinner(req, partner, digitsOf(best.phone || ""), best.discount_pct ?? null);
-    if (ok) n++;
+    // v199: the window closing forwards the best offer to the customer; it no
+    // longer books it. Leave "bidding" first so this sweep never sends it twice.
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=eq.bidding`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "studio_replied", settle_after: null, stage_updated_at: new Date().toISOString() }) });
+    await awardWinner(req, partner, digitsOf(best.phone || ""), best.discount_pct ?? null);
+    n++;
   }
   return n;
 }
@@ -3552,7 +3526,7 @@ function studioConfirmCard(req: any, clientNum: string, pc: { status: string; sl
   return lines.join("\n");
 }
 
-async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string) {
+async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean } = {}) {
   const clientNum = digitsOf(req.client_phone || "");
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
@@ -3572,7 +3546,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
       const best = (await bq.json().catch(() => []))[0] || null;
       if (best && Number(best.quoted_price) < mine) {
         console.log(`[wa] offer withheld: ${partner.business_name} at ${euro(mine)} is dearer than the live ${euro(Number(best.quoted_price))} already with the customer`);
-        await sendText(studioFrom, `Gracias, lo anotamos: ${time}, ${euro(mine)}. Ahora mismo el cliente tiene una oferta a mejor precio, así que no os guardéis el hueco. Si cambia algo os escribimos enseguida.`);
+        await studioSay(studioFrom, `Gracias, lo anotamos: ${time}, ${euro(mine)}. Ahora mismo el cliente tiene una oferta a mejor precio, así que no os guardéis el hueco. Si cambia algo os escribimos enseguida.`);
         await logEvent(clientNum, "offer_withheld_dearer", { request_id: req.id, studio: partner.business_name, price: mine, best: Number(best.quoted_price) });
         return;
       }
@@ -3595,10 +3569,10 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   // real date the same way dispatch-studios does for the studios, and returns
   // "" rather than a stale word when it cannot, so we say "that day" instead of
   // naming the wrong one.
-  const day = offerDay || dayLabelFor(req.day1, req.message_text, L) || (L === "es" ? "ese día" : "that day");
+  const day = opts.dayHint || offerDay || dayLabelFor(req.day1, req.message_text, L) || (L === "es" ? "ese día" : "that day");
   // v102: only say "instead of" when it really is instead of. 17:00 offered
   // against a 13-18 band is the thing they asked for, not a compromise.
-  const asked = offerMatchesAsk(time, offerDay, String(req.day1 || ""), String(req.time1 || ""))
+  const asked = opts.ownOption || offerMatchesAsk(time, offerDay, String(req.day1 || ""), String(req.time1 || ""))
     ? ""
     : [req.day1, req.time1].filter(Boolean).join(" ");
   // v110 (Jordan, 19 Sept): "before we offer pricing we must confirm with the
@@ -3653,36 +3627,108 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   const liveOffer = cs.step === "await_offer" && cs.data.offer && Number(cs.data.offer.request) === Number(req.id);
   if (liveOffer && String(cs.data.offer.row) !== String(rowId)) {
     console.log(`[wa] offer queued: ${partner.business_name} ${time}, ${req.first_name} still has ${cs.data.offer.studio} ${cs.data.offer.time} open`);
-    await sendText(studioFrom, `Gracias, anotado: ${time}. ${req.first_name || "El cliente"} está mirando ahora mismo otra propuesta, así que no guardéis el hueco todavía. Os decimos algo en cuanto conteste.`);
+    await studioSay(studioFrom, `Gracias, anotado: ${time}. ${req.first_name || "El cliente"} está mirando ahora mismo otra propuesta, así que no guardéis el hueco todavía. Os decimos algo en cuanto conteste.`);
     await logEvent(clientNum, "offer_queued_behind_live", { request_id: req.id, studio: partner.business_name, time, live: cs.data.offer.studio });
     return;
   }
   const sameDayReq = /^(today|hoy)$/i.test(String(req.day1 || "").trim());
   if (asked && !sameDayReq) {
     console.log(`[wa] offer withheld: ${partner.business_name} ${time} misses ${req.day1} ${req.time1} for req=${req.id}`);
-    await sendText(studioFrom, `Gracias. ${req.first_name || "El cliente"} ha pedido ${String(req.time1 || "otra franja")}, así que las ${time} se le quedan fuera. ¿Podéis en esa franja? Si no, no pasa nada y os escribimos con la siguiente.`);
+    await studioSay(studioFrom, `Gracias. ${req.first_name || "El cliente"} ha pedido ${String(req.time1 || "otra franja")}, así que las ${time} se le quedan fuera. ¿Podéis en esa franja? Si no, no pasa nada y os escribimos con la siguiente.`);
     await logEvent(clientNum, "offer_withheld_mismatch", { request_id: req.id, studio: partner.business_name, offered: time, asked: `${req.day1 || ""} ${req.time1 || ""}`.trim() });
     return;
   }
-  await sendButtons(clientNum,
-    COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked, pc.address) + priceLine,
-    [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }]);
-  cs.data.prevStep = cs.step;
-  cs.step = "await_offer";
-  cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id, day: offerDay || null };
-  await saveSession(cs);
+  // v199: the customer has to be able to tap Yes. WhatsApp buttons when their
+  // 24 hour window is open; otherwise an email whose button opens the offer on
+  // book.massageclub.io with the same Yes and No. If neither can reach them the
+  // offer is held and Jordan hears it, because an offer nobody can see is how a
+  // studio ends up holding a slot for nobody.
+  const offerText = COPY[L].offer(req.first_name || "", partner.business_name, pc.neighbourhood, trSvcLow(req.service_name || "massage", L), time, day, asked, pc.address) + priceLine;
+  let offerVia = "none";
+  if (clientNum && await waWindowOpen(clientNum) && await sendButtons(clientNum, offerText,
+    [{ id: `offer_yes_${rowId}`, title: COPY[L].offerYes(time) }, { id: `offer_no_${rowId}`, title: COPY[L].offerNo }])) offerVia = "whatsapp";
+  if (offerVia === "none") {
+    let email = String(req.contact_email || "").trim();
+    if (!email && req.contact_email === undefined) {
+      const er = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&select=contact_email`, { headers: H() });
+      email = String(((await er.json().catch(() => [])) || [])[0]?.contact_email || "").trim();
+    }
+    if (email && await emailOffer({ ...req, contact_email: email }, L, rowId, partner.business_name, time, day, pc.address, priceLine)) offerVia = "email";
+  }
+  if (clientNum) {
+    cs.data.prevStep = cs.step;
+    cs.step = "await_offer";
+    cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id, day: opts.dayHint || offerDay || null };
+    await saveSession(cs);
+  }
+  if (offerVia === "none") {
+    await founderCard(`⚠️ ${partner.business_name} offered ${time} but ${req.first_name || "the customer"} cannot see it · #${req.id}`, {
+      badge: "OFFER NOT DELIVERED", title: `${partner.business_name} can do ${time} ${day}, and the customer cannot be reached`,
+      paras: [`WhatsApp is outside its 24 hour window and there is no email on file, so the Yes button could not be sent. Nothing is confirmed. The studio was told it is not booked yet.`],
+      quote: freeText, waNum: clientNum,
+    });
+  }
   // v81 (Jordan, 12 Sept): his own words for this moment. The old line asked the
   // studio to hold the slot for 15 minutes, which is a promise about the
   // customer that we cannot make on their behalf. This one names the customer
   // and commits only to coming back.
-  await sendText(studioFrom, `Vale, gracias. Lo confirmo con ${req.first_name || "el cliente"} y os digo algo en cuanto me conteste.`);
+  await studioSay(studioFrom, `Vale, gracias. Lo confirmo con ${req.first_name || "el cliente"} y os digo algo en cuanto me conteste.`);
   await logEvent(clientNum, "offer_forwarded", { request_id: req.id, studio: partner.business_name, time });
   await founderCard(`⏰ ${partner.business_name} offers ${time} · #${req.id}`, {
     badge: "OFFER FORWARDED",
     title: `${partner.business_name} can do ${time} ${day}`,
-    paras: [`Sent to ${req.first_name || "the customer"} with Yes / Another time buttons. On Yes the booking confirms itself, the studio is told, and the other studios are stood down. Nothing to do.`],
+    paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : "with Yes / Another time buttons"}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
     quote: freeText, waNum: clientNum,
   });
+}
+
+// v199: a studio reached by email has no WhatsApp number to answer on.
+const studioSay = (to: string, text: string) => digitsOf(to) ? sendText(digitsOf(to), text) : Promise.resolve(false);
+// v199: the customer's Yes / No page for an offer, on book.massageclub.io (the
+// bot.html shell renders it from here). Signed per offer, so the link opens that
+// offer and nothing else.
+const OFFER_PAGE = "https://book.massageclub.io/bot.html";
+async function offerSig(rowId: string): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(OPS_KEY + ":offer"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(String(rowId))));
+  return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function offerLink(rowId: string, a = ""): Promise<string> {
+  return `${OFFER_PAGE}?offer=${encodeURIComponent(rowId)}&sig=${await offerSig(rowId)}${a ? "&a=" + a : ""}`;
+}
+async function emailOffer(req: any, L: string, rowId: string, studio: string, time: string, day: string, address: string, priceLine: string): Promise<boolean> {
+  const to = String(req?.contact_email || "").trim();
+  if (!to || !RESEND_API_KEY) return false;
+  const es = L === "es";
+  const link = await offerLink(rowId);
+  const who = String(req.first_name || "").trim();
+  const price = String(priceLine || "").replace(/^\s+/, "").replace(/\*/g, "");
+  const lead = es ? `${who ? who + ", b" : "B"}uenas noticias: ${studio} puede darte el masaje.` : `Good news${who ? ", " + who : ""}: ${studio} can do your massage.`;
+  const note = es ? "Todavía no está reservado. Toca el botón, revisa la oferta y pulsa Sí para confirmarla." : "It is not booked yet. Tap the button, check the offer and press Yes to confirm it.";
+  const btn = es ? "Ver la oferta y confirmar" : "See the offer and confirm";
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:22px 34px 0;text-align:center;"><p style="margin:0;color:${C.ink};font-size:15px;line-height:1.6;">${esc(lead)}</p><h1 style="margin:14px 0 0;color:${C.ink};font-size:25px;line-height:1.2;font-family:${SERIF};">${esc(studio)}</h1>${address ? `<p style="margin:6px 0 0;color:${C.muted};font-size:14px;">${esc(address)}</p>` : ""}<p style="margin:14px 0 0;color:${C.clay};font-size:30px;font-family:${SERIF};font-weight:700;">${esc([day, time].filter(Boolean).join(", "))}</p>${price ? `<p style="margin:8px 0 0;color:${C.ink};font-size:14px;">${esc(price)}</p>` : ""}<p style="margin:16px 0 0;color:${C.muted};font-size:14px;line-height:1.6;">${esc(note)}</p></td></tr><tr><td style="padding:22px 34px 0;text-align:center;"><a href="${link}" style="display:inline-block;background:#1FA855;color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:999px;">${esc(btn)}</a></td></tr><tr><td style="padding:22px 34px 26px;"><div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div><p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
+  const text = `${lead}\n${studio}${address ? ", " + address : ""}\n${[day, time].filter(Boolean).join(", ")}${price ? "\n" + price : ""}\n\n${note}\n${link}\n\nMassage Club`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject: es ? `${studio} puede a las ${time}: ¿lo confirmas?` : `${studio} can do ${time}: confirm it?`, html, text }),
+  }).catch(() => null);
+  const ok = !!res && res.ok;
+  if (!ok) console.log("[wa] offer email failed", to);
+  else await logEvent(digitsOf(req.client_phone || "") || "web", "offer_emailed", { request_id: req.id, row: rowId, studio, time });
+  return ok;
+}
+// v199: the written confirmation for a studio that took the request by email.
+async function emailStudio(partnerId: string, subject: string, text: string): Promise<boolean> {
+  if (!partnerId || !RESEND_API_KEY) return false;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partnerId)}&select=booking_email,email`, { headers: H() });
+  const p = ((await r.json().catch(() => [])) || [])[0] || {};
+  const to = String(p.booking_email || p.email || "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return false;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, text }),
+  }).catch(() => null);
+  return !!res && res.ok;
 }
 
 // v77: has any studio on this request already offered the time the customer
@@ -3749,85 +3795,119 @@ function offerDayFromText(t: string, L: string): string {
   return "";
 }
 
-async function acceptOffer(rowId: string, from: string, L: string, s: Session) {
-  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}&select=id,request_id,partner_id,phone,offered_time,reply_text`, { headers: H() });
+// v199 (Jordan, 10 Oct: "we need to make sure both parties confirm"). This is
+// the only place a booking becomes confirmed, and only on the customer's own
+// tap: the WhatsApp Yes button, or Yes on the offer page linked from the offer
+// email. The studio's yes is what put the offer here. `from` is the customer's
+// number ("" for a web customer with none) and `s` their session, or null when
+// there is none, so the web path never invents a session.
+async function acceptOffer(rowId: string, from: string, L: string, s: Session | null, via: "whatsapp" | "web" = "whatsapp"): Promise<boolean> {
+  const say = (t: string) => from ? sendText(from, t) : Promise.resolve(false);
+  const closeOffer = async () => { if (s) { s.step = "done"; s.data.offer = null; await saveSession(s); } };
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}&select=id,request_id,partner_id,phone,offered_time,reply_text,outcome,channel`, { headers: H() });
   const drows = await dr.json().catch(() => []);
   const row = Array.isArray(drows) && drows[0] ? drows[0] : null;
-  if (!row || !row.offered_time) { await sendText(from, COPY[L].offerGone); s.step = "done"; s.data.offer = null; await saveSession(s); return; }
+  // An offer the studio has since withdrawn, or one stood down because someone
+  // else got the booking, is not there to accept.
+  if (!row || !row.offered_time || ["no", "declined", "stood_down", "expired", "send_failed"].includes(String(row.outcome || ""))) { await say(COPY[L].offerGone); await closeOffer(); return false; }
   const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,contact_email,client_phone,languages,stage`, { headers: H() });
   const reqRows = await rr.json().catch(() => []);
   const req = Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : null;
-  if (!req) { await sendText(from, COPY[L].offerGone); s.step = "done"; s.data.offer = null; await saveSession(s); return; }
+  if (!req) { await say(COPY[L].offerGone); await closeOffer(); return false; }
   const pc = await partnerCard(row.partner_id);
-  const studio = pc.business_name || s.data.offer?.studio || "the studio";
+  const studio = pc.business_name || s?.data.offer?.studio || "the studio";
   // v37: the winning studio moved an already confirmed time and the customer said yes.
   if (req.stage === "confirmed") {
     const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&select=partner_id,confirmed_day`, { headers: H() });
     const rqs = await rq.json().catch(() => []);
     const cur = Array.isArray(rqs) && rqs[0] ? rqs[0] : null;
-    if (!cur || String(cur.partner_id || "") !== String(row.partner_id)) { await sendText(from, COPY[L].offerGone); s.step = "done"; s.data.offer = null; await saveSession(s); return; }
-    const cday = s.data.offer?.day || cur.confirmed_day || req.day1 || "";
+    if (!cur || String(cur.partner_id || "") !== String(row.partner_id)) { await say(COPY[L].offerGone); await closeOffer(); return false; }
+    const cday = s?.data.offer?.day || cur.confirmed_day || req.day1 || "";
     const cwhen = [cday, row.offered_time].filter(Boolean).join(" ");
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ confirmed_time: row.offered_time, confirmed_day: cday || null, customer_flag: null, reconfirmed_at: new Date().toISOString(), stage_updated_at: new Date().toISOString(), studio_reply: `Hora cambiada a ${row.offered_time} por ${studio}, cliente acepta` }) });
     await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ customer_answer: "yes", customer_answered_at: new Date().toISOString() }) });
-    await sendText(row.phone, `Perfecto, ${cwhen} entonces. Confirmado con ${req.first_name || "el cliente"}. Gracias, Massage Club`);
-    await sendText(from, COPY[L].offerAccepted(studio, cwhen, pc.address, pc.phone));
+    await tellStudio(digitsOf(row.phone || ""), req.first_name || "el cliente", cwhen, `Perfecto, ${cwhen} entonces. Confirmado con ${req.first_name || "el cliente"}. Gracias, Massage Club`, `confirmado con el cliente: ${cwhen}`);
+    await say(COPY[L].offerAccepted(studio, cwhen, pc.address, pc.phone));
     await customerConfirmEmail(req, studio, cwhen, pc.address, pc.phone);
-    s.step = "done"; s.data.offer = null; await saveSession(s);
-    await logEvent(from, "time_change_accepted", { id: req.id, studio, time: row.offered_time });
+    await closeOffer();
+    await logEvent(from || "web", "time_change_accepted", { id: req.id, studio, time: row.offered_time, via });
     await notifyJordanWa(`${req.first_name || "Customer"} accepted ${studio}'s new time ${cwhen}. Studio told, customer confirmed by chat and email.`, from);
-    return;
+    return true;
   }
   // v51: the day comes from the offer itself (session, or the studio's words on
   // the dispatch row when the customer tapped an older offer), not the day asked.
-  const day = (s.data.offer?.row === rowId && s.data.offer?.day) || offerDayFromText(String(row.reply_text || ""), L) || req.day1 || "";
+  const day = (s?.data.offer?.row === rowId && s?.data.offer?.day) || offerDayFromText(String(row.reply_text || ""), L) || req.day1 || "";
   const when = [day, row.offered_time].filter(Boolean).join(" ");
   // Same race guard as a studio's Confirmado tap: only one confirmation per request.
-  const claim = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=neq.confirmed`, {
+  // v199: and never on a request that has since been cancelled or closed.
+  const claim = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=not.in.(confirmed,cancelled,dismissed,no_show,needs_review,stale,too_late)`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
     body: JSON.stringify({ stage: "confirmed", confirmed_day: day || null, confirmed_time: row.offered_time, partner_id: row.partner_id, studio_name: studio, studio_reply: `Cliente acepta ${row.offered_time} (${studio})`, stage_updated_at: new Date().toISOString() }),
   });
   const claimed = await claim.json().catch(() => []);
-  if (!Array.isArray(claimed) || !claimed.length) { await sendText(from, COPY[L].offerGone); s.step = "done"; s.data.offer = null; await saveSession(s); return; }
+  if (!Array.isArray(claimed) || !claimed.length) { await say(COPY[L].offerGone); await closeOffer(); return false; }
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "won", customer_answer: "yes", customer_answered_at: new Date().toISOString() }) });
   await awardRequest(req.id, row.partner_id);
   await ensureBooking(req.id);
   const clientDigits = digitsOf(req.client_phone || from);
-  await sendText(row.phone, `Confirmado: ${req.first_name || "el cliente"}, ${trSvc(req.service_name || "Massage", "es").toLowerCase()}, ${when}. ${req.languages === "es" ? "" : "Habla inglés. "}Si necesitáis decirle algo, escribidnos aquí y se lo hacemos llegar. Gracias, Massage Club`);
-  await sendText(from, COPY[L].offerAccepted(studio, when, pc.address, pc.phone));
+  // v199: the studio's confirmation in writing, and it has to arrive. Plain
+  // WhatsApp text dies at Meta unless the studio wrote to us in the last 24
+  // hours, so tellStudio falls back to the approved aviso_centro_v1 template; a
+  // studio that took the request by email also gets it by email. If neither
+  // reaches them, Jordan is told, because a studio that never hears "confirmado"
+  // is a customer turned away at the door.
+  const svcEsLow = trSvc(req.service_name || "Massage", "es").toLowerCase();
+  const studioText = `Confirmado: ${req.first_name || "el cliente"}, ${svcEsLow}, ${when}. El cliente lo acaba de confirmar, ya podéis reservarlo. ${req.languages === "es" ? "" : "Habla inglés. "}Si necesitáis decirle algo, escribidnos aquí y se lo hacemos llegar. Gracias, Massage Club`;
+  const toldWa = await tellStudio(digitsOf(row.phone || ""), req.first_name || "el cliente", when, studioText, `el cliente ha confirmado: ${svcEsLow}, ${when}. Ya podéis reservarlo`);
+  const toldMail = (row.channel === "email" || !toldWa) ? await emailStudio(String(row.partner_id || ""), `Reserva confirmada: ${req.first_name || "cliente"}, ${when}`, studioText) : false;
+  if (!toldWa && !toldMail) {
+    await founderCard(`⚠️ ${studio} has not been told #${req.id} is confirmed`, {
+      badge: "STUDIO NOT TOLD", title: `${req.first_name || "The customer"} confirmed ${studio} at ${when}, and the studio could not be reached`,
+      paras: [`Neither WhatsApp nor email reached ${studio}. Please call them so they hold the slot.`],
+      waNum: digitsOf(row.phone || ""),
+    });
+  }
+  await say(COPY[L].offerAccepted(studio, when, pc.address, pc.phone));
   await customerConfirmEmail(req, studio, when, pc.address, pc.phone);
-  s.data.offer = null;
   // v81 (Jordan, 12 Sept): the email lands here, at the moment they have just
   // said yes to a real slot, where it buys them the member rate rather than
   // standing between them and any answer. Nobody abandons over an email address
   // once they have a booking in front of them. Sharo J had none of this: no
   // email, no WhatsApp history, five studios asked and nothing we could tell her.
-  if (!req.contact_email && !s.data.emailRefused) {
-    s.step = "await_email_post"; await saveSession(s);
-    await sendText(from, COPY[L].memberJoin);
-  } else {
-    s.step = "done"; await saveSession(s);
+  if (s) {
+    s.data.offer = null;
+    if (!req.contact_email && !s.data.emailRefused && from) {
+      s.step = "await_email_post"; await saveSession(s);
+      await say(COPY[L].memberJoin);
+    } else {
+      s.step = "done"; await saveSession(s);
+    }
   }
-  await logEvent(from, "confirmed", { id: req.id, studio, via: "offer" });
+  await logEvent(from || "web", "confirmed", { id: req.id, studio, via: via === "web" ? "offer_page" : "offer" });
   await founderCard(`✅ Booked: ${req.first_name || "customer"} at ${studio}, ${when} · #${req.id}`, {
     badge: "BOOKED",
     title: `${studio} · ${when}`,
-    paras: [`${req.first_name || "The customer"} accepted the studio's offer. The studio has the confirmation and the customer's number, the customer was told on WhatsApp${req.contact_email ? " and by email" : ""}, and every other studio asked was stood down. Nothing to do.`],
+    paras: [`${req.first_name || "The customer"} tapped Yes${via === "web" ? " on the offer page" : " on WhatsApp"}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
     waNum: clientDigits,
   });
+  return true;
 }
 
-async function declineOffer(rowId: string, from: string, L: string, s: Session) {
+
+// v199: null-safe like acceptOffer, so the offer page's No works for a customer
+// with no WhatsApp session.
+async function declineOffer(rowId: string, from: string, L: string, s: Session | null) {
+  const say = (t: string) => from ? sendText(from, t) : Promise.resolve(false);
   const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}&select=id,request_id,phone,offered_time`, { headers: H() });
   const drows = await dr.json().catch(() => []);
   const row = Array.isArray(drows) && drows[0] ? drows[0] : null;
-  if (row && s.data.offer?.change) {
+  if (row && s?.data.offer?.change) {
     // v37: the customer refused a moved time on a confirmed booking. Ask the
     // studio to keep the original slot; a person closes it if they cannot.
     const old = String(s.data.offer?.old || "");
     await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ customer_answer: "no", customer_answered_at: new Date().toISOString() }) });
-    await sendText(row.phone, `Al cliente no le encaja ${row.offered_time || "esa hora"}. ¿Podéis mantener la hora original${old ? " (" + old + ")" : ""}? Si no es posible, decídnoslo por aquí y buscamos otra opción. Gracias, Massage Club`);
-    await sendText(from, COPY[L].timeChangeDeclined(old));
+    await studioSay(row.phone, `Al cliente no le encaja ${row.offered_time || "esa hora"}. ¿Podéis mantener la hora original${old ? " (" + old + ")" : ""}? Si no es posible, decídnoslo por aquí y buscamos otra opción. Gracias, Massage Club`);
+    await say(COPY[L].timeChangeDeclined(old));
     s.step = "done"; s.data.offer = null; await saveSession(s);
     await logEvent(from, "time_change_declined", { row: rowId });
     await notifyJordanWa(`${s.wa_name || from} refused the moved time ${row.offered_time || ""} (was ${old || "?"}). Studio asked to keep the original. Watch this one.`, from);
@@ -3836,11 +3916,77 @@ async function declineOffer(rowId: string, from: string, L: string, s: Session) 
   if (row) {
     await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "no", customer_answer: "no", customer_answered_at: new Date().toISOString() }) });
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&stage=eq.offered`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "studio_asked", stage_updated_at: new Date().toISOString() }) });
-    await sendText(row.phone, `Gracias, al cliente no le encaja ${row.offered_time || "esa hora"}. Si os surge otra opción ese día, decídnoslo por aquí. Massage Club`);
+    await studioSay(row.phone, `Gracias, al cliente no le encaja ${row.offered_time || "esa hora"}. Si os surge otra opción ese día, decídnoslo por aquí. Massage Club`);
   }
-  await sendText(from, COPY[L].offerDeclined);
-  s.step = "done"; s.data.offer = null; await saveSession(s);
-  await logEvent(from, "offer_declined", { row: rowId });
+  await say(COPY[L].offerDeclined);
+  if (s) { s.step = "done"; s.data.offer = null; await saveSession(s); }
+  await logEvent(from || "web", "offer_declined", { row: rowId });
+}
+
+// v199: a small card page for customers and studios, rendered through the
+// book.massageclub.io/bot.html shell (pageOut with fmt=json).
+function simpleCard(title: string, body: string, extra: string, tone: "ok" | "plain" = "plain"): string {
+  const badge = tone === "ok" ? `<div style="margin-top:16px;"><span style="display:inline-block;background:#E6F4EA;color:#1A7F42;font-size:12px;font-weight:700;letter-spacing:2px;padding:7px 16px;border-radius:999px;">✓</span></div>` : "";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Massage Club</title></head><body style="margin:0;background:${C.page};font-family:${SANS};"><div style="max-width:440px;margin:40px auto;padding:0 16px;"><div style="background:#fff;border:1px solid ${C.line};border-radius:20px;padding:30px 26px;text-align:center;"><img src="${LOGO_URL}" width="40" height="40" style="border-radius:50%;"><p style="margin:8px 0 0;color:${C.ink};font-size:11px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p>${badge}<h1 style="margin:16px 0 0;color:${C.ink};font-size:23px;line-height:1.25;font-family:${SERIF};">${esc(title)}</h1><p style="margin:12px 0 0;color:${C.muted};font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(body)}</p>${extra}</div></div></body></html>`;
+}
+const pillLink = (href: string, label: string, primary: boolean) =>
+  `<a href="${href}" style="display:block;margin:12px 0 0;background:${primary ? "#1FA855" : "#fff"};color:${primary ? "#fff" : C.ink};${primary ? "" : `border:1px solid ${C.dash};`}font-size:16px;font-weight:700;text-decoration:none;padding:15px 20px;border-radius:999px;">${esc(label)}</a>`;
+
+// v199: the offer page. GET shows the offer with Yes and No; a=yes / a=no is
+// the customer's tap. The email links to the plain page, never straight to
+// a=yes, so a mail scanner opening the link can never book anything.
+async function offerPage(url: URL): Promise<Response> {
+  const rowId = String(url.searchParams.get("offer") || "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
+  const sig = String(url.searchParams.get("sig") || "");
+  const a = String(url.searchParams.get("a") || "");
+  if (!rowId || sig !== await offerSig(rowId)) return pageOut(url, simpleCard("This link is not valid", "Reply to us on WhatsApp and we will sort it out.", ""), 403);
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}&select=id,request_id,partner_id,offered_time,outcome,reply_text`, { headers: H() });
+  const row = ((await dr.json().catch(() => [])) || [])[0] || null;
+  const rr = row ? await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,languages,stage,client_phone,contact_email,partner_id,confirmed_time,message_text`, { headers: H() }) : null;
+  const req = rr ? ((await rr.json().catch(() => [])) || [])[0] || null : null;
+  if (!row || !req) return pageOut(url, simpleCard("This offer is no longer available", "Reply to us on WhatsApp and we will find you another time.", ""), 404);
+  const L = req.languages === "es" ? "es" : "en";
+  const es = L === "es";
+  const gone = () => pageOut(url, simpleCard(es ? "Esta oferta ya no está disponible" : "This offer is no longer available", es ? "Escríbenos por WhatsApp y te buscamos otra hora." : "Reply to us on WhatsApp and we will find you another time.", ""));
+  const pc = await partnerCard(String(row.partner_id || ""));
+  const studio = pc.business_name || (es ? "el centro" : "the studio");
+  const day = offerDayFromText(String(row.reply_text || ""), L) || dayLabelFor(req.day1, req.message_text, L) || String(req.day1 || "");
+  const when = [day, row.offered_time].filter(Boolean).join(", ");
+  const phone = digitsOf(String(req.client_phone || ""));
+  const booked = () => pageOut(url, simpleCard(es ? "¡Reservado!" : "You're booked!", `${studio}\n${when}${pc.address ? "\n" + pc.address : ""}\n\n${es ? "Te enviamos la confirmación por email. Pagas directamente en el centro." : "We've emailed you the confirmation. You pay the studio directly."}`, "", "ok"));
+  if (req.stage === "confirmed" && String(req.partner_id || "") === String(row.partner_id || "") && String(req.confirmed_time || "") === String(row.offered_time || "")) return booked();
+  const open = !!row.offered_time && ["", "pending", "accepted"].includes(String(row.outcome || "")) && !["confirmed", "cancelled", "dismissed", "no_show", "needs_review", "stale", "too_late"].includes(String(req.stage || ""));
+  if (!open) return gone();
+  const s = phone ? await getSession(phone) : null;
+  if (a === "yes") return (await acceptOffer(rowId, phone, L, s, "web")) ? booked() : gone();
+  if (a === "no") {
+    await declineOffer(rowId, phone, L, s);
+    return pageOut(url, simpleCard(es ? "Sin problema" : "No problem", es ? "No lo reservamos. Escríbenos por WhatsApp si quieres otra hora u otro centro." : "We won't book it. Message us on WhatsApp if you'd like another time or studio.", ""));
+  }
+  const price = (await offerPriceText(Number(req.id), String(row.partner_id || ""), String(req.service_name || ""), "", L)).replace(/\*/g, "");
+  const body = `${pc.address ? pc.address + "\n\n" : ""}${when}\n${trSvc(req.service_name || "Massage", L)}${price ? "\n" + price : ""}\n\n${es ? "Todavía no está reservado. Pulsa Sí para confirmarlo." : "It's not booked yet. Tap Yes to confirm it."}`;
+  const extra = pillLink(await offerLink(rowId, "yes"), es ? `Sí, reserva ${row.offered_time}` : `Yes, book ${row.offered_time}`, true)
+    + pillLink(await offerLink(rowId, "no"), es ? "No, gracias" : "No, thanks", false);
+  return pageOut(url, simpleCard(studio, body, extra));
+}
+
+// v199: where a studio lands after tapping a time in its email. Their tap is an
+// offer; they hear that plainly, in Spanish with a line of English.
+function notePage(url: URL): Response {
+  const n = url.searchParams.get("note");
+  if (n === "studio_pending") {
+    return pageOut(url, simpleCard("Recibido, gracias", "Se lo proponemos al cliente ahora mismo.\n\nTodavía no está reservado: no preparéis nada hasta que os llegue nuestra confirmación por escrito, que os enviamos en cuanto el cliente diga que sí.\n\nReceived, thank you. We are offering this time to the client now. It is not booked yet: please hold off until our written confirmation arrives.", ""));
+  }
+  if (n === "studio_none") {
+    return pageOut(url, simpleCard("Gracias por avisar", "Se lo decimos al cliente y le buscamos otra opción. No hace falta que hagáis nada.\n\nThank you for letting us know. We will tell the client and find another option.", ""));
+  }
+  if (n === "studio_done") {
+    return pageOut(url, simpleCard("Ya está confirmada", "Esta reserva ya está confirmada con vosotros. ¡Gracias!\n\nThis booking is already confirmed with you. Thank you.", ""));
+  }
+  if (n === "studio_taken") {
+    return pageOut(url, simpleCard("Esta reserva ya está cubierta", "Otro centro la ha cogido justo antes. ¡Gracias por responder tan rápido!\n\nThis booking was just covered by another studio. Thank you for the quick reply.", ""));
+  }
+  return pageOut(url, simpleCard("Massage Club", "", ""));
 }
 
 async function createRequest(s: Session): Promise<number | null> {
@@ -4140,7 +4286,8 @@ async function reshowOffer(s: Session, from: string, L: string, why: string): Pr
   const body = es
     ? `Tu oferta sigue en pie: *${pc.business_name || o.studio}* a las *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nDirección: ${where}` : ""}${price ? `\n${price}` : ""}\n\n¿Te la reservo?`
     : `Your offer is still open: *${pc.business_name || o.studio}* at *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nAddress: ${where}` : ""}${price ? `\n${price}` : ""}\n\nShall I book it?`;
-  await sendButtons(from, body, [{ id: `offer_yes_${o.row}`, title: COPY[L].offerYes(o.time) }, { id: `offer_no_${o.row}`, title: COPY[L].offerNo }]);
+  const tapNote = why === "typed_yes" ? (es ? "\n\nPulsa el botón de abajo para confirmarlo." : "\n\nTap the button below to confirm it.") : "";
+  await sendButtons(from, body + tapNote, [{ id: `offer_yes_${o.row}`, title: COPY[L].offerYes(o.time) }, { id: `offer_no_${o.row}`, title: COPY[L].offerNo }]);
   await logEvent(from, "offer_reshown", { why, studio: o.studio, time: o.time });
   return true;
 }
@@ -4419,7 +4566,16 @@ const handler = async (req: Request) => {
   // v139: the founder's reply-as-bot page. Not a Meta webhook, so it is routed
   // before the webhook body is read and never reaches the fallback below.
   const url = new URL(req.url);
-  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply") || url.searchParams.has("billing") || url.searchParams.has("invoice"))) return new Response(null, { status: 204, headers: CORS });
+  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply") || url.searchParams.has("billing") || url.searchParams.has("invoice") || url.searchParams.has("offer") || url.searchParams.has("note"))) return new Response(null, { status: 204, headers: CORS });
+  // v199: the customer's Yes / No page for an emailed offer, and the page a
+  // studio lands on after tapping a time in its email.
+  if (url.searchParams.has("offer")) {
+    try { return await offerPage(url); } catch (e) {
+      console.log("[wa] offer page failed", String(e));
+      return pageOut(url, simpleCard("Massage Club", "Something went wrong. Please reply to us on WhatsApp and we will sort it out.", ""), 500);
+    }
+  }
+  if (url.searchParams.has("note")) return notePage(url);
   if (url.searchParams.has("billing") || url.searchParams.has("invoice")) {
     try { return url.searchParams.has("billing") ? await billingPage(url) : await invoicePage(url); } catch (e) {
       console.log("[wa] billing page failed", String(e));
@@ -4545,6 +4701,38 @@ const handleInner = async (req: Request) => {
       if (phone && await waWindowOpen(phone)) sent = await sendText(phone, text);
       await logEvent(phone || "system", "email_confirm_relayed", { request_id: String(id), sent, studio: req.studio_name });
       return out({ ok: true, sent });
+    }
+    // v199 (Jordan, 10 Oct: "we need to make sure both parties confirm"). A
+    // studio tapped a time in its offer email (studio-times). That is the
+    // studio's half: the time becomes an offer the customer has to tap Yes on,
+    // on WhatsApp or on the emailed offer page, exactly like a WhatsApp yes.
+    if (payload?.ops === "studio_offer") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const out = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
+      const id = Number(payload.request_id || 0);
+      const pid = String(payload.partner_id || "").replace(/[^a-fA-F0-9-]/g, "");
+      const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}&select=*`, { headers: H() });
+      const req = (await rr.json().catch(() => []))[0];
+      if (!req || !pid) return out({ ok: false, reason: "no request or studio" });
+      if (["confirmed", "cancelled", "dismissed", "no_show", "needs_review"].includes(String(req.stage || ""))) return out({ ok: false, reason: `request is ${req.stage}` });
+      const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(pid)}&select=id,business_name,whatsapp,phone`, { headers: H() });
+      const p = (await pr.json().catch(() => []))[0];
+      if (!p) return out({ ok: false, reason: "no such studio" });
+      const rawTime = String(payload.time || "");
+      const tm = rawTime.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/) || String(payload.day || "").match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+      const time = tm ? `${tm[1].padStart(2, "0")}:${tm[2]}` : exactTime(req);
+      if (!time) return out({ ok: false, reason: "no exact time to offer" });
+      const dayRaw = String(payload.day || "").replace(/,?\s*([01]?\d|2[0-3])[:.]([0-5]\d)\s*$/, "").trim();
+      const now = new Date().toISOString();
+      const ins = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?on_conflict=request_id,partner_id`, {
+        method: "POST", headers: { ...H(), Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify({ request_id: id, partner_id: pid, phone: digitsOf(String(p.whatsapp || p.phone || "")), outcome: "accepted", accepted_at: now, replied_at: now, channel: "email" }),
+      });
+      const row = (await ins.json().catch(() => []))[0];
+      if (!row?.id) return out({ ok: false, reason: "could not record the offer" });
+      await forwardOffer(req, { id: String(p.id), business_name: String(p.business_name || "") }, String(row.id), time, `Sí, a las ${time} (email)`, "", { dayHint: dayRaw, ownOption: true });
+      await logEvent(digitsOf(String(req.client_phone || "")) || "web", "studio_accepted", { id, studio: p.business_name, time, via: "email" });
+      return out({ ok: true, row: row.id, time });
     }
     // v66: read a message and return the reading, sending nothing. For checking
     // the interpreter against real sentences without a customer in the loop.
@@ -5482,7 +5670,9 @@ const handleInner = async (req: Request) => {
       }
       if (s.step === "await_offer" && text && s.data.offer?.row) {
         const bare = text.trim().toLowerCase().replace(/[.!¡¿?]/g, "");
-        if (/^(yes|yeah|yep|ok|okay|sure|si|sí|vale|perfecto|perfect|great|book it|reserva|reservar|confirm|confirmo|1)$/.test(bare)) { await acceptOffer(String(s.data.offer.row), from, L, s); return new Response("OK", { status: 200 }); }
+        // v199 (Jordan, 10 Oct): the customer confirms with a tap of the button, so a
+        // typed yes brings the buttons back rather than booking it.
+        if (/^(yes|yeah|yep|ok|okay|sure|si|sí|vale|perfecto|perfect|great|book it|reserva|reservar|confirm|confirmo|1)$/.test(bare)) { if (!(await reshowOffer(s, from, L, "typed_yes"))) await sendText(from, COPY[L].offerGone); return new Response("OK", { status: 200 }); }
         if (/^(no|nope|another|otra|other|otra hora|another time|2)$/.test(bare)) { await declineOffer(String(s.data.offer.row), from, L, s); return new Response("OK", { status: 200 }); }
         // v154: "¿Qué calle?" about the offered studio gets its address.
         if (ADDRESS_Q_RE.test(text) && await reshowOffer(s, from, L, "address_question")) return new Response("OK", { status: 200 });
