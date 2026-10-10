@@ -4283,10 +4283,12 @@ async function reshowOffer(s: Session, from: string, L: string, why: string): Pr
     const svcName = String(((await rq.json().catch(() => [])) || [])[0]?.service_name || "");
     price = await offerPriceText(Number(o.request || 0), String(d.partner_id), svcName, "", L);
   }
-  const body = es
+  let body = es
     ? `Tu oferta sigue en pie: *${pc.business_name || o.studio}* a las *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nDirección: ${where}` : ""}${price ? `\n${price}` : ""}\n\n¿Te la reservo?`
     : `Your offer is still open: *${pc.business_name || o.studio}* at *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nAddress: ${where}` : ""}${price ? `\n${price}` : ""}\n\nShall I book it?`;
-  const tapNote = why === "typed_yes" ? (es ? "\n\nPulsa el botón de abajo para confirmarlo." : "\n\nTap the button below to confirm it.") : "";
+  // v199: a typed yes is answered with the one thing that confirms it.
+  const tapNote = "";
+  if (why === "typed_yes") body = body.replace(/\n\n(¿Te la reservo\?|Shall I book it\?)$/, es ? "\n\nPara confirmarla, pulsa el botón de abajo." : "\n\nTo confirm it, tap the button below.");
   await sendButtons(from, body + tapNote, [{ id: `offer_yes_${o.row}`, title: COPY[L].offerYes(o.time) }, { id: `offer_no_${o.row}`, title: COPY[L].offerNo }]);
   await logEvent(from, "offer_reshown", { why, studio: o.studio, time: o.time });
   return true;
