@@ -18,6 +18,9 @@
 export type SlotValue = { value: string; quote: string };
 export type Reading = {
   language: "en" | "es" | "other";
+  // v197: ISO 639-1 code of the language they wrote in ("ro", "pt"...), or of
+  // the language they asked for ("Romano", "translator Romanian").
+  language_code?: string;
   intents: string[];
   question: string;
   slots: Partial<Record<"day" | "time" | "area" | "service" | "duration_min" | "therapist_gender" | "people" | "email" | "name", SlotValue>>;
@@ -50,7 +53,8 @@ const GLOSSARY = `Local vocabulary (treat these as meaning the same thing):
 - price words: precio, cuánto, cuesta, vale (as "how much is it"), cost, price, how much, rates
 - objection: caro, carísimo, un robo, too expensive, overpriced, cheaper, más barato
 - Madrid areas (misspellings included): Centro/Sol, Malasaña, Chueca, Lavapiés/Lavapies, Chamberí/chamberi, Salamanca, Retiro, Chamartín/chamartin, Tetuán/tetuan, Moncloa, Argüelles, Arganzuela, Usera, Carabanchel, Vallecas, Ciudad Lineal, Hortaleza, Barajas, Plaza Castilla, Castellana, Atocha, Goya, Ópera; nearby towns: Pozuelo, Majadahonda, Las Rozas, Alcobendas, Tres Cantos, Getafe, Leganés, Alcorcón, Móstoles, Alcalá de Henares
-- Romanian/Portuguese/Italian/French words (masaj, mâine, azi, amanhã, domani, demain) mean the person may not speak English or Spanish well.`;
+- Romanian/Portuguese/Italian/French words (masaj, mâine, azi, amanhã, domani, demain) mean the person may not speak English or Spanish well.
+- Romanian: azi = today, mâine = tomorrow, diseară = tonight, dimineața = morning, după-amiază = afternoon, seara = evening, da = yes, nu = no, mulțumesc = thanks. Portuguese: hoje = today, amanhã = tomorrow, sim = yes, não = no. French: aujourd'hui = today, demain = tomorrow, oui = yes. Italian: oggi = today, domani = tomorrow, sì = yes.`;
 
 export const READER_SYSTEM = `You read one WhatsApp message sent to Massage Club, a service that books massages at professional studios in Madrid. Most customers write in English or Spanish. You never write to the customer. You only report, through the report_reading tool, what their message means.
 
@@ -62,7 +66,8 @@ Rules:
 3. Read the message as an answer to the last question we asked. "Sisi" or "vale" after "Which day suits you?" is an acknowledgement (thanks_or_ack), not a day. "Tetuán" after "what is your email?" is an area. "Girl" alone is a therapist preference.
 4. day: "today", "tomorrow", a weekday in English ("saturday") or a date "YYYY-MM-DD". time: "HH:MM" for a clock time ("a las 7" in the evening context is "19:00"; "7pm" is "19:00"), or "morning", "afternoon", "evening", "earliest". A duration is never a time.
 5. area: the Madrid neighbourhood or town as a normal name ("Chamberí", "Tetuán", "Pozuelo"). service: one of relax, deep, thai, sports, couples, hot_stone, pregnancy, reflexology, shiatsu, balinese, lymphatic, other. duration_min: 30, 45, 60, 90 or 120. therapist_gender: female or male. people: a number.
-6. intents can be several. price_objection only when they say it is too expensive or want something cheaper, NOT when they ask the price ("¿Es caro?" or "how much?" is ask_question with question price). decline only when they turn down what we offered or the whole booking. special_request is any sexual or "happy ending" request, including veiled ones ("good girl for me", "man to man", "sensitivo", "with extras"). unsupported_language when the message is mostly in a language other than English or Spanish.
+6. intents can be several. price_objection only when they say it is too expensive or want something cheaper, NOT when they ask the price ("¿Es caro?" or "how much?" is ask_question with question price). decline only when they turn down what we offered or the whole booking. special_request is any sexual or "happy ending" request, including veiled ones ("good girl for me", "man to man", "sensitivo", "with extras"). unsupported_language when the message is mostly in a language other than English or Spanish; still fill every slot you can quote, in whatever language.
+6a. language_code: the ISO 639-1 code of the language the message is written in (en, es, ro, pt, fr, it, de...). If the message asks for a language or a translator ("Romano", "Traslator. Romano", "in Romanian please"), give the code of the language they ask for.
 7. changes_earlier_answer is true when they replace something they told us before ("actually Saturday", "mejor a las 8").
 7a. home_visit: they want the massage at their home, hotel or office ("home service", "home serves", "a domicilio", "en mi casa", "to my hotel", "can you come to me").
 7b. wants_person: they ask to speak to a human, an agent, the owner or "a real person". A therapist gender preference is NOT wants_person.
@@ -79,6 +84,7 @@ const TOOL = {
     type: "object",
     properties: {
       language: { type: "string", enum: ["en", "es", "other"] },
+      language_code: { type: "string", description: "ISO 639-1 code of the message's language, or of the language they ask for" },
       intents: { type: "array", items: { type: "string", enum: [...INTENTS] } },
       question: { type: "string", enum: [...QUESTIONS] },
       slots: {
@@ -135,9 +141,10 @@ export function validateReading(raw: any, text: string): Reading | null {
     slots[k] = { value: k === "time" ? value.toLowerCase().replace(/^(\d):/, "0$1:") : value, quote };
   }
   const language = ["en", "es", "other"].includes(raw.language) ? raw.language : "en";
+  const code = String(raw.language_code || "").trim().toLowerCase();
   const confidence = Math.max(0, Math.min(1, Number(raw.confidence) || 0));
   return {
-    language, intents: intents.length ? intents : ["unclear"], question, slots,
+    language, ...(/^[a-z]{2}$/.test(code) ? { language_code: code } : {}), intents: intents.length ? intents : ["unclear"], question, slots,
     answers_last_question: !!raw.answers_last_question, changes_earlier_answer: !!raw.changes_earlier_answer,
     confidence, note: String(raw.note || "").slice(0, 200),
   };

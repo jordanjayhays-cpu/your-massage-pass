@@ -196,7 +196,22 @@ async function logEvent(phone: string, event: string, meta: Record<string, unkno
 // rule is worthless as a memo, so it is enforced: every send flips this, and the
 // handler checks it before it finishes. Reset per webhook, not per process.
 let sentThisTurn = false;
-async function waSend(to: string, payload: Record<string, unknown>, logBody: string, type: string) {
+async function waSend(to: string, payload: Record<string, unknown>, logBody: string, type: string, opts: { manual?: boolean } = {}) {
+  // v197: a customer who writes in another language reads every message in it.
+  // Jordan's own replies from the reply page go out exactly as he wrote them.
+  const xl = opts.manual ? "" : (XLANG.get(digitsOf(to)) || "");
+  if (xl) {
+    const tr = await translatePayload(xl, payload);
+    if (tr) { payload = tr.payload; logBody = tr.logBody; }
+  }
+  // v197: never the same message twice in a row. Alexandru sent "Traslator"
+  // and "Romano" two seconds apart and got "Which day suits you?" twice, three
+  // times over two days; each message ran the whole flow on its own.
+  if (await sameAsLastOut(to, logBody, SAME_OUT_MS)) {
+    console.log("[wa] skipped a repeat of the last message to", digitsOf(to));
+    sentThisTurn = true;
+    return true;
+  }
   const res = await fetch(GRAPH, {
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, ...payload }),
@@ -205,11 +220,172 @@ async function waSend(to: string, payload: Record<string, unknown>, logBody: str
   else { sentThisTurn = true; await logMsg(to, "out", logBody, type); }
   return res.ok;
 }
-const sendText = (to: string, body: string) => waSend(to, { type: "text", text: { body, preview_url: false } }, body, "text");
-const sendButtons = (to: string, body: string, buttons: Array<{ id: string; title: string }>) =>
-  waSend(to, { type: "interactive", interactive: { type: "button", body: { text: body }, action: { buttons: buttons.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id, title: b.title.slice(0, 20) } })) } } }, body + " [" + buttons.map((b) => b.title).join("/") + "]", "buttons");
+const sendText = (to: string, body: string, opts: { manual?: boolean } = {}) => waSend(to, { type: "text", text: { body, preview_url: false } }, body, "text", opts);
+const sendButtons = (to: string, body: string, buttons: Array<{ id: string; title: string }>, opts: { manual?: boolean } = {}) =>
+  waSend(to, { type: "interactive", interactive: { type: "button", body: { text: body }, action: { buttons: buttons.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id, title: b.title.slice(0, 20) } })) } } }, body + " [" + buttons.map((b) => b.title).join("/") + "]", "buttons", opts);
 const sendList = (to: string, body: string, button: string, rows: Array<{ id: string; title: string; description?: string }>) =>
   waSend(to, { type: "interactive", interactive: { type: "list", body: { text: body }, action: { button: button.slice(0, 20), sections: [{ title: "Massage Club", rows: rows.slice(0, 10).map((r) => ({ id: r.id, title: r.title.slice(0, 24), description: (r.description || "").slice(0, 72) })) }] } } }, body + " [" + rows.map((r) => r.title).join("/") + "]", "list");
+// v197 (10 Oct, Jordan: "can you respond in romanian please for him?").
+// Alexandru came in from the ad writing Romanian. Over two days he wrote ten
+// messages, most of them some form of "Traslator. Romano", and was answered
+// "Sorry, I did not catch that" four times, "We can help in English or Spanish
+// only" once, and "Which day suits you?" eleven times. Jordan ended up writing
+// to him in Romanian by hand at four in the morning.
+//
+// The flow keeps running in English or Spanish internally, so every rule,
+// parser and piece of approved copy stays exactly as it is. What changes is the
+// last step: while a customer's session carries xlang, waSend translates what
+// is about to go out (the text, the button titles, the list rows) into their
+// language. Button ids never change, so a tap means what it always meant, and
+// the reader already understands any language on the way in. A failed or slow
+// translation sends the original rather than nothing.
+const XLANG = new Map<string, string>();
+const XLANG_NAMES: Record<string, string> = {
+  ro: "Romanian", pt: "Portuguese", fr: "French", it: "Italian", de: "German", nl: "Dutch", pl: "Polish",
+  ru: "Russian", uk: "Ukrainian", ar: "Arabic", zh: "Simplified Chinese", ja: "Japanese", ko: "Korean",
+  tr: "Turkish", hi: "Hindi", bn: "Bengali", ur: "Urdu", ca: "Catalan", el: "Greek", bg: "Bulgarian",
+  sq: "Albanian", hu: "Hungarian", cs: "Czech", sv: "Swedish", fa: "Persian", he: "Hebrew", vi: "Vietnamese",
+  tl: "Tagalog", id: "Indonesian", th: "Thai", ka: "Georgian", hy: "Armenian", az: "Azerbaijani",
+};
+const xlName = (code: string) => XLANG_NAMES[code] || `the language with ISO 639-1 code "${code}"`;
+const XLATE_SYSTEM = (lang: string) => `You translate WhatsApp messages that Massage Club, a service in Madrid that books massages at professional studios, sends to a customer. Translate into ${lang}.
+Rules:
+- Translate the meaning naturally and warmly, as a person would write it in a chat. Use the informal "you".
+- Keep exactly as they are: numbers, prices, "EUR", clock times, URLs, email addresses, emoji, line breaks, studio names, street names, Madrid area names, and the sign-off "Massage Club".
+- Add nothing and leave nothing out. Never use em dashes or en dashes.
+- The input is JSON: {"body": "...", "labels": [{"text": "...", "max": 20}]}. Labels are button or list titles; each translated label must be at most "max" characters, so shorten if needed.
+- Reply with JSON only, in the same shape: {"body": "...", "labels": ["...", "..."]}.`;
+const xlCache = new Map<string, { body: string; labels: string[] }>();
+async function translateOut(lang: string, body: string, labels: Array<{ text: string; max: number }>): Promise<{ body: string; labels: string[] } | null> {
+  const ck = `${lang}|${body}|${labels.map((l) => l.text).join("|")}`;
+  const hit = xlCache.get(ck);
+  if (hit) return hit;
+  const key = await aiKey();
+  if (!key || !body.trim()) return null;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal: ctl.signal,
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: AI_MODEL, max_tokens: 1500, temperature: 0, system: XLATE_SYSTEM(xlName(lang)), messages: [{ role: "user", content: JSON.stringify({ body, labels }) }] }),
+    });
+    clearTimeout(timer);
+    if (!res.ok) { console.log("[wa] translate http", res.status); return null; }
+    const out = await res.json();
+    const raw = String(out?.content?.[0]?.text || "");
+    const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    const b = noDashes(String(j?.body || "")).trim();
+    const ls: string[] = Array.isArray(j?.labels) ? j.labels.map((x: unknown) => noDashes(String(x || "")).trim()) : [];
+    if (!b || ls.length !== labels.length) return null;
+    const r = { body: b, labels: ls.map((x, i) => (x || labels[i].text).slice(0, labels[i].max)) };
+    xlCache.set(ck, r);
+    if (xlCache.size > 300) xlCache.delete(xlCache.keys().next().value as string);
+    return r;
+  } catch (e) {
+    console.log("[wa] translate failed", String(e));
+    return null;
+  }
+}
+// The payload shapes waSend carries to customers: text, reply buttons, a list,
+// a location request. Anything else (a flow form, a template) goes as it is.
+async function translatePayload(lang: string, payload: Record<string, any>): Promise<{ payload: Record<string, unknown>; logBody: string } | null> {
+  const p = JSON.parse(JSON.stringify(payload));
+  if (p.type === "text" && p.text?.body) {
+    const t = await translateOut(lang, String(p.text.body), []);
+    if (!t) return null;
+    p.text.body = t.body;
+    return { payload: p, logBody: t.body };
+  }
+  const it = p.type === "interactive" ? p.interactive : null;
+  if (!it || !it.body?.text) return null;
+  if (it.type === "button") {
+    const btns = it.action.buttons as Array<{ reply: { title: string } }>;
+    const t = await translateOut(lang, String(it.body.text), btns.map((b) => ({ text: b.reply.title, max: 20 })));
+    if (!t) return null;
+    it.body.text = t.body;
+    btns.forEach((b, i) => { b.reply.title = t.labels[i]; });
+    return { payload: p, logBody: t.body + " [" + t.labels.join("/") + "]" };
+  }
+  if (it.type === "list") {
+    const rows = (it.action.sections?.[0]?.rows || []) as Array<{ title: string; description?: string }>;
+    const labels = [{ text: String(it.action.button), max: 20 }, ...rows.map((r) => ({ text: r.title, max: 24 })), ...rows.filter((r) => r.description).map((r) => ({ text: String(r.description), max: 72 }))];
+    const t = await translateOut(lang, String(it.body.text), labels);
+    if (!t) return null;
+    it.body.text = t.body;
+    it.action.button = t.labels[0];
+    rows.forEach((r, i) => { r.title = t.labels[1 + i]; });
+    let k = 1 + rows.length;
+    rows.forEach((r) => { if (r.description) r.description = t.labels[k++]; });
+    return { payload: p, logBody: t.body + " [" + rows.map((r) => r.title).join("/") + "]" };
+  }
+  if (it.type === "location_request_message") {
+    const t = await translateOut(lang, String(it.body.text), []);
+    if (!t) return null;
+    it.body.text = t.body;
+    return { payload: p, logBody: t.body + " [share location]" };
+  }
+  return null;
+}
+// v197: what counts as the same message twice in a row.
+const SAME_OUT_MS = 30_000;
+async function sameAsLastOut(to: string, logBody: string, ms: number): Promise<boolean> {
+  try {
+    const since = new Date(Date.now() - ms).toISOString();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(to))}&direction=eq.out&created_at=gte.${since}&order=created_at.desc&limit=1&select=body`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    return Array.isArray(rows) && !!rows[0] && String(rows[0].body || "") === logBody.slice(0, 2000);
+  } catch { return false; }
+}
+// v197: which language a customer is writing in, when it is neither English
+// nor Spanish. Asking for a language is the plainest signal there is ("Romano",
+// "Traslator. Romano"); letters Spanish and English never use are the next
+// (Alexandru's very first message was "Bună. Seara"), and then the reader,
+// which names the language. Only a plain request ("English please", "en
+// español") switches it back: Alexandru also wrote "Si" and "Una. Foto", and a
+// couple of Spanish words are not a change of language.
+const LANG_CUES: Array<[RegExp, string]> = [
+  [/\b(rom[aâ]n[aăo]?(?![a-zăâîșț])|romanian|rumano|rumana)/i, "ro"], [/\b(portugu[eê]s|portuguese)\b/i, "pt"],
+  [/\b(italiano|italian)\b/i, "it"], [/\b(fran[cç]ais|french|franc[eé]s)\b/i, "fr"], [/\b(deutsch|german|alem[aá]n)\b/i, "de"],
+  [/(\brussian\b|\bruso\b|русск)/i, "ru"], [/(\barabic\b|[aá]rabe\b|عربي|العربية)/i, "ar"], [/\b(polski|polish|polaco)\b/i, "pl"],
+  [/(\bukrainian\b|\bucraniano\b|україн)/i, "uk"], [/(\bchinese\b|\bchino\b|中文)/i, "zh"], [/\b(t[uü]rk[cç]e|turkish|turco)\b/i, "tr"],
+];
+const BACK_CUES: Array<[RegExp, string]> = [[/\b(english|ingl[eé]s)\b/i, "en"], [/\b(espa[nñ]ol|spanish|castellano)\b/i, "es"]];
+const TRANSLATOR_RE = /\b(tra[ns]{0,2}lat\w*|tradu[cz]\w*|traslat\w*|traduc[aă]tor|in\s+my\s+language|en\s+mi\s+idioma)/i;
+const FOREIGN_CHARS_RE = /[ăâîșțşţãõàèìòùêôûëïœæøåäößąćęłńśźżčďěňřšťůžőű\u0400-\u04FF\u0370-\u03FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/i;
+function langAsked(text: string): string {
+  const t = String(text || "").replace(/\s*\[via ad\]$/i, "").trim();
+  const words = t.split(/\s+/).filter(Boolean).length;
+  if (!t || (words > 4 && !TRANSLATOR_RE.test(t))) return "";
+  for (const [re, code] of [...BACK_CUES, ...LANG_CUES]) if (re.test(t)) return code;
+  return "";
+}
+async function settleForeignLang(s: Session, from: string, text: string): Promise<void> {
+  try {
+    const asked = langAsked(text);
+    let code = "";
+    if (asked === "en" || asked === "es") {
+      if (s.data.xlang) {
+        delete s.data.xlang;
+        s.data.lang = asked;
+        await saveSession(s);
+        await logEvent(from, "xlang_cleared", { to: asked, text: text.slice(0, 80) });
+      }
+      return;
+    }
+    if (asked) code = asked;
+    else if (!s.data.xlang && FOREIGN_CHARS_RE.test(text)) {
+      const rd = await readingFor(from, text, 5000);
+      if (rd && rd.language === "other" && rd.language_code && !["en", "es"].includes(rd.language_code)) code = rd.language_code;
+    }
+    if (code && code !== s.data.xlang) {
+      s.data.xlang = code;
+      await saveSession(s);
+      await logEvent(from, "xlang_set", { lang: code, text: text.slice(0, 80) });
+      await notifyJordanWa(`+${digitsOf(from)} writes in ${xlName(code)}. The bot now answers them in ${xlName(code)}.`, from).catch(() => {});
+    }
+  } catch (e) { console.log("[wa] foreign language check failed", String(e)); }
+}
 // v128 (25 Sept): WhatsApp Flows. The booking flow is six questions asked one
 // at a time, and 39 of the 85 people who have ever written are frozen at the
 // first or second of them. A Flow is one form inside WhatsApp: every field on
@@ -311,10 +487,14 @@ type Session = { phone: string; step: string; data: Record<string, any>; wa_name
 async function getSession(phone: string): Promise<Session> {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_sessions?phone=eq.${encodeURIComponent(phone)}&select=*`, { headers: H() });
   const rows = await r.json().catch(() => []);
-  if (Array.isArray(rows) && rows[0]) return { phone, step: rows[0].step, data: rows[0].data || {}, wa_name: rows[0].wa_name };
+  if (Array.isArray(rows) && rows[0]) {
+    XLANG.set(digitsOf(phone), String(rows[0].data?.xlang || ""));
+    return { phone, step: rows[0].step, data: rows[0].data || {}, wa_name: rows[0].wa_name };
+  }
   return { phone, step: "start", data: {} };
 }
 async function saveSession(s: Session) {
+  XLANG.set(digitsOf(s.phone), String(s.data?.xlang || ""));
   await fetch(`${SUPABASE_URL}/rest/v1/wa_sessions?on_conflict=phone`, {
     method: "POST", headers: { ...H(), Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({ phone: s.phone, step: s.step, data: s.data, wa_name: s.wa_name ?? null, updated_at: new Date().toISOString() }),
@@ -1685,8 +1865,8 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
       // start with fx_ so a tap comes back to the bot as the button's words.
       const btns = ["b1", "b2", "b3"].map((k) => noDashes(String(form?.get(k) || "")).trim().slice(0, 20)).filter(Boolean);
       const ok = btns.length
-        ? await sendButtons(phone, text, btns.map((title, i) => ({ id: `fx_${i + 1}`, title })))
-        : await sendText(phone, text);
+        ? await sendButtons(phone, text, btns.map((title, i) => ({ id: `fx_${i + 1}`, title })), { manual: true })
+        : await sendText(phone, text, { manual: true });
       if (ok) {
         await logEvent(phone, "founder_reply_as_bot", { len: text.length, step: s.step, buttons: btns.length });
         return render({ draft: "", sent: true, error: "" });
@@ -2825,7 +3005,9 @@ function readerShadow(s: Session, from: string, text: string) {
 // never on a message that declines, cancels, complains, asks for a person, a
 // home visit or something sexual: those keep their own handling.
 const READER_SVC: Record<string, string> = { relax: "svc_relax", deep: "svc_deep", thai: "svc_thai", sports: "svc_sports", couples: "svc_couples", hot_stone: "svc_stone", reflexology: "svc_reflex", shiatsu: "svc_shiatsu", balinese: "svc_bali", lymphatic: "svc_lymph" };
-const READER_HANDS_OFF = ["decline", "cancel", "complaint", "special_request", "home_visit", "wants_person", "unsupported_language"];
+// v197: another language is no longer hands off. The reader understands it and
+// waSend answers in it, so the details they give are kept like anyone else's.
+const READER_HANDS_OFF = ["decline", "cancel", "complaint", "special_request", "home_visit", "wants_person"];
 const YMD_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
 function readerDay(v: string, L: string): { day: string; dayDate: string } | null {
   const x = String(v || "").trim().toLowerCase();
@@ -4955,6 +5137,8 @@ const handleInner = async (req: Request) => {
 
     // v184: every customer free-text message is read by the new reader, in shadow.
     if (text && !replyId) readerShadow(s, from, text);
+    // v197: settle the customer's language before anything is said back.
+    if (text && !replyId) await settleForeignLang(s, from, text);
 
     // v81 (Jordan, 10 and 12 Sept): answer neutrally and carry on. This used to
     // set step="blocked" and never speak to them again. Ten people ended up
