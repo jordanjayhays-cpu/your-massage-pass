@@ -319,6 +319,13 @@ async function translatePayload(lang: string, payload: Record<string, any>): Pro
     rows.forEach((r) => { if (r.description) r.description = t.labels[k++]; });
     return { payload: p, logBody: t.body + " [" + rows.map((r) => r.title).join("/") + "]" };
   }
+  if (it.type === "cta_url") {
+    const t = await translateOut(lang, String(it.body.text), [{ text: String(it.action.parameters.display_text), max: 20 }]);
+    if (!t) return null;
+    it.body.text = t.body;
+    it.action.parameters.display_text = t.labels[0];
+    return { payload: p, logBody: t.body + " [" + t.labels[0] + ": " + String(it.action.parameters.url) + "]" };
+  }
   if (it.type === "location_request_message") {
     const t = await translateOut(lang, String(it.body.text), []);
     if (!t) return null;
@@ -815,6 +822,7 @@ function spanishName(raw: unknown): boolean {
 // back to them and used. Anything beyond the ad's own line is theirs.
 const AD_PREFIX_RE = /^hi,? i'?d like to book a massage\.? i saw you on (facebook|instagram)\s*\.?\s*/i;
 async function openWith(s: Session, from: string, L: string, hint: "" | "es" | "en" | "es_word", text: string, pre = ""): Promise<void> {
+  if (s.data.xlang) hint = ""; // v197: their language, no switch line
   const own = String(text || "").replace(AD_PREFIX_RE, "").trim();
   const got = own.split(/\s+/).filter(Boolean).length >= 2 ? await readerAssist(s, from, L, String(text || ""), null) : [];
   const ack = got.length ? COPY[L].gotItSvc(understood(s, L, got)) : "";
@@ -1182,7 +1190,10 @@ async function greet(s: Session, from: string, firstText?: string, preAnswer = "
   s.step = "await_day"; await saveSession(s);
   await logEvent(from, "flow_started", { oneQuestion: true, unreadable: true });
   await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
-  if (s.data.lang) await sendButtons(from, await firstLine(L), dayBtns(L));
+  // v197: someone writing another language gets the plain opener in it, not
+  // an English one with a line about switching to Spanish.
+  if (s.data.xlang) await sendButtons(from, await firstLine("en"), dayBtns("en"));
+  else if (s.data.lang) await sendButtons(from, await firstLine(L), dayBtns(L));
   else await sendButtons(from, await firstLine("en", "es_word"), dayBtnsBoth());
 }
 
