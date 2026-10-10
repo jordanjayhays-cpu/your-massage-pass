@@ -659,9 +659,11 @@ async function sendReservePage(s: Session, from: string) {
   const L = s.data.lang === "es" ? "es" : "en";
   const name = firstNameFromProfile(s.wa_name);
   const url = `https://book.massageclub.io/reserve?p=${digitsOf(from)}${name ? "&n=" + encodeURIComponent(name) : ""}&lang=${L}&src=wa`;
+  // v198: one line. The only booking confirmed since 5 Oct came through this
+  // page, so it stays, but as a short aside rather than a second brochure.
   const body = L === "es"
-    ? "O resérvalo en unos toques: elige masaje, día, hora y zona, y preguntamos a los centros por ti. Pagas en el centro, sin comisión."
-    : "Or book it in a few taps: pick the massage, day, time and area, and we ask the studios for you. You pay at the studio, no fee from us.";
+    ? "¿Prefieres elegirlo tú? Aquí tardas un minuto."
+    : "Prefer to pick it all yourself? It takes a minute here.";
   await waSend(from, { type: "interactive", interactive: { type: "cta_url", body: { text: body }, action: { name: "cta_url", parameters: { display_text: L === "es" ? "Reservar ahora" : "Book now", url } } } }, body + " [Book now: " + url + "]", "cta_url");
   s.data.pageSent = true; await saveSession(s);
   await logEvent(from, "reserve_page_sent", { lang: L });
@@ -718,11 +720,6 @@ async function resumeFromCode(s: Session, from: string, code: string): Promise<b
   return true;
 }
 
-// v56: the one-question opener for an ad lead whose language is already clear.
-const FIRST_LINE: Record<string, string> = {
-  en: "Hi, this is Massage Club. Happy to sort that for you. A 60 min relaxing massage at a professional studio near you is usually 50 to 85 EUR, the studio's listed price. You pay the studio directly, no fee from us.\n\nWhich day works for you? If you would rather have deep tissue, Thai or sports, just say so.",
-  es: "Hola, somos Massage Club. Te buscamos hueco en un centro profesional cerca de ti. Un masaje relajante de 60 min suele costar entre 50 y 85 EUR, según la tarifa del centro. Pagas en el centro, sin comisión.\n\n¿Qué día te viene bien? Si prefieres descontracturante, tailandés o deportivo, dímelo.",
-};
 // v75 (Jordan, 9 Sept): when the first message does not tell us the language,
 // open in ENGLISH and let anyone who wants Spanish say so. v72 sent both
 // languages at once, which doubled the length of the first screen and put a
@@ -792,35 +789,38 @@ async function openerFacts(plusDays: number): Promise<{ lo: number; hi: number; 
 }
 // hint: "es" adds the Spanish switch line under an English opener, "en" the
 // English one under a Spanish opener, "es_word" the original "write español".
-async function firstLine(L: string, hint: "" | "es" | "en" | "es_word" = "", ack = "", ask = true): Promise<string> {
+// v198 (10 Oct, Jordan: "can we change the opening line, it's not working").
+// After v188 went live on 9 Oct, 3 of the 4 people who came in from the ad
+// never wrote back. What they got was four paragraphs: a list of areas, a
+// price with a caveat, instructions on how to type the answer ("like tomorrow
+// 18:00 near Sol"), a line about Spanish, three buttons, then a second bubble
+// with a link. That reads like a brochure, not a person. The opener is now what
+// a person would send: hello with their name, what we do and what it costs in
+// one sentence, and one question.
+async function firstLine(L: string, hint: "" | "es" | "en" | "es_word" = "", ack = "", ask = true, name = ""): Promise<string> {
   const night = mcMadridHour() >= 19;
   const f = await openerFacts(night ? 1 : 0);
-  const tail = hint === "es" ? "\n\n¿Prefieres español? Escríbeme en español."
-    : hint === "en" ? "\n\nPrefer English? Just write in English."
-    : hint === "es_word" ? "\n\n¿Prefieres español? Escribe *español* y seguimos en español."
+  const lo = f ? f.lo : 50, hi = f ? f.hi : 85;
+  const tail = hint === "es" || hint === "es_word" ? "\n\n¿En español? Escríbeme en español."
+    : hint === "en" ? "\n\nIn English? Just write in English."
     : "";
-  if (!f) {
-    const [intro, ...q] = (L === "es" ? FIRST_LINE.es : FIRST_LINE.en).split("\n\n");
-    return intro + (ack ? "\n\n" + ack : "") + (ask ? "\n\n" + q.join("\n\n") : "") + tail;
-  }
-  const es = L === "es";
-  const areas = f.areas.join(", ") + (es ? " y más" : " and more");
-  const price = f.hi > f.lo
-    ? (es ? `desde ${euro(f.lo)}, normalmente entre ${f.lo} y ${euro(f.hi)} según la tarifa del centro` : `from ${euro(f.lo)}, usually ${f.lo} to ${euro(f.hi)} at the studio's listed price`)
-    : (es ? `unos ${euro(f.lo)} según la tarifa del centro` : `about ${euro(f.lo)} at the studio's listed price`);
-  if (es) {
-    return `Hola, somos Massage Club. Te reservamos cita en centros de masaje profesionales de Madrid: ${areas}. Un masaje relajante de 60 min cuesta ${price}. Pagas directamente en el centro, sin comisión.`
-      + (night ? "\nPara esta noche ya es tarde, pero te busco hueco para mañana." : "")
+  const who = name ? " " + name : "";
+  if (L === "es") {
+    const price = hi > lo ? `entre ${lo} y ${euro(hi)}` : `unos ${euro(lo)}`;
+    return `Hola${who}, somos Massage Club 👋 Te buscamos hueco encantados. Reservamos en centros profesionales de todo Madrid, y un masaje relajante de 60 min suele costar ${price}, que se pagan en el centro.`
+      + (night ? "\nPara esta noche ya es tarde, así que miro mañana." : "")
       + (ack ? "\n\n" + ack : "")
-      + (ask ? "\n\n¿Qué día te viene bien? Toca un botón o escríbelo con tu zona, por ejemplo \"mañana a las 18:00 cerca de Sol\". Si prefieres descontracturante, tailandés o deportivo, dímelo." : "")
+      + (ask ? "\n\n¿Qué día te viene bien?" : "")
       + tail;
   }
-  return `Hi, this is Massage Club. We book you into professional massage studios in Madrid: ${areas}. A 60 min relaxing massage is ${price}. You pay the studio directly, no fee from us.`
-    + (night ? "\nIt's too late to book for tonight, but I can line one up for tomorrow." : "")
+  const price = hi > lo ? `${lo} to ${euro(hi)}` : `about ${euro(lo)}`;
+  return `Hi${who}, Massage Club here 👋 Happy to find you one. We book you into professional studios around Madrid, and a 60 min relaxing massage is usually ${price}, paid at the studio.`
+    + (night ? "\nIt's late for tonight, so I'll look at tomorrow." : "")
     + (ack ? "\n\n" + ack : "")
-    + (ask ? "\n\nWhich day works for you? Tap below, or write it with your area, like \"tomorrow 18:00 near Sol\". Deep tissue, Thai or sports are fine too, just say so." : "")
+    + (ask ? "\n\nWhat day would you like it?" : "")
     + tail;
 }
+const openerName = (s: Session) => firstNameFromProfile(s.wa_name);
 // v188: the ad's prefilled line is English whatever the person speaks, so it
 // says nothing about them. 33 of 46 Spanish conversations got the wrong
 // language, 28 of them at this first message, and Spanish speakers who did get
@@ -846,11 +846,11 @@ async function openWith(s: Session, from: string, L: string, hint: "" | "es" | "
   const ack = got.length ? COPY[L].gotItSvc(understood(s, L, got)) : "";
   const head = pre ? pre + "\n\n" : "";
   if (got.length && s.data.day) {
-    await sendText(from, head + await firstLine(L, hint, ack, false));
+    await sendText(from, head + await firstLine(L, hint, ack, false, openerName(s)));
     await nextStep(s, from, L);
     return;
   }
-  await sendButtons(from, head + await firstLine(L, hint, ack), L === "en" && hint === "es_word" ? dayBtnsBoth() : dayBtns(L));
+  await sendButtons(from, head + await firstLine(L, hint, ack, true, openerName(s)), L === "en" && hint === "es_word" ? dayBtnsBoth() : dayBtns(L));
 }
 // The next question once something new is known: with day and time, straight
 // to the area or the studio options.
@@ -1210,9 +1210,9 @@ async function greet(s: Session, from: string, firstText?: string, preAnswer = "
   await logEvent(from, "service_chosen", { service: "svc_relax", assumed: true });
   // v197: someone writing another language gets the plain opener in it, not
   // an English one with a line about switching to Spanish.
-  if (s.data.xlang) await sendButtons(from, await firstLine("en"), dayBtns("en"));
-  else if (s.data.lang) await sendButtons(from, await firstLine(L), dayBtns(L));
-  else await sendButtons(from, await firstLine("en", "es_word"), dayBtnsBoth());
+  if (s.data.xlang) await sendButtons(from, await firstLine("en", "", "", true, openerName(s)), dayBtns("en"));
+  else if (s.data.lang) await sendButtons(from, await firstLine(L, "", "", true, openerName(s)), dayBtns(L));
+  else await sendButtons(from, await firstLine("en", "es_word", "", true, openerName(s)), dayBtnsBoth());
 }
 
 async function goBack(s: Session, to: string, L: string): Promise<boolean> {
@@ -5347,7 +5347,7 @@ const handleInner = async (req: Request) => {
       if (!s.data.service) { s.data.service = "svc_relax"; s.data.defaultService = true; }
       await saveSession(s);
       await logEvent(from, "spanish_opener_resent", { said: text.slice(0, 60) });
-      await sendButtons(from, await firstLine("es"), dayBtns("es"));
+      await sendButtons(from, await firstLine("es", "", "", true, openerName(s)), dayBtns("es"));
       return new Response("OK", { status: 200 });
     }
 
