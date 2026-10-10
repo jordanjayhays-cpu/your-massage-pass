@@ -276,8 +276,10 @@ async function translateOut(lang: string, body: string, labels: Array<{ text: st
     const raw = String(out?.content?.[0]?.text || "");
     const j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
     const b = noDashes(String(j?.body || "")).trim();
-    const ls: string[] = Array.isArray(j?.labels) ? j.labels.map((x: unknown) => noDashes(String(x || "")).trim()) : [];
-    if (!b || ls.length !== labels.length) return null;
+    // The model sometimes answers labels in the input's own shape ({text, max});
+    // on the test copy that went out as a button reading "[object Object]".
+    const ls: string[] = Array.isArray(j?.labels) ? j.labels.map((x: any) => noDashes(String(x && typeof x === "object" ? (x.text ?? "") : (x ?? ""))).trim()) : [];
+    if (!b || ls.length !== labels.length || [b, ...ls].some((x) => /\[object |undefined|null/.test(x))) return null;
     const r = { body: b, labels: ls.map((x, i) => (x || labels[i].text).slice(0, labels[i].max)) };
     xlCache.set(ck, r);
     if (xlCache.size > 300) xlCache.delete(xlCache.keys().next().value as string);
@@ -334,14 +336,17 @@ async function translatePayload(lang: string, payload: Record<string, any>): Pro
   }
   return null;
 }
-// v197: what counts as the same message twice in a row.
+// v197: the same message to the same number inside 30 seconds is a repeat,
+// whatever else went out in between (a text and its buttons come as a pair, and
+// a delivery report is logged as an outgoing line).
 const SAME_OUT_MS = 30_000;
 async function sameAsLastOut(to: string, logBody: string, ms: number): Promise<boolean> {
   try {
     const since = new Date(Date.now() - ms).toISOString();
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(to))}&direction=eq.out&created_at=gte.${since}&order=created_at.desc&limit=1&select=body`, { headers: H() });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(to))}&direction=eq.out&created_at=gte.${since}&order=created_at.desc&limit=8&select=body`, { headers: H() });
     const rows = await r.json().catch(() => []);
-    return Array.isArray(rows) && !!rows[0] && String(rows[0].body || "") === logBody.slice(0, 2000);
+    const want = logBody.slice(0, 2000);
+    return Array.isArray(rows) && rows.some((x: { body?: string }) => String(x.body || "") === want);
   } catch { return false; }
 }
 // v197: which language a customer is writing in, when it is neither English
