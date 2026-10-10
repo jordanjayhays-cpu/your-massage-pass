@@ -360,6 +360,16 @@ const LANG_CUES: Array<[RegExp, string]> = [
 const BACK_CUES: Array<[RegExp, string]> = [[/\b(english|ingl[eé]s)\b/i, "en"], [/\b(espa[nñ]ol|spanish|castellano)\b/i, "es"]];
 const TRANSLATOR_RE = /\b(tra[ns]{0,2}lat\w*|tradu[cz]\w*|traslat\w*|traduc[aă]tor|in\s+my\s+language|en\s+mi\s+idioma)/i;
 const FOREIGN_CHARS_RE = /[ăâîșțşţãõàèìòùêôûëïœæøåäößąćęłńśźżčďěňřšťůžőű\u0400-\u04FF\u0370-\u03FF\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/i;
+// Letters that belong to one language only name it at once, with no wait for
+// the reader. On the test copy the reader took six seconds on a cold first
+// message and "Bună. Seara" was answered in English before it came back.
+const SCRIPT_LANG: Array<[RegExp, string]> = [
+  // Only letters that point at one language; Arabic script, Cyrillic, ä/ö
+  // and the like are shared by several, so those wait for the reader.
+  [/[ășțşţ]/i, "ro"], [/[ãõ]/i, "pt"], [/[ąęłśźż]/i, "pl"], [/[\u0370-\u03FF]/, "el"], [/[\u0590-\u05FF]/, "he"],
+  [/[\u3040-\u30FF]/, "ja"], [/[\uAC00-\uD7AF]/, "ko"], [/[\u4E00-\u9FFF]/, "zh"], [/[\u0E00-\u0E7F]/, "th"],
+];
+const scriptLang = (t: string): string => { for (const [re, c] of SCRIPT_LANG) if (re.test(t)) return c; return ""; };
 function langAsked(text: string): string {
   const t = String(text || "").replace(/\s*\[via ad\]$/i, "").trim();
   const words = t.split(/\s+/).filter(Boolean).length;
@@ -382,8 +392,11 @@ async function settleForeignLang(s: Session, from: string, text: string): Promis
     }
     if (asked) code = asked;
     else if (!s.data.xlang && FOREIGN_CHARS_RE.test(text)) {
-      const rd = await readingFor(from, text, 5000);
-      if (rd && rd.language === "other" && rd.language_code && !["en", "es"].includes(rd.language_code)) code = rd.language_code;
+      code = scriptLang(text);
+      if (!code) {
+        const rd = await readingFor(from, text, 9000);
+        if (rd && rd.language === "other" && rd.language_code && !["en", "es"].includes(rd.language_code)) code = rd.language_code;
+      }
     }
     if (code && code !== s.data.xlang) {
       s.data.xlang = code;
