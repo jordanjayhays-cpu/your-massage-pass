@@ -5770,6 +5770,39 @@ const handleInner = async (req: Request) => {
     }
 
     const freeTextStep = ["await_name", "await_email", "await_email_req", "await_email_post", "await_day_text", "await_area", "await_time_text", "await_studio_text"].includes(s.step);
+    // v201 (12 Oct): Salado wrote on 24 Sept, stopped at the area question,
+    // and clicked the ad again at 00:51 on 12 Oct. The ad's prefilled line was
+    // taken as his area ("cerca de Hi, I'd like to book a massage. I saw yo")
+    // and he was offered two studios for a day two weeks gone. The ad's own
+    // line is never an answer to anything: it is someone starting again.
+    if (text && !replyId && AD_OPENER_RE.test(text.trim()) && s.step !== "start") {
+      const live = String((await lastRequestFor(from))?.stage || "");
+      if (!["confirmed", "offered", "bidding", "studio_replied", "studio_asked"].includes(live)) {
+        await logEvent(from, "ad_restart", { from_step: s.step });
+        s.data = { lang: s.data.lang || "", adRef: s.data.adRef || null, recoverySent: s.data.recoverySent || null };
+        await greet(s, from, text);
+        return new Response("OK", { status: 200 });
+      }
+    }
+    // v201: Salado answered "Casi listo: ¿cómo te llamas?" with "?" and got
+    // nothing: the bot's answer was the same question again, which the repeat
+    // guard then held back. A bare "?" asks why we need this, so say why.
+    if (text && !replyId && freeTextStep && /^\s*[?¿]+\s*$/.test(text)) {
+      const es = L === "es";
+      const why: Record<string, string> = {
+        await_name: es ? "Tu nombre, para que el centro tenga la reserva a tu nombre. Solo el nombre, por ejemplo: Ana." : "Your first name, so the studio has the booking under your name. Just the name, for example: Ana.",
+        await_email: es ? "Tu email, para enviarte la confirmación también por correo. Por ejemplo: ana@gmail.com" : "Your email, so the confirmation reaches you by email too. For example: ana@gmail.com",
+        await_email_req: es ? "Tu email, para enviarte la confirmación también por correo. Por ejemplo: ana@gmail.com" : "Your email, so the confirmation reaches you by email too. For example: ana@gmail.com",
+        await_area: es ? "La zona de Madrid donde quieres el masaje, para buscarte centros cerca. Por ejemplo: Salamanca, Chamberí o Sol." : "The part of Madrid where you'd like the massage, so I can find studios near you. For example: Salamanca, Chamberí or Sol.",
+        await_day_text: es ? "El día que quieres el masaje. Por ejemplo: mañana, el sábado o el 16 de octubre." : "The day you'd like the massage. For example: tomorrow, Saturday or 16 October.",
+        await_time_text: es ? "La hora que te viene bien. Por ejemplo: 18:00." : "The time that suits you. For example: 18:00.",
+      };
+      if (why[s.step]) {
+        await sendText(from, why[s.step]);
+        await logEvent(from, "bare_question_mark", { at: s.step });
+        return new Response("OK", { status: 200 });
+      }
+    }
 
     // A question at a free-text step gets answered, then we ask our question
     // again. Never store someone's question as their name, day or area.
