@@ -5794,7 +5794,7 @@ const handleInner = async (req: Request) => {
         await_email: es ? "Tu email, para enviarte la confirmación también por correo. Por ejemplo: ana@gmail.com" : "Your email, so the confirmation reaches you by email too. For example: ana@gmail.com",
         await_email_req: es ? "Tu email, para enviarte la confirmación también por correo. Por ejemplo: ana@gmail.com" : "Your email, so the confirmation reaches you by email too. For example: ana@gmail.com",
         await_area: es ? "La zona de Madrid donde quieres el masaje, para buscarte centros cerca. Por ejemplo: Salamanca, Chamberí o Sol." : "The part of Madrid where you'd like the massage, so I can find studios near you. For example: Salamanca, Chamberí or Sol.",
-        await_day_text: es ? "El día que quieres el masaje. Por ejemplo: mañana, el sábado o el 16 de octubre." : "The day you'd like the massage. For example: tomorrow, Saturday or 16 October.",
+        await_day_text: es ? "El día que quieres el masaje. Por ejemplo: mañana o el sábado." : "The day you'd like the massage. For example: tomorrow or Saturday.",
         await_time_text: es ? "La hora que te viene bien. Por ejemplo: 18:00." : "The time that suits you. For example: 18:00.",
       };
       if (why[s.step]) {
