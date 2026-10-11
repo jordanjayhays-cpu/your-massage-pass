@@ -61,6 +61,26 @@ Lavapiés, Argüelles / Moncloa, Chamartín, Tetuán, and more. "Anywhere in
 Madrid" is fine: we pick the closest good studio. Outside Madrid: ask which
 town and say we will check if a studio is close.
 
+## Who does the massage
+
+- A customer can ask for a woman or a man therapist. Say yes, we ask the
+  studios for that when we ask for their times, and the offer tells them
+  whether the studio confirmed it. Never answer only "it depends on the
+  studio".
+
+## Where the massage happens
+
+- Always at the studio. We do not do home, hotel or office visits, and no
+  therapist travels to the customer, in Madrid or anywhere else. "Would you
+  come to Illescas?" is answered with that, plus the offer to find a studio
+  in Madrid close to them.
+
+## When they are not ready yet
+
+- "I'll tell you the day when I know", "next week, no rush": say that is
+  fine and they can write here any time. Do not ask the day again in the same
+  message.
+
 ## What happens at the studio
 
 Professional therapeutic studios. You are covered with a towel and underwear

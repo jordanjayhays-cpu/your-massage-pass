@@ -2572,7 +2572,7 @@ const AI_SYSTEM = `You read one WhatsApp message for Massage Club, a massage boo
 You never write to the customer. You only report what their message means.
 
 Return exactly this shape:
-{"intent":"...","language":"es|en","question":"price|address|how_it_works|zone|hours|therapist|other|null","fields":{"day":"","time":"","area":"","service":"","budget_eur":null,"studio_choice":"","phone_consent":null},"confidence":0.0}
+{"intent":"...","language":"es|en","question":"price|address|how_it_works|zone|hours|therapist|services|other|null","fields":{"day":"","time":"","area":"","service":"","budget_eur":null,"studio_choice":"","phone_consent":null},"confidence":0.0}
 
 intent is one of:
   ask        they are asking a question (set "question")
@@ -2589,6 +2589,7 @@ intent is one of:
 
 Rules:
 - question "therapist" is anyone asking WHO does the massage: man or woman, male or female, qualified, trained, who is the masseur.
+- question "services" is asking which massages or types we offer, or for a list or menu of them ("what type massage?", "send me the menu", "qué masajes hay").
 - Report only what the message says. Never invent a day, time, price or studio.
 - fields.time only for a clock time the customer named, in HH:MM. A duration like "1h" or "una hora" is not a time.
 - budget_eur only if they named a maximum they will pay.
@@ -2734,6 +2735,17 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
     // he had already paid attention to, and Jose asked what a Thai massage was
     // like and was told "Perfecto, tailandés". A question we cannot answer is
     // not noise: say we are finding out, and put it in front of Jordan.
+    // v200 (11 Oct): Hafeez typed "What type massage?" at the free-text day
+    // step, the chain there has no services case, and he was told "I do not
+    // have that detail to hand". The list is in COPY. The list goes without its
+    // closing question and the step's own question follows, so it is one ask.
+    if (r.question === "services" || (SERVICEQ_RE.test(text) && !detectService(text))) {
+      const list = String(COPY[lang].servicesAnswer).split("\n\n").slice(0, -1).join("\n\n");
+      await sendText(from, list + "\n\n" + (lang === "es" ? "Dime cuál te apetece. Si no lo tienes claro, el relajante es el más pedido." : "Tell me which one you'd like. If you're not sure, relaxing is the most popular."));
+      await logEvent(from, "services_asked", { said: String(text).slice(0, 80), at: s.step, via: "reading" });
+      await reAsk(s, from, lang);
+      return true;
+    }
     const askNum = digitsOf(from);
     await sendText(from, COPY[lang].willFindOut);
     await notifyJordanWa(`${s.wa_name || "+" + askNum} asked something the bot has no answer for${req ? " (#" + req.id + ")" : ""}: ${text.slice(0, 140)}`, from);
@@ -3129,7 +3141,13 @@ function understood(s: Session, L: string, got: string[]): string {
 const WHO_RE = /(qui[eé]n(es)? (eres|sois|es esto|me escribe)|no s[eé] (qui[eé]n|qu[eé] es|nada)|who (are you|is this|r u)|what is this|qu[eé] es esto|de qu[eé] va esto|no te conozco|don'?t know (you|who))/i;
 // v179 (Jordan, 6 Oct: "go for it"). Six things the 5-6 Oct chats got wrong.
 // "Home serves" (Vinzma29) slipped past HOME_VISIT_RE.
-const HOME_EXTRA_RE = /(\bhome\s*serv\w*|\bdomicilio\b|\ba\s+mi\s+casa\b|\b(to|at|in)\s+my\s+(home|house|hotel|flat|apartment|room)\b|\bhotel\s+massage\b)/i;
+// v200 (11 Oct): "Te lo diré cuando lo tenga claro", "sin prisas", "I'll let
+// you know": they have answered the day question for now.
+const NOT_A_DAY_RE = /^(pl[sz]+|plea+s[ea]|pls|por\s+favor|porfa|send(\s+(me|it|them|the\s+(menu|list)))?|men[uú]|ok(ay)?|vale|yes+|yeah|yep|s[ií]+|claro|hi|hello|hola|thanks?|thank\s+you|gracias|\?+)[\s!.?]*$/i;
+const LATER_RE = /(te\s+l[oi]\s+dir[eéií]a?|ya\s+te\s+(digo|dir[eé]|aviso|cuento)|te\s+(aviso|confirmo)\s+(luego|m[aá]s\s+tarde|ma[nñ]ana|cuando)|sin\s+prisas?|cuando\s+l[oi]\s+tenga\s+claro|todav[ií]a\s+no\s+(lo\s+)?s[eé]|a[uú]n\s+no\s+(lo\s+)?s[eé]|i'?ll\s+(let\s+you\s+know|tell\s+you|get\s+back)|let\s+you\s+know|no\s+rush|not\s+sure\s+yet|don'?t\s+know\s+yet)/i;
+// v200 (11 Oct): Bernard asked "Vendrias a illescas?" and was told Illescas is
+// outside Madrid, never that we do not travel at all.
+const HOME_EXTRA_RE = /(\bhome\s*serv\w*|\bdomicilio\b|\ba\s+mi\s+casa\b|\b(to|at|in)\s+my\s+(home|house|hotel|flat|apartment|room)\b|\bhotel\s+massage\b|\b(vendr[ií]a[sn]|vendr[eé]is|ven[ií]s|pod[eé]is\s+venir|puedes\s+venir|(could|can|would|will|do)\s+you\s+come)\s+(a|al|hasta|to)\b(?!\s+las\b))/i;
 // "couples means" / "deep tissue means" (Mehedi) were taken as a choice.
 // v195: "El tailandés como sería?" and "I want to know the massages description"
 // are questions about the massage, not a choice of it.
@@ -5537,7 +5555,10 @@ const handleInner = async (req: Request) => {
       if (!s.data.service) { s.data.service = "svc_relax"; s.data.defaultService = true; }
       await saveSession(s);
       await logEvent(from, "spanish_opener_resent", { said: text.slice(0, 60) });
-      await sendButtons(from, await firstLine("es", "", "", true, openerName(s)), dayBtns("es"));
+      // v200 (11 Oct): "Me pides que te escriba en español y tú me escribes en
+      // inglés" got the whole opener again with no word that we heard her,
+      // and she left. Say sorry first.
+      await sendButtons(from, "Perdona, seguimos en español 🙏\n\n" + await firstLine("es", "", "", true, openerName(s)), dayBtns("es"));
       return new Response("OK", { status: 200 });
     }
 
@@ -5876,6 +5897,17 @@ const handleInner = async (req: Request) => {
           await helpInstead(s, from, L, text);
           return new Response("OK", { status: 200 });
         }
+        // v200 (11 Oct): Bernard got "¿Qué día te viene bien?" five times in
+        // four minutes, once after every answer, including straight after
+        // "Perfecto, sin prisas" when he had said he would tell us the day
+        // later. After an answered question the step's question goes again at
+        // most once in 15 minutes, and never when they said they will say later.
+        const reAskedLately = s.data.reAskStep === s.step && Date.now() - Number(s.data.reAskAt || 0) < 15 * 60e3;
+        if (reAskedLately || LATER_RE.test(text)) {
+          await logEvent(from, "reask_skipped", { step: s.step, later: LATER_RE.test(text) });
+          return new Response("OK", { status: 200 });
+        }
+        s.data.reAskStep = s.step; s.data.reAskAt = Date.now(); await saveSession(s);
       }
       await reAsk(s, from, L);
       return new Response("OK", { status: 200 });
@@ -6158,6 +6190,13 @@ const handleInner = async (req: Request) => {
             const stepNow = s.step;
             if (text && text.trim().split(/\s+/).length >= 2 && await lastResort(s, from, L, text)) {
               if (s.step !== stepNow) break;
+              // v200: see LATER_RE. Answered, so the day question goes again at
+              // most once in 15 minutes, and not at all after "I'll tell you".
+              if (LATER_RE.test(text) || (s.data.reAskStep === s.step && Date.now() - Number(s.data.reAskAt || 0) < 15 * 60e3)) {
+                await logEvent(from, "reask_skipped", { step: s.step, later: LATER_RE.test(text) });
+                break;
+              }
+              s.data.reAskStep = s.step; s.data.reAskAt = Date.now(); await saveSession(s);
             } else if (s.data.miss >= 2) {
               // v183 (8 Oct): Alexandru wrote in Romanian and broken Spanish
               // ("Traslator. Romano", "Noă tindo") and got "Sorry, I did not catch
@@ -6188,6 +6227,20 @@ const handleInner = async (req: Request) => {
             await sendText(from, dayAskText(L));
             break;
           }
+        }
+        // v200 (11 Oct): Hafeez answered "Would you like a menu of massages?"
+        // with "Plzz" and "Send me" at this step, "Plzz" became his day and he
+        // was asked the time. A please, a yes or a hello is not a day; after a
+        // menu offer it is a yes to the menu.
+        if (text && !detectDay(text, L) && NOT_A_DAY_RE.test(text.trim())) {
+          const th = await recentThread(from);
+          const lastOut = [...th].reverse().find((m) => m.dir === "out")?.body || "";
+          if (/\b(menu|men[uú]|list|lista|types?|tipos?)\b/i.test(lastOut) && !/\b(hi|hello|hola|thanks?|gracias)\b/i.test(text)) {
+            const list = String(COPY[L].servicesAnswer).split("\n\n").slice(0, -1).join("\n\n");
+            await sendText(from, list + "\n\n" + (L === "es" ? "Dime cuál te apetece y qué día." : "Tell me which one you'd like, and which day."));
+            await logEvent(from, "services_asked", { said: text.slice(0, 40), at: "await_day_text", via: "menu_yes" });
+          } else await sendText(from, dayAskText(L));
+          break;
         }
         if (text) { s.data.day = text.slice(0, 60); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "typed" }); await askTime(from, L); }
         else await sendText(from, dayAskText(L));
