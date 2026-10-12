@@ -4754,6 +4754,46 @@ const handleInner = async (req: Request) => {
       await logEvent(digitsOf(String(req.client_phone || "")) || "web", "studio_accepted", { id, studio: p.business_name, time, via: "email" });
       return out({ ok: true, row: row.id, time });
     }
+    // v202 (12 Oct): close a request the bot built from garbage and put the
+    // chat back at the day question, sending nothing. Salado's ad line became
+    // his area and a request with no day was queued for the 09:00 studio run;
+    // the SQL console was waiting on approvals all night. Only a request that
+    // no studio has been asked about yet (new, needs_contact, awaiting_go), and only
+    // when it belongs to the phone given.
+    if (payload?.ops === "reset_chat") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const out = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
+      const phone = digitsOf(String(payload.phone || ""));
+      if (!phone) return out({ ok: false, reason: "no phone" });
+      let dismissed: number | null = null;
+      let id = Number(payload.request_id || 0);
+      if (!id && payload.latest) {
+        const since = new Date(Date.now() - 36 * 3600e3).toISOString();
+        const lr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=ilike.*${phone}&stage=in.(new,needs_contact,awaiting_go)&created_at=gte.${since}&order=id.desc&limit=1&select=id`, { headers: H() });
+        id = Number(((await lr.json().catch(() => []))[0] || {}).id || 0);
+        if (!id) return out({ ok: false, reason: "no undispatched request in the last 36h" });
+      }
+      if (id) {
+        const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}&select=id,stage,client_phone,area,day1,time1`, { headers: H() });
+        const req = (await rr.json().catch(() => []))[0];
+        if (!req || digitsOf(String(req.client_phone || "")) !== phone) return out({ ok: false, reason: "request does not belong to this phone" });
+        if (!["new", "needs_contact", "awaiting_go"].includes(String(req.stage || ""))) return out({ ok: false, reason: `request is ${req.stage}, not touched` });
+        const up = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}&stage=in.(new,needs_contact,awaiting_go)`, {
+          method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
+          body: JSON.stringify({ stage: "dismissed", stage_note: String(payload.note || "reset_chat").slice(0, 200), stage_updated_at: new Date().toISOString() }),
+        });
+        const rows = await up.json().catch(() => []);
+        if (!up.ok || !Array.isArray(rows) || !rows.length) return out({ ok: false, reason: "could not dismiss", status: up.status, body: rows });
+        dismissed = id;
+      }
+      const s = await getSession(phone);
+      const before = s.step;
+      s.step = "await_day";
+      s.data = { lang: s.data.lang || "", service: "svc_relax", defaultService: true, recoverySent: s.data.recoverySent || null, adRef: s.data.adRef || null, xlang: s.data.xlang || undefined };
+      await saveSession(s);
+      await logEvent(phone, "chat_reset", { by: "ops", from_step: before, dismissed });
+      return out({ ok: true, dismissed, from_step: before, step: s.step });
+    }
     // v66: read a message and return the reading, sending nothing. For checking
     // the interpreter against real sentences without a customer in the loop.
     if (payload?.ops === "interpret") {
