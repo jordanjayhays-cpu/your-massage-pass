@@ -104,8 +104,15 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .chip.sel{border-color:var(--ink);background:#FFFDFB}
 .chip small{color:var(--muted);font-weight:400;margin-left:4px}
 .hours{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.hours .chip{padding:16px 0;font-size:17px;font-weight:700;text-align:center}
-.hours .chip small{display:block;margin:2px 0 0;font-size:12px;font-weight:500}
+/* Each hour is one card with two halves: the hour on top, half past below. */
+.hr{display:flex;flex-direction:column;background:var(--chip);border-radius:20px;overflow:hidden;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.hr button{display:block;width:100%;text-align:center;transition:background .15s,color .15s}
+.hr button:active{transform:scale(.96)}
+.hr .h0{flex:1;padding:12px 0 8px;font-size:17px;font-weight:700}
+.hr .h0 small{display:block;margin-top:2px;font-size:12px;font-weight:500;color:var(--muted)}
+.hr .h30{padding:10px 0;font-size:15px;font-weight:600;color:var(--muted);border-top:1px solid var(--line)}
+.hr button.sel{background:var(--ink);color:#fff}
+.hr button.sel small{color:rgba(255,255,255,.75)}
 .label{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
 .locate{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--ink);color:#fff;border-radius:20px;padding:17px;font-weight:700;font-size:16.5px;margin-bottom:6px}
 .locate.done{background:var(--sage);color:var(--ink)}
@@ -344,6 +351,7 @@ const MASSAGES = [
 ];
 // Jordan (5 Oct): "make it easier to pick a time". Real start times, tap
 // every one that works. 20:00 is the last start: studios close at 21:00.
+// Jordan (12 Oct): half hours too, so every hour but the last has a :30.
 const HOURS = Array.from({ length: 11 }, (_, i) => 10 + i);
 const hourIcon = (h) => (h < 13 ? "🌅" : h < 18 ? "☀️" : "🌙");
 const AREAS = [
@@ -394,8 +402,9 @@ function paint() {
   $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span><div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
   const today = S.day && S.day.i === 0;
   const hour = madridNow().getHours();
-  const hourChip = (h, sel) => `<button class="chip${sel.includes(h) ? " sel" : ""}" data-v="${h}">${h}:00<small>${hourIcon(h)}</small></button>`;
-  $("times").innerHTML = HOURS.filter((h) => !today || h > hour).map((h) => hourChip(h, S.times)).join("");
+  const half = (v, cls, inner) => `<button class="${cls}${S.times.includes(v) ? " sel" : ""}" data-v="${v}">${inner}</button>`;
+  const hourCard = (h) => `<div class="hr">${half(`${h}:00`, "h0", `${h}:00<small>${hourIcon(h)}</small>`)}${h < HOURS[HOURS.length - 1] ? half(`${h}:30`, "h30", `${h}:30`) : ""}</div>`;
+  $("times").innerHTML = HOURS.filter((h) => !today || h > hour).map(hourCard).join("");
   $("timeNext").disabled = !S.times.length;
   $("timeNext").style.display = S.multi ? "" : "none";
   $("moreTimes").textContent = S.multi ? t("oneTime") : t("moreTimes");
@@ -437,14 +446,15 @@ $("days").onclick = (e) => {
   S.day = dayList().find((d) => d.iso === b.dataset.v); S.times = []; advance("time");
 };
 // Tap to add, tap again to remove; a fourth tap replaces the oldest.
-const toggle = (arr, h) => { const i = arr.indexOf(h); if (i >= 0) arr.splice(i, 1); else { arr.push(h); if (arr.length > 3) arr.shift(); } arr.sort((a, b) => a - b); };
+const mins = (v) => { const [h, m] = v.split(":"); return h * 60 + Number(m); };
+const toggle = (arr, v) => { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else { arr.push(v); if (arr.length > 3) arr.shift(); } arr.sort((a, b) => mins(a) - mins(b)); };
 // One tap picks the time and moves on: the studio is asked for exactly that.
 // "+ Add another time" switches to picking up to three, with a Next button.
 $("times").onclick = (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
-  const h = Number(b.dataset.v);
-  if (S.multi) { toggle(S.times, h); paint(); return; }
-  S.times = [h]; advance("where");
+  const v = b.dataset.v;
+  if (S.multi) { toggle(S.times, v); paint(); return; }
+  S.times = [v]; advance("where");
 };
 $("moreTimes").onclick = () => { S.multi = !S.multi; if (!S.multi) S.times = S.times.slice(0, 1); paint(); };
 $("timeNext").onclick = () => go("where");
@@ -500,7 +510,7 @@ const intl = (v) => {
 };
 
 // The same words the website wizard sends, so studios read one format.
-const hm = (hs) => hs.map((h) => `${h}:00`).join(" / ");
+const hm = (hs) => hs.join(" / ");
 const slot = (d, hs) => [d ? d.long : "", hs && hs.length ? hm(hs) : ""].filter(Boolean).join(", ");
 
 $("send").onclick = async () => {
@@ -510,7 +520,7 @@ $("send").onclick = async () => {
   const notes = [
     S.pressure ? `Presión: ${{ Light: "suave", Medium: "media", Firm: "fuerte" }[S.pressure]}` : "",
     S.therapist === "female" ? "Prefiere masajista mujer" : S.therapist === "male" ? "Prefiere masajista hombre" : "",
-    S.times.length > 1 ? `También le va: ${S.times.slice(1).map((h) => h + ":00").join(", ")}` : "",
+    S.times.length > 1 ? `También le va: ${S.times.slice(1).join(", ")}` : "",
     S.loc ? `Ubicación: ${S.loc.lat.toFixed(5)},${S.loc.lng.toFixed(5)}` : "",
   ].filter(Boolean).join("; ");
   const body = {
@@ -519,7 +529,7 @@ $("send").onclick = async () => {
     // Structured, so the studio reads "a las 18:00" and is only asked if it is
     // open at that hour (dispatch-studios v16).
     date: S.day && S.day.iso !== "Flexible" ? S.day.iso : undefined,
-    time1: S.times.length ? `${String(S.times[0]).padStart(2, "0")}:00` : undefined,
+    time1: S.times.length ? S.times[0].padStart(5, "0") : undefined,
     name, first_name: name.split(" ")[0], phone, email, lang: L, source: "go-page" + (/^[a-z0-9-]{1,20}$/.test(q.get("src") || "") ? "-" + q.get("src") : ""), notes: notes || undefined,
     prefs: {
       service: S.massage, pressure: S.pressure, therapist_gender: S.therapist && S.therapist !== "any" ? S.therapist : null,
