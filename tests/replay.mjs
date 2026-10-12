@@ -1736,6 +1736,411 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// v206 (12 Oct, Jordan approved "change 3"): agent_core.ts lets Claude run the
+// conversation behind AGENT_CORE. It imports nothing, so it is loaded here as
+// it is. noDashes, dashRanges and stripUnaskedLink are lifted out of bot.ts the
+// same way as above. No API is called: runCoreTurn is driven with a stub fetch
+// that plays back model responses, and every send lands in a log.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const C = await import(pathToFileURL(path.join(here, "../supabase/functions/wa-bot/agent_core.ts")).href);
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const { HOURS, ALL_SERVICES } = await import(copyUrl);
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const facts = fs.readFileSync(path.join(here, "../docs/agent/facts.md"), "utf8");
+  const one = (name) => { const m = botSrc.match(new RegExp(`^const ${name} = .*$`, "m")); if (!m) throw new Error(`bot.ts: ${name} is missing`); return m[0]; };
+  const lift = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(`missing: ${head}`); return src.slice(i, src.indexOf("\n}\n", i) + 3); };
+  const js = `import { HOWWORKS_RE, PHOTOQ_RE } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes([one("noDashes"), one("dashRanges"), one("WHO_RE"), one("linkAsked"), lift(botSrc, "function stripUnaskedLink(")].join("\n"))
+    + `\nexport { noDashes, dashRanges, linkAsked, stripUnaskedLink };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-core-"));
+  const file = path.join(dir, "core.mjs");
+  fs.writeFileSync(file, js);
+  const G = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  // Monday 12 Oct 2026, Madrid wall clock (CEST).
+  const M = (h, mi = 0, plusDays = 0) => madridInstant(new Date(Date.UTC(2026, 9, 12 + plusDays)), h).getTime() + mi * 60e3;
+
+  // 1. The switch. Anything but "test" or "on" is off.
+  for (const [v, want] of [["", "off"], [undefined, "off"], ["OFF ", "off"], ["yes", "off"], ["test", "test"], [" On", "on"]]) check("AGENT_CORE", String(v), C.parseCoreMode(v), want, "");
+  for (const [mode, ph, want, note] of [
+    ["test", "34600001234", true, "a canary fake number"], ["test", "3460000123", false, "one digit short"],
+    ["test", "34612474827", false, "Jordan's own number is not a canary number"], ["test", "15622355063", false, ""],
+    ["on", "34631294370", true, "Hafeez, once it is on"], ["on", "", false, ""], ["off", "34600001234", false, "off is off"],
+  ]) check("coreEligiblePhone", `${mode} ${ph}`, C.coreEligiblePhone(mode, ph), want, note);
+
+  // 2. Which messages the core takes. Everything here is decided in bot.ts
+  // exactly like this (the coreTake block above the clothing gate).
+  const AD = "Hi, I'd like to book a massage. I saw you on Facebook.";
+  const takes = (step, text, o = {}) => C.coreTakes({ mode: "test", phone: "34600001234", step, text, jobSeeker: false,
+    offerTimeNamed: step === "await_offer" && !!parseOfferedTime(text) && parseOfferedTime(text) !== "18:00",
+    confirmLater: CONFIRM_LATER_RE.test(text), emailOnly: isEmail(text), bareOpener: HI_RE.test(text.trim()) || AD_OPENER_RE.test(text.trim()), ...o }).ok;
+  check("coreTakes", "job seeker", takes("await_day", "Estoy buscando trabajo de masaje", { jobSeeker: true }), false, "#91 Manju: the job-seeker gate answers");
+  for (const st of ["human", "await_go", "await_reconfirm", "await_change", "await_studio_text"]) check("coreTakes", `step ${st}`, takes(st, "hello there, any news?"), false, "");
+  check("coreTakes", "start + Hi", takes("start", "Hi"), false, "greet() sends Jordan's opener");
+  check("coreTakes", "start + the ad line", takes("start", AD), false, "greet()");
+  check("coreTakes", "start + the ad line and more", takes("start", AD + " . hola"), true, "their own words after the ad's");
+  check("coreTakes", "await_offer + another time", takes("await_offer", "7pm?"), false, "Asim: the await_offer case asks for it");
+  check("coreTakes", "await_offer + confirm later", takes("await_offer", "I'll confirm the day before"), false, "Juan, v124");
+  check("coreTakes", "await_offer + more info", takes("await_offer", "I want to know more info"), true, "Al (#83)");
+  check("coreTakes", "await_email_post + email", takes("await_email_post", "ana@gmail.com"), false, "booking-ack path");
+  check("coreTakes", "await_email_post + skip", takes("await_email_post", "skip"), false, "");
+  check("coreTakes", "await_day_text + send me the list", takes("await_day_text", "send me the list"), true, "Hafeez");
+  check("coreTakes", "Hi at await_day", takes("await_day", "Hi"), true, "Hafeez 13:27 got the whole opener again");
+  check("coreTakes", "a real number under test", C.coreTakes({ mode: "test", phone: "34631294370", step: "await_day", text: "Hi", jobSeeker: false, offerTimeNamed: false, confirmLater: false, emailOnly: false, bareOpener: false }).ok, false, "");
+
+  // 3. set_details validation, Monday 12 Oct.
+  const cal = C.madridCalendar(M(10), 61);
+  const vdeps = {
+    dayLabel: (iso, L) => {
+      const c = cal.find((x) => x.iso === iso); if (!c) return null;
+      const long = L === "es" ? c.es : c.en;
+      return c.plus === 0 ? { day: L === "es" ? "Hoy" : "Today", dayDate: long } : c.plus === 1 ? { day: L === "es" ? "Mañana" : "Tomorrow", dayDate: long } : { day: long, dayDate: null };
+    },
+    isEmail, parseName, hours: HOURS, earliestLabel: (L) => COPY[L === "es" ? "es" : "en"].earliestToday,
+    detectAreaPlus: (t) => detectArea(t) || (/majadahonda/i.test(t) ? "Majadahonda" : /lavapi[eé]s/i.test(t) ? "Lavapiés" : ""),
+  };
+  const V = (args, at = M(10), data = {}, L = "en", live = "") => C.validateDetails(args, data, at, vdeps, L, live);
+  const today = V({ day: "2026-10-12" });
+  check("set_details day", "2026-10-12 at 10:00", [today.patch.day, today.patch.dayDate, today.errors.length], ["Today", "Monday 12 October", 0], "");
+  check("set_details day", "2026-10-12 at 19:30", [V({ day: "2026-10-12" }, M(19, 30)).errors.length, "day" in V({ day: "2026-10-12" }, M(19, 30)).patch], [1, false], "no same-day booking after 19:00");
+  check("set_details day", "2026-10-13 in Spanish", V({ day: "2026-10-13" }, M(10), {}, "es").patch.day, "Mañana", "");
+  for (const [d, note] of [["2026-10-11", "past"], ["2026-12-25", "more than 60 days"], ["next friday", "not a date"]]) check("set_details day rejected", d, V({ day: d }).errors.length, 1, note);
+  check("set_details day", "\"Plzz\" is never a day", V({ day: "Plzz" }).errors.length, 1, "Hafeez, 11 Oct");
+  check("set_details time", "18:00 tomorrow", V({ time: "18:00" }, M(10), { day: "Tomorrow" }).patch.time, "18:00", "");
+  check("set_details time", "07:00", V({ time: "07:00" }, M(10), { day: "Tomorrow" }).errors.length, 1, "before studio hours");
+  check("set_details time", "today 10:30 at 10:00", V({ time: "10:30" }, M(10), { day: "Today" }).errors.length, 1, "less than an hour away");
+  check("set_details time", "today 11:00 at 10:00", V({ time: "11:00" }, M(10), { day: "Today" }).patch.time, "11:00", "exactly an hour away");
+  check("set_details time", "morning today at 11:30", V({ time: "morning" }, M(11, 30), { day: "Today" }).errors.length, 1, "11:30 + 105 min is past 13:00 (dispatch-studios tooLateReason)");
+  check("set_details time", "morning today at 11:00", V({ time: "morning" }, M(11), { day: "Today" }).patch.timeBandId, "time_morning", "12:45 is inside 13:00, and dispatch would ask");
+  check("set_details time", "evening (en)", [V({ time: "evening" }).patch.timeBandId, V({ time: "evening" }).patch.time], ["time_evening", "Evening (18-21)"], "");
+  check("set_details time", "evening (es)", V({ time: "evening" }, M(10), {}, "es").patch.time, "Noche (18-21)", "");
+  check("set_details time", "earliest today at 10:00", V({ time: "earliest" }, M(10), { day: "Today" }).patch.time, COPY.en.earliestToday, "");
+  check("set_details time", "earliest today at 11:30", V({ time: "earliest" }, M(11, 30), { day: "Today" }).errors.length, 1, "studios are asked for 12:00, too soon");
+  check("set_details time", "earliest tomorrow", V({ time: "earliest" }, M(10), { day: "Tomorrow" }).errors.length, 1, "only for today");
+  const moved = V({ day: "2026-10-12" }, M(10), { day: "Tomorrow", dayDate: "Tuesday 13 October", time: "10:30" });
+  check("set_details time", "day moved to today under a time that has gone", [moved.clear.includes("time"), moved.errors.length], [true, 1], "");
+  check("set_details area", "the ad line", V({ area: "Hi, I'd like to book a massage. I saw yo" }).errors.length, 1, "Salado, 12 Oct: offered studios \"cerca de Hi, I'd like...\"");
+  check("set_details area", "Majadahonda", V({ area: "Majadahonda" }).patch.area, "Majadahonda", "Rajesh (#109)");
+  check("set_details area", "en la zona de Lavapiés", V({ area: "Lavapiés" }).patch.area, "Lavapiés", "Javier");
+  check("set_details area", "Madrid", V({ area: "Madrid" }).errors.length, 1, "not an area");
+  check("set_details area", "anywhere", V({ area: "anywhere" }).patch.area, "anywhere", "");
+  check("set_details email", "ana@gmail", V({ email: "ana@gmail" }).errors.length, 1, "");
+  check("set_details email", "ANA@Gmail.com", V({ email: "ANA@Gmail.com" }).patch.email, "ana@gmail.com", "");
+  check("set_details email", "refused", V({ email_refused: true }).patch.emailRefused, true, "");
+  check("set_details language", "ro", [V({ language: "ro" }).patch.xlang, V({ language: "ro" }).patch.lang], ["ro", "en"], "Alexandru, 8 Oct");
+  check("set_details language", "es clears xlang", V({ language: "es" }).clear.includes("xlang"), true, "");
+  check("set_details service", "svc_lymph", V({ service: "svc_lymph" }).patch.service, "svc_lymph", "CG, 4 Oct");
+  check("set_details service", "svc_foo", V({ service: "svc_foo" }).errors.length, 1, "");
+  check("set_details name", "My name us bernard", V({ name: "Bernard" }).patch.name, "Bernard", "");
+  const so = { lang: "es", name: "Ana", email: "ana@gmail.com", day: "Today", dayDate: "x", time: "18:00", area: "Retiro", picks: [{ id: "1" }], offerMode: true, prefer: [{ id: "1" }] };
+  C.applyPatch(so, V({ start_over: true }, M(10), so));
+  check("set_details start_over", "clears the booking, keeps who they are", [so.day, so.time, so.area, so.picks, so.offerMode, so.prefer, so.lang, so.name, so.email], [undefined, undefined, undefined, undefined, undefined, undefined, "es", "Ana", "ana@gmail.com"], "");
+  const live = V({ day: "2026-10-13", name: "Rajesh" }, M(10), {}, "en", "Request #109 is with the studios");
+  check("set_details live", "day is refused, name is kept", [live.errors.length, /booking_action cancel/.test(live.errors[0] || ""), live.patch.name, "day" in live.patch], [1, true, "Rajesh", false], "#109: the area cannot move behind the studios' backs");
+
+  // 4. nextStep, one rung each.
+  for (const [data, prof, want] of [
+    [{}, "", "await_day"], [{ day: "Today" }, "", "await_time"], [{ day: "Today", time: "18:00" }, "", "await_area"],
+    [{ day: "Today", time: "18:00", area: "Retiro" }, "", "await_name"], [{ day: "Today", time: "18:00", area: "Retiro" }, "Hafeez", "await_email_req"],
+    [{ day: "Today", time: "18:00", area: "Retiro", name: "Ana", emailRefused: true }, "", "await_studio"],
+    [{ day: "Today", time: "18:00", area: "Retiro", name: "Ana", email: "a@b.co" }, "", "await_studio"],
+  ]) check("nextStep", JSON.stringify(data) + (prof ? " +profile" : ""), C.nextStep(data, prof), want, "");
+
+  // 5. The guard.
+  const gdeps = { noDashes: G.noDashes, dashRanges: G.dashRanges, stripUnaskedLink: G.stripUnaskedLink };
+  const gbase = { lang: "en", asked: "", linkAsked: false, allowedPrices: [50, 85], allowedStudios: [], allStudioNames: ["calma madrid spa", "sinergia38", "centro aloha", "masajes"], allowedEmails: ["support@massageclub.io", "ana@gmail.com"], firstReply: false, night: false, confirmed: false };
+  const GR = (t, o = {}) => C.guardReply(t, { ...gbase, ...o }, gdeps);
+  check("guard repairs", "Relaxing \u2014 gentle", [GR("Relaxing \u2014 gentle").ok, GR("Relaxing \u2014 gentle").text], [true, "Relaxing, gentle"], "Hafeez's answer was dropped over one em dash");
+  check("guard repairs", "50\u201385 EUR", GR("50\u201385 EUR").text, "50 to 85 EUR", "");
+  check("guard repairs", "50\u201385 EUR (es)", GR("50\u201385 EUR", { lang: "es" }).text, "50 a 85 EUR", "");
+  for (const [t, o, note] of [
+    ["Your massage is booked for 18:00.", {}, "only a studio's offer plus their tap books"],
+    ["Te hemos reservado a las 18:00.", {}, ""],
+    ["You get 10% off.", {}, "never quote a discount"],
+    ["Hay un descuento para ti.", {}, ""],
+    ["A relaxing massage helps you detox.", {}, ""],
+    ["The therapists speak English.", {}, ""],
+    ["Jordan will reply soon.", {}, ""],
+    ["See https://example.com for more.", {}, ""],
+    ["I will pass you to a representative.", {}, ""],
+    ["Call us on +34 612 474 827.", {}, ""],
+    ["Write to bob@example.com.", {}, ""],
+    ["It is 70 EUR for 60 minutes.", {}, "70 is not a price anyone gave"],
+    ["Calma Madrid Spa has room at 18:00.", {}, "studio names come only with studio_options or the offer"],
+    ["Which day would you like?", { firstReply: true }, "the first message carries the price"],
+    ["I'm asking them right now.", { night: true }, "23:00: studios are asked from 09:00"],
+    ["Hola Bernard, soy Ana. ¿Qué día?", {}, "never signed with a person's name"],
+    ["The therapists are fully licensed.", {}, ""],
+    ["Book here: https://book.massageclub.io/reserve", {}, "no link they did not ask for"],
+  ]) check("guard fails", t, GR(t, o).ok, false, note);
+  for (const [t, o, note] of [
+    ["Nothing is booked until you tap Yes.", {}, ""],
+    ["No se reserva nada hasta que toques Sí.", {}, ""],
+    ["Studios in Madrid usually speak Spanish.", {}, ""],
+    ["Pagas en el centro, sin comisión.", {}, ""],
+    ["A 60 minute relaxing massage is usually 50 to 60 EUR.", { allowedPrices: [50, 60] }, ""],
+    ["Got it, I'll send the confirmation to ana@gmail.com too.", {}, "their own email"],
+    ["Calma Madrid Spa (Chamberí), relaxing 60 min, 85 EUR.", { allowedStudios: ["Calma Madrid Spa"] }, "a studio from studio_options"],
+    ["Our masajes relajantes are the most popular.", {}, "a partner called Masajes is not checked"],
+    ["I'm Massage Club's booking assistant.", {}, "Bernard asked \"Tu nombre?\""],
+    ["Here it is: https://book.massageclub.io", { linkAsked: true }, "they asked for the website"],
+    ["The offer tells you whether the studio confirmed it.", {}, "a hedge"],
+    ["Thanks Jordan, which day suits you?", { ownNames: ["Jordan"] }, "a customer called Jordan"],
+    // The answers the core is meant to give in the ten cases of the design.
+    ["1. The studio's own professional therapist, and you can ask for a woman or a man. 2. 60 minutes is usual, 90 is possible; a 60 minute relaxing massage is usually 50 to 85 EUR, paid at the studio. 3. We are not one place: we book a studio near you, and its name and address come with the offer. 4. You are covered with a towel and underwear stays on; only the area being worked on is uncovered. What time tomorrow suits you?", {}, "CCF, 6 Oct: four questions, four answers"],
+    ["Te lo da un masajista profesional del propio centro, y si prefieres chica o chico se lo pedimos. No somos un solo sitio: te reservamos en un centro cerca de ti. ¿En qué zona de Madrid estás?", { lang: "es" }, "Javier (+34 693 301 014)"],
+    ["None of the studios near Chamartín lists lymphatic drainage on its menu. I can ask several whether they do it on Tuesday evening, and you'll get each one's price before anything is booked. Shall I?", {}, "CG, 4 Oct"],
+    ["Perfecto, sin prisa. Cuando lo tengas claro me escribes aquí y te lo busco en Salamanca.", { lang: "es" }, "Bernard, 10 Oct"],
+    ["Soy el asistente de reservas de Massage Club.", { lang: "es" }, "Bernard: \"Tu nombre?\""],
+    ["Tu nombre, para que el centro tenga la reserva a tu nombre.", { lang: "es" }, "Salado's bare \"?\""],
+  ]) check("guard passes", t, [GR(t, o).ok, GR(t, o).reasons], [true, []], note);
+
+  // 6. Prices next to a currency.
+  for (const [t, want] of [["50 to 60 EUR", [50, 60]], ["€85", [85]], ["18:00", []], ["60 min", []], ["entre 50 y 85 euros", [50, 85]], ["unos 59,90 € por 60 min", [59.9]], ["at 18:00, 50 EUR", [50]]]) check("priceNumbers", t, C.priceNumbers(t), want, "");
+
+  // 7. The prompt.
+  const sys = C.coreSystemPrompt(C.factsForCore(facts));
+  check("system prompt", "no em or en dash", /[\u2013\u2014]/.test(sys), false, "");
+  check("system prompt", "the booking page", sys.includes("book.massageclub.io"), true, "");
+  check("system prompt", "no hand-off contract", /hand-off contract|AGENT_URL|"mode": "send"/.test(sys), false, "facts.md's old JSON contract is not for the core");
+  check("system prompt", "stable bytes", C.coreSystemPrompt(C.factsForCore(facts)) === sys, true, "the prompt cache needs the same prefix every time");
+  const at = (h, mi = 0) => new Date(M(h, mi)).toISOString();
+  const rows = [];
+  for (let k = 0; k < 26; k++) rows.push({ id: k + 1, dir: k % 2 ? "out" : "in", body: k % 2 ? `Which day? [Today/Tomorrow/Another day] ${k}` : `message ${k}`, at: at(12, k), type: "text" });
+  rows.push({ id: 40, dir: "out", body: "Would you like a menu of massages offered?", at: at(15, 35), type: "text" });
+  rows.push({ id: 41, dir: "in", body: "Plzz", at: at(15, 37), type: "text" });
+  rows.push({ id: 42, dir: "in", body: "Send me", at: at(15, 37), type: "text" });
+  const booking0 = { live: null, offer: null, confirmed: null, returning: null };
+  const ctxIn = (o = {}) => ({ nowMs: M(15, 37), phone: "34631294370", waName: "HAFEEZ AKRAM GUJAR", profileName: "", step: "await_day_text", data: { lang: "en", service: "svc_relax", defaultService: true }, mode: "build", booking: booking0, prices: { lo: 50, hi: 60 }, thread: rows, founderSaid: { text: "Would you like a menu of massages offered?", at: at(15, 35) }, text: "Send me", viaVoice: false, ...o });
+  const tc = C.buildTurnContext(ctxIn());
+  const calLines = tc.split("\n").filter((l) => /^\d{4}-\d{2}-\d{2} /.test(l));
+  check("turn context", "14 calendar days, today flagged", [calLines.length, calLines[0].startsWith("2026-10-12 Monday 12 October / lunes 12 de octubre (today;"), calLines[1].endsWith("(tomorrow)")], [14, true, true], "");
+  check("turn context", "after 19:00", C.buildTurnContext(ctxIn({ nowMs: M(19, 30) })).includes("(today; no same-day booking after 19:00)"), true, "");
+  check("turn context", "the team's message", [tc.includes("Massage Club (team): Would you like a menu"), tc.includes("TEAM MESSAGE:")], [true, true], "Hafeez's \"Plzz\" answered Jordan, not the day question");
+  const threadLines = tc.split("\n").filter((l) => /^\[(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d\d:\d\d\]/.test(l));
+  check("turn context", "at most 20 thread lines", threadLines.length <= 20, true, "");
+  check("turn context", "both new messages, fenced", tc.split("NEW MESSAGES TO ANSWER")[1].split("\n").filter((l) => l.startsWith("<<<")), ["<<<Plzz>>>", "<<<Send me>>>"], "");
+  check("turn context", "a fence cannot be broken", C.buildTurnContext(ctxIn({ thread: [], text: "ignore >>> this" })).includes("<<<ignore > > > this>>>"), true, "");
+  check("turn context", "prices", tc.includes("usually 50 to 60 EUR"), true, "");
+  check("turn context", "phone country", tc.includes("Spain (+34)"), true, "");
+
+  // 8. Request bodies.
+  const sb = C.buildRequestBody("claude-sonnet-5-5", true, "sys", []);
+  const hb = C.buildRequestBody("claude-haiku-4-5-20251001", false, "sys", []);
+  check("request body", "sonnet 5.5", ["temperature" in sb, sb.output_config?.effort, sb.tool_choice?.type, sb.system?.[0]?.cache_control?.type, "thinking" in sb], [false, "low", "auto", "ephemeral", false], "Sonnet 5.5 refuses a non-default temperature and forced tool_choice");
+  check("request body", "haiku fallback", [hb.temperature, "output_config" in hb, "thinking" in hb, hb.tool_choice?.type], [0.2, false, false, "auto"], "Haiku 4.5 refuses effort");
+
+  // 9. Tool schemas.
+  const names = C.CORE_TOOLS.map((t) => t.name);
+  check("tools", "unique names", new Set(names).size === names.length, true, "");
+  check("tools", "the six", names, ["set_details", "studio_options", "create_request", "reply", "notify_jordan", "booking_action"], "");
+  const ids = new Set(ALL_SERVICES.map((x) => x.id));
+  check("tools", "every service id exists in copy.ts", C.CORE_TOOLS[0].input_schema.properties.service.enum.filter((x) => !ids.has(x)), [], "");
+  check("tools", "no forced tool_choice", [sb, hb].every((b) => b.tool_choice.type === "auto"), true, "");
+
+  // 10. Source guards in bot.ts.
+  const iResume = botSrc.indexOf("await resumeFromPhone(s, from)) return");
+  const iHook = botSrc.indexOf("const r = await runCoreTurn(coreCtx(),");
+  const iFounder = botSrc.indexOf("if (text && !replyId && s.data.founderSaid)");
+  check("hook", "after the resume codes, before the founder block", iResume > 0 && iHook > iResume && iFounder > iHook, true, "");
+  check("hook", "clothing gate skips core turns", /if \(text && MODESTY_RE\.test\(text\) && !coreTake\.ok\)/.test(botSrc), true, "CCF's four questions");
+  check("hook", "coreTake only for typed text", /const coreTake = text && !replyId && !flowAnswers/.test(botSrc), true, "taps keep their handlers");
+  check("hook", "AGENT_CORE", /parseCoreMode\(await appSecret\("AGENT_CORE"\)\)/.test(botSrc), true, "");
+  check("hook", "agent_core import", /from "\.\/agent_core\.ts";/.test(botSrc), true, "");
+  check("hook", "the job-seeker gate still runs its v204 rule", /closeAsJobSeeker\(s, from, L, text, jobKind\)/.test(botSrc), true, "");
+
+  // 11. One turn, with the API played back from a stub. Nothing leaves the process.
+  const tu = (name, input, id = `${name}_${Math.random().toString(36).slice(2, 7)}`) => ({ type: "tool_use", id, name, input });
+  const resp = (...content) => ({ content, stop_reason: content.some((c) => c.type === "tool_use") ? "tool_use" : "end_turn", usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 4 } });
+  const mkCtx = (responses, o = {}) => {
+    const log = { sent: [], events: [], saves: 0, bodies: [], notes: [], finalized: 0 };
+    let i = 0;
+    const ctx = {
+      now: () => o.now ?? M(10),
+      fetch: async (_url, init) => { log.bodies.push(JSON.parse(init.body)); const r = responses[i++]; if (!r) throw new Error("no response left"); if (r.status) return { ok: false, status: r.status, json: async () => ({ error: { message: "boom" } }) }; return { ok: true, status: 200, json: async () => r }; },
+      aiKey: async () => "test-key", model: "claude-sonnet-5-5", fallbackModel: "claude-haiku-4-5-20251001",
+      facts: async () => facts,
+      thread: async () => o.thread || [{ id: 7, dir: "in", body: o.text || "hi", at: at(9, 59), type: "text" }],
+      myInboundId: async () => 7, newerInbound: async () => !!o.newer,
+      bookingFacts: async () => o.booking || booking0,
+      openerFacts: async () => ({ lo: 50, hi: 60, areas: [] }),
+      profileFirstName: firstNameFromProfile,
+      saveSession: async () => { log.saves++; },
+      logEvent: async (_p, e, m) => { log.events.push([e, m]); },
+      dropStaleDay: () => {}, dayLabel: vdeps.dayLabel, earliestLabel: vdeps.earliestLabel,
+      isEmail, parseName, detectService, detectAreaPlus: vdeps.detectAreaPlus, hours: HOURS,
+      noDashes: G.noDashes, dashRanges: G.dashRanges, stripUnaskedLink: G.stripUnaskedLink, linkAsked: G.linkAsked,
+      studioNames: async () => ["calma madrid spa", "sinergia38"],
+      sendText: async (_to, body) => { log.sent.push(["text", body]); return true; },
+      sendButtons: async (_to, body, btns) => { log.sent.push(["buttons", body, btns.map((b) => b.id)]); return true; },
+      sendList: async (_to, body, _b, rws) => { log.sent.push(["list", body, rws.map((r) => r.id)]); return true; },
+      dayButtons: () => [{ id: "day_today", title: "Today" }, { id: "day_tomorrow", title: "Tomorrow" }, { id: "day_other", title: "Another day" }],
+      timeButtons: () => [{ id: "time_morning", title: "Morning" }, { id: "time_afternoon", title: "Afternoon" }, { id: "time_evening", title: "Evening" }],
+      areaRows: () => ({ button: "Choose area", rows: [{ id: "area_centro", title: "Centro" }, { id: "area_any", title: "Anywhere" }] }),
+      sendReservePage: async () => { log.sent.push(["page"]); },
+      studioOptions: async () => o.picks || [],
+      finalizeBooking: async (s) => { log.finalized++; s.step = "done"; log.sent.push(["text", "Done, asking the studios"]); return { outcome: "asked", requestId: 130 }; },
+      askedStudios: async () => 3, lastOutbound: async () => "Done, asking the studios",
+      reshowOffer: async () => { log.sent.push(["buttons", "offer again"]); return true; }, declineOffer: async () => {}, cancelOffered: async () => {}, reconfirm: async () => {}, cancelOpenRequest: async () => true,
+      genderOnLiveRequest: async () => null, attachEmail: async () => null, closeAsJobSeeker: async () => { log.sent.push(["text", "job"]); },
+      blockLine: () => BLOCK_LINE_EN, notifyJordan: async (t) => { log.notes.push(t); }, notifyHuman: async () => { log.notes.push("human"); },
+    };
+    return { ctx, log };
+  };
+  const sess = (step, data = {}) => ({ phone: "34600001234", step, data: { lang: "en", service: "svc_relax", ...data }, wa_name: "Hafeez Akram" });
+  const turn = (s, text, o = {}) => ({ s, from: "34600001234", L: "en", text, viaVoice: false, founderSaid: null, ackOnly: false, switchMode: "test", ...o });
+  const ev = (log, name) => log.events.filter((e) => e[0] === name);
+
+  // a. Everything said in one message is kept, and the next question is asked once.
+  {
+    const { ctx, log } = mkCtx([resp(tu("set_details", { day: "2026-10-13", time: "evening" }), tu("reply", { text: "Lovely, tomorrow evening. Which part of Madrid suits you?", buttons: { kind: "areas" } }))]);
+    const s = sess("await_day");
+    const r = await C.runCoreTurn(ctx, turn(s, "tomorrow evening please"));
+    check("core turn", "details kept, area asked", [r.handled, r.sent, log.sent.map((x) => x[0]), s.step, s.data.day, s.data.timeBandId, ev(log, "day_chosen").length, ev(log, "agent_core_turn").length], [true, 1, ["list"], "await_area", "Tomorrow", "time_evening", 1, 1], "");
+    const b0 = log.bodies[0];
+    check("core turn", "the request", [b0.model, b0.output_config.effort, "temperature" in b0, b0.messages[0].content.includes("NEW MESSAGES TO ANSWER")], ["claude-sonnet-5-5", "low", false, true], "");
+  }
+  // b. The API down on both models: the old flow answers, the session as it was.
+  {
+    const { ctx, log } = mkCtx([{ status: 500 }, { status: 503 }]);
+    const s = sess("await_day", { area: "Retiro" });
+    const before = JSON.stringify(s.data);
+    const r = await C.runCoreTurn(ctx, turn(s, "What type massage?"));
+    check("core turn", "API down", [r.handled, log.sent.length, JSON.stringify(s.data) === before, s.step, ev(log, "agent_core_fallback")[0]?.[1]?.reason, log.bodies[1].model, log.bodies[1].temperature], [false, 0, true, "await_day", "api", "claude-haiku-4-5-20251001", 0.2], "");
+  }
+  // c. A reply that breaks the house rules twice is never sent.
+  {
+    const { ctx, log } = mkCtx([resp(tu("reply", { text: "Your massage is booked for 18:00." })), resp(tu("reply", { text: "Great, you get 10% off." }))]);
+    const s = sess("await_time", { day: "Tomorrow" });
+    const r = await C.runCoreTurn(ctx, turn(s, "18:00 ok?"));
+    check("core turn", "guard twice", [r.handled, log.sent.length, ev(log, "agent_core_fallback")[0]?.[1]?.reason, s.step], [false, 0, "guard", "await_time"], "");
+    check("core turn", "the model is told why", log.bodies[1].messages[2].content[0].is_error && /booked, confirmed or reserved/.test(log.bodies[1].messages[2].content[0].content), true, "");
+  }
+  // d. A newer message arrived: this turn says nothing, the newer one answers both.
+  {
+    const { ctx, log } = mkCtx([resp(tu("set_details", { day: "2026-10-13" }), tu("reply", { text: "Which day?", buttons: { kind: "days" } }))], { newer: true });
+    const s = sess("await_day_text");
+    const r = await C.runCoreTurn(ctx, turn(s, "Plzz"));
+    check("core turn", "superseded", [r.handled, r.quiet, log.sent.length, s.data.day, log.saves], [true, true, 0, undefined, 0], "Hafeez's \"Plzz\" can never become his day");
+  }
+  // e. Sonnet fails mid-turn: Haiku carries on, without Sonnet's thinking blocks.
+  {
+    const { ctx, log } = mkCtx([resp({ type: "thinking", thinking: "", signature: "sig" }, tu("set_details", { name: "Hafeez" })), { status: 529 }, resp(tu("reply", { text: "Thanks Hafeez. Which day would you like your massage?", buttons: { kind: "days" } }))]);
+    const s = sess("await_day");
+    const r = await C.runCoreTurn(ctx, turn(s, "My name is Hafeez"));
+    const hb2 = log.bodies[2];
+    check("core turn", "fallback model", [r.handled, hb2.model, hb2.temperature, hb2.messages[1].content.some((x) => x.type === "thinking"), log.bodies[1].messages[1].content.some((x) => x.type === "thinking"), ev(log, "agent_core_turn")[0]?.[1]?.fell_back], [true, "claude-haiku-4-5-20251001", 0.2, false, true, true], "");
+  }
+  // f. Words outside reply are still guarded and sent.
+  {
+    const { ctx, log } = mkCtx([resp({ type: "text", text: "Hi Hafeez! Which day would you like your massage?" })]);
+    const s = sess("await_day");
+    const r = await C.runCoreTurn(ctx, turn(s, "Hi"));
+    check("core turn", "plain text", [r.handled, log.sent[0]?.[0], s.step], [true, "text", "await_day"], "Hafeez 13:27 got the whole opener again");
+  }
+  // g. The first message must carry the price; the booking page follows (v162).
+  {
+    const { ctx, log } = mkCtx([
+      resp(tu("reply", { text: "Hi! Which day would you like?", buttons: { kind: "days" } })),
+      resp(tu("reply", { text: "Hi, Massage Club here. We book you into professional studios around Madrid, and a 60 min relaxing massage is usually 50 to 60 EUR, paid at the studio. Which day would you like?", buttons: { kind: "days" } })),
+    ]);
+    const s = sess("start", { lang: "" });
+    const r = await C.runCoreTurn(ctx, turn(s, "Hi, I'd like to book a massage. I saw you on Facebook. What kind of massages and what is the cost?"));
+    check("core turn", "first message", [r.handled, log.sent.map((x) => x[0]), log.sent[0][2], s.step, ev(log, "agent_core_turn")[0]?.[1]?.guard_fails], [true, ["buttons", "page"], ["day_today", "day_tomorrow", "day_other"], "await_day", 1], "CCF, 5 Oct");
+  }
+  // h. No email yet: no request. The model asks for it instead.
+  {
+    const { ctx, log } = mkCtx([resp(tu("create_request", {})), resp(tu("reply", { text: "Last thing: what is your email, so the confirmation reaches you by email too?" }))]);
+    const s = sess("await_area", { day: "Tomorrow", dayDate: "Tuesday 13 October", time: "18:00", area: "Salamanca" });
+    const r = await C.runCoreTurn(ctx, turn(s, "Salamanca"));
+    check("core turn", "email before the request", [r.handled, log.finalized, /needs_email/.test(log.bodies[1].messages[2].content[0].content), s.step], [true, 0, true, "await_email_req"], "CLAUDE.md, 8 Sept (v67)");
+  }
+  // i. Everything there: create_request runs the old path and the model does not repeat it.
+  {
+    const { ctx, log } = mkCtx([resp(tu("create_request", {})), resp({ type: "text", text: "" })]);
+    const s = sess("await_email_req", { day: "Tomorrow", dayDate: "Tuesday 13 October", time: "18:00", area: "Salamanca", email: "ana@gmail.com" });
+    const r = await C.runCoreTurn(ctx, turn(s, "ana@gmail.com"));
+    const res = JSON.parse(log.bodies[1].messages[2].content[0].content);
+    check("core turn", "request created", [r.handled, log.finalized, res.outcome, res.studios_asked, s.data.name, s.step, log.sent.length], [true, 1, "asked", 3, "Hafeez", "done", 1], "the profile name is used, never asked (v126)");
+  }
+  // j. A special request: the standard line, nothing else, no booking page.
+  {
+    const { ctx, log } = mkCtx([resp(tu("notify_jordan", { kind: "special_request", text: "asked for extras" }), tu("reply", { text: "Which day?" }))]);
+    const s = sess("start");
+    const r = await C.runCoreTurn(ctx, turn(s, "do you do massage with a good girl for me"));
+    check("core turn", "special request", [r.handled, log.sent, s.data.eroticHits], [true, [["text", BLOCK_LINE_EN]], 1], "veiled requests EROTIC_RE misses");
+  }
+  // k. A live request: the day cannot move quietly.
+  {
+    const bk = { live: { id: 109, stage: "studio_asked", massage: "Relaxing massage", day: "Sunday", time: "11:00", area: "Madrid", studios_asked: 3, createdMs: M(9) }, offer: null, confirmed: null, returning: null };
+    const { ctx, log } = mkCtx([resp(tu("set_details", { area: "Majadahonda" })), resp(tu("reply", { text: "Your request #109 is with 3 studios in Madrid. Would you like me to ask studios closer to Majadahonda instead?" }))], { booking: bk });
+    const s = sess("done", { area: "Madrid" });
+    const r = await C.runCoreTurn(ctx, turn(s, "I stay at Majadahonda"));
+    check("core turn", "live request", [r.handled, s.data.area, log.bodies[1].messages[2].content[0].is_error, /booking_action cancel/.test(log.bodies[1].messages[2].content[0].content), s.step], [true, "Madrid", true, true, "done"], "Rajesh (#109) was told \"we are checking with studios near you\"");
+  }
+  // l. A reply written alongside studio_options waits for its result.
+  {
+    const picks = [{ id: "p1", name: "Sinergia38", svc: "Relaxing massage", price: 59, duration: 55, area: "Chamartín", registered: false }, { id: "p2", name: "Calma Madrid Spa", svc: "Relaxing massage", price: 85, duration: 60, area: "Chamberí", registered: true }];
+    const { ctx, log } = mkCtx([
+      resp(tu("studio_options", {}), tu("reply", { text: "Here are some options." })),
+      resp(tu("reply", { text: "Near you: *Sinergia38* (Chamartín), relaxing 55 min, about 59 EUR; *Calma Madrid Spa* (Chamberí), relaxing 60 min, 85 EUR. Tap one, or Best price and I ask several.", buttons: { kind: "studios" } })),
+    ], { picks });
+    const s = sess("await_area", { day: "Tomorrow", dayDate: "Tuesday 13 October", time: "18:00", area: "Chamberí" });
+    const r = await C.runCoreTurn(ctx, turn(s, "Chamberí"));
+    check("core turn", "studio options", [r.handled, log.sent.length, log.sent[0][2], s.step, s.data.offerMode, /Not sent yet/.test(log.bodies[1].messages[2].content[1].content)], [true, 1, ["studio_0", "studio_1", "studio_any"], "await_studio", true, true], "Vitalii asked the price and address of the studios three times");
+  }
+  // m. "Ok thanks" with nothing to say: quiet, and the old flow is not run.
+  {
+    const { ctx, log } = mkCtx([resp({ type: "text", text: "" })]);
+    const s = sess("done");
+    const r = await C.runCoreTurn(ctx, turn(s, "ok thanks", { ackOnly: true }));
+    check("core turn", "ack only", [r.handled, r.quiet, log.sent.length], [true, true, 0], "");
+  }
+  // m2. "No thanks" closes the chat, so recover-abandoned never chases it.
+  {
+    const { ctx, log } = mkCtx([resp(tu("set_details", { declined: true }), tu("reply", { text: "No problem at all, thanks for letting me know. Whenever you fancy a massage, just write here." }))]);
+    const s = sess("await_day");
+    const r = await C.runCoreTurn(ctx, turn(s, "Ya no gracias"));
+    check("core turn", "declined", [r.handled, s.step, ev(log, "declined_flow").length], [true, "done", 1], "Adrian: \"Ya no gracias\" was read as an answer (v179)");
+    check("set_details declined", "with a live request", V({ declined: true }, M(10), {}, "en", "Request #120 is with the studios").errors.length, 1, "a cancel tells the studios");
+  }
+  // m3. The opening counts in the ops funnel like greet()'s.
+  {
+    const { ctx, log } = mkCtx([resp(tu("set_details", { language: "es" }), tu("reply", { text: "Hola, somos Massage Club. Reservamos en centros profesionales de todo Madrid, y un masaje relajante de 60 min suele costar entre 50 y 60 EUR, que se pagan en el centro. ¿Qué día te viene bien?", buttons: { kind: "days" } }))]);
+    const s = sess("start", { lang: "", service: undefined });
+    delete s.data.service;
+    const r = await C.runCoreTurn(ctx, turn(s, "Hola, quería información de precios"));
+    check("core turn", "opening events", [r.handled, ev(log, "flow_started").length, ev(log, "service_chosen")[0]?.[1]?.assumed, s.data.lang, s.data.defaultService], [true, 1, true, "es", true], "");
+  }
+  // m4. "Keep looking" at an offer: the offer's own button path, and nothing
+  // from this turn is saved over the next offer forwardOffer just stored.
+  {
+    const bk = { live: { id: 83, stage: "offered", massage: "Relaxing massage", day: "Monday", time: "18:00", area: "Centro", studios_asked: 4, createdMs: M(9) }, offer: { row: "row-83", studio: "Private Spa", time: "18:00", day: "", address: "Calle Mayor 1", price_text: "Price: about 80 EUR" }, confirmed: null, returning: null };
+    const { ctx, log } = mkCtx([resp(tu("booking_action", { action: "closer_or_cheaper" }), tu("reply", { text: "Sure, let me look." }))], { booking: bk });
+    let declined = "";
+    ctx.declineOffer = async (row, _f, _L, _s, mode) => { declined = `${row}/${mode}`; };
+    const s = sess("await_offer", { offer: { row: "row-83", time: "18:00", studio: "Private Spa", request: 83 } });
+    const r = await C.runCoreTurn(ctx, turn(s, "Keep looking"));
+    check("core turn", "closer or cheaper", [r.handled, declined, log.saves, log.bodies.length, log.sent.length], [true, "row-83/alt", 0, 1, 0], "Al (#83): \"Keep looking\" got \"I am checking that now\" and nothing after it");
+  }
+  // n. A time button with no day would build a request with no day.
+  {
+    const { ctx, log } = mkCtx([resp(tu("reply", { text: "What time suits you?", buttons: { kind: "times" } })), resp(tu("reply", { text: "Which day would you like?", buttons: { kind: "days" } }))]);
+    const s = sess("await_day");
+    const r = await C.runCoreTurn(ctx, turn(s, "sometime soon"));
+    check("core turn", "buttons follow the order", [r.handled, log.sent.length, log.sent[0][2][0], s.step], [true, 1, "day_today", "await_day"], "");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

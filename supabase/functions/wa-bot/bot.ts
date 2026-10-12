@@ -60,6 +60,7 @@
 
 import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/eaf1efa/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
+import { runCoreTurn, coreTakes, parseCoreMode, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -889,24 +890,25 @@ const askDayUnsure = (to: string, L: string) => sendButtons(to, COPY[L].dayUnsur
 // which is what forced this into a menu the customer had to open first; the
 // invitation to type an exact time now lives in the question itself, and free
 // text was always parsed anyway. Someone who needs 20:00 types it and gets it.
-const askTime = (to: string, L: string) =>
-  sendButtons(to, COPY[L].time, [
-    { id: "time_morning", title: L === "es" ? HOURS.time_morning.labelEs : HOURS.time_morning.label },
-    { id: "time_afternoon", title: L === "es" ? HOURS.time_afternoon.labelEs : HOURS.time_afternoon.label },
-    { id: "time_evening", title: L === "es" ? HOURS.time_evening.labelEs : HOURS.time_evening.label },
-  ]);
+// v206: the buttons on their own, so agent_core can put them under its own words.
+const timeBtns = (L: string) => [
+  { id: "time_morning", title: L === "es" ? HOURS.time_morning.labelEs : HOURS.time_morning.label },
+  { id: "time_afternoon", title: L === "es" ? HOURS.time_afternoon.labelEs : HOURS.time_afternoon.label },
+  { id: "time_evening", title: L === "es" ? HOURS.time_evening.labelEs : HOURS.time_evening.label },
+];
+const askTime = (to: string, L: string) => sendButtons(to, COPY[L].time, timeBtns(L));
 const askHour = (to: string, L: string, band: string) => {
   const b = HOURS[band];
   const rows = b.hours.map((h) => ({ id: `hour_${h.replace(":", "")}`, title: h, description: "" }));
   rows.push({ id: "hour_flex", title: COPY[L].hourFlex, description: COPY[L].hourFlexDesc });
   return sendList(to, COPY[L].hour, COPY[L].hourBtn, rows);
 };
-const askArea = (to: string, L: string) =>
-  sendList(to, COPY[L].area, COPY[L].areaBtn, [
-    ...AREA_ROWS.map((a) => ({ id: a.id, title: L === "es" ? a.es : a.en, description: "" })),
-    { id: "area_any", title: COPY[L].areaAnyTitle, description: COPY[L].areaAnyDesc },
-    { id: "area_other", title: COPY[L].areaOtherTitle, description: COPY[L].areaOtherDesc },
-  ]);
+const areaListRows = (L: string) => ({ button: String(COPY[L].areaBtn), rows: [
+  ...AREA_ROWS.map((a) => ({ id: a.id, title: L === "es" ? a.es : a.en, description: "" })),
+  { id: "area_any", title: COPY[L].areaAnyTitle, description: COPY[L].areaAnyDesc },
+  { id: "area_other", title: COPY[L].areaOtherTitle, description: COPY[L].areaOtherDesc },
+] });
+const askArea = (to: string, L: string) => { const a = areaListRows(L); return sendList(to, COPY[L].area, a.button, a.rows); };
 
 // What did they actually ask for, in their own words? Honour it instead of
 // making them pick the same thing again from a menu.
@@ -1068,8 +1070,10 @@ function requestedDow(s: Session): number | null {
   for (const [re, i] of WEEKDAY_IDX) if (re.test(txt)) return i;
   return null;
 }
-async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
-  if (await staleDay(s, from, L)) return true;
+// v206: the studios offerStudios would show, read without sending anything,
+// so agent_core's studio_options tool shows exactly the same ones. Same
+// source, same filters, same order; offerStudios now calls this.
+async function studioOptions(s: Session, from: string): Promise<StudioPick[]> {
   // No service chosen yet means relaxing, the default everywhere else. Without
   // this CG (4 Oct) was offered "Sports" and "Shiatsu", the cheapest 60 min
   // rows, for a plain massage.
@@ -1087,12 +1091,19 @@ async function offerStudios(s: Session, from: string, L: string): Promise<boolea
   // Friday, and dispatch-studios would then refuse to ask it. A studio whose
   // own opening_hours say it is shut that day is not offered.
   rows = (await dropClosed(s, from, rows)).slice(0, 3);
-  if (rows.length < 2) return false;
-  s.data.picks = rows.map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
+  const picks: StudioPick[] = rows.map((o: any) => ({ id: o.id, slug: o.slug, name: o.business_name, svc: o.svc, price: Number(o.price), duration: Number(o.duration) || 60, area: o.area, registered: !!o.registered }));
   // v182 (7 Oct): cheapest first. Javier and the "carísimo" lead on 6 Oct were
   // both shown Calma at 85 EUR at the top and left over price. The ranking
   // still decides WHICH studios are offered; price decides the order.
-  s.data.picks.sort((a: any, b: any) => (Number(a.price) || 999) - (Number(b.price) || 999));
+  picks.sort((a: any, b: any) => (Number(a.price) || 999) - (Number(b.price) || 999));
+  return picks;
+}
+async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
+  if (await staleDay(s, from, L)) return true;
+  const picks = await studioOptions(s, from);
+  if (picks.length < 2) return false;
+  const area = s.data.area && s.data.area !== "anywhere" ? s.data.area : "";
+  s.data.picks = picks; s.data.picksAt = Date.now();
   s.data.offerMode = true; s.data.cheapPick = null;
   s.step = "await_studio"; await saveSession(s);
   const es = L === "es";
@@ -2898,9 +2909,11 @@ const FACTS_URL = import.meta.url.startsWith("https://raw.githubusercontent.com/
 // https://book.massageclub.io/reserve" to answers nobody asked a link for.
 // Links go only to someone asking what we are, for photos or for the website
 // (standing rule), so any sentence carrying one is dropped otherwise.
+// v206: the condition on its own, so agent_core's guard asks the same question.
+const linkAsked = (asked: string): boolean => HOWWORKS_RE.test(asked) || WHO_RE.test(asked) || PHOTOQ_RE.test(asked) || /\b(web|website|p[aá]gina|link|enlace|online|fotos?|photos?|pictures?)\b/i.test(asked);
 function stripUnaskedLink(reply: string, asked: string): string {
   if (!/massageclub\.io/i.test(reply)) return reply;
-  if (HOWWORKS_RE.test(asked) || WHO_RE.test(asked) || PHOTOQ_RE.test(asked) || /\b(web|website|p[aá]gina|link|enlace|online|fotos?|photos?|pictures?)\b/i.test(asked)) return reply;
+  if (linkAsked(asked)) return reply;
   const kept = reply.split(/(?<=[.!?])\s+/).filter((x) => !/massageclub\.io/i.test(x));
   const out = kept.join(" ").trim();
   return out.length >= 20 ? out : reply;
@@ -2929,16 +2942,20 @@ function agentReplyOk(reply: string): boolean {
 }
 // v172: studio names are ours to reveal with an offer, never the agent's.
 let studioNames: string[] | null = null;
+// v206: the list on its own, for agent_core's guard too. Throws when the
+// partners cannot be fetched; both callers treat that as unsafe.
+async function studioNameList(): Promise<string[]> {
+  if (studioNames) return studioNames;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=business_name&limit=2000`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  studioNames = (Array.isArray(rows) ? rows : []).map((x: any) => String(x.business_name || "").toLowerCase().trim()).filter((n: string) => n.length >= 5);
+  return studioNames;
+}
 async function namesAStudio(reply: string): Promise<boolean> {
-  if (!studioNames) {
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=business_name&limit=2000`, { headers: H() });
-      const rows = await r.json().catch(() => []);
-      studioNames = (Array.isArray(rows) ? rows : []).map((x: any) => String(x.business_name || "").toLowerCase().trim()).filter((n: string) => n.length >= 5);
-    } catch { return true; } // cannot check: treat as unsafe
-  }
+  let names: string[];
+  try { names = await studioNameList(); } catch { return true; } // cannot check: treat as unsafe
   const t = reply.toLowerCase();
-  return studioNames.some((n) => t.includes(n));
+  return names.some((n) => t.includes(n));
 }
 // v164 (5 Oct): Railway (where Hermes lives) is blocked by an expired trial,
 // and Jordan has OpenRouter credits. With OPENROUTER_API_KEY in app_secrets and
@@ -3059,6 +3076,18 @@ async function readerConfig(): Promise<{ mode: string; model: string }> {
   const model = (await appSecret("READER_MODEL")) || AI_MODEL;
   readerModeCache = { mode, model, at: Date.now() };
   return readerModeCache;
+}
+// v206 (12 Oct, Jordan approved "change 3"): who goes through agent_core.ts.
+// AGENT_CORE in app_secrets (an Edge Function secret wins, as for every
+// appSecret): off, the default and the value for anything missing, empty,
+// unreadable or unknown; test, only the canary's fake 3460000xxxx numbers;
+// on, everyone. Read once a minute, like READER.
+let coreModeCache: { mode: CoreMode; at: number } | null = null;
+async function agentCoreMode(): Promise<CoreMode> {
+  if (coreModeCache && Date.now() - coreModeCache.at < 60_000) return coreModeCache.mode;
+  const mode = parseCoreMode(await appSecret("AGENT_CORE"));
+  coreModeCache = { mode, at: Date.now() };
+  return mode;
 }
 function madridNowLabel(): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
@@ -5452,8 +5481,11 @@ async function staleDay(s: Session, from: string, L: string): Promise<boolean> {
   return true;
 }
 
-async function finalizeBooking(s: Session, from: string, L: string) {
-  if (await staleDay(s, from, L)) return;
+// v206: says what really happened, for agent_core's create_request tool
+// (day_reasked, email_asked, readback_asked, dispatchAndTell's answer, or
+// chosen_sent). Every older caller ignores the value.
+async function finalizeBooking(s: Session, from: string, L: string): Promise<{ outcome: string; requestId: number | null }> {
+  if (await staleDay(s, from, L)) return { outcome: "day_reasked", requestId: null };
   // v67 (Jordan, 8 Sept): every booking needs an email. Sharo J asked for a
   // couples massage through the website with no email and no WhatsApp history,
   // five studios were asked, and she could not be told a single thing. WhatsApp
@@ -5494,7 +5526,7 @@ async function finalizeBooking(s: Session, from: string, L: string) {
     s.step = "await_email_req"; await saveSession(s);
     await sendText(from, COPY[L].email);
     await logEvent(from, "email_asked", { reachable: await canFreeform(digitsOf(from)) });
-    return;
+    return { outcome: "email_asked", requestId: null };
   }
   s.step = "done"; await saveSession(s);
   const id = await createRequest(s);
@@ -5533,7 +5565,7 @@ async function finalizeBooking(s: Session, from: string, L: string) {
     const whenLabelGo = [s.data.dayDate ? `${String(s.data.day || "").toLowerCase()} ${s.data.dayDate}`.trim() : s.data.day, s.data.time].filter(Boolean).join(", ");
     await sendButtons(from, COPY[L].askGo(String(s.data.name || s.wa_name || "").split(" ")[0], svcLabelGo, whenLabelGo, studioLine), COPY[L].askGoBtns);
     await logEvent(from, "go_asked", { id, misses: Number(s.data.missTotal || 0) });
-    return;
+    return { outcome: "readback_asked", requestId: id };
   }
   // v36: outside studio hours the honest line is "at 09:00", not "right now".
   const h = mcMadridHour();
@@ -5547,11 +5579,13 @@ async function finalizeBooking(s: Session, from: string, L: string) {
   // A customer still finishing the old flow with a studio already chosen is
   // handled by the studio-ask trigger, and fanning out as well would message
   // five studios about a booking that has one.
+  let outcome = "chosen_sent";
   if (!s.data.chosen) {
     const said = await dispatchAndTell(s, from, L, id || 0, preferList.map((x: any) => String(x.id)), [String(s.data.name || s.wa_name || "").split(" ")[0], svcLabel, whenLabel, studioLine]);
     await logEvent(from, "request_created", { id, studio: null, dispatch: said });
+    outcome = said;
     // Nobody is checking anything, so no "while the studio checks" question.
-    if (said !== "asked" && said !== "deferred") return;
+    if (said !== "asked" && said !== "deferred") return { outcome, requestId: id };
   } else {
     await sendText(from, confirmCopy(String(s.data.name || s.wa_name || "").split(" ")[0], svcLabel, whenLabel, studioLine, id));
     // Now that the choice is made, the studio page is useful instead of a
@@ -5568,6 +5602,7 @@ async function finalizeBooking(s: Session, from: string, L: string) {
       : "While the studio checks: what is your email? The confirmation goes there too, so nothing gets lost.");
     await logEvent(from, "email_asked", { when: "after_dispatch" });
   }
+  return { outcome, requestId: id };
 }
 
 // Fire and forget: a dispatch failure must never break the customer's
@@ -6035,6 +6070,189 @@ async function sendStatus(to: string, L: string, phone: string) {
   const studio = /por asignar/i.test(b.studio_name || "") ? "" : b.studio_name;
   await sendText(to, COPY[L].statusLine(trSvc(b.service_name || "Massage", L), when, studio, stageTxt));
 }
+
+// ---- v206 agent_core: what bot.ts lends it ----
+// v206 (12 Oct, Jordan approved "change 3"). agent_core.ts runs the
+// conversation for free-text messages behind AGENT_CORE, and owns no I/O: it
+// gets everything below through coreCtx(). Most of it is the bot's own
+// functions, unchanged; the few new ones are written next to the code they
+// copy, so a change there is seen here.
+
+// The last messages both ways, oldest first, with their ids (the superseded
+// check) and their type (a delivery report is not something we said).
+async function coreThread(phone: string, limit: number): Promise<Array<{ id: number; dir: string; body: string; at: string; type: string }>> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=${Math.max(1, Math.min(50, limit))}&select=id,direction,body,created_at,msg_type`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ id: Number(x.id) || 0, dir: String(x.direction || ""), body: String(x.body || ""), at: String(x.created_at || ""), type: String(x.msg_type || "") }));
+}
+// The row this very message was logged as (handleInner logs it before
+// anything else runs), so a later message is "newer" even when two webhooks
+// race: Hafeez's "Plzz" and "Send me" were logged a second apart.
+async function coreInboundId(phone: string, text: string): Promise<number> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.in&order=id.desc&limit=5&select=id,body`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  if (!Array.isArray(rows) || !rows.length) return 0;
+  const clean = (b: string) => String(b || "").replace(/\s*\[via ad\]$/i, "").replace(/^\[voice note[^\]]*\]\s*/i, "").trim();
+  const mine = rows.find((x: any) => clean(x.body) === String(text || "").trim());
+  return Number((mine || rows[0]).id) || 0;
+}
+async function coreNewerInbound(phone: string, id: number): Promise<boolean> {
+  if (!id) return false;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.in&msg_type=eq.text&id=gt.${id}&limit=1&select=id`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) && rows.length > 0;
+}
+async function coreLastOutbound(phone: string): Promise<string> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.out&msg_type=neq.status_failed&order=created_at.desc&limit=1&select=body`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) && rows[0] ? String(rows[0].body || "") : "";
+}
+// What the core is told about the booking, read fresh every turn: the open
+// request and how many studios really have it (askedStudios, the rows are the
+// truth), the offer in front of them with address and price, a confirmed
+// booking. A request counts as live for three days, the gender gate's window.
+async function coreBookingFacts(s: Session, L: string): Promise<CoreBooking> {
+  const out: CoreBooking = { live: null, offer: null, confirmed: null, returning: null };
+  const num = "+" + digitsOf(s.phone);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=id,service_name,studio_name,partner_id,day1,time1,area,stage,confirmed_day,confirmed_time,confirmed_start,created_at`, { headers: H() });
+  const req = ((await r.json().catch(() => [])) || [])[0] || null;
+  if (req) {
+    const id = Number(req.id), stage = String(req.stage || "");
+    const createdMs = Date.parse(String(req.created_at || "")) || 0;
+    if ([...OPEN_STAGES, "needs_contact"].includes(stage) && Date.now() - createdMs < 3 * 86400e3) {
+      out.live = { id, stage, massage: String(req.service_name || ""), day: String(req.day1 || ""), time: String(req.time1 || ""), area: String(req.area || ""), studios_asked: await askedStudios(id), createdMs };
+    } else if (stage === "confirmed") {
+      const pc = req.partner_id ? await partnerCard(String(req.partner_id)) : null;
+      out.confirmed = {
+        id, studio: String(pc?.business_name || req.studio_name || ""), day: String(req.confirmed_day || req.day1 || ""), time: String(req.confirmed_time || req.time1 || ""),
+        address: String(pc?.address || ""), price_text: req.partner_id ? await offerPriceText(id, String(req.partner_id), String(req.service_name || ""), "", L) : "",
+        startMs: req.confirmed_start ? Date.parse(String(req.confirmed_start)) || null : null,
+      };
+    } else out.returning = { name: String(s.data.known?.name || ""), last: `#${id}, ${req.service_name || "massage"}, ${req.day1 || ""}, ${stage}` };
+  }
+  const o = s.data.offer;
+  if (o && o.row) {
+    // The same test reshowOffer makes: only an offer still on the table.
+    const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(o.row))}&select=partner_id,offered_time,outcome`, { headers: H() });
+    const d = ((await dr.json().catch(() => [])) || [])[0];
+    if (d && d.offered_time && ["", "pending", "accepted"].includes(String(d.outcome || ""))) {
+      const pc = d.partner_id ? await partnerCard(String(d.partner_id)) : null;
+      const where = [pc?.address, pc?.neighbourhood && !String(pc?.address || "").includes(pc.neighbourhood) ? pc.neighbourhood : ""].filter(Boolean).join(", ");
+      out.offer = {
+        row: String(o.row), studio: String(pc?.business_name || o.studio || ""), time: String(o.time || d.offered_time || ""), day: String(o.day || ""), address: where,
+        price_text: d.partner_id ? await offerPriceText(Number(o.request || 0), String(d.partner_id), String(out.live?.massage || ""), "", L) : "",
+      };
+    }
+  }
+  if (!out.returning && !out.live && !out.confirmed && s.data.known?.name) out.returning = { name: String(s.data.known.name), last: "" };
+  return out;
+}
+// Copied from the email block in handleInner, which now calls this too: the
+// address goes onto their open request, only into a blank.
+async function attachEmail(from: string, addr: string): Promise<number | null> {
+  const pr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&contact_email=is.null&stage=not.in.(cancelled,dismissed)&order=created_at.desc&limit=1&select=id`, { headers: H() });
+  const prow = (await pr.json().catch(() => []))[0] || null;
+  if (!prow?.id) return null;
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${prow.id}`, {
+    method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+    body: JSON.stringify({ contact_email: addr }),
+  }).catch((e) => console.log("[wa] late email not saved to request", String(e)));
+  return Number(prow.id) || null;
+}
+// The unprompted "Girl" branch of the gender gate: a preference lands on a
+// request that is live right now (v183), never on last month's booking.
+async function genderOnLiveRequest(from: string, g: string): Promise<number | null> {
+  const LIVE_GREQ = ["new", "needs_contact", "studio_asked", "studio_replied", "offered", "bidding"];
+  const greq = await lastRequestFor(from);
+  if (!greq || !LIVE_GREQ.includes(String(greq.stage || "")) || Date.parse(String(greq.created_at || 0)) <= Date.now() - 3 * 86400e3 || String(greq.therapist_gender || "") === g) return null;
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${greq.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ therapist_gender: g }) });
+  await logEvent(from, "therapist_gender_on_request", { id: greq.id, gender: g, via: "core" });
+  return Number(greq.id) || null;
+}
+// "Cancel" on a request no studio has made an offer on yet. The request is
+// closed and the customer told plainly; every studio still holding it hears
+// so from dispatch-studios' chase sweep, inside its own hours, which is the
+// rule for a customer who cancels (the same as cancelOffered, v204).
+async function cancelOpenRequest(s: Session, from: string, L: string, text: string): Promise<boolean> {
+  const lr = await lastRequestFor(from);
+  if (!lr || !OPEN_STAGES.includes(String(lr.stage || ""))) return false;
+  const up = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(lr.id)}&stage=in.(${OPEN_STAGES.join(",")})`, {
+    method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
+    body: JSON.stringify({ stage: "cancelled", customer_flag: "cancelled", stage_note: "Cancelled by the customer on WhatsApp before any offer (wa-bot v206)", stage_updated_at: new Date().toISOString() }),
+  });
+  const rows = await up.json().catch(() => []);
+  if (!Array.isArray(rows) || !rows.length) return false;
+  await sendText(from, OFFER_COPY[L === "es" ? "es" : "en"].cancelled);
+  s.step = "done"; s.data.offer = null; await saveSession(s);
+  await logEvent(from, "request_cancelled", { request_id: lr.id, via: "core" });
+  await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} cancelled #${lr.id} before any offer: ${text.slice(0, 120)}. The studios still holding it are told by the chase sweep.`, from);
+  return true;
+}
+// Lifted out of the job-seeker gate in handleInner, which calls it too.
+// v204 review: only a plain ask for work ("explicit") closes a request a studio
+// has already been asked about.
+async function closeAsJobSeeker(s: Session, from: string, L: string, text: string, jobKind: "explicit" | "job") {
+  const wasAt = s.step;
+  s.step = "human"; s.data.offer = null; s.data.jobSeeker = true; await saveSession(s);
+  await sendText(from, COPY[L].jobSeeker);
+  const since3 = new Date(Date.now() - 3 * 86400e3).toISOString();
+  const jobStages = jobKind === "explicit" ? "new,needs_contact,awaiting_go,studio_asked,studio_replied,offered,bidding" : "new,needs_contact,awaiting_go";
+  const jr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&stage=in.(${jobStages})&created_at=gte.${since3}`, {
+    method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
+    body: JSON.stringify({ stage: "dismissed", stage_note: "Job seeker, not a customer (wa-bot v204)", stage_updated_at: new Date().toISOString() }),
+  }).catch(() => null);
+  const jrows = jr ? await jr.json().catch(() => []) : [];
+  const closed = (Array.isArray(jrows) ? jrows : []).map((x: any) => x?.id).filter(Boolean);
+  await logEvent(from, "job_seeker", { step: wasAt, kind: jobKind, closed, said: text.slice(0, 80) });
+  await notifyHuman(s, text);
+}
+let coreCtxMemo: CoreCtx | null = null;
+function coreCtx(): CoreCtx {
+  if (coreCtxMemo) return coreCtxMemo;
+  coreCtxMemo = {
+    now: () => Date.now(),
+    fetch: (url: string, init: Record<string, any>) => fetch(url, init),
+    aiKey,
+    model: CORE_MODEL,
+    fallbackModel: AI_MODEL,
+    facts: agentFacts,
+    thread: coreThread,
+    myInboundId: coreInboundId,
+    newerInbound: coreNewerInbound,
+    bookingFacts: coreBookingFacts,
+    openerFacts,
+    profileFirstName: firstNameFromProfile,
+    saveSession,
+    logEvent,
+    dropStaleDay,
+    dayLabel: (iso: string, L: string) => { const d = flowDay(iso, L); return d ? { day: d.day, dayDate: d.dayDate } : null; },
+    earliestLabel: (L: string) => String(COPY[L === "es" ? "es" : "en"].earliestToday),
+    isEmail, parseName, detectService, detectAreaPlus,
+    hours: HOURS,
+    noDashes, dashRanges, stripUnaskedLink, linkAsked,
+    studioNames: studioNameList,
+    sendText, sendButtons, sendList,
+    dayButtons: dayBtns, timeButtons: timeBtns, areaRows: areaListRows,
+    sendReservePage,
+    studioOptions,
+    finalizeBooking,
+    askedStudios,
+    lastOutbound: coreLastOutbound,
+    reshowOffer,
+    declineOffer: (rowId: string, from: string, L: string, s: Session, mode: "time" | "alt") => declineOffer(rowId, from, L, s, mode),
+    cancelOffered,
+    reconfirm: (kind: "change" | "cancel", reqId: string, from: string, L: string, s: Session) => handleCustomerReconfirm(kind, reqId, from, L, s),
+    cancelOpenRequest,
+    genderOnLiveRequest,
+    attachEmail,
+    closeAsJobSeeker,
+    blockLine: (L: string) => (L === "es" ? BLOCK_LINE_ES : BLOCK_LINE_EN),
+    notifyJordan: (text: string, aboutPhone: string) => notifyJordanWa(text, aboutPhone),
+    notifyHuman,
+  };
+  return coreCtxMemo;
+}
+// ---- v206 agent_core: end ----
 
 // v87: the guarantee behind Jordan's "always respond" rule (12 Sept). handleInner
 // has 45 return points and several of them answer nothing at all, which is how
@@ -7182,15 +7400,8 @@ const handleInner = async (req: Request) => {
         // Onto the open request too, not just the session. A session is a
         // conversation; the request is what the studio and the confirmation
         // read from. Only fills a blank, never overwrites one they gave us.
-        const pr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&contact_email=is.null&stage=not.in.(cancelled,dismissed)&order=created_at.desc&limit=1&select=id`, { headers: H() });
-        const prow = (await pr.json().catch(() => []))[0] || null;
-        if (prow?.id) {
-          await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${prow.id}`, {
-            method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
-            body: JSON.stringify({ contact_email: addr }),
-          }).catch((e) => console.log("[wa] late email not saved to request", String(e)));
-        }
-        await logEvent(from, "email_given", { late: true, step: s.step, request_id: prow?.id || null });
+        const prowId = await attachEmail(from, addr);
+        await logEvent(from, "email_given", { late: true, step: s.step, request_id: prowId });
         // A message that is nothing but the address gets an answer and the
         // question they were on. One that carries other words is saved quietly
         // and carries on being read as whatever else it was.
@@ -7244,9 +7455,24 @@ const handleInner = async (req: Request) => {
       return new Response("OK", { status: 200 });
     }
 
+    // v206 (12 Oct): decided once, used twice: the clothing answer below and the
+    // agent_core hook after the resume codes. CCF (+34 629 274 143, 6 Oct) asked
+    // "who does the massage? / duration and cost? / where are your premises? /
+    // can I be naked?" in one message and the clothing gate answered only the
+    // last line, then the time buttons again. For a phone the core takes, the
+    // whole message goes to the core, which answers all four.
+    const coreTake = text && !replyId && !flowAnswers
+      ? coreTakes({
+        mode: await agentCoreMode(), phone: digitsOf(from), step: s.step, text,
+        jobSeeker: !!jobSeekerKind(text),
+        offerTimeNamed: s.step === "await_offer" && !!parseOfferedTime(text) && parseOfferedTime(text) !== String(s.data.offer?.time || ""),
+        confirmLater: CONFIRM_LATER_RE.test(text), emailOnly: isEmail(text),
+        bareOpener: HI_RE.test(text.trim()) || AD_OPENER_RE.test(text.trim()),
+      })
+      : { ok: false, why: "no_text" };
     // Clothing questions get a real answer about professional standards, then
     // we pick the flow back up. Never a human handoff, never stored as data.
-    if (text && MODESTY_RE.test(text)) {
+    if (text && MODESTY_RE.test(text) && !coreTake.ok) {
       await sendText(from, COPY[L].modesty);
       switch (s.step) {
         case "await_area": await askArea(from, L); break;
@@ -7357,6 +7583,28 @@ const handleInner = async (req: Request) => {
       if (!rc && RESUME_PHRASE_RE.test(text) && await resumeFromPhone(s, from)) return new Response("OK", { status: 200 });
     }
 
+    // v206 (12 Oct, Jordan approved "change 3": let Claude run the conversation,
+    // code keeps money and confirmations). In the review of 108 real chats since
+    // 14 Sept, 38 of the 90 lost customers left because the bot misread them,
+    // ignored a question or answered in the wrong language: Hafeez's "What type
+    // massage?" was thrown away over one dash and "Plzz" became his day; Javier
+    // (+34 693 301 014) asked who and where four times and got the time buttons
+    // four times. Behind AGENT_CORE (off | test | on), a free-text customer
+    // message goes to agent_core.ts instead of the step parsers below. Every
+    // gate above stays as it was, and taps never reach this point. When the core
+    // sends nothing (API down, a reply that fails the house rules twice), the
+    // session is put back exactly as it was and the old flow below answers.
+    if (coreTake.ok) {
+      const fsaid = s.data.founderSaid;
+      const fresh = fsaid && Date.now() - Date.parse(String(fsaid.at || "")) < FOUNDER_CTX_MS ? { text: String(fsaid.text || ""), at: String(fsaid.at) } : null;
+      const said = text.trim();
+      // Thanks, ok, an emoji: if the core chooses to say nothing, nothing is said.
+      const ackOnly = ACK_ONLY_RE.test(said) || SOFT_ACK_RE.test(said) || (GOODBYE_RE.test(said) && said.split(/\s+/).length <= 4 && !said.includes("?"));
+      const r = await runCoreTurn(coreCtx(), { s, from: digitsOf(from), L: L === "es" ? "es" : "en", text, viaVoice: !!voice, founderSaid: fresh, ackOnly, switchMode: await agentCoreMode() })
+        .catch((e) => { console.log("[wa] agent_core failed", String(e)); return { handled: false, quiet: false, sent: 0 }; });
+      if (r.handled) { if (r.quiet) quietThisTurn = true; return new Response("OK", { status: 200 }); }
+    }
+
     // v204 (12 Oct, synth.md change 4): Jordan wrote from the reply page in the
     // last 30 minutes and nothing has been sent since, so this reply answers
     // him, not the step (founderContextTurn). Used once. Not at an offer: a
@@ -7438,19 +7686,7 @@ const handleInner = async (req: Request) => {
         await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} (looking for work, already answered) wrote: ${text.slice(0, 140)}`, from);
         return new Response("OK", { status: 200 });
       }
-      const wasAt = s.step;
-      s.step = "human"; s.data.offer = null; s.data.jobSeeker = true; await saveSession(s);
-      await sendText(from, COPY[L].jobSeeker);
-      const since3 = new Date(Date.now() - 3 * 86400e3).toISOString();
-      const jobStages = jobKind === "explicit" ? "new,needs_contact,awaiting_go,studio_asked,studio_replied,offered,bidding" : "new,needs_contact,awaiting_go";
-      const jr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&stage=in.(${jobStages})&created_at=gte.${since3}`, {
-        method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
-        body: JSON.stringify({ stage: "dismissed", stage_note: "Job seeker, not a customer (wa-bot v204)", stage_updated_at: new Date().toISOString() }),
-      }).catch(() => null);
-      const jrows = jr ? await jr.json().catch(() => []) : [];
-      const closed = (Array.isArray(jrows) ? jrows : []).map((x: any) => x?.id).filter(Boolean);
-      await logEvent(from, "job_seeker", { step: wasAt, kind: jobKind, closed, said: text.slice(0, 80) });
-      await notifyHuman(s, text);
+      await closeAsJobSeeker(s, from, L, text, jobKind);
       return new Response("OK", { status: 200 });
     }
     // v174 (5 Oct test): "My last massage was terrible, I want my money back"
@@ -7782,7 +8018,19 @@ const handleInner = async (req: Request) => {
         break;
       }
       case "await_day": {
-        if (replyId === "day_today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "today" }); await askTime(from, L); }
+        // v206: agent_core saves everything a customer says in one go ("evening
+        // near Salamanca"), then asks the day with these buttons. With the time
+        // already known, the tap goes on from it the way a date tapped on the
+        // seven-day list always has (pickListedDay), instead of asking it again.
+        // Only for sessions the core has spoken in (coreAt), so nothing changes
+        // for anyone else.
+        if ((replyId === "day_today" || replyId === "day_tomorrow") && s.data.coreAt && s.data.time) {
+          const plus = replyId === "day_today" ? 0 : 1;
+          s.data.day = plus ? (L === "es" ? "Mañana" : "Tomorrow") : (L === "es" ? "Hoy" : "Today"); s.data.dayDate = longDate(L, plus);
+          await saveSession(s); await logEvent(from, "day_chosen", { day: plus ? "tomorrow" : "today", time_known: true });
+          await afterTime(s, from, L);
+        }
+        else if (replyId === "day_today") { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "today" }); await askTime(from, L); }
         else if (replyId === "day_tomorrow") { s.data.day = L === "es" ? "Mañana" : "Tomorrow"; s.data.dayDate = longDate(L, 1); s.step = "await_time"; await saveSession(s); await logEvent(from, "day_chosen", { day: "tomorrow" }); await askTime(from, L); }
         // v204: "Another day" is the seven-day list now, and a date tapped on it
         // (or on one sent earlier) is the day.
