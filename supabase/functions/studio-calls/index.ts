@@ -9,7 +9,8 @@
 // answer with a tool call before it says goodbye. A spoken "sí, a las 17:00"
 // becomes the same offer a WhatsApp yes makes: wa-bot (ops studio_offer,
 // channel 'call') sends the customer Yes / No buttons, and nothing is booked
-// until the customer taps Yes. The studio hears exactly that before it hangs up.
+// until the customer taps Yes. The studio hears exactly that before it hangs up,
+// and then gets the 10% Massage Club rate question in writing from wa-bot.
 //
 // Inert until app_secrets VOICE_CALLS is 'test' or 'on' (unset means off):
 //   off   nothing is dialled
@@ -26,27 +27,39 @@
 //   { ops: "test_call", to, studio_name?, dia?, hora?, servicio? }  one made-up call to a test number
 //   { ops: "status", request_id? }                   recent calls
 //   { ops: "reconcile" }                             fill in calls whose webhooks never arrived
-//   ?hook=<sig>                                      Vapi's webhook: tool-calls, status-update, end-of-call-report
+//   ?hook=<sig>&c=<row>                              Vapi's webhook: tool-calls, status-update, end-of-call-report
 //
 // SAFETY
 //  - A studio is only phoned with call_ok = true, not opted out, not suspended,
 //    and only once its WhatsApp ask for this request has gone out, so every
 //    gate in dispatch-studios (opening hours, test customers, the outreach
 //    pause, the 24h cap) has already been passed. dispatch-studios only hands
-//    over studios whose listed hours say they are open right now.
+//    over studios whose listed hours say they are open right now and at the
+//    hour the call asks about.
 //  - Only between 09:00 and 21:00 Madrid, and never twice about one request.
 //  - A test customer's request never rings anything but a VOICE_TEST_NUMBERS phone.
 //  - The agent never asks for a discount and never confirms a booking.
 //  - No recording. Voicemail: it hangs up without leaving a message.
+//  - "No nos llamen más" switches call_ok off, from the tool call or, if the
+//    studio hung up first, from its own words in the transcript.
+//  - Every webhook URL is signed for its own studio_calls row and must carry
+//    that row's Vapi call id.
+//
+// Jordan hears by email (support@ and jordan@) when a studio opts out, when a
+// studio states its opening hours, and when an answer could not be handed to
+// wa-bot. That needs the Resend key from the loader; without it, logs only.
 //
 // The repo is public, so this file carries no secrets. The deployed function
-// is a short loader that pins one commit of this file and passes the ops key in.
+// is a short loader that pins one commit of this file and passes the keys in.
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 const FN_URL = `${SUPABASE_URL}/functions/v1/studio-calls`;
 const VAPI = "https://api.vapi.ai";
 let OPS_KEY = "";
+let RESEND_API_KEY = "";
 let STUDIO_OUTREACH_PAUSED = false;
+const FROM_EMAIL = "Massage Club <support@massageclub.io>";
+const JORDAN_EMAILS = ["support@massageclub.io", "jordan@massageclub.io"];
 
 const OPEN_HOUR = 9;
 const CLOSE_HOUR = 21;
@@ -58,9 +71,10 @@ const SILENCE_S = 20;
 const CLOSED_STAGES = ["confirmed", "cancelled", "dismissed", "no_show", "needs_review", "stale", "too_late", "needs_contact"];
 
 // Belt on top of dispatch-studios' own test-customer rule: Jordan, Cata, Yi and
-// the fake 60000 numbers the replay uses.
-const TEST_PHONES = ["34612474827", "15622355063", "17867276503", "34613977900", "34635569364", "34662680781"];
-const TEST_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com", "jordan@massageclub.io", "support@massageclub.io", "jordan@niahconnect.com", "cata.waack@gmail.com", "elon_yilong@student.ie.edu"];
+// the fake 60000 numbers the replay uses. Same lists as dispatch-studios
+// (TEST_EMAILS, TEST_PHONES, JORDAN_NUMBERS); change them together.
+const TEST_PHONES = ["15622355063", "17867276503", "34612474827", "34635569364", "34662680781", "34613977900"];
+const TEST_EMAILS = ["jordan.hays@student.ie.edu", "jordanjayhays@gmail.com", "jordan@massageclub.io", "support@massageclub.io", "jordan@niahconnect.com", "cata.waack@gmail.com", "elon_yilong@student.ie.edu", "longyi_elon@outlook.com", "geromin.nepomuceno@student.ie.edu", "ritiktulsyan674@gmail.com", "sarfrazsingh@gmail.com", "guest@massageclub.io"];
 const TEST_DOMAINS = ["testing.com", "example.com", "test.com", "placeholder.local", "mailinator.com", "example.org"];
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
@@ -78,8 +92,15 @@ async function rpc(fn: string, args: Record<string, unknown>): Promise<unknown> 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: H(), body: JSON.stringify(args) });
   return await res.json().catch(() => null);
 }
-const patchCall = (id: string, body: Record<string, unknown>, filter = "") =>
-  sq(`studio_calls?id=eq.${id}${filter}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(body) });
+// A write that says whether it landed. A lost answer or a lost opt-out is the
+// thing this function must never do quietly.
+async function patchOk(path: string, body: Record<string, unknown>): Promise<boolean> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(body) }).catch(() => null);
+  if (res?.ok) return true;
+  console.log(`[calls] write failed on ${path.split("?")[0]}: ${res ? `${res.status} ${(await res.text().catch(() => "")).slice(0, 160)}` : "network"}`);
+  return false;
+}
+const patchCall = (id: string, body: Record<string, unknown>, filter = "") => patchOk(`studio_calls?id=eq.${id}${filter}`, body);
 async function getCall(id: string): Promise<any | null> {
   const rows = await sq(`studio_calls?id=eq.${encodeURIComponent(id)}&select=*`);
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
@@ -102,11 +123,25 @@ function sameStr(a: string, b: string): boolean {
 
 // The webhook is authenticated by the URL itself. Vapi does not attach the org
 // credential to a server URL that arrives inside the request (orgs created
-// after 23 Sept 2026), so a header cannot be relied on.
-async function hookSig(): Promise<string> {
+// after 23 Sept 2026), so a header cannot be relied on. Signed per studio_calls
+// row, so a URL seen in Vapi's logs speaks for that one call and no other.
+async function hookSig(rowId: string): Promise<string> {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(OPS_KEY + ":vapi-hook"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode("v1")));
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode("v1:" + rowId)));
   return [...mac.slice(0, 16)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// To Jordan only, never to a studio or a customer.
+const esc = (s: string) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+async function tellJordan(subject: string, lines: string[]) {
+  console.log(`[calls] for Jordan: ${subject} | ${lines.join(" | ").slice(0, 300)}`);
+  if (!RESEND_API_KEY) return;
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" }, signal: AbortSignal.timeout(10000),
+      body: JSON.stringify({ from: FROM_EMAIL, to: JORDAN_EMAILS, subject, text: lines.join("\n"), html: `<p style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#262019;">${lines.map(esc).join("<br>")}</p>` }),
+    });
+  } catch (e) { console.log("[calls] email to Jordan failed", String(e)); }
 }
 
 // Digits in E.164 without the plus, or "" when it cannot be a phone number.
@@ -155,37 +190,54 @@ function isTestRequest(r: Record<string, unknown>): boolean {
 
 // --- What the studio hears. Same readings as the WhatsApp ask in
 // dispatch-studios, shaped for speech: "hoy", "mañana", "el martes 14 de octubre".
-const ES_DAY = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" });
-const EN_ES: Array<[RegExp, string]> = [
-  [/\bmonday\b/gi, "lunes"], [/\btuesday\b/gi, "martes"], [/\bwednesday\b/gi, "miércoles"], [/\bthursday\b/gi, "jueves"],
-  [/\bfriday\b/gi, "viernes"], [/\bsaturday\b/gi, "sábado"], [/\bsunday\b/gi, "domingo"],
-  [/\bjanuary\b/gi, "enero"], [/\bfebruary\b/gi, "febrero"], [/\bmarch\b/gi, "marzo"], [/\bapril\b/gi, "abril"],
-  [/\bmay\b/gi, "mayo"], [/\bjune\b/gi, "junio"], [/\bjuly\b/gi, "julio"], [/\baugust\b/gi, "agosto"],
-  [/\bseptember\b/gi, "septiembre"], [/\boctober\b/gi, "octubre"], [/\bnovember\b/gi, "noviembre"], [/\bdecember\b/gi, "diciembre"],
-];
-function toEs(t: string): string {
-  let out = String(t || "");
-  for (const [re, es] of EN_ES) out = out.replace(re, es);
-  return out.replace(/(\d{1,2})\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/gi, "$1 de $2");
+// The date is dispatch-studios' requestDate (v38) copied as is: "hoy" and
+// "tomorrow" mean the day the customer wrote them (created_at), never the day
+// the call happens to go out. A request made at 23:30 for "tomorrow" and called
+// at 09:00 is asked about "hoy", the same day its opening hours were checked for.
+const MADRID_YMD = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
+const MONTHS: Record<string, number> = { jan: 0, ene: 0, feb: 1, mar: 2, apr: 3, abr: 3, may: 4, jun: 5, jul: 6, aug: 7, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dec: 11, dic: 11 };
+const DAY_IDX: Record<string, number> = { sun: 0, dom: 0, mon: 1, lun: 1, tue: 2, mar: 2, wed: 3, mie: 3, thu: 4, jue: 4, fri: 5, vie: 5, sat: 6, sab: 6 };
+const stripAccents = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "");
+function madridDayOf(iso: unknown): Date {
+  const t = Date.parse(String(iso || ""));
+  const [y, m, d] = MADRID_YMD.format(t ? new Date(t) : new Date()).split("-").map((x) => parseInt(x, 10));
+  return new Date(Date.UTC(y, m - 1, d));
 }
-const WEEKDAY_ES = /^(lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\b/;
-function diaHablado(day1: unknown, messageText: unknown): string {
-  const fmt = (t: Date) => ES_DAY.format(t).replace(",", "").toLowerCase();
-  const today = fmt(new Date()), tomorrow = fmt(new Date(Date.now() + 86400e3));
-  const d = String(day1 || "").trim();
-  // wa-bot v50 writes the date the customer tapped ("Fecha: martes 14 de octubre").
-  const fm = String(messageText || "").match(/Fecha: ([^|]+)/);
-  let f = fm ? toEs(fm[1].trim().toLowerCase()) : "";
-  if (!f) {
-    if (/^(hoy|today)$/i.test(d)) return "hoy";
-    if (/^(ma[nñ]ana|tomorrow)$/i.test(d)) return "mañana";
-    f = toEs(d.toLowerCase());
+function requestDate(r: Record<string, unknown>): Date | null {
+  const today = madridDayOf(r.created_at);
+  const plus = (n: number) => new Date(today.getTime() + n * 86400e3);
+  const texts = [String(r.message_text || "").match(/Fecha: ([^|]+)/)?.[1] || "", String(r.day1 || "")];
+  for (const t0 of texts) {
+    const t = stripAccents(t0.toLowerCase()).trim();
+    if (!t) continue;
+    if (/^(hoy|today)\b/.test(t)) return today;
+    if (/^(manana|tomorrow)\b/.test(t)) return plus(1);
+    const dm = t.match(/(\d{1,2})\s*(?:de\s+)?([a-z]{3})[a-z]*/);
+    if (dm && MONTHS[dm[2]] !== undefined) {
+      let dt = new Date(Date.UTC(today.getUTCFullYear(), MONTHS[dm[2]], parseInt(dm[1], 10)));
+      if (dt.getTime() < today.getTime() - 30 * 86400e3) dt = new Date(Date.UTC(today.getUTCFullYear() + 1, MONTHS[dm[2]], parseInt(dm[1], 10)));
+      return dt;
+    }
+    const wd = t.match(/\b(sun|mon|tue|wed|thu|fri|sat|dom|lun|mar|mie|jue|vie|sab)[a-z]*\b/);
+    if (wd && DAY_IDX[wd[1]] !== undefined) {
+      const want = DAY_IDX[wd[1]];
+      for (let n = 0; n < 7; n++) { const d = plus(n); if (d.getUTCDay() === want) return d; }
+    }
   }
-  if (f === today) return "hoy";
-  if (f === tomorrow) return "mañana";
-  // Only a real date is worth a phone call. "Flexible" or "this weekend" is not.
-  if (WEEKDAY_ES.test(f) && /\d/.test(f)) return `el ${f}`;
-  return "";
+  return null;
+}
+// requestDate's dates are midnight UTC, so they are read back in UTC.
+const ES_DATE = new Intl.DateTimeFormat("es-ES", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+function diaHablado(r: Record<string, unknown>): string {
+  const date = requestDate(r);
+  // Only a real date is worth a phone call. "Flexible" or "this weekend" is not,
+  // and neither is a day that has already gone.
+  if (!date) return "";
+  const days = Math.round((date.getTime() - madridDayOf(null).getTime()) / 86400e3);
+  if (days < 0) return "";
+  if (days === 0) return "hoy";
+  if (days === 1) return "mañana";
+  return `el ${ES_DATE.format(date).replace(",", "").toLowerCase()}`;
 }
 // The hour put to the studios (dispatch v30), or the customer's own exact time.
 const BANDS: Array<[RegExp, string]> = [[/morning|ma[nñ]ana/i, "10:00"], [/afternoon|tarde-noche|tarde\s*-\s*noche/i, ""], [/evening|night|noche/i, "18:00"], [/afternoon|tarde/i, "16:00"]];
@@ -227,8 +279,13 @@ function hhmm(t: unknown): string {
 
 // --- The call. One transient assistant per call: what it is told is fixed as
 // sent, so nothing in the Vapi dashboard can change what a studio hears.
-const FIRST_MESSAGE = "Hola, buenas. Le llama el asistente automático de Massage Club, de parte de Jordan, por una reserva de un cliente. ¿Tienen hueco {{dia}} a las {{hora}} para un {{servicio}}?";
-const CLOSE_YES = "Perfecto, se lo proponemos al cliente ahora mismo. Todavía no está reservado: les confirmamos por WhatsApp en cuanto el cliente diga que sí. Gracias.";
+// The disclosure is in the first sentence, before anything is asked.
+const FIRST_MESSAGE = "Hola, buenas, le llama el asistente automático de Massage Club, de parte de Jordan, por una reserva de un cliente. ¿Tienen hueco {{dia}} a las {{hora}} para un {{servicio}}?";
+// Nothing here promises the customer sees it "ahora mismo": wa-bot can hold an
+// offer back (outside the customer's window, or behind one they are already
+// looking at), and the studio is never told something that may not happen.
+const CLOSE_YES = "Perfecto, se lo trasladamos al cliente. Todavía no está reservado: les confirmamos por WhatsApp en cuanto el cliente diga que sí. Gracias.";
+const CLOSE_OTHER = "Gracias, se lo comentamos al cliente. Todavía no está reservado; si le encaja, les confirmamos por WhatsApp.";
 const CLOSE_NO = "Entendido, muchas gracias. Que tengan buen día.";
 const SYSTEM = [
   "Eres el asistente automático de Massage Club y estás al teléfono con {{centro}}, un centro de masajes de Madrid. Llamas de parte de Jordan. Massage Club busca hueco en centros de Madrid para clientes que hablan inglés.",
@@ -248,20 +305,24 @@ const SYSTEM = [
   "- Si quieren hablar con una persona, di que tomas nota para Jordan y ponlo en notas.",
   "- Si piden que no les llamemos más, pide disculpas, di que no volverán a recibir llamadas nuestras y marca no_llamar.",
   "- Si contesta un buzón de voz o un contestador, cuelga sin dejar mensaje.",
+  "- Si te dicen su horario de apertura, apúntalo en horario.",
   "- Antes de despedirte, llama siempre a registrar_respuesta con lo que han dicho. Horas en formato HH:MM de 24 horas.",
-  `- Si tienen hueco, a esa hora o a otra de ese día, despídete con estas palabras exactas: "${CLOSE_YES}"`,
+  `- Si pueden {{dia}} a las {{hora}}, despídete con estas palabras exactas: "${CLOSE_YES}"`,
+  `- Si no pueden a esa hora pero sí a otra ese día, despídete con estas palabras exactas: "${CLOSE_OTHER}"`,
   `- Si no tienen hueco ese día, despídete con: "${CLOSE_NO}"`,
   "- Después de despedirte, cuelga con endCall.",
 ].join("\n");
 
 // Vapi's JsonSchema has no null type, so "no price said" is 0, read back as null.
+// Not strict: OpenAI's strict mode also wants additionalProperties:false, which
+// Vapi's schema cannot carry, and a 400 there would leave the studio listening
+// to silence after the greeting. Every field is required and read defensively.
 const REGISTRAR = {
   type: "function",
   async: false,
   function: {
     name: "registrar_respuesta",
     description: "Guarda la respuesta del centro. Llámala una sola vez, antes de despedirte.",
-    strict: true,
     parameters: {
       type: "object",
       properties: {
@@ -270,9 +331,10 @@ const REGISTRAR = {
         otras_horas: { type: "array", items: { type: "string" }, description: "Otras horas que hayan dicho para ese día, HH:MM. Vacío si ninguna." },
         precio_eur: { type: "number", description: "Precio en euros si lo han dicho. 0 si no lo han dicho." },
         no_llamar: { type: "boolean", description: "true si han pedido que no les llamemos más." },
+        horario: { type: "string", description: "Su horario de apertura si lo han dicho, en este formato exacto: Mon-Sat 10:00-21:00, Sun 11:00-15:00 (días en inglés, horas de 24 h; si cierran a mediodía: Mon-Fri 10:00-14:00, Mon-Fri 17:00-21:00). Vacío si no lo han dicho." },
         notas: { type: "string", description: "Cualquier otra cosa importante que hayan dicho, en pocas palabras. Vacío si nada." },
       },
-      required: ["disponible", "hora_ofrecida", "otras_horas", "precio_eur", "no_llamar", "notas"],
+      required: ["disponible", "hora_ofrecida", "otras_horas", "precio_eur", "no_llamar", "horario", "notas"],
     },
   },
 };
@@ -328,7 +390,7 @@ async function dial(cfg: Cfg, to: string, vars: Vars, row: Record<string, unknow
   try {
     const res = await fetch(`${VAPI}/call`, {
       method: "POST", headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" }, signal: AbortSignal.timeout(15000),
-      body: JSON.stringify(callBody(cfg, to, vars, rowId, await hookSig(), label)),
+      body: JSON.stringify(callBody(cfg, to, vars, rowId, await hookSig(rowId), label)),
     });
     const txt = await res.text();
     let out: any = {};
@@ -365,7 +427,7 @@ async function place(body: Record<string, unknown>) {
   if (!r) return { ok: false, reason: "no such request" };
   if (CLOSED_STAGES.includes(String(r.stage || ""))) return { ok: true, mode: cfg.mode, request_id: id, placed: 0, reason: `request is ${r.stage}` };
   const hora = concreteTime(r.proposed_time) || concreteTime(r.time1);
-  const dia = diaHablado(r.day1, r.message_text);
+  const dia = diaHablado(r);
   if (!hora || !dia) return { ok: true, mode: cfg.mode, request_id: id, placed: 0, reason: `no exact ${!hora ? "hour" : "day"} to ask about` };
   const servicio = servicioHablado(r);
   const testReq = isTestRequest(r);
@@ -424,63 +486,176 @@ async function testCall(body: Record<string, unknown>) {
   return { ok: out.placed, mode: cfg.mode, vars, ...out };
 }
 
-// --- The studio's answer, from the tool call (or from a reconcile).
+// --- The studio's answer, from the tool call, the end-of-call report or a
+// reconcile. Throws when the answer could not be written, so the caller leaves
+// the call open (no ended_at) and the next report or reconcile tries again.
+const truthy = (v: unknown) => v === true || String(v).toLowerCase() === "true";
 async function recordAnswer(row: any, a: Record<string, unknown>) {
   const asked = String(row.vars?.hora || "");
   const t = hhmm(a.hora_ofrecida);
   const others = (Array.isArray(a.otras_horas) ? a.otras_horas : []).map(hhmm).filter(Boolean);
   let result = "no", offered = "";
-  if (a.disponible === true) { offered = t || asked; result = offered && asked && offered !== asked ? "other_time" : "yes"; }
-  else if (t || others.length) { offered = t || others[0]; result = "other_time"; }
+  if (truthy(a.disponible)) { offered = t || asked; result = offered && asked && offered !== asked ? "other_time" : "yes"; }
+  else {
+    // "A las 17 no" can come back with hora_ofrecida 17:00. The hour they just
+    // turned down is never offered to the customer.
+    const alt = [t, ...others].find((x) => x && x !== asked);
+    if (alt) { offered = alt; result = "other_time"; }
+  }
   const price = Number(a.precio_eur);
-  const times = [...new Set([offered, ...others].filter(Boolean))].slice(0, 6);
-  const notes = [String(a.notas || "").trim(), a.no_llamar === true ? "pidió no recibir más llamadas" : ""].filter(Boolean).join(" | ").slice(0, 500);
-  await patchCall(row.id, {
+  const times = [...new Set([offered, ...others].filter(Boolean))].filter((x) => result === "yes" || x !== asked).slice(0, 6);
+  const optOut = truthy(a.no_llamar);
+  const horario = String(a.horario || "").replace(/\s+/g, " ").trim().slice(0, 120);
+  const notes = [String(a.notas || "").trim(), horario ? `horario: ${horario}` : "", optOut || row.opted_out ? "pidió no recibir más llamadas" : ""].filter(Boolean).join(" | ").slice(0, 500);
+  // The opt-out first: it must land even if the answer itself does not.
+  if (optOut && row.partner_id && !row.opted_out) await stopCalling(row, "said during the call, recorded by the agent");
+  if (horario && row.partner_id && !row.hours_told) { row.hours_told = true; bg(hoursHeard(row, horario)); }
+  const saved = await patchCall(row.id, {
     result, offered_time: offered || null, offered_times: times.length ? times : null,
     price_said: Number.isFinite(price) && price > 0 && price < 1000 ? price : null, notes: notes || null,
   });
-  if (a.no_llamar === true && row.partner_id) {
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
-    await sq(`partners?id=eq.${row.partner_id}`, {
-      method: "PATCH", headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ call_ok: false, call_ok_note: `Pidió no recibir llamadas (llamada del ${day})` }),
-    });
-    console.log(`[calls] partner ${row.partner_id} asked not to be called again; call_ok off`);
-  }
+  if (!saved) throw new Error(`could not save the answer for call ${row.id}`);
+  Object.assign(row, { result, offered_time: offered || null, notes: notes || null });
   console.log(`[calls] call ${row.id} answer: ${result}${offered ? " " + offered : ""}`);
   return { result, offered };
 }
 
+// A registrar_respuesta whose webhook never arrived (cold start, a database
+// error, Vapi does not retry) is still in the call's messages, which come with
+// the end-of-call report and with GET /call/{id}.
+async function recoverAnswer(row: any, src: any) {
+  if (row.result) return;
+  const lists = [src?.messages, src?.artifact?.messages, src?.artifact?.messagesOpenAIFormatted].filter(Array.isArray);
+  for (const list of lists) {
+    for (const m of list) {
+      const calls = Array.isArray(m?.toolCalls) ? m.toolCalls : Array.isArray(m?.tool_calls) ? m.tool_calls : [];
+      const tc = calls.find((x: any) => x?.function?.name === "registrar_respuesta");
+      if (tc) { console.log(`[calls] call ${row.id}: answer recovered from the call's messages`); await recordAnswer(row, parseArgs(tc.function.arguments)); return; }
+    }
+  }
+}
+
+// "No nos llamen más" said as the studio hangs up never reaches the tool call,
+// so the studio's own words are read too (accents stripped, the agent's lines
+// left out where the transcript marks them). A false match only stops calls
+// to that one studio, which is the safe side to be wrong on.
+const OPT_OUT_RE = /\bno (nos|me|le|les) (vuelv\w* a )?llam(e|en|eis|es|ar|ad)\b|\bno (vuelv\w* a )?llam(e|en|eis)\b|\bdej(e|en|ad|a) de llamar|\bquit(e|en|a)nos\b|\bborr(e|en|a)nos\b|\bno (queremos|quiero) (recibir )?(mas )?llamadas\b/;
+function studioWords(src: any): string {
+  const msgs = [src?.messages, src?.artifact?.messages].filter(Array.isArray).flat();
+  let said = msgs.filter((m: any) => m?.role === "user").map((m: any) => String(m.message || m.content || "")).join(" ");
+  if (!said) {
+    const tr = String(src?.artifact?.transcript || src?.transcript || "");
+    const mine = tr.split("\n").filter((l) => /^\s*(user|customer)\s*:/i.test(l));
+    said = mine.length ? mine.join(" ") : tr;
+  }
+  return stripAccents(said.toLowerCase());
+}
+async function optOutFromWords(row: any, src: any) {
+  if (!row.partner_id || row.opted_out || /pidió no recibir/.test(String(row.notes || ""))) return;
+  const m = studioWords(src).match(OPT_OUT_RE);
+  if (!m) return;
+  await stopCalling(row, `their own words at the end of the call: "${m[0]}", which means they want no more calls`);
+  const notes = [String(row.notes || ""), "pidió no recibir más llamadas (transcripción)"].filter(Boolean).join(" | ").slice(0, 500);
+  if (await patchCall(row.id, { notes })) row.notes = notes;
+}
+
+async function stopCalling(row: any, how: string) {
+  row.opted_out = true;
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const ok = await patchOk(`partners?id=eq.${encodeURIComponent(row.partner_id)}`, { call_ok: false, call_ok_note: `Pidió no recibir llamadas (llamada del ${day})` });
+  const name = String(row.vars?.centro || row.partner_id);
+  console.log(ok ? `[calls] ${name} asked not to be called again; call_ok off` : `[calls] !!! ${name} asked not to be called again and call_ok could NOT be switched off`);
+  // In the background: this can run inside a tool call the agent is waiting on.
+  bg(tellJordan(ok ? `${name} asked not to be phoned again` : `Switch off calls to ${name} by hand`, [
+    `${name} asked not to be phoned again (${how}).`,
+    ok ? "partners.call_ok is now false, so studio-calls will not ring them again." : `The database write failed. Set partners.call_ok = false for partner ${row.partner_id} before the next request reaches them.`,
+    `studio_calls row ${row.id}${row.request_id ? `, request #${row.request_id}` : ""}${row.test ? " (test call)" : ""}.`,
+  ]));
+}
+
+// CLAUDE.md: a studio's stated hours belong in partners.opening_hours. They
+// are not written here: Spanish studios often close at midday, and
+// dispatch-studios' parser keeps one range per day, so an automatic write of
+// "10:00-14:00, 17:00-21:00" could stop every morning ask. Jordan gets the line
+// in the format the parser reads, next to what is on file now.
+async function hoursHeard(row: any, horario: string) {
+  const ps = await sq(`partners?id=eq.${encodeURIComponent(row.partner_id)}&select=opening_hours`).catch(() => []);
+  const now = String((Array.isArray(ps) && ps[0]?.opening_hours) || "").trim();
+  if (now && now.toLowerCase() === horario.toLowerCase()) return;
+  const name = String(row.vars?.centro || row.partner_id);
+  await tellJordan(`${name} told us its opening hours on the phone`, [
+    `${name} said on the phone that it opens: ${horario}`,
+    `On file now (partners.opening_hours): ${now || "nothing"}`,
+    `If it is right, write it into opening_hours so no studio is asked for a time it is closed. Partner ${row.partner_id}, studio_calls row ${row.id}.`,
+  ]);
+}
+
 // A time from a live (not test) call becomes the customer's offer, through
 // wa-bot, one request at a time: two studios can say yes within seconds and
-// wa-bot's one-live-offer check is a read then a write.
+// wa-bot's one-live-offer check is a read then a write. Only an answer from
+// wa-bot's studio_offer handler counts as relayed; anything else is tried again
+// by the next report or reconcile, up to RELAY_TRIES, and then Jordan is told.
+const RELAY_TRIES = 3;
 async function relayIfDue(rowId: string) {
-  const ready = (r: any) => r && !r.test && !r.relayed_at && r.request_id && r.partner_id && r.offered_time && ["yes", "other_time"].includes(String(r.result || ""));
+  const ready = (r: any) => r && !r.test && !r.relayed_at && r.request_id && r.partner_id && r.offered_time && ["yes", "other_time"].includes(String(r.result || "")) && Number(r.relay_out?.attempts || 0) < RELAY_TRIES;
   let row = await getCall(rowId);
   if (!ready(row)) return;
   if ((await config()).mode !== "on") { console.log(`[calls] call ${rowId} has a time but VOICE_CALLS is not on; recorded only`); return; }
   const reqId = Number(row.request_id);
   let claimed = false;
-  for (let i = 0; i < 8 && !claimed; i++) {
-    claimed = (await rpc("claim_call_relay", { p_request: reqId, p_secs: 30 })) === true;
+  // The lock outlives wa-bot's longest answer (60s), and a second yes waits
+  // for the first rather than giving up after a few seconds.
+  for (let i = 0; i < 30 && !claimed; i++) {
+    claimed = (await rpc("claim_call_relay", { p_request: reqId, p_secs: 90 })) === true;
     if (!claimed) await sleep(2500);
   }
-  if (!claimed) { console.log(`[calls] req=${reqId} relay lock busy, call ${rowId} left for the next webhook or reconcile`); return; }
+  if (!claimed) { console.log(`[calls] req=${reqId} relay lock busy, call ${rowId} left for reconcile`); return; }
   try {
     row = await getCall(rowId);
     if (!ready(row)) return;
+    const name = String(row.vars?.centro || row.partner_id);
+    // A relay we gave up on can still have finished inside wa-bot. Its offer is
+    // on the dispatch row, and sending it twice would put two sets of Yes / No
+    // buttons in front of the customer.
+    const dq = await sq(`request_dispatch?request_id=eq.${reqId}&partner_id=eq.${encodeURIComponent(row.partner_id)}&channel=eq.call&offered_at=gte.${encodeURIComponent(String(row.created_at))}&select=id`);
+    if (Array.isArray(dq) && dq.length) {
+      await patchCall(rowId, { relayed_at: new Date().toISOString(), relay_out: { ok: true, already: true, row: dq[0].id } });
+      console.log(`[calls] req=${reqId} call ${rowId}: wa-bot already has this offer`);
+      return;
+    }
+    const attempts = Number(row.relay_out?.attempts || 0) + 1;
+    let out: Record<string, unknown>;
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/wa-bot`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(25000),
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(60000),
         body: JSON.stringify({ ops: "studio_offer", key: OPS_KEY, request_id: reqId, partner_id: row.partner_id, time: row.offered_time, day: "", option: "call", channel: "call" }),
       });
-      const out = await res.json().catch(() => ({ ok: false, status: res.status }));
-      await patchCall(rowId, { relayed_at: new Date().toISOString(), relay_out: out });
-      console.log(`[calls] req=${reqId} call ${rowId} relayed ${row.offered_time}: ${JSON.stringify(out).slice(0, 160)}`);
+      const txt = await res.text();
+      let got: any = null;
+      try { got = JSON.parse(txt); } catch { /* not wa-bot's answer */ }
+      if (res.ok && got && typeof got.ok === "boolean") {
+        // wa-bot decided. A refusal ("request is confirmed") is final too.
+        await patchCall(rowId, { relayed_at: new Date().toISOString(), relay_out: got });
+        console.log(`[calls] req=${reqId} call ${rowId} relayed ${row.offered_time}: ${JSON.stringify(got).slice(0, 160)}`);
+        if (got.ok === false && !/^request is /.test(String(got.reason || ""))) {
+          await tellJordan(`${name}'s phone yes for #${reqId} did not reach the customer`, [
+            `${name} said on the phone they can do ${row.offered_time} for request #${reqId}. wa-bot refused the offer: ${String(got.reason || "no reason given")}.`,
+            "The studio was told it is not booked yet. Nothing has gone to the customer.",
+          ]);
+        }
+        return;
+      }
+      out = { ok: false, status: res.status, body: txt.slice(0, 200) };
     } catch (e) {
-      // No relayed_at, so end-of-call-report or reconcile tries again.
-      await patchCall(rowId, { relay_out: { ok: false, reason: String(e).slice(0, 200) } });
-      console.log(`[calls] req=${reqId} relay to wa-bot failed`, String(e));
+      out = { ok: false, reason: String(e).slice(0, 200) };
+    }
+    await patchCall(rowId, { relay_out: { ...out, attempts } });
+    console.log(`[calls] req=${reqId} relay to wa-bot failed (try ${attempts} of ${RELAY_TRIES}): ${JSON.stringify(out).slice(0, 160)}`);
+    if (attempts >= RELAY_TRIES) {
+      await tellJordan(`${name}'s phone yes for #${reqId} could not be handed to wa-bot`, [
+        `${name} said on the phone they can do ${row.offered_time} for request #${reqId}, and ${RELAY_TRIES} tries to hand it to wa-bot failed (last: ${JSON.stringify(out).slice(0, 200)}).`,
+        "Nothing has gone to the customer. The studio was told it is not booked yet.",
+      ]);
     }
   } finally {
     await rpc("release_call_relay", { p_request: reqId });
@@ -514,24 +689,29 @@ function endFields(src: any, row: any): Record<string, unknown> {
     ...(row.result ? {} : { result: resultFromEnd(er) }),
   };
 }
+// The end of a call, from the report or from GET /call/{id}: an opt-out the
+// tool call missed, the answer if it was lost, then the closing fields. If the
+// answer cannot be written this throws before ended_at is set, so reconcile
+// comes back to it.
+async function finishCall(row: any, src: any) {
+  await optOutFromWords(row, src);
+  await recoverAnswer(row, src);
+  await patchCall(row.id, endFields(src, row));
+}
 
 // --- Vapi's webhook. Answers tool calls at once; anything slow runs after.
-async function webhook(body: any, rowHint: string): Promise<Response> {
+// The URL is signed for one row (c), and the message must carry that row's
+// Vapi call id: a message with none, or with another call's, is ignored.
+async function webhook(body: any, rowId: string): Promise<Response> {
   const msg = body?.message || {};
   const type = String(msg.type || "");
   const callId = String(msg.call?.id || "");
   let row: any = null;
   try {
-    if (callId) {
-      const rows = await sq(`studio_calls?vapi_call_id=eq.${encodeURIComponent(callId)}&select=*`);
-      row = Array.isArray(rows) && rows[0] ? rows[0] : null;
-    }
-    if (!row && /^[0-9a-f-]{36}$/i.test(rowHint)) {
-      row = await getCall(rowHint);
-      // The webhook beat the PATCH that stores the call id.
-      if (row && callId && !row.vapi_call_id) await patchCall(row.id, { vapi_call_id: callId });
-      else if (row && callId && row.vapi_call_id !== callId) row = null;
-    }
+    row = callId ? await getCall(rowId) : null;
+    // The webhook beat the PATCH that stores the call id.
+    if (row && !row.vapi_call_id) { await patchCall(row.id, { vapi_call_id: callId }); row.vapi_call_id = callId; }
+    else if (row && row.vapi_call_id !== callId) row = null;
   } catch (e) { console.log("[calls] webhook lookup failed", String(e)); }
 
   if (type === "tool-calls") {
@@ -543,7 +723,7 @@ async function webhook(body: any, rowHint: string): Promise<Response> {
         try {
           const a = await recordAnswer(row, parseArgs(tc?.function?.arguments ?? tc?.parameters));
           if (a.offered) bg(relayIfDue(String(row.id)));
-        } catch (e) { console.log("[calls] could not record answer", String(e)); }
+        } catch (e) { console.log("[calls] could not record answer; the end-of-call report will try again", String(e)); }
       } else if (!row) console.log(`[calls] tool call ${name} for unknown call ${callId}`);
       results.push({ toolCallId: String(tc?.id || ""), result: "ok" });
     }
@@ -556,15 +736,16 @@ async function webhook(body: any, rowHint: string): Promise<Response> {
       if (st && st !== "ended") await patchCall(row.id, { status: st }, "&status=neq.ended");
       else if (st === "ended") await patchCall(row.id, { status: "ended", ...(msg.endedReason ? { ended_reason: String(msg.endedReason) } : {}) });
     } else if (type === "end-of-call-report") {
-      await patchCall(row.id, endFields(msg, row));
+      await finishCall(row, msg);
       bg(relayIfDue(String(row.id)));
     }
-  } catch (e) { console.log(`[calls] ${type} failed for ${row.id}`, String(e)); }
+  } catch (e) { console.log(`[calls] ${type} failed for ${row.id}; reconcile will pick it up`, String(e)); }
   return json({ ok: true });
 }
 
 // --- ops: reconcile. Webhooks are not retried by Vapi, so anything still open
-// after 10 minutes is read back from GET /call/{id}.
+// after 10 minutes is read back from GET /call/{id}, and a yes from the last
+// six hours that never reached wa-bot is handed over again.
 async function reconcile() {
   const cfg = await config();
   if (!cfg.apiKey) return { ok: false, reason: "VAPI_API_KEY missing in app_secrets" };
@@ -579,19 +760,16 @@ async function reconcile() {
       const c: any = await res.json().catch(() => ({}));
       if (!res.ok) { out.push({ id: row.id, error: res.status }); continue; }
       if (String(c.status || "") !== "ended") { await patchCall(row.id, { status: String(c.status || row.status) }); out.push({ id: row.id, status: c.status }); continue; }
-      // A tool call whose webhook was lost is still in the call's messages.
-      if (!row.result) {
-        for (const m of [...(Array.isArray(c.messages) ? c.messages : []), ...(Array.isArray(c.artifact?.messages) ? c.artifact.messages : [])]) {
-          const tc = (Array.isArray(m?.toolCalls) ? m.toolCalls : []).find((t: any) => t?.function?.name === "registrar_respuesta");
-          if (tc) { const a = await recordAnswer(row, parseArgs(tc.function.arguments)); row.result = a.result; break; }
-        }
-      }
-      await patchCall(row.id, endFields(c, row));
-      await relayIfDue(String(row.id));
+      await finishCall(row, c);
       out.push({ id: row.id, status: "ended", ended_reason: c.endedReason || null });
     } catch (e) { out.push({ id: row.id, error: String(e).slice(0, 120) }); }
   }
-  return { ok: true, never_placed: Array.isArray(never) ? never.length : 0, checked: out.length, calls: out };
+  const since = new Date(Date.now() - 6 * 3600e3).toISOString();
+  const due = await sq(`studio_calls?test=is.false&relayed_at=is.null&offered_time=not.is.null&result=in.(yes,other_time)&created_at=gt.${since}&order=created_at.desc&limit=25&select=id`);
+  for (const d of Array.isArray(due) ? due : []) {
+    try { await relayIfDue(String(d.id)); } catch (e) { console.log(`[calls] reconcile relay failed for ${d.id}`, String(e)); }
+  }
+  return { ok: true, never_placed: Array.isArray(never) ? never.length : 0, checked: out.length, calls: out, relay_checked: Array.isArray(due) ? due.length : 0 };
 }
 
 async function status(body: Record<string, unknown>) {
@@ -610,8 +788,9 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const hook = url.searchParams.get("hook");
   if (hook !== null) {
-    if (!sameStr(hook, await hookSig())) return json({ ok: false }, 403);
-    try { return await webhook(body, url.searchParams.get("c") || ""); }
+    const c = url.searchParams.get("c") || "";
+    if (!/^[0-9a-f-]{36}$/i.test(c) || !sameStr(hook, await hookSig(c))) return json({ ok: false }, 403);
+    try { return await webhook(body, c); }
     catch (e) { console.log("[calls] webhook failed", String(e)); return json({ ok: false }, 200); }
   }
 
@@ -623,8 +802,10 @@ async function handleRequest(req: Request): Promise<Response> {
   catch (e) { console.log(`[calls] ops ${ops} failed`, String(e)); return json({ ok: false, error: String(e).slice(0, 200) }, 500); }
 }
 
-export function start(opts: { opsKey: string; studioOutreachPaused?: boolean }) {
+// resendKey is optional: without it, what Jordan should hear only reaches the logs.
+export function start(opts: { opsKey: string; resendKey?: string; studioOutreachPaused?: boolean }) {
   OPS_KEY = opts.opsKey;
+  if (opts.resendKey) RESEND_API_KEY = opts.resendKey;
   if (opts.studioOutreachPaused) STUDIO_OUTREACH_PAUSED = true;
   Deno.serve(handleRequest);
 }

@@ -3544,7 +3544,10 @@ function studioConfirmCard(req: any, clientNum: string, pc: { status: string; sl
   return lines.join("\n");
 }
 
-async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean } = {}) {
+// v203: says what became of the offer ("whatsapp", "email", "none", or why it
+// was held back), so a caller with no WhatsApp thread to the studio (a phone
+// call) knows when the customer was never shown it.
+async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean } = {}): Promise<string> {
   const clientNum = digitsOf(req.client_phone || "");
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
@@ -3566,7 +3569,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
         console.log(`[wa] offer withheld: ${partner.business_name} at ${euro(mine)} is dearer than the live ${euro(Number(best.quoted_price))} already with the customer`);
         await studioSay(studioFrom, `Gracias, lo anotamos: ${time}, ${euro(mine)}. Ahora mismo el cliente tiene una oferta a mejor precio, así que no os guardéis el hueco. Si cambia algo os escribimos enseguida.`);
         await logEvent(clientNum, "offer_withheld_dearer", { request_id: req.id, studio: partner.business_name, price: mine, best: Number(best.quoted_price) });
-        return;
+        return "withheld_dearer";
       }
     }
   } catch (e) { console.log("[wa] dearer-offer check skipped", String(e)); }
@@ -3647,14 +3650,14 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     console.log(`[wa] offer queued: ${partner.business_name} ${time}, ${req.first_name} still has ${cs.data.offer.studio} ${cs.data.offer.time} open`);
     await studioSay(studioFrom, `Gracias, anotado: ${time}. ${req.first_name || "El cliente"} está mirando ahora mismo otra propuesta, así que no guardéis el hueco todavía. Os decimos algo en cuanto conteste.`);
     await logEvent(clientNum, "offer_queued_behind_live", { request_id: req.id, studio: partner.business_name, time, live: cs.data.offer.studio });
-    return;
+    return "queued";
   }
   const sameDayReq = /^(today|hoy)$/i.test(String(req.day1 || "").trim());
   if (asked && !sameDayReq) {
     console.log(`[wa] offer withheld: ${partner.business_name} ${time} misses ${req.day1} ${req.time1} for req=${req.id}`);
     await studioSay(studioFrom, `Gracias. ${req.first_name || "El cliente"} ha pedido ${String(req.time1 || "otra franja")}, así que las ${time} se le quedan fuera. ¿Podéis en esa franja? Si no, no pasa nada y os escribimos con la siguiente.`);
     await logEvent(clientNum, "offer_withheld_mismatch", { request_id: req.id, studio: partner.business_name, offered: time, asked: `${req.day1 || ""} ${req.time1 || ""}`.trim() });
-    return;
+    return "withheld_mismatch";
   }
   // v199: the customer has to be able to tap Yes. WhatsApp buttons when their
   // 24 hour window is open; otherwise an email whose button opens the offer on
@@ -3698,6 +3701,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : "with Yes / Another time buttons"}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
     quote: freeText, waNum: clientNum,
   });
+  return offerVia;
 }
 
 // v199: a studio reached by email has no WhatsApp number to answer on.
@@ -4754,9 +4758,26 @@ const handleInner = async (req: Request) => {
       });
       const row = (await ins.json().catch(() => []))[0];
       if (!row?.id) return out({ ok: false, reason: "could not record the offer" });
-      await forwardOffer(req, { id: String(p.id), business_name: String(p.business_name || "") }, String(row.id), time, `Sí, a las ${time} (${channel === "call" ? "llamada" : "email"})`, "", { dayHint: dayRaw, ownOption: true });
-      await logEvent(digitsOf(String(req.client_phone || "")) || "web", "studio_accepted", { id, studio: p.business_name, time, via: channel });
-      return out({ ok: true, row: row.id, time });
+      // v203: an emailed time is one of the options we put to the studio. A time
+      // said on the phone can be any hour, so it gets the v122 window check like
+      // a WhatsApp yes, and "instead of" when it is not what was asked.
+      const sent = await forwardOffer(req, { id: String(p.id), business_name: String(p.business_name || "") }, String(row.id), time, `Sí, a las ${time} (${channel === "call" ? "llamada" : "email"})`, "", { dayHint: dayRaw, ownOption: channel !== "call" });
+      await logEvent(digitsOf(String(req.client_phone || "")) || "web", "studio_accepted", { id, studio: p.business_name, time, via: channel, offer: sent });
+      if (channel === "call") {
+        const studioWa = digitsOf(String(row.phone || p.whatsapp || p.phone || ""));
+        if (sent === "withheld_mismatch") {
+          // The phone has no thread to answer on, so nobody tells the studio.
+          await notifyJordanWa(`${p.business_name} said on the phone they can do ${time} for ${req.first_name || "the customer"}'s request #${id}, outside the ${String(req.time1 || "time")} asked for. Not shown to the customer. Nothing booked.`, digitsOf(String(req.client_phone || "")));
+        } else if (!row.quoted_price && studioWa) {
+          // A WhatsApp yes is asked for the 10% Massage Club rate in writing
+          // (PRICE_ASK); the call never mentions a discount, so this does. The
+          // aviso template carries it when their 24h window is shut.
+          const first = String(req.first_name || "el cliente").split(" ")[0];
+          const ask = "¿Cuál sería el precio final para el cliente en 60 min, con un 10% de tarifa Massage Club si podéis hacérselo?";
+          await tellStudio(studioWa, first, time, `Hola, sobre ${first}, ${time}: gracias por atendernos al teléfono. ${ask} Se lo decimos en cuanto nos lo digáis. Jordan, de Massage Club`, `gracias por atendernos al teléfono. ${ask}`);
+        }
+      }
+      return out({ ok: true, row: row.id, time, offer: sent });
     }
     // v202 (12 Oct): close a request the bot built from garbage and put the
     // chat back at the day question, sending nothing. Salado's ad line became
