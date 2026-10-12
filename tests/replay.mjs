@@ -1254,7 +1254,7 @@ for (const [msg, want, note] of [
   const a = botSrc.indexOf("// ---- v204 offer step: pure helpers (start) ----");
   const b = botSrc.indexOf("// ---- v204 offer step: pure helpers (end) ----");
   if (a < 0 || b < a) throw new Error("bot.ts: the v204 offer-step helper markers are missing");
-  const names = ["askWindow", "offerFitsDay", "offerFitsTime", "offerMissBy", "offerSlotAt", "offerSchedule", "offerDue", "offerRelDay", "offerDayPhrase", "windowText", "windowEs", "quotedRangeIn", "offerFar", "offerBetterAlt", "offerRank", "ALT_OFFER_RE", "OFFER_COPY", "offerButtons", "offerBody", "OFFER_LEAD_MS", "ASK_UNREAD", "altOfferAsked", "studioWordDay", "offerDayLabel", "offerDayDate"];
+  const names = ["askWindow", "offerFitsDay", "offerFitsTime", "offerMissBy", "offerSlotAt", "offerSchedule", "offerDue", "offerRelDay", "offerDayPhrase", "windowText", "windowEs", "quotedRangeIn", "offerFar", "offerBetterAlt", "offerRank", "ALT_OFFER_RE", "OFFER_COPY", "offerButtons", "offerBody", "OFFER_LEAD_MS", "ASK_UNREAD", "altOfferAsked", "studioWordDay", "offerDayLabel", "offerDayDate", "whenFor"];
   const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
   const js = `import { askBand, stripAcc, madridMidnight, madridInstant, resolveRequestDate, detectTime, COPY } from ${JSON.stringify(copyUrl)};\n`
     + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
@@ -1342,8 +1342,16 @@ for (const [msg, want, note] of [
   check("offerRelDay", "slot today", O.offerRelDay(M(19), M(12), "en"), "today", "");
   check("offerRelDay", "slot tomorrow, es", O.offerRelDay(M(10, 0, 1), M(20), "es"), "mañana", "#90: the word is worked out when it is sent, not copied");
   check("offerRelDay", "slot in two days", O.offerRelDay(M(10, 0, 2), M(20), "en"), "", "");
+  const OFFER_ASK_EN = (x) => O.OFFER_COPY.en.ask(x);
   check("offerDayPhrase", "Today", O.offerDayPhrase("Today", "en"), "today", "the audit: \"at 16:00 Today\" read oddly");
   check("offerDayPhrase", "Tuesday 14 October", O.offerDayPhrase("Tuesday 14 October", "en"), "on Tuesday 14 October", "");
+  check("offerDayPhrase", "Hoy (studio word) to an English customer", O.offerDayPhrase("Hoy", "en"), "today", "canary 12 Oct: 'can take you at 18:00 hoy'");
+  check("offerDayPhrase", "Tomorrow to a Spanish customer", O.offerDayPhrase("Tomorrow", "es"), "mañana", "");
+  check("whenFor", "Hoy 18:00 to an English customer", O.whenFor("Hoy 18:00", "en"), "Today 18:00", "canary 12 Oct: 'Booked! ... for *Hoy 18:00*'");
+  check("whenFor", "Tomorrow 10:00 to a Spanish customer", O.whenFor("Tomorrow 10:00", "es"), "Mañana 10:00", "");
+  check("whenFor", "a date is left alone", O.whenFor("Tuesday 14 October 18:00", "en"), "Tuesday 14 October 18:00", "");
+  check("offer ask", "service lower-cased mid-sentence", OFFER_ASK_EN("Relaxing massage"), "Shall I book your relaxing massage? Nothing is booked until you tap Yes.", "canary 12 Oct");
+  check("offer ask", "Thai keeps its capital", OFFER_ASK_EN("Thai massage"), "Shall I book your Thai massage? Nothing is booked until you tap Yes.", "");
   check("offerDayPhrase", "martes 14 de octubre", O.offerDayPhrase("martes 14 de octubre", "es"), "el martes 14 de octubre", "");
   check("windowText", "18-21 en", O.windowText([1080, 1260], "en"), "18:00 to 21:00", "");
   check("windowText", "18-21 es", O.windowText([1080, 1260], "es"), "hueco de 18:00 a 21:00", "");

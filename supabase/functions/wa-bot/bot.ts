@@ -3866,10 +3866,22 @@ function offerRelDay(slotMs: number, nowMs: number, L: string): string {
   return d === 0 ? (L === "es" ? "hoy" : "today") : d === 1 ? (L === "es" ? "mañana" : "tomorrow") : "";
 }
 // The day as it sits after a time: "17:00 today", "17:00 on Tuesday 14 October".
+// v205 (canary, 12 Oct): "Booked! ... for *Hoy 18:00*" reached an English
+// customer because the studio wrote "Hoy". The customer's copy of the time.
+function whenFor(when: string, L: string): string {
+  const es = L === "es";
+  return String(when || "")
+    .replace(/^(hoy|today)\b/i, es ? "Hoy" : "Today")
+    .replace(/^(ma[nñ]ana|tomorrow)\b/i, es ? "Mañana" : "Tomorrow");
+}
 function offerDayPhrase(day: string, L: string): string {
   const d = String(day || "").trim();
   if (!d) return "";
-  if (/^(today|tomorrow|hoy|ma[nñ]ana|that day|ese d[ií]a)$/i.test(d)) return d.toLowerCase();
+  // v205 (canary, 12 Oct): a studio's "Hoy" reached an English customer as
+  // "can take you at 18:00 hoy". Relative words go out in the customer's language.
+  if (/^(today|hoy)$/i.test(d)) return L === "es" ? "hoy" : "today";
+  if (/^(tomorrow|ma[nñ]ana)$/i.test(d)) return L === "es" ? "mañana" : "tomorrow";
+  if (/^(that day|ese d[ií]a)$/i.test(d)) return L === "es" ? "ese día" : "that day";
   return L === "es" ? `el ${d.charAt(0).toLowerCase()}${d.slice(1)}` : `on ${d}`;
 }
 // The window in words, for the customer: "18:00 to 21:00" / "hueco de 18:00 a 21:00".
@@ -3947,7 +3959,7 @@ const OFFER_COPY: Record<string, any> = {
     anyToday: "anything today",
     above: (lo: number, hi: number) => `That is more than the ${lo === hi ? "" : lo + " to "}${hi} EUR I mentioned earlier: it is this studio's own price.`,
     far: (km: number, area: string) => `about ${km} km from ${area}`,
-    ask: (svcN: string) => `Shall I book your ${svcN}? Nothing is booked until you tap Yes.`,
+    ask: (svcN: string) => `Shall I book your ${svcN.replace(/^(Relaxing|Deep|Sports|Hot|Couples|Lymphatic|Balinese)\b/, (m) => m.toLowerCase())}? Nothing is booked until you tap Yes.`,
     other: "Another time",
     closer: "Closer or cheaper",
     next: "No problem. Here is the next option:",
@@ -5092,6 +5104,12 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   const row = Array.isArray(drows) && drows[0] ? drows[0] : null;
   // An offer the studio has since withdrawn, or one stood down because someone
   // else got the booking, is not there to accept.
+  // v205 (canary, 12 Oct): a Yes on an offer that lapsed was told "we are still
+  // on it", but after a lapse nobody is still asking. Say what is true.
+  if (row && String(row.outcome || "") === "expired") {
+    await say(L === "es" ? "Esa hora ya no está disponible y no hay nada reservado. Dime otro día u hora y vuelvo a preguntar a los centros." : "That time is no longer available and nothing is booked. Tell me another day or time and I will ask the studios again.");
+    await closeOffer(); return false;
+  }
   if (!row || !row.offered_time || ["no", "declined", "stood_down", "expired", "send_failed"].includes(String(row.outcome || ""))) { await say(COPY[L].offerGone); await closeOffer(); return false; }
   const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,contact_email,client_phone,languages,stage`, { headers: H() });
   const reqRows = await rr.json().catch(() => []);
@@ -5110,8 +5128,8 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ confirmed_time: row.offered_time, confirmed_day: cday || null, customer_flag: null, reconfirmed_at: new Date().toISOString(), stage_updated_at: new Date().toISOString(), studio_reply: `Hora cambiada a ${row.offered_time} por ${studio}, cliente acepta` }) });
     await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ customer_answer: "yes", customer_answered_at: new Date().toISOString() }) });
     await tellStudio(digitsOf(row.phone || ""), req.first_name || "el cliente", cwhen, `Perfecto, ${cwhen} entonces. Confirmado con ${req.first_name || "el cliente"}. Gracias, Massage Club`, `confirmado con el cliente: ${cwhen}`);
-    await say(COPY[L].offerAccepted(studio, cwhen, pc.address, pc.phone));
-    await customerConfirmEmail(req, studio, cwhen, pc.address, pc.phone);
+    await say(COPY[L].offerAccepted(studio, whenFor(cwhen, L), pc.address, pc.phone));
+    await customerConfirmEmail(req, studio, whenFor(cwhen, L), pc.address, pc.phone);
     await closeOffer();
     await logEvent(from || "web", "time_change_accepted", { id: req.id, studio, time: row.offered_time, via });
     await notifyJordanWa(`${req.first_name || "Customer"} accepted ${studio}'s new time ${cwhen}. Studio told, customer confirmed by chat and email.`, from);
@@ -5151,8 +5169,8 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
       waNum: digitsOf(row.phone || ""),
     });
   }
-  await say(COPY[L].offerAccepted(studio, when, pc.address, pc.phone));
-  await customerConfirmEmail(req, studio, when, pc.address, pc.phone);
+  await say(COPY[L].offerAccepted(studio, whenFor(when, L), pc.address, pc.phone));
+  await customerConfirmEmail(req, studio, whenFor(when, L), pc.address, pc.phone);
   // v81 (Jordan, 12 Sept): the email lands here, at the moment they have just
   // said yes to a real slot, where it buys them the member rate rather than
   // standing between them and any answer. Nobody abandons over an email address
