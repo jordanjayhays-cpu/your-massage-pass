@@ -2899,6 +2899,10 @@ export default function StudioBookingPage() {
                     user_id: userId,
                     wa_number: bookingWaNumber,
                     message_text: bookingWaMsg,
+                    // The visitor may tap this before filling in their details;
+                    // they are messaging us themselves, so log the handoff even
+                    // without an email (it is still recorded when entered).
+                    handoff: true,
                   }).then((id) => { waRequestIdRef.current = id; });
                 }}
                 className={`w-full inline-flex flex-col items-center justify-center min-h-[48px] min-[900px]:min-h-[56px] px-6 py-2 min-[900px]:py-2.5 rounded-2xl font-semibold motion-safe:transition ${
