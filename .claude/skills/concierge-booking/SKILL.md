@@ -8,8 +8,9 @@ description: Run one Massage Club concierge booking end to end, from the invite 
 Context: Massage Club, Madrid. 1 onboarded studio (Calma Madrid Spa). Concierge-first: Jordan books real people by hand to learn before automating. A reimbursed test booking is a paid experiment, not revenue.
 
 ## Mode A: Invite (before the booking)
-1. Ask (if missing): who is the person, how Jordan knows them, language (EN/ES), budget for this test.
-2. Write the WhatsApp invite in their language:
+Drafts first, questions after: never reply with questions only. Give the invites with [gaps], then ask.
+1. Note what's missing: who the person is, how Jordan knows them, language (EN/ES), budget for this test. Ask max 3 questions after the drafts.
+2. Write the WhatsApp invite in their language (start from `templates.md`):
    - 3 short lines max
    - Personal, not marketing
    - One concrete offer: a day, a time window, the studio
