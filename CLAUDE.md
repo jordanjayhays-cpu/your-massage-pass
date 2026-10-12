@@ -26,3 +26,7 @@ One lane per session. Name columns + LIMIT in SQL. Iterate functions locally, de
 Bulk row analysis (>~20 rows) → delegate to the `agent-worker` edge function on `neurodashboards`.
 
 **The master map lives in `mission-control/CLAUDE.md`.**
+
+## Session protocol
+Follow the session protocol in `mission-control/CLAUDE.md` (route, brief, plan, fresh-critic verify,
+close the loop). Concierge bookings: use the `concierge-booking` skill in `.claude/skills/`.
