@@ -53,13 +53,19 @@ export const CORE_STEPS = ["start", "returning_choice", "menu", "await_service",
   "await_time", "await_time_text", "await_hour", "await_sameday", "await_area", "await_studio", "await_name",
   "await_email", "await_email_req", "await_email_post", "await_offer", "done"];
 export function coreTakes(i: { mode: CoreMode; phone: string; step: string; text: string; jobSeeker: boolean;
-  offerTimeNamed: boolean; confirmLater: boolean; emailOnly: boolean; bareOpener: boolean }): { ok: boolean; why: string } {
+  offerTimeNamed: boolean; confirmLater: boolean; emailOnly: boolean; bareOpener: boolean; adOpener?: boolean }): { ok: boolean; why: string } {
   if (!coreEligiblePhone(i.mode, i.phone)) return { ok: false, why: "not_eligible" };
   if (!String(i.text || "").trim()) return { ok: false, why: "no_text" };
   if (i.jobSeeker) return { ok: false, why: "job_seeker" }; // the job-seeker gate in bot.ts answers
   if (!CORE_STEPS.includes(i.step)) return { ok: false, why: "step" };
   // greet(): Jordan's opener (v198) and the welcome back for returning customers.
   if (i.step === "start" && i.bareOpener) return { ok: false, why: "opener" };
+  // v206 review (12 Oct): the ad's own prefilled line at any later step is
+  // someone starting again, and v201's restart in bot.ts (which wipes the old
+  // session and greets) sits below the core's hook. Salado stopped at the area
+  // question on 24 Sept and clicked the ad on 12 Oct: the core would have been
+  // handed his two-week-old day and time as if they still stood.
+  if (i.adOpener) return { ok: false, why: "ad_opener" };
   // The await_offer case: a counter-time asks the studios that offered it, and
   // "lo confirmo un día antes" arms the reminder (v77, v124).
   if (i.step === "await_offer" && (i.offerTimeNamed || i.confirmLater)) return { ok: false, why: "offer_counter" };
@@ -79,7 +85,9 @@ export type StudioPick = { id: string; slug?: string; name: string; svc: string;
 export type CoreBooking = {
   live: { id: number; stage: string; massage: string; day: string; time: string; area: string; studios_asked: number; createdMs: number } | null;
   offer: { row: string; studio: string; time: string; day: string; address: string; price_text: string } | null;
-  confirmed: { id: number; studio: string; day: string; time: string; address: string; price_text: string; startMs: number | null } | null;
+  // startMs: confirmed_start, or the day and time read off the request when
+  // that is empty; null only when neither can be read. createdMs bounds a null.
+  confirmed: { id: number; studio: string; day: string; time: string; address: string; price_text: string; startMs: number | null; createdMs?: number } | null;
   returning: { name: string; last: string } | null;
 };
 export type FinalizeOutcome = { outcome: string; requestId: number | null };
@@ -94,7 +102,14 @@ export type CoreCtx = {
   facts: () => Promise<string>;
   thread: (phone: string, limit: number) => Promise<ThreadRow[]>;
   myInboundId: (phone: string, text: string) => Promise<number>;
+  // True when a core turn has taken an inbound message newer than id (each
+  // turn marks itself with agent_core_taken as it starts, and with
+  // agent_core_released if it falls back). A newer message the old flow
+  // answers does not count: that turn would answer only its own.
   newerInbound: (phone: string, id: number) => Promise<boolean>;
+  // The customer's own words asking to cancel (CANCEL_RE, DECLINE_RE) or to
+  // move (CHANGE_RE) a confirmed booking: the old flow's v39 test.
+  ownWords: (text: string, kind: "cancel" | "change") => boolean;
   bookingFacts: (s: Sess, L: string) => Promise<CoreBooking>;
   openerFacts: (plusDays: number) => Promise<{ lo: number; hi: number; areas: string[] } | null>;
   profileFirstName: (waName: unknown) => string;
@@ -200,12 +215,36 @@ export function dayPlusOf(data: Record<string, any>, nowMs: number): number {
   if (iso) { const p = daysBetween(clk.iso, iso); if (p >= 0 && p <= 60) return p; }
   return clk.hour >= 19 ? 1 : 0;
 }
+// v206 review (12 Oct): a day the old flow saved has no ISO date on it, and the
+// core used to take it as it was. Salado's session kept "Saturday 27
+// September" from 24 Sept to 12 Oct; create_request's past-day check only
+// knew the days the core saved itself, and the prompt says never to ask again
+// for what the booking state has. A label that names a date is read against
+// the next 61 days: found, it is tagged like a day the core saved; not found,
+// it has gone by, and the day and its time are cleared so the model asks.
+// A bare weekday ("Saturday") is left as it is, untagged, and create_request
+// wants it saved as a date first. "Today" and "Tomorrow" are dropStaleDay's.
+const MONTH3: Record<string, number> = { jan: 0, ene: 0, feb: 1, mar: 2, apr: 3, abr: 3, may: 4, jun: 5, jul: 6, aug: 7, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dec: 11, dic: 11 };
+const flatLabel = (x: string) => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/,/g, " ").replace(/\bde\b/g, " ").replace(/\s+/g, " ").trim();
+export const DAY_CLEARS = ["day", "dayDate", "dayIso", "dayIsoOf", "time", "timeBand", "timeBandId", "sameDayAsked"];
+export function reconcileDay(data: Record<string, any>, nowMs: number): "" | "tagged" | "cleared" | "kept" {
+  const day = String(data.day || "").trim();
+  if (!day || taggedIso(data) || isTodayWord(day) || isTomorrowWord(day) || /flexible/i.test(day)) return "";
+  const cal = madridCalendar(nowMs, 61);
+  const n = flatLabel(day);
+  let hit = cal.find((c) => flatLabel(c.en) === n || flatLabel(c.es) === n);
+  const dm = n.match(/\b(\d{1,2})\s+([a-z]{3})/);
+  if (!hit && dm && MONTH3[dm[2]] !== undefined) hit = cal.find((c) => { const t = isoNoon(c.iso); return t.getUTCDate() === +dm[1] && t.getUTCMonth() === MONTH3[dm[2]]; });
+  if (hit) { data.dayIso = hit.iso; data.dayIsoOf = `${data.day || ""}|${data.dayDate || ""}`; return "tagged"; }
+  if (dm && MONTH3[dm[2]] !== undefined) { for (const k of DAY_CLEARS) delete data[k]; return "cleared"; }
+  return "kept";
+}
 
 // ---------------------------------------------------------------------------
 // Tools. Fixed list in a fixed order on every request: the cached prefix
 // (tools, then system) must not change from one customer to the next.
 // ---------------------------------------------------------------------------
-export const CORE_MODEL = "claude-sonnet-5-5";
+export const CORE_MODEL = "claude-opus-5-5";
 export const CORE_SERVICE_IDS = ["svc_relax", "svc_deep", "svc_thai", "svc_sports", "svc_stone", "svc_bali", "svc_shiatsu", "svc_reflex", "svc_lymph", "svc_couples", "svc_kobido", "svc_unsure"];
 export const CORE_TOOLS: Array<Record<string, unknown>> = [
   {
@@ -259,7 +298,7 @@ export const CORE_TOOLS: Array<Record<string, unknown>> = [
   },
   {
     name: "booking_action",
-    description: "Only when a request is live, an offer is waiting or a booking is confirmed. It can never accept an offer: only the customer's tap does. show_offer re-sends the waiting offer with its Yes button. another_time and closer_or_cheaper do exactly what the offer's buttons do. cancel cancels their request or confirmed booking and the studios are told. change asks them for the new time of a confirmed booking and frees nothing until they name one. Each action sends its own message; do not repeat it.",
+    description: "Only when a request is live, an offer is waiting or a booking is confirmed. It can never accept an offer: only the customer's tap does. show_offer re-sends the waiting offer with its Yes button. another_time and closer_or_cheaper do exactly what the offer's buttons do. cancel cancels their request or confirmed booking and the studios are told. change asks them for the new time of a confirmed booking and frees nothing until they name one. Use cancel and change only when they asked to cancel or move it; for a confirmed booking, unless their own words say so, code sends them a button to confirm first. Each action sends its own message; do not repeat it.",
     input_schema: { type: "object", additionalProperties: false, required: ["action"], properties: {
       action: { type: "string", enum: ["show_offer", "another_time", "closer_or_cheaper", "cancel", "change"] },
     } },
@@ -313,13 +352,15 @@ service (relaxing unless they say otherwise; ask only if they are unsure or ask 
 STUDIOS AND REQUESTS
 - Once the area is known, call studio_options and show the two or three options exactly as returned: name, area, massage, minutes and price, with "about" when price_is_listed is false. If matches_service is false, say plainly that the studio lists a different massage. You may attach buttons of kind studios.
 - When day, time, area, first name and email (or their refusal) are known and they have picked a studio or are happy for us to ask several, call create_request. It sends them its own message; do not repeat it.
+- If the booking state has studio_chosen, they already picked that studio: do not show options again, and create_request asks it first.
 - Studios are asked between 09:00 and 21:00 Madrid time. At night never say you are asking them now.
 - A same-day massage must start at least an hour from now and by 20:00, and there is no same-day booking after 19:00. Most studios open at 11:00 or 12:00, so a same-day morning rarely works before 12:00: say so plainly and suggest the earliest time or tomorrow.
 - While a request is with the studios, tell them truthfully how many studios have it (studios_asked) and that each offer comes here with its price, before anything is booked.
 - While a request is live, an offer is waiting or a booking is confirmed, set_details cannot change the day, time, area or massage. Use booking_action: show_offer puts a waiting offer back in front of them, another_time and closer_or_cheaper do what the offer's buttons do, cancel cancels, change is for a confirmed booking. booking_action sends its own message; do not repeat it.
+- Use cancel or change only when they asked to cancel or move that booking. Wanting a second, separate massage is never a reason to cancel the first: say the team will set it up with them here, and call notify_jordan with kind question.
 
 FIRST MESSAGE
-If the booking state step is start, your reply must say in one sentence what Massage Club does and the usual price from PRICES, paid at the studio; then answer anything they asked; then ask which day, with buttons of kind days. After 19:00 say it is late for today, so you will look at tomorrow. A returning customer gets a warm welcome back instead of the explanation.
+If the booking state step is start, your reply must say in one sentence what Massage Club does and the usual price from PRICES, paid at the studio; then answer anything they asked; then ask which day, with buttons of kind days. After 19:00 say it is late for today, so you will look at tomorrow. A returning customer gets a warm welcome back instead of the explanation. Someone who says no thanks or is complaining gets no pitch.
 
 NEVER
 - Never say a massage is booked, confirmed or reserved unless the booking state says confirmed. Nothing is booked until a studio offers a time and the customer taps Yes on that offer. If they type yes to an offer, use booking_action show_offer so they can tap.
@@ -357,8 +398,20 @@ export type BookingMode = "build" | "live" | "offer" | "confirmed";
 export function bookingModeOf(b: CoreBooking, nowMs: number): BookingMode {
   if (b.offer) return "offer";
   if (b.live) return "live";
-  if (b.confirmed && (b.confirmed.startMs === null || b.confirmed.startMs > nowMs - 2 * 3600e3)) return "confirmed";
+  if (confirmedNow(b, nowMs)) return "confirmed";
   return "build";
+}
+// v206 review (12 Oct): a confirmed booking counts until two hours after its
+// start, the v39 window. Requests stay at stage confirmed after the massage,
+// and no code writes confirmed_start, so "no start known" used to mean
+// "confirmed for ever": every later visit was locked out of booking again, and
+// the guard let "Your massage is booked" through for last month's customer.
+// With no start at all, it counts for a week after the request was made.
+export function confirmedNow(b: CoreBooking, nowMs: number): boolean {
+  const c = b.confirmed;
+  if (!c) return false;
+  if (c.startMs !== null && c.startMs !== undefined) return c.startMs > nowMs - 2 * 3600e3;
+  return !!c.createdMs && nowMs - c.createdMs < 7 * 86400e3;
 }
 const MODE_LABEL: Record<BookingMode, string> = { build: "building a booking", live: "a request is live", offer: "an offer is waiting for their tap", confirmed: "a booking is confirmed" };
 function liveLabel(mode: BookingMode, b: CoreBooking): string {
@@ -445,9 +498,13 @@ export function buildTurnContext(i: TurnContextInput): string {
     therapist_gender: d.therapistGender || null,
     duration_min: d.duration || null,
     studio_options_shown: picks.map((p) => ({ studio_id: p.id, name: p.name, area: p.area, massage: p.svc, minutes: p.duration, price_eur: p.price, price_is_listed: !!p.registered })),
+    // v206 review: a studio they already tapped or typed on the old flow's
+    // steps (prefer, chosen, customStudio). create_request keeps it.
+    studio_chosen: (Array.isArray(d.prefer) && d.prefer[0]?.name) || d.chosen?.name || d.customStudio || null,
     live_request: i.booking.live ? { id: i.booking.live.id, stage: i.booking.live.stage, massage: i.booking.live.massage, day: i.booking.live.day, time: i.booking.live.time, area: i.booking.live.area, studios_asked: i.booking.live.studios_asked } : null,
     offer: i.booking.offer ? { studio: i.booking.offer.studio, time: i.booking.offer.time, day: i.booking.offer.day, price_text: i.booking.offer.price_text, address: i.booking.offer.address } : null,
-    confirmed: i.booking.confirmed ? { studio: i.booking.confirmed.studio, day: i.booking.confirmed.day, time: i.booking.confirmed.time, address: i.booking.confirmed.address } : null,
+    // v206 review: only a booking that is still to come; last month's is history.
+    confirmed: i.mode === "confirmed" && i.booking.confirmed ? { studio: i.booking.confirmed.studio, day: i.booking.confirmed.day, time: i.booking.confirmed.time, address: i.booking.confirmed.address } : null,
     returning_customer: i.booking.returning,
   };
   const rows = Array.isArray(i.thread) ? i.thread : [];
@@ -479,10 +536,11 @@ export function buildTurnContext(i: TurnContextInput): string {
 }
 
 // ---------------------------------------------------------------------------
-// Request bodies. claude-sonnet-5-5 returns a 400 for any non-default
-// temperature and for forced tool_choice, so the primary call is effort low
-// with adaptive thinking (thinking left out) and tool_choice auto. The
-// fallback, AI_MODEL (Haiku 4.5), rejects effort, so it carries temperature.
+// Request bodies. claude-opus-5-5 rejects sampling parameters, a thinking
+// budget and forced tool_choice (all 400s), and its effort defaults to medium,
+// so the primary call sets effort low explicitly, leaves thinking out (it
+// always runs adaptive) and uses tool_choice auto. The fallback, AI_MODEL
+// (Haiku 4.5), rejects effort, so it carries temperature instead.
 // ---------------------------------------------------------------------------
 export function buildRequestBody(model: string, primary: boolean, system: string, messages: unknown[]): Record<string, unknown> {
   const base = {
@@ -510,8 +568,11 @@ function withoutThinking(messages: any[]): any[] {
 // set_details: validation is pure, so it is tested without any I/O.
 // ---------------------------------------------------------------------------
 export type Validated = { patch: Record<string, unknown>; clear: string[]; got: string[]; errors: string[] };
-export const START_OVER_CLEARS = ["day", "dayDate", "dayIso", "dayIsoOf", "time", "timeBand", "timeBandId", "area", "areaAt", "prefer", "chosen", "picks", "picksAt", "offerMode", "cheapPick", "customStudio", "backup", "sameDayAsked"];
-type ValidateDeps = Pick<CoreCtx, "dayLabel" | "isEmail" | "parseName" | "detectAreaPlus" | "hours" | "earliestLabel">;
+// v206 review: "offer" too. start_over only runs with nothing live and no offer
+// open, so a session offer left behind is an old one, and booking_action
+// cancel must never act on it.
+export const START_OVER_CLEARS = ["day", "dayDate", "dayIso", "dayIsoOf", "time", "timeBand", "timeBandId", "area", "areaAt", "prefer", "chosen", "picks", "picksAt", "offerMode", "cheapPick", "customStudio", "backup", "sameDayAsked", "offer"];
+type ValidateDeps = Pick<CoreCtx, "dayLabel" | "isEmail" | "parseName" | "detectAreaPlus" | "hours" | "earliestLabel" | "noDashes">;
 const bandEnd = (label: string) => { const m = String(label || "").match(/\((\d{1,2})\s*-\s*(\d{1,2})\)/); return m ? parseInt(m[2], 10) * 60 : 21 * 60; };
 const BAND_IDS: Record<string, string> = { morning: "time_morning", afternoon: "time_afternoon", evening: "time_evening" };
 // liveLbl is set while a request is live, an offer is waiting or a booking is
@@ -523,7 +584,11 @@ export function validateDetails(args: Record<string, unknown>, data: Record<stri
   const clk = madridClock(nowMs);
   const nowMin = clk.hour * 60 + clk.minute;
   const has = (k: string) => a[k] !== undefined && a[k] !== null && a[k] !== "";
-  const liveMsg = `${liveLbl}. To change it, use booking_action cancel (or change for a confirmed booking), then save the new details and create a new request.`;
+  // v206 review (12 Oct): this used to say "use booking_action cancel ... then
+  // save the new details", and a model that follows it cancels a real booking
+  // (the studio is told at once) when someone only asks to book a second one
+  // for their partner. Cancel or change only on their own ask.
+  const liveMsg = `${liveLbl}: its day, time, area and massage stay as they are and cannot be changed with set_details. Only if they asked to cancel or move it, use booking_action (cancel, or change for a confirmed booking). If they want a second, separate booking, say the team will set it up with them here and call notify_jordan with kind question.`;
   const cur = (k: string) => (k in v.patch ? v.patch[k] : v.clear.includes(k) ? undefined : data[k]);
   const earliestWords = [deps.earliestLabel("en"), deps.earliestLabel("es")];
   const isEarliest = (t: unknown) => earliestWords.includes(String(t || ""));
@@ -620,7 +685,9 @@ export function validateDetails(args: Record<string, unknown>, data: Record<stri
     if (bad) { v.clear.push("time", "timeBand", "timeBandId"); v.errors.push(`${bad} The saved time was cleared.`); }
   }
   if (has("area")) {
-    const raw = String(a.area).trim();
+    // v206 review: the area and the name go out in deterministic copy ("near
+    // Plaza Mayor") and in the studios' request, which the guard never sees.
+    const raw = deps.noDashes(String(a.area)).trim();
     const clean = raw.replace(/^(near|cerca de|in|en|zona( de)?|around|por)\s+/i, "").replace(/[\s.,;!?]+$/, "").trim();
     if (liveLbl) v.errors.push(`area: ${liveMsg}`);
     else if (/^(anywhere|any|anywhere in madrid|cualquier(a)?( sitio| zona| lugar)?|me da igual|da igual|donde sea)$/i.test(clean)) { v.patch.area = "anywhere"; v.patch.areaAt = nowMs; v.got.push("area"); }
@@ -629,7 +696,7 @@ export function validateDetails(args: Record<string, unknown>, data: Record<stri
     } else { v.patch.area = deps.detectAreaPlus(clean) || clean; v.patch.areaAt = nowMs; v.got.push("area"); }
   }
   if (has("name")) {
-    const n = deps.parseName(String(a.name));
+    const n = deps.noDashes(deps.parseName(deps.noDashes(String(a.name)))).replace(/^[\s,]+|[\s,]+$/g, "");
     if (!n) v.errors.push(`name: "${String(a.name).slice(0, 60)}" does not look like a first name.`);
     else { v.patch.name = n.slice(0, 80); v.got.push("name"); }
   }
@@ -700,8 +767,30 @@ export function priceNumbers(text: string): number[] {
   return out;
 }
 const EMAIL_G = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
-const CONFIRM_CLAIM_RE = /\b(booked|confirmed|reserved)\b|reservad\w*|confirmad\w*|\bte (he|hemos) (reservado|confirmado)|\bqueda (reservad|confirmad)\w*/i;
-const CONFIRM_HEDGE_RE = /\b(not|nothing|no|nada|until|once|when|after|before|hasta|cuando|antes|si|if|whether|unless|yet|todav[ií]a)\b/i;
+const LINK_G = /https?:\/\/\S+|www\.\S+|\b(?:[a-z0-9-]+\.)+[a-z]{2,24}\b(?:\/\S*)?/gi;
+const OUR_LINK_RE = /^(?:https?:\/\/)?(?:www\.|book\.)?massageclub\.io(?=$|[\/?#])/i;
+// v206 review (12 Oct): a hedge used to exempt the whole sentence when "no",
+// "if" or "before" stood anywhere in it, so "Perfect, you're booked for
+// tomorrow at 18:00, no need to do anything else." went out: the #110 failure,
+// a customer who believes they are booked without a tap. Now every claim word
+// is checked on its own, and only a negation right before it ("nothing is
+// booked", "todavía no está reservado"), a condition that governs it ("until
+// you tap Yes, nothing", "whether the studio confirmed it", "before anything
+// is booked") or one right after it ("confirmed only once you tap") excuses it.
+const CONFIRM_CLAIM_G = /\b(?:booked|confirmed|reserved)\b|\b(?:reservad|confirmad)\w*|\bte (?:he|hemos) (?:reservado|confirmado)\b|\bqueda (?:reservad|confirmad)\w*/gi;
+const CLAIM_NEG_TAIL_RE = /\b(?:not|isn'?t|aren'?t|wasn'?t|nothing(?:\s+(?:is|has|gets))?|nada(?:\s+(?:est[aá]|queda))?|no(?:\s+(?:est[aá]|queda|se ha|lo hemos|la hemos))?|todav[ií]a no(?:\s+(?:est[aá]|queda|lo hemos|la hemos))?|a[uú]n no(?:\s+(?:est[aá]|queda|lo hemos|la hemos))?)\s+(?:yet\s+|todav[ií]a\s+|a[uú]n\s+)?(?:been\s+)?$/i;
+const CLAIM_COND_BEFORE_RE = /\b(?:until|once|as soon as|after|before|whether|hasta que|en cuanto|una vez que|cuando|antes de que)\b[^.!?]{0,60}$/i;
+const CLAIM_COND_AFTER_RE = /^\s+(?:only\s+(?:once|when|after|if)\b|once\b|until\b|as soon as\b|hasta que\b|en cuanto\b|una vez que\b|solo (?:cuando|si)\b)/i;
+export function claimsBooked(sentence: string): boolean {
+  const x = String(sentence || "");
+  for (const m of x.matchAll(CONFIRM_CLAIM_G)) {
+    const at = m.index || 0;
+    const before = x.slice(0, at), after = x.slice(at + m[0].length);
+    if (CLAIM_NEG_TAIL_RE.test(before) || CLAIM_COND_BEFORE_RE.test(before) || CLAIM_COND_AFTER_RE.test(after)) continue;
+    return true;
+  }
+  return false;
+}
 const DISCOUNT_RE = /descuento|discount|rebaja|\bpromo\w*|cup[oó]n|coupon|special (rate|price|offer)|tarifa especial|\d+\s?%|por ?ciento|percent/i;
 const HEALTH_RE = /\b(detox\w*|desintox\w*|toxin\w*|toxina\w*|cur(e|es|ed|ing)|cura(r|n)?|curativ\w*|heal(s|ing)?|immun\w*|inmun\w*)\b/i;
 const STAFF_RE = /\b(staff|therapists?|masseurs?|masseuses?|terapeutas?|masajistas?|personal|studios?|centros?|estudios?|they|ellos)\b/i;
@@ -733,11 +822,15 @@ export function guardReply(raw: string, g: GuardCtx, deps: GuardDeps): { ok: boo
   if (!text) reasons.push("the message is empty");
   if (text.length > 1000) reasons.push("it is longer than 1000 characters; make it shorter");
   // Links: massageclub.io only, and only when they asked what we are, for photos or for the website.
+  // v206 review: any domain at all counts as a link (WhatsApp links
+  // "evil.xyz" with no scheme), and massageclub.io must end the host, so
+  // "massageclub.io.evil.com" and "book.massageclub.io-offers.com" fail.
   const noMail = text.replace(EMAIL_G, " ");
-  const urls = noMail.match(/https?:\/\/[^\s)]+|www\.[^\s)]+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|es|net|org|io|app|me|ly|co)\b(?:\/[^\s)]*)?/g) || [];
-  if (urls.some((u) => !/^(https?:\/\/)?(www\.)?(book\.)?massageclub\.io(\b|\/|$)/i.test(u))) reasons.push("no links except book.massageclub.io");
+  // A numbered point written without its space ("1.Relaxing") is not a link.
+  const urls = (noMail.match(LINK_G) || []).map((u) => u.replace(/^[(*_"'«]+|[).,;:!?*_"'»]+$/g, "")).filter((u) => u && !/^\d+\.[^./]+$/.test(u));
+  if (urls.some((u) => !OUR_LINK_RE.test(u))) reasons.push("no links except book.massageclub.io");
   else if (/massageclub\.io/i.test(noMail) && !g.linkAsked) reasons.push("no link: they did not ask what we are, for photos or for the website");
-  if (!g.confirmed && sentences(text).some((x) => CONFIRM_CLAIM_RE.test(x) && !CONFIRM_HEDGE_RE.test(x))) reasons.push("never say it is booked, confirmed or reserved: nothing is booked until a studio offers a time and they tap Yes");
+  if (!g.confirmed && sentences(text).some(claimsBooked)) reasons.push("never say it is booked, confirmed or reserved: nothing is booked until a studio offers a time and they tap Yes");
   if (DISCOUNT_RE.test(text)) reasons.push("never mention discounts, percentages or special rates");
   if (HEALTH_RE.test(text)) reasons.push("no health claims (detox, toxins, cures, healing, immunity)");
   if (sentences(text).some((x) => STAFF_RE.test(x) && SPEAK_RE.test(x) && ENGLISH_RE.test(x) && !LANG_HEDGE_RE.test(x))) reasons.push("never promise studio staff speak English; studios in Madrid usually speak Spanish");
@@ -815,7 +908,10 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
   const T = {
     sends: 0, replies: 0, creates: 0, notifies: 0, actions: 0, guardFails: 0, saved: false,
     ended: "" as "" | "special" | "job" | "guard" | "superseded" | "send_failed",
-    stepLocked: false, declined: false, handedOff: false, fellBack: false, rounds: 0, apiMs: 0, why: "", primaryWhy: "",
+    // handedOff: a booking_action sent the turn's last message. noSave: and a
+    // session it saved itself is the truth (declineOffer's next offer).
+    // noPitch: a no thanks or a complaint, which gets no prices and no page.
+    stepLocked: false, declined: false, handedOff: false, noSave: false, noPitch: false, fellBack: false, rounds: 0, apiMs: 0, why: "", primaryWhy: "",
     tools: [] as string[], reasons: [] as string[], draft: "",
     usage: { input: 0, output: 0, cache_read: 0, cache_write: 0 },
   };
@@ -833,18 +929,29 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
     ms: ctx.now() - t0, api_ms: T.apiMs, step_before: stepBefore, step_after: s.step, guard_fails: T.guardFails,
     superseded: T.ended === "superseded", mode, usage: T.usage,
   });
+  let takenId = 0;
   const fallBack = async (reason: string, detail: string): Promise<CoreTurnResult> => {
     await putBack();
+    // The old flow answers this message after all: an older turn must not stay
+    // quiet on the strength of this turn's agent_core_taken mark.
+    if (takenId) await ctx.logEvent(from, "agent_core_released", { inbound_id: takenId }).catch(() => {});
     await ctx.logEvent(from, "agent_core_fallback", { reason, detail: detail.slice(0, 300), primary_error: T.primaryWhy || null, step: stepBefore, model, sends: 0, ms: ctx.now() - t0, reasons: T.reasons, draft: T.draft.slice(0, 300), tools: T.tools }).catch(() => {});
     return { handled: false, quiet: false, sent: 0, reason };
   };
   try {
-    const [key, thread, booking0, factsRaw, myId, names] = await Promise.all([
+    // v206 review (12 Oct): this turn marks the message it answers before
+    // anything slow, so an older turn still thinking knows a core turn has
+    // the newer one and will answer both (Hafeez's "Plzz" and "Send me"). A
+    // newer message the old flow takes ("yes" at an offer, "Hi" at start, a
+    // voice note we could not hear) leaves no mark, and the older turn still
+    // answers its own question instead of going quiet.
+    const myId = await ctx.myInboundId(from, input.text).catch(() => 0);
+    if (myId) { await ctx.logEvent(from, "agent_core_taken", { inbound_id: myId }).catch(() => {}); takenId = myId; }
+    const [key, thread, booking0, factsRaw, names] = await Promise.all([
       ctx.aiKey().catch(() => ""),
       ctx.thread(from, 20).catch(() => [] as ThreadRow[]),
       ctx.bookingFacts(s, input.L),
       ctx.facts().catch(() => ""),
-      ctx.myInboundId(from, input.text).catch(() => 0),
       ctx.studioNames().catch(() => null),
     ]);
     if (!key || !factsRaw || !names) return await fallBack("setup", !key ? "no api key" : !factsRaw ? "no facts" : "studio names unreadable");
@@ -860,8 +967,12 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
     if (stepBefore === "start") effects.push(() => ctx.logEvent(from, "flow_started", { via: "core", lang: s.data.lang || null }));
     const nowMs = ctx.now();
     const clk = madridClock(nowMs);
-    const prices = await ctx.openerFacts(dayPlusOf(s.data, nowMs)).catch(() => null);
     mode = bookingModeOf(booking, nowMs);
+    // A day the old flow saved: tagged with its date, or cleared if it has
+    // gone. Only while a booking is being built: a live request, an offer or a
+    // confirmed booking keeps its own day on the request row.
+    if (mode === "build" && reconcileDay(s.data, nowMs) === "cleared") effects.push(() => ctx.logEvent(from, "stale_day_cleared", { via: "core", step: stepBefore }));
+    const prices = await ctx.openerFacts(dayPlusOf(s.data, nowMs)).catch(() => null);
     const profileName = ctx.profileFirstName(s.wa_name);
     const fresh = newMessages(thread, input.text, input.viaVoice);
     const asked = fresh.join("\n");
@@ -882,8 +993,11 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
         allowedStudios: [...baseStudios, ...picks.map((p) => p.name)],
         allStudioNames: names,
         allowedEmails: ["support@massageclub.io", s.data.email, s.data.known?.email, ...(asked.match(EMAIL_G) || [])].filter(Boolean).map(String),
-        firstReply: stepBefore === "start" && T.replies === 0 && !booking.returning,
-        night: clk.night, confirmed: !!booking.confirmed,
+        // v206 review: "not interested, thanks" as a first message must not be
+        // answered with prices, and last month's confirmed booking does not
+        // let "your massage is booked" through today.
+        firstReply: stepBefore === "start" && T.replies === 0 && !booking.returning && !T.noPitch && !T.declined,
+        night: clk.night, confirmed: mode === "confirmed",
         ownNames: [profileName, String(s.data.name || "").split(" ")[0], String(s.data.known?.name || "").split(" ")[0]].filter(Boolean),
       };
     };
@@ -900,7 +1014,7 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
     const lockedLabel = () => liveLabel(mode, booking);
 
     const doReply = async (args: Record<string, any>): Promise<ToolOut> => {
-      if (T.handedOff) return err("Not sent: booking_action already sent them the next option or the honest update. Do not add another message.");
+      if (T.handedOff) return err("Not sent: booking_action already sent them its own message. Do not add another.");
       if (T.replies >= 2) return err("Not sent: two messages already went out this turn.");
       const rawText = String(args?.text ?? "");
       const b = args?.buttons && typeof args.buttons === "object" ? args.buttons : null;
@@ -1018,7 +1132,7 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
 
     const createRequest = async (args: Record<string, any>): Promise<ToolOut> => {
       if (T.creates >= 1) return err("Only one request per turn.");
-      if (mode !== "build") return err(`${lockedLabel()}. A new request needs booking_action cancel first.`);
+      if (mode !== "build") return err(`${lockedLabel()}. One booking at a time: if they want a second one, say the team will set it up with them here and call notify_jordan with kind question. Never cancel this one unless they asked.`);
       const d = s.data;
       const missing: string[] = [];
       if (!d.day) missing.push("day");
@@ -1027,6 +1141,9 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
       if (isTodayWord(d.day) && clk.hour >= 19) missing.push("day (today is over for massages: ask for another day)");
       const iso = taggedIso(d);
       if (iso && daysBetween(clk.iso, iso) < 0) missing.push("day (the saved day has passed)");
+      // v206 review: only a day with a known date goes to the studios. A bare
+      // weekday the old flow saved could be from a chat weeks old.
+      if (d.day && !iso && !isTodayWord(d.day) && !isTomorrowWord(d.day) && !/flexible/i.test(String(d.day))) missing.push(`day ("${String(d.day).slice(0, 40)}" has no date: save the date it means from CALENDAR with set_details, asking them only if it is unclear)`);
       const name = String(d.name || d.known?.name || profileName || "").trim();
       if (!name) missing.push("needs_name");
       if (!d.email && !d.known?.email && !d.emailRefused && !(d.offerMode && freshPicks(d, nowMs).length)) missing.push("needs_email");
@@ -1038,8 +1155,23 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
       if (await superseded()) return err("Not created: a newer message from the customer has arrived and will be answered next.");
       d.name = name.slice(0, 80);
       if (!d.email && d.known?.email) d.email = d.known.email;
-      d.prefer = ids.length ? [...ids.map((id) => picks.find((p) => String(p.id) === id)!), ...picks.filter((p) => !ids.includes(String(p.id)))].map((x) => ({ id: x.id, name: x.name })) : null;
-      d.chosen = null; d.customStudio = null;
+      // v206 review (12 Oct): a studio they already picked is kept. A tap on
+      // studio_0 (prefer) or a studio typed at await_studio_text (chosen) used
+      // to be wiped here when the model left studio_ids out, and the request
+      // fanned out with their studio not asked first. chosen becomes the first
+      // of prefer (dispatch-first, the v152 path), so dispatchAndTell reports
+      // what really went out. A studio name we could not match (customStudio)
+      // rides along on the request as before.
+      if (ids.length) {
+        d.prefer = [...ids.map((id) => picks.find((p) => String(p.id) === id)!), ...picks.filter((p) => !ids.includes(String(p.id)))].map((x) => ({ id: x.id, name: x.name }));
+        d.chosen = null; d.customStudio = null;
+      } else if (d.chosen && d.chosen.id) {
+        d.prefer = [d.chosen, ...picks.filter((p) => String(p.id) !== String(d.chosen.id))].slice(0, 3).map((x: any) => ({ id: x.id, name: x.name }));
+        d.chosen = null;
+      } else if (!Array.isArray(d.prefer) || !d.prefer.length) d.prefer = null;
+      // In build mode nothing is offered: an offer left in the session is an
+      // old one, and booking_action cancel must never act on it later.
+      d.offer = null;
       d.coreAt = new Date(nowMs).toISOString();
       T.creates++; T.sends++; T.stepLocked = true; T.saved = true;
       const out = await ctx.finalizeBooking(s, from, lang());
@@ -1081,6 +1213,7 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
       }
       if (T.notifies >= 1) return err("The team was already told this turn.");
       T.notifies++;
+      if (kind === "complaint") T.noPitch = true;
       if (kind === "wants_person") effects.push(() => ctx.notifyHuman(s, input.text));
       else effects.push(() => ctx.notifyJordan(`${who} (core, ${kind}): ${note}. Customer said: ${input.text.slice(0, 160)}`, from));
       return { content: "Noted: the team will be told. You still reply to the customer." };
@@ -1091,10 +1224,13 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
       if (T.actions >= 1) return err("Only one booking_action per turn.");
       if (mode === "build") return err("There is no live request, waiting offer or confirmed booking to act on.");
       const Lb = lang();
-      const row = s.data.offer?.row ? String(s.data.offer.row) : "";
-      const conf = mode === "confirmed" || (booking.confirmed && (booking.confirmed.startMs === null || booking.confirmed.startMs > nowMs - 2 * 3600e3)) ? booking.confirmed : null;
+      // v206 review: only an offer that is really open (booking.offer read the
+      // dispatch row). An offer left in the session from an older request used
+      // to take the cancel, so #N stayed open and its studios were never told.
+      const row = booking.offer && s.data.offer?.row ? String(s.data.offer.row) : "";
+      const conf = booking.confirmed && confirmedNow(booking, nowMs) ? booking.confirmed : null;
       if (action === "show_offer" || action === "another_time" || action === "closer_or_cheaper") {
-        if (!row || !booking.offer) return err("No offer is waiting for their tap.");
+        if (!row) return err("No offer is waiting for their tap.");
         if (await superseded()) return err("Not sent: a newer message has arrived.");
         T.actions++; T.stepLocked = true;
         if (action === "show_offer") {
@@ -1109,9 +1245,33 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
         // or saved from this turn, or "done" would overwrite the new offer.
         if (s.data.founderSaid) delete s.data.founderSaid;
         s.data.coreAt = new Date(nowMs).toISOString();
-        T.sends++; T.saved = true; T.handedOff = true;
+        T.sends++; T.saved = true; T.handedOff = true; T.noSave = true;
         await ctx.declineOffer(row, from, Lb, s, action === "another_time" ? "time" : "alt");
         return { content: "Done: the offer was turned down and they were sent the next option, or told honestly that nothing else has come in. Do not repeat it." };
+      }
+      if ((action === "cancel" || action === "change") && conf && !ctx.ownWords(asked, action)) {
+        // v206 review (12 Oct): cancelling or moving a confirmed booking
+        // messages the studio at once (handleCustomerReconfirm), and the old
+        // flow only does it on the customer's own words (v39) or their tap on
+        // rc_cancel_. When their words do not say it, they get that tap: the
+        // existing rc_ handler does the rest, and "No, keep it" comes back to
+        // the core as their words. "Can I also book one for my wife?" never
+        // cancels a real booking.
+        if (await superseded()) return err("Not sent: a newer message has arrived.");
+        const es = Lb === "es";
+        const at = [conf.studio ? (es ? `en ${conf.studio}` : `at ${conf.studio}`) : "", conf.time ? (es ? `a las ${conf.time}` : `at ${conf.time}`) : ""].filter(Boolean).join(" ");
+        const body = action === "cancel"
+          ? (es ? `Para estar seguros: ¿cancelo tu reserva${at ? " " + at : ""}? El centro se entera en ese momento.` : `Just to be sure: shall I cancel your booking${at ? " " + at : ""}? The studio is told straight away.`)
+          : (es ? `Para estar seguros: ¿quieres cambiar la hora de tu reserva${at ? " " + at : ""}?` : `Just to be sure: do you want to change the time of your booking${at ? " " + at : ""}?`);
+        const btns: Btn[] = [
+          { id: `rc_${action}_${conf.id}`, title: action === "cancel" ? (es ? "Sí, cancelar" : "Yes, cancel it") : (es ? "Sí, cambiar hora" : "Yes, change it") },
+          { id: "fx_core_keep", title: es ? "No, la mantengo" : "No, keep it" },
+        ];
+        const sent = await ctx.sendButtons(from, ctx.noDashes(body), btns, { manual: !s.data.xlang });
+        if (!sent) { T.ended = "send_failed"; return err("Not sent: WhatsApp did not accept the message."); }
+        T.actions++; T.sends++; T.handedOff = true; T.stepLocked = true;
+        effects.push(() => ctx.logEvent(from, "core_confirm_asked", { action, request_id: conf.id }));
+        return { content: `Not done yet: their words did not say to ${action} it, so they were sent a button to confirm. Nothing changes until they tap it. Do not add another message.` };
       }
       if (action === "cancel") {
         if (await superseded()) return err("Not sent: a newer message has arrived.");
@@ -1127,7 +1287,7 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
         return { content: "Cancelled, they were told and the studios holding it will be told. Nothing more is needed unless they want a new booking (then set_details with start_over and the new details, and create_request)." };
       }
       if (action === "change") {
-        if (!conf) return err("change is only for a confirmed booking. For a request still with the studios, cancel it and create a new one.");
+        if (!conf) return err("change is only for a confirmed booking. For a request still with the studios, cancel it only if they asked, and create a new one.");
         if (await superseded()) return err("Not sent: a newer message has arrived.");
         T.actions++; T.sends++; T.saved = true; T.stepLocked = true;
         await ctx.reconfirm("change", String(conf.id), from, Lb, s);
@@ -1187,6 +1347,10 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
         break;
       }
       const results: any[] = [];
+      // v206 review: a reply sent in the same batch as a no thanks or a
+      // complaint is checked as one; the first-message price rule is for
+      // someone who wants to book.
+      if (uses.some((u) => (u.name === "set_details" && u.input?.declined === true) || (u.name === "notify_jordan" && u.input?.kind === "complaint"))) T.noPitch = true;
       // A reply written in the same breath as studio_options, create_request or
       // booking_action was written before their result: it waits a round.
       let unseen = false;
@@ -1211,7 +1375,7 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
       return { handled: true, quiet: true, sent: 0, reason: "superseded" };
     }
     if (T.sends > 0) {
-      if (!T.handedOff) {
+      if (!T.noSave) {
         if (s.data.founderSaid) delete s.data.founderSaid;
         s.data.coreAt = new Date(ctx.now()).toISOString();
         await ctx.saveSession(s);
@@ -1219,7 +1383,12 @@ export async function runCoreTurn(ctx: CoreCtx, input: CoreTurnInput): Promise<C
       if (T.ended === "guard") effects.push(() => ctx.notifyJordan(`The bot's second answer to +${from} broke the house rules (${T.reasons.join("; ").slice(0, 120)}) and was not sent. Draft: ${T.draft.slice(0, 140)}`, from));
       for (const f of effects) await f().catch((e) => console.log("[core] effect failed", String(e)));
       await ctx.logEvent(from, "agent_core_turn", { ...meta(), quiet: false }).catch(() => {});
-      if (stepBefore === "start" && !T.ended && !T.handedOff) await ctx.sendReservePage(s, from).catch(() => {});
+      // v206 review (12 Oct): the booking page ("Prefer to pick it all
+      // yourself? Book now") is a second way to book, so it never follows a no
+      // thanks, a complaint, a request the studios already have or a
+      // booking_action, and never once the chat has moved past building one.
+      if (stepBefore === "start" && !T.ended && !T.handedOff && !T.declined && !T.noPitch && T.creates === 0 && T.actions === 0
+        && mode === "build" && !["done", "human", "await_go", "await_email_post", "muted"].includes(s.step)) await ctx.sendReservePage(s, from).catch(() => {});
       return { handled: true, quiet: false, sent: T.sends };
     }
     if (done && input.ackOnly && !T.ended) {

@@ -60,7 +60,7 @@
 
 import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/eaf1efa/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
-import { runCoreTurn, coreTakes, parseCoreMode, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
+import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
@@ -6016,7 +6016,8 @@ async function afterTime(s: Session, from: string, L: string) {
   }
   if (s.data.rebook && s.data.known?.name) {
     s.data.name = s.data.known.name;
-    s.data.email = s.data.known.email || null;
+    // v206 review: an email agent_core saved in this chat is kept (see askNameOrFinalize).
+    s.data.email = (s.data.coreAt && s.data.email) || s.data.known.email || null;
     await finalizeBooking(s, from, L);
     return;
   }
@@ -6034,9 +6035,16 @@ async function afterTime(s: Session, from: string, L: string) {
 async function askNameOrFinalize(s: Session, from: string, L: string) {
   // v156: the form asked their name and email; neither is asked again.
   if (s.data.nameFromFlow && s.data.name) { await finalizeBooking(s, from, L); return; }
+  // v206 review (12 Oct): in a chat agent_core has spoken in (coreAt), the
+  // name and email it saved stand. A tap on studio_0 after the core had taken
+  // "ana@x.com" from a customer resumed from the email link used to set the
+  // email back to null (known has no email), send the request without one and
+  // ask for it again; without known, a name they typed was swapped for their
+  // WhatsApp profile name. Other chats are untouched.
+  if (s.data.coreAt && s.data.name) { await finalizeBooking(s, from, L); return; }
   if (s.data.known?.name) {
     s.data.name = s.data.known.name;
-    s.data.email = s.data.known.email || null;
+    s.data.email = (s.data.coreAt && s.data.email) || s.data.known.email || null;
     await finalizeBooking(s, from, L);
     return;
   }
@@ -6096,16 +6104,47 @@ async function coreInboundId(phone: string, text: string): Promise<number> {
   const mine = rows.find((x: any) => clean(x.body) === String(text || "").trim());
   return Number((mine || rows[0]).id) || 0;
 }
+// v206 review (12 Oct): "newer" means newer AND taken by a core turn, which
+// marks itself with agent_core_taken as it starts (agent_core_released if it
+// then falls back to the old flow). Any newer text used to count, so "Is there
+// parking near the studio?" then "yes" at an offer left the parking question
+// unanswered ("yes" is reshowOffer's, the old flow's), and a voice note
+// (msg_type audio) never counted at all, so a text and a voice note a second
+// apart were both answered in full. What is left: a newer core turn that falls
+// back only after the older one went quiet. That needs a second failure in the
+// same few seconds (the guard twice, or both models down), and is logged.
 async function coreNewerInbound(phone: string, id: number): Promise<boolean> {
   if (!id) return false;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.in&msg_type=eq.text&id=gt.${id}&limit=1&select=id`, { headers: H() });
+  const since = new Date(Date.now() - 10 * 60e3).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?phone=eq.${digitsOf(phone)}&event=in.(agent_core_taken,agent_core_released)&created_at=gte.${since}&order=created_at.desc&limit=40&select=event,meta`, { headers: H() });
   const rows = await r.json().catch(() => []);
-  return Array.isArray(rows) && rows.length > 0;
+  if (!Array.isArray(rows)) return false;
+  const released = new Set(rows.filter((x: any) => x?.event === "agent_core_released").map((x: any) => Number(x?.meta?.inbound_id || 0)));
+  return rows.some((x: any) => x?.event === "agent_core_taken" && Number(x?.meta?.inbound_id || 0) > id && !released.has(Number(x.meta.inbound_id)));
 }
 async function coreLastOutbound(phone: string): Promise<string> {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.out&msg_type=neq.status_failed&order=created_at.desc&limit=1&select=body`, { headers: H() });
   const rows = await r.json().catch(() => []);
   return Array.isArray(rows) && rows[0] ? String(rows[0].body || "") : "";
+}
+// v206 review (12 Oct): when a confirmed booking starts. Requests stay at
+// stage confirmed after the massage and no code writes confirmed_start, so
+// without this a customer confirmed once was "confirmed" on every later visit:
+// set_details, studio_options and create_request locked, and the guard's
+// "never say booked" switched off. The day (with its Fecha) is read the way
+// dispatch reads it, from the day the request was made; no time means late
+// that day. null only when the day cannot be read at all, and then it counts
+// for a week from the request (agent_core's confirmedNow).
+function coreConfirmedStart(req: any, createdMs: number): number | null {
+  if (req.confirmed_start) return Date.parse(String(req.confirmed_start)) || null;
+  const day = resolveRequestDate(req.confirmed_day || req.day1, req.message_text, new Date(createdMs || Date.now()));
+  if (!day) return null;
+  const hm = String(req.confirmed_time || req.time1 || "").match(/\b(\d{1,2})[:.h](\d{2})\b/);
+  return hm ? madridInstant(day, Math.min(23, +hm[1])).getTime() + Math.min(59, +hm[2]) * 60e3 : madridInstant(day, 21).getTime();
+}
+function coreConfirmedStillAhead(req: any, createdMs: number): boolean {
+  const start = coreConfirmedStart(req, createdMs);
+  return start !== null ? start > Date.now() - 2 * 3600e3 : !!createdMs && Date.now() - createdMs < 7 * 86400e3;
 }
 // What the core is told about the booking, read fresh every turn: the open
 // request and how many studios really have it (askedStudios, the rows are the
@@ -6114,19 +6153,19 @@ async function coreLastOutbound(phone: string): Promise<string> {
 async function coreBookingFacts(s: Session, L: string): Promise<CoreBooking> {
   const out: CoreBooking = { live: null, offer: null, confirmed: null, returning: null };
   const num = "+" + digitsOf(s.phone);
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=id,service_name,studio_name,partner_id,day1,time1,area,stage,confirmed_day,confirmed_time,confirmed_start,created_at`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent(num)}&stage=neq.dismissed&order=created_at.desc&limit=1&select=id,service_name,studio_name,partner_id,day1,time1,area,stage,confirmed_day,confirmed_time,confirmed_start,created_at,message_text`, { headers: H() });
   const req = ((await r.json().catch(() => [])) || [])[0] || null;
   if (req) {
     const id = Number(req.id), stage = String(req.stage || "");
     const createdMs = Date.parse(String(req.created_at || "")) || 0;
     if ([...OPEN_STAGES, "needs_contact"].includes(stage) && Date.now() - createdMs < 3 * 86400e3) {
       out.live = { id, stage, massage: String(req.service_name || ""), day: String(req.day1 || ""), time: String(req.time1 || ""), area: String(req.area || ""), studios_asked: await askedStudios(id), createdMs };
-    } else if (stage === "confirmed") {
+    } else if (stage === "confirmed" && coreConfirmedStillAhead(req, createdMs)) {
       const pc = req.partner_id ? await partnerCard(String(req.partner_id)) : null;
       out.confirmed = {
         id, studio: String(pc?.business_name || req.studio_name || ""), day: String(req.confirmed_day || req.day1 || ""), time: String(req.confirmed_time || req.time1 || ""),
         address: String(pc?.address || ""), price_text: req.partner_id ? await offerPriceText(id, String(req.partner_id), String(req.service_name || ""), "", L) : "",
-        startMs: req.confirmed_start ? Date.parse(String(req.confirmed_start)) || null : null,
+        startMs: coreConfirmedStart(req, createdMs), createdMs,
       };
     } else out.returning = { name: String(s.data.known?.name || ""), last: `#${id}, ${req.service_name || "massage"}, ${req.day1 || ""}, ${stage}` };
   }
@@ -6174,9 +6213,13 @@ async function genderOnLiveRequest(from: string, g: string): Promise<number | nu
 // so from dispatch-studios' chase sweep, inside its own hours, which is the
 // rule for a customer who cancels (the same as cancelOffered, v204).
 async function cancelOpenRequest(s: Session, from: string, L: string, text: string): Promise<boolean> {
+  // v206 review: needs_contact too. coreBookingFacts counts a request parked
+  // for no email as live, and "please cancel it" was told there was nothing
+  // to cancel while it stayed parked and Jordan was never told.
+  const CANCELLABLE = [...OPEN_STAGES, "needs_contact"];
   const lr = await lastRequestFor(from);
-  if (!lr || !OPEN_STAGES.includes(String(lr.stage || ""))) return false;
-  const up = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(lr.id)}&stage=in.(${OPEN_STAGES.join(",")})`, {
+  if (!lr || !CANCELLABLE.includes(String(lr.stage || ""))) return false;
+  const up = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(lr.id)}&stage=in.(${CANCELLABLE.join(",")})`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
     body: JSON.stringify({ stage: "cancelled", customer_flag: "cancelled", stage_note: "Cancelled by the customer on WhatsApp before any offer (wa-bot v206)", stage_updated_at: new Date().toISOString() }),
   });
@@ -6219,6 +6262,9 @@ function coreCtx(): CoreCtx {
     thread: coreThread,
     myInboundId: coreInboundId,
     newerInbound: coreNewerInbound,
+    // v206 review: the v39 test, so a confirmed booking is only cancelled or
+    // moved on the customer's own words (or their tap on the rc_ button).
+    ownWords: (t: string, kind: "cancel" | "change") => kind === "cancel" ? (CANCEL_RE.test(t) || DECLINE_RE.test(t)) : (CHANGE_RE.test(t) && !GOODBYE_RE.test(t)),
     bookingFacts: coreBookingFacts,
     openerFacts,
     profileFirstName: firstNameFromProfile,
@@ -7468,6 +7514,7 @@ const handleInner = async (req: Request) => {
         offerTimeNamed: s.step === "await_offer" && !!parseOfferedTime(text) && parseOfferedTime(text) !== String(s.data.offer?.time || ""),
         confirmLater: CONFIRM_LATER_RE.test(text), emailOnly: isEmail(text),
         bareOpener: HI_RE.test(text.trim()) || AD_OPENER_RE.test(text.trim()),
+        adOpener: AD_OPENER_RE.test(text.trim()),
       })
       : { ok: false, why: "no_text" };
     // Clothing questions get a real answer about professional standards, then
@@ -8018,6 +8065,17 @@ const handleInner = async (req: Request) => {
         break;
       }
       case "await_day": {
+        // v206 review (12 Oct): the core saves a clock time with no day only
+        // after checking it against studio hours, not against today's clock
+        // (it cannot know the day yet). At 18:55, "18:00" then a tap on Today
+        // would send the studios a time already gone. The tapped day goes
+        // through the core's own check first; a time it rules out is cleared,
+        // and the plain day branch below asks the time again.
+        if ((replyId === "day_today" || replyId === "day_tomorrow") && s.data.coreAt && s.data.time) {
+          const iso = madridCalendar(Date.now(), 2)[replyId === "day_today" ? 0 : 1].iso;
+          const chk = validateDetails({ day: iso }, { ...s.data, day: null, dayDate: null }, Date.now(), coreCtx(), L === "es" ? "es" : "en");
+          if (chk.errors.length || chk.clear.includes("time")) { for (const k of DAY_CLEARS) delete s.data[k]; await logEvent(from, "core_time_cleared", { tapped: replyId, why: (chk.errors[0] || "earliest").slice(0, 120) }); }
+        }
         // v206: agent_core saves everything a customer says in one go ("evening
         // near Salamanca"), then asks the day with these buttons. With the time
         // already known, the tap goes on from it the way a date tapped on the

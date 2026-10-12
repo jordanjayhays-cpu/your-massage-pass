@@ -1751,14 +1751,15 @@ for (const [msg, want, note] of [
   const here = path.dirname(fileURLToPath(import.meta.url));
   const C = await import(pathToFileURL(path.join(here, "../supabase/functions/wa-bot/agent_core.ts")).href);
   const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
-  const { HOURS, ALL_SERVICES } = await import(copyUrl);
+  const { HOURS, ALL_SERVICES, CHANGE_RE } = await import(copyUrl);
   const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
   const facts = fs.readFileSync(path.join(here, "../docs/agent/facts.md"), "utf8");
   const one = (name) => { const m = botSrc.match(new RegExp(`^const ${name} = .*$`, "m")); if (!m) throw new Error(`bot.ts: ${name} is missing`); return m[0]; };
   const lift = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(`missing: ${head}`); return src.slice(i, src.indexOf("\n}\n", i) + 3); };
-  const js = `import { HOWWORKS_RE, PHOTOQ_RE } from ${JSON.stringify(copyUrl)};\n`
-    + stripTypeScriptTypes([one("noDashes"), one("dashRanges"), one("WHO_RE"), one("linkAsked"), lift(botSrc, "function stripUnaskedLink(")].join("\n"))
-    + `\nexport { noDashes, dashRanges, linkAsked, stripUnaskedLink };\n`;
+  const js = `import { HOWWORKS_RE, PHOTOQ_RE, resolveRequestDate, madridInstant } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes([one("noDashes"), one("dashRanges"), one("WHO_RE"), one("linkAsked"), one("DECLINE_RE"), lift(botSrc, "function stripUnaskedLink("),
+      lift(botSrc, "function coreConfirmedStart("), lift(botSrc, "function coreConfirmedStillAhead(")].join("\n"))
+    + `\nexport { noDashes, dashRanges, linkAsked, stripUnaskedLink, DECLINE_RE, coreConfirmedStart, coreConfirmedStillAhead };\n`;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-core-"));
   const file = path.join(dir, "core.mjs");
   fs.writeFileSync(file, js);
@@ -1781,7 +1782,7 @@ for (const [msg, want, note] of [
   const AD = "Hi, I'd like to book a massage. I saw you on Facebook.";
   const takes = (step, text, o = {}) => C.coreTakes({ mode: "test", phone: "34600001234", step, text, jobSeeker: false,
     offerTimeNamed: step === "await_offer" && !!parseOfferedTime(text) && parseOfferedTime(text) !== "18:00",
-    confirmLater: CONFIRM_LATER_RE.test(text), emailOnly: isEmail(text), bareOpener: HI_RE.test(text.trim()) || AD_OPENER_RE.test(text.trim()), ...o }).ok;
+    confirmLater: CONFIRM_LATER_RE.test(text), emailOnly: isEmail(text), bareOpener: HI_RE.test(text.trim()) || AD_OPENER_RE.test(text.trim()), adOpener: AD_OPENER_RE.test(text.trim()), ...o }).ok;
   check("coreTakes", "job seeker", takes("await_day", "Estoy buscando trabajo de masaje", { jobSeeker: true }), false, "#91 Manju: the job-seeker gate answers");
   for (const st of ["human", "await_go", "await_reconfirm", "await_change", "await_studio_text"]) check("coreTakes", `step ${st}`, takes(st, "hello there, any news?"), false, "");
   check("coreTakes", "start + Hi", takes("start", "Hi"), false, "greet() sends Jordan's opener");
@@ -1804,7 +1805,7 @@ for (const [msg, want, note] of [
       const long = L === "es" ? c.es : c.en;
       return c.plus === 0 ? { day: L === "es" ? "Hoy" : "Today", dayDate: long } : c.plus === 1 ? { day: L === "es" ? "Mañana" : "Tomorrow", dayDate: long } : { day: long, dayDate: null };
     },
-    isEmail, parseName, hours: HOURS, earliestLabel: (L) => COPY[L === "es" ? "es" : "en"].earliestToday,
+    isEmail, parseName, hours: HOURS, earliestLabel: (L) => COPY[L === "es" ? "es" : "en"].earliestToday, noDashes: G.noDashes,
     detectAreaPlus: (t) => detectArea(t) || (/majadahonda/i.test(t) ? "Majadahonda" : /lavapi[eé]s/i.test(t) ? "Lavapiés" : ""),
   };
   const V = (args, at = M(10), data = {}, L = "en", live = "") => C.validateDetails(args, data, at, vdeps, L, live);
@@ -1844,7 +1845,9 @@ for (const [msg, want, note] of [
   C.applyPatch(so, V({ start_over: true }, M(10), so));
   check("set_details start_over", "clears the booking, keeps who they are", [so.day, so.time, so.area, so.picks, so.offerMode, so.prefer, so.lang, so.name, so.email], [undefined, undefined, undefined, undefined, undefined, undefined, "es", "Ana", "ana@gmail.com"], "");
   const live = V({ day: "2026-10-13", name: "Rajesh" }, M(10), {}, "en", "Request #109 is with the studios");
-  check("set_details live", "day is refused, name is kept", [live.errors.length, /booking_action cancel/.test(live.errors[0] || ""), live.patch.name, "day" in live.patch], [1, true, "Rajesh", false], "#109: the area cannot move behind the studios' backs");
+  check("set_details live", "day is refused, name is kept", [live.errors.length, /Only if they asked to cancel or move it, use booking_action/.test(live.errors[0] || ""), live.patch.name, "day" in live.patch], [1, true, "Rajesh", false], "#109: the area cannot move behind the studios' backs");
+  // v206 review: the refusal never pushes a cancel; a second booking goes to the team.
+  check("set_details live", "never suggests cancelling unasked", [/use booking_action cancel/.test(live.errors[0] || ""), /second, separate booking[^.]*notify_jordan/.test(live.errors[0] || "")], [false, true], "\"can I also book one for my wife?\" must not cancel a real booking");
 
   // 4. nextStep, one rung each.
   for (const [data, prof, want] of [
@@ -1933,7 +1936,7 @@ for (const [msg, want, note] of [
   check("turn context", "phone country", tc.includes("Spain (+34)"), true, "");
 
   // 8. Request bodies.
-  const sb = C.buildRequestBody("claude-sonnet-5-5", true, "sys", []);
+  const sb = C.buildRequestBody("claude-opus-5-5", true, "sys", []);
   const hb = C.buildRequestBody("claude-haiku-4-5-20251001", false, "sys", []);
   check("request body", "sonnet 5.5", ["temperature" in sb, sb.output_config?.effort, sb.tool_choice?.type, sb.system?.[0]?.cache_control?.type, "thinking" in sb], [false, "low", "auto", "ephemeral", false], "Sonnet 5.5 refuses a non-default temperature and forced tool_choice");
   check("request body", "haiku fallback", [hb.temperature, "output_config" in hb, "thinking" in hb, hb.tool_choice?.type], [0.2, false, false, "auto"], "Haiku 4.5 refuses effort");
@@ -1966,10 +1969,11 @@ for (const [msg, want, note] of [
     const ctx = {
       now: () => o.now ?? M(10),
       fetch: async (_url, init) => { log.bodies.push(JSON.parse(init.body)); const r = responses[i++]; if (!r) throw new Error("no response left"); if (r.status) return { ok: false, status: r.status, json: async () => ({ error: { message: "boom" } }) }; return { ok: true, status: 200, json: async () => r }; },
-      aiKey: async () => "test-key", model: "claude-sonnet-5-5", fallbackModel: "claude-haiku-4-5-20251001",
+      aiKey: async () => "test-key", model: "claude-opus-5-5", fallbackModel: "claude-haiku-4-5-20251001",
       facts: async () => facts,
       thread: async () => o.thread || [{ id: 7, dir: "in", body: o.text || "hi", at: at(9, 59), type: "text" }],
       myInboundId: async () => 7, newerInbound: async () => !!o.newer,
+      ownWords: (t, kind) => kind === "cancel" ? (CANCEL_RE.test(t) || G.DECLINE_RE.test(t)) : (CHANGE_RE.test(t) && !GOODBYE_RE.test(t)),
       bookingFacts: async () => o.booking || booking0,
       openerFacts: async () => ({ lo: 50, hi: 60, areas: [] }),
       profileFirstName: firstNameFromProfile,
@@ -2006,7 +2010,7 @@ for (const [msg, want, note] of [
     const r = await C.runCoreTurn(ctx, turn(s, "tomorrow evening please"));
     check("core turn", "details kept, area asked", [r.handled, r.sent, log.sent.map((x) => x[0]), s.step, s.data.day, s.data.timeBandId, ev(log, "day_chosen").length, ev(log, "agent_core_turn").length], [true, 1, ["list"], "await_area", "Tomorrow", "time_evening", 1, 1], "");
     const b0 = log.bodies[0];
-    check("core turn", "the request", [b0.model, b0.output_config.effort, "temperature" in b0, b0.messages[0].content.includes("NEW MESSAGES TO ANSWER")], ["claude-sonnet-5-5", "low", false, true], "");
+    check("core turn", "the request", [b0.model, b0.output_config.effort, "temperature" in b0, b0.messages[0].content.includes("NEW MESSAGES TO ANSWER")], ["claude-opus-5-5", "low", false, true], "");
   }
   // b. The API down on both models: the old flow answers, the session as it was.
   {
@@ -2084,7 +2088,7 @@ for (const [msg, want, note] of [
     const { ctx, log } = mkCtx([resp(tu("set_details", { area: "Majadahonda" })), resp(tu("reply", { text: "Your request #109 is with 3 studios in Madrid. Would you like me to ask studios closer to Majadahonda instead?" }))], { booking: bk });
     const s = sess("done", { area: "Madrid" });
     const r = await C.runCoreTurn(ctx, turn(s, "I stay at Majadahonda"));
-    check("core turn", "live request", [r.handled, s.data.area, log.bodies[1].messages[2].content[0].is_error, /booking_action cancel/.test(log.bodies[1].messages[2].content[0].content), s.step], [true, "Madrid", true, true, "done"], "Rajesh (#109) was told \"we are checking with studios near you\"");
+    check("core turn", "live request", [r.handled, s.data.area, log.bodies[1].messages[2].content[0].is_error, /use booking_action \(cancel/.test(log.bodies[1].messages[2].content[0].content), s.step], [true, "Madrid", true, true, "done"], "Rajesh (#109) was told \"we are checking with studios near you\"");
   }
   // l. A reply written alongside studio_options waits for its result.
   {
@@ -2138,6 +2142,158 @@ for (const [msg, want, note] of [
     const r = await C.runCoreTurn(ctx, turn(s, "sometime soon"));
     check("core turn", "buttons follow the order", [r.handled, log.sent.length, log.sent[0][2][0], s.step], [true, 1, "day_today", "await_day"], "");
   }
+
+  // 12. The two reviews of 12 Oct (safety and integration), one check or more
+  // per finding, written as each was reported.
+  // Safety 1: "never says booked" could be excused by any hedge word anywhere in the sentence.
+  for (const [t, note] of [
+    ["Perfect, you're booked for tomorrow at 18:00, no need to do anything else.", "a stray \"no\" used to excuse the whole sentence"],
+    ["Great news: your massage is confirmed for 18:00, see you there if you need anything write here.", "\"if\" after the claim"],
+    ["Tu masaje queda reservado para mañana a las 18:00, no tienes que hacer nada más.", ""],
+    ["Nothing is booked yet, but your massage is confirmed for 18:00.", "a hedge on one claim does not cover the next"],
+    ["If you need anything, your massage is confirmed for 18:00.", "a condition that does not govern the claim"],
+  ]) check("guard fails (v206 review)", t, GR(t).ok, false, note);
+  for (const [t, note] of [
+    ["It is only confirmed once you tap Yes on a studio's offer.", ""],
+    ["Once you tap Yes, it is booked.", ""],
+    ["Todavía no está reservado: te escribo en cuanto un centro conteste.", ""],
+    ["Nada está reservado hasta que toques Sí.", ""],
+    ["You'll get each offer here with its price, before anything is booked.", "the prompt's own words"],
+  ]) check("guard passes (v206 review)", t, [GR(t).ok, GR(t).reasons], [true, []], note);
+  // Safety 3: links that only start like ours, and links with no scheme.
+  for (const [t, note] of [
+    ["Here is our site: https://massageclub.io.evil.com/reserve", "massageclub.io must end the host"],
+    ["Book at book.massageclub.io-offers.com", ""],
+    ["See photos at studio-photos.info or evil.xyz", "no scheme, and WhatsApp still links it"],
+  ]) check("guard fails (v206 review)", t, GR(t, { linkAsked: true }).ok, false, note);
+  check("guard passes (v206 review)", "our link ending a sentence", GR("Here it is: https://book.massageclub.io.", { linkAsked: true }).ok, true, "");
+  check("guard passes (v206 review)", "a numbered point with no space", GR("1.Relaxing, 60 min.").ok, true, "not a link");
+  // Safety 9: dashes in a saved area or name reach deterministic copy and the studios.
+  check("set_details area", "an en dash", V({ area: "Mirasierra \u2013 Fuencarral" }).patch.area, "Mirasierra, Fuencarral", "\"near Mirasierra \u2013 Fuencarral\" went out in offerStudios and to the studios");
+  check("set_details name", "an em dash", V({ name: "Ana \u2014 Maria" }).patch.name, "Ana", "");
+  // Safety 2, safety 6, integration 1: last month's confirmed booking.
+  const oldConf = { live: null, offer: null, confirmed: { id: 90, studio: "Calma Madrid Spa", day: "Saturday", time: "18:00", address: "", price_text: "", startMs: M(18, 0, -16), createdMs: M(10, 0, -18) }, returning: null };
+  check("confirmedNow", "last month's booking", [C.confirmedNow(oldConf, M(10)), C.bookingModeOf(oldConf, M(10))], [false, "build"], "");
+  const noStart = (daysAgo) => ({ ...oldConf, confirmed: { ...oldConf.confirmed, startMs: null, createdMs: M(10, 0, -daysAgo) } });
+  check("confirmedNow", "no start, made 2 days ago", C.confirmedNow(noStart(2), M(10)), true, "");
+  check("confirmedNow", "no start, made 9 days ago", C.confirmedNow(noStart(9), M(10)), false, "locked out of booking for good");
+  check("turn context", "an old confirmed booking is not shown as confirmed", JSON.parse(C.buildTurnContext(ctxIn({ booking: oldConf, mode: "build" })).split("BOOKING STATE: ")[1].split("\n")[0]).confirmed, null, "");
+  {
+    const { ctx, log } = mkCtx([resp(tu("reply", { text: "Your massage is booked for Saturday at 18:00." })), resp(tu("reply", { text: "Lovely to hear from you again. Which day would you like this time?", buttons: { kind: "days" } }))], { booking: oldConf });
+    const s = sess("await_day");
+    const r = await C.runCoreTurn(ctx, turn(s, "I want another one"));
+    const m = ev(log, "agent_core_turn")[0]?.[1] || {};
+    check("core turn", "last month's booking does not unlock \"booked\"", [r.handled, log.sent.length, m.guard_fails, m.mode], [true, 1, 1, "build"], "");
+  }
+  {
+    // The bot.ts side: when a confirmed request starts, read off the request.
+    const dayMs = 86400e3, now0 = Date.now(), ahead = new Date(now0 + 3 * dayMs);
+    const EN_M = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+    check("coreConfirmedStillAhead", "confirmed 3 weeks ago, no confirmed_start", G.coreConfirmedStillAhead({ day1: "Saturday", time1: "18:00", confirmed_start: null }, now0 - 22 * dayMs), false, "requests stay at confirmed after the massage");
+    check("coreConfirmedStillAhead", "booked for 3 days ahead", G.coreConfirmedStillAhead({ day1: "Saturday", time1: "18:00", message_text: `Quiere: x | Fecha: ${ahead.getUTCDate()} ${EN_M[ahead.getUTCMonth()]}`, confirmed_start: null }, now0), true, "");
+    check("coreConfirmedStillAhead", "no day at all, made yesterday", G.coreConfirmedStillAhead({ day1: "", confirmed_start: null }, now0 - dayMs), true, "");
+    check("coreConfirmedStillAhead", "no day at all, made 9 days ago", G.coreConfirmedStillAhead({ day1: "", confirmed_start: null }, now0 - 9 * dayMs), false, "");
+    check("coreConfirmedStillAhead", "confirmed_start wins", G.coreConfirmedStillAhead({ day1: "Today", confirmed_start: new Date(now0 - 3 * 3600e3).toISOString() }, now0), false, "two hours after the start");
+  }
+  // Safety 4: a studio they already picked is kept.
+  for (const [label, extra, want] of [
+    ["a studio_0 tap (prefer)", { prefer: [{ id: "p2", name: "Calma Madrid Spa" }, { id: "p1", name: "Sinergia38" }] }, ["p2", null]],
+    ["a studio typed by name (chosen)", { chosen: { id: "p9", slug: "aloha", name: "Centro Aloha", svc: null, price: null } }, ["p9", null]],
+  ]) {
+    const { ctx } = mkCtx([resp(tu("create_request", {})), resp({ type: "text", text: "" })]);
+    let at = null;
+    const fin = ctx.finalizeBooking;
+    ctx.finalizeBooking = async (s, ...rest) => { at = { prefer: s.data.prefer, chosen: s.data.chosen }; return fin(s, ...rest); };
+    const s = sess("await_name", { day: "Tomorrow", dayDate: "Tuesday 13 October", time: "18:00", area: "Chamberí", email: "ana@gmail.com", ...extra });
+    await C.runCoreTurn(ctx, turn(s, "Ana"));
+    check("core turn", `create_request keeps ${label}`, [at?.prefer?.[0]?.id ?? null, at?.chosen ?? null], want, "it used to fan out with their studio not asked first");
+  }
+  check("turn context", "the chosen studio is in the booking state", JSON.parse(C.buildTurnContext(ctxIn({ data: { prefer: [{ id: "p2", name: "Calma Madrid Spa" }] } })).split("BOOKING STATE: ")[1].split("\n")[0]).studio_chosen, "Calma Madrid Spa", "");
+  // Safety 5, integration 4: the ad's line and old days.
+  check("coreTakes", "the ad line at await_area", takes("await_area", AD), false, "Salado, 12 Oct: v201's restart must run");
+  check("coreTakes", "the ad line at done", takes("done", AD), false, "");
+  const rd = (data, at0 = M(10)) => { const d = { ...data }; const r = C.reconcileDay(d, at0); return [r, d.day ?? null, d.time ?? null, d.dayIso ?? null]; };
+  check("reconcileDay", "a listed date gone by", rd({ day: "Sunday 27 September", time: "18:00" }), ["cleared", null, null, null], "Salado's day, two weeks gone");
+  check("reconcileDay", "detectDay's \"24 september\"", rd({ day: "24 september", time: "18:00" })[0], "cleared", "");
+  check("reconcileDay", "a listed date ahead", rd({ day: "Saturday 17 October", time: "18:00" }), ["tagged", "Saturday 17 October", "18:00", "2026-10-17"], "");
+  check("reconcileDay", "in Spanish", rd({ day: "sábado 17 de octubre" })[3], "2026-10-17", "");
+  check("reconcileDay", "a bare weekday is left", rd({ day: "Saturday", time: "18:00" }), ["kept", "Saturday", "18:00", null], "create_request wants it as a date");
+  check("reconcileDay", "today and flexible are not its business", [rd({ day: "Today" })[0], rd({ day: "Any day (flexible)" })[0]], ["", ""], "");
+  {
+    const { ctx, log } = mkCtx([resp(tu("create_request", {})), resp(tu("reply", { text: "Just to check, is that this Saturday, the 17th?" }))]);
+    const s = sess("await_email_req", { day: "Saturday", time: "18:00", area: "Salamanca", email: "ana@gmail.com" });
+    await C.runCoreTurn(ctx, turn(s, "ana@gmail.com"));
+    check("core turn", "a day with no date never goes to the studios", [log.finalized, /has no date/.test(log.bodies[1].messages[2].content[0].content)], [0, true], "");
+  }
+  {
+    const { ctx, log } = mkCtx([resp(tu("reply", { text: "Which day would you like?", buttons: { kind: "days" } }))]);
+    const s = sess("await_area", { day: "Sunday 27 September", time: "18:00" });
+    await C.runCoreTurn(ctx, turn(s, "Hello? are you there"));
+    check("core turn", "a day gone by is cleared before the model sees it", [s.data.day ?? null, s.data.time ?? null, /"day":null/.test(log.bodies[0].messages[0].content), ev(log, "stale_day_cleared").length], [null, null, true, 1], "");
+  }
+  // Safety 7: cancel acts on the live request, not on an old offer in the session.
+  {
+    const bk = { live: { id: 131, stage: "studio_asked", massage: "Relaxing massage", day: "Tomorrow", time: "18:00", area: "Retiro", studios_asked: 3, createdMs: M(9) }, offer: null, confirmed: null, returning: null };
+    const { ctx } = mkCtx([resp(tu("booking_action", { action: "cancel" })), resp({ type: "text", text: "" })], { booking: bk });
+    let which = "";
+    ctx.cancelOffered = async () => { which = "offered"; };
+    ctx.cancelOpenRequest = async () => { which = "open"; return true; };
+    const s = sess("done", { offer: { row: "row-83", time: "18:00", studio: "Private Spa", request: 83 } });
+    await C.runCoreTurn(ctx, turn(s, "cancel it please"));
+    check("core turn", "cancel goes to the live request", which, "open", "#N used to stay open and its studios were never told");
+    check("set_details start_over", "clears an old offer", C.START_OVER_CLEARS.includes("offer"), true, "");
+  }
+  // Safety 8, integration 9: each turn marks the message it takes.
+  {
+    const { ctx, log } = mkCtx([resp(tu("reply", { text: "Which day would you like?", buttons: { kind: "days" } }))]);
+    await C.runCoreTurn(ctx, turn(sess("await_day"), "hello"));
+    check("core turn", "agent_core_taken marks the inbound id", [ev(log, "agent_core_taken")[0]?.[1]?.inbound_id, log.events[0]?.[0]], [7, "agent_core_taken"], "an older turn only goes quiet for a newer message a core turn has");
+  }
+  check("hook", "newer means taken by a core turn", /event=in\.\(agent_core_taken,agent_core_released\)/.test(botSrc) && !/msg_type=eq\.text&id=gt/.test(botSrc), true, "\"yes\" at an offer used to silence the parking question before it");
+  {
+    const { ctx, log } = mkCtx([{ status: 500 }, { status: 503 }]);
+    await C.runCoreTurn(ctx, turn(sess("await_day"), "What type massage?"));
+    check("core turn", "a turn that falls back releases its mark", ev(log, "agent_core_released")[0]?.[1]?.inbound_id, 7, "the old flow answers it, so an older turn must still answer its own");
+  }
+  // Safety 10, integration 3 and 7: no pitch and no Book now after a no thanks, a complaint or a request.
+  {
+    const { ctx, log } = mkCtx([resp(tu("set_details", { declined: true }), tu("reply", { text: "No problem at all, thanks for letting me know. Whenever you fancy a massage, just write here." }))]);
+    const s = sess("start", { lang: "" });
+    const r = await C.runCoreTurn(ctx, turn(s, "not interested, thanks"));
+    check("core turn", "a first-message no thanks", [r.handled, log.sent.map((x) => x[0]), s.step, ev(log, "agent_core_turn")[0]?.[1]?.guard_fails], [true, ["text"], "done", 0], "no prices, no Book now");
+  }
+  {
+    const { ctx, log } = mkCtx([resp(tu("notify_jordan", { kind: "complaint", text: "says nobody answered last week" }), tu("reply", { text: "I'm really sorry about that. We're looking into it and will reply here." }))]);
+    const s = sess("start", { lang: "" });
+    const r = await C.runCoreTurn(ctx, turn(s, "You never answered me last week, terrible"));
+    check("core turn", "a first-message complaint", [r.handled, log.sent.map((x) => x[0]), ev(log, "agent_core_turn")[0]?.[1]?.guard_fails], [true, ["text"], 0], "");
+  }
+  {
+    const { ctx, log } = mkCtx([resp(tu("set_details", { day: "2026-10-13", time: "18:00", area: "Salamanca", name: "Ana", email: "ana@gmail.com" }), tu("create_request", {})), resp({ type: "text", text: "" })]);
+    const s = sess("start", { lang: "en" });
+    const r = await C.runCoreTurn(ctx, turn(s, "Tomorrow 18:00 in Salamanca please, I'm Ana, ana@gmail.com"));
+    check("core turn", "no booking page after the request went out", [r.handled, log.finalized, log.sent.some((x) => x[0] === "page")], [true, 1, false], "a second way to book the same massage");
+  }
+  // Integration 2: a confirmed booking is cancelled or moved only on the customer's own ask.
+  {
+    const bk = { live: null, offer: null, confirmed: { id: 140, studio: "Calma Madrid Spa", day: "Tomorrow", time: "18:00", address: "Calle X 1", price_text: "", startMs: M(18, 0, 1), createdMs: M(9) }, returning: null };
+    for (const [said, wantRc, wantSent, note] of [
+      ["can I also book one for my wife on Saturday?", "", [["buttons", "rc_cancel_140,fx_core_keep"]], "the model's word alone used to cancel it and tell the studio"],
+      ["Please cancel my booking for tomorrow", "cancel/140", [], "their own words: the v39 path"],
+    ]) {
+      const { ctx, log } = mkCtx([resp(tu("booking_action", { action: "cancel" }), tu("reply", { text: "Done!" })), resp({ type: "text", text: "" })], { booking: bk });
+      let rc = "";
+      ctx.reconfirm = async (kind, id) => { rc = `${kind}/${id}`; };
+      const r = await C.runCoreTurn(ctx, turn(sess("done"), said));
+      check("core turn", `confirmed booking + "${said}"`, [r.handled, rc, log.sent.map((x) => [x[0], (x[2] || []).join(",")])], [true, wantRc, wantSent], note);
+    }
+  }
+  // Integration 5, 6, 8: bot.ts.
+  check("hook", "a core chat's name and email survive a studio tap", /if \(s\.data\.coreAt && s\.data\.name\) \{ await finalizeBooking/.test(botSrc) && (botSrc.match(/s\.data\.email = \(s\.data\.coreAt && s\.data\.email\) \|\| s\.data\.known\.email \|\| null;/g) || []).length === 2, true, "ana@x.com was set back to null by askNameOrFinalize");
+  check("hook", "a Today tap rechecks a saved time", /validateDetails\(\{ day: iso \}, \{ \.\.\.s\.data, day: null, dayDate: null \}/.test(botSrc), true, "");
+  const late = V({ day: "2026-10-12" }, M(18, 55), { time: "18:00" });
+  check("set_details day", "Today at 18:55 under a saved 18:00", [late.clear.includes("time"), late.errors.length], [true, 1], "what the Today tap now runs");
+  check("hook", "needs_contact can be cancelled", /const CANCELLABLE = \[\.\.\.OPEN_STAGES, "needs_contact"\]/.test(botSrc) && /stage=in\.\(\$\{CANCELLABLE\.join\(","\)\}\)/.test(botSrc), true, "a parked request was told \"nothing to cancel\"");
 }
 
 // ---------------------------------------------------------------------------
