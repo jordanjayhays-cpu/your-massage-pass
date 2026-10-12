@@ -1236,6 +1236,498 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// v204 (12 Oct): the offer step. Eleven customers since 14 Sept were given a
+// real time by a real studio and none of them tapped Yes (offers_audit). The
+// helpers that decide the offer live in bot.ts, which imports copy.ts from a
+// pinned URL and cannot be loaded here, so the block between its "pure helpers
+// (start)" and "(end)" markers is lifted out, its types stripped, and run
+// against the local copy.ts.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const a = botSrc.indexOf("// ---- v204 offer step: pure helpers (start) ----");
+  const b = botSrc.indexOf("// ---- v204 offer step: pure helpers (end) ----");
+  if (a < 0 || b < a) throw new Error("bot.ts: the v204 offer-step helper markers are missing");
+  const names = ["askWindow", "offerFitsDay", "offerFitsTime", "offerMissBy", "offerSlotAt", "offerSchedule", "offerDue", "offerRelDay", "offerDayPhrase", "windowText", "windowEs", "quotedRangeIn", "offerFar", "offerBetterAlt", "offerRank", "ALT_OFFER_RE", "OFFER_COPY", "offerButtons", "offerBody", "OFFER_LEAD_MS", "ASK_UNREAD", "altOfferAsked", "studioWordDay", "offerDayLabel", "offerDayDate"];
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const js = `import { askBand, stripAcc, madridMidnight, madridInstant, resolveRequestDate, detectTime, COPY } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-offer-"));
+  const file = path.join(dir, "offer.mjs");
+  fs.writeFileSync(file, js);
+  const O = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  // Tuesday 13 Oct 2026, Madrid wall clock (CEST).
+  const M = (h, mi = 0, plusDays = 0) => madridInstant(new Date(Date.UTC(2026, 9, 13 + plusDays)), h).getTime() + mi * 60e3;
+  const at = (ms) => new Date(ms).toISOString();
+
+  // Buttons. WhatsApp cuts a reply button title at 20 characters.
+  check("offer buttons", "en 18:00", O.offerButtons("en", "r1", "18:00"), [
+    { id: "offer_yes_r1", title: "Yes, book 18:00" }, { id: "offer_no_r1", title: "Another time" }, { id: "offer_alt_r1", title: "Closer or cheaper" },
+  ], "Jordan's wording, 12 Oct");
+  check("offer buttons", "es 18:00", O.offerButtons("es", "r1", "18:00").map((x) => x.title), ["Sí, reserva 18:00", "Otra hora", "Más cerca o barato"],
+    "\"Más cerca o más barato\" is 22 characters and WhatsApp would cut it");
+  for (const L of ["en", "es"]) for (const t of ["18:00", "09:30", "23:45"]) {
+    check("offer buttons fit in 20 characters", `${L} ${t}`, O.offerButtons(L, "r", t).map((x) => x.title.length <= 20), [true, true, true], "");
+  }
+
+  // The window the customer asked for.
+  for (const [t1, want, note] of [
+    ["Evening (18-21)", [1080, 1260], "#77 Andy, #82 Manas"],
+    ["Hoy Tarde (13-18)", [780, 1080], "#78 Pedro"],
+    ["Mañana (10-13)", [600, 780], ""],
+    ["18:00", [1080, 1081], "an exact hour"],
+    ["Lo antes posible (desde 12:00)", [720, 1440], "#81 Alvaro: every offer said \"instead of\""],
+    ["Earliest available (from 12:00)", [720, 1440], "COPY.en.earliestToday"],
+    ["Flexible", null, "no window: any hour fits"],
+    ["", null, ""],
+  ]) check("askWindow", t1, O.askWindow(t1), want, note);
+  for (const [time, t1, want, note] of [
+    ["11:45", "Evening (18-21)", false, "#82 Manas, 19 Sept: sent anyway, never answered"],
+    ["16:00", "Evening (18-21)", false, "#77 Andy, 15 Sept"],
+    ["14:00", "Afternoon (13-18)", true, "#84 Javier: the one perfect match"],
+    ["18:00", "Tarde (13-18)", false, "#107 Willy: 18:00 is the edge, outside"],
+    ["17:45", "Tarde (13-18)", true, ""],
+    ["16:00", "Lo antes posible (desde 12:00)", true, "#81 Alvaro: inside his window, not \"instead of\""],
+    ["11:00", "Lo antes posible (desde 12:00)", false, ""],
+    ["17:00", "Flexible", true, ""],
+    ["18:00", "18:00", true, ""],
+    ["18:30", "18:00", false, ""],
+  ]) check("offerFitsTime", `${time} vs ${t1}`, O.offerFitsTime(time, t1), want, note);
+  const now13 = new Date(M(12));
+  check("offerFitsDay", "Hoy vs Today", O.offerFitsDay("Hoy", "Today", "", now13), true, "a Spanish studio, an English customer, one day");
+  check("offerFitsDay", "Mañana vs Today", O.offerFitsDay("Mañana", "Today", "", now13), false, "#78: Sinergia38 offered tomorrow 19:00 for a today request");
+  check("offerFitsDay", "no day in the studio's words", O.offerFitsDay("", "Tomorrow", "", now13), true, "");
+  check("offerMissBy", "17:00 vs 18-21", O.offerMissBy("17:00", [1080, 1260]), 60, "");
+  check("offerMissBy", "21:30 vs 18-21", O.offerMissBy("21:30", [1080, 1260]), 31, "");
+  check("offerMissBy", "19:00 vs 18-21", O.offerMissBy("19:00", [1080, 1260]), 0, "");
+
+  // Lead time. Nell (#90) was sent Calma at 10:00 at 09:56.
+  const slot90 = O.offerSlotAt("10:00", new Date(Date.UTC(2026, 9, 13)));
+  check("offerSlotAt", "10:00 on 13 Oct", at(slot90), at(M(10)), "");
+  check("never offer a slot under 45 minutes away", "#90 Nell, 10:00 sent at 09:56", slot90 - M(9, 56) < O.OFFER_LEAD_MS, true, "");
+  check("never offer a slot under 45 minutes away", "10:00 sent at 09:10", M(10) - M(9, 10) < O.OFFER_LEAD_MS, false, "");
+
+  // The follow-up and the lapse.
+  const sch = (s, sl) => { const x = O.offerSchedule(s, sl); return { chaseAt: at(x.chaseAt), lapseAt: x.lapseAt === null ? null : at(x.lapseAt) }; };
+  check("offerSchedule", "same day: 13:00 offered at 11:00 (the canary in synth.md)", sch(M(11), M(13)), { chaseAt: at(M(11, 15)), lapseAt: at(M(12, 15)) }, "15 minutes after, lapse 45 before");
+  check("offerSchedule", "same day: 18:00 offered at 12:00", sch(M(12), M(18)), { chaseAt: at(M(12, 15)), lapseAt: at(M(17, 15)) }, "");
+  check("offerSchedule", "same day: 13:30 offered at 12:00", sch(M(12), M(13, 30)), { chaseAt: at(M(12, 15)), lapseAt: at(M(12, 45)) }, "75 before the slot is earlier than 15 after, floored at 5 after");
+  check("offerSchedule", "#96 Javier: 19:00 offered at 18:11", sch(M(18, 11), M(19)), { chaseAt: at(M(18, 16)), lapseAt: at(M(18, 26)) }, "never withdrawn 4 minutes after it arrived");
+  check("offerSchedule", "another day: offered at 14:00 for tomorrow 13:00", sch(M(14), M(13, 0, 1)), { chaseAt: at(M(16)), lapseAt: at(M(12, 15, 1)) }, "two hours after");
+  check("offerSchedule", "another day: offered at 20:30, slot in two days", sch(M(20, 30), M(18, 0, 2)), { chaseAt: at(M(10, 0, 1)), lapseAt: at(M(17, 15, 2)) }, "not at 22:30: 10:00 the next morning");
+  check("offerSchedule", "another day: offered at 20:00 for tomorrow 10:00", sch(M(20), M(10, 0, 1)), { chaseAt: at(M(8, 45, 1)), lapseAt: at(M(9, 15, 1)) }, "75 before the slot wins over 10:00");
+  check("offerSchedule", "no day known", sch(M(14), null), { chaseAt: at(M(16)), lapseAt: null }, "no slot, no lapse");
+  const canary = O.offerSchedule(M(11), M(13));
+  for (const [now, want, note] of [
+    [M(11, 10), "wait", "not yet"],
+    [M(11, 16), "chase", "sentAt set back 16 minutes: exactly one reminder (the once is the sweep's diary)"],
+    [M(12, 14), "chase", ""],
+    [M(12, 15), "lapse", "at 12:15 it has gone and the studio is told"],
+  ]) check("offerDue", `13:00 offered at 11:00, now ${at(now)}`, O.offerDue(now, canary), want, note);
+  check("offerDue", "#96 at 18:16", O.offerDue(M(18, 16), O.offerSchedule(M(18, 11), M(19))), "chase", "");
+  check("offerDue", "#96 at 18:26", O.offerDue(M(18, 26), O.offerSchedule(M(18, 11), M(19))), "lapse", "");
+  check("offerDue", "a reminder due at 22:30 waits", O.offerDue(M(23), { chaseAt: M(22, 30), lapseAt: null }), "wait", "no reminders between 22:00 and 08:00");
+  check("offerDue", "and goes at 08:05", O.offerDue(M(8, 5, 1), { chaseAt: M(22, 30), lapseAt: null }), "chase", "");
+  check("offerDue", "a reminder within 5 minutes of the lapse is dropped", O.offerDue(M(12, 12), { chaseAt: M(12, 12), lapseAt: M(12, 15) }), "wait", "");
+
+  // Days in words.
+  check("offerRelDay", "slot today", O.offerRelDay(M(19), M(12), "en"), "today", "");
+  check("offerRelDay", "slot tomorrow, es", O.offerRelDay(M(10, 0, 1), M(20), "es"), "mañana", "#90: the word is worked out when it is sent, not copied");
+  check("offerRelDay", "slot in two days", O.offerRelDay(M(10, 0, 2), M(20), "en"), "", "");
+  check("offerDayPhrase", "Today", O.offerDayPhrase("Today", "en"), "today", "the audit: \"at 16:00 Today\" read oddly");
+  check("offerDayPhrase", "Tuesday 14 October", O.offerDayPhrase("Tuesday 14 October", "en"), "on Tuesday 14 October", "");
+  check("offerDayPhrase", "martes 14 de octubre", O.offerDayPhrase("martes 14 de octubre", "es"), "el martes 14 de octubre", "");
+  check("windowText", "18-21 en", O.windowText([1080, 1260], "en"), "18:00 to 21:00", "");
+  check("windowText", "18-21 es", O.windowText([1080, 1260], "es"), "hueco de 18:00 a 21:00", "");
+  check("windowText", "from 12 en", O.windowText([720, 1440], "en"), "anything from 12:00", "");
+  check("windowEs", "18-21", O.windowEs([1080, 1260]), "entre las 18:00 y las 21:00", "what the studio is told while a time is held");
+
+  // The price range the customer was told, read off what we sent them.
+  for (const [body, want, note] of [
+    ["Hi Willy, Massage Club here 👋 Happy to find you one. We book you into professional studios around Madrid, and a 60 min relaxing massage is usually 50 to 60 EUR, paid at the studio.\n\nWhat day would you like it?", { lo: 50, hi: 60 }, "the v198 opener"],
+    ["Hola Willy, somos Massage Club 👋 Te buscamos hueco encantados. Reservamos en centros profesionales de todo Madrid, y un masaje relajante de 60 min suele costar entre 50 y 85 EUR, que se pagan en el centro.", { lo: 50, hi: 85 }, "the opener in Spanish"],
+    [COPY.en.priceInfo, { lo: 50, hi: 85 }, "the price answer"],
+    ["... a 60 min relaxing massage is usually about 55 EUR, paid at the studio.", { lo: 55, hi: 55 }, "one price"],
+    ["Price: 85 EUR for 60 minutes, confirmed by the studio. You pay there, no fee.", null, "an offer's price is not a range"],
+    ["Mañana (10-13)", null, ""],
+  ]) check("quotedRangeIn", body.slice(0, 60), O.quotedRangeIn(body), want, note);
+
+  // Distance.
+  check("offerFar", "7.6 km from Orcasitas", O.offerFar(7.6, "Orcasitas", "en"), "about 8 km from Orcasitas", "#107 Willy got Chamberí with no word about it");
+  check("offerFar", "es", O.offerFar(9.4, "Tres Cantos", "es"), "a unos 9 km de Tres Cantos", "#88 Garry");
+  check("offerFar", "3.2 km", O.offerFar(3.2, "Centro", "en"), "", "near enough to say nothing");
+  check("offerFar", "anywhere", O.offerFar(9, "Anywhere in Madrid", "en"), "", "");
+  check("offerFar", "unknown", O.offerFar(NaN, "Retiro", "en"), "", "");
+
+  // The next offer after "Closer or cheaper".
+  const declined = { price: 85, km: 1.2 };
+  check("offerBetterAlt", "59 EUR, 6 km", O.offerBetterAlt({ price: 59, km: 6 }, declined), true, "cheaper");
+  check("offerBetterAlt", "90 EUR, 0.5 km", O.offerBetterAlt({ price: 90, km: 0.5 }, declined), true, "closer");
+  check("offerBetterAlt", "90 EUR, 3 km", O.offerBetterAlt({ price: 90, km: 3 }, declined), false, "neither");
+  check("offerBetterAlt", "unknown", O.offerBetterAlt({ price: null, km: null }, declined), true, "not knowing is not worse");
+  check("offerRank", "cheapest, then nearest, unknowns last",
+    [{ n: "Calma", price: 85, km: 1 }, { n: "?", price: null, km: 2 }, { n: "Sinergia38", price: 59, km: 6 }, { n: "TornaSol", price: 59, km: 3 }].sort(O.offerRank).map((x) => x.n),
+    ["TornaSol", "Sinergia38", "Calma", "?"], "");
+  for (const [msg, want, note] of [
+    ["Prefer to look for another center", true, "#83 Al, 21 Sept 13:51: got \"I am checking that now\" and nothing"],
+    ["Keep looking", true, "#83 Al, the first time"],
+    ["¿Hay otro centro más cerca?", true, ""],
+    ["algo más barato?", true, ""],
+    ["Something cheaper?", true, ""],
+    ["otra zona", true, ""],
+    ["Another time", false, "that is the other button"],
+    ["Otra hora", false, ""],
+    ["No", false, ""],
+    ["más tarde", false, ""],
+    ["Calle Mayor 15?", false, ""],
+  ]) check("ALT_OFFER_RE", msg, O.ALT_OFFER_RE.test(msg), want, note);
+
+  // The offer: decision first, price and place above the question.
+  const listed = "Price: about 85 EUR for 60 minutes, the studio's listed price. You pay there, no fee.";
+  const body107 = O.offerBody("en", { name: "Willy", studio: "Calma Madrid Spa", where: "Chamberí", time: "18:00", day: "Today", band: "", svc: "relaxing massage", price: listed, above: O.OFFER_COPY.en.above(50, 60), address: "Calle Domenico Scarlatti 5, 28003 Madrid", far: O.offerFar(7.6, "Orcasitas", "en") });
+  check("offer body", "#107 Willy, as it would go now", body107,
+    "Willy, Calma Madrid Spa (Chamberí) can take you at 18:00 today.\n\n" + listed + "\nThat is more than the 50 to 60 EUR I mentioned earlier: it is this studio's own price.\nCalle Domenico Scarlatti 5, 28003 Madrid, about 8 km from Orcasitas\n\nShall I book your relaxing massage? Nothing is booked until you tap Yes.",
+    "price and place above the question, the gap said plainly");
+  check("offer body", "the question is last", body107.trim().split("\n").pop(), "Shall I book your relaxing massage? Nothing is booked until you tap Yes.", "");
+  const body82 = O.offerBody("en", { name: "Manas", studio: "Selvarrosa", where: "Chueca", time: "17:00", day: "Today", band: O.windowText([1080, 1260], "en"), svc: "massage", price: "", above: "", address: "", far: "" });
+  check("offer body", "#82 Manas, an out-of-window time after the wait", body82.split("\n")[0], "Manas, nobody has 18:00 to 21:00 yet; Selvarrosa (Chueca) can do 17:00 today.", "the honest line Jordan asked for");
+  const body82es = O.offerBody("es", { name: "Manas", studio: "Selvarrosa", where: "Chueca", time: "17:00", day: "Hoy", band: O.windowText([1080, 1260], "es"), svc: "masaje relajante", price: "", above: "", address: "", far: O.offerFar(6.2, "Chamartín", "es") });
+  check("offer body", "#82 in Spanish", body82es,
+    "Manas, todavía nadie tiene hueco de 18:00 a 21:00; Selvarrosa (Chueca) puede a las 17:00 hoy.\n\nA unos 6 km de Chamartín.\n\n¿Te reservo el masaje relajante? No se reserva nada hasta que toques Sí.", "");
+  check("offer body", "next offer after a no", O.offerBody("en", { lead: O.OFFER_COPY.en.next, name: "", studio: "TornaSol", where: "Salamanca", time: "17:00", day: "Today", band: "", svc: "massage", price: "", above: "", address: "", far: "" }).split("\n\n")[0], "No problem. Here is the next option:", "");
+
+  // The follow-up and the lapse, word for word.
+  check("offer chase", "en", O.OFFER_COPY.en.chase("Javier", "Calma Madrid Spa", "19:00", "today"),
+    "Javier, Calma Madrid Spa still has 19:00 free today, but they will not hold it for long. Tap Yes and it is yours, or tell me what would suit you better.\n\nMassage Club", "#96: the 19:00 passed with no word");
+  check("offer chase", "es", O.OFFER_COPY.es.chase("Javier", "Calma Madrid Spa", "19:00", "hoy"),
+    "Javier, Calma Madrid Spa sigue teniendo libre las 19:00 hoy, pero no te la guardan mucho. Toca Sí y es tuya, o dime qué te vendría mejor.\n\nMassage Club", "");
+  check("offer lapse", "en, no name", O.OFFER_COPY.en.lapse("", "Calma Madrid Spa", "19:00"),
+    "It is now too close to 19:00 to book Calma Madrid Spa, so that slot has gone. If you still want a massage, tell me another time or day and I will ask the studios again.\n\nMassage Club", "");
+
+  // House rules on every new line: no em or en dashes, no holding line, no Jordan.
+  const samples = [];
+  for (const L of ["en", "es"]) {
+    for (const [k, v] of Object.entries(O.OFFER_COPY[L])) {
+      samples.push([`${L}.${k}`, typeof v === "function" ? v("Ana", "Calma Madrid Spa", "Chamberí", "18:00", "today", "x") : v]);
+    }
+    samples.push([`${L} body`, O.offerBody(L, { lead: O.OFFER_COPY[L].better, name: "Ana", studio: "Calma", where: "Chamberí", time: "18:00", day: "Today", band: O.windowText([1080, 1260], L), svc: "massage", price: "Price: 85 EUR", above: O.OFFER_COPY[L].above(50, 60), address: "Calle X 5", far: O.offerFar(9, "Retiro", L) })]);
+  }
+  for (const [k, text] of samples) {
+    check("offer copy house rules", k, { dash: /[\u2013\u2014]/.test(text), holding: /checking that now|lo miro ahora mismo/i.test(text), jordan: /\bJordan\b/.test(text) }, { dash: false, holding: false, jordan: false }, "");
+  }
+
+  // v204 review (12 Oct): typed times are windows. await_time, await_hour and
+  // await_time_text store what was typed, and the first cut read every one of
+  // these as Flexible, so any hour a studio named was a match.
+  for (const [t1, want, note] of [
+    ["Tomorrow 2pm", [840, 841], "#98: a studio's 11:00 would have gone out as a plain offer"],
+    ["2pm", [840, 841], ""],
+    ["18h", [1080, 1081], ""],
+    ["19h30", [1170, 1171], ""],
+    ["19.30", [1170, 1171], ""],
+    ["7:30pm", [1170, 1171], ""],
+    ["a las 7", [1140, 1141], "a bare 7 is the evening: the studios open at 9 or 10"],
+    ["07:30", [450, 451], "written with its zero, it stays morning"],
+    ["after 7pm", [1140, 1440], ""],
+    ["a partir de las 19", [1140, 1440], ""],
+    ["antes de las 14", [0, 840], ""],
+    ["around 6pm", [1050, 1111], "17:30 up to and including 18:30"],
+    ["18:00-20:00", [1080, 1200], "askBand read this as 00:00 to 20:00"],
+    ["entre las 18 y las 20", [1080, 1200], ""],
+    ["de 6 a 8 de la tarde", [1080, 1200], ""],
+    ["6-8pm", [1080, 1200], ""],
+    ["11-1pm", [660, 780], ""],
+    ["Mañana a las 18:00", [1080, 1081], "\"mañana\" is the day here, not the morning band"],
+    ["mañana por la tarde", [780, 1080], ""],
+    ["after work", [1080, 1260], ""],
+    ["any time", null, "really flexible"],
+    ["me da igual", null, ""],
+    ["sometime soonish", O.ASK_UNREAD, "unreadable: no hour fits it, so a same-day time is held and another day's withheld"],
+  ]) check("askWindow, typed", t1, O.askWindow(t1), want, note);
+  for (const [time, t1, want, note] of [
+    ["11:00", "Tomorrow 2pm", false, "#98: held or withheld, never a plain match"],
+    ["14:00", "Tomorrow 2pm", true, ""],
+    ["19:30", "after 7pm", true, ""],
+    ["18:30", "after 7pm", false, ""],
+    ["21:00", "18:00-20:00", false, ""],
+    ["17:00", "sometime soonish", false, ""],
+  ]) check("offerFitsTime, typed", `${time} vs ${t1}`, O.offerFitsTime(time, t1), want, note);
+  check("windowText", "unreadable en", O.windowText(O.ASK_UNREAD, "en"), "the time you asked for", "the honest line still reads");
+  check("windowText", "unreadable es", O.windowText(O.ASK_UNREAD, "es"), "hueco a la hora que pediste", "");
+  check("windowText", "around 18:00", O.windowText(O.askWindow("around 6pm"), "en"), "17:30 to 18:30", "");
+  check("windowEs", "unreadable", O.windowEs(O.ASK_UNREAD), "", "the studio is told the customer's own words instead");
+  check("offerMissBy", "unreadable window", O.offerMissBy("17:00", O.ASK_UNREAD), 0, "every held time is as close as any other; price decides");
+
+  // v204 review: "Earliest available (from 12:00)" is stored as time1 "12:00"
+  // (createRequest, v159). The request's message_text still says "from".
+  const earliestMsg = "Quiere: Relaxing massage | Cuando: Today Earliest available (from 12:00) | Zona: Retiro | Origen: whatsapp-bot";
+  check("askWindow, stored earliest", "12:00 + message_text", O.askWindow("12:00", earliestMsg), [720, 1440], "#81 Alvaro: Calma's 14:00 is inside, not \"Nobody has 12:00 yet\"");
+  check("askWindow, stored earliest", "12:00 + es message_text", O.askWindow("12:00", "Quiere: Masaje | Cuando: Hoy Lo antes posible (desde 12:00) | Zona: Sol"), [720, 1440], "");
+  check("askWindow, stored earliest", "12:00 alone", O.askWindow("12:00"), [720, 721], "a real 12:00 is still exact");
+  check("offerFitsTime, stored earliest", "14:00", O.offerFitsTime("14:00", "12:00", earliestMsg), true, "");
+
+  // v204 review: a question about the offered studio is not "Closer or cheaper".
+  const addrSrc = botSrc.match(/^const ADDRESS_Q_RE = (.*);$/m)?.[1];
+  if (!addrSrc) throw new Error("bot.ts: ADDRESS_Q_RE is missing");
+  const ADDRESS_Q_RE = new Function(`return ${addrSrc};`)();
+  for (const [msg, want, note] of [
+    ["Which metro is closer?", false, "a question about this studio: the address answer, not a decline"],
+    ["¿Está más cerca de Sol o de Atocha?", false, ""],
+    ["Is there another option to pay?", false, ""],
+    ["Prefer to look for another center", true, "#83 Al"],
+    ["Keep looking", true, ""],
+    ["¿Hay otro centro más cerca?", true, "a question, but an explicit ask for another centre"],
+    ["algo más barato?", true, ""],
+    ["Something cheaper?", true, ""],
+    ["Is there anything closer?", true, ""],
+    ["Do you have a cheaper one?", true, ""],
+    ["otra zona", true, ""],
+  ]) check("altOfferAsked", msg, O.altOfferAsked(msg, looksLikeQuestion(msg) || ADDRESS_Q_RE.test(msg)), want, note);
+
+  // v204 review: a queued studio's "mañana" is the day after it wrote it.
+  const monday = new Date(M(14, 0, -1)), tuesday = new Date(M(10)), wednesday = new Date(M(10, 0, 1));
+  const tueDay = O.studioWordDay("Mañana", monday.getTime());
+  check("studioWordDay", "Monday's mañana", tueDay.toISOString().slice(0, 10), "2026-10-13", "");
+  check("studioWordDay", "no day word", O.studioWordDay("", monday.getTime()), null, "");
+  check("offerDayLabel", "seen from Monday", O.offerDayLabel(tueDay, monday, "en"), "Tomorrow", "");
+  check("offerDayLabel", "seen from Tuesday", O.offerDayLabel(tueDay, tuesday, "en"), "Today", "shown on Tuesday after \"Another time\": today, not Wednesday");
+  check("offerDayLabel", "seen from Tuesday, es", O.offerDayLabel(tueDay, tuesday, "es"), "Hoy", "");
+  check("offerDayLabel", "full date, en", O.offerDayLabel(new Date(Date.UTC(2026, 9, 16)), tuesday, "en"), "Friday 16 October", "");
+  check("offerDayLabel", "full date, es", O.offerDayLabel(new Date(Date.UTC(2026, 9, 16)), tuesday, "es"), "viernes 16 de octubre", "");
+  check("offerDayDate", "the label reads back as the same day", O.offerDayDate("", O.offerDayLabel(tueDay, tuesday, "en"), "Tomorrow", "", tuesday).toISOString().slice(0, 10), "2026-10-13", "");
+  check("offerDayDate", "the old way, for the record", O.offerDayDate("Mañana", "", "Tomorrow", "", tuesday).toISOString().slice(0, 10), "2026-10-14", "what the slot, the lapse and the confirmation would have used");
+  check("offerDayDate", "a full date reads back", O.offerDayDate("", "viernes 16 de octubre", null, null, wednesday).toISOString().slice(0, 10), "2026-10-16", "");
+  check("offerFitsDay", "queued, with the day hint", O.offerFitsDay("", "Tomorrow", "Quiere: Masaje | Fecha: martes 13 de octubre", tuesday, "Today"), true, "");
+
+  // v204 review: Spanish article and the new lines.
+  check("offer copy", "es ask, reflexología", O.OFFER_COPY.es.ask("reflexología"), "¿Te reservo la reflexología? No se reserva nada hasta que toques Sí.", "not \"el reflexología\"");
+  check("offer copy", "es ask, masaje", O.OFFER_COPY.es.ask("masaje relajante"), "¿Te reservo el masaje relajante? No se reserva nada hasta que toques Sí.", "");
+  check("offer copy", "en noneLeft", O.OFFER_COPY.en.noneLeft("Paulo"), "No problem, Paulo. None of the other studios I asked can do it, so nothing is booked. Would another day or time work? Tap a day below, or tell me a day and time and I will ask again.", "never \"I am still asking\" with nothing being asked");
+  check("offer copy", "en bookedStands", O.OFFER_COPY.en.bookedStands("Calma Madrid Spa", "18:00"), "Your booking at Calma Madrid Spa at 18:00 is confirmed and stays as it is. If you want to change it, tell me the new day and time.", "an old \"Another time\" after the booking was won");
+}
+
+// ---------------------------------------------------------------------------
+// v204 (12 Oct): synth.md changes 3 to 5 and the two open non-customer bugs.
+// Same lift as above: the block between "requests, days and voice: pure
+// helpers (start)" and "(end)" in bot.ts, plus noDashes and agentReplyOk, and
+// askedWhere from dispatch-studios, all run against the local copy.ts.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const dsSrc = fs.readFileSync(path.join(here, "../supabase/functions/dispatch-studios/index.ts"), "utf8");
+  const a = botSrc.indexOf("// ---- v204 requests, days and voice: pure helpers (start) ----");
+  const b = botSrc.indexOf("// ---- v204 requests, days and voice: pure helpers (end) ----");
+  if (a < 0 || b < a) throw new Error("bot.ts: the v204 requests/days/voice helper markers are missing");
+  const lift = (src, head) => { const i = src.indexOf(head); if (i < 0) throw new Error(`missing: ${head}`); return src.slice(i, src.indexOf("\n}\n", i) + 3); };
+  const noDashesSrc = botSrc.match(/^const noDashes = .*$/m)?.[0];
+  if (!noDashesSrc) throw new Error("bot.ts: noDashes is missing");
+  const names = ["REQUEST_COPY", "stuckMinutes", "noOfferWhy", "dayListRows", "DAY_LIST_COPY", "dashRanges", "FOUNDER_CTX_MS", "FOUNDER_YES_RE", "founderMenuYes", "VOICE_FAIL", "JOB_EXTRA_RE", "isJobSeeker", "jobSeekerKind", "noDashes", "agentReplyOk", "askedWhere"];
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const js = `import { JOB_RE, madridMidnight, madridInstant } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes(botSrc.slice(a, b) + "\n" + noDashesSrc + "\n" + lift(botSrc, "function agentReplyOk(") + lift(dsSrc, "function askedWhere("))
+    + `\nexport { ${names.join(", ")} };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-req-"));
+  const file = path.join(dir, "req.mjs");
+  fs.writeFileSync(file, js);
+  const R = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  // Monday 12 Oct 2026, Madrid wall clock (CEST).
+  const M = (h, mi = 0, plusDays = 0) => madridInstant(new Date(Date.UTC(2026, 9, 12 + plusDays)), h).getTime() + mi * 60e3;
+
+  // Change 3: a request stuck at "new". Ten minutes of studio hours, and a
+  // night request's clock starts at 09:00, when the dispatch sweep runs.
+  for (const [made, now, want, note] of [
+    [M(10), M(10, 9), 9, "not yet"],
+    [M(10), M(10, 10), 10, "alert at 10 minutes"],
+    [M(22, 4, -1), M(9, 5), 5, "#95, made at 22:04: waiting for the 09:00 sweep is not stuck"],
+    [M(22, 4, -1), M(9, 10), 10, "#95 at 09:10: stuck, nobody had noticed for days"],
+    [M(7, 47), M(9, 12), 12, "#94, made 07:47 for today 12:00"],
+    [M(10), M(21, 30), 0, "never after 21:00"],
+    [M(10), M(8, 30), 0, "never before 09:00"],
+  ]) check("stuckMinutes", note, R.stuckMinutes(made, now), want, note);
+
+  // Change 3: nothing came. "declined" when nothing is left in play, "quiet"
+  // when a same-day request has had no time from anyone for an hour.
+  const D = (outcome, offered_time = null) => ({ outcome, offered_time });
+  for (const [rows, sameDay, mins, want, note] of [
+    [[D("declined"), D("declined"), D("declined")], false, 5, "declined", "#87 Paulo: every studio said no and he heard nothing"],
+    [[D("declined"), D("no", "17:00")], true, 20, "declined", "the customer turned down the only time and the rest said no"],
+    [[D("declined"), D("pending")], false, 300, "", "one studio still to answer, another day: wait"],
+    [[D("pending"), D("pending"), D("declined")], true, 61, "quiet", "same day, an hour, no time from anyone"],
+    [[D("pending"), D("pending")], true, 59, "", "not an hour yet"],
+    [[D("pending"), D("accepted", "19:00")], true, 90, "", "a studio offered a time: the offer step has it"],
+    [[D("declined"), D("expired", "13:00")], true, 90, "", "a lapsed offer already told them the slot had gone"],
+    [[], true, 90, "", "nobody asked: that is the stuck check, not this one"],
+  ]) check("noOfferWhy", note, R.noOfferWhy(rows, sameDay, M(12), M(12, mins)), want, note);
+
+  // Change 3: what the customer hears. Never "I'm asking" when nobody was asked.
+  check("request copy", "nothing open near Majadahonda, en", R.REQUEST_COPY.en.nothingAsked("Rajesh", R.REQUEST_COPY.en.closed("Majadahonda")),
+    "Rajesh, to be straight with you: the studios near Majadahonda are closed at the time you asked for, so I have not asked anyone and nothing is booked.\n\nWould another day or time work? Tap a day below or write when suits you, and I will ask straight away.",
+    "#109 Rajesh: Sunday 11:00 near Majadahonda, nothing open, never told");
+  check("request copy", "nothing near, es, no area", R.REQUEST_COPY.es.nothingAsked("", R.REQUEST_COPY.es.none("")),
+    "Te lo digo claro: no tengo ningún centro al que preguntar por eso, así que no he preguntado a nadie y no hay nada reservado.\n\n¿Te vendría bien otro día u otra hora? Toca un día abajo o escríbeme cuándo te viene bien y pregunto enseguida.", "");
+  check("request copy", "all declined, en", R.REQUEST_COPY.en.allDeclined("Paulo", true),
+    "Paulo, none of the studios I asked can take you at that time, so nothing is booked. Would another day work? Tap one below, or tell me a day and time and I will ask again.\n\nMassage Club", "#87");
+  check("request copy", "quiet today, es, by email", R.REQUEST_COPY.es.quietToday("Ana", false),
+    "Ana, ningún centro ha propuesto hora para hoy todavía, así que no hay nada reservado. Sigo preguntando y te escribo enseguida si alguno puede. Por si nadie puede hoy, ¿te viene bien mañana? Escríbenos por WhatsApp con otro día y hora.\n\nMassage Club", "no buttons in an email");
+  const reqSamples = [];
+  for (const L of ["en", "es"]) {
+    const C = R.REQUEST_COPY[L];
+    reqSamples.push([`${L}.nothingAsked`, C.nothingAsked("Ana", C.closed("Retiro"))], [`${L}.nothingAsked none`, C.nothingAsked("Ana", C.none("Retiro"))], [`${L}.notYet`, C.notYet("Ana")],
+      [`${L}.allDeclined`, C.allDeclined("Ana", true)], [`${L}.allDeclined email`, C.allDeclined("Ana", false)], [`${L}.quietToday`, C.quietToday("Ana", true)], [`${L}.quietToday email`, C.quietToday("Ana", false)]);
+  }
+  for (const [k, text] of reqSamples) {
+    check("request copy house rules", k, {
+      dash: /[–—]/.test(text), jordan: /\bJordan\b/.test(text),
+      askingNow: /asking the studios right now|preguntando a los centros ahora mismo/i.test(text) && !/quietToday/.test(k),
+      booked: /nothing is booked|no hay nada reservado/i.test(text),
+    }, { dash: false, jordan: false, askingNow: false, booked: true }, "honest about what has and has not happened");
+  }
+  // v204 review: the settle sweep's version for a night request nobody could
+  // be asked about (#95), signed, and by email without the buttons.
+  check("request copy", "nothing asked at 09:10, email, en", R.REQUEST_COPY.en.nothingAsked("Ana", R.REQUEST_COPY.en.closed("Vallecas"), false, true),
+    "Ana, to be straight with you: the studios near Vallecas are closed at the time you asked for, so I have not asked anyone and nothing is booked.\n\nWould another day or time work? Write to us on WhatsApp with a day and time, and I will ask straight away.\n\nMassage Club", "#95, 22:04, Saturday morning in Vallecas: never told");
+  for (const L of ["en", "es"]) {
+    const C = R.REQUEST_COPY[L];
+    for (const [k, text] of [[`${L}.nothingAsked sweep`, C.nothingAsked("Ana", C.none("Retiro"), true, true)], [`${L}.nothingAsked email`, C.nothingAsked("Ana", C.closed("Retiro"), false, true)]]) {
+      check("request copy house rules", k, { dash: /[–—]/.test(text), jordan: /\bJordan\b/.test(text), signed: text.endsWith("\n\nMassage Club"), booked: /nothing is booked|no hay nada reservado/i.test(text) }, { dash: false, jordan: false, signed: true, booked: true }, "");
+    }
+  }
+  for (const k of ["allDeclined", "quietToday"]) for (const L of ["en", "es"]) {
+    check("request copy signed", `${L}.${k}`, R.REQUEST_COPY[L][k]("Ana", true).endsWith("\n\nMassage Club"), true, "sent by the sweep on its own, so it is signed");
+  }
+
+  // Change 4: the seven-day list. Monday 12 Oct 2026.
+  const es7 = R.dayListRows("es", M(10));
+  check("dayListRows", "es titles", es7.map((r) => r.title), ["Mar 13 oct", "Mié 14 oct", "Jue 15 oct", "Vie 16 oct", "Sáb 17 oct", "Dom 18 oct", "Lun 19 oct"], "Jordan's label, \"Mar 13 oct\"");
+  check("dayListRows", "es ids", es7.map((r) => r.id), ["dayd_2026-10-13", "dayd_2026-10-14", "dayd_2026-10-15", "dayd_2026-10-16", "dayd_2026-10-17", "dayd_2026-10-18", "dayd_2026-10-19"], "");
+  check("dayListRows", "tomorrow marked", es7.map((r) => r.description), ["Mañana", "", "", "", "", "", ""], "");
+  check("dayListRows", "en", R.dayListRows("en", M(10)).slice(0, 2).map((r) => r.title), ["Tue 13 Oct", "Wed 14 Oct"], "");
+  check("dayListRows", "at 23:30 the list still starts tomorrow", R.dayListRows("en", M(23, 30))[0].id, "dayd_2026-10-13", "Madrid date, not UTC");
+  const dst = R.dayListRows("en", M(20, 0, 12)).map((r) => r.id);
+  check("dayListRows", "across the clock change (25 Oct)", dst, ["dayd_2026-10-25", "dayd_2026-10-26", "dayd_2026-10-27", "dayd_2026-10-28", "dayd_2026-10-29", "dayd_2026-10-30", "dayd_2026-10-31"], "");
+  for (const L of ["en", "es"]) {
+    check("dayListRows fits a WhatsApp list", L, R.dayListRows(L, M(10)).every((r) => r.title.length <= 24 && r.id.length <= 200), true, "");
+    check("day list copy", `${L} button`, R.DAY_LIST_COPY[L].button.length <= 20, true, "");
+  }
+  // The typed-day step saves a day only when there is one. synth.md tested
+  // these four against v200 and every one would have become Hafeez's day.
+  for (const [msg, L] of [["yes please", "en"], ["send me the list", "en"], ["si porfa", "es"], ["Mándame la lista", "es"], ["Plzz", "en"], ["Send me", "en"], ["Mandame derecicon", "es"]]) {
+    check("never a day", msg, detectDay(msg, L), "", "Hafeez, 11 Oct; +34 642 627 441");
+  }
+  check("never a day", "the save-anything line is gone", /s\.data\.day = text\.slice\(0, 60\)/.test(botSrc), false, "await_day_text took any text at all as the day");
+  for (const [msg, L, want] of [["el sábado", "es", "Sábado"], ["tomorrow", "en", "Tomorrow"], ["20 de octubre", "es", "20 octubre"]]) {
+    check("a typed day is still a day", msg, detectDay(msg, L), want, "");
+  }
+
+  // Change 4: a good answer is not thrown away for a dash.
+  const hafeez = "For a first massage, relaxing is a good choice — or deep tissue if you have knots. Most studios charge 50–85 EUR for 60 minutes.";
+  check("agent dashes", "the raw answer fails", R.agentReplyOk(hafeez), false, "Hafeez, 11 Oct 15:34: dropped whole for one dash");
+  const fixed = R.noDashes(R.dashRanges(hafeez, "en"));
+  check("agent dashes", "swapped, not dropped", fixed, "For a first massage, relaxing is a good choice, or deep tissue if you have knots. Most studios charge 50 to 85 EUR for 60 minutes.", "");
+  check("agent dashes", "and then it passes", R.agentReplyOk(fixed), true, "");
+  check("agent dashes", "es range", R.noDashes(R.dashRanges("Suele costar 50–85 EUR.", "es")), "Suele costar 50 a 85 EUR.", "never \"50, 85 EUR\"");
+  check("agent dashes", "the other checks still hold", R.agentReplyOk(R.noDashes(R.dashRanges("We can give you a 10% discount — booked for you.", "en"))), false, "a discount is still never quoted");
+
+  // Change 4: Jordan's inbox message is the context for the next reply.
+  check("founder context", "30 minutes", R.FOUNDER_CTX_MS, 30 * 60e3, "");
+  const menuQ = "Would you like a menu of massages offered?";
+  for (const reply of ["Plzz", "Send me", "yes please", "send me the list", "si porfa", "Mándame la lista", "Sí, por favor", "Yes!", "ok thanks"]) {
+    check("founderMenuYes", reply, R.founderMenuYes(menuQ, reply), true, "Hafeez answered Jordan's menu question; the day step took \"Plzz\" as his day");
+  }
+  for (const [said, reply, note] of [
+    [menuQ, "Tomorrow at 6", "an answer with details goes to the reader"],
+    [menuQ, "what is the price?", "a question goes to the agent"],
+    ["Which day suits you?", "yes", "a yes to something that is not a menu"],
+  ]) check("founderMenuYes", `${said} / ${reply}`, R.founderMenuYes(said, reply), false, note);
+
+  // Change 5: a voice note that did not come through.
+  check("voice fail", "en", R.VOICE_FAIL.en, "Sorry, that voice note didn't come through on our side. Could you type it?", "Jordan's words");
+  check("voice fail", "es", R.VOICE_FAIL.es, "Perdona, esa nota de voz no nos ha llegado bien. ¿Nos lo escribes?", "");
+  check("voice fail", "en has no Spanish first", /perdona|audios/i.test(R.VOICE_FAIL.en), false, "the old line opened in Spanish to English speakers");
+  const botCode = botSrc.split("\n").filter((l) => !/^\s*\/\//.test(l)).join("\n");
+  check("voice fail", "never says we cannot listen", /can'?t listen|cannot listen|no podemos escuchar|escuchar audios/i.test(botCode), false, "we transcribe them; SENE's failed because of the OpenRouter balance");
+
+  // Job seekers never become requests.
+  for (const [msg, want, note] of [
+    ["Hola, 👋 Me llamo Manju. Estoy buscando trabajo de masaje. Tengo experiencia y sé hacer masajes. Me gustaría saber si tienen alguna oportunidad de trabajo disponible.", true, "#91 Manju, 22 Sept 18:45: walked through the booking, four studios asked"],
+    ["I’m looking for work. If you have any work available, please let me know. I’m interested in working with you. Thank you.", true, "#91, 18:47, at the time question"],
+    ["Hola, yo estoy buscando trabajo como masajista, no estoy buscando una cita para recibir un masaje.", true, "#91, 18:55: \"cita\" let it through as a booking"],
+    ["Hola, creo que ha habido una confusión. Yo estoy buscando trabajo como masajista. No estoy buscando una cita para recibir un masaje.", true, "#91, 18:57"],
+    ["Busco trabajo como masajista. Tengo experiencia y estoy disponible para trabajar.", true, "#91, 19:01, the one JOB_RE caught"],
+    ["Busco trabajo", true, ""],
+    ["¿Necesitáis trabajo de masajista?", true, ""],
+    ["Do you have any job opportunities for therapists?", true, ""],
+    ["I want to book a massage after work", false, "a customer"],
+    ["Busco un masaje relajante cerca del trabajo", false, "a customer"],
+    ["Does the massage work for back pain?", false, "a customer"],
+    ["Quiero reservar una cita para mañana", false, "a customer"],
+    ["I'm looking for a massage tomorrow evening", false, "a customer"],
+  ]) check("isJobSeeker", msg.slice(0, 60), R.isJobSeeker(msg), want, note);
+  // v204 review (12 Oct): the check runs before every question branch and
+  // closes live requests, so a customer's own words must never trip it.
+  for (const [msg, want, note] of [
+    ["Does the student discount apply?", "", "JOB_RE's bare \"apply\""],
+    ["Does the 10% discount apply?", "", "typed at an offer: dropped it and stood the studios down"],
+    ["I finish my job at 18:00, is 19:00 possible?", "", "a bare \"job\""],
+    ["Can we resume?", "", "a bare \"resume\""],
+    ["Is it ok to resume tomorrow?", "", ""],
+    ["Great job, thanks!", "", ""],
+    ["They did a great job, thanks", "", ""],
+    ["¿Tenéis alguna plaza mañana por la tarde?", "", "\"alguna plaza\" is a slot"],
+    ["Are you hiring?", "job", "the rest of JOB_RE still counts"],
+    ["¿Tenéis alguna vacante?", "job", ""],
+    ["I'd like to apply for a job as a therapist", "explicit", ""],
+    ["Can I send my CV?", "explicit", ""],
+    ["Estoy buscando trabajo de masaje", "explicit", "#91 Manju"],
+    ["Busco trabajo", "explicit", ""],
+  ]) check("jobSeekerKind", msg, R.jobSeekerKind(msg), want, note);
+  check("job seeker at the offer step", "only an explicit ask, and only it closes asked requests", /jobKind && \(jobKind === "explicit" \|\| s\.step !== "await_offer"\)/.test(botSrc) && /jobKind === "explicit" \? "new,needs_contact,awaiting_go,studio_asked,studio_replied,offered,bidding" : "new,needs_contact,awaiting_go"/.test(botSrc), true, "");
+
+  // dispatch-studios v41: the note names where the studios really are.
+  const S = (area, km = null) => ({ area, km });
+  for (const [studios, es, want, note] of [
+    [[S("Chamberí", 7.6), S("Chamberí", 7.9)], true, " en Chamberí", "#107 Willy was told \"en Orcasitas\""],
+    [[S("Chamberí"), S("Salamanca"), S("Malasaña"), S("Chamberí")], true, " en Chamberí, Salamanca y Malasaña", "#91 Manju was told \"en Vivo en Urgel, cerca del metro, a unos 5\""],
+    [[S("Chamberí"), S("Salamanca")], false, " in Chamberí and Salamanca", ""],
+    [[S("Chamberí", 1), S("Salamanca", 2), S("Retiro", 3), S("Centro", 2.5)], true, " cerca de ti", "four areas, all within 4 km"],
+    [[S("Chamberí", 1), S("Salamanca", 2), S("Retiro", 9), S("Centro", 2.5)], false, "", "four areas, one far: no place named"],
+    [[S(null, 2), S("Retiro", 3)], false, " near you", "an area unknown, all close"],
+  ]) check("askedWhere", note || want, R.askedWhere(studios, es), want, note);
+  const isTestPhoneSrc = dsSrc.match(/const isTestPhone = \(p: string\) => \{[\s\S]*?\n\};/)?.[0];
+  if (!isTestPhoneSrc) throw new Error("dispatch-studios: isTestPhone is missing");
+  const isTestPhone = new Function("TEST_PHONES", "digits", `${stripTypeScriptTypes(isTestPhoneSrc)}\nreturn isTestPhone;`)(["15622355063", "17867276503", "34612474827"], (x) => String(x || "").replace(/[^0-9]/g, ""));
+  for (const [ph, want, note] of [["34600001234", true, "the canary's fake numbers never reach a real studio"], ["+34 600 00 12 34", true, ""], ["34600012345", false, "a real number that only looks close"], ["8613800000997", true, "Yi"], ["34623415275", false, "SENE, a real customer"]]) {
+    check("dispatch isTestPhone", ph, isTestPhone(ph), want, note);
+  }
+
+  // v204 review: guards that live in I/O code, checked in the source.
+  check("review guards", "no price ask after \"no os guardéis el hueco\"", /!drow\.quoted_price && \["whatsapp", "email", "none", "queued", "held_window"\]\.includes\(fwd\)/.test(botSrc), true, "a studio told not to hold the slot was then asked its price");
+  check("review guards", "declineOffer stops on a row that was not open", /const closedNow = await up\.json\(\)/.test(botSrc) && /outcome=in\.\(pending,accepted\)`, \{ method: "PATCH", headers: \{ \.\.\.H\(\), Prefer: "return=representation" \}, body: JSON\.stringify\(\{ outcome: "no"/.test(botSrc), true, "an old \"Another time\" told the winning studio the client did not want it");
+  check("review guards", "\"I am still asking\" only with something asked", /if \(await widenRequest\(req\) \|\| await asksOpen\(Number\(req\.id\)\)\) \{\s*await say\(OFFER_COPY\[L\]\.noneYet\)/.test(botSrc), true, "");
+  check("review guards", "the voice ping carries the number", /could not be transcribed; the bot asked them to type it\. Listen: [^\n]*`, from\);/.test(botSrc), true, "a fake 3460000xxxx canary paged Jordan");
+  check("review guards", "lapse and \"Another time\" notes have a template fallback", (botSrc.match(/await studioNoteSure\(/g) || []).length >= 3 && /body\.studio_note && typeof body\.studio_note === "object"/.test(dsSrc) && /sendStudioNote\(to, String\(n\.text\)/.test(dsSrc), true, "plain text to a studio dies at Meta after 24h");
+  check("review guards", "dispatch: a cancelled request is nobody's original", /stage=not\.in\.\(dismissed,cancelled,stale,too_late\)&created_at=gte\.\$\{since24\}/.test(dsSrc), true, "");
+  check("review guards", "the canary's settle only touches fake numbers", /const only = \/\^3460000\\d\{0,4\}\$\/\.test\(String\(payload\.only/.test(botSrc) && /if \(!o \|\| !o\.row \|\| !o\.sentAt \|\| o\.change \|\| !phone \|\| \(only && !phone\.startsWith\(only\)\)\) continue;/.test(botSrc), true, "settle on wa-bot-canary would otherwise sweep every real session");
+  check("review guards", "dispatch: the \"it ended\" sweep reaches chased rows", /request_dispatch\?outcome=in\.\(pending,accepted\)&created_at=gte/.test(dsSrc), true, "");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

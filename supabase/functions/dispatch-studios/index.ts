@@ -68,7 +68,21 @@
 //   studios" note names the areas the studios are really in, not the area the
 //   customer typed (askedWhere). And { request_id, customer_note: false }
 //   leaves that note to the caller: wa-bot reads back how many studios were
-//   really asked and says so itself, honestly, when the answer is none.
+//   really asked and says so itself, honestly, when the answer is none. The
+//   fake 3460000xxxx canary numbers count as test customers (isTestPhone).
+// v42 (12 Oct, with wa-bot v204, from the review): three things.
+//   - { studio_note: { request_id, phone, text, short, time } } is one note to
+//     one studio that has to arrive (wa-bot's lapse, "Another time", an offer
+//     replaced by a better one): free text in their window, aviso_centro_v1
+//     otherwise, refused outside 09:00-21:00 or the studio's own hours with
+//     how "hours" or "skipped", so wa-bot can queue it. The send op is plain
+//     text, which Meta drops silently once a studio's 24 hours have passed.
+//   - The chase sweep's "it ended" note reaches every open row on a closed
+//     request, including one already chased for an hour, and a studio we only
+//     reach by email is emailed instead of being stood down without a word.
+//   - A cancelled (or stale, too_late) request is no longer the original a
+//     new one is a "duplicate" of: a customer who cancelled at the offer step
+//     and asked again for the same slot was dismissed and never asked about.
 //
 // Modes (POST):
 //   { request_id: 42 }              dispatch that request now
@@ -144,6 +158,11 @@ const isTestPhone = (p: string) => {
   const d = digits(p);
   if (TEST_PHONES.includes(d)) return true;
   if (d.startsWith("86") && d.endsWith("997")) return true;
+  // v41 (12 Oct): the fake 3460000xxxx numbers wa-bot's canary tests run on.
+  // They were missing here, so a canary that reached finalizeBooking without
+  // "prueba" in the name would have asked real studios. Its test studios are
+  // reached through injected request_dispatch rows (ops studio_offer) instead.
+  if (/^3460000\d{4}$/.test(d)) return true;
   return false;
 };
 const isTestCustomer = (r: Record<string, unknown>) => {
@@ -753,6 +772,20 @@ async function sendStudioNote(to: string, text: string, short: string, rq: Recor
   return { how: "template", ok: false };
 }
 
+// v42: a studio we can only reach by email, for the chase sweep's "it ended".
+async function emailPartner(partnerId: string, subject: string, text: string): Promise<boolean> {
+  if (!partnerId || !RESEND_API_KEY) return false;
+  const rows = await sq(`partners?id=eq.${encodeURIComponent(partnerId)}&select=booking_email,email&limit=1`);
+  const p = (Array.isArray(rows) && rows[0] ? rows[0] : {}) as Record<string, unknown>;
+  const to = String(p.booking_email || p.email || "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return false;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, text }),
+  }).catch(() => null);
+  return !!res && res.ok;
+}
+
 // v17: one note to every studio still in play on a request. Lifted out of the
 // notify handler so the amendment path can stand studios down without a second call.
 async function notifyStudios(requestId: number, text: string, short?: string, onlyIds?: string[]) {
@@ -795,7 +828,11 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
   const ripe = new Date(Date.now() - 45 * 60e3).toISOString();
 
   // B first: a dead request must never produce a chase for an hour.
-  const deadRows = await sq(`request_dispatch?outcome=in.(pending,accepted)&chased_at=is.null&created_at=gte.${since}&order=created_at.desc&limit=40&select=id,request_id,partner_id,phone`);
+  // v42: every open row, not only the ones never chased. A studio that said yes
+  // and was then asked for its hour (A, which sets chased_at) was skipped here
+  // for good, so a customer who cancelled at the offer step left it holding
+  // the slot. The PATCH below closes the row, so nobody is told twice.
+  const deadRows = await sq(`request_dispatch?outcome=in.(pending,accepted)&created_at=gte.${since}&order=created_at.desc&limit=40&select=id,request_id,partner_id,phone,channel`);
   for (const d of (Array.isArray(deadRows) ? deadRows : [])) {
     const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=id,first_name,time1,proposed_time,confirmed_time,stage&limit=1`))[0];
     if (!rq || !["confirmed", "cancelled", "dismissed", "no_show"].includes(String(rq.stage || ""))) continue;
@@ -803,7 +840,13 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     const line = rq.stage === "confirmed"
       ? "Gracias por responder. Esta reserva ya la ha cogido otro centro, así que no hace falta que hagáis nada. Os avisamos con la próxima. Massage Club"
       : "Gracias por responder. El cliente finalmente no sigue adelante, así que esta solicitud queda anulada y no hace falta que hagáis nada. Sentimos haberos hecho perder el tiempo y os avisamos con la próxima. Massage Club";
-    const sent = to ? await sendStudioNote(to, line, rq.stage === "confirmed" ? "la reserva ya la ha cogido otro centro, no hace falta que hagáis nada" : "el cliente no sigue adelante, la solicitud queda anulada", rq, dryRun) : { how: "none", ok: false, why: "no number" };
+    // v42: a studio with no WhatsApp that answered the offer email is told by
+    // email, inside sending hours and never while outreach is paused.
+    const byEmail = !to && String(d.channel || "") === "email";
+    const sent = byEmail
+      ? (STUDIO_OUTREACH_PAUSED || !withinSendingHours() ? { how: "skipped", ok: false, why: STUDIO_OUTREACH_PAUSED ? "studio outreach paused by Jordan" : "outside sending hours" }
+        : dryRun ? { how: "would email", ok: true } : { how: "email", ok: await emailPartner(String(d.partner_id || ""), `${String(rq.first_name || "Cliente")}: solicitud anulada`, line) })
+      : to ? await sendStudioNote(to, line, rq.stage === "confirmed" ? "la reserva ya la ha cogido otro centro, no hace falta que hagáis nada" : "el cliente no sigue adelante, la solicitud queda anulada", rq, dryRun) : { how: "none", ok: false, why: "no number" };
     if (sent.how === "skipped") { skipped.push(`#${d.request_id} ${to} ${sent.why}`); continue; }
     if (!dryRun) await sq(`request_dispatch?id=eq.${d.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "stood_down", chased_at: new Date().toISOString() }) });
     closed.push(`#${d.request_id} ${to}`);
@@ -1230,6 +1273,18 @@ async function handleRequest(req: Request): Promise<Response> {
     const ok = await sendText(to, String(c.text));
     return new Response(JSON.stringify({ ok }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
+  // v42: one note to one studio, with the template fallback (see the header).
+  if (body.studio_note && typeof body.studio_note === "object") {
+    const n = body.studio_note as { request_id?: number; phone?: string; text?: string; short?: string; time?: string };
+    const to = toWa(String(n.phone || ""));
+    const json = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (!to || !n.text) return json({ ok: false, how: "none", why: "studio_note.phone and studio_note.text required" });
+    if (!withinSendingHours()) return json({ ok: false, how: "hours", why: `outside ${OPEN_HOUR}:00-${CLOSE_HOUR}:00 Madrid` });
+    const reqRows = n.request_id ? await sq(`whatsapp_requests?id=eq.${Number(n.request_id)}&select=id,first_name,time1,confirmed_time`) : [];
+    const rq = { ...((Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {}) as Record<string, unknown>), ...(n.time ? { confirmed_time: String(n.time) } : {}) };
+    const r = await sendStudioNote(to, String(n.text), String(n.short || n.text), rq);
+    return json({ ok: r.ok, how: r.how, why: r.why || null });
+  }
   if (body.customer_text && typeof body.customer_text === "object") {
     const c = body.customer_text as { request_id?: number; text?: string };
     if (!c.request_id || !c.text) return new Response(JSON.stringify({ error: "customer_text.request_id and text required" }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -1341,7 +1396,9 @@ async function handleRequest(req: Request): Promise<Response> {
     const phoneDigits = String(r.client_phone || "").replace(/[^0-9]/g, "");
     if (!dryRun && !forceDispatch && !extra && phoneDigits.length >= 9) {
       const since24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-      const sibs = await sq(`whatsapp_requests?id=neq.${r.id}&client_phone=ilike.*${phoneDigits}&dispatched_at=not.is.null&dispatch_count=gt.0&stage=neq.dismissed&created_at=gte.${since24}&order=id.desc&select=id,stage,stage_note,service_name,day1,time1,area,dispatched_at&limit=1`);
+      // v42: a cancelled, stale or too_late request is over, so a new one is
+      // never its duplicate (see the header).
+      const sibs = await sq(`whatsapp_requests?id=neq.${r.id}&client_phone=ilike.*${phoneDigits}&dispatched_at=not.is.null&dispatch_count=gt.0&stage=not.in.(dismissed,cancelled,stale,too_late)&created_at=gte.${since24}&order=id.desc&select=id,stage,stage_note,service_name,day1,time1,area,dispatched_at&limit=1`);
       const sib = (Array.isArray(sibs) && sibs[0] ? sibs[0] : null) as Record<string, unknown> | null;
       if (sib) {
         const sinceDispatch = Date.now() - Date.parse(String(sib.dispatched_at || ""));
