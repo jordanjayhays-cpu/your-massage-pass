@@ -4726,9 +4726,13 @@ const handleInner = async (req: Request) => {
     // studio tapped a time in its offer email (studio-times). That is the
     // studio's half: the time becomes an offer the customer has to tap Yes on,
     // on WhatsApp or on the emailed offer page, exactly like a WhatsApp yes.
+    // v203 (12 Oct): the yes can also come from a phone call (studio-calls).
+    // payload.channel says which ask it answered, 'email' by default or 'call',
+    // and is kept on the dispatch row and in the reply label.
     if (payload?.ops === "studio_offer") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const out = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
+      const channel = payload.channel === "call" ? "call" : "email";
       const id = Number(payload.request_id || 0);
       const pid = String(payload.partner_id || "").replace(/[^a-fA-F0-9-]/g, "");
       const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}&select=*`, { headers: H() });
@@ -4746,12 +4750,12 @@ const handleInner = async (req: Request) => {
       const now = new Date().toISOString();
       const ins = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?on_conflict=request_id,partner_id`, {
         method: "POST", headers: { ...H(), Prefer: "resolution=merge-duplicates,return=representation" },
-        body: JSON.stringify({ request_id: id, partner_id: pid, phone: digitsOf(String(p.whatsapp || p.phone || "")), outcome: "accepted", accepted_at: now, replied_at: now, channel: "email" }),
+        body: JSON.stringify({ request_id: id, partner_id: pid, phone: digitsOf(String(p.whatsapp || p.phone || "")), outcome: "accepted", accepted_at: now, replied_at: now, channel }),
       });
       const row = (await ins.json().catch(() => []))[0];
       if (!row?.id) return out({ ok: false, reason: "could not record the offer" });
-      await forwardOffer(req, { id: String(p.id), business_name: String(p.business_name || "") }, String(row.id), time, `Sí, a las ${time} (email)`, "", { dayHint: dayRaw, ownOption: true });
-      await logEvent(digitsOf(String(req.client_phone || "")) || "web", "studio_accepted", { id, studio: p.business_name, time, via: "email" });
+      await forwardOffer(req, { id: String(p.id), business_name: String(p.business_name || "") }, String(row.id), time, `Sí, a las ${time} (${channel === "call" ? "llamada" : "email"})`, "", { dayHint: dayRaw, ownOption: true });
+      await logEvent(digitsOf(String(req.client_phone || "")) || "web", "studio_accepted", { id, studio: p.business_name, time, via: channel });
       return out({ ok: true, row: row.id, time });
     }
     // v202 (12 Oct): close a request the bot built from garbage and put the

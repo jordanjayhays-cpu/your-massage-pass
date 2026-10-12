@@ -53,6 +53,11 @@
 //   the time) the customer asked for is not asked. Calma Madrid, closed on
 //   Sundays with hours on file since 18 Aug, was asked for Sunday slots three
 //   times in one weekend and wrote to complain. Unknown hours still get asked.
+// v39 (12 Oct): studios that agreed to be phoned (partners.call_ok) and whose
+//   hours say they are open right now also get a call, right after their
+//   WhatsApp ask: one non-blocking POST to studio-calls (ops place). The call
+//   never replaces the written ask and a failure there never touches this one.
+//   studio-calls does nothing until app_secrets VOICE_CALLS is 'test' or 'on'.
 //
 // Modes (POST):
 //   { request_id: 42 }              dispatch that request now
@@ -1001,6 +1006,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
 
   let sent = 0;
   const sentNames: string[] = [];
+  const askedIds: string[] = [];
   for (const c of candidates) {
     // A test booking must never reach a real studio.
     if (testCustomer && !JORDAN_NUMBERS.includes(c.wa)) {
@@ -1021,7 +1027,24 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
         body: JSON.stringify(res.ok ? { sent_at: new Date().toISOString() } : { send_error: res.error, outcome: "send_failed" }),
       });
     }
-    if (res.ok) { sent++; sentNames.push(c.business_name + (opts.cheapest && c.score != null ? ` (${Number(c.score)} EUR)` : "") + (c.widened ? " (fuera de la zona)" : "")); }
+    if (res.ok) { sent++; askedIds.push(String(c.id)); sentNames.push(c.business_name + (opts.cheapest && c.score != null ? ` (${Number(c.score)} EUR)` : "") + (c.widened ? " (fuera de la zona)" : "")); }
+  }
+
+  // v39: a phone call on top of the ask, for the studios that said they may be
+  // rung. Not awaited; the WhatsApp dispatch carries on whatever happens there.
+  if (!opts.dryRun && askedIds.length) {
+    try {
+      const cr = await sq(`partners?id=in.(${askedIds.map(encodeURIComponent).join(",")})&call_ok=is.true&select=id,opening_hours`);
+      const callIds = (Array.isArray(cr) ? cr : []).filter((p: any) => !closedNowReason(p.opening_hours)).map((p: any) => String(p.id));
+      if (callIds.length) {
+        const call = fetch(`${SUPABASE_URL}/functions/v1/studio-calls`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(30000),
+          body: JSON.stringify({ ops: "place", key: OPS_KEY, request_id: requestId, partner_ids: callIds }),
+        }).then(async (cres) => console.log(`[dispatch] req=${requestId} studio-calls ${cres.status} ${(await cres.text()).slice(0, 200)}`))
+          .catch((e) => console.log(`[dispatch] req=${requestId} studio-calls failed`, String(e)));
+        try { (globalThis as any).EdgeRuntime?.waitUntil?.(call); } catch { /* it still runs */ }
+      }
+    } catch (e) { console.log(`[dispatch] req=${requestId} call check failed`, String(e)); }
   }
 
   if (sent > 0 && opts.extra) {
