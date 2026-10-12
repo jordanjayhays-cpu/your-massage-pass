@@ -59,6 +59,16 @@
 //   studio-calls (ops place). The call never replaces the written ask and a
 //   failure there never touches this one. studio-calls does nothing until
 //   app_secrets VOICE_CALLS is 'test' or 'on'.
+// v40 (12 Oct, with wa-bot v204): each request_dispatch row keeps the studio's
+//   distance from the customer's area (km, from dispatch_candidates), so the
+//   offer can say how far it is and "Closer or cheaper" can rank by it.
+//   Needs supabase/migrations/20261012_dispatch_km.sql; without it the km
+//   write fails on its own and nothing else changes.
+// v41 (12 Oct, with wa-bot v204): the customer's "we have written to N
+//   studios" note names the areas the studios are really in, not the area the
+//   customer typed (askedWhere). And { request_id, customer_note: false }
+//   leaves that note to the caller: wa-bot reads back how many studios were
+//   really asked and says so itself, honestly, when the answer is none.
 //
 // Modes (POST):
 //   { request_id: 42 }              dispatch that request now
@@ -885,7 +895,29 @@ async function reachableCustomer(r: Record<string, unknown>): Promise<{ ok: bool
   return { ok: false, how: "none" };
 }
 
-async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[] }) {
+// v41 (12 Oct, with wa-bot v204): where the studios we just wrote to are, in
+// the customer's language. The note used to say "en {the customer's area}"
+// whatever the studios were: Manju (#91, 22 Sept) read "Hemos escrito a 4
+// centros en Vivo en Urgel, cerca del metro, a unos 5" (EN: we have written to
+// 4 studios in I live in Urgel, near the metro, about 5), and Willy (#107,
+// 5 Oct) was told about studios "en Orcasitas" when the nearest one asked was
+// in Chamberí. Now: the studios' own areas when there are three or fewer,
+// "cerca de ti" when every one is within 4 km, and no place at all otherwise.
+function askedWhere(studios: Array<{ area: string | null; km: number | null }>, es: boolean): string {
+  const areas: string[] = [];
+  for (const c of studios) {
+    const a = String(c.area || "").trim();
+    if (a && !areas.some((x) => x.toLowerCase() === a.toLowerCase())) areas.push(a);
+  }
+  if (areas.length && areas.length <= 3 && studios.every((c) => String(c.area || "").trim())) {
+    const list = areas.length === 1 ? areas[0] : `${areas.slice(0, -1).join(", ")} ${es ? "y" : "and"} ${areas[areas.length - 1]}`;
+    return es ? ` en ${list}` : ` in ${list}`;
+  }
+  if (studios.length && studios.every((c) => c.km !== null && c.km !== undefined && Number.isFinite(Number(c.km)) && Number(c.km) <= 4)) return es ? " cerca de ti" : " near you";
+  return "";
+}
+
+async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
   // v38: a request for a day that has already been and gone reaches nobody.
@@ -954,6 +986,13 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       id: String(p.id), business_name: String(p.business_name || ""), area: p.neighbourhood || p.city || null,
       wa: toWa(String(p.whatsapp || p.phone || "")), km: null, rank: i + 1, widened: false, score: 0,
     })).filter((c: Candidate) => c.wa.length >= 9);
+    // v40: the studios the customer picked (offer-first) came from the same
+    // ranking, so their distance is in it. Read only; nothing else changes.
+    if (area && candidates.length) {
+      const near = await rpc("dispatch_candidates", { p_area: area, p_want: want || null, p_limit: 12 }) as Candidate[];
+      const kmById = new Map(near.map((x) => [String(x.id), x.km]));
+      for (const c of candidates) if (kmById.has(c.id)) c.km = kmById.get(c.id) ?? null;
+    }
   } else {
     // v29: a second wave has to ask for more rows than it needs. Both candidate
     // functions return the best `p_limit` studios, which on a widen are exactly
@@ -1008,6 +1047,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   let sent = 0;
   const sentNames: string[] = [];
   const askedIds: string[] = [];
+  const asked: Candidate[] = [];
   for (const c of candidates) {
     // A test booking must never reach a real studio.
     if (testCustomer && !JORDAN_NUMBERS.includes(c.wa)) {
@@ -1020,6 +1060,15 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       body: JSON.stringify({ request_id: requestId, partner_id: c.id, phone: c.wa, rank: c.rank, outcome: "pending", arm }),
     });
     const rowId = Array.isArray(ins) && ins[0] ? ins[0].id : null;
+    // v40 (12 Oct, with wa-bot v204): how far this studio is from the area the
+    // customer gave, so the offer can say "about 9 km from Orcasitas". Willy
+    // (#107) asked from Orcasitas on 5 Oct and was offered Calma in Chamberí
+    // with no word about the distance. Its own PATCH rather than part of the
+    // insert, so a database without the column (20261012_dispatch_km.sql not
+    // yet applied) loses this line and nothing else.
+    if (rowId && c.km !== null && c.km !== undefined && Number.isFinite(Number(c.km))) {
+      await sq(`request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ km: Number(c.km) }) }).catch(() => null);
+    }
 
     const res = await askOneStudio(r, c, opts.cheapest, arm);
     if (rowId) {
@@ -1028,7 +1077,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
         body: JSON.stringify(res.ok ? { sent_at: new Date().toISOString() } : { send_error: res.error, outcome: "send_failed" }),
       });
     }
-    if (res.ok) { sent++; askedIds.push(String(c.id)); sentNames.push(c.business_name + (opts.cheapest && c.score != null ? ` (${Number(c.score)} EUR)` : "") + (c.widened ? " (fuera de la zona)" : "")); }
+    if (res.ok) { sent++; askedIds.push(String(c.id)); asked.push(c); sentNames.push(c.business_name + (opts.cheapest && c.score != null ? ` (${Number(c.score)} EUR)` : "") + (c.widened ? " (fuera de la zona)" : "")); }
   }
 
   // v39: a phone call on top of the ask, for the studios that said they may be
@@ -1069,9 +1118,11 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       const sess = await sq(`wa_sessions?phone=eq.${clientPhone}&select=data`);
       const sessLang = Array.isArray(sess) && sess[0]?.data ? String(sess[0].data.lang || "") : "";
       const es = (sessLang || String(r.languages || "")).toLowerCase().startsWith("es");
+      // v41: the studios' own areas, not "near" the customer's (askedWhere).
+      const whereX = askedWhere(asked, es);
       await sendText(clientPhone, es
-        ? `Seguimos en ello: hemos escrito a ${sent} centros más cerca de ${area || "tu zona"} para tener más opciones. Te confirmamos en cuanto uno diga que sí.`
-        : `Still on it: we have asked ${sent} more studios near ${area || "your area"} to widen the options. We confirm as soon as one says yes.`);
+        ? `Seguimos en ello: hemos escrito a ${sent} centros más${whereX} para tener más opciones. Te confirmamos en cuanto uno diga que sí.`
+        : `Still on it: we have asked ${sent} more studios${whereX} to widen the options. We confirm as soon as one says yes.`);
       await logEvent(clientPhone, "dispatched_extra", { request_id: requestId, studios: sent, area });
     }
   } else if (sent > 0) {
@@ -1093,11 +1144,13 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
     // the reliable signal: requests.languages is null for our one real Spanish
     // speaker while his session correctly says "es".
     const clientPhone = toWa(String(r.client_phone || ""));
-    if (clientPhone && !testCustomer && !opts.cheapest) {
+    // v41: customer_note: false means the caller (wa-bot, as the booking is
+    // made) tells the customer itself, once it has read back what went out.
+    if (clientPhone && !testCustomer && !opts.cheapest && !opts.quiet) {
       const sess = await sq(`wa_sessions?phone=eq.${clientPhone}&select=data`);
       const sessLang = Array.isArray(sess) && sess[0]?.data ? String(sess[0].data.lang || "") : "";
       const es = (sessLang || String(r.languages || "")).toLowerCase().startsWith("es");
-      const where = area ? (es ? ` en ${area}` : ` in ${area}`) : "";
+      const where = askedWhere(asked, es);
       const body = es
         ? `Ya estamos en ello. Hemos escrito a ${sent} centros${where} con tu petición y te confirmamos en cuanto uno nos diga que sí. No tienes que hacer nada más.`
         : `We are on it. We have messaged ${sent} studios${where} with your request and we will come back as soon as one of them says yes. Nothing more for you to do.`;
@@ -1146,6 +1199,8 @@ async function handleRequest(req: Request): Promise<Response> {
   // a row for this request, and tells the customer "N more studios".
   const extra = body.extra === true || body.widen === true;
   const partnerIds = Array.isArray(body.partner_ids) ? (body.partner_ids as unknown[]).map(String).filter(Boolean) : [];
+  // v41: wa-bot passes customer_note: false and says what happened itself.
+  const quiet = body.customer_note === false;
 
   // v11: a note to every studio still in play on a request (free text while
   // their 24h window is open, the aviso_centro_v1 template otherwise), and a
@@ -1355,7 +1410,7 @@ async function handleRequest(req: Request): Promise<Response> {
         continue;
       }
     }
-    const outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds });
+    const outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet });
     // v35: the claim marked the request dispatched before a single studio was
     // written to. If nothing actually went out (no candidates, every send
     // failed) that mark would hide the request from the sweep forever, so give
