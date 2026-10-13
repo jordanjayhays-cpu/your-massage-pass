@@ -1500,6 +1500,44 @@ for (const [msg, want, note] of [
     ["otra zona", true, ""],
   ]) check("altOfferAsked", msg, O.altOfferAsked(msg, looksLikeQuestion(msg) || ADDRESS_Q_RE.test(msg)), want, note);
 
+  // v207 (12 Oct): "where is it?" in the shapes ZONEQ_RE (copy.ts) missed.
+  const zmSrc = botSrc.match(/^const ZONEQ_MORE_RE = (.*);$/m)?.[1];
+  if (!zmSrc) throw new Error("bot.ts: ZONEQ_MORE_RE is missing");
+  const ZONEQ_MORE_RE = new Function(`return ${zmSrc};`)();
+  const zoneQ = (t) => ZONEQ_RE.test(t) || ZONEQ_MORE_RE.test(t);
+  for (const [msg, want, note] of [
+    ["Cuál es la direcion, donde está la sala", true, "pacomartin, 12 Oct 16:46 Madrid, from the ad. Got the opener and no answer"],
+    ["Cual es la direccion?", true, ""],
+    ["cuál es vuestra dirección", true, ""],
+    ["¿Me pasas la dirección?", true, ""],
+    ["me podéis mandar la ubicación", true, ""],
+    ["Dirección?", true, ""],
+    ["y la dirección?", true, ""],
+    ["¿Dónde está el centro?", true, ""],
+    ["donde queda el local", true, ""],
+    ["Dónde es?", true, ""],
+    ["Quiero un masaje mañana, dónde es?", true, ""],
+    ["qué metro tengo cerca", true, ""],
+    ["What's the address?", true, ""],
+    ["whats the location", true, ""],
+    ["send me the address", true, ""],
+    ["Where is the studio?", true, ""],
+    ["Address?", true, ""],
+    ["where are you?", true, ""],
+    ["Which metro station is it?", true, ""],
+    // Must not fire.
+    ["Mi dirección es Calle Mayor 5", false, "their own address, not a question"],
+    ["¿Cuál es tu dirección de correo?", false, "asks for an email address"],
+    ["te paso mi dirección de email", false, ""],
+    ["¿Dónde está mi reserva?", false, "about the booking, not the place"],
+    ["where is my booking", false, ""],
+    ["my email address is ana@gmail.com", false, ""],
+    ["I am in Chamberi", false, ""],
+    ["Another day", false, ""],
+    ["nowhere", false, ""],
+    ["Hi, I'd like to book a massage", false, "the ad's canned line"],
+  ]) check("where question (v207)", msg, zoneQ(msg), want, note);
+
   // v204 review: a queued studio's "mañana" is the day after it wrote it.
   const monday = new Date(M(14, 0, -1)), tuesday = new Date(M(10)), wednesday = new Date(M(10, 0, 1));
   const tueDay = O.studioWordDay("Mañana", monday.getTime());

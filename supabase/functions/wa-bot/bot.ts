@@ -1136,12 +1136,45 @@ async function bookingLink(phone: string, lang: string): Promise<string | null> 
   } catch (e) { console.log("[wa] booking link failed", String(e)); return null; }
 }
 
+// v207 (12 Oct): pacomartin came from the ad and wrote "Cuál es la direcion,
+// donde está la sala" at 16:46. ZONEQ_RE (copy.ts) knows "qué dirección" and
+// "dónde estáis" but not "cuál es la dirección", the one-c spelling, or "dónde
+// está la sala", so he got the plain opener and no answer. The extra shapes
+// live here because copy.ts stays pinned. Someone giving their own address
+// ("mi dirección es", "my email address") or asking where their booking is
+// does not match.
+const ZONEQ_MORE_RE = /((cu[aá]l|qu[eé]) es (la|vuestra|su|tu) dir+ec+i[oó]n(?!\s+(de\s+)?(correo|e-?mail|mail|electr[oó]nica))|(d[aá]me|d[ií]me|p[aá]same|m[aá]ndame|env[ií]ame|me (das|dais|da|dices|dec[ií]s|pasas|pas[aá]is|mandas|mand[aá]is|env[ií]as|env[ií][aá]is|puedes (dar|pasar|decir|mandar|enviar)|podr[ií]as (dar|pasar|decir|mandar|enviar)|pod[eé]is (dar|pasar|decir|mandar|enviar)))\s+(la |vuestra |su )?(dir+ec+i[oó]n|ubicaci[oó]n)(?!\s+(de\s+)?(correo|e-?mail|mail|electr[oó]nica))|^\s*[¿?]?\s*((y|ok|vale)\s*,?\s*)?(la\s+)?dir+ec+i[oó]n\s*[?!.]*\s*$|(?<![a-zñáéíóú])dir+ec+i[oó]n\s*[?]|d[oó]nde (est[aá]|queda|es|se encuentra)\s+(la sala|el centro|el local|el sitio|el spa|la cl[ií]nica|el estudio|el sal[oó]n|la consulta|el negocio|ubicad[oa]s?|situad[oa]s?)(?![a-zñáéíóú])|d[oó]nde (est[aá]|queda|es|se encuentra)\s*[?!.]*\s*$|qu[eé] metro|metro m[aá]s cercano|(what'?s|whats|what is) (the|your) (address|location)|(send|give|share)( me| us)? (the|your) (address|location)|where (is|'s|are) (the|your) (studio|place|salon|spa|center|centre|clinic|massage|location|shop)\b|^\s*(the\s+)?addr?ess+\s*[?!.]*\s*$|where are you\s*[?!.]*\s*$|which (metro|tube|subway)|nearest (metro|tube|subway))/iu;
+const zoneQ = (t: string): boolean => ZONEQ_RE.test(t) || ZONEQ_MORE_RE.test(t);
+
+// v207: "where is it?" from someone whose booking is confirmed and still ahead
+// is about that studio, so it gets the studio's name and address, never the
+// general answer. Anyone else gets the general answer.
+function bookedWhere(req: any, pc: { address: string }, L: string): string {
+  const when = whenFor([req.confirmed_day || req.day1, req.confirmed_time || req.time1].filter(Boolean).join(" "), L);
+  return L === "es"
+    ? `${req.studio_name || "El centro"}\n📍 ${pc.address}${when ? `\n🗓 ${when}` : ""}\n\nPagas allí, sin comisión.`
+    : `${req.studio_name || "The studio"}\n📍 ${pc.address}${when ? `\n🗓 ${when}` : ""}\n\nYou pay there, no fee from us.`;
+}
+async function bookedWhereFor(from: string, L: string): Promise<string> {
+  const req = await lastRequestFor(from).catch(() => null);
+  if (!req || req.stage !== "confirmed" || !req.partner_id) return "";
+  const made = Date.parse(String(req.created_at || ""));
+  if (!(Date.now() - made < 8 * 86400e3)) return "";
+  const day = resolveRequestDate(req.confirmed_day || req.day1, "", new Date());
+  if (day && day.getTime() < madridMidnight().getTime()) return "";
+  const pc = await partnerCard(String(req.partner_id));
+  return pc.address ? bookedWhere(req, pc, L) : "";
+}
+async function whereAnswer(from: string, L: string): Promise<string> {
+  return (await bookedWhereFor(from, L)) || COPY[L].zoneAnswer;
+}
+
 // Greeting for a fresh conversation: returning customers get a personal hello.
 // v59: a first message that is a real question gets its answer before we ask
 // ours. "What street in madrid" produced the service menu, twice.
 function firstAnswer(t: string, L: string): string {
   const s = String(t || "");
-  if (ZONEQ_RE.test(s)) return COPY[L].zoneAnswer;
+  if (zoneQ(s)) return COPY[L].zoneAnswer;
   if (HOWWORKS_RE.test(s)) return COPY[L].howItWorks;
   return "";
 }
@@ -2730,10 +2763,7 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
       if (req && req.partner_id && req.stage === "confirmed") {
         const pc = await partnerCard(String(req.partner_id));
         if (pc.address) {
-          const when = [req.confirmed_day || req.day1, req.confirmed_time || req.time1].filter(Boolean).join(" ");
-          await sendText(from, lang === "es"
-            ? `${req.studio_name || "El centro"}\n📍 ${pc.address}${when ? `\n🗓 ${when}` : ""}\n\nPagas allí, sin comisión.`
-            : `${req.studio_name || "The studio"}\n📍 ${pc.address}${when ? `\n🗓 ${when}` : ""}\n\nYou pay there, no fee from us.`);
+          await sendText(from, bookedWhere(req, pc, lang));
           return true;
         }
       }
@@ -7798,7 +7828,7 @@ const handleInner = async (req: Request) => {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
-      else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
+      else if (zoneQ(text)) await sendText(from, await whereAnswer(from, L));
       else {
         // v71: the regexes above cover price, how it works and zone. Everything
         // else went to helpInstead, which is the generic "tell me the massage,
@@ -7829,11 +7859,11 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (THERAPISTQ_RE.test(text) || PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || ZONEQ_RE.test(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10))) {
+    if (text && buttonStep && !replyId && (THERAPISTQ_RE.test(text) || PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || zoneQ(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
-      else if (ZONEQ_RE.test(text)) await sendText(from, COPY[L].zoneAnswer);
+      else if (zoneQ(text)) await sendText(from, await whereAnswer(from, L));
       // v195: "Who give the Massage ?" got a vague line from the agent. The
       // answer we wrote for it also offers a man or a woman.
       else if (THERAPISTQ_RE.test(text)) {
@@ -7885,7 +7915,11 @@ const handleInner = async (req: Request) => {
     // menu, skipping the first message with prices and areas. At "start" the
     // answer now rides on top of the normal first message instead.
     const openWithAnswer = async (pre: string) => { await greet(s, from, text, pre); await sendReservePage(s, from); };
-    if (text && !freeTextStep && ZONEQ_RE.test(text)) {
+    if (text && !freeTextStep && zoneQ(text)) {
+      // v207: a booked customer asking where gets the studio's address and
+      // nothing else, not the opener or a new booking question.
+      const booked = await bookedWhereFor(from, L);
+      if (booked) { await sendText(from, booked); await logEvent(from, "where_answered", { booked: true, step: s.step }); return new Response("OK", { status: 200 }); }
       // The first message lists the areas; say only what it does not.
       if (s.step === "start") { await openWithAnswer(L === "es" ? "No somos un solo sitio: te reservamos en el centro que mejor te venga, y su nombre y dirección te llegan con la oferta." : "We're not one place: we book you into the studio that suits you best, and you get its name and address with the offer."); return new Response("OK", { status: 200 }); }
       await sendText(from, COPY[L].zoneAnswer);
@@ -8057,8 +8091,8 @@ const handleInner = async (req: Request) => {
             const understood = [row ? (L === "es" ? String(row.tEs).toLowerCase() : String(row.tEn).toLowerCase()) : "", s.data.day, s.data.time, s.data.area].filter(Boolean).join(" · ");
             await sendText(from, COPY[L].gotItSvc(understood || (L === "es" ? "tu petición" : "your request")));
             await continueFromKnown(s, from, L);
-          } else if (text && ZONEQ_RE.test(text)) {
-            await sendText(from, COPY[L].zoneAnswer);
+          } else if (text && zoneQ(text)) {
+            await sendText(from, await whereAnswer(from, L));
             await askService(from, L);
           } else await askService(from, L);
         }
