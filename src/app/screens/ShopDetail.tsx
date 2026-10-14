@@ -100,7 +100,7 @@ export default function ShopDetail() {
           zoom,
           disableDefaultUI: true,
           zoomControl: true,
-          gestureHandling: "cooperative",
+          gestureHandling: "greedy",
           styles: mapStyles,
         });
 

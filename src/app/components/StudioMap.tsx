@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
 import { useEffect, useRef, useState } from "react";
-import { Compass, Star, Clock, MapPin, Loader2 } from "lucide-react";
+import { Compass, Star, Clock, MapPin, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useLocationAsk,
@@ -163,6 +163,12 @@ export default function StudioMap({
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const didFitRef = useRef(false);
+  // The location the map last centred on. Zooming past PRICE_ZOOM re-runs the
+  // marker effect, and re-centring there snapped every zoom back to 14, so a
+  // visitor with a known location could never zoom out.
+  const centeredOnRef = useRef<string | null>(null);
+  // Bigger map on demand: the 230px header is too small to explore on a phone.
+  const [expanded, setExpanded] = useState(false);
   const hoverCbRef = useRef<Props["onHoverStudio"]>(onHoverStudio);
   hoverCbRef.current = onHoverStudio;
 
@@ -275,6 +281,11 @@ export default function StudioMap({
           zoom: userLoc ? 14 : 13,
           disableDefaultUI: true,
           zoomControl: true,
+          // One finger moves the map and pinch zooms; no "use two fingers"
+          // overlay (Jordan, 15 Oct).
+          gestureHandling: "greedy",
+          minZoom: 10,
+          clickableIcons: false,
           styles: MAP_STYLES,
         });
       mapInstanceRef.current = map;
@@ -369,8 +380,12 @@ export default function StudioMap({
       // Default view: frame all studio pins so clusters read as a few tidy
       // bubbles. Once we know where the visitor is, we centre on them instead.
       if (userLoc) {
-        map.setCenter(userLoc);
-        map.setZoom(14);
+        const locKey = `${userLoc.lat},${userLoc.lng}`;
+        if (centeredOnRef.current !== locKey) {
+          centeredOnRef.current = locKey;
+          map.setCenter(userLoc);
+          map.setZoom(14);
+        }
       } else if (!didFitRef.current && mapShops.length > 0) {
         const bounds = new google.maps.LatLngBounds();
         mapShops.forEach((m: any) => bounds.extend({ lat: m.lat, lng: m.lng }));
@@ -433,8 +448,16 @@ export default function StudioMap({
       {heading && (
         <h3 className="font-display text-lg font-semibold text-foreground mb-3">{heading}</h3>
       )}
-      <div className={`relative ${roundedClass} overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${heightClass}`}>
+      <div className={`relative ${roundedClass} overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${expanded ? "h-[72vh]" : heightClass}`}>
         <div ref={mapRef} className="absolute inset-0" />
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Smaller map" : "Bigger map"}
+          className="absolute top-3 right-3 z-10 h-9 w-9 flex items-center justify-center rounded-full bg-card/95 backdrop-blur-sm shadow-soft border border-border/60 hover:bg-card transition"
+        >
+          {expanded ? <Minimize2 className="h-4 w-4 text-foreground" /> : <Maximize2 className="h-4 w-4 text-foreground" />}
+        </button>
         <button
           type="button"
           onClick={() => requestUserLocation()}
