@@ -1305,7 +1305,7 @@ const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const SERIF = "Georgia,'Times New Roman',serif";
 const esc = (s: string) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-async function founderCard(subject: string, o: { badge: string; title: string; paras?: string[]; quote?: string; transcript?: string[]; waNum?: string; waLabel?: string; prefill?: string; to?: string[] }) {
+async function founderCard(subject: string, o: { badge: string; title: string; paras?: string[]; quote?: string; transcript?: string[]; waNum?: string; waLabel?: string; prefill?: string; to?: string[]; studioNum?: string; studioName?: string }) {
   if (aboutFakeCustomer(subject, o.waNum || "", o.title, o.paras || [], o.quote || "")) { console.log("[wa] founder card about a fake test number, not sent"); return; }
   const paras = (o.paras || []).filter(Boolean).map((p) =>
     `<p style="margin:10px 0 0;color:${C.ink};font-size:14px;line-height:1.6;">${esc(p)}</p>`).join("");
@@ -1325,14 +1325,22 @@ async function founderCard(subject: string, o: { badge: string; title: string; p
   // v139: the main button now replies AS THE BOT, from the bot number. Writing
   // from Jordan's own phone stays as a smaller link underneath.
   const botHref = o.waNum ? await replyUrl(o.waNum) : "";
+  // v208 (Jordan, 15 Oct): "a way to reply as the bot to the studio". A card
+  // about a customer's offer or booking also opens the studio's chat, on the
+  // same page, sending from the bot number.
+  const studioHref = o.studioNum && digitsOf(o.studioNum) !== digitsOf(o.waNum || "") ? await replyUrl(o.studioNum) : "";
+  const studioLabel = `Reply to ${o.studioName || "the studio"} as the bot`;
+  const studioBtn = studioHref
+    ? `<p style="margin:12px 0 0;"><a href="${studioHref}" style="display:inline-block;background:#fff;color:#1A7F42;border:2px solid #1FA855;font-size:14px;font-weight:700;text-decoration:none;padding:11px 24px;border-radius:999px;">${esc(studioLabel)}</a></p>`
+    : "";
   const waBtn = o.waNum
-    ? `<tr><td style="padding:20px 34px 0;text-align:center;"><a href="${botHref}" style="display:inline-block;background:#1FA855;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:999px;">Reply as the bot</a><p style="margin:8px 0 0;color:${C.muted};font-size:11.5px;">Opens a suggested answer you can edit. Sends from the bot number as Massage Club.</p><p style="margin:10px 0 0;font-size:12px;"><a href="${waHref}" style="color:${C.muted};">${esc(o.waLabel || "Or write from your own WhatsApp")}</a></p></td></tr>`
+    ? `<tr><td style="padding:20px 34px 0;text-align:center;"><a href="${botHref}" style="display:inline-block;background:#1FA855;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:13px 28px;border-radius:999px;">${studioHref ? "Reply to the customer as the bot" : "Reply as the bot"}</a>${studioBtn}<p style="margin:8px 0 0;color:${C.muted};font-size:11.5px;">Opens a suggested answer you can edit. Sends from the bot number as Massage Club.</p><p style="margin:10px 0 0;font-size:12px;"><a href="${waHref}" style="color:${C.muted};">${esc(o.waLabel || "Or write from your own WhatsApp")}</a></p></td></tr>`
     : "";
   const chatLink = o.waNum
     ? `<tr><td style="padding:12px 34px 0;text-align:center;"><a href="${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">View full conversation</a> <span style="color:${C.dash};">·</span> <a href="${await inboxUrl()}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">Open inbox</a></td></tr>`
     : "";
   const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center">\n  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;">\n    <tr><td style="padding:26px 34px 0;text-align:center;">\n      <img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;">\n      <p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p>\n    </td></tr>\n    <tr><td style="padding:22px 34px 0;text-align:center;">\n      <span style="display:inline-block;background:${C.cream};color:${C.clay};font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">${esc(o.badge)}</span>\n      <h1 style="margin:14px 0 0;color:${C.ink};font-size:23px;line-height:1.3;font-family:${SERIF};font-weight:700;">${esc(o.title)}</h1>\n    </td></tr>\n    <tr><td style="padding:4px 34px 0;">${paras}${quote}${transcript}</td></tr>\n    ${waBtn}\n    ${chatLink}\n    <tr><td style="padding:22px 34px 26px;">\n      <div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div>\n      <p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Founder alert · WhatsApp bot · +34 613 97 79 00</p>\n    </td></tr>\n  </table>\n</td></tr></table>`;
-  const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.transcript || []), botHref ? `Reply as the bot: ${botHref}` : "", waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
+  const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.transcript || []), botHref ? `Reply as the bot: ${botHref}` : "", studioHref ? `${studioLabel}: ${studioHref}` : "", waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
   await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: FROM_EMAIL, to: o.to || SUPPORT, subject, html, text: plain }),
@@ -1416,6 +1424,10 @@ async function suggestReply(phone: string, studio?: { business_name: string } | 
     if (!key) return fb;
     try {
       const thread = await recentThread(phone);
+      // v208: with no messages the model invented a pitch ("plataforma de
+      // masajes en Barcelona", "a domicilio") for Chalalai. Nothing to answer
+      // means no suggestion.
+      if (!thread.length) return "";
       const convo = thread.map((m) => `${m.dir === "in" ? "Studio" : "Us"}: ${m.body.slice(0, 300)}`).join("\n");
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 14000);
@@ -4475,7 +4487,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     await founderCard(`⚠️ ${partner.business_name} offered ${time} but ${req.first_name || "the customer"} cannot see it · #${req.id}`, {
       badge: "OFFER NOT DELIVERED", title: `${partner.business_name} can do ${time} ${day}, and the customer cannot be reached`,
       paras: [`WhatsApp is outside its 24 hour window and there is no email on file, so the Yes button could not be sent. Nothing is confirmed. The studio was told it is not booked yet.`],
-      quote: freeText, waNum: clientNum,
+      quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
     });
   }
   // v81 (Jordan, 12 Sept): his own words for this moment. The old line asked the
@@ -4496,7 +4508,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     badge: "OFFER FORWARDED",
     title: `${partner.business_name} can do ${time} ${day}`,
     paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : "with Yes / Another time / Closer or cheaper buttons"}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
-    quote: freeText, waNum: clientNum,
+    quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
   });
   return offerVia;
 }
@@ -5121,7 +5133,7 @@ async function forwardTimeChange(req: any, partner: { id: string; business_name:
     badge: "TIME CHANGE",
     title: `${partner.business_name}: ${req.confirmed_time || "?"} became ${time}`,
     paras: [`${req.first_name || "The customer"} was asked with Yes / Another time buttons. On Yes the booking updates itself and the studio is told. Nothing to do.`],
-    quote: freeText, waNum: clientNum,
+    quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
   });
 }
 
@@ -5249,7 +5261,7 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     badge: "BOOKED",
     title: `${studio} · ${when}`,
     paras: [`${req.first_name || "The customer"} tapped Yes${via === "web" ? " on the offer page" : " on WhatsApp"}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
-    waNum: clientDigits,
+    waNum: clientDigits, studioNum: digitsOf(row.phone || ""), studioName: studio,
   });
   return true;
 }
