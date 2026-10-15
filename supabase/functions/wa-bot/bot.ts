@@ -1640,7 +1640,7 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
   const bubbles = o.thread.map((m, mi) => {
     const them = m.dir === "in";
     const en = o.trans?.get(mi);
-    let body = m.body.replace(/\s*\[via ad\]$/, "").slice(0, 1500);
+    let body = (them ? m.body : prettyLogged(m.body)).replace(/\s*\[via ad\]$/, "").slice(0, 1500);
     // A message sent with buttons is logged as "text [A/B/C]"; show the buttons.
     let btns = "";
     const bm = body.match(/^([\s\S]*?)\s*\[([^\[\]]{1,300})\]$/);
@@ -1674,9 +1674,13 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
   const notes = (o.notice ? `<div class="note done">${o.notice}</div>` : "")
     + (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
     + (o.error ? `<div class="note err">${esc(o.error)}</div>` : "")
-    + (!o.open && !o.muted ? `<div class="note err">It has been over 24 hours since they last wrote, so WhatsApp will not deliver a normal message. Only an approved template can reach them now.</div>` : "")
+    + (!o.open && !o.muted && !o.studio ? `<div class="note err">It has been over 24 hours since they last wrote, so WhatsApp will not deliver a normal message. Only an approved template can reach them now.</div>` : "")
+    + (!o.open && !o.muted && o.studio ? `<div class="note">They have not written to us in the last 24 hours, so your message goes inside an approved WhatsApp template: "Hola, os escribimos de Massage Club sobre una reserva: <i>your message</i>. Podéis responder aquí mismo. Gracias." Buttons are not added to it.</div>` : "")
     + (o.muted ? `<div class="note err">This number is muted. Nothing is ever sent to it.</div>` : "");
-  const can = o.open && !o.muted;
+  // v208 (Jordan, 15 Oct: "i want to be able to send a message to the studio
+  // like i can to the customers"): a studio can always be written to. With the
+  // 24h window shut it goes as a template (studioClosedSend).
+  const can = (o.open || !!o.studio) && !o.muted;
   const chips = (o.studio ? studioQuickReplies() : quickReplies(o.es, first)).map(([label, text]) =>
     `<button type="button" class="chip" data-l="${o.studio || o.es ? "es" : "en"}" data-t="${esc(text)}">${esc(label)}</button>`).join("");
   // v148 (Jordan, 3 Oct): side by side. He writes in English on the left, the
@@ -1910,6 +1914,41 @@ async function inboxPage(url: URL): Promise<Response> {
   return pageOut(url, pageShell("Conversations · Massage Club", top, body));
 }
 
+// v208: a studio outside its 24h window. nota_centro_v1 carries the text as
+// it is ("Hola, os escribimos de Massage Club sobre una reserva: {{1}}.
+// Podéis responder aquí mismo. Gracias."). Until Meta approves it, the
+// approved aviso_centro_v1 carries it instead, naming the client and time of
+// the studio's latest ask, which is what any note to a studio is about.
+// v208 (Jordan, 15 Oct, on "[solicitud_reserva_v2] Brandon: masaje ... |
+// Lunes ... (req #120)": "never again, why does this look like this"). The
+// chat shows what the other side read. Studio asks logged before
+// dispatch-studios v44 are rebuilt into the approved template text; any other
+// "[template name/lang]" tag is dropped.
+const TPL_V2 = (a: string[]) => `Hola, soy Jordan, de Massage Club. Somos un servicio de reservas de masajes en Madrid: los clientes nos escriben por WhatsApp y nosotros les buscamos hueco en un buen centro cerca de ellos. Sin comisión, el cliente paga directamente en el centro.\n\nTengo un cliente que quiere reservar con vosotros:\n• ${a[0]}: ${a[1]}\n• ${a[2]} a las ${a[3]}, cerca de ${a[4]}\n\nLe he preguntado también a otros centros de la zona y el cliente se queda con la mejor oferta que confirme. Si podéis hacerle un 10% de descuento como cliente de Massage Club, decídmelo al confirmar y lo cierro con vosotros.\n\n¿Podéis atenderle? Tocad un botón o escribidme aquí. [Sí, podemos/Otra hora/No podemos]`;
+const TPL_V3 = (a: string[]) => `Hola, tengo un cliente para un masaje ${a[0]}. Se llama ${a[1]} y lo quiere el ${a[2]}. ¿Tenéis hueco?\nEstoy preguntando a varios centros de la zona.\n\nJordan, de Massage Club [Sí, tengo hueco/Otra hora/No puedo]`;
+function prettyLogged(body: string): string {
+  const b = String(body || "");
+  let m = /^\[solicitud_reserva_v2\] ([^:]*): ([\s\S]*?) \| ([\s\S]*?) a las ([\s\S]*?), cerca de ([\s\S]*?) \(req #\d+\)$/.exec(b);
+  if (m) return TPL_V2([m[1], m[2], m[3], m[4], m[5]]);
+  m = /^\[solicitud_reserva_v3\] ([^:]*): ([\s\S]*?) \| ([\s\S]*?) \(req #\d+\)$/.exec(b);
+  if (m) return TPL_V3([m[2], m[1], m[3]]);
+  return b.replace(/^\[(?:template )?[a-z0-9_]+(?:\/[a-z_]+)?\]\s*/i, "").replace(/\s*\(req #\d+\)$/, "");
+}
+
+async function studioClosedSend(phone: string, text: string): Promise<boolean> {
+  const body = text.replace(/\s+/g, " ").trim();
+  if (await sendTemplate(phone, "nota_centro_v1", "es", [body], [], `Hola, os escribimos de Massage Club sobre una reserva:\n\n${body}\n\nPodéis responder aquí mismo. Gracias.`)) return true;
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=1&select=request_id`, { headers: H() }).then((r) => r.json()).catch(() => []);
+  const rid = Array.isArray(dr) && dr[0] ? dr[0].request_id : null;
+  if (!rid) return false;
+  const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${rid}&select=first_name,proposed_time,confirmed_time,time1`, { headers: H() }).then((r) => r.json()).catch(() => []);
+  const rq = Array.isArray(rr) && rr[0] ? rr[0] : {};
+  const who = String(rq.first_name || "nuestro cliente");
+  const at = String(rq.confirmed_time || rq.proposed_time || "").match(/^\d{1,2}:\d{2}$/) ? String(rq.confirmed_time || rq.proposed_time) : String(rq.time1 || "-");
+  const note = body.replace(/[.\s]+$/, "");
+  return await sendTemplate(phone, "aviso_centro_v1", "es", [who, at, note], [], `Aviso de Massage Club sobre la cita de ${who} a las ${at}: ${note}. Gracias por vuestra paciencia.`);
+}
+
 async function replyPage(req: Request, url: URL): Promise<Response> {
   const phone = digitsOf(url.searchParams.get("reply") || "");
   const sig = String(url.searchParams.get("sig") || "");
@@ -1953,7 +1992,7 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
     let text = noDashes(String(form?.get("text") || "")).slice(0, 1500);
     if (!text) error = "The message was empty, so nothing was sent.";
     else if (muted) error = "This number is muted. Nothing was sent.";
-    else if (!open) error = "The 24 hour window is closed, so WhatsApp would not deliver this. Nothing was sent.";
+    else if (!open && !studio) error = "The 24 hour window is closed, so WhatsApp would not deliver this. Nothing was sent.";
     else if (studio && (mcMadridHour() < 9 || mcMadridHour() >= 21)) error = "Studios only get messages between 09:00 and 21:00 Madrid. Nothing was sent; try again after 09:00.";
     else {
       // Spanish chats: English goes back to Jordan translated, for a second
@@ -1969,7 +2008,10 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
       // v151 (Jordan, 4 Oct): up to three tap buttons under the message. Ids
       // start with fx_ so a tap comes back to the bot as the button's words.
       const btns = ["b1", "b2", "b3"].map((k) => noDashes(String(form?.get(k) || "")).trim().slice(0, 20)).filter(Boolean);
-      const ok = btns.length
+      const closedStudio = !!studio && !open;
+      const ok = closedStudio
+        ? await studioClosedSend(phone, text)
+        : btns.length
         ? await sendButtons(phone, text, btns.map((title, i) => ({ id: `fx_${i + 1}`, title })), { manual: true })
         : await sendText(phone, text, { manual: true });
       if (ok) {
