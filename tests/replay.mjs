@@ -1763,7 +1763,7 @@ for (const [msg, want, note] of [
   }
 
   // v204 review: guards that live in I/O code, checked in the source.
-  check("review guards", "no price ask after \"no os guardéis el hueco\"", /!drow\.quoted_price && \["whatsapp", "email", "none", "queued", "held_window"\]\.includes\(fwd\)/.test(botSrc), true, "a studio told not to hold the slot was then asked its price");
+  check("review guards", "no price ask after \"no os guardéis el hueco\"", /!drow\.quoted_price && \["whatsapp", "email", "none", "queued", "held_window", "held"\]\.includes\(fwd\)/.test(botSrc), true, "a studio told not to hold the slot was then asked its price");
   check("review guards", "declineOffer stops on a row that was not open", /const closedNow = await up\.json\(\)/.test(botSrc) && /outcome=in\.\(pending,accepted\)`, \{ method: "PATCH", headers: \{ \.\.\.H\(\), Prefer: "return=representation" \}, body: JSON\.stringify\(\{ outcome: "no"/.test(botSrc), true, "an old \"Another time\" told the winning studio the client did not want it");
   check("review guards", "\"I am still asking\" only with something asked", /if \(await widenRequest\(req\) \|\| await asksOpen\(Number\(req\.id\)\)\) \{\s*await say\(OFFER_COPY\[L\]\.noneYet\)/.test(botSrc), true, "");
   check("review guards", "the voice ping carries the number", /could not be transcribed; the bot asked them to type it\. Listen: [^\n]*`, from\);/.test(botSrc), true, "a fake 3460000xxxx canary paged Jordan");

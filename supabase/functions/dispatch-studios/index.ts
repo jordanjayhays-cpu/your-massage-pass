@@ -249,7 +249,12 @@ async function logEvent(phone: string, event: string, meta: Record<string, unkno
   } catch (_e) { /* non-fatal */ }
 }
 
+// v46 (Jordan, 15 Oct: "dont' send anything to brandon"). Customers held for
+// Jordan get no automatic text from here either (second-wave notes, stale and
+// too-late notes, customer_text).
+const HOLD_CUSTOMERS = new Set(["15102901422"]);
 async function sendText(to: string, body: string) {
+  if (HOLD_CUSTOMERS.has(String(to || "").replace(/[^0-9]/g, ""))) { console.log("[dispatch] held customer, not sent", to); return false; }
   const res = await fetch(GRAPH, {
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body, preview_url: false } }),

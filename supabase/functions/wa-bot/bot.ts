@@ -207,7 +207,18 @@ let sentThisTurn = false;
 // voice note failed inside ten minutes and the first already got the line.
 // Jordan has been pinged either way, so the fallback below stays out of it.
 let quietThisTurn = false;
+// v209 (Jordan, 15 Oct: "dont' send anything to brandon, keep sending for
+// Brandon to top tier massage places in Salamanca"). A held customer gets
+// nothing automatic from the bot, WhatsApp or email. Studio offers for them go
+// to Jordan as a card (forwardOffer) and the studio is told we are checking
+// with the client. Jordan's own sends from the reply page still go out.
+const HOLD_CUSTOMERS = new Set(["15102901422"]);
+const HOLD_EMAILS = new Set(["brandon.k.brooks@gmail.com"]);
+const heldNum = (to: unknown) => HOLD_CUSTOMERS.has(digitsOf(String(to || "")));
+const heldMail = (to: unknown) => HOLD_EMAILS.has(String(to || "").trim().toLowerCase());
+
 async function waSend(to: string, payload: Record<string, unknown>, logBody: string, type: string, opts: { manual?: boolean } = {}) {
+  if (!opts.manual && heldNum(to)) { console.log("[wa] held customer, not sent:", digitsOf(to), logBody.slice(0, 80)); return false; }
   // v197: a customer who writes in another language reads every message in it.
   // Jordan's own replies from the reply page go out exactly as he wrote them.
   const xl = opts.manual ? "" : (XLANG.get(digitsOf(to)) || "");
@@ -2214,7 +2225,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
           // v204 review (12 Oct): never right after "no os guardéis el hueco"
           // (a time too close, a dearer one) or about a request just closed
           // (muted). Only while the time is still in play.
-          if (!drow.quoted_price && ["whatsapp", "email", "none", "queued", "held_window"].includes(fwd)) await sendText(from, PRICE_ASK);
+          if (!drow.quoted_price && ["whatsapp", "email", "none", "queued", "held_window", "held"].includes(fwd)) await sendText(from, PRICE_ASK);
           await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name, time: exactTime(req) });
           return;
         }
@@ -3516,6 +3527,7 @@ async function waWindowOpen(phone: unknown): Promise<boolean> {
 }
 async function emailCustomer(req: any, subject: string, body: string): Promise<boolean> {
   const to = String(req?.contact_email || "").trim();
+  if (heldMail(to) || heldNum(req?.client_phone)) { console.log("[wa] held customer, email not sent:", subject); return false; }
   if (!to || !RESEND_API_KEY) return false;
   const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:22px 34px 8px;"><p style="margin:0;color:${C.ink};font-size:15px;line-height:1.65;white-space:pre-wrap;">${esc(body)}</p></td></tr><tr><td style="padding:8px 34px 26px;"><div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div><p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
   const res = await fetch("https://api.resend.com/emails", {
@@ -4298,6 +4310,17 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   // them the studio's time anyway. Nothing goes to them and the request is
   // closed; dispatch-studios' chase sweep then tells every studio still holding
   // it, inside that studio's own hours.
+  if (clientNum && heldNum(clientNum)) {
+    await toStudio(`Gracias. Lo confirmo con ${req.first_name || "el cliente"} y os digo algo en cuanto me conteste.`);
+    await logEvent(clientNum, "offer_held_for_jordan", { request_id: req.id, studio: partner.business_name, time });
+    await founderCard(`⏸ ${partner.business_name} offers ${time} for ${req.first_name || "the customer"} · #${req.id} (held for you)`, {
+      badge: "OFFER HELD FOR YOU",
+      title: `${partner.business_name} can do ${time}`,
+      paras: [`You asked that nothing goes to ${req.first_name || "this customer"} automatically, so nothing was sent to them. The studio was told we are checking with the client. Tell ${req.first_name || "them"} yourself, or reply below.`],
+      quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
+    });
+    return "held";
+  }
   if (clientNum && cs.step === "muted") {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=not.in.(confirmed,cancelled,dismissed)`, {
       method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
@@ -4692,7 +4715,7 @@ async function showNextOffer(req: any, declined: any, mode: "time" | "alt" | "an
     if (!p) continue;
     const viaPhone = x.channel === "email" || x.channel === "call" ? "" : digitsOf(String(x.phone || ""));
     const res = await forwardOffer(req, { id: String(p.id), business_name: String(p.business_name || "") }, String(x.id), String(x.offered_time), String(x.reply_text || `Sí, a las ${x.offered_time}`), viaPhone, { fromQueue: true, ownOption: x.channel === "email", lead, dayHint: x.dayHint || undefined });
-    if (["whatsapp", "email", "none"].includes(res)) return true;
+    if (["whatsapp", "email", "none", "held"].includes(res)) return true;
   }
   return false;
 }
@@ -5099,6 +5122,7 @@ async function offerLink(rowId: string, a = ""): Promise<string> {
 }
 async function emailOffer(req: any, L: string, rowId: string, studio: string, time: string, day: string, address: string, priceLine: string): Promise<boolean> {
   const to = String(req?.contact_email || "").trim();
+  if (heldMail(to) || heldNum(req?.client_phone)) { console.log("[wa] held customer, offer email not sent"); return false; }
   if (!to || !RESEND_API_KEY) return false;
   const es = L === "es";
   const link = await offerLink(rowId);
@@ -5181,6 +5205,7 @@ async function forwardTimeChange(req: any, partner: { id: string; business_name:
 
 async function customerConfirmEmail(req: any, studio: string, when: string, addr: string, phone: string) {
   if (!req.contact_email) return;
+  if (heldMail(req.contact_email) || heldNum(req.client_phone)) return;
   const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:26px 34px 0;text-align:center;"><span style="display:inline-block;background:#E6F4EA;color:#1A7F42;font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">CONFIRMED</span><h1 style="margin:16px 0 0;color:${C.ink};font-size:27px;line-height:1.2;font-family:${SERIF};font-weight:700;">${esc(studio)}</h1></td></tr><tr><td style="padding:24px 34px 0;text-align:center;"><table width="100%" cellpadding="0" cellspacing="0" style="background:${C.cream};border-radius:16px;"><tr><td style="padding:22px 20px;text-align:center;"><p style="margin:0;color:${C.clay};font-size:34px;line-height:1.1;font-family:${SERIF};font-weight:700;">${esc(when)}</p><p style="margin:8px 0 0;color:${C.ink};font-size:15px;font-weight:600;">${esc(req.service_name || "Massage")}</p>${addr ? `<p style="margin:8px 0 0;color:${C.muted};font-size:14px;">${esc(addr)}</p>` : ""}${phone ? `<p style="margin:4px 0 0;color:${C.muted};font-size:14px;">${esc(phone)}</p>` : ""}</td></tr></table></td></tr><tr><td style="padding:20px 34px 26px;text-align:center;"><p style="margin:0;color:${C.muted};font-size:14px;line-height:1.6;">You pay the studio directly. No booking fee.<br>Pagas directamente en el centro. Sin comisión.</p><div style="border-top:2px dashed ${C.dash};margin:16px 0;"></div><p style="margin:0;color:#B8AC9E;font-size:12px;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
   await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
