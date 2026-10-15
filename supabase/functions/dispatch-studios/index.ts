@@ -631,7 +631,25 @@ async function sendTemplate(to: string, name: string, params: string[], payloads
   return { ok: res.ok, status: res.status, out };
 }
 
-async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean, arm: string = "S1a"): Promise<{ ok: boolean; error?: string }> {
+// v43 (Jordan, 15 Oct): the first message to a studio that has never heard of
+// us can open with who we are: "Hi, we are Massage Club... details of the
+// client... can you accommodate?". That is solicitud_reserva_v2, approved and
+// unused since v24 moved everyone to v3. It is opt-in per call (intro_partner_ids
+// on a manual request_id dispatch), so the sweep keeps sending v3 as before.
+// service_by_partner puts the studio's own closest service in the ask when it
+// does not do what the customer named: Chalalai has no sports massage, so it is
+// asked for its firm Thai massage and the customer's offer names that.
+// The v2 time slot reads "{{3}} a las {{4}}", so {{4}} must start with an hour.
+function v2Time(r: Record<string, unknown>): string {
+  const hour = String(r.proposed_time || "") || concreteTime(r.time1);
+  const band = whenEs(r.time1).match(/\((\d{1,2}:\d{2})-(\d{1,2}:\d{2})\)|entre las (\d{1,2}:\d{2}) y las (\d{1,2}:\d{2})/);
+  const until = band ? (band[2] || band[4]) : "";
+  if (hour && until) return `${hour} (o la hora que mejor os venga hasta las ${until})`;
+  return hour || "la hora que mejor os venga";
+}
+const capFirst = (t: string) => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+
+async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean, arm: string = "S1a", ask: { intro?: boolean; service?: string } = {}): Promise<{ ok: boolean; error?: string }> {
   // v36: the pause covers the template ask too, not only free text. See the
   // note in sendStudioNote.
   if (STUDIO_OUTREACH_PAUSED) {
@@ -640,6 +658,24 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   }
   const sameDay = /^(today|hoy)$/i.test(String(r.day1 || "").trim());
   const client = param(String(r.first_name || "Cliente"), 40);
+  const ownService = String(ask.service || "").trim();
+
+  if (ask.intro && !cheapest) {
+    const pi = [
+      client,
+      param(ownService || `${svcEs(r.service_name).toLowerCase()} de ${reqDuration(r)} min`, 120),
+      param(capFirst(dayLabelEs(r.day1, r.message_text)), 60),
+      param(v2Time(r), 90),
+      param(String(r.area || "Madrid"), 40),
+    ];
+    const ri = await sendTemplate(c.wa, NEW_TEMPLATE, pi, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
+    console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=${NEW_TEMPLATE} (intro) status=${ri.status} ${ri.out.slice(0, 160)}`);
+    if (ri.ok) {
+      await logMsg(c.wa, `[${NEW_TEMPLATE}] ${pi[0]}: ${pi[1]} | ${pi[2]} a las ${pi[3]}, cerca de ${pi[4]} (req #${r.id})`);
+      return { ok: true };
+    }
+    if (!/132001|template|does not exist|not found|not approved/i.test(ri.out)) return { ok: false, error: `${ri.status} ${ri.out.slice(0, 200)}` };
+  }
 
   // v24: solicitud_reserva_v3 is Jordan's own wording (12 Sept): lead with the
   // client, not with a pitch. The approved v2 opens with two paragraphs
@@ -658,7 +694,7 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const genderLine = r.therapist_gender === "male" ? ", prefiere masajista chico"
       : r.therapist_gender === "female" ? ", prefiere masajista chica" : "";
     const p3 = [
-      param(svcParam(r.service_name, reqDuration(r), genderLine), 80),
+      param(ownService ? ownService.replace(/^masaje\s+/i, "") + genderLine : svcParam(r.service_name, reqDuration(r), genderLine), 80),
       client,
       param(`${dayLabelEs(r.day1, r.message_text)}${whenEs(r.time1)}`, 70),
     ];
@@ -960,7 +996,7 @@ function askedWhere(studios: Array<{ area: string | null; km: number | null }>, 
   return "";
 }
 
-async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean }) {
+async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean; introIds?: string[]; serviceBy?: Record<string, string> }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
   // v38: a request for a day that has already been and gone reaches nobody.
@@ -1113,7 +1149,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       await sq(`request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ km: Number(c.km) }) }).catch(() => null);
     }
 
-    const res = await askOneStudio(r, c, opts.cheapest, arm);
+    const res = await askOneStudio(r, c, opts.cheapest, arm, { intro: !!opts.introIds?.includes(String(c.id)), service: opts.serviceBy?.[String(c.id)] });
     if (rowId) {
       await sq(`request_dispatch?id=eq.${rowId}`, {
         method: "PATCH", headers: { Prefer: "return=minimal" },
@@ -1244,6 +1280,12 @@ async function handleRequest(req: Request): Promise<Response> {
   const partnerIds = Array.isArray(body.partner_ids) ? (body.partner_ids as unknown[]).map(String).filter(Boolean) : [];
   // v41: wa-bot passes customer_note: false and says what happened itself.
   const quiet = body.customer_note === false;
+  // v43: opt-in intro template and per-studio service, manual request_id calls only.
+  const introIds = body.request_id && Array.isArray(body.intro_partner_ids) ? (body.intro_partner_ids as unknown[]).map(String).filter(Boolean) : [];
+  const serviceBy: Record<string, string> = {};
+  if (body.request_id && body.service_by_partner && typeof body.service_by_partner === "object") {
+    for (const [k, v] of Object.entries(body.service_by_partner as Record<string, unknown>)) if (typeof v === "string" && v.trim()) serviceBy[String(k)] = v.trim().slice(0, 120);
+  }
 
   // v11: a note to every studio still in play on a request (free text while
   // their 24h window is open, the aviso_centro_v1 template otherwise), and a
@@ -1467,7 +1509,7 @@ async function handleRequest(req: Request): Promise<Response> {
         continue;
       }
     }
-    const outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet });
+    const outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet, introIds, serviceBy });
     // v35: the claim marked the request dispatched before a single studio was
     // written to. If nothing actually went out (no candidates, every send
     // failed) that mark would hide the request from the sweep forever, so give
