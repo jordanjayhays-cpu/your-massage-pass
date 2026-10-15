@@ -259,6 +259,46 @@ async function sendText(to: string, body: string) {
   return res.ok;
 }
 
+// v45 (Jordan, 15 Oct: "so i can click on the messages like the customers,
+// this needs to be standard"). Every studio ask reaches Jordan as a card: the
+// exact message each studio read, its English, and a "Reply to <studio> as the
+// bot" button that opens that studio's chat on the founder reply page (the
+// same page and signature wa-bot's customer cards use).
+const REPLY_BASE = "https://your-massage-pass-o5fo.vercel.app/bot.html";
+const FOUNDER_TO = ["jordan@massageclub.io"];
+async function replyUrl(phone: string): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(OPS_KEY + ":bot-reply"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const d = String(phone || "").replace(/[^0-9]/g, "");
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(d)));
+  return `${REPLY_BASE}?reply=${d}&sig=${[...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+const escH = (t: string) => String(t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+async function studioMessagesEmail(rows: Array<Record<string, any>>, subject: string, fallbackLines: string[]) {
+  try {
+    const blocks: string[] = [];
+    const plain: string[] = [];
+    for (const x of rows) {
+      blocks.push(`<tr><td style="padding:18px 30px 0;"><p style="margin:0;color:#262019;font-size:15px;font-weight:700;">#${x.requestId} · ${escH(x.name || "Cliente")} · ${escH(x.service || "")} · ${escH(x.when || "")}${x.area ? " · " + escH(x.area) : ""}</p></td></tr>`);
+      plain.push(`#${x.requestId} ${x.name || ""} ${x.service || ""} ${x.when || ""}`);
+      for (const m of (x.messages || []) as Array<{ name: string; wa: string; text: string }>) {
+        const url = await replyUrl(m.wa);
+        const bm = /^([\s\S]*?)\s*\[([^\[\]]*\/[^\[\]]*)\]$/.exec(m.text || "");
+        const body = bm ? bm[1] : (m.text || "");
+        const btns = bm ? bm[2].split("/").map((b) => `<span style="display:inline-block;margin:6px 4px 0 0;font-size:12px;font-weight:600;color:#B85C38;border:1px solid #E4D9CB;border-radius:999px;padding:3px 9px;">${escH(b.trim())}</span>`).join("") : "";
+        blocks.push(`<tr><td style="padding:12px 30px 0;"><p style="margin:0;color:#B85C38;font-size:11px;font-weight:700;letter-spacing:2px;">${escH(m.name).toUpperCase()} · +${escH(m.wa)}</p><div style="margin-top:6px;background:#FAF6F0;border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.55;color:#262019;white-space:pre-wrap;">${escH(body)}<br>${btns}</div><p style="margin:10px 0 0;"><a href="${url}" style="display:inline-block;background:#1FA855;color:#fff;font-size:13px;font-weight:700;text-decoration:none;padding:10px 20px;border-radius:999px;">Reply to ${escH(m.name)} as the bot</a></p></td></tr>`);
+        plain.push(`\n${m.name} (+${m.wa}):\n${m.text}\nReply to ${m.name} as the bot: ${url}`);
+      }
+    }
+    const inbox = `${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${rows[0]?.requestId ?? ""}`;
+    const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F1EBE2;padding:30px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:20px;border:1px solid #F0E9E0;overflow:hidden;"><tr><td style="padding:24px 30px 0;text-align:center;"><p style="margin:0;color:#262019;font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p><p style="margin:12px 0 0;"><span style="display:inline-block;background:#FAF6F0;color:#B85C38;font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">SENT TO STUDIOS</span></p><h1 style="margin:12px 0 0;color:#262019;font-size:21px;font-family:Georgia,'Times New Roman',serif;">${escH(subject)}</h1><p style="margin:6px 0 0;color:#8A7F73;font-size:12.5px;">Exactly what each studio read. Their replies come to you the same way.</p></td></tr>${blocks.join("")}<tr><td style="padding:20px 30px 24px;text-align:center;"><a href="${inbox}" style="color:#B85C38;font-size:13px;font-weight:700;text-decoration:none;">All studios on this request</a></td></tr></table></td></tr></table>`;
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: FROM_EMAIL, to: FOUNDER_TO, subject, html, text: plain.join("\n") }),
+    });
+    if (!r.ok) await founderEmail(subject, fallbackLines);
+  } catch (_e) { await founderEmail(subject, fallbackLines); }
+}
+
 async function founderEmail(subject: string, lines: string[]) {
   try {
     await fetch("https://api.resend.com/emails", {
@@ -628,12 +668,14 @@ const NEW_TEMPLATE = "solicitud_reserva_v2";
 // and its buttons in the "[A/B/C]" form the inbox draws as buttons. Bodies are
 // copied verbatim from the approved templates (ops "templates" on wa-bot).
 const TPL_BODY: Record<string, string> = {
+  solicitud_intro_v1: "Hola, soy Jordan, de Massage Club (reservas de masajes en Madrid). Tengo un cliente para vosotros:\n• {{1}}: {{2}}\n• {{3}} a las {{4}}\n\nPaga en el centro, sin comisión. Pregunto a varios centros; si podéis hacerle un 10% como cliente de Massage Club, decídmelo al confirmar.\n\n¿Podéis atenderle?",
   solicitud_reserva_v2: "Hola, soy Jordan, de Massage Club. Somos un servicio de reservas de masajes en Madrid: los clientes nos escriben por WhatsApp y nosotros les buscamos hueco en un buen centro cerca de ellos. Sin comisión, el cliente paga directamente en el centro.\n\nTengo un cliente que quiere reservar con vosotros:\n• {{1}}: {{2}}\n• {{3}} a las {{4}}, cerca de {{5}}\n\nLe he preguntado también a otros centros de la zona y el cliente se queda con la mejor oferta que confirme. Si podéis hacerle un 10% de descuento como cliente de Massage Club, decídmelo al confirmar y lo cierro con vosotros.\n\n¿Podéis atenderle? Tocad un botón o escribidme aquí.",
   solicitud_reserva_v3: "Hola, tengo un cliente para un masaje {{1}}. Se llama {{2}} y lo quiere el {{3}}. ¿Tenéis hueco?\nEstoy preguntando a varios centros de la zona.\n\nJordan, de Massage Club",
   aviso_centro_v1: "Aviso de Massage Club sobre la cita de {{1}} a las {{2}}: {{3}}. Gracias por vuestra paciencia.",
   solicitud_reserva: "Hola, somos Massage Club. Un cliente quiere reservar con vosotros:\n\n• {{1}}\n• {{2}}\n• Cliente: {{3}}\n\n¿Os encaja? Tocad un botón o responded aquí y confirmamos al cliente. El cliente paga directamente en el centro. De momento no cobramos comisión.",
 };
 const TPL_BUTTONS: Record<string, string[]> = {
+  solicitud_intro_v1: ["Sí, podemos", "Otra hora", "No podemos"],
   solicitud_reserva_v2: ["Sí, podemos", "Otra hora", "No podemos"],
   solicitud_reserva_v3: ["Sí, tengo hueco", "Otra hora", "No puedo"],
   solicitud_reserva: ["Confirmado", "Otra hora"],
@@ -667,12 +709,12 @@ function v2Time(r: Record<string, unknown>): string {
   const hour = String(r.proposed_time || "") || concreteTime(r.time1);
   const band = whenEs(r.time1).match(/\((\d{1,2}:\d{2})-(\d{1,2}:\d{2})\)|entre las (\d{1,2}:\d{2}) y las (\d{1,2}:\d{2})/);
   const until = band ? (band[2] || band[4]) : "";
-  if (hour && until) return `${hour} (o la hora que mejor os venga hasta las ${until})`;
-  return hour || "la hora que mejor os venga";
+  if (hour && until) return `${hour} (o la hora que os venga hasta las ${until})`;
+  return hour || "la hora que os venga";
 }
 const capFirst = (t: string) => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 
-async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean, arm: string = "S1a", ask: { intro?: boolean; service?: string } = {}): Promise<{ ok: boolean; error?: string }> {
+async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: boolean, arm: string = "S1a", ask: { intro?: boolean; service?: string } = {}): Promise<{ ok: boolean; error?: string; text?: string }> {
   // v36: the pause covers the template ask too, not only free text. See the
   // note in sendStudioNote.
   if (STUDIO_OUTREACH_PAUSED) {
@@ -684,6 +726,22 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   const ownService = String(ask.service || "").trim();
 
   if (ask.intro && !cheapest) {
+    // v45 (Jordan, 15 Oct: "can we do a shorter version of this?"):
+    // solicitud_intro_v1 says the same in half the words. Submitted 15 Oct;
+    // until Meta approves it the send fails and the longer v2 goes instead.
+    const ps = [
+      client,
+      param(ownService || `${svcEs(r.service_name).toLowerCase()} de ${reqDuration(r)} min`, 120),
+      param(capFirst(dayLabelEs(r.day1, r.message_text)), 60),
+      param(v2Time(r), 90),
+    ];
+    const rs = await sendTemplate(c.wa, "solicitud_intro_v1", ps, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
+    console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=solicitud_intro_v1 status=${rs.status} ${rs.out.slice(0, 160)}`);
+    if (rs.ok) {
+      const text = renderedTpl("solicitud_intro_v1", ps);
+      await logMsg(c.wa, text);
+      return { ok: true, text };
+    }
     const pi = [
       client,
       param(ownService || `${svcEs(r.service_name).toLowerCase()} de ${reqDuration(r)} min`, 120),
@@ -694,8 +752,9 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const ri = await sendTemplate(c.wa, NEW_TEMPLATE, pi, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=${NEW_TEMPLATE} (intro) status=${ri.status} ${ri.out.slice(0, 160)}`);
     if (ri.ok) {
-      await logMsg(c.wa, renderedTpl(NEW_TEMPLATE, pi));
-      return { ok: true };
+      const text = renderedTpl(NEW_TEMPLATE, pi);
+      await logMsg(c.wa, text);
+      return { ok: true, text };
     }
     if (!/132001|template|does not exist|not found|not approved/i.test(ri.out)) return { ok: false, error: `${ri.status} ${ri.out.slice(0, 200)}` };
   }
@@ -724,8 +783,9 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const r3 = await sendTemplate(c.wa, "solicitud_reserva_v3", p3, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} tpl=v3 status=${r3.status} ${r3.out.slice(0, 140)}`);
     if (r3.ok) {
-      await logMsg(c.wa, renderedTpl("solicitud_reserva_v3", p3));
-      return { ok: true };
+      const text = renderedTpl("solicitud_reserva_v3", p3);
+      await logMsg(c.wa, text);
+      return { ok: true, text };
     }
     if (!/132001|template|does not exist|not found|not approved/i.test(r3.out)) return { ok: false, error: `${r3.status} ${r3.out.slice(0, 200)}` };
   }
@@ -735,8 +795,9 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const r2 = await sendTemplate(c.wa, NEW_TEMPLATE, p2, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=${NEW_TEMPLATE} status=${r2.status} ${r2.out.slice(0, 160)}`);
     if (r2.ok) {
-      await logMsg(c.wa, renderedTpl(NEW_TEMPLATE, p2));
-      return { ok: true };
+      const text = renderedTpl(NEW_TEMPLATE, p2);
+      await logMsg(c.wa, text);
+      return { ok: true, text };
     }
     // Anything other than "template not (yet) available" is a real failure.
     if (!/132001|template|does not exist|not found/i.test(r2.out)) return { ok: false, error: `${r2.status} ${r2.out.slice(0, 200)}` };
@@ -784,8 +845,9 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   const out = await res.text();
   console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} status=${res.status} ${out.slice(0, 160)}`);
   if (res.ok) {
-    await logMsg(c.wa, renderedTpl("solicitud_reserva", [service, when, client]));
-    return { ok: true };
+    const text = renderedTpl("solicitud_reserva", [service, when, client]);
+    await logMsg(c.wa, text);
+    return { ok: true, text };
   }
   return { ok: false, error: `${res.status} ${out.slice(0, 200)}` };
 }
@@ -1150,6 +1212,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   const sentNames: string[] = [];
   const askedIds: string[] = [];
   const asked: Candidate[] = [];
+  const messages: Array<{ name: string; wa: string; text: string }> = [];
   for (const c of candidates) {
     // A test booking must never reach a real studio.
     if (testCustomer && !JORDAN_NUMBERS.includes(c.wa)) {
@@ -1179,6 +1242,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
         body: JSON.stringify(res.ok ? { sent_at: new Date().toISOString() } : { send_error: res.error, outcome: "send_failed" }),
       });
     }
+    if (res.ok) messages.push({ name: c.business_name, wa: c.wa, text: String(res.text || "") });
     if (res.ok) { sent++; askedIds.push(String(c.id)); asked.push(c); sentNames.push(c.business_name + (opts.cheapest && c.score != null ? ` (${Number(c.score)} EUR)` : "") + (c.widened ? " (fuera de la zona)" : "")); }
   }
 
@@ -1270,7 +1334,7 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
     });
   }
 
-  return { requestId, sent, studios: sentNames, skippedClosed, testCustomer, name: String(r.first_name || ""), service: `${svcEs(r.service_name)} ${reqDuration(r)} min`, when: [r.day1, r.time1].filter(Boolean).join(" "), area };
+  return { requestId, sent, studios: sentNames, messages, skippedClosed, testCustomer, name: String(r.first_name || ""), service: `${svcEs(r.service_name)} ${reqDuration(r)} min`, when: [r.day1, r.time1].filter(Boolean).join(" "), area };
 }
 
 async function handleRequest(req: Request): Promise<Response> {
@@ -1554,7 +1618,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // request page in wa-chat, which shows every studio asked and their replies.
     const lines = results.filter((x: any) => x.sent > 0).map((x: any) =>
       `Request #${x.requestId} · ${x.name || "customer"} · ${x.service} · ${x.when || "time to be set"}${x.area ? " · " + x.area : ""}<br>Asked ${x.sent} studios${cheapest ? " (cheapest listed 60 min first, client budget stated, any discount invited)" : ""}${extra ? " (second wave)" : ""}: ${(x.studios || []).join(", ")}.<br>Each studio was asked for a Massage Club rate; the best offer wins after a 10 minute window (same-day requests go to the first yes). The others are stood down automatically. Nothing to do.${(x.skippedClosed || []).length ? "<br>Not asked, closed by their own hours: " + x.skippedClosed.join(", ") + "." : ""}<br>All studios and their replies: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${x.requestId}`);
-    await founderEmail(`Asked ${totalSent} studios${cheapest ? " (price hunt)" : ""}${extra ? " (second wave)" : ""}`, lines);
+    await studioMessagesEmail(results.filter((x: any) => x.sent > 0) as any[], `Asked ${totalSent} studios${cheapest ? " (price hunt)" : ""}${extra ? " (second wave)" : ""}`, lines);
   }
 
   return new Response(JSON.stringify({ ok: true, handled: results.length, results }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
