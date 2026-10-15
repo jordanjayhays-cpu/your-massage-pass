@@ -620,6 +620,29 @@ function closedReason(hoursText: unknown, r: Record<string, unknown>): string | 
 // podemos). Until Meta approves it the send fails with 132001 and we fall back
 // to the old template. Price hunts keep the old template and its budget line.
 const NEW_TEMPLATE = "solicitud_reserva_v2";
+
+// v44 (Jordan, 15 Oct, on seeing "[solicitud_reserva_v2] Brandon: masaje ... |
+// Lunes ... (req #120)" in the studio chat: "never again, why does this look
+// like this"). The log is what the founder inbox shows, so it must be the
+// message the studio actually read: the approved body with its blanks filled,
+// and its buttons in the "[A/B/C]" form the inbox draws as buttons. Bodies are
+// copied verbatim from the approved templates (ops "templates" on wa-bot).
+const TPL_BODY: Record<string, string> = {
+  solicitud_reserva_v2: "Hola, soy Jordan, de Massage Club. Somos un servicio de reservas de masajes en Madrid: los clientes nos escriben por WhatsApp y nosotros les buscamos hueco en un buen centro cerca de ellos. Sin comisión, el cliente paga directamente en el centro.\n\nTengo un cliente que quiere reservar con vosotros:\n• {{1}}: {{2}}\n• {{3}} a las {{4}}, cerca de {{5}}\n\nLe he preguntado también a otros centros de la zona y el cliente se queda con la mejor oferta que confirme. Si podéis hacerle un 10% de descuento como cliente de Massage Club, decídmelo al confirmar y lo cierro con vosotros.\n\n¿Podéis atenderle? Tocad un botón o escribidme aquí.",
+  solicitud_reserva_v3: "Hola, tengo un cliente para un masaje {{1}}. Se llama {{2}} y lo quiere el {{3}}. ¿Tenéis hueco?\nEstoy preguntando a varios centros de la zona.\n\nJordan, de Massage Club",
+  aviso_centro_v1: "Aviso de Massage Club sobre la cita de {{1}} a las {{2}}: {{3}}. Gracias por vuestra paciencia.",
+  solicitud_reserva: "Hola, somos Massage Club. Un cliente quiere reservar con vosotros:\n\n• {{1}}\n• {{2}}\n• Cliente: {{3}}\n\n¿Os encaja? Tocad un botón o responded aquí y confirmamos al cliente. El cliente paga directamente en el centro. De momento no cobramos comisión.",
+};
+const TPL_BUTTONS: Record<string, string[]> = {
+  solicitud_reserva_v2: ["Sí, podemos", "Otra hora", "No podemos"],
+  solicitud_reserva_v3: ["Sí, tengo hueco", "Otra hora", "No puedo"],
+  solicitud_reserva: ["Confirmado", "Otra hora"],
+};
+function renderedTpl(name: string, params: string[]): string {
+  const body = (TPL_BODY[name] || `[${name}] ${params.join(" | ")}`).replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? "");
+  const b = TPL_BUTTONS[name] || [];
+  return b.length ? `${body} [${b.join("/")}]` : body;
+}
 async function sendTemplate(to: string, name: string, params: string[], payloads: string[]): Promise<{ ok: boolean; status: number; out: string }> {
   const components: unknown[] = [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }];
   payloads.forEach((p, i) => components.push({ type: "button", sub_type: "quick_reply", index: String(i), parameters: [{ type: "payload", payload: p }] }));
@@ -671,7 +694,7 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const ri = await sendTemplate(c.wa, NEW_TEMPLATE, pi, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=${NEW_TEMPLATE} (intro) status=${ri.status} ${ri.out.slice(0, 160)}`);
     if (ri.ok) {
-      await logMsg(c.wa, `[${NEW_TEMPLATE}] ${pi[0]}: ${pi[1]} | ${pi[2]} a las ${pi[3]}, cerca de ${pi[4]} (req #${r.id})`);
+      await logMsg(c.wa, renderedTpl(NEW_TEMPLATE, pi));
       return { ok: true };
     }
     if (!/132001|template|does not exist|not found|not approved/i.test(ri.out)) return { ok: false, error: `${ri.status} ${ri.out.slice(0, 200)}` };
@@ -701,7 +724,7 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const r3 = await sendTemplate(c.wa, "solicitud_reserva_v3", p3, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} tpl=v3 status=${r3.status} ${r3.out.slice(0, 140)}`);
     if (r3.ok) {
-      await logMsg(c.wa, `[solicitud_reserva_v3] ${p3[1]}: ${p3[0]} | ${p3[2]} (req #${r.id})`);
+      await logMsg(c.wa, renderedTpl("solicitud_reserva_v3", p3));
       return { ok: true };
     }
     if (!/132001|template|does not exist|not found|not approved/i.test(r3.out)) return { ok: false, error: `${r3.status} ${r3.out.slice(0, 200)}` };
@@ -712,7 +735,7 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
     const r2 = await sendTemplate(c.wa, NEW_TEMPLATE, p2, [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`]);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=${NEW_TEMPLATE} status=${r2.status} ${r2.out.slice(0, 160)}`);
     if (r2.ok) {
-      await logMsg(c.wa, `[${NEW_TEMPLATE}] ${p2[0]}: ${p2[1]} | ${p2[2]} a las ${p2[3]}, cerca de ${p2[4]} (req #${r.id})`);
+      await logMsg(c.wa, renderedTpl(NEW_TEMPLATE, p2));
       return { ok: true };
     }
     // Anything other than "template not (yet) available" is a real failure.
@@ -761,7 +784,7 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, cheapest: 
   const out = await res.text();
   console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} status=${res.status} ${out.slice(0, 160)}`);
   if (res.ok) {
-    await logMsg(c.wa, `[solicitud_reserva] ${service} | ${when} | ${client} (req #${r.id})`);
+    await logMsg(c.wa, renderedTpl("solicitud_reserva", [service, when, client]));
     return { ok: true };
   }
   return { ok: false, error: `${res.status} ${out.slice(0, 200)}` };
@@ -803,7 +826,7 @@ async function sendStudioNote(to: string, text: string, short: string, rq: Recor
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name: "aviso_centro_v1", language: { code: "es" }, components: [{ type: "body", parameters: params.map((x) => ({ type: "text", text: x })) }] } }),
   });
-  if (res.ok) { await logMsg(to, `[aviso_centro_v1] ${params.join(" | ")}`); return { how: "template", ok: true }; }
+  if (res.ok) { await logMsg(to, renderedTpl("aviso_centro_v1", params)); return { how: "template", ok: true }; }
   console.log("[dispatch] studio note template failed", res.status, (await res.text()).slice(0, 200));
   return { how: "template", ok: false };
 }
