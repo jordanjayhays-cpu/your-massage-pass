@@ -135,6 +135,19 @@ check("AD_OPENER_RE", "Hi, I'd like to book a massage. I saw you on Facebook.",
 check("AUTOREPLY_RE", "Gracias por contactar con nosotros, te responderemos lo antes posible",
   AUTOREPLY_RE.test("Gracias por contactar con nosotros, te responderemos lo antes posible"), true,
   "an out of office is not a studio saying yes");
+// 16 Oct: Kamiraku's autoresponder, word for word. It got past AUTOREPLY_RE,
+// "no podemos atender" counted as an offer marker, its hours were read as an
+// 11:00 offer for Brandon, and the studio was told "Lo confirmo con Brandon".
+{
+  const kami = "¡Gracias por comunicar con Kamilaku!\nEn este momento no podemos atender porque estamos trabajando con buena energía ✨ o estamos fuera de horario.\nSi desea reservar un masaje, puede llamarnos o hacerlo online (también disponible).\nSi nos escribe por WhatsApp y no respondemos de inmediato, le contestaremos lo antes posible.\nO llámanos 661217881 y atenderá nuestro asistente de equipo.\nNuestro horario es lunes,Martes jueves a sábado 11:00-21:00\nMiércoles 12:00-21:00\nDomingo 11:00-20:00\n¡Muchas gracias! 🙏";
+  check("AUTOREPLY_RE", "Kamiraku autoresponder", AUTOREPLY_RE.test(kami), true, "an autoresponder is not a reply");
+  check("parseOfferedTime", "Kamiraku autoresponder", parseOfferedTime(kami), "", "opening hours are not an offer");
+  check("parseOfferedTimes", "Kamiraku autoresponder", JSON.stringify(parseOfferedTimes(kami)), "[]", "opening hours are not offers");
+  // Chalalai's booking system, 15 Oct: "Hora: 3:00 pm" reached Jordan as 03:00.
+  const chal = "Servicio: Masaje tailandes 1h\nFecha: octubre 19, 2026\nHora: 3:00 pm\nNombre del cliente: Brandon (Massage Club)";
+  check("parseOfferedTime", "Chalalai booking confirmation", parseOfferedTime(chal), "15:00", "3:00 pm is 15:00");
+  check("parseOfferedTime", "a one hour slot range", parseOfferedTime("tengo hueco 16:00-17:00"), "16:00", "a short range is still a slot");
+}
 check("EROTIC_RE", "buscas masaje erotico?", EROTIC_RE.test("buscas masaje erotico?"), true, "");
 // Antonio, 10 Sept 11:54. Came off the ad, asked for a "Sensitive massage" and
 // the bot said "Good choice. Which day suits you?" before he spelled it out a

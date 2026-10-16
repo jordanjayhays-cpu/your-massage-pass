@@ -265,7 +265,8 @@ export const HOURS_STATEMENT_RE = /\b(abrimos|abre|abierto|cerramos|cierra|cerra
 // sentence that also carries the word horario. Private Spa Madrid answered
 // "El horario a las 18:00 bien" for Al, the opening-hours guard swallowed it,
 // and the one studio that named a slot never reached him.
-const OFFER_MARKER_RE = /\b(podemos|podr[ií]amos|tenemos (hueco|libre|disponible)|hay hueco|disponible|(nos|os|le) va bien|s[ií],?\s*a\s+las|vale\s+a\s+las|ok\s+a\s+las|puede venir|os espero|te esperamos|reservad[oa])\b|\d{1,2}(?:[:.]\d{2})?\s*(?:h|horas?)?\s*(?:bien|perfecto|ok|vale|genial|correcto|sin\s+problema)\b/i;
+// v210: "no podemos atender" (Kamiraku's autoresponder, 16 Oct) is not "podemos".
+const OFFER_MARKER_RE = /\b((?<!\bno\s)podemos|podr[ií]amos|tenemos (hueco|libre|disponible)|hay hueco|disponible|(nos|os|le) va bien|s[ií],?\s*a\s+las|vale\s+a\s+las|ok\s+a\s+las|puede venir|os espero|te esperamos|reservad[oa])\b|\d{1,2}(?:[:.]\d{2})?\s*(?:h|horas?)?\s*(?:bien|perfecto|ok|vale|genial|correcto|sin\s+problema)\b/i;
 // v84: a studio that offers several times. FISIOBARICA answered Asim's request
 // on 9 September with "17h, 18h y 20h" and only 17:00 was kept, so two thirds of
 // the availability they volunteered was thrown away. When he asked for 7pm an
@@ -274,8 +275,17 @@ const OFFER_MARKER_RE = /\b(podemos|podr[ií]amos|tenemos (hueco|libre|disponibl
 // Same guards as the singular: an opening-hours statement is not an offer, and
 // neither is a range like "de 10 a 20". Returns every distinct time in the order
 // the studio wrote them, so the first is still the one we lead with.
+// v210: "11:00-21:00" is opening hours or a window, never one offered time.
+// Kamiraku's autoresponder listed its hours and the bot told Jordan they had
+// offered 11:00. A range is dropped before any time is read.
+// A range of two hours or less ("16:00-17:00") is still a slot and is kept.
+const TIME_RANGE_RE = /\b([01]?\d|2[0-3])(?:[:.h]([0-5]\d))?\s*h?\s*(?:-|\u2013|\u2014|\/)\s*([01]?\d|2[0-3])(?:[:.h]([0-5]\d))?\s*h?\b/g;
+const dropHours = (t: string) => t.replace(TIME_RANGE_RE, (all, h1, m1, h2, m2) => {
+  const span = (parseInt(h2, 10) * 60 + parseInt(m2 || "0", 10)) - (parseInt(h1, 10) * 60 + parseInt(m1 || "0", 10));
+  return span > 120 ? " " : all;
+});
 export function parseOfferedTimes(t: string): string[] {
-  const s = String(t || "");
+  const s = dropHours(String(t || ""));
   if (HOURS_STATEMENT_RE.test(s) && !OFFER_MARKER_RE.test(s)) return [];
   if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return [];
   const out: string[] = [];
@@ -309,7 +319,7 @@ export function parseOfferedTimes(t: string): string[] {
   return out;
 }
 export function parseOfferedTime(t: string): string {
-  const s = String(t || "");
+  const s = dropHours(String(t || ""));
   if (HOURS_STATEMENT_RE.test(s) && !OFFER_MARKER_RE.test(s)) return "";
   if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return ""; // opening hours range, not an offer
   // v210 (16 Oct): "Hora: 3:00 pm" from Chalalai's booking system was read as
@@ -349,7 +359,10 @@ export function parseOfferedTime(t: string): string {
   }
   return "";
 }
-export const AUTOREPLY_RE = /gracias por (contactar|comunicarte|comunicarse|escribir|tu mensaje)|te responderemos|responderemos lo antes|te atenderemos|nos pondremos en contacto|contestar lo antes|hemos recibido tu mensaje|ahora no podemos responder|en este momento estamos ocupados|get back to you|currently busy|horario de atenci[o\u00f3]n|thank you for contacting|thanks for your message/i;
+// v210: Kamiraku's autoresponder (16 Oct) said "Gracias por comunicar con
+// Kamilaku! En este momento no podemos atender ... le contestaremos lo antes
+// posible", got none of these, and its opening hours were read as an offer.
+export const AUTOREPLY_RE = /gracias por (contactar|comunicar|comunicarte|comunicarse|escribir|tu mensaje|su mensaje)|no podemos atender|(le|te|os) (contestaremos|responderemos)|no respondemos de inmediato|fuera de horario|te responderemos|responderemos lo antes|te atenderemos|nos pondremos en contacto|contestar lo antes|hemos recibido tu mensaje|ahora no podemos responder|en este momento estamos ocupados|get back to you|currently busy|horario de atenci[o\u00f3]n|thank you for contacting|thanks for your message/i;
 export const EMAIL_IN_TEXT_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 // v125 (25 Sept, live): Hatem answered the email question with "Hatem", which
 // was his NAME, because he was one question behind the whole way through. The
