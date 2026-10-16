@@ -285,7 +285,7 @@ export function parseOfferedTimes(t: string): string[] {
     if (!out.includes(v)) out.push(v);
   };
   // Walk the string once so the written order is preserved.
-  const re = /\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b|\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])(?!\s*[ap]\.?\s?m)|\b([01]?\d|2[0-3])\s*h(?:oras?|rs?)?\b|\b(1[0-2]|[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?m\.?\b/gi;
+  const re = /\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b(?!\s*[ap]\.?\s?m\b)|\ba\s+las?\s+([01]?\d|2[0-3])(?![:.\d])(?!\s*[ap]\.?\s?m)|\b([01]?\d|2[0-3])\s*h(?:oras?|rs?)?\b|\b(1[0-2]|[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?m\.?\b/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s)) !== null) {
     if (m[1] !== undefined) push(parseInt(m[1], 10), m[2]);
@@ -312,7 +312,11 @@ export function parseOfferedTime(t: string): string {
   const s = String(t || "");
   if (HOURS_STATEMENT_RE.test(s) && !OFFER_MARKER_RE.test(s)) return "";
   if (/\bde\s+\d{1,2}[:.h]?\d{0,2}\s+a\s+\d{1,2}[:.h]?\d{0,2}/i.test(s)) return ""; // opening hours range, not an offer
-  let m = s.match(/\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b/);
+  // v210 (16 Oct): "Hora: 3:00 pm" from Chalalai's booking system was read as
+  // 03:00 because this rule took "3:00" before the pm rule below saw it, and
+  // Jordan's card said "Chalalai offers 03:00". Anything followed by am or pm
+  // now goes to that rule.
+  let m = s.match(/\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b(?!\s*[ap]\.?\s?m\b)/i);
   if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
   // v107 (19 Sept): "a las 3 p.m." used to stop here and return 03:00, because
   // this rule matched before the am/pm rule below. Centro Aloha offered Javier
