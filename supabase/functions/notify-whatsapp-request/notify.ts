@@ -99,9 +99,11 @@ export const SVC_ES_MAP: Array<[RegExp, string]> = [
   [/four hands|4 hands|cuatro manos/i, "Masaje a cuatro manos"],
   [/lomi/i, "Masaje lomi lomi"],
   [/ayurved/i, "Masaje ayurvédico"],
-  [/\b(head|scalp)\b|cabeza|craneal/i, "Masaje de cabeza"],
-  [/\b(foot|feet)\b|\bpies\b|podal/i, "Masaje de pies"],
-  [/facial/i, "Masaje facial"],
+  // Head, foot and facial only when it is a massage: a studio's "Foot scrub"
+  // or "Facial" keeps its own name rather than being asked for a massage.
+  [/\b(head|scalp)\b[^,]*massage|masaje de cabeza|craneal/i, "Masaje de cabeza"],
+  [/\b(foot|feet)\b[^,]*massage|massage[^,]*\b(foot|feet)\b|masaje de pies|podal/i, "Masaje de pies"],
+  [/facial[^,]*massage|masaje facial/i, "Masaje facial"],
   [/massage/i, "Masaje"],
 ];
 export const svcEs = (n?: string | null): string => {

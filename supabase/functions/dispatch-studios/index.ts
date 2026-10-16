@@ -788,11 +788,14 @@ const TPL_BODY: Record<string, string> = {
   solicitud_reserva_v3: "Hola, tengo un cliente para un masaje {{1}}. Se llama {{2}} y lo quiere el {{3}}. ¿Tenéis hueco?\nEstoy preguntando a varios centros de la zona.\n\nJordan, de Massage Club",
   aviso_centro_v2: "Hola, soy Jordan, de Massage Club. Os escribo por el masaje de {{1}}. {{2}}\n\nGracias.",
   aviso_centro_v1: "Aviso de Massage Club sobre la cita de {{1}} a las {{2}}: {{3}}. Gracias por vuestra paciencia.",
+  solicitud_socio_v3: "Hola, otro cliente para vosotros: un masaje {{1}} para {{2}}, el {{3}}. ¿Tenéis hueco?",
+  nota_centro_v1: "Hola, os escribimos de Massage Club sobre una reserva:\n\n{{1}}\n\nPodéis responder aquí mismo. Gracias.",
 };
 const TPL_BUTTONS: Record<string, string[]> = {
   solicitud_reserva_v7: ["Sí, tenemos hueco", "Otra hora", "No podemos"],
   solicitud_intro_v2: ["Sí, tenemos hueco", "Otra hora", "No podemos"],
   solicitud_reserva_v3: ["Sí, tengo hueco", "Otra hora", "No puedo"],
+  solicitud_socio_v3: ["Sí, tengo hueco", "Otra hora", "No puedo"],
 };
 function renderedTpl(name: string, params: string[]): string {
   const body = (TPL_BODY[name] || `[${name}] ${params.join(" | ")}`).replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? "");
@@ -871,8 +874,13 @@ function v3Params(r: Record<string, unknown>, own: string): string[] {
 // intro_partner_ids of a manual dispatch. Price hunts get the same ask as
 // everyone else; ranking by listed price stays internal. A studio that is the
 // only one asked never gets v3, whose fixed "Estoy preguntando a varios
-// centros" would be untrue: with v7 not live yet it is not asked, the row is
-// marked send_failed and Jordan is told.
+// centros" would be untrue. While v7 waits for Meta, a single studio that
+// knows us gets the approved solicitud_socio_v3 ("Hola, otro cliente para
+// vosotros: un masaje ... para Brandon, el lunes ... ¿Tenéis hueco?", same
+// three buttons), and a single studio we have never written to gets the
+// approved nota_centro_v1 carrying who we are and the same ask, with no
+// buttons (a typed answer is read like any other). A request is never left
+// unasked just because a template is waiting for approval.
 async function askOneStudio(r: Record<string, unknown>, c: Candidate, ask: { intro?: boolean; service?: string; several?: boolean; line?: string } = {}): Promise<{ ok: boolean; error?: string; text?: string }> {
   // v36: the pause covers the template ask too, not only free text. See the
   // note in sendStudioNote.
@@ -892,9 +900,14 @@ async function askOneStudio(r: Record<string, unknown>, c: Candidate, ask: { int
   if (ask.intro && several) tries.push(["solicitud_reserva_v3", p3]);
   tries.push(["solicitud_reserva_v7", p7]);
   if (several && !ask.intro) tries.push(["solicitud_reserva_v3", p3]);
+  if (!several && !ask.intro) tries.push(["solicitud_socio_v3", p3]);
+  if (!several && ask.intro) {
+    const [when, svc, who, line] = p7;
+    tries.push(["nota_centro_v1", [param(`Soy Jordan, de Massage Club, un servicio de reservas de masajes en Madrid. ¿Tenéis hueco ${when} para ${svc}? El cliente se llama ${who}. ${line} Si podéis hacerle un 10% como cliente de Massage Club, decídmelo.`, 900)]]);
+  }
   let last = "";
   for (const [name, ps] of tries) {
-    const rs = await sendTemplate(c.wa, name, ps, payloads);
+    const rs = await sendTemplate(c.wa, name, ps, name === "nota_centro_v1" ? [] : payloads);
     console.log(`[dispatch] req=${r.id} studio=${c.business_name} to=${c.wa} tpl=${name} status=${rs.status} ${rs.out.slice(0, 160)}`);
     if (rs.ok) {
       const text = renderedTpl(name, ps);

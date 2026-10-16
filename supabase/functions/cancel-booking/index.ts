@@ -173,6 +173,15 @@ const SVC_ES_MAP: Array<[RegExp, string]> = [
   [/couples|pareja/i, "masaje en pareja"],
   [/kobido/i, "masaje facial Kobido"],
   [/relax|swedish|stress/i, "masaje relajante"],
+  [/prenatal|pregnan|embaraz/i, "masaje prenatal"],
+  [/aromather|aromaterap/i, "masaje con aromaterapia"],
+  [/four hands|4 hands|cuatro manos/i, "masaje a cuatro manos"],
+  [/lomi/i, "masaje lomi lomi"],
+  [/ayurved/i, "masaje ayurvédico"],
+  [/\b(head|scalp)\b[^,]*massage|masaje de cabeza|craneal/i, "masaje de cabeza"],
+  [/\b(foot|feet)\b[^,]*massage|massage[^,]*\b(foot|feet)\b|masaje de pies|podal/i, "masaje de pies"],
+  [/facial[^,]*massage|masaje facial/i, "masaje facial"],
+  [/massage/i, "masaje"],
 ];
 // "su masaje deportivo"; an unknown name keeps its words after "masaje de".
 function svcSu(n: unknown): string {

@@ -82,6 +82,15 @@ const SVC_ES_MAP: Array<[RegExp, string]> = [
   [/couples|pareja/i, "Masaje en pareja"],
   [/kobido/i, "Masaje facial Kobido"],
   [/relax|swedish|stress/i, "Masaje relajante"],
+  [/prenatal|pregnan|embaraz/i, "Masaje prenatal"],
+  [/aromather|aromaterap/i, "Masaje con aromaterapia"],
+  [/four hands|4 hands|cuatro manos/i, "Masaje a cuatro manos"],
+  [/lomi/i, "Masaje lomi lomi"],
+  [/ayurved/i, "Masaje ayurvédico"],
+  [/\b(head|scalp)\b[^,]*massage|masaje de cabeza|craneal/i, "Masaje de cabeza"],
+  [/\b(foot|feet)\b[^,]*massage|massage[^,]*\b(foot|feet)\b|masaje de pies|podal/i, "Masaje de pies"],
+  [/facial[^,]*massage|masaje facial/i, "Masaje facial"],
+  [/massage/i, "Masaje"],
 ];
 const svcEs = (n?: string | null): string => {
   const s = String(n || "").trim();
