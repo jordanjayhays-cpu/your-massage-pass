@@ -259,9 +259,28 @@ async function sendText(to: string, body: string) {
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body, preview_url: false } }),
   });
-  if (res.ok) await logMsg(to, body, "text");
-  else console.log("[dispatch] text send failed", res.status, (await res.text()).slice(0, 200));
+  if (res.ok) {
+    await logMsg(to, body, "text");
+    const studio = await studioNameFor(to);
+    if (studio) await studioCopy(to, studio, body);
+  } else console.log("[dispatch] text send failed", res.status, (await res.text()).slice(0, 200));
   return res.ok;
+}
+
+// v47 (Jordan, 16 Oct: "i want to get emails of the messages sent to
+// studios, every single one"). Each message a studio gets from here reaches
+// Jordan as its own card, built by wa-bot so it looks like every other studio
+// copy: the exact Spanish, the English under it, and the button to answer
+// that studio as the bot. Replaces the v45 one-email-per-dispatch round-up.
+async function studioCopy(wa: string, studio: string, text: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/wa-bot`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ops: "studio_copy", key: OPS_KEY, phone: digits(wa), studio, text, channel: "WhatsApp" }),
+    });
+    if (!r.ok) console.log("[dispatch] studio copy failed", r.status, (await r.text()).slice(0, 200));
+    return r.ok;
+  } catch (e) { console.log("[dispatch] studio copy failed", String(e)); return false; }
 }
 
 // v45 (Jordan, 15 Oct: "so i can click on the messages like the customers,
@@ -893,7 +912,13 @@ async function sendStudioNote(to: string, text: string, short: string, rq: Recor
     method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name: "aviso_centro_v1", language: { code: "es" }, components: [{ type: "body", parameters: params.map((x) => ({ type: "text", text: x })) }] } }),
   });
-  if (res.ok) { await logMsg(to, renderedTpl("aviso_centro_v1", params)); return { how: "template", ok: true }; }
+  if (res.ok) {
+    const shown = renderedTpl("aviso_centro_v1", params);
+    await logMsg(to, shown);
+    const studio = await studioNameFor(to);
+    if (studio) await studioCopy(to, studio, shown);
+    return { how: "template", ok: true };
+  }
   console.log("[dispatch] studio note template failed", res.status, (await res.text()).slice(0, 200));
   return { how: "template", ok: false };
 }
@@ -1623,7 +1648,13 @@ async function handleRequest(req: Request): Promise<Response> {
     // request page in wa-chat, which shows every studio asked and their replies.
     const lines = results.filter((x: any) => x.sent > 0).map((x: any) =>
       `Request #${x.requestId} · ${x.name || "customer"} · ${x.service} · ${x.when || "time to be set"}${x.area ? " · " + x.area : ""}<br>Asked ${x.sent} studios${cheapest ? " (cheapest listed 60 min first, client budget stated, any discount invited)" : ""}${extra ? " (second wave)" : ""}: ${(x.studios || []).join(", ")}.<br>Each studio was asked for a Massage Club rate; the best offer wins after a 10 minute window (same-day requests go to the first yes). The others are stood down automatically. Nothing to do.${(x.skippedClosed || []).length ? "<br>Not asked, closed by their own hours: " + x.skippedClosed.join(", ") + "." : ""}<br>All studios and their replies: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${x.requestId}`);
-    await studioMessagesEmail(results.filter((x: any) => x.sent > 0) as any[], `Asked ${totalSent} studios${cheapest ? " (price hunt)" : ""}${extra ? " (second wave)" : ""}`, lines);
+    let copied = true;
+    for (const x of results.filter((x: any) => x.sent > 0) as any[]) {
+      for (const m of (x.messages || []) as Array<{ name: string; wa: string; text: string }>) {
+        if (!(await studioCopy(m.wa, m.name, m.text))) copied = false;
+      }
+    }
+    if (!copied) await founderEmail(`Asked ${totalSent} studios${extra ? " (second wave)" : ""}: some copies did not reach you`, lines);
   }
 
   return new Response(JSON.stringify({ ok: true, handled: results.length, results }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });

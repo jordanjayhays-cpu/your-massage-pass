@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/eaf1efa/supabase/functions/wa-bot/copy.ts";
+import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/bd90748/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
@@ -239,8 +239,46 @@ async function waSend(to: string, payload: Record<string, unknown>, logBody: str
     body: JSON.stringify({ messaging_product: "whatsapp", to, ...payload }),
   });
   if (!res.ok) console.log("[wa] send failed", res.status, (await res.text()).slice(0, 300));
-  else { sentThisTurn = true; await logMsg(to, "out", logBody, type); }
+  else { sentThisTurn = true; await logMsg(to, "out", logBody, type); studioCopyLater(to, "WhatsApp", logBody); }
   return res.ok;
+}
+
+// v210 (Jordan, 16 Oct): "i want to get emails of the messages sent to
+// studios, every single one ... i see a weird message not a normal message".
+// Every message a studio receives from the bot, by WhatsApp or by email, is
+// copied to Jordan as its own card: the Spanish exactly as the studio read it,
+// the English under it, and the button to answer that studio as the bot. It
+// runs after the send, so a slow translation never holds up the studio.
+const studioCache = new Map<string, { id: string; business_name: string } | null>();
+async function studioAt(num: string): Promise<{ id: string; business_name: string } | null> {
+  const d = digitsOf(num);
+  if (studioCache.has(d)) return studioCache.get(d) || null;
+  const p = d.length >= 9 ? await findPartnerByNumber(d).catch(() => null) : null;
+  studioCache.set(d, p);
+  return p;
+}
+function studioCopyLater(to: string, channel: "WhatsApp" | "Email", logBody: string, o: { studio?: { business_name: string }; subject?: string } = {}) {
+  const run = copyStudioSend(to, channel, logBody, o).catch((e) => console.log("[wa] studio copy failed", String(e)));
+  try { (globalThis as any).EdgeRuntime?.waitUntil?.(run); } catch { /* runs anyway */ }
+}
+async function copyStudioSend(to: string, channel: "WhatsApp" | "Email", logBody: string, o: { studio?: { business_name: string }; subject?: string }) {
+  const studio = o.studio || await studioAt(to);
+  if (!studio || /\b(prueba|test)\b/i.test(studio.business_name)) return;
+  let shown = prettyLogged(logBody).trim();
+  let buttons = "";
+  const b = /\s*\[([^\]]*\/[^\]]*)\]\s*$/.exec(shown);
+  if (b) { buttons = b[1].split("/").map((x) => x.trim()).filter(Boolean).join("  ·  "); shown = shown.slice(0, b.index).trim(); }
+  const en = await translateOut("en", shown, []).catch(() => null);
+  const first = shown.replace(/\s+/g, " ").slice(0, 70);
+  await founderCard(`📤 ${studio.business_name}: ${first}${shown.length > 70 ? "…" : ""}`, {
+    badge: channel === "Email" ? "EMAIL TO A STUDIO" : "WHATSAPP TO A STUDIO",
+    title: `What ${studio.business_name} just got`,
+    paras: o.subject ? [`Subject: ${o.subject}`] : [],
+    quote: shown,
+    after: [buttons ? `Buttons they can tap: ${buttons}` : "", en && en.body !== shown ? `In English: ${en.body}` : ""],
+    waNum: digitsOf(to).length >= 9 ? to : "",
+    to: ["jordan@massageclub.io"],
+  });
 }
 const sendText = (to: string, body: string, opts: { manual?: boolean } = {}) => waSend(to, { type: "text", text: { body, preview_url: false } }, body, "text", opts);
 const sendButtons = (to: string, body: string, buttons: Array<{ id: string; title: string }>, opts: { manual?: boolean } = {}) =>
@@ -1316,13 +1354,16 @@ const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const SERIF = "Georgia,'Times New Roman',serif";
 const esc = (s: string) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-async function founderCard(subject: string, o: { badge: string; title: string; paras?: string[]; quote?: string; transcript?: string[]; waNum?: string; waLabel?: string; prefill?: string; to?: string[]; studioNum?: string; studioName?: string }) {
+async function founderCard(subject: string, o: { badge: string; title: string; paras?: string[]; quote?: string; after?: string[]; transcript?: string[]; waNum?: string; waLabel?: string; prefill?: string; to?: string[]; studioNum?: string; studioName?: string }) {
   if (aboutFakeCustomer(subject, o.waNum || "", o.title, o.paras || [], o.quote || "")) { console.log("[wa] founder card about a fake test number, not sent"); return; }
   const paras = (o.paras || []).filter(Boolean).map((p) =>
     `<p style="margin:10px 0 0;color:${C.ink};font-size:14px;line-height:1.6;">${esc(p)}</p>`).join("");
+  // v210: line breaks kept, so a studio message reads the way it arrived.
   const quote = o.quote
-    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;background:${C.cream};border-radius:12px;"><tr><td style="padding:14px 16px;"><p style="margin:0;color:${C.ink};font-size:14.5px;line-height:1.6;font-style:italic;">"${esc(o.quote)}"</p></td></tr></table>`
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;background:${C.cream};border-radius:12px;"><tr><td style="padding:14px 16px;"><p style="margin:0;color:${C.ink};font-size:14.5px;line-height:1.6;font-style:italic;white-space:pre-line;">"${esc(o.quote)}"</p></td></tr></table>`
     : "";
+  const after = (o.after || []).filter(Boolean).map((p) =>
+    `<p style="margin:10px 0 0;color:${C.muted};font-size:13.5px;line-height:1.6;white-space:pre-line;">${esc(p)}</p>`).join("");
   const transcript = o.transcript && o.transcript.length
     ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;background:${C.cream};border-radius:12px;"><tr><td style="padding:12px 16px;">` +
       `<p style="margin:0 0 6px;color:${C.clay};font-size:10.5px;font-weight:700;letter-spacing:2px;">CONVERSATION</p>` +
@@ -1350,8 +1391,8 @@ async function founderCard(subject: string, o: { badge: string; title: string; p
   const chatLink = o.waNum
     ? `<tr><td style="padding:12px 34px 0;text-align:center;"><a href="${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">View full conversation</a> <span style="color:${C.dash};">·</span> <a href="${await inboxUrl()}" style="color:${C.clay};font-size:13px;font-weight:700;text-decoration:none;">Open inbox</a></td></tr>`
     : "";
-  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center">\n  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;">\n    <tr><td style="padding:26px 34px 0;text-align:center;">\n      <img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;">\n      <p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p>\n    </td></tr>\n    <tr><td style="padding:22px 34px 0;text-align:center;">\n      <span style="display:inline-block;background:${C.cream};color:${C.clay};font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">${esc(o.badge)}</span>\n      <h1 style="margin:14px 0 0;color:${C.ink};font-size:23px;line-height:1.3;font-family:${SERIF};font-weight:700;">${esc(o.title)}</h1>\n    </td></tr>\n    <tr><td style="padding:4px 34px 0;">${paras}${quote}${transcript}</td></tr>\n    ${waBtn}\n    ${chatLink}\n    <tr><td style="padding:22px 34px 26px;">\n      <div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div>\n      <p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Founder alert · WhatsApp bot · +34 613 97 79 00</p>\n    </td></tr>\n  </table>\n</td></tr></table>`;
-  const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.transcript || []), botHref ? `Reply as the bot: ${botHref}` : "", studioHref ? `${studioLabel}: ${studioHref}` : "", waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center">\n  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;">\n    <tr><td style="padding:26px 34px 0;text-align:center;">\n      <img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;">\n      <p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p>\n    </td></tr>\n    <tr><td style="padding:22px 34px 0;text-align:center;">\n      <span style="display:inline-block;background:${C.cream};color:${C.clay};font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">${esc(o.badge)}</span>\n      <h1 style="margin:14px 0 0;color:${C.ink};font-size:23px;line-height:1.3;font-family:${SERIF};font-weight:700;">${esc(o.title)}</h1>\n    </td></tr>\n    <tr><td style="padding:4px 34px 0;">${paras}${quote}${after}${transcript}</td></tr>\n    ${waBtn}\n    ${chatLink}\n    <tr><td style="padding:22px 34px 26px;">\n      <div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div>\n      <p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Founder alert · WhatsApp bot · +34 613 97 79 00</p>\n    </td></tr>\n  </table>\n</td></tr></table>`;
+  const plain = [o.title, ...(o.paras || []), o.quote ? `"${o.quote}"` : "", ...(o.after || []), ...(o.transcript || []), botHref ? `Reply as the bot: ${botHref}` : "", studioHref ? `${studioLabel}: ${studioHref}` : "", waHref ? `WhatsApp: ${waHref}` : "", o.waNum ? `Full conversation: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&phone=${digitsOf(o.waNum)}` : ""].filter(Boolean).join("\n");
   await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: FROM_EMAIL, to: o.to || SUPPORT, subject, html, text: plain }),
@@ -1901,7 +1942,10 @@ async function inboxPage(url: URL): Promise<Response> {
     // Templates are logged as "[template name/lang] ..." or "[name] ...".
     const tm = /^\[(?:template )?([a-z0-9_]+)(?:\/[a-z_]+)?\]\s*(.*)$/s.exec(t);
     const TPL: Record<string, string> = { solicitud_reserva: "Booking request sent", booking_unfinished: "Unfinished-booking reminder", founder_alert: "Alert to Jordan" };
-    if (tm) { const k = Object.keys(TPL).find((x) => tm[1].startsWith(x)); t = `${k ? TPL[k] : "Template " + tm[1]}: ${tm[2]}`; }
+    // v210 (Jordan, 16 Oct: "i see a weird message not a normal message"): a
+    // studio ask shows what the studio read, not "Booking request sent: ...".
+    if (tm && /^solicitud_/.test(tm[1])) t = prettyLogged(t);
+    else if (tm) { const k = Object.keys(TPL).find((x) => tm[1].startsWith(x)); t = `${k ? TPL[k] : "Template " + tm[1]}: ${tm[2]}`; }
     const tap = /^\[tap: ?([^\]]*)\]$/.exec(t);
     if (tap) t = tap[1] ? `Tapped: ${tap[1].replace(/_/g, " ")}` : "Sent a voice note or media";
     return t;
@@ -5153,6 +5197,11 @@ async function emailStudio(partnerId: string, subject: string, text: string): Pr
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, text }),
   }).catch(() => null);
+  if (res && res.ok) {
+    const pn = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partnerId)}&select=business_name,whatsapp,phone`, { headers: H() }).then((x) => x.json()).catch(() => []);
+    const pr = (Array.isArray(pn) && pn[0]) || {};
+    studioCopyLater(String(pr.whatsapp || pr.phone || ""), "Email", text, { studio: { business_name: String(pr.business_name || to) }, subject });
+  }
   return !!res && res.ok;
 }
 
@@ -6720,6 +6769,18 @@ const handleInner = async (req: Request) => {
     // offline and the messages that match nothing can be listed. Read-only, ops
     // key, no writes, no sends. Studios and test numbers are stripped: a studio
     // saying "vale" is not a customer the bot failed to understand.
+    // v210: dispatch-studios and the studio offer emails send their studio
+    // messages through here too, so Jordan gets every one in the same card,
+    // with the English, whichever function wrote it.
+    if (payload?.ops === "studio_copy") {
+      if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
+      const phone = digitsOf(String(payload.phone || ""));
+      const text = String(payload.text || "").slice(0, 3000);
+      const name = String(payload.studio || "").slice(0, 120);
+      if (!text || (!phone && !name)) return new Response(JSON.stringify({ ok: false, error: "phone or studio, and text" }), { status: 400 });
+      await copyStudioSend(phone, payload.channel === "Email" ? "Email" : "WhatsApp", text, { studio: name ? { business_name: name } : undefined, subject: payload.subject ? String(payload.subject).slice(0, 200) : undefined });
+      return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    }
     if (payload?.ops === "corpus") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const from = String(payload.from || "").slice(0, 10) || "2026-01-01";
