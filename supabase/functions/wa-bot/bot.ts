@@ -58,7 +58,7 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/bd90748/supabase/functions/wa-bot/copy.ts";
+import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/6715b8a/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
@@ -4354,17 +4354,6 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   // them the studio's time anyway. Nothing goes to them and the request is
   // closed; dispatch-studios' chase sweep then tells every studio still holding
   // it, inside that studio's own hours.
-  if (clientNum && heldNum(clientNum)) {
-    await toStudio(`Gracias. Lo confirmo con ${req.first_name || "el cliente"} y os digo algo en cuanto me conteste.`);
-    await logEvent(clientNum, "offer_held_for_jordan", { request_id: req.id, studio: partner.business_name, time });
-    await founderCard(`⏸ ${partner.business_name} offers ${time} for ${req.first_name || "the customer"} · #${req.id} (held for you)`, {
-      badge: "OFFER HELD FOR YOU",
-      title: `${partner.business_name} can do ${time}`,
-      paras: [`You asked that nothing goes to ${req.first_name || "this customer"} automatically, so nothing was sent to them. The studio was told we are checking with the client. Tell ${req.first_name || "them"} yourself, or reply below.`],
-      quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
-    });
-    return "held";
-  }
   if (clientNum && cs.step === "muted") {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=not.in.(confirmed,cancelled,dismissed)`, {
       method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
@@ -4494,6 +4483,22 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     await toStudio(`Gracias, anotado: ${time}. ${req.first_name || "El cliente"} lo quiere hoy ${windowEs(askWindow(req.time1, req.message_text)) || String(req.time1 || "en otra franja")}, así que esperamos unos minutos por si sale algo en esa franja y, si no, se lo proponemos. No guardéis el hueco todavía. Jordan, de Massage Club`);
     await logEvent(clientNum || "web", "offer_held_window", { request_id: req.id, row: rowId, studio: partner.business_name, partner_id: partner.id, time, day: opts.dayHint || offerDay || null, slot_at: slotAt !== null ? new Date(slotAt).toISOString() : null });
     return "held_window";
+  }
+  // v210 (16 Oct): a held customer's offers pass the same checks as anyone's
+  // first. Kamiraku's autoresponder listed its opening hours, was read as an
+  // 11:00 offer outside Brandon's 13:00 to 18:00, and the studio was told
+  // "Lo confirmo con Brandon". Only an offer that would reach a customer
+  // reaches Jordan as held.
+  if (clientNum && heldNum(clientNum)) {
+    await toStudio(`Gracias. Lo confirmo con ${req.first_name || "el cliente"} y os digo algo en cuanto me conteste.`);
+    await logEvent(clientNum, "offer_held_for_jordan", { request_id: req.id, studio: partner.business_name, time });
+    await founderCard(`⏸ ${partner.business_name} offers ${time} for ${req.first_name || "the customer"} · #${req.id} (held for you)`, {
+      badge: "OFFER HELD FOR YOU",
+      title: `${partner.business_name} can do ${time}`,
+      paras: [`You asked that nothing goes to ${req.first_name || "this customer"} automatically, so nothing was sent to them. The studio was told we are checking with the client. Tell ${req.first_name || "them"} yourself, or reply below.`],
+      quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
+    });
+    return "held";
   }
   // v204: "offered" only once something is really going to the customer. It
   // used to be set before the checks above, so a withheld or queued time
