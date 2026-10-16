@@ -46,7 +46,24 @@
 // v13 (9 Oct): the flow nudge no longer carries the website link (links go
 //   only to people who ask what the service is; it went to 97 of 139 chats),
 //   and the owed-answer check also knows wa-bot v188's reworded promise.
+// v14 (16 Oct, Jordan: "i don't want it to look robotic ... i see a weird
+//   message not a normal message"). Studio-facing text only:
+//   C. The 2h reminder no longer sends the old solicitud_reserva ("Confirmado"
+//      button and "confirmamos al cliente", both false since both parties must
+//      tap; English dates; "14:00, 14:00"). It sends recordatorio_reserva_v1
+//      (Jordan's voice, the day in Spanish, the 10% ask, buttons Sí, tenemos
+//      hueco / Otra hora / No podemos). Until Meta approves it: with two or
+//      more studios asked, solicitud_reserva_v3 with Spanish values; with one,
+//      nothing goes out and Jordan is told. Only studios that really were
+//      emailed are reminded, never one whose own hours say it is shut then,
+//      never for a day already gone. Every reminder is logged to wa_messages
+//      and copied to Jordan.
+//   D. The 4h widen sends notify-whatsapp-request's own offer email (imported,
+//      so the two can never drift apart again), skips studios closed at that
+//      day or time, and copies Jordan on every email.
 //   GET ?key=<CRON_KEY>[&dry=1][&id=<request id>]
+
+import { offerEmail, slotsEs, closedReason, cleanFirst, svcConUn, svcEs as svcEsStudio, reqMins, requestDate, fechaEs, timeEs, copyToJordan } from "../notify-whatsapp-request/notify.ts";
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 // v13: no secrets in this file, because the repo is public. The deployed
@@ -61,6 +78,10 @@ const LOGO_URL = "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/pub
 const APP = "https://book.massageclub.io";
 const WA = "34612474827";
 let WA_TOKEN = "";
+// v14: wa-bot's ops key, for Jordan's copy of every studio message, and the
+// switch for the scanner-safe check page (see notify-whatsapp-request v18).
+let OPS_KEY = "";
+let CHECK_PAGE = false;
 let PHONE_ID = "1270437552818077";
 let GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 
@@ -132,20 +153,6 @@ const PROTECTED_STEPS = ["await_offer", "await_reconfirm", "await_change", "huma
 const madridHour = (): number => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).format(new Date()));
 const madridStamp = (iso: string): string => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
-const SVC_ES: Array<[RegExp, string]> = [
-  [/deep tissue/i, "Masaje descontracturante"], [/thai/i, "Masaje tailandés"],
-  [/hot stone/i, "Masaje de piedras calientes"], [/sport/i, "Masaje deportivo"],
-  [/balin/i, "Masaje balinés"], [/shiatsu/i, "Shiatsu"], [/reflexolog/i, "Reflexología"],
-  [/lymphatic/i, "Drenaje linfático"], [/couples/i, "Masaje en pareja"],
-  [/kobido/i, "Masaje facial Kobido"], [/relax|stress/i, "Masaje relajante"],
-  [/not sure|^massage$|massage treatment/i, "Masaje"],
-];
-const svcEs = (n?: string | null): string => {
-  const s = String(n || "");
-  for (const [re, v] of SVC_ES) if (re.test(s)) return v;
-  return s || "Masaje";
-};
-
 const C = { page: "#F1EBE2", ink: "#262019", muted: "#8A7F73", clay: "#B85C38", cream: "#FAF6F0", line: "#F0E9E0", dash: "#E4D9CB" };
 const SANS = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const SERIF = "Georgia,'Times New Roman',serif";
@@ -189,18 +196,34 @@ async function matchStudios(r: any, H: Record<string, string>, limit = 3): Promi
   return { picks, area };
 }
 
-// Compact copy of the one-tap studio offer email from notify-whatsapp-request.
-function offerEmail(r: any, timeLabels: string[], pfx: string, claimSlug: string) {
-  const price = r.price ? `€${r.price}` : "";
-  const svcTitle = svcEs(r.service_name);
-  const tapUrl = (p: string) => `${SUPABASE_URL}/functions/v1/studio-times?t=${r.offer_token}&pick=${p}${pfx}`;
-  const btn = timeLabels.map((w, i) => w ? `<a href="${tapUrl(String(i + 1))}" style="display:block;background:#1A9C56;color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 18px;border-radius:999px;margin:0 0 10px;text-align:center;">✅ ${esc(w)}</a>` : "").join("");
-  const claimLine = claimSlug ? `<p style="margin:16px 0 0;color:${C.muted};font-size:12px;line-height:1.6;text-align:center;">Somos Massage Club: clientes internacionales que reservan en inglés. Coste 0 y, de momento, sin comisión: el cliente paga en el centro. ¿Más clientes así? <a href="${APP}/claim/${claimSlug}" style="color:${C.clay};font-weight:700;text-decoration:none;">Vuestra página gratis →</a></p>` : "";
-  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:26px 34px 0;text-align:center;"><span style="display:inline-block;background:${C.cream};color:${C.clay};font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">CLIENTE PARA VOSOTROS</span><h1 style="margin:16px 0 0;color:${C.ink};font-size:26px;line-height:1.2;font-family:${SERIF};font-weight:700;">${esc(svcTitle)}${price ? ` · ${price}` : ""}</h1><p style="margin:10px 0 0;color:${C.muted};font-size:14px;line-height:1.6;">Tenemos un cliente que quiere reservar${r.first_name ? ` (${esc(r.first_name)})` : ""}. Elegid la hora que os venga bien (<b>un solo clic, sin registro</b>) y el cliente recibe la confirmación al momento.</p></td></tr><tr><td style="padding:24px 34px 0;">${btn}<a href="${tapUrl("none")}" style="display:block;background:${C.cream};color:#B91C1C;font-size:13px;font-weight:700;text-decoration:none;padding:12px 18px;border-radius:999px;text-align:center;border:1px solid ${C.line};">Ninguna me va bien</a></td></tr><tr><td style="padding:8px 34px 26px;">${claimLine}<div style="border-top:2px dashed ${C.dash};margin:18px 0 14px;"></div><p style="margin:0;color:#B8AC9E;font-size:12px;text-align:center;">Massage Club · Madrid · <a href="${APP}" style="color:${C.clay};text-decoration:none;">book.massageclub.io</a></p></td></tr></table></td></tr></table>`;
-  const text = [`Cliente para vosotros: ${svcTitle}${price ? " " + price : ""}${r.first_name ? ", " + r.first_name : ""}.`, `Elegid hora (1 clic):`, ...timeLabels.map((w, i) => w ? `${w}: ${tapUrl(String(i + 1))}` : "").filter(Boolean), `Ninguna me va bien: ${tapUrl("none")}`].join("\n");
-  const subject = `Cliente para vosotros: ${svcTitle.toLowerCase()}, elegid hora (1 clic)`;
-  return { html, text, subject };
+// v14: the studio reminder template (submitted as recordatorio_reserva_v1)
+// and its approved fallback, rendered the way the studio reads them, so the
+// log and Jordan's copy match. Same "[A/B/C]" button form as dispatch-studios.
+const REMINDER_TPL = "recordatorio_reserva_v1";
+const TPL_BODY: Record<string, string> = {
+  recordatorio_reserva_v1: "Hola, os escribí por email hace un rato y os lo paso también por aquí. Somos Massage Club, un servicio de reservas de masajes en Madrid.\n\n{{1}} quiere {{2}}. ¿Tenéis hueco?\n\n{{3}} Si podéis hacerle un 10% como cliente de Massage Club, decídmelo al contestar.\n\nJordan, de Massage Club",
+  solicitud_reserva_v3: "Hola, tengo un cliente para un masaje {{1}}. Se llama {{2}} y lo quiere el {{3}}. ¿Tenéis hueco?\nEstoy preguntando a varios centros de la zona.\n\nJordan, de Massage Club",
+};
+const TPL_BUTTONS: Record<string, string[]> = {
+  recordatorio_reserva_v1: ["Sí, tenemos hueco", "Otra hora", "No podemos"],
+  solicitud_reserva_v3: ["Sí, tengo hueco", "Otra hora", "No puedo"],
+};
+function renderedTpl(name: string, params: string[]): string {
+  const body = (TPL_BODY[name] || `[${name}] ${params.join(" | ")}`).replace(/\{\{(\d+)\}\}/g, (_m, n) => params[Number(n) - 1] ?? "");
+  const b = TPL_BUTTONS[name] || [];
+  return b.length ? `${body} [${b.join("/")}]` : body;
 }
+async function sendTpl(to: string, name: string, params: string[], payloads: string[]): Promise<{ ok: boolean; status: number; out: string }> {
+  const components: unknown[] = [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }];
+  payloads.forEach((p, i) => components.push({ type: "button", sub_type: "quick_reply", index: String(i), parameters: [{ type: "payload", payload: p }] }));
+  const res = await fetch(GRAPH, {
+    method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "template", template: { name, language: { code: "es" }, components } }),
+  });
+  return { ok: res.ok, status: res.status, out: await res.text().catch(() => "") };
+}
+const NOT_APPROVED_RE = /132001|template|does not exist|not found|not approved/i;
+const madridIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 
 async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -221,7 +244,7 @@ async function handleRequest(req: Request): Promise<Response> {
   const cutMax = new Date(now - 24 * 60 * 60 * 1000).toISOString();
   const cut2h = new Date(now - 2 * 60 * 60 * 1000).toISOString();
   const cut4h = new Date(now - 4 * 60 * 60 * 1000).toISOString();
-  const sel = "id,first_name,contact_email,client_phone,service_name,studio_name,message_text,partner_id,day1,time1,day2,time2,day3,time3,price,languages,offer_token,stage,stage_note,customer_flag,nudged_at,nudge_count,followup_sent_at,alternatives_sent_at,studio_asked_at,created_at";
+  const sel = "id,first_name,contact_email,client_phone,service_name,studio_name,message_text,partner_id,day1,time1,day2,time2,day3,time3,price,languages,offer_token,stage,stage_note,customer_flag,nudged_at,nudge_count,followup_sent_at,alternatives_sent_at,studio_asked_at,studio_offered_at,area,created_at";
 
   // v10: everyone this run declined to talk to because we owe them an answer.
   const owedReport: any[] = [];
@@ -248,64 +271,110 @@ async function handleRequest(req: Request): Promise<Response> {
     const entry: any = { id: r.id, name: r.first_name, stage: r.stage, actions: [] };
     const askedNote = String(r.stage_note || "").toLowerCase();
 
-    // ---------- C. Studio re-nudge at 2h ----------
+    // ---------- C. Studio reminder at 2h ----------
+    // v14: only studios that really were emailed the offer (notify's
+    // "auto-offered to:" list, or the customer's chosen studio once notify
+    // emailed it), never one shut at that day or time, never for a day gone.
     if (!dry && r.stage === "studio_asked" && !r.nudged_at && r.studio_asked_at && r.studio_asked_at < cut2h) {
-      const names = String(r.stage_note || "").match(/auto-offered to:\s*([^;]+)/i)?.[1]?.split(",").map((s: string) => s.trim()).filter(Boolean) || [];
-      if (r.partner_id && !names.length && r.studio_name && !/por asignar/i.test(r.studio_name)) names.push(r.studio_name);
+      const names = String(r.stage_note || "").match(/auto-offered to:\s*([^;|]+)/i)?.[1]?.split(",").map((s: string) => s.trim()).filter(Boolean) || [];
+      const chosenOnly = !names.length && !!r.partner_id && !!r.studio_offered_at;
+      const targets = names.slice(0, 3).map((nm: string) => `business_name=eq.${encodeURIComponent(nm)}`);
+      if (chosenOnly) targets.push(`id=eq.${encodeURIComponent(String(r.partner_id))}`);
+      const reqDate = requestDate(r);
+      const gone = !!reqDate && reqDate.toISOString().slice(0, 10) < madridIso();
+      if (gone) console.log(`[rescue] #${r.id} studio reminder skipped: the day asked for has passed`);
+      // The several-centres line only when two or more studios really got it.
+      const several = names.length > 1;
+      const first = cleanFirst(r.first_name);
+      const s0 = slotsEs(r, false)[0];
+      const timeW = s0 ? (s0.exact ? `a las ${s0.exact}` : timeEs(s0.time)) : "";
+      const pNew = [
+        first || "Un cliente",
+        `${svcConUn(r.service_name)} de ${reqMins(r)} min${s0 ? " " + s0.long : ""}`,
+        several ? "Estoy preguntando a varios centros y se queda con la mejor oferta." : chosenOnly ? "Os ha elegido a vosotros." : "Os lo he pasado solo a vosotros.",
+      ];
+      // solicitud_reserva_v3 reads "un masaje {{1}}", "Se llama {{2}}", "lo quiere el {{3}}".
+      const svcBase = svcEsStudio(r.service_name).toLowerCase().replace(/^masaje\s*/, "");
+      const p3 = [`${svcBase ? svcBase + " " : ""}de ${reqMins(r)} min`, first, reqDate ? `${fechaEs(reqDate)}${timeW ? " " + timeW : ""}` : ""];
+      const canV3 = several && !!first && !!reqDate;
+      const payloads = [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`];
       let nudgedAny = false;
-      for (const nm of names.slice(0, 3)) {
-        const ps = await (await fetch(`${SUPABASE_URL}/rest/v1/partners?business_name=eq.${encodeURIComponent(nm)}&select=id,business_name,whatsapp,phone,opted_out_at&limit=1`, { headers: H })).json().catch(() => []);
+      const held: string[] = [];
+      for (const q of gone ? [] : targets) {
+        const ps = await (await fetch(`${SUPABASE_URL}/rest/v1/partners?${q}&select=id,business_name,whatsapp,phone,opted_out_at,opening_hours&limit=1`, { headers: H })).json().catch(() => []);
         const p = Array.isArray(ps) && ps[0] ? ps[0] : null;
         if (!p || p.opted_out_at) continue;
+        const shut = closedReason(p.opening_hours, r);
+        if (shut) { console.log(`[rescue] #${r.id} not reminding ${p.business_name}: ${shut}`); continue; }
         let waNum = digitsOf(p.whatsapp || p.phone || "");
         if (waNum.length === 9 && /^[67]/.test(waNum)) waNum = "34" + waNum;
         if (!waNum || waNum.length < 11) continue;
-        const p1 = `${svcEs(r.service_name)}${r.price ? ` · ${r.price} EUR` : ""}`;
-        const p2 = `${[r.day1, r.time1].filter(Boolean).join(", ")}${r.time2 ? ` (o ${r.time2})` : ""}` || "Por concretar";
-        const p3 = String(r.first_name || "Cliente").split(" ")[0];
-        const res = await fetch(GRAPH, {
-          method: "POST", headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messaging_product: "whatsapp", to: waNum, type: "template",
-            template: {
-              name: "solicitud_reserva", language: { code: "es" },
-              components: [
-                { type: "body", parameters: [{ type: "text", text: p1 }, { type: "text", text: p2 }, { type: "text", text: p3 }] },
-                { type: "button", sub_type: "quick_reply", index: "0", parameters: [{ type: "payload", payload: `studio_confirm_${r.id}` }] },
-                { type: "button", sub_type: "quick_reply", index: "1", parameters: [{ type: "payload", payload: `studio_other_${r.id}` }] },
-              ],
-            },
-          }),
-        });
-        console.log(`[rescue] studio nudge #${r.id} -> ${p.business_name} (${waNum}) status=${res.status}`);
-        if (res.ok) nudgedAny = true;
+        let name = REMINDER_TPL, params = pNew;
+        let res = await sendTpl(waNum, name, params, payloads);
+        if (!res.ok && NOT_APPROVED_RE.test(res.out)) {
+          // The old solicitud_reserva ("Confirmado", "confirmamos al cliente")
+          // is never sent again. v3 says "varios centros", so only when true.
+          if (!canV3) { held.push(p.business_name); console.log(`[rescue] #${r.id} ${REMINDER_TPL} not approved yet, ${p.business_name} not reminded`); continue; }
+          name = "solicitud_reserva_v3"; params = p3;
+          res = await sendTpl(waNum, name, params, payloads);
+        }
+        console.log(`[rescue] studio reminder #${r.id} -> ${p.business_name} (${waNum}) tpl=${name} status=${res.status} ${res.ok ? "" : res.out.slice(0, 160)}`);
+        if (res.ok) {
+          nudgedAny = true;
+          const text = renderedTpl(name, params);
+          await fetch(`${SUPABASE_URL}/rest/v1/wa_messages`, { method: "POST", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify({ phone: waNum, direction: "out", msg_type: "template", body: text.slice(0, 2000) }) }).catch(() => null);
+          await copyToJordan(OPS_KEY, p.business_name, waNum, "", text, "WhatsApp");
+        }
       }
       if (nudgedAny) {
         await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${r.id}`, { method: "PATCH", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify({ nudged_at: new Date().toISOString(), nudge_count: (Number(r.nudge_count) || 0) + 1 }) });
-        entry.actions.push("studio re-nudged on WhatsApp");
+        entry.actions.push("studio reminded on WhatsApp");
+      } else if (held.length) {
+        // Once per request: marked as nudged so Jordan is not told every 30 min.
+        await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${r.id}`, { method: "PATCH", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify({ nudged_at: new Date().toISOString() }) });
+        await fetch("https://api.resend.com/emails", {
+          method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: FROM_EMAIL, to: FOUNDER,
+            subject: `${held.join(", ")} ${held.length > 1 ? "have" : "has"} not answered request #${r.id} after 2h`,
+            text: [
+              `${held.join(", ")} was emailed the offer for request #${r.id} (${r.first_name || "customer"}, ${r.service_name || "massage"}) over 2 hours ago and has not answered.`,
+              `The WhatsApp reminder (${REMINDER_TPL}) is not approved by Meta yet, and the old template says "Confirmado" and "confirmamos al cliente", which breaks both-parties-tap, so nothing was sent on WhatsApp.`,
+              "Message the studio yourself if you want a second nudge. You will not get this email again for this request.",
+            ].join("\n"),
+          }),
+        }).catch(() => null);
+        entry.actions.push(`studio reminder held, template not approved yet: ${held.join(", ")}`);
       }
     }
 
     // ---------- D. Widen at 4h ----------
+    // v14: notify's own offer email (imported), studios shut at that day or
+    // time are skipped, and Jordan gets a copy of each email.
     if (!dry && r.stage === "studio_asked" && !r.partner_id && !r.followup_sent_at && r.offer_token && r.studio_asked_at && r.studio_asked_at < cut4h) {
       const m = await matchStudios(r, H, 6);
       const fresh = m.picks.filter((o) => !askedNote.includes(o.business_name.toLowerCase())).slice(0, 3);
       const widened: string[] = [];
       if (fresh.length) {
         const ids = fresh.map((o) => o.id).join(",");
-        const eRows = await (await fetch(`${SUPABASE_URL}/rest/v1/partners?id=in.(${ids})&select=id,email,opted_out_at,outreach_status,status,slug`, { headers: H })).json().catch(() => []);
+        const eRows = await (await fetch(`${SUPABASE_URL}/rest/v1/partners?id=in.(${ids})&select=id,email,opted_out_at,outreach_status,status,slug,opening_hours`, { headers: H })).json().catch(() => []);
         const byId: Record<string, any> = {};
         for (const p of (Array.isArray(eRows) ? eRows : [])) byId[p.id] = p;
-        const when1 = [r.day1, r.time1].filter(Boolean).join(" ");
-        const when2 = [r.day2, r.time2].filter(Boolean).join(" ");
-        const when3 = [r.day3, r.time3].filter(Boolean).join(" ");
+        const slots = slotsEs(r);
         for (const o of fresh) {
           const p = byId[o.id];
           if (!p || !p.email || p.opted_out_at || p.outreach_status === "bounced") continue;
-          const mail = offerEmail(r, [when1, when2, when3], `&p=${o.id}`, p.status !== "active" && p.slug ? p.slug : "");
+          const shut = closedReason(p.opening_hours, r);
+          if (shut) { console.log(`[rescue] widen #${r.id} not emailing ${o.business_name}: ${shut}`); continue; }
+          if (!slots.length) continue;
+          // Others were asked first, so "varios centros" is true here.
+          const mail = offerEmail(r, slots, `&p=${o.id}`, p.status !== "active" && p.slug ? p.slug : "", o.business_name, { several: true, checkPage: CHECK_PAGE });
           const sRes = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: FROM_EMAIL, to: [p.email], reply_to: REPLY_TO, subject: mail.subject, html: mail.html, text: mail.text }) });
           console.log(`[rescue] widen #${r.id} -> ${o.business_name}: status=${sRes.status}`);
-          if (sRes.ok) widened.push(o.business_name);
+          if (sRes.ok) {
+            widened.push(o.business_name);
+            await copyToJordan(OPS_KEY, o.business_name, digitsOf(o.wa || ""), mail.subject, mail.text);
+          }
         }
       }
       if (widened.length) {
@@ -498,9 +567,11 @@ async function handleRequest(req: Request): Promise<Response> {
   return new Response(JSON.stringify({ ok: true, checked: due.length, leftAlone, owed: owedReport, report, flow: flowReport }, null, 2), { headers: { "Content-Type": "application/json" } });
 }
 
-export function start(opts: { cronKey: string; resendKey: string; waToken: string; phoneId?: string }) {
+export function start(opts: { cronKey: string; resendKey: string; waToken: string; phoneId?: string; opsKey?: string; studioCheckPage?: boolean }) {
   CRON_KEY = opts.cronKey;
   RESEND_API_KEY = opts.resendKey;
+  OPS_KEY = opts.opsKey || Deno.env.get("OPS_KEY") || "";
+  CHECK_PAGE = opts.studioCheckPage === true;
   WA_TOKEN = Deno.env.get("WHATSAPP_TOKEN") || opts.waToken;
   PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") || opts.phoneId || PHONE_ID;
   GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;

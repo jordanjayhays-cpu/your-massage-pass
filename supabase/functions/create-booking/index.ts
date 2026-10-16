@@ -1,7 +1,19 @@
 // Supabase Edge Function: Create Booking
 // Creates booking in Supabase AND Google Calendar
-// Sends notification to studio
+// Builds the studio's notification (the sends are still stubs that only log)
 // Deploy: supabase functions deploy create-booking
+//
+// 16 Oct (the studio-message rewrite). Nothing in src/ calls this function;
+// check it is deployed and called before wiring the sends, or delete it.
+//  - The studio text is Spanish and reads like Jordan: "Hola, buenas. Brandon
+//    ha pedido cita con vosotros: un masaje deportivo de 60 min el lunes 19 de
+//    octubre a las 15:00..." instead of "🆕 NEW BOOKING — Massage Club".
+//  - Bookings start as pending even for auto_confirm studios, and nothing says
+//    "Auto-confirmed": a booking is confirmed only when both parties have
+//    tapped (CLAUDE.md, 10 Oct). The studio accepts in its portal.
+//  - The Google Calendar event is written in Europe/Madrid wall-clock time. It
+//    was built with new Date() in the runtime's UTC, so a 15:00 booking landed
+//    at 17:00 in October, and Google's reminder fired two hours late.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -58,13 +70,17 @@ serve(async (req: Request) => {
     });
   }
 
-  // Calculate datetime
+  // Calculate datetime: Madrid wall-clock times, handed to Google with their
+  // time zone. Date.UTC is used only for the arithmetic, so 15:00 stays 15:00.
   const [hour, min] = body.time_slot.split(":").map(Number);
-  const bookingDateTime = new Date(`${body.booking_date}T${body.time_slot}:00`);
-  const endDateTime = new Date(bookingDateTime.getTime() + (service.duration || 60) * 60 * 1000);
+  const [yy, mo, dd] = body.booking_date.split("-").map(Number);
+  const startLocal = `${body.booking_date}T${String(hour).padStart(2, "0")}:${String(min || 0).padStart(2, "0")}:00`;
+  const endLocal = new Date(Date.UTC(yy, mo - 1, dd, hour, min || 0) + (service.duration || 60) * 60 * 1000).toISOString().slice(0, 19);
 
-  const status = studio.auto_confirm_bookings ? "confirmed" : "pending";
-  const confirmedAt = studio.auto_confirm_bookings ? new Date().toISOString() : null;
+  // Both parties tap (CLAUDE.md, 10 Oct): the customer asked, the studio still
+  // has to accept in its portal, so every booking starts pending.
+  const status = "pending";
+  const confirmedAt = null;
 
   // Create booking in Supabase
   const { data: booking, error: bookingError } = await supabase
@@ -105,12 +121,12 @@ serve(async (req: Request) => {
     if (accessToken) {
       const calendarId = studio.google_calendar_id || "primary";
       const eventDescription = [
-        `Service: ${service.name}`,
-        `Customer: ${body.customer_name}`,
-        `Phone: ${body.customer_phone}`,
+        `Reserva de Massage Club`,
+        `Cliente: ${body.customer_name}`,
+        `Teléfono: ${body.customer_phone}`,
         body.customer_email ? `Email: ${body.customer_email}` : null,
-        `Booked via Massage Club`,
-        body.notes ? `Notes: ${body.notes}` : null,
+        body.notes ? `Nota del cliente: ${body.notes}` : null,
+        `Pendiente: aceptadla o rechazadla en book.massageclub.io/studio-portal`,
       ].filter(Boolean).join("\n");
 
       const googleEvent = await fetch(
@@ -122,10 +138,10 @@ serve(async (req: Request) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            summary: `💆 ${service.name} — ${body.customer_name}`,
+            summary: `${svcEs(service.name)}, ${firstName(body.customer_name)} (Massage Club)`,
             description: eventDescription,
-            start: { dateTime: bookingDateTime.toISOString() },
-            end: { dateTime: endDateTime.toISOString() },
+            start: { dateTime: startLocal, timeZone: "Europe/Madrid" },
+            end: { dateTime: endLocal, timeZone: "Europe/Madrid" },
             reminders: {
               useDefault: false,
               overrides: [
@@ -133,7 +149,7 @@ serve(async (req: Request) => {
                 { method: "popup", minutes: 15 },
               ],
             },
-            colorId: studio.auto_confirm_bookings ? "2" : "4", // green=confirmed, yellow=pending
+            colorId: "4", // yellow = pending until the studio accepts
           }),
         }
       );
@@ -222,21 +238,8 @@ async function notifyStudio(supabase: any, studio: any, booking: any, service: a
     .eq("partner_id", studio.id)
     .single();
 
-  const message = [
-    `🆕 NEW BOOKING — Massage Club`,
-    ``,
-    `Service: ${service.name}`,
-    `Date: ${booking.booking_date}`,
-    `Time: ${booking.time_slot}`,
-    `Duration: ${service.duration} min`,
-    ``,
-    `Customer: ${booking.customer_name}`,
-    `Phone: ${booking.customer_phone}`,
-    booking.customer_email ? `Email: ${booking.customer_email}` : null,
-    booking.notes ? `Notes: ${booking.notes}` : null,
-    ``,
-    studio.auto_confirm_bookings ? `✅ Auto-confirmed` : `⏳ Pending confirmation`,
-  ].filter(Boolean).join("\n");
+  // What the studio reads. Never "Auto-confirmed": the studio accepts first.
+  const message = `Hola, buenas. ${firstName(booking.customer_name) || "Un cliente"} ha pedido cita con vosotros: ${svcConUn(service.name)} de ${service.duration || 60} min ${diaEs(booking.booking_date)} a las ${booking.time_slot}.${booking.customer_phone ? ` Su teléfono es ${booking.customer_phone}.` : ""} ¿Se la confirmáis? Podéis hacerlo en vuestro portal: book.massageclub.io/studio-portal`;
 
   // Send via WhatsApp if number available
   if (notify?.whatsapp_number) {
@@ -253,4 +256,50 @@ async function notifyStudio(supabase: any, studio: any, booking: any, service: a
   }
 
   console.log("Notification sent for booking:", booking.id);
+}
+
+// Spanish for what a studio reads (same map as notify-whatsapp-request).
+const SVC_ES_MAP: Array<[RegExp, string]> = [
+  [/not sure|no lo sé|^massage$|massage treatment/i, "Masaje"],
+  [/deep tissue|descontracturante/i, "Masaje descontracturante"],
+  [/thai|tailand/i, "Masaje tailandés"],
+  [/hot stone|piedras/i, "Masaje de piedras calientes"],
+  [/sport|deportivo/i, "Masaje deportivo"],
+  [/balin/i, "Masaje balinés"],
+  [/shiatsu/i, "Shiatsu"],
+  [/reflexolog/i, "Reflexología"],
+  [/lymphatic|drenaje|linfatic/i, "Drenaje linfático"],
+  [/couples|pareja/i, "Masaje en pareja"],
+  [/kobido/i, "Masaje facial Kobido"],
+  [/relax|swedish|stress/i, "Masaje relajante"],
+];
+function svcEs(n?: string | null): string {
+  const s = String(n || "").trim();
+  for (const [re, es] of SVC_ES_MAP) if (re.test(s)) return es;
+  return s || "Masaje";
+}
+function svcConUn(n?: string | null): string {
+  const v = svcEs(n);
+  if (/^masaje$/i.test(v)) return "un masaje";
+  if (/^reflexolog/i.test(v)) return "una sesión de reflexología";
+  const low = v.charAt(0).toLowerCase() + v.slice(1);
+  if (/^(un|una)\s/i.test(low)) return low;
+  return SVC_ES_MAP.some(([, es]) => es === v) || /^(masaje|drenaje|shiatsu)\b/i.test(low) ? `un ${low}` : `una sesión de ${low}`;
+}
+function firstName(n?: string | null): string {
+  const f = String(n || "").trim().split(/\s+/)[0] || "";
+  return f ? f.charAt(0).toUpperCase() + f.slice(1) : "";
+}
+// "hoy", "mañana" or "el lunes 19 de octubre" for a YYYY-MM-DD calendar date.
+const ES_DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const ES_MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+function diaEs(isoDate: string): string {
+  const m = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return "";
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+  const diff = Math.round((d.getTime() - Date.parse(today + "T00:00:00Z")) / 86400e3);
+  if (diff === 0) return "hoy";
+  if (diff === 1) return "mañana";
+  return `el ${ES_DIAS[d.getUTCDay()]} ${d.getUTCDate()} de ${ES_MESES[d.getUTCMonth()]}`;
 }

@@ -46,8 +46,19 @@
 //    that row's Vapi call id.
 //
 // Jordan hears by email (support@ and jordan@) when a studio opts out, when a
-// studio states its opening hours, and when an answer could not be handed to
-// wa-bot. That needs the Resend key from the loader; without it, logs only.
+// studio states its opening hours, when it asks to speak to a person, when it
+// offers an hour outside the customer's window, and when an answer could not
+// be handed to wa-bot. That needs the Resend key from the loader; without it,
+// logs only.
+//
+// 16 Oct (the studio-message rewrite): the opening no longer says "una
+// reserva" (nothing is booked) and asks "¿Tendrían hueco ... para un masaje
+// deportivo de 60 minutos?", the article inside {{servicio}}, the studio's own
+// service when dispatch-studios passes one (services: {partner_id: text}). The
+// assistant no longer says the client speaks English (false for Spanish
+// speakers), promises "se lo paso ahora mismo a Jordan" only together with the
+// email that keeps the promise, looks for another hour only inside the
+// customer's window ({{hasta}}), and says "buena tarde" after 14:00.
 //
 // The repo is public, so this file carries no secrets. The deployed function
 // is a short loader that pins one commit of this file and passes the keys in.
@@ -251,23 +262,54 @@ function concreteTime(t: unknown): string {
   for (const [re, hh] of BANDS) if (hh && re.test(s)) return hh;
   return "";
 }
+// The service carries its own article, so the sentence reads "para un masaje
+// deportivo" and "para un tratamiento de reflexología" alike.
 const SVC_ES: Array<[RegExp, string]> = [
-  [/deep tissue|descontract/i, "masaje descontracturante"], [/thai|tailand/i, "masaje tailandés"],
-  [/hot stone|piedras/i, "masaje con piedras calientes"], [/sport|deportiv/i, "masaje deportivo"],
-  [/balin/i, "masaje balinés"], [/shiatsu/i, "shiatsu"], [/reflexolog/i, "tratamiento de reflexología"],
-  [/lymphatic|linf/i, "drenaje linfático"], [/couples|pareja/i, "masaje en pareja"],
-  [/kobido|facial/i, "masaje facial kobido"], [/prenatal|embaraz/i, "masaje prenatal"],
-  [/head|scalp|cabeza/i, "masaje de cabeza"], [/foot|feet|pies/i, "masaje de pies"],
-  [/four hands|cuatro manos/i, "masaje a cuatro manos"], [/gua sha/i, "tratamiento de gua sha"],
+  [/deep tissue|descontract/i, "un masaje descontracturante"], [/thai|tailand/i, "un masaje tailandés"],
+  [/hot stone|piedras/i, "un masaje con piedras calientes"], [/sport|deportiv/i, "un masaje deportivo"],
+  [/balin/i, "un masaje balinés"], [/shiatsu/i, "un shiatsu"], [/reflexolog/i, "un tratamiento de reflexología"],
+  [/lymphatic|linf/i, "un drenaje linfático"], [/couples|pareja/i, "un masaje en pareja"],
+  [/kobido|facial/i, "un masaje facial kobido"], [/prenatal|embaraz/i, "un masaje prenatal"],
+  [/head|scalp|cabeza/i, "un masaje de cabeza"], [/foot|feet|pies/i, "un masaje de pies"],
+  [/four hands|cuatro manos/i, "un masaje a cuatro manos"], [/gua sha/i, "un tratamiento de gua sha"],
+  [/swedish|sueco/i, "un masaje sueco"],
 ];
+const reqMinutes = (r: Record<string, unknown>): number => {
+  const m = String(r.message_text || "").match(/Duraci[oó]n: (\d{2,3}) min/);
+  return m ? parseInt(m[1], 10) : 60;
+};
+const genderHablado = (r: Record<string, unknown>) => r.therapist_gender === "male" ? " con masajista chico" : r.therapist_gender === "female" ? " con masajista chica" : "";
 function servicioHablado(r: Record<string, unknown>): string {
   const name = String(r.service_name || "");
-  let base = "masaje relajante";
+  let base = "un masaje relajante";
   for (const [re, v] of SVC_ES) if (re.test(name)) { base = v; break; }
-  const m = String(r.message_text || "").match(/Duraci[oó]n: (\d{2,3}) min/);
-  const mins = m ? parseInt(m[1], 10) : 60;
-  const gender = r.therapist_gender === "male" ? " con masajista chico" : r.therapist_gender === "female" ? " con masajista chica" : "";
-  return `${base} de ${mins} minutos${gender}`;
+  return `${base} de ${reqMinutes(r)} minutos${genderHablado(r)}`;
+}
+// The studio's own service, as dispatch-studios asked it in writing
+// ("masaje tailandés de 60 min con presión firme"), said the same way.
+function ownServicio(own: string, r: Record<string, unknown>): string {
+  let s = own.replace(/\s+/g, " ").trim().replace(/\bmin\b\.?/gi, "minutos");
+  if (!/^(un|una)\s/i.test(s)) s = "un " + s.charAt(0).toLowerCase() + s.slice(1);
+  if (!/\d/.test(s)) s += ` de ${reqMinutes(r)} minutos`;
+  if (!/masajista/i.test(s)) s += genderHablado(r);
+  return s;
+}
+// The customer's window, from the band they chose ("Afternoon (13-18)"), so
+// "the nearest time that day" is never an hour they did not ask for.
+function franja(r: Record<string, unknown>): { desde: string; hasta: string } {
+  const flex = String(r.message_text || "").match(/flexible: ([^|]+)/)?.[1] || "";
+  for (const t0 of [r.time1, r.time2, flex]) {
+    const t = String(t0 || "").toLowerCase();
+    let b: [number, number] | null = null;
+    const m = t.match(/\b(\d{1,2})(?::00)?\s*-\s*(\d{1,2})(?::00)?\b/);
+    if (m && +m[1] < +m[2] && +m[2] <= 24) b = [+m[1], +m[2]];
+    else if (/\b\d{1,2}[:.]\d{2}\b/.test(t)) b = null;
+    else if (/morning|ma[nñ]ana/.test(t)) b = [10, 13];
+    else if (/afternoon|tarde/.test(t)) b = [13, 18];
+    else if (/evening|night|noche/.test(t)) b = [18, 21];
+    if (b) return { desde: `${String(b[0]).padStart(2, "0")}:00`, hasta: `${String(b[1]).padStart(2, "0")}:00` };
+  }
+  return { desde: "", hasta: "" };
 }
 // "17:00", "17.00", "17h", "5:30" from whatever the model wrote, or "".
 function hhmm(t: unknown): string {
@@ -280,38 +322,48 @@ function hhmm(t: unknown): string {
 // --- The call. One transient assistant per call: what it is told is fixed as
 // sent, so nothing in the Vapi dashboard can change what a studio hears.
 // The disclosure is in the first sentence, before anything is asked.
-const FIRST_MESSAGE = "Hola, buenas, le llama el asistente automático de Massage Club, de parte de Jordan, por una reserva de un cliente. ¿Tienen hueco {{dia}} a las {{hora}} para un {{servicio}}?";
+// "un cliente", not "una reserva": nothing is booked yet. {{servicio}} carries
+// its own article ("un masaje deportivo de 60 minutos").
+const FIRST_MESSAGE = "Hola, buenas. Le llama el asistente automático de Massage Club, de parte de Jordan, por un cliente. ¿Tendrían hueco {{dia}} a las {{hora}} para {{servicio}}?";
 // Nothing here promises the customer sees it "ahora mismo": wa-bot can hold an
 // offer back (outside the customer's window, or behind one they are already
 // looking at), and the studio is never told something that may not happen.
 const CLOSE_YES = "Perfecto, se lo trasladamos al cliente. Todavía no está reservado: les confirmamos por WhatsApp en cuanto el cliente diga que sí. Gracias.";
 const CLOSE_OTHER = "Gracias, se lo comentamos al cliente. Todavía no está reservado; si le encaja, les confirmamos por WhatsApp.";
-const CLOSE_NO = "Entendido, muchas gracias. Que tengan buen día.";
-const SYSTEM = [
-  "Eres el asistente automático de Massage Club y estás al teléfono con {{centro}}, un centro de masajes de Madrid. Llamas de parte de Jordan. Massage Club busca hueco en centros de Madrid para clientes que hablan inglés.",
-  "Ya has saludado y has preguntado si tienen hueco {{dia}} a las {{hora}} para un {{servicio}}.",
-  "Hablas español de España, de usted, con frases cortas y naturales. Es una llamada breve.",
-  "",
-  "Solo quieres saber esto:",
-  "1. Si pueden {{dia}} a las {{hora}}.",
-  "2. Si no pueden a esa hora, la hora más cercana que tengan ese mismo día.",
-  "3. El precio, solo si lo dicen ellos. No insistas.",
-  "",
-  "Reglas:",
-  "- No pidas descuentos ni hables de comisiones.",
-  "- No confirmes la reserva ni digas que está reservada. El cliente decide primero.",
-  "- No des datos del cliente. Si preguntan, es un cliente que habla inglés.",
-  "- Si preguntan quién eres, di otra vez que eres un asistente automático de Massage Club que llama de parte de Jordan.",
-  "- Si quieren hablar con una persona, di que tomas nota para Jordan y ponlo en notas.",
-  "- Si piden que no les llamemos más, pide disculpas, di que no volverán a recibir llamadas nuestras y marca no_llamar.",
-  "- Si contesta un buzón de voz o un contestador, cuelga sin dejar mensaje.",
-  "- Si te dicen su horario de apertura, apúntalo en horario.",
-  "- Antes de despedirte, llama siempre a registrar_respuesta con lo que han dicho. Horas en formato HH:MM de 24 horas.",
-  `- Si pueden {{dia}} a las {{hora}}, despídete con estas palabras exactas: "${CLOSE_YES}"`,
-  `- Si no pueden a esa hora pero sí a otra ese día, despídete con estas palabras exactas: "${CLOSE_OTHER}"`,
-  `- Si no tienen hueco ese día, despídete con: "${CLOSE_NO}"`,
-  "- Después de despedirte, cuelga con endCall.",
-].join("\n");
+// "Buen día" on an evening call sounds off; after 14:00 Madrid it is "buena tarde".
+const closeNo = () => `Entendido, muchas gracias. ${madridHour() >= 14 ? "Que tengan buena tarde." : "Que tengan buen día."}`;
+const WANTS_PERSON = "Claro, se lo paso ahora mismo a Jordan para que se ponga en contacto con ustedes.";
+// Built for each call: the window rule only when the customer gave a band, and
+// the goodbye for the hour the call goes out.
+function systemFor(v: Vars): string {
+  return [
+    "Eres el asistente automático de Massage Club y estás al teléfono con {{centro}}, un centro de masajes de Madrid. Llamas de parte de Jordan. Massage Club busca hueco en centros de masajes de Madrid para sus clientes.",
+    "Ya has saludado y has preguntado si tendrían hueco {{dia}} a las {{hora}} para {{servicio}}.",
+    "Hablas español de España, de usted, con frases cortas y naturales. Es una llamada breve.",
+    "",
+    "Solo quieres saber esto:",
+    "1. Si pueden {{dia}} a las {{hora}}.",
+    v.hasta
+      ? "2. Si no pueden a esa hora, la hora más cercana que tengan ese mismo día, dentro de la franja del cliente (hasta las {{hasta}})."
+      : "2. Si no pueden a esa hora, la hora más cercana que tengan ese mismo día.",
+    "3. El precio, solo si lo dicen ellos. No insistas.",
+    "",
+    "Reglas:",
+    "- No pidas descuentos ni hables de comisiones.",
+    "- No confirmes la reserva ni digas que está reservada. El cliente decide primero.",
+    "- No des datos del cliente. Si preguntan, di que si el cliente confirma les escribimos por WhatsApp con su nombre.",
+    "- Si preguntan quién eres, di otra vez que eres un asistente automático de Massage Club que llama de parte de Jordan.",
+    `- Si quieren hablar con una persona, di exactamente: "${WANTS_PERSON}" y marca quiere_persona.`,
+    "- Si piden que no les llamemos más, pide disculpas, di que no volverán a recibir llamadas nuestras y marca no_llamar.",
+    "- Si contesta un buzón de voz o un contestador, cuelga sin dejar mensaje.",
+    "- Si te dicen su horario de apertura, apúntalo en horario.",
+    "- Antes de despedirte, llama siempre a registrar_respuesta con lo que han dicho. Horas en formato HH:MM de 24 horas.",
+    `- Si pueden {{dia}} a las {{hora}}, despídete con estas palabras exactas: "${CLOSE_YES}"`,
+    `- Si no pueden a esa hora pero sí a otra ese día, despídete con estas palabras exactas: "${CLOSE_OTHER}"`,
+    `- Si no tienen hueco ese día, despídete con: "${closeNo()}"`,
+    "- Después de despedirte, cuelga con endCall.",
+  ].join("\n");
+}
 
 // Vapi's JsonSchema has no null type, so "no price said" is 0, read back as null.
 // Not strict: OpenAI's strict mode also wants additionalProperties:false, which
@@ -333,8 +385,9 @@ const REGISTRAR = {
         no_llamar: { type: "boolean", description: "true si han pedido que no les llamemos más." },
         horario: { type: "string", description: "Su horario de apertura si lo han dicho, en este formato exacto: Mon-Sat 10:00-21:00, Sun 11:00-15:00 (días en inglés, horas de 24 h; si cierran a mediodía: Mon-Fri 10:00-14:00, Mon-Fri 17:00-21:00). Vacío si no lo han dicho." },
         notas: { type: "string", description: "Cualquier otra cosa importante que hayan dicho, en pocas palabras. Vacío si nada." },
+        quiere_persona: { type: "boolean", description: "true si han pedido hablar con una persona." },
       },
-      required: ["disponible", "hora_ofrecida", "otras_horas", "precio_eur", "no_llamar", "horario", "notas"],
+      required: ["disponible", "hora_ofrecida", "otras_horas", "precio_eur", "no_llamar", "horario", "notas", "quiere_persona"],
     },
   },
 };
@@ -351,7 +404,8 @@ function modelFor(cfg: Cfg): { provider: string; model: string } {
   return i > 0 ? { provider: cfg.model.slice(0, i), model: cfg.model.slice(i + 1) } : { provider: "openai", model: cfg.model || "gpt-4.1-mini" };
 }
 
-type Vars = { centro: string; dia: string; hora: string; servicio: string };
+// hasta / desde: the customer's window when they gave a band; "" otherwise.
+type Vars = { centro: string; dia: string; hora: string; servicio: string; hasta?: string; desde?: string };
 function callBody(cfg: Cfg, to: string, vars: Vars, rowId: string, sig: string, label: string): Record<string, unknown> {
   return {
     phoneNumberId: cfg.phoneNumberId,
@@ -363,7 +417,7 @@ function callBody(cfg: Cfg, to: string, vars: Vars, rowId: string, sig: string, 
       firstMessageMode: "assistant-speaks-first",
       transcriber: { provider: "deepgram", model: "nova-3", language: "es" },
       voice: voiceFor(cfg),
-      model: { ...modelFor(cfg), temperature: 0.2, maxTokens: 200, messages: [{ role: "system", content: SYSTEM }], tools: [REGISTRAR, { type: "endCall" }] },
+      model: { ...modelFor(cfg), temperature: 0.2, maxTokens: 200, messages: [{ role: "system", content: systemFor(vars) }], tools: [REGISTRAR, { type: "endCall" }] },
       // No voicemailMessage: on a machine it hangs up and says nothing.
       voicemailDetection: { provider: "vapi", backoffPlan: { startAtSeconds: 2, frequencySeconds: 2.5, maxRetries: 5 } },
       maxDurationSeconds: MAX_CALL_S,
@@ -429,7 +483,8 @@ async function place(body: Record<string, unknown>) {
   const hora = concreteTime(r.proposed_time) || concreteTime(r.time1);
   const dia = diaHablado(r);
   if (!hora || !dia) return { ok: true, mode: cfg.mode, request_id: id, placed: 0, reason: `no exact ${!hora ? "hour" : "day"} to ask about` };
-  const servicio = servicioHablado(r);
+  const servicioDefault = servicioHablado(r);
+  const win = franja(r);
   const testReq = isTestRequest(r);
 
   const inIds = ids.map(encodeURIComponent).join(",");
@@ -459,7 +514,10 @@ async function place(body: Record<string, unknown>) {
     const isTestNumber = cfg.testNumbers.includes(to);
     if (testReq && !isTestNumber) return skip("test customer, real studio");
     if (cfg.mode === "test" && !isTestNumber) return skip("test mode, number not in VOICE_TEST_NUMBERS");
-    const vars: Vars = { centro: name.slice(0, 80), dia, hora, servicio };
+    // The studio's own service when dispatch-studios asked for that one in writing.
+    const own = String((body.services as Record<string, unknown> | undefined)?.[pid] || "").trim().slice(0, 120);
+    const servicio = own ? ownServicio(own, r) : servicioDefault;
+    const vars: Vars = { centro: name.slice(0, 80), dia, hora, servicio, ...(win.hasta ? { hasta: win.hasta, desde: win.desde } : {}) };
     const out = await dial(cfg, to, vars, { request_id: id, partner_id: pid, dispatch_id: d.id, test: cfg.mode === "test" }, `MC #${id} ${name}`);
     return { partner_id: pid, name, ...out };
   }));
@@ -480,7 +538,7 @@ async function testCall(body: Record<string, unknown>) {
     centro: clip(body.studio_name, 80) || "Centro de prueba",
     dia: clip(body.dia, 60) || "mañana",
     hora: hhmm(body.hora) || "17:00",
-    servicio: clip(body.servicio, 80) || "masaje relajante de 60 minutos",
+    servicio: clip(body.servicio, 80) || "un masaje relajante de 60 minutos",
   };
   const out = await dial(cfg, to, vars, { request_id: null, partner_id: null, test: true }, `MC test ${vars.centro}`);
   return { ok: out.placed, mode: cfg.mode, vars, ...out };
@@ -502,11 +560,41 @@ async function recordAnswer(row: any, a: Record<string, unknown>) {
     const alt = [t, ...others].find((x) => x && x !== asked);
     if (alt) { offered = alt; result = "other_time"; }
   }
+  // An hour outside the customer's window is not an offer: it never reaches
+  // the customer, and Jordan is told so he can decide.
+  const desde = String(row.vars?.desde || ""), hasta = String(row.vars?.hasta || "");
+  const inWin = (x: string) => !hasta || ((!desde || x >= desde) && x < hasta);
+  let outside: string[] = [];
+  if (result === "other_time" && !inWin(offered)) {
+    const alt = [t, ...others].find((x) => x && x !== asked && inWin(x));
+    if (alt) offered = alt;
+    else { outside = [...new Set([offered, ...others.filter((x) => x && x !== asked && !inWin(x))])]; offered = ""; result = "no"; }
+  }
   const price = Number(a.precio_eur);
-  const times = [...new Set([offered, ...others].filter(Boolean))].filter((x) => result === "yes" || x !== asked).slice(0, 6);
+  const times = [...new Set([offered, ...others].filter(Boolean))].filter((x) => result === "yes" || (x !== asked && inWin(x))).slice(0, 6);
   const optOut = truthy(a.no_llamar);
+  const wantsPerson = truthy(a.quiere_persona);
   const horario = String(a.horario || "").replace(/\s+/g, " ").trim().slice(0, 120);
-  const notes = [String(a.notas || "").trim(), horario ? `horario: ${horario}` : "", optOut || row.opted_out ? "pidió no recibir más llamadas" : ""].filter(Boolean).join(" | ").slice(0, 500);
+  const notes = [String(a.notas || "").trim(), horario ? `horario: ${horario}` : "", outside.length ? `ofreció ${outside.join(", ")}, fuera de la franja del cliente` : "", wantsPerson ? "quiere hablar con una persona" : "", optOut || row.opted_out ? "pidió no recibir más llamadas" : ""].filter(Boolean).join(" | ").slice(0, 500);
+  const who = String(row.vars?.centro || row.partner_id);
+  // The agent told them "se lo paso ahora mismo a Jordan"; this keeps it.
+  if (wantsPerson && !row.person_told) {
+    row.person_told = true;
+    bg(tellJordan(`${who} wants to talk to a person`, [
+      `${who} asked on the phone to speak to a person${row.request_id ? ` about request #${row.request_id}` : ""}.`,
+      `Their number: ${row.dialled || "unknown"}`,
+      String(a.notas || "").trim() ? `What they said: ${String(a.notas).trim()}` : "",
+      `studio_calls row ${row.id}${row.test ? " (test call)" : ""}.`,
+    ].filter(Boolean)));
+  }
+  if (outside.length && !row.outside_told) {
+    row.outside_told = true;
+    bg(tellJordan(`${who} offered ${outside.join(", ")} for #${row.request_id || "?"}, outside the customer's window`, [
+      `${who} said on the phone they cannot do ${asked} but could do ${outside.join(", ")}, outside the customer's window (${desde || "?"} to ${hasta}).`,
+      "It was not offered to the customer. If you think they would take it, ask them yourself.",
+      `studio_calls row ${row.id}${row.test ? " (test call)" : ""}.`,
+    ]));
+  }
   // The opt-out first: it must land even if the answer itself does not.
   if (optOut && row.partner_id && !row.opted_out) await stopCalling(row, "said during the call, recorded by the agent");
   if (horario && row.partner_id && !row.hours_told) { row.hours_told = true; bg(hoursHeard(row, horario)); }
