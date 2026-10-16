@@ -495,6 +495,13 @@ function diaCompleto(r: Record<string, unknown>): string {
 // "el lunes 19 de octubre" -> "del lunes 19 de octubre", "hoy" -> "de hoy".
 const deDia = (d: string) => !d ? "" : d.startsWith("el ") ? `del ${d.slice(3)}` : `de ${d}`;
 const capFirst = (t: string) => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+// v48: the client's first name as a studio reads it, or "" when there is none.
+// wa-bot stores "WhatsApp customer" when it has no name, and that English
+// never reaches a studio ("El cliente se llama WhatsApp customer").
+const nombreDe = (r: Record<string, unknown>): string => {
+  const f = String(r.first_name || "").replace(/\s+/g, " ").trim();
+  return !f || /^(whatsapp( customer)?|cliente|client|customer|guest|-)$/i.test(f) ? "" : capFirst(f);
+};
 // A clock time as the studio reads it ("09:30"), or "" when it is not one.
 const clockOf = (t: unknown) => {
   const m = String(t || "").trim().match(/^([01]?\d|2[0-3])[:.]([0-5]\d)$/);
@@ -819,13 +826,13 @@ const TPL_NOT_LIVE = /132001|does not exist|not found|not approved/i;
 function v7Params(r: Record<string, unknown>, own: string, line: string): string[] {
   const dia = diaFrase(r);
   const h = horaPedida(r);
-  const when = dia ? `${dia}${h ? ` a las ${h}` : ""}` : `el día que mejor os venga${h ? `, a las ${h}` : ""}`;
+  const when = dia ? `${dia}${h ? ` a las ${h}` : ""}` : `el día que mejor os venga${h ? `, a las ${h},` : ""}`;
   const end = finFranja(r.time1);
   const extras = [
     r.therapist_gender === "male" ? "prefiere masajista chico" : r.therapist_gender === "female" ? "prefiere masajista chica" : "",
     h && end && end > h ? `le va bien cualquier hora hasta las ${end}` : "",
   ].filter(Boolean);
-  const name = String(r.first_name || "").trim() || "Cliente";
+  const name = nombreDe(r) || "Cliente";
   const who = !extras.length ? name
     : extras.length === 1 ? `${name} y ${extras[0]}`
     : `${name}, ${extras.slice(0, -1).join(", ")} y ${extras[extras.length - 1]}`;
@@ -851,7 +858,7 @@ function v3Params(r: Record<string, unknown>, own: string): string[] {
   const svc = own
     ? ownServicio(own, reqDuration(r)).replace(/^(un|una)\s+/i, "").replace(/^masaje\s+/i, "") + gender
     : svcParam(r.service_name, reqDuration(r), gender);
-  return [param(svc, 120), param(String(r.first_name || "Cliente"), 40), param(v3When(r), 120)];
+  return [param(svc, 120), param(nombreDe(r) || "Cliente", 40), param(v3When(r), 120)];
 }
 
 // v43 (Jordan, 15 Oct): the first message to a studio that has never heard of
@@ -927,11 +934,13 @@ type NoteShort = { v2: string; v1: string };
 function shortForms(short: string, rq: Record<string, unknown>): NoteShort {
   const s = String(short || "").replace(/\s+/g, " ").trim();
   const bare = s.replace(/[.\s]+$/, "");
-  const name = String(rq.first_name || "").trim();
-  const v1 = name && bare.startsWith(name) ? bare : bare.charAt(0).toLowerCase() + bare.slice(1);
+  const name = nombreDe(rq);
+  // The first letter, after any opening "¿" or "¡": "¿Os sigue encajando?".
+  const lead = (t: string, up: boolean) => t.replace(/^([¿¡]*)(\p{L})/u, (_m, p: string, c: string) => p + (up ? c.toUpperCase() : c.toLowerCase()));
+  const v1 = name && bare.startsWith(name) ? bare : lead(bare, false);
   // v2 has room for sentences, so "esa hora; si tenéis otra" becomes two.
   const whole = s.replace(/;\s+(\p{L})/gu, (_m, c: string) => `. ${c.toUpperCase()}`);
-  return { v2: capFirst(/[.!?]$/.test(whole) ? whole : `${whole}.`), v1 };
+  return { v2: lead(/[.!?]$/.test(whole) ? whole : `${whole}.`, true), v1 };
 }
 // The hour a note to this studio is about: the one it offered or was told, the
 // confirmed hour only when it is the studio that won, else the hour every
@@ -991,7 +1000,7 @@ async function sendStudioNote(to: string, text: string, short: string | NoteShor
   const openWindow = !!lastAt && (Date.now() - lastAt) < 23.5 * 3600e3;
   if (openWindow && await sendText(to, text)) return { how: "text", ok: true };
   const forms = typeof short === "string" ? shortForms(short || text, rq) : short;
-  const name = String(rq.first_name || "").trim() || "nuestro cliente";
+  const name = nombreDe(rq) || "nuestro cliente";
   const hour = noteHour(rq, row);
   const p2 = [param([name, refEs(rq, hour)].filter(Boolean).join(" "), 120), param(forms.v2, 700)];
   const r2 = await sendTemplate(to, "aviso_centro_v2", p2, []);
@@ -1022,7 +1031,7 @@ function refDe(rq: Record<string, unknown>, hour: string): string {
   return ref.startsWith("a las ") ? `de las ${ref.slice(6)}` : ref.startsWith("por ") ? "" : ref;
 }
 function standDownNote(kind: Ending, rq: Record<string, unknown>, row?: Record<string, unknown>): { text: string; short: NoteShort } {
-  const name = String(rq.first_name || "").trim() || "nuestro cliente";
+  const name = nombreDe(rq) || "nuestro cliente";
   const hour = clockOf(row?.offered_time) || horaPedida(rq);
   if (kind === "accepted") {
     const dia = diaFrase(rq);
@@ -1055,7 +1064,7 @@ function standDownNote(kind: Ending, rq: Record<string, unknown>, row?: Record<s
 // service, who we are, and the house sign-off, so it can be matched to the
 // offer email it answers. The subject says the same as the body.
 function standDownEmail(kind: Ending, rq: Record<string, unknown>, row: Record<string, unknown> | undefined, studio: string): { subject: string; text: string } {
-  const name = String(rq.first_name || "").trim() || "nuestro cliente";
+  const name = nombreDe(rq) || "nuestro cliente";
   const hour = clockOf(row?.offered_time) || horaPedida(rq);
   const dia = diaCompleto(rq);
   const subject = `Ya no hace falta el hueco de ${name}${dia ? ` ${deDia(dia)}` : ""}${hour ? ` a las ${hour}` : ""}`;
@@ -1189,7 +1198,7 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
     // duration is the customer's, not a fixed 60. Not signed, and no promise
     // to tell the client "ahora mismo": wa-bot may hold an offer back.
     const hour = horaPedida(rq);
-    const name = String(rq.first_name || "").trim() || "nuestro cliente";
+    const name = nombreDe(rq) || "nuestro cliente";
     const dia = diaFrase(rq);
     const mins = reqDuration(rq);
     const franja = franjaEs(rq.time1);
@@ -1477,7 +1486,11 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       });
     }
     if (res.ok) messages.push({ name: c.business_name, wa: c.wa, text: String(res.text || "") });
-    else failed.push({ name: c.business_name, error: String(res.error || "") });
+    // Jordan hears once per studio and request. A request that sent nothing is
+    // handed back to the sweep, which tries again every 20 minutes for two
+    // days; the row keeps the send_error of the last try, so a repeat is not
+    // news. Nor is his own pause.
+    else if (!STUDIO_OUTREACH_PAUSED && !(Array.isArray(ins) && ins[0]?.send_error)) failed.push({ name: c.business_name, error: String(res.error || "") });
     if (res.ok) { sent++; askedIds.push(String(c.id)); asked.push(c); sentNames.push(c.business_name + (opts.cheapest && c.score != null ? ` (${Number(c.score)} EUR)` : "") + (c.widened ? " (fuera de la zona)" : "")); }
   }
 
@@ -1657,13 +1670,18 @@ async function handleRequest(req: Request): Promise<Response> {
   }
   // v42: one note to one studio, with the template fallback (see the header).
   if (body.studio_note && typeof body.studio_note === "object") {
-    const n = body.studio_note as { request_id?: number; phone?: string; text?: string; short?: string; time?: string };
+    const n = body.studio_note as { request_id?: number; phone?: string; text?: string; short?: string; time?: string; first_name?: string; day?: string };
     const to = toWa(String(n.phone || ""));
     const json = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
     if (!to || !n.text) return json({ ok: false, how: "none", why: "studio_note.phone and studio_note.text required" });
     if (!withinSendingHours()) return json({ ok: false, how: "hours", why: `outside ${OPEN_HOUR}:00-${CLOSE_HOUR}:00 Madrid` });
     const reqRows = n.request_id ? await sq(`whatsapp_requests?id=eq.${Number(n.request_id)}&select=${RQ_NOTE_COLS}`) : [];
-    const rq = (Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {}) as Record<string, unknown>;
+    const rq0 = (Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : {}) as Record<string, unknown>;
+    // v48: a booking made on a studio's own page has no request row
+    // (cancel-booking, notify-studio), so the caller passes the client's first
+    // name and the day ("el lunes 19 de octubre") itself. Without them the
+    // template read "el masaje de nuestro cliente a las 15:30".
+    const rq = rq0.id ? rq0 : { ...rq0, first_name: String(n.first_name || ""), day1: String(n.day || "") };
     // v48: the template names the hour this studio was dealing with: the time
     // wa-bot passes, else the hour it offered, else the hour it was asked.
     // n.time used to stand in for confirmed_time, and with neither the

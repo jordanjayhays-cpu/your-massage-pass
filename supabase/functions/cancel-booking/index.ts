@@ -199,9 +199,12 @@ async function notifyCancellation(booking: any, _reason?: string) {
   // The reason is never passed on: it may be private, or in English.
   if (isTestBooking(booking)) { console.log(`[cancel] test contact, studio not told (booking ${booking.id})`); return; }
   const studio = booking.partners || {};
-  const firstRaw = String(booking.customer_name || booking.client_name || "").trim().split(/\s+/)[0] || "";
+  const firstRaw0 = String(booking.customer_name || booking.client_name || "").trim().split(/\s+/)[0] || "";
+  const firstRaw = /^(whatsapp|cliente|client|customer|guest|-)$/i.test(firstRaw0) ? "" : firstRaw0;
   const first = firstRaw ? firstRaw.charAt(0).toUpperCase() + firstRaw.slice(1) : "El cliente";
-  const time = String(booking.time_slot || booking.booking_time || "").slice(0, 5);
+  // Only a real HH:MM ("15:00:00" reads "15:00"); anything else is left out.
+  const tm = String(booking.time_slot || booking.booking_time || "").match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  const time = tm ? `${tm[1].padStart(2, "0")}:${tm[2]}` : "";
   const svc = svcSu(booking.service_name || booking.massage_type);
   const whenFull = [deDia(booking.booking_date, true), time ? `a las ${time}` : ""].filter(Boolean).join(" ");
   const whenRel = [deDia(booking.booking_date, false), time ? `a las ${time}` : ""].filter(Boolean).join(" ");

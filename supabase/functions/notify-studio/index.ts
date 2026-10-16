@@ -157,18 +157,20 @@ serve(async (req) => {
   }
 
   const first = cleanFirst(booking.client_name) || "Un cliente";
-  const time = timeOf(booking.booking_time) || String(booking.booking_time || "");
+  // Only a real HH:MM is printed: "15:00:00" reads "15:00", and anything else
+  // is left out rather than reaching the studio as "a las afternoon".
+  const time = timeOf(booking.booking_time);
   const mins = Number(booking.duration) || 60;
   const diaFull = diaEs(booking.booking_date, true);
-  const at = `${diaFull ? diaFull + " " : ""}a las ${time}`;
-  const what = `${svcConUn(booking.massage_type)} de ${mins} min ${at}`;
+  const at = [diaFull, time ? `a las ${time}` : ""].filter(Boolean).join(" ");
+  const what = `${svcConUn(booking.massage_type)} de ${mins} min${at ? " " + at : ""}`;
   const phone = String(booking.client_phone || "").trim();
   const notes = String(booking.notes || "").trim();
 
   // ── 1. Email ──
   let emailed = false;
   if (studio?.email) {
-    const subject = `${first} quiere reservar con vosotros ${at}`;
+    const subject = `${first} quiere reservar con vosotros${at ? " " + at : ""}`;
     const hello = `Hola, equipo de ${studio.business_name || "centro"}:`;
     const intro = `Soy Jordan, de Massage Club, un servicio de reservas de masajes en Madrid. ${first} ha pedido cita con vosotros desde vuestra página:`;
     const details = [`${svcEs(booking.massage_type)}, ${mins} min`, capFirst(at), phone ? `Teléfono: ${phone}` : "", notes ? `Nota del cliente: ${notes}` : ""].filter(Boolean);

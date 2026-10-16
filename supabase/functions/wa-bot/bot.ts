@@ -1894,7 +1894,7 @@ async function billingPage(url: URL): Promise<Response> {
         // Spanish, "12,10 €", "os enviamos" said once.
         const n = (inv.lines || []).length;
         const subject = `Factura ${inv.number} de Massage Club, ${month}`;
-        const text = `Hola${p.business_name ? `, equipo de ${p.business_name}:` : ","}\n\nSoy Jordan, de Massage Club, un servicio de reservas de masajes en Madrid. Os paso la factura ${inv.number} de ${month}: ${n === 1 ? "una cita de un cliente nuestro" : `${n} citas de clientes nuestros`}, ${eur2Es(inv.total)} con IVA incluido.\n\nPodéis verla aquí: ${invoiceUrl(inv)}\n\nSe paga por transferencia antes del ${fechaLargaEs(inv.due_on, false)}. Si tenéis cualquier duda, contestad a este correo.\n\nUn saludo,\nJordan, de Massage Club`;
+        const text = `Hola${p.business_name ? `, equipo de ${p.business_name}:` : ","}\n\nSoy Jordan, de Massage Club, un servicio de reservas de masajes en Madrid. Os paso la factura ${inv.number} de ${month}: ${n === 1 ? "una cita de un cliente nuestro" : `${n} citas de clientes nuestros`}, ${eur2Es(inv.total)} con IVA incluido.\n\nPodéis verla aquí: ${invoiceUrl(inv)}\n\n${inv.due_on ? `Se paga por transferencia antes del ${fechaLargaEs(inv.due_on, false)}.` : "Se paga por transferencia."} Si tenéis cualquier duda, contestad a este correo.\n\nUn saludo,\nJordan, de Massage Club`;
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, text }),
@@ -2494,7 +2494,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
       if (odr) {
         await patchDispatch(odr.id, { discount_pct: pct, ...(quotedNow !== null ? { quoted_price: quotedNow } : {}), outcome: "accepted", accepted_at: odr.accepted_at || new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500), offer_note: freeText.slice(0, 200) });
         await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partner.id)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ mc_discount_pct: pct, mc_discount_confirmed_at: new Date().toISOString(), mc_discount_note: `WhatsApp: ${freeText.slice(0, 200)}` }) }).catch(() => {});
-        const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,confirmed_time,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
+        const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${odr.request_id}&stage=in.(new,studio_asked,studio_replied,offered,bidding)&limit=1&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,confirmed_time,languages,client_phone,stage,contact_email,settle_after,message_text,created_at`, { headers: H() });
         const rqrow = (await rq.json().catch(() => []))[0] || null;
         if (rqrow && pct >= 10) { await awardWinner(rqrow, partner, from, pct); return; }
         if (rqrow) {
@@ -4019,7 +4019,7 @@ async function remindConfirmLater(): Promise<number> {
 }
 
 async function settleBids(): Promise<number> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,confirmed_time,languages,client_phone,stage,contact_email,settle_after,message_text`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.bidding&settle_after=lte.${new Date().toISOString()}&order=settle_after.asc&limit=10&select=id,first_name,service_name,studio_name,partner_id,day1,time1,proposed_time,confirmed_time,languages,client_phone,stage,contact_email,settle_after,message_text,created_at`, { headers: H() });
   const reqs = await r.json().catch(() => []);
   let n = 0;
   for (const req of Array.isArray(reqs) ? reqs : []) {
@@ -4781,12 +4781,29 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     console.log(`[wa] offer withheld: ${partner.business_name} ${time} misses ${req.day1} ${req.time1} for req=${req.id}`);
     // v212: the day and window in Spanish, never raw time1 ("Afternoon
     // (13-18)", "2pm"), and a wrong day said as such.
+    // v212 review: a day nobody could read ("Flexible") is never "ese día",
+    // and a window nobody could read is "a otra hora", not "lo quiere el
+    // lunes, así que las 19:00 se le quedan fuera". The template form leaves
+    // out the client, the day and the hour, which its opener already gives.
+    const dayW = studioDayEs(req);
     const span = studioBandEs(req);
-    const wantEs = [studioDayEs(req), span].filter(Boolean).join(" ");
+    const wantEs = [dayW, span].filter(Boolean).join(" ");
+    const q = span.startsWith("a las ") ? "¿Podéis a esa hora?" : "¿Tenéis algo en esa franja?";
     const missText = !dayOk
-      ? `${Who} lo quiere ${wantEs || "otro día"}. ¿Tenéis algo ese día? Si no, no pasa nada.`
-      : `${Who} lo quiere ${wantEs || "a otra hora"}, así que las ${time} se le quedan fuera. ${!span ? "¿Tenéis otra hora?" : span.startsWith("a las ") ? "¿Podéis a esa hora?" : "¿Tenéis algo en esa franja?"} Si no, no pasa nada.`;
-    await toStudio(`Gracias. ${missText}`, missText);
+      ? (dayW
+        ? `${Who} lo quiere ${wantEs}. ¿Tenéis algo ese día? Si no, no pasa nada.`
+        : `De momento no se lo propongo a ${who}, así que no hace falta que le guardéis el hueco. Si cambia algo, os escribo.`)
+      : span
+        ? `${Who} lo quiere ${wantEs}, así que las ${time} se le quedan fuera. ${q} Si no, no pasa nada.`
+        : `${Who} lo quiere ${dayW ? dayW + " " : ""}a otra hora, así que las ${time} no le encajan. ¿Tenéis otra? Si no, no pasa nada.`;
+    const missShort = !dayOk
+      ? (dayW
+        ? `Lo quiere ${wantEs}. ¿Tenéis algo ese día? Si no, no pasa nada.`
+        : `De momento no se lo propongo, así que no hace falta que le guardéis el hueco. Si cambia algo, os escribo.`)
+      : span
+        ? `Lo quiere ${span}, así que esa hora se le queda fuera. ${q} Si no, no pasa nada.`
+        : `Esa hora no le encaja. ¿Tenéis otra? Si no, no pasa nada.`;
+    await toStudio(`Gracias. ${missText}`, missShort);
     await logEvent(clientNum, "offer_withheld_mismatch", { request_id: req.id, studio: partner.business_name, offered: time, asked: `${req.day1 || ""} ${req.time1 || ""}`.trim() });
     return "withheld_mismatch";
   }
@@ -4800,7 +4817,9 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   // yet; Calma can do 17:00."
   if (!fits && !opts.fromQueue) {
     const hSpan = studioBandEs(req);
-    await toStudio(`Gracias, apunto las ${time}. ${Who} lo quiere hoy ${hSpan ? hSpan + ". Si en unos minutos no sale nada en esa franja" : "a otra hora. Si en unos minutos no sale nada más cerca"}, le propongo la vuestra. De momento no le guardéis el hueco.`);
+    // v212 review: an exact hour asked for is not a "franja".
+    const hWhere = hSpan.startsWith("a las ") ? "a esa hora" : "en esa franja";
+    await toStudio(`Gracias, apunto las ${time}. ${Who} lo quiere hoy ${hSpan ? `${hSpan}. Si en unos minutos no sale nada ${hWhere}` : "a otra hora. Si en unos minutos no sale nada más cerca"}, le propongo la vuestra. De momento no le guardéis el hueco.`);
     await logEvent(clientNum || "web", "offer_held_window", { request_id: req.id, row: rowId, studio: partner.business_name, partner_id: partner.id, time, day: opts.dayHint || offerDay || null, slot_at: slotAt !== null ? new Date(slotAt).toISOString() : null });
     return "held_window";
   }
@@ -5783,7 +5802,10 @@ async function declineOffer(rowId: string, from: string, L: string, s: Session |
     const nt = studioAtEs(row.offered_time).replace(/^a /, "");
     const keep = [tdEs, studioAtEs(old)].filter(Boolean).join(" ");
     const keepText = `${tfn ? "A " + tfn : "Al cliente"} ${nt ? "no le van bien " + nt : "no le va bien esa hora"}. ¿Podéis mantenerle la hora que teníamos${keep ? ", " + keep : ""}? Si no puede ser, decidme qué otra hora tenéis y se la propongo.`;
-    let toldKeep = await tellStudio(digitsOf(row.phone || ""), tfn, old, `Hola, ${keepText.charAt(0).toLowerCase()}${keepText.slice(1)}`, `${nt ? "no le van bien " + nt : "no le va bien la nueva hora"}, así que os pido mantener esta hora o que me digáis otra`, { dayEs: tdEs, v2: keepText });
+    // The template's opener already names the client and the booked day and
+    // hour, so its sentences do not say them again.
+    const keepV2 = `${nt ? "No le van bien " + nt : "No le va bien la nueva hora"}. ¿Podéis mantenerle la hora que teníamos? Si no puede ser, decidme qué otra hora tenéis y se la propongo.`;
+    let toldKeep = await tellStudio(digitsOf(row.phone || ""), tfn, old, `Hola, ${keepText.charAt(0).toLowerCase()}${keepText.slice(1)}`, `${nt ? "no le van bien " + nt : "no le va bien la nueva hora"}, así que os pido mantener esta hora o que me digáis otra`, { dayEs: tdEs, v2: keepV2 });
     if (!toldKeep && row.channel === "email") {
       const fullDay = studioDateFull(studioDate(trq));
       const full = [fullDay, studioAtEs(old)].filter(Boolean).join(" ");

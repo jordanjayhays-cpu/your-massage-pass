@@ -63,7 +63,7 @@
 //      day or time, and copies Jordan on every email.
 //   GET ?key=<CRON_KEY>[&dry=1][&id=<request id>]
 
-import { offerEmail, slotsEs, closedReason, cleanFirst, svcConUn, svcEs as svcEsStudio, reqMins, requestDate, fechaEs, timeEs, copyToJordan } from "../notify-whatsapp-request/notify.ts";
+import { offerEmail, slotsEs, closedReason, cleanFirst, svcConUn, reqMins, requestDate, fechaEs, timeEs, copyToJordan } from "../notify-whatsapp-request/notify.ts";
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 // v13: no secrets in this file, because the repo is public. The deployed
@@ -294,7 +294,12 @@ async function handleRequest(req: Request): Promise<Response> {
         several ? "Estoy preguntando a varios centros y se queda con la mejor oferta." : chosenOnly ? "Os ha elegido a vosotros." : "Os lo he pasado solo a vosotros.",
       ];
       // solicitud_reserva_v3 reads "un masaje {{1}}", "Se llama {{2}}", "lo quiere el {{3}}".
-      const svcBase = svcEsStudio(r.service_name).toLowerCase().replace(/^masaje\s*/, "");
+      // After "un masaje": "deportivo", "en pareja", "de reflexología", "de
+      // drenaje linfático"; never "masaje reflexología" or an English name.
+      const conUn = svcConUn(r.service_name);
+      const svcBase = /^un masaje\b/i.test(conUn) ? conUn.replace(/^un masaje\s*/i, "")
+        : /^un shiatsu$/i.test(conUn) ? "shiatsu"
+        : `de ${conUn.replace(/^(un|una)\s+(sesión de\s+)?/i, "")}`;
       const p3 = [`${svcBase ? svcBase + " " : ""}de ${reqMins(r)} min`, first, reqDate ? `${fechaEs(reqDate)}${timeW ? " " + timeW : ""}` : ""];
       const canV3 = several && !!first && !!reqDate;
       const payloads = [`studio_confirm_${r.id}`, `studio_other_${r.id}`, `studio_no_${r.id}`];

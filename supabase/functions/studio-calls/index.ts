@@ -287,10 +287,24 @@ function servicioHablado(r: Record<string, unknown>): string {
 }
 // The studio's own service, as dispatch-studios asked it in writing
 // ("masaje tailandés de 60 min con presión firme"), said the same way.
+// Same reading as dispatch-studios' ownServicio, so the call and the written
+// ask name it alike: "tailandés firme" is "un masaje tailandés firme", and the
+// minutes go before any "con ..." ("un masaje tailandés de 60 minutos con
+// presión firme").
 function ownServicio(own: string, r: Record<string, unknown>): string {
-  let s = own.replace(/\s+/g, " ").trim().replace(/\bmin\b\.?/gi, "minutos");
-  if (!/^(un|una)\s/i.test(s)) s = "un " + s.charAt(0).toLowerCase() + s.slice(1);
-  if (!/\d/.test(s)) s += ` de ${reqMinutes(r)} minutos`;
+  const mins = reqMinutes(r);
+  // An English menu name ("Thai massage") is said in Spanish, never read out.
+  if (/massage/i.test(own)) {
+    for (const [re, v] of SVC_ES) if (re.test(own)) return `${v} de ${mins} minutos${genderHablado(r)}`;
+    return `un masaje de ${mins} minutos${genderHablado(r)}`;
+  }
+  let s = own.replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "").replace(/\bmin\b\.?/gi, "minutos");
+  s = s.charAt(0).toLowerCase() + s.slice(1);
+  if (!/^(un|una)\s/i.test(s)) s = (/^masaje\b/i.test(s) ? "un " : "un masaje ") + s;
+  if (!/\d/.test(s)) {
+    const m = s.match(/^((?:un|una)\s+masaje\s+\S+)(\s+(?:con|en|a|para|sin)\s.*)?$/i);
+    s = m ? `${m[1]} de ${mins} minutos${m[2] || ""}` : /\s(con|en|para|sin)\s/i.test(s) ? `${s}, de ${mins} minutos` : `${s} de ${mins} minutos`;
+  }
   if (!/masajista/i.test(s)) s += genderHablado(r);
   return s;
 }
@@ -538,7 +552,8 @@ async function testCall(body: Record<string, unknown>) {
     centro: clip(body.studio_name, 80) || "Centro de prueba",
     dia: clip(body.dia, 60) || "mañana",
     hora: hhmm(body.hora) || "17:00",
-    servicio: clip(body.servicio, 80) || "un masaje relajante de 60 minutos",
+    // {{servicio}} carries its own article; an older caller may send it bare.
+    servicio: ((v: string) => !v ? "un masaje relajante de 60 minutos" : /^(un|una)\s/i.test(v) ? v : `un ${v.charAt(0).toLowerCase()}${v.slice(1)}`)(clip(body.servicio, 80)),
   };
   const out = await dial(cfg, to, vars, { request_id: null, partner_id: null, test: true }, `MC test ${vars.centro}`);
   return { ok: out.placed, mode: cfg.mode, vars, ...out };

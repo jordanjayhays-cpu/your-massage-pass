@@ -92,6 +92,17 @@ export const SVC_ES_MAP: Array<[RegExp, string]> = [
   [/couples|pareja/i, "Masaje en pareja"],
   [/kobido/i, "Masaje facial Kobido"],
   [/relax|swedish|stress/i, "Masaje relajante"],
+  // v18: a studio's own English menu item ("Aromatherapy massage", "Prenatal
+  // massage") reached studios as "una sesión de prenatal massage".
+  [/prenatal|pregnan|embaraz/i, "Masaje prenatal"],
+  [/aromather|aromaterap/i, "Masaje con aromaterapia"],
+  [/four hands|4 hands|cuatro manos/i, "Masaje a cuatro manos"],
+  [/lomi/i, "Masaje lomi lomi"],
+  [/ayurved/i, "Masaje ayurvédico"],
+  [/\b(head|scalp)\b|cabeza|craneal/i, "Masaje de cabeza"],
+  [/\b(foot|feet)\b|\bpies\b|podal/i, "Masaje de pies"],
+  [/facial/i, "Masaje facial"],
+  [/massage/i, "Masaje"],
 ];
 export const svcEs = (n?: string | null): string => {
   const s = String(n || "");
@@ -396,7 +407,9 @@ export function offerEmail(r: any, slots: Slot[], pfx: string, claimSlug: string
   const client = (o.chosen
     ? `${first || "Un cliente"} os ha elegido para ${what}.`
     : `Tengo un cliente${first ? `, ${first},` : ""} que busca ${what}${area ? `, por la zona de ${area}` : ""}.`)
-    + ` Paga directamente en el centro.${price ? ` Según vuestra carta son ${price}.` : ""}`;
+    // The price is this studio's own only when the customer chose it; to any
+    // other studio "según vuestra carta" would be someone else's price.
+    + ` Paga directamente en el centro.${price && o.chosen ? ` Según vuestra carta son ${price}.` : ""}`;
   // The price box only exists on the check page; until then they answer by email.
   const discount = `${o.several ? "Estoy preguntando a varios centros y se queda con la mejor oferta. " : ""}Si podéis hacerle un 10% como cliente de Massage Club, ${checkPage ? "ponedlo al elegir la hora" : "decídmelo contestando a este correo"}.`;
   const askLine = "Si os viene bien, tocad aquí y elegid la hora:";

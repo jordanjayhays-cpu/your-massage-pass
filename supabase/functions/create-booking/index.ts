@@ -239,7 +239,11 @@ async function notifyStudio(supabase: any, studio: any, booking: any, service: a
     .single();
 
   // What the studio reads. Never "Auto-confirmed": the studio accepts first.
-  const message = `Hola, buenas. ${firstName(booking.customer_name) || "Un cliente"} ha pedido cita con vosotros: ${svcConUn(service.name)} de ${service.duration || 60} min ${diaEs(booking.booking_date)} a las ${booking.time_slot}.${booking.customer_phone ? ` Su teléfono es ${booking.customer_phone}.` : ""} ¿Se la confirmáis? Podéis hacerlo en vuestro portal: book.massageclub.io/studio-portal`;
+  // Only a real HH:MM is printed ("15:00:00" reads "15:00"), and a day that
+  // cannot be read is left out rather than leaving a double space.
+  const tm = String(booking.time_slot || "").match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  const when = [diaEs(booking.booking_date), tm ? `a las ${tm[1].padStart(2, "0")}:${tm[2]}` : ""].filter(Boolean).join(" ");
+  const message = `Hola, buenas. ${firstName(booking.customer_name) || "Un cliente"} ha pedido cita con vosotros: ${svcConUn(service.name)} de ${service.duration || 60} min${when ? " " + when : ""}.${booking.customer_phone ? ` Su teléfono es ${booking.customer_phone}.` : ""} ¿Se la confirmáis? Podéis hacerlo en vuestro portal: book.massageclub.io/studio-portal`;
 
   // Send via WhatsApp if number available
   if (notify?.whatsapp_number) {
@@ -251,7 +255,7 @@ async function notifyStudio(supabase: any, studio: any, booking: any, service: a
   // Send via email if available
   if (notify?.email || studio.email) {
     // Use Resend or SendGrid
-    // await sendEmail(notify?.email || studio.email, "New Booking", message);
+    // await sendEmail(notify?.email || studio.email, `${firstName(booking.customer_name) || "Un cliente"} ha pedido cita con vosotros`, message);
     console.log("Would send email to:", notify?.email || studio.email);
   }
 
