@@ -1155,9 +1155,16 @@ async function studioOptions(s: Session, from: string): Promise<StudioPick[]> {
   picks.sort((a: any, b: any) => (Number(a.price) || 999) - (Number(b.price) || 999));
   return picks;
 }
-async function offerStudios(s: Session, from: string, L: string): Promise<boolean> {
+async function offerStudios(s: Session, from: string, L: string, o: { noReleased?: boolean } = {}): Promise<boolean> {
   if (await staleDay(s, from, L)) return true;
-  const picks = await studioOptions(s, from);
+  // v215: released times that fit come first, behind RELEASED (off: nothing
+  // is read and nothing changes). noReleased is "More options".
+  if (!o.noReleased && await offerReleased(s, from, L)) return true;
+  let picks = await studioOptions(s, from);
+  // v215: a studio that has just rejected this customer's released time is
+  // not offered to them again for the next six hours.
+  const relEx = relExcluded(s);
+  if (relEx.length) picks = picks.filter((x) => !relEx.includes(String(x.id)));
   if (picks.length < 2) return false;
   const area = s.data.area && s.data.area !== "anywhere" ? s.data.area : "";
   s.data.picks = picks; s.data.picksAt = Date.now();
@@ -6303,7 +6310,606 @@ function notePage(url: URL): Response {
   return pageOut(url, simpleCard("Massage Club", "", ""));
 }
 
-async function createRequest(s: Session): Promise<number | null> {
+// ---- v215 released slots: the bot side, the studio's page and the ops ----
+// The pure helpers (who sees what, opening hours, the half-hour grid, the
+// customer's copy) are in the v215 block above. Everything here only runs
+// when RELEASED is test or on, or when a signed link or an ops key is used.
+let relModeCache: { mode: RelMode; at: number } | null = null;
+async function releasedMode(): Promise<RelMode> {
+  if (relModeCache && Date.now() - relModeCache.at < 60_000) return relModeCache.mode;
+  const mode = parseReleasedMode(await appSecret("RELEASED"));
+  relModeCache = { mode, at: Date.now() };
+  return mode;
+}
+// Signed links, like offerSig: the studio's free-times page over (partner id,
+// slots_link_v), so bumping slots_link_v revokes it; and one reject link per
+// booked slot. Without an ops key nothing is ever valid.
+async function relSig(kind: string, value: string): Promise<string> {
+  if (!OPS_KEY) return "";
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(OPS_KEY + ":" + kind), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(value)));
+  return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function slotsLink(p: { id: string; slots_link_v?: unknown }): Promise<string> {
+  return `${OFFER_PAGE}?slots=${encodeURIComponent(p.id)}&k=${await relSig("slots", `${p.id}:${Number(p.slots_link_v || 1)}`)}`;
+}
+async function slotRejectLink(slotId: string): Promise<string> {
+  return `${OFFER_PAGE}?slotr=${encodeURIComponent(slotId)}&sig=${await relSig("slot-reject", slotId)}`;
+}
+async function relRpc(fn: string, args: Record<string, unknown>): Promise<{ ok: boolean; rows: any[]; error: string }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: H(), body: JSON.stringify(args) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok) { console.log(`[wa] rpc ${fn} failed`, r.status, JSON.stringify(j).slice(0, 200)); return { ok: false, rows: [], error: String(j?.message || r.status) }; }
+    return { ok: true, rows: Array.isArray(j) ? j : [], error: "" };
+  } catch (e) { console.log(`[wa] rpc ${fn} failed`, String(e)); return { ok: false, rows: [], error: String(e) }; }
+}
+const relRpcOne = async (fn: string, args: Record<string, unknown>): Promise<any | null> => (await relRpc(fn, args)).rows[0] || null;
+// Anyone the bot already treats as a tester (TEST_PHONES, TEST_EMAIL_RE,
+// TEST_NAME_RE, the canary numbers): releasedAudience keeps the designated
+// test contacts as "test" and leaves every other tester out.
+const relKnownTester = (phone: string, email: unknown, name: unknown): boolean =>
+  TEST_PHONES.includes(digitsOf(phone)) || FAKE_NUM_RE.test(digitsOf(phone)) || TEST_EMAIL_RE.test(String(email || "")) || TEST_NAME_RE.test(String(name || ""));
+const relExcluded = (s: Session): string[] => Array.isArray(s.data.relExclude) && Date.now() - Number(s.data.relExcludeAt || 0) < 6 * 3600e3 ? s.data.relExclude.map(String) : [];
+const relClean = (v: unknown) => String(v || "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
+type RelPick = { slot_id: string; partner_id: string; studio: string; slug: string; area: string; address: string; wa: string; start_at: string; end_at: string; minutes: number; hm: string; typed: number | null; price: number | null; exact: boolean; km: number | null };
+// released_offers for one customer's ask (scope from releasedScope).
+async function releasedSearch(o: { scope: "test" | "real"; day: Date | null; win: [number, number] | null; area: string; want: string | null; minutes: number; exclude: string[]; limit: number }): Promise<RelPick[]> {
+  const range = releasedRange(o.day, o.win, Date.now());
+  if (!range) return [];
+  const { ok, rows } = await relRpc("released_offers", {
+    p_from: new Date(range.from).toISOString(), p_to: new Date(range.to).toISOString(), p_area: o.area || null, p_want: o.want || null,
+    p_test: o.scope === "test", p_minutes: o.minutes, p_exclude: o.exclude.length ? o.exclude : null, p_limit: o.limit,
+  });
+  if (!ok) return [];
+  return rows.map((x: any) => {
+    const typed = Number(x.price_eur) > 0 ? Number(x.price_eur) : null;
+    const listed = Number(x.listed_price) > 0 ? Number(x.listed_price) : null;
+    return {
+      slot_id: String(x.slot_id), partner_id: String(x.partner_id), studio: String(x.business_name || ""), slug: String(x.slug || ""),
+      area: String(x.area || ""), address: String(x.address || ""), wa: digitsOf(String(x.wa || "")), start_at: String(x.start_at), end_at: String(x.end_at),
+      minutes: Number(x.minutes) || 60, hm: relHm(Date.parse(String(x.start_at))), typed, price: typed ?? listed, exact: typed !== null || !!x.registered,
+      km: x.km === null || x.km === undefined ? null : Number(x.km),
+    };
+  });
+}
+// Step 1 of the customer side (code map 4.1): at the top of offerStudios, live
+// released times that fit the day, the window, the area and the length come
+// first, as tap-to-book buttons. False means today's path runs unchanged.
+async function offerReleased(s: Session, from: string, L: string): Promise<boolean> {
+  const mode = await releasedMode();
+  if (mode === "off") return false;
+  try {
+    const phone = digitsOf(from);
+    const email = s.data.email || s.data.known?.email || "";
+    const name = s.data.name || s.data.known?.name || s.wa_name || "";
+    const scope = releasedScope(mode, releasedAudience({ phone, email, name, knownTester: relKnownTester(phone, email, name) }));
+    if (!scope) return false;
+    const now = Date.now();
+    if (!releasedHoursOk(now)) return false;
+    // A chat the bot fumbled twice goes the old way, readback and all (v119).
+    if (Number(s.data.missTotal || 0) >= 2) return false;
+    // They tapped More options: today's path for the next half hour.
+    if (s.data.relSkipAt && now - Number(s.data.relSkipAt) < 30 * 60e3) return false;
+    const svcRow = ALL_SERVICES.find((x) => x.id === (!s.data.service || s.data.service === "svc_unsure" ? "svc_relax" : s.data.service));
+    const area = s.data.area && s.data.area !== "anywhere" ? String(s.data.area) : "";
+    const day = resolveRequestDate(s.data.day, s.data.dayDate ? `Fecha: ${s.data.dayDate}` : "", new Date(now));
+    const picks = await releasedSearch({ scope, day, win: askWindow(s.data.time), area, want: svcRow ? svcRow.en : null, minutes: Number(s.data.duration) || 60, exclude: relExcluded(s), limit: 2 });
+    if (!picks.length) { await logEvent(from, "released_none", { scope, day: s.data.day || null, time: s.data.time || null, area: area || null }); return false; }
+    const svc = trSvcLow(svcRow ? svcRow.en : "Massage", L);
+    const lines = picks.map((p) => releasedLine({ studio: p.studio, area: p.area, day: relDayWord(Date.parse(p.start_at), now, L), hm: p.hm, svc, minutes: p.minutes, price: p.price, exact: p.exact }, L));
+    s.data.relPicks = picks; s.data.relAt = now; s.data.released = null;
+    s.data.offerMode = true; s.data.cheapPick = null;
+    s.step = "await_studio"; await saveSession(s);
+    const c = RELEASED_COPY[L === "es" ? "es" : "en"];
+    await sendButtons(from, picks.length === 1 ? c.one(lines[0]) : c.many(lines), releasedButtons(L, picks));
+    await logEvent(from, "studio_offered", { variant: "released", scope, picks: picks.map((p) => `${p.studio} ${p.hm}`) });
+    return true;
+  } catch (e) { console.log("[wa] released offer failed", String(e)); return false; }
+}
+// rel_0 / rel_1: hold that time for 10 minutes and finish (name, then
+// finalizeBooking, which books it). rel_more: today's path. relx_no: done.
+async function releasedTap(s: Session, from: string, L: string, replyId: string): Promise<void> {
+  const c = RELEASED_COPY[L === "es" ? "es" : "en"];
+  const phone = digitsOf(from);
+  const giveBack = async () => {
+    if (s.data.released?.slot_id) await relRpc("unhold_released_slot", { p_slot: s.data.released.slot_id, p_phone: phone });
+    for (const p of Array.isArray(s.data.relPicks) ? s.data.relPicks : []) if (p?.slot_id) await relRpc("unhold_released_slot", { p_slot: p.slot_id, p_phone: phone });
+    s.data.released = null;
+  };
+  if (replyId === "rel_more") {
+    await giveBack();
+    s.data.relPicks = null; s.data.relSkipAt = Date.now(); s.step = "await_studio"; await saveSession(s);
+    await logEvent(from, "released_more", {});
+    if (!(await offerStudios(s, from, L, { noReleased: true }))) await askNameOrFinalize(s, from, L);
+    return;
+  }
+  if (replyId === "relx_no") {
+    await giveBack();
+    s.data.relPicks = null; s.step = "done"; await saveSession(s);
+    await sendText(from, c.noThanks);
+    await logEvent(from, "released_no_thanks", {});
+    return;
+  }
+  const picks: RelPick[] = Array.isArray(s.data.relPicks) ? s.data.relPicks : [];
+  const p = picks[Number(replyId.slice(4))];
+  if (!p || Date.now() - Number(s.data.relAt || 0) > 30 * 60e3) {
+    s.data.relPicks = null; await saveSession(s);
+    await sendText(from, c.stale);
+    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+    return;
+  }
+  const held = await relRpcOne("hold_released_slot", { p_slot: p.slot_id, p_phone: phone, p_request: null, p_secs: 600 });
+  if (!held) {
+    s.data.relPicks = null; await saveSession(s);
+    await logEvent(from, "released_taken", { slot: p.slot_id, studio: p.studio, at: "hold" });
+    await sendText(from, c.justTaken);
+    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+    return;
+  }
+  // Another time they were shown is let go at once instead of after its hold.
+  for (const o of picks) if (o.slot_id !== p.slot_id) await relRpc("unhold_released_slot", { p_slot: o.slot_id, p_phone: phone });
+  s.data.released = { ...p, heldAt: Date.now() };
+  s.data.relPicks = null; s.data.chosen = null; s.data.customStudio = null; s.data.prefer = null;
+  await saveSession(s);
+  await logEvent(from, "studio_chosen", { how: "released", studio: p.studio, time: p.hm, slot: p.slot_id });
+  await askNameOrFinalize(s, from, L);
+}
+// finalizeBooking's released branch. The request is written as already
+// offered (stage offered, dispatched, nothing for the dispatch sweep to ask),
+// the released time becomes a channel 'released' offer row, and acceptOffer
+// books it on the tap that already happened. A hold older than 15 minutes
+// (they went quiet at the name question) is given back and the times shown
+// again, rather than booking on an old tap.
+async function finalizeReleased(s: Session, from: string, L: string): Promise<{ outcome: string; requestId: number | null }> {
+  const r = s.data.released;
+  const phone = digitsOf(from);
+  s.data.released = null;
+  if (!r?.slot_id || Date.now() - Number(r.heldAt || 0) > 15 * 60e3) {
+    if (r?.slot_id) await relRpc("unhold_released_slot", { p_slot: r.slot_id, p_phone: phone });
+    await saveSession(s);
+    await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].heldOut);
+    await logEvent(from, "released_hold_lapsed", { slot: r?.slot_id || null });
+    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+    return { outcome: "released_reoffered", requestId: null };
+  }
+  s.step = "done"; await saveSession(s);
+  const id = await createRequest(s, r);
+  const fail = async (why: string): Promise<{ outcome: string; requestId: number | null }> => {
+    await relRpc("unhold_released_slot", { p_slot: r.slot_id, p_phone: phone });
+    if (id) await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "dismissed", stage_note: `Released time not booked: ${why} (wa-bot v215).`, stage_updated_at: new Date().toISOString() }) });
+    await notifyJordanWa(`A released time (${r.studio} ${r.hm}) for +${phone} could not be booked: ${why}. They were sent on to today's path.`, phone);
+    s.data.relSkipAt = Date.now(); await saveSession(s);
+    if (!(await offerStudios(s, from, L, { noReleased: true }))) await askNameOrFinalize(s, from, L);
+    return { outcome: "released_failed", requestId: null };
+  };
+  if (!id) return await fail("the request could not be written");
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch`, {
+    method: "POST", headers: { ...H(), Prefer: "return=representation" },
+    body: JSON.stringify({ request_id: id, partner_id: r.partner_id, phone: r.wa || "", channel: "released", outcome: "accepted", offered_time: r.hm, offered_at: new Date().toISOString(), quoted_price: r.typed ?? null, reply_text: "Hora liberada por el centro", slot_id: r.slot_id }),
+  });
+  const rows = await dr.json().catch(() => []);
+  const rowId = Array.isArray(rows) && rows[0]?.id ? String(rows[0].id) : "";
+  if (!rowId) return await fail("the offer row could not be written");
+  await logEvent(from, "request_created", { id, studio: r.studio, released: r.slot_id });
+  const ok = await acceptOffer(rowId, from, L, s);
+  return { outcome: ok ? "released_booked" : "released_taken", requestId: id };
+}
+// acceptOffer could not book the slot: someone else's tap won it. The request
+// made for it is closed (nothing was asked of anyone) and the customer sees
+// what is free now.
+async function releasedTaken(row: any, req: any, from: string, L: string, s: Session | null) {
+  await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "expired" }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(req.id)}&stage=eq.offered`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "dismissed", stage_note: "Released time taken by another customer before it could be booked (wa-bot v215).", stage_updated_at: new Date().toISOString() }) });
+  await logEvent(from || "web", "released_taken", { slot: row.slot_id || null, request_id: req.id, at: "book" });
+  if (!from) return;
+  await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].justTaken);
+  if (s) { s.data.offer = null; if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L); }
+}
+// The studio used its reject link within the 15 minutes (or Jordan the ops
+// call). The booking is cancelled, the request closed, the customer told and
+// offered the next released time near them (held for them for 15 minutes),
+// or other studios; Jordan hears either way.
+async function releasedRejected(slot: any, via: string): Promise<string> {
+  const rid = Number(slot.request_id || 0);
+  const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${rid}&select=*`, { headers: H() });
+  const req = ((await rr.json().catch(() => [])) || [])[0] || null;
+  const pc = await partnerCard(String(slot.partner_id || ""));
+  const studio = pc.business_name || "The studio";
+  const startMs = Date.parse(String(slot.start_at));
+  await fetch(`${SUPABASE_URL}/rest/v1/bookings?booking_ref=eq.wa-${rid}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ status: "cancelled" }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${rid}&slot_id=eq.${encodeURIComponent(String(slot.id))}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "no" }) });
+  if (!req) {
+    await notifyJordanWa(`${studio} rejected released time ${relYmd(startMs)} ${relHm(startMs)} (slot ${slot.id}), but request #${rid} could not be read. Nobody was told; please look.`);
+    return "none";
+  }
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${rid}&stage=eq.confirmed`, {
+    method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+    body: JSON.stringify({ stage: "dismissed", partner_id: null, confirmed_time: null, confirmed_day: null, confirmed_start: null, stage_note: `${studio} rejected the released time within its 15 minutes (${via}). Booking cancelled (wa-bot v215).`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
+  });
+  const L = req.languages === "es" ? "es" : "en";
+  const c = RELEASED_COPY[L];
+  const first = String(req.first_name || "").trim().split(" ")[0];
+  const ph = digitsOf(String(req.client_phone || ""));
+  const dw = relDayWord(startMs, Date.now(), L);
+  const relative = /^(today|tomorrow|hoy|mañana)$/.test(dw);
+  const at = L === "es" ? `${relative ? dw : "el " + dw} a las ${relHm(startMs)}` : `at ${relHm(startMs)} ${relative ? dw : "on " + dw}`;
+  let told = "none";
+  const s = ph ? await getSession(ph) : null;
+  if (ph && s && await waWindowOpen(ph)) {
+    let next: RelPick | null = null;
+    const scope = releasedScope(await releasedMode(), releasedAudience({ phone: ph, email: req.contact_email, name: req.first_name, knownTester: relKnownTester(ph, req.contact_email, req.first_name) }));
+    if (scope) {
+      const area = req.area && !/^(madrid|anywhere)$/i.test(String(req.area)) ? String(req.area) : "";
+      const picks = await releasedSearch({ scope, day: madridMidnight(new Date(startMs)), win: askWindow(req.time1, req.message_text), area, want: String(req.service_name || "") || null, minutes: reqDuration(req), exclude: [String(slot.partner_id)], limit: 1 });
+      if (picks[0] && await relRpcOne("hold_released_slot", { p_slot: picks[0].slot_id, p_phone: ph, p_request: null, p_secs: 900 })) next = picks[0];
+    }
+    s.data.offer = null; s.data.released = null; s.data.offerMode = true; s.data.relExclude = [String(slot.partner_id)]; s.data.relExcludeAt = Date.now(); s.data.relAt = Date.now();
+    s.step = "await_studio";
+    if (next) {
+      s.data.relPicks = [next]; await saveSession(s);
+      const line = releasedLine({ studio: next.studio, area: next.area, day: relDayWord(Date.parse(next.start_at), Date.now(), L), hm: next.hm, svc: trSvcLow(req.service_name || "Massage", L), minutes: next.minutes, price: next.price, exact: next.exact }, L);
+      told = (await sendButtons(ph, c.rejectedNext(first, studio, at, line), releasedButtons(L, [next]))) ? "whatsapp, next released time offered" : "failed";
+    } else {
+      s.data.relPicks = []; await saveSession(s);
+      told = (await sendButtons(ph, c.rejectedNone(first, studio, at), [{ id: "rel_more", title: c.showOptions }, { id: "relx_no", title: c.noThanksBtn }])) ? "whatsapp, offered other studios" : "failed";
+    }
+  }
+  if ((told === "none" || told === "failed") && req.contact_email && !TEST_EMAIL_RE.test(String(req.contact_email))) {
+    if (await emailCustomer(req, c.rejectedSubject(studio), c.rejectedMail(first, studio, at))) told = "email";
+  }
+  await logEvent(ph || "system", "released_rejected", { request_id: rid, slot: String(slot.id), via, told });
+  await notifyJordanWa(`${studio} rejected the released time ${relYmd(startMs)} ${relHm(startMs)} for ${first || "+" + ph} (#${rid}) within its 15 minutes. Booking cancelled. Customer: ${told === "none" || told === "failed" ? "NOT told (no open chat, no email). Please reach them." : told}.`, ph);
+  await founderCard(`↩️ ${studio} rejected a released time · #${rid}`, {
+    badge: "RELEASED TIME REJECTED",
+    title: `${studio} cannot take ${first || "the customer"} at ${relHm(startMs)} on ${relYmd(startMs)}`,
+    paras: [`They used the 15 minute reject link (${via}). The booking row is cancelled and request #${rid} is closed. Customer: ${told}.`],
+    waNum: ph, studioName: studio,
+  });
+  return told;
+}
+
+// The studio's free-times page, rendered here and shown through the
+// book.massageclub.io/bot.html shell (pageOut with fmt=json), like the offer
+// and invoice pages. Every change is a GET the page's own form or links make,
+// so a mail scanner opening the emailed link changes nothing, and each one is
+// safe to repeat (release_slots skips a time already live, a withdraw only
+// touches a free time). The shell strips scripts, so the page works without
+// any. It sits in a fixed scroll box, because the shell scrolls every page
+// that has no reply form to the bottom.
+//   ?slots=<partner id>&k=<sig>[&d=YYYY-MM-DD][&m=60]
+//   ...&do=add&t=18:00&t=18:30&n=<rooms>&p=<price>&at=<render ms>
+//   ...&do=del&id=<slot ids>
+const SLOTS_CSS = `.mcs{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:${C.page}}
+.mcs main{max-width:520px;margin:0 auto;padding:20px 16px 48px;font-family:${SANS};color:${C.ink};box-sizing:border-box}
+.mcs *{box-sizing:border-box}
+.mcs .brand{font-size:11px;font-weight:700;letter-spacing:3px;color:${C.clay}}
+.mcs h1{font-family:${SERIF};font-size:26px;line-height:1.2;margin:6px 0 2px}
+.mcs .who{color:${C.muted};font-size:15px}
+.mcs .sub{color:${C.ink};font-size:14.5px;line-height:1.55;margin:12px 0 0}
+.mcs .note{border-radius:14px;padding:12px 14px;margin:14px 0 0;font-size:14px;line-height:1.5}
+.mcs .note.ok{background:#E6F4EA;color:#1A5E35}
+.mcs .note.err{background:#FBE9E3;color:#9A3B1E}
+.mcs .lbl{font-size:11.5px;font-weight:700;letter-spacing:1.5px;color:${C.muted};margin:20px 0 8px;text-transform:uppercase}
+.mcs .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.mcs .chip{flex:0 0 auto;display:block;text-decoration:none;color:${C.ink};background:#fff;border:1px solid ${C.dash};border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;text-align:center;line-height:1.25}
+.mcs .chip small{display:block;font-size:11px;font-weight:500;color:${C.muted}}
+.mcs .chip.on{background:${C.ink};color:#fff;border-color:${C.ink}}
+.mcs .chip.on small{color:${C.dash}}
+.mcs .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.mcs .t{position:relative;display:block;cursor:pointer;margin:0}
+.mcs .t input{position:absolute;opacity:0;pointer-events:none}
+.mcs .t span{display:block;text-align:center;background:#fff;border:1px solid ${C.dash};border-radius:12px;padding:13px 0;font-size:15px;font-weight:700}
+.mcs .t input:checked+span{background:#1FA855;border-color:#1FA855;color:#fff}
+.mcs .s{display:block;text-align:center;border-radius:12px;padding:6px 2px;font-size:11.5px;line-height:1.3;border:1px solid ${C.dash};color:${C.muted};background:${C.cream};overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mcs .s b{display:block;font-size:15px;color:${C.ink}}
+.mcs .s.free{background:#E6F4EA;border-color:#BFE3CB;color:#1A5E35}
+.mcs .s.booked{background:${C.ink};border-color:${C.ink};color:${C.dash}}
+.mcs .s.booked b{color:#fff}
+.mcs .opt{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;font-size:14px}
+.mcs select,.mcs input[type=number]{font-size:16px;padding:9px 10px;border:1px solid ${C.dash};border-radius:10px;background:#fff;color:${C.ink}}
+.mcs input[type=number]{width:100px}
+.mcs .save{display:block;width:100%;margin-top:18px;border:0;border-radius:999px;background:${C.clay};color:#fff;font-size:16px;font-weight:700;padding:15px 20px;font-family:${SANS}}
+.mcs .empty{color:${C.muted};font-size:14px;line-height:1.5;margin:4px 0 0}
+.mcs .list{background:#fff;border-radius:16px;border:1px solid ${C.line}}
+.mcs .li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid ${C.line};font-size:14px;line-height:1.4}
+.mcs .li:first-child{border-top:0}
+.mcs .li a{color:#9A3B1E;font-weight:700;text-decoration:none;white-space:nowrap}
+.mcs .li .m{color:${C.muted};font-size:12.5px}
+.mcs .foot{color:${C.muted};font-size:13px;line-height:1.55;margin-top:22px}
+@media (max-width:359px){.mcs .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}`;
+const escAttr = (s: unknown) => esc(String(s ?? "")).replace(/"/g, "&quot;");
+function slotsShell(title: string, body: string): string {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${SLOTS_CSS}</style></head><body><div class="mcs"><main><div class="brand">MASSAGE CLUB</div>${body}</main></div></body></html>`;
+}
+// "18:00", "18:00 y 18:30", "10:00, 10:30 y 11:00".
+const listEs = (xs: string[]): string => xs.length <= 1 ? (xs[0] || "") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
+// A day chip: "Hoy", "Mañana", "lun 20".
+const SLOT_CHIP_FMT = new Intl.DateTimeFormat("es-ES", { timeZone: "UTC", weekday: "short", day: "numeric" });
+const slotChip = (ymd: string, i: number): string => i === 0 ? "Hoy" : i === 1 ? "Mañana" : SLOT_CHIP_FMT.format(new Date(ymd + "T12:00:00Z")).replace(/[.,]/g, "");
+async function slotsPage(url: URL): Promise<Response> {
+  const pid = relClean(url.searchParams.get("slots"));
+  const k = String(url.searchParams.get("k") || "");
+  const pr = pid ? await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(pid)}&select=id,business_name,opening_hours,slots_link_v,opted_out_at,status`, { headers: H() }) : null;
+  const p = pr ? ((await pr.json().catch(() => [])) || [])[0] || null : null;
+  // This link is not valid. Write to us on WhatsApp and we will send you a new one.
+  if (!p || !k || k !== await relSig("slots", `${p.id}:${Number(p.slots_link_v || 1)}`)) return pageOut(url, slotsShell("Massage Club", `<h1>Este enlace no es válido</h1><p class="sub">Escribidnos por WhatsApp y os mandamos uno nuevo.</p>`), 403);
+  const studio = String(p.business_name || "");
+  const isTest = REL_TEST_STUDIO_RE.test(studio);
+  const mode = await releasedMode();
+  // Not switched on for real studios yet. We will let you know as soon as it is.
+  if (p.opted_out_at || p.status === "suspended" || (!isTest && mode !== "on")) {
+    return pageOut(url, slotsShell("Massage Club", `<h1>Todavía no está activa</h1><p class="sub">Esta página todavía no está activa para ${esc(studio || "vuestro centro")}. Os avisamos en cuanto lo esté.</p>`));
+  }
+  const nowMs = Date.now();
+  const days = slotDays(nowMs, 7);
+  const dq = String(url.searchParams.get("d") || "");
+  const day = days.find((x) => x.ymd === dq) || days[0];
+  const ymd = day.ymd;
+  const minutes = [60, 90, 30].includes(Number(url.searchParams.get("m"))) ? Number(url.searchParams.get("m")) : 60;
+  const hours = slotHours(p.opening_hours);
+  const base = await slotsLink(p);
+  const act = String(url.searchParams.get("do") || "");
+  let note = "", noteErr = false;
+  if (act === "add") {
+    const at = Number(url.searchParams.get("at") || 0);
+    const ts = [...new Set(url.searchParams.getAll("t").map((x) => String(x).trim()))].filter((x) => /^\d{2}:\d{2}$/.test(x)).slice(0, 40);
+    const seats = Math.min(3, Math.max(1, Math.floor(Number(url.searchParams.get("n")) || 1)));
+    const pRaw = String(url.searchParams.get("p") || "").trim().replace(",", ".");
+    const price = pRaw ? Number(pRaw) : null;
+    // You did not mark any time.
+    if (!ts.length) { note = "No habéis marcado ninguna hora."; noteErr = true; }
+    // This page had been open for a long time. Please mark the times again.
+    else if (!at || nowMs - at > 6 * 3600e3) { note = "Esta página llevaba mucho rato abierta. Volved a marcar las horas, por favor."; noteErr = true; }
+    // The price has to be between 1 and 500 EUR.
+    else if (price !== null && !(price >= 1 && price <= 500)) { note = "El precio tiene que estar entre 1 y 500 €."; noteErr = true; }
+    else {
+      const rows: Array<Record<string, unknown>> = [];
+      for (const hm of ts) {
+        if (releaseCheck({ ymd, hm, minutes }, hours, nowMs)) continue;
+        const st = relAt(ymd, relToMin(hm) as number);
+        for (let seat = 1; seat <= seats; seat++) rows.push({ start_at: new Date(st).toISOString(), end_at: new Date(st + minutes * 60e3).toISOString(), seat, price_eur: price });
+      }
+      const res = rows.length ? await relRpc("release_slots", { p_partner: p.id, p_rows: rows, p_source: "studio_link", p_evidence: `studio page ${new Date(nowMs).toISOString()}` }) : { ok: true, rows: [] as any[], error: "" };
+      if (!res.ok) { note = "No se han podido guardar. Probad otra vez en un momento."; noteErr = true; } // They could not be saved. Try again in a moment.
+      else {
+        const saved = [...new Set(res.rows.map((x: any) => relHm(Date.parse(String(x.start_at)))))].sort();
+        const missed = ts.filter((hm) => !saved.includes(hm)).sort();
+        // Saved. They can be booked now: 18:00 and 18:30.
+        if (saved.length) note = `Guardado. Ya se pueden reservar: ${listEs(saved)}.`;
+        // We did not save 20:30: it was already marked, it is less than an hour away or it does not fit your hours.
+        if (missed.length) note = `${note ? note + " " : ""}No hemos guardado ${listEs(missed)}: ya estaba marcada, falta menos de una hora o no cabe en vuestro horario.`;
+        noteErr = !saved.length;
+        if (saved.length) {
+          await logEvent("system", "released_by_studio", { partner_id: p.id, studio, day: ymd, times: saved, minutes, seats, price, test: isTest });
+          if (!isTest) {
+            await founderCard(`📥 ${studio} gave ${saved.length} free time${saved.length === 1 ? "" : "s"} for ${ymd}`, {
+              badge: "STUDIO GAVE TIMES", title: `${studio} released times on its page`,
+              paras: [`${ymd}: ${saved.join(", ")}, ${minutes} min, ${seats} room${seats === 1 ? "" : "s"}${price ? `, ${price} EUR` : ""}. Customers ${mode === "on" ? "can book them now" : "cannot see them yet (RELEASED is " + mode + ")"}.`],
+              to: ["jordan@massageclub.io"],
+            });
+          }
+        }
+      }
+    }
+  } else if (act === "del") {
+    const ids = String(url.searchParams.get("id") || "").split(",").map(relClean).filter(Boolean).slice(0, 20);
+    for (const id of ids) await relRpc("withdraw_released_slot", { p_slot: id, p_partner: p.id });
+    const sr = ids.length ? await fetch(`${SUPABASE_URL}/rest/v1/released_slots?id=in.(${ids.join(",")})&partner_id=eq.${encodeURIComponent(p.id)}&select=status`, { headers: H() }) : null;
+    const st = sr ? await sr.json().catch(() => []) : [];
+    const gone = Array.isArray(st) && st.length > 0 && st.every((x: any) => ["withdrawn", "expired"].includes(String(x.status)));
+    // Removed. It can no longer be booked. / It could not be removed: a client is booking it right now or it is already booked.
+    note = gone ? "Quitada. Ya no se puede reservar." : "No se ha podido quitar: un cliente la está reservando ahora mismo o ya está reservada.";
+    noteErr = !gone;
+  }
+  const lastDay = days[days.length - 1].ymd;
+  const lr = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?partner_id=eq.${encodeURIComponent(p.id)}&status=in.(released,held,booked)&end_at=gte.${encodeURIComponent(new Date(nowMs).toISOString())}&start_at=lt.${encodeURIComponent(new Date(relAt(lastDay, 1440)).toISOString())}&order=start_at.asc,seat.asc&select=id,start_at,end_at,seat,status,price_eur,request_id&limit=300`, { headers: H() });
+  const live: any[] = await lr.json().catch(() => []);
+  const liveRows = Array.isArray(live) ? live : [];
+  // First names on their own booked times only; nothing else about any client.
+  const reqIds = [...new Set(liveRows.filter((x) => x.status === "booked" && x.request_id).map((x) => Number(x.request_id)))];
+  const names = new Map<number, string>();
+  if (reqIds.length) {
+    const nr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=in.(${reqIds.join(",")})&select=id,first_name`, { headers: H() });
+    for (const x of (await nr.json().catch(() => [])) || []) names.set(Number(x.id), String(x.first_name || "").trim().split(" ")[0]);
+  }
+  type Agg = { ymd: string; hm: string; startMs: number; mins: number; free: string[]; held: number; booked: string[]; price: number | null };
+  const byStart = new Map<string, Agg>();
+  for (const x of liveRows) {
+    const sm = Date.parse(String(x.start_at));
+    const key = `${relYmd(sm)} ${relHm(sm)}`;
+    const a = byStart.get(key) || { ymd: relYmd(sm), hm: relHm(sm), startMs: sm, mins: Math.round((Date.parse(String(x.end_at)) - sm) / 60e3), free: [], held: 0, booked: [], price: Number(x.price_eur) > 0 ? Number(x.price_eur) : null };
+    if (x.status === "released") a.free.push(String(x.id));
+    else if (x.status === "held") a.held++;
+    else a.booked.push(names.get(Number(x.request_id)) || "cliente");
+    byStart.set(key, a);
+  }
+  const link = (d: string, m: number) => `${base}&d=${d}&m=${m}`;
+  const dayChips = days.map((x, i) => {
+    const shut = !!hours && slotWindows(hours, x.dow).length === 0;
+    const n = [...byStart.values()].filter((a) => a.ymd === x.ymd).length;
+    // "cerrado" = closed; "2 horas" = 2 times
+    const sub = shut ? "cerrado" : n ? `${n} hora${n === 1 ? "" : "s"}` : "";
+    return `<a class="chip${x.ymd === ymd ? " on" : ""}" href="${escAttr(link(x.ymd, minutes))}">${esc(slotChip(x.ymd, i))}${sub ? `<small>${esc(sub)}</small>` : ""}</a>`;
+  }).join("");
+  const durChips = [60, 90, 30].map((m) => `<a class="chip${m === minutes ? " on" : ""}" href="${escAttr(link(ymd, m))}">${m} min</a>`).join("");
+  const windows = slotWindows(hours, day.dow);
+  let gridHtml = "";
+  if (!windows.length) {
+    gridHtml = `<p class="empty">Según vuestro horario, este día estáis cerrados.</p>`; // According to your hours, you are closed this day.
+  } else {
+    const grid = slotGrid(ymd, windows, minutes, nowMs);
+    const cells = grid.map((g) => {
+      const a = byStart.get(`${ymd} ${g.hm}`);
+      if (a && a.booked.length) return `<span class="s booked"><b>${g.hm}</b>${esc(a.booked.join(", "))}</span>`;
+      if (a && a.held) return `<span class="s"><b>${g.hm}</b>reservándose</span>`; // being booked
+      if (a && a.free.length) return `<span class="s free"><b>${g.hm}</b>libre${a.free.length > 1 ? " ×" + a.free.length : ""}</span>`; // free
+      return `<label class="t"><input type="checkbox" name="t" value="${g.hm}"><span>${g.hm}</span></label>`;
+    }).join("");
+    gridHtml = grid.length
+      ? `<form method="get" action="">
+<input type="hidden" name="slots" value="${escAttr(p.id)}"><input type="hidden" name="k" value="${escAttr(k)}"><input type="hidden" name="d" value="${ymd}"><input type="hidden" name="m" value="${minutes}"><input type="hidden" name="do" value="add"><input type="hidden" name="at" value="${nowMs}">
+<div class="grid">${cells}</div>
+<div class="opt"><span>Camillas libres a esa hora</span><select name="n"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+<div class="opt"><span>Precio final para el cliente (opcional)</span><input type="number" name="p" min="1" max="500" step="1" inputmode="numeric" placeholder="€"></div>
+<button class="save" type="submit">Guardar horas</button>
+</form>`
+      // No times left for this day: there has to be at least an hour's notice.
+      : `<p class="empty">Para este día ya no quedan horas: tiene que haber al menos una hora de margen.</p>`;
+  }
+  const listHtml = [...byStart.values()].sort((a, b) => a.startMs - b.startMs).map((a) => {
+    const dayIdx = days.findIndex((x) => x.ymd === a.ymd);
+    const when = `${slotChip(a.ymd, dayIdx < 0 ? 9 : dayIdx)} · ${a.hm} · ${a.mins} min${a.price ? ` · ${eurEs(a.price)}` : ""}`;
+    const rooms = a.free.length + a.held + a.booked.length;
+    const parts: string[] = [];
+    if (a.booked.length) parts.push(`Reservada: ${a.booked.join(", ")}`); // Booked: Ana
+    if (a.held) parts.push("Un cliente la está reservando"); // A client is booking it
+    if (a.free.length) parts.push(rooms > 1 ? `${a.free.length} libre${a.free.length === 1 ? "" : "s"}` : "Libre"); // Free
+    const del = a.free.length ? `<a href="${escAttr(`${link(ymd, minutes)}&do=del&id=${a.free.join(",")}`)}">Quitar</a>` : ""; // Remove
+    return `<div class="li"><div><div>${esc(when)}</div><div class="m">${esc(parts.join(" · "))}</div></div>${del}</div>`;
+  }).join("");
+  const body = `<h1>Horas libres</h1><div class="who">${esc(studio)}</div>
+<p class="sub">Marcad las horas en las que podéis atender a un cliente de Massage Club. Lo que marquéis se puede reservar al momento: os llega la confirmación por escrito con su nombre y su teléfono, y tenéis 15 minutos para rechazarla si no os cuadra.</p>
+${note ? `<div class="note ${noteErr ? "err" : "ok"}">${esc(note)}</div>` : ""}
+<div class="lbl">Día</div><div class="chips">${dayChips}</div>
+<div class="lbl">Duración del masaje</div><div class="chips">${durChips}</div>
+<div class="lbl">Horas de inicio</div>${gridHtml}
+<div class="lbl">Vuestras horas para Massage Club</div>${listHtml ? `<div class="list">${listHtml}</div>` : `<p class="empty">Todavía no hay ninguna hora marcada.</p>`}
+<p class="foot">Una hora se puede reservar hasta 60 minutos antes. Si deja de estar libre, quitadla aquí mientras nadie la haya reservado. Este enlace es solo para vuestro centro, no lo compartáis.</p>`;
+  // Page copy in English, for Jordan: "Free times. Mark the times you can see a
+  // Massage Club client. Anything you mark can be booked straight away: you
+  // get the written confirmation with their name and phone, and 15 minutes to
+  // reject it if it does not suit you." Labels: Day, Massage length, Start
+  // times, Treatment rooms free at that time, Final price for the client
+  // (optional), Save times, Your times for Massage Club, Remove. Footer: "A
+  // time can be booked up to 60 minutes before. If it stops being free,
+  // remove it here while nobody has booked it. This link is only for your
+  // studio, do not share it."
+  return pageOut(url, slotsShell(`Horas libres · ${studio}`, body));
+}
+// The studio's 15 minute reject link, from its confirmation. GET shows the
+// booking; only the button on the page (a=no) rejects it.
+async function slotRejectPage(url: URL): Promise<Response> {
+  const id = relClean(url.searchParams.get("slotr"));
+  const sig = String(url.searchParams.get("sig") || "");
+  // This link is not valid. Write to us on WhatsApp and we will look at it.
+  if (!id || !sig || sig !== await relSig("slot-reject", id)) return pageOut(url, simpleCard("Este enlace no es válido", "Escribidnos por WhatsApp y lo vemos.", ""), 403);
+  const sr = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?id=eq.${encodeURIComponent(id)}&select=*`, { headers: H() });
+  const slot = ((await sr.json().catch(() => [])) || [])[0] || null;
+  // This booking no longer exists. Nothing for you to do.
+  if (!slot) return pageOut(url, simpleCard("Esta reserva ya no existe", "No tenéis que hacer nada.", ""), 404);
+  const rq = slot.request_id ? await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(slot.request_id)}&select=id,first_name,service_name,message_text`, { headers: H() }) : null;
+  const req = rq ? ((await rq.json().catch(() => [])) || [])[0] || {} : {};
+  const first = String(req.first_name || "").trim().split(" ")[0] || "nuestro cliente";
+  const startMs = Date.parse(String(slot.start_at));
+  const when = [studioDayOf(madridMidnight(new Date(startMs))), `a las ${relHm(startMs)}`].filter(Boolean).join(" ");
+  const mins = Math.round((Date.parse(String(slot.end_at)) - startMs) / 60e3);
+  const svc = String(trSvc(req.service_name || "Massage", "es")).toLowerCase();
+  // Already rejected: the booking for Ana today at 18:00 is cancelled and we have told them. Thanks for letting us know.
+  if (slot.status === "rejected") return pageOut(url, simpleCard("Ya está rechazada", `La reserva de ${first} ${when} ya está anulada y se lo hemos dicho. Gracias por avisar.`, "", "ok"));
+  // This booking is no longer active. Nothing for you to do.
+  if (slot.status !== "booked") return pageOut(url, simpleCard("Esta reserva ya no está activa", "No tenéis que hacer nada.", ""));
+  const until = Date.parse(String(slot.reject_until));
+  const open = Date.now() <= until;
+  // The 15 minutes have passed: the booking for Ana stands. If you really cannot see them, reply to our WhatsApp message and we will sort it out.
+  const late = () => simpleCard("Ya han pasado los 15 minutos", `La reserva de ${first} ${when} sigue en pie. Si de verdad no podéis atenderle, contestad a nuestro mensaje por WhatsApp y lo arreglamos.`, "");
+  if (String(url.searchParams.get("a") || "") === "no") {
+    const row = open ? await relRpcOne("reject_released_slot", { p_slot: id, p_note: "studio reject link" }) : null;
+    if (row) {
+      await releasedRejected(row, "studio reject link");
+      // Done, booking cancelled. We have cancelled Ana's booking today at 18:00 and are telling them now. Nothing else to do. Thanks for letting us know.
+      return pageOut(url, simpleCard("Hecho, reserva anulada", `Hemos anulado la reserva de ${first} ${when} y ya se lo estamos diciendo. No tenéis que hacer nada más. Gracias por avisar.`, "", "ok"));
+    }
+    const pc = await partnerCard(String(slot.partner_id || ""));
+    await founderCard(`⚠️ ${pc.business_name || "A studio"} tried to reject a released time after 15 minutes`, {
+      badge: "LATE REJECT", title: `${pc.business_name || "The studio"} pressed reject on #${slot.request_id} after its 15 minutes`,
+      paras: [`The booking for ${first} at ${relHm(startMs)} on ${relYmd(startMs)} stands and the customer has not been told anything. The studio was asked to reply on WhatsApp. Please call them.`],
+      studioName: pc.business_name,
+    });
+    return pageOut(url, late());
+  }
+  if (!open) return pageOut(url, late());
+  // Ana's booking. Today at 18:00, relaxing massage of 60 min. If you cannot see them, reject it before 18:17. If you can, there is nothing to do.
+  const body = `${when.charAt(0).toUpperCase() + when.slice(1)}, ${svc} de ${mins} min.\n\nSi no podéis atenderle, rechazadla antes de las ${relHm(until)}. Si podéis, no hace falta hacer nada.`;
+  return pageOut(url, simpleCard(`Reserva de ${first}`, body, pillLink(`${await slotRejectLink(id)}&a=no`, "No podemos atenderle", false)));
+}
+// Ops (key-guarded, like studio_offer):
+//   release_slots   { partner_id, slots: [{date, time, minutes?, seats?, price?}], evidence, ignore_hours? }
+//                   Jordan (or a test) releases times for a studio, with the
+//                   studio's own words as evidence. Same checks as the page.
+//   released_list   { partner_id?, all? }   live times (all: every status), next 8 days
+//   slot_link       { partner_id }          the studio's signed page; nothing is sent
+//   released_reject { slot_id, note? }      the reject link's effect, within the 15 minutes
+async function releasedOps(payload: any): Promise<Response> {
+  const out = (o: Record<string, unknown>, status = 200) => new Response(JSON.stringify(o, null, 2), { status, headers: { "Content-Type": "application/json" } });
+  const mode = await releasedMode();
+  const pid = relClean(payload.partner_id);
+  const partner = async () => {
+    if (!pid) return null;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(pid)}&select=id,business_name,opening_hours,slots_link_v,opted_out_at,status`, { headers: H() });
+    return ((await r.json().catch(() => [])) || [])[0] || null;
+  };
+  const seen = (isTest: boolean) => mode === "on" || (mode === "test" && isTest);
+  if (payload.ops === "slot_link") {
+    const p = await partner();
+    if (!p) return out({ ok: false, reason: "no such studio" });
+    const isTest = REL_TEST_STUDIO_RE.test(String(p.business_name || ""));
+    return out({ ok: true, studio: p.business_name, url: await slotsLink(p), is_test: isTest, page_active: isTest || mode === "on", customers_see_it: seen(isTest), mode, note: "Nothing was sent. The link is a bearer link for this studio only: send it to the studio's own WhatsApp or email, with Jordan's yes." });
+  }
+  if (payload.ops === "released_list") {
+    const until = new Date(Date.now() + 8 * 86400e3).toISOString();
+    const q = `released_slots?select=id,partner_id,start_at,end_at,seat,status,price_eur,source,evidence,is_test,request_id,reject_until,held_until,partners(business_name)${pid ? `&partner_id=eq.${encodeURIComponent(pid)}` : ""}${payload.all ? "" : "&status=in.(released,held,booked)"}&start_at=lt.${encodeURIComponent(until)}&end_at=gte.${encodeURIComponent(new Date(Date.now() - 86400e3).toISOString())}&order=start_at.asc&limit=300`;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, { headers: H() });
+    const rows = await r.json().catch(() => []);
+    return out({ ok: r.ok, mode, slots: (Array.isArray(rows) ? rows : []).map((x: any) => ({ id: x.id, studio: x.partners?.business_name || null, day: relYmd(Date.parse(x.start_at)), time: relHm(Date.parse(x.start_at)), minutes: Math.round((Date.parse(x.end_at) - Date.parse(x.start_at)) / 60e3), seat: x.seat, status: x.status, price_eur: x.price_eur, source: x.source, evidence: x.evidence, is_test: x.is_test, request_id: x.request_id, reject_until: x.reject_until, held_until: x.held_until, customers_see_it: x.status === "released" && seen(!!x.is_test) })) });
+  }
+  if (payload.ops === "released_reject") {
+    const id = relClean(payload.slot_id);
+    const row = id ? await relRpcOne("reject_released_slot", { p_slot: id, p_note: String(payload.note || "ops").slice(0, 200) }) : null;
+    if (!row) return out({ ok: false, reason: "not a booked slot inside its 15 minutes" });
+    return out({ ok: true, told: await releasedRejected(row, "ops") });
+  }
+  // release_slots
+  const evidence = String(payload.evidence || "").trim();
+  if (evidence.length < 5) return out({ ok: false, reason: "evidence is required: the studio's own words, and where and when they said them" });
+  const p = await partner();
+  if (!p) return out({ ok: false, reason: "no such studio" });
+  if (p.opted_out_at || p.status === "suspended") return out({ ok: false, reason: "studio has opted out or is suspended" });
+  const hours = payload.ignore_hours ? null : slotHours(p.opening_hours);
+  const nowMs = Date.now();
+  const list = Array.isArray(payload.slots) ? payload.slots.slice(0, 40) : [];
+  const rows: Array<Record<string, unknown>> = [];
+  const skipped: Array<Record<string, unknown>> = [];
+  for (const x of list) {
+    const ymd = String(x?.date || ""), hm = String(x?.time || "").padStart(5, "0"), minutes = Number(x?.minutes || 60);
+    const seats = Math.min(4, Math.max(1, Math.floor(Number(x?.seats || 1))));
+    const price = x?.price === undefined || x?.price === null || x?.price === "" ? null : Number(x.price);
+    const why = releaseCheck({ ymd, hm, minutes }, hours, nowMs) || (price !== null && !(price >= 1 && price <= 500) ? "price" : "");
+    if (why) { skipped.push({ date: ymd, time: hm, why }); continue; }
+    const st = relAt(ymd, relToMin(hm) as number);
+    for (let seat = 1; seat <= seats; seat++) rows.push({ start_at: new Date(st).toISOString(), end_at: new Date(st + minutes * 60e3).toISOString(), seat, price_eur: price });
+  }
+  if (rows.length > 40) return out({ ok: false, reason: "at most 40 slots (times x rooms) per call" });
+  const res = rows.length ? await relRpc("release_slots", { p_partner: p.id, p_rows: rows, p_source: "ops_page", p_evidence: evidence }) : { ok: true, rows: [] as any[], error: "" };
+  if (!res.ok) return out({ ok: false, reason: res.error });
+  const isTest = REL_TEST_STUDIO_RE.test(String(p.business_name || ""));
+  const inserted = res.rows.map((x: any) => ({ id: x.id, date: relYmd(Date.parse(x.start_at)), time: relHm(Date.parse(x.start_at)), seat: x.seat }));
+  const keys = new Set(inserted.map((x) => `${x.date} ${x.time} ${x.seat}`));
+  for (const r of rows) {
+    const sm = Date.parse(String(r.start_at));
+    if (!keys.has(`${relYmd(sm)} ${relHm(sm)} ${r.seat}`)) skipped.push({ date: relYmd(sm), time: relHm(sm), seat: r.seat, why: "already live, or refused by the database" });
+  }
+  await logEvent("system", "released_by_ops", { partner_id: p.id, studio: p.business_name, inserted: inserted.length, skipped: skipped.length, evidence: evidence.slice(0, 300) });
+  return out({ ok: true, studio: p.business_name, is_test: isTest, mode, customers_see_it: seen(isTest), inserted, skipped });
+}
+
+// v215: rel is a released time the customer has tapped (finalizeReleased).
+// The request is then written as already offered: stage offered, dispatched,
+// dispatch_count 0, so neither the dispatch sweep nor the widen sweep ever asks
+// a studio about it, and partner_id stays null until acceptOffer books it (the
+// notify trigger sends Jordan only its slim card). share_ok, because the offer
+// they tapped said the studio gets their name and phone for the booking.
+async function createRequest(s: Session, rel: any = null): Promise<number | null> {
   const d = s.data;
   // v40: "Help me figure it out" is booked as a relaxing massage, which every
   // studio offers. Nobody should ever read "confirmed your Not sure" (Jordan, 5 Sept).
@@ -6336,8 +6942,9 @@ async function createRequest(s: Session): Promise<number | null> {
       // a man, Centro Aloha said yes in writing, and nothing could remember it.
       therapist_gender: d.therapistGender === "male" || d.therapistGender === "female" ? d.therapistGender : null,
       languages: d.lang === "es" ? "es" : "en",
-      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : (Array.isArray(d.prefer) && d.prefer.length ? " | Prefiere: " + d.prefer.map((x: any) => x.name).join(", ") : ""))}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""}${d.backup ? " | Alternativa: " + d.backup : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}`,
-      stage: "new",
+      message_text: `Quiere: ${chosen && chosen.svc ? chosen.svc : serviceName} | Cuando: ${when}${d.timeBand && d.timeBand !== d.time ? " (flexible: " + d.timeBand + ")" : ""} | Zona: ${area}${chosen ? " | Centro: " + chosen.name : (d.customStudio ? " | Centro pedido: " + d.customStudio : (Array.isArray(d.prefer) && d.prefer.length ? " | Prefiere: " + d.prefer.map((x: any) => x.name).join(", ") : ""))}${d.duration && d.duration !== 60 ? " | Duración: " + d.duration + " min" : ""}${d.dayDate ? " | Fecha: " + d.dayDate : ""}${d.backup ? " | Alternativa: " + d.backup : ""} | Origen: whatsapp-bot${d.rebook ? " (repeat)" : ""}${d.adRef ? " | Ad: " + String(d.adRef).slice(0, 120) : ""}${rel ? ` | Hueco: ${rel.slot_id} (${rel.studio} ${rel.hm})` : ""}`,
+      stage: rel ? "offered" : "new",
+      ...(rel ? { dispatched_at: new Date().toISOString(), dispatch_count: 0, share_ok: true } : {}),
     }),
   });
   const rows = await res.json().catch(() => []);
@@ -6373,6 +6980,9 @@ async function staleDay(s: Session, from: string, L: string): Promise<boolean> {
 // (day_reasked, email_asked, readback_asked, dispatchAndTell's answer, or
 // chosen_sent). Every older caller ignores the value.
 async function finalizeBooking(s: Session, from: string, L: string): Promise<{ outcome: string; requestId: number | null }> {
+  // v215: a released time they tapped is booked on that tap (12 Oct rule).
+  // The slot carries its own date, so it goes before the stale-day check.
+  if (s.data.released) return await finalizeReleased(s, from, L);
   if (await staleDay(s, from, L)) return { outcome: "day_reasked", requestId: null };
   // v67 (Jordan, 8 Sept): every booking needs an email. Sharo J asked for a
   // couples massage through the website with no email and no WhatsApp history,
@@ -8492,6 +9102,15 @@ const handleInner = async (req: Request) => {
         if (om[1] === "yes") await acceptOffer(om[2], from, L, s); else await declineOffer(om[2], from, L, s, om[1] === "alt" ? "alt" : "time");
         return new Response("OK", { status: 200 });
       }
+      // v215: a released-time button tapped after the chat moved on. Fresh
+      // times still on screen mid-booking are handled as at the studio step;
+      // anything older is not booked, and they are told so.
+      if (/^(rel_\d|rel_more|relx_no)$/.test(replyId) && s.step !== "await_studio") {
+        const fresh = Array.isArray(s.data.relPicks) && Date.now() - Number(s.data.relAt || 0) < 30 * 60e3;
+        if (fresh && !["done", "human", "await_offer"].includes(s.step)) await releasedTap(s, from, L, replyId);
+        else await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].gone);
+        return new Response("OK", { status: 200 });
+      }
       if (s.step === "await_offer" && text && s.data.offer?.row) {
         const bare = text.trim().toLowerCase().replace(/[.!¡¿?]/g, "");
         // v199 (Jordan, 10 Oct): the customer confirms with a tap of the button, so a
@@ -9374,6 +9993,8 @@ const handleInner = async (req: Request) => {
           await askNameOrFinalize(s, from, L);
           break;
         }
+        // v215: a released time (rel_0, rel_1), More options, or No thanks.
+        if (/^(rel_\d|rel_more|relx_no)$/.test(replyId)) { await releasedTap(s, from, L, replyId); break; }
         if (replyId === "pick_yes") {
           const top = (s.data.picks || [])[0];
           if (top) { s.data.chosen = top; s.data.customStudio = null; await logEvent(from, "studio_chosen", { how: "toppick", studio: top.name }); await askNameOrFinalize(s, from, L); }
