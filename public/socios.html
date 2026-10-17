@@ -1573,7 +1573,7 @@ function renderDone() {
 const HASH = ["", "#centro", "#horas", "#datos", "#listo"];
 const stepFromHash = () => Math.max(0, HASH.indexOf(location.hash));
 const here = (step) => location.pathname + location.search + HASH[step];
-const step1Valid = () => !!val("name") && !!val("addr") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
+const step1Valid = () => PREVIEW || !!val("name") && !!val("addr") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
 function go(step, mode = "push") {
   const asked = step;
   if (step === 3 && !step1Valid()) { S.resume = 3; step = 1; }
