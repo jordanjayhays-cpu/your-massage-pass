@@ -1838,7 +1838,7 @@ async function invoicePage(url: URL): Promise<Response> {
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;font-size:13px;">
 <div><b>Emisor</b><br>${esc(st.issuer_name)}<br>${esc(st.issuer_tax_id)}<br>${esc(st.issuer_address)}<br>${esc(st.issuer_email)}</div>
 <div><b>Cliente</b><br>${esc(p.billing_name || p.business_name || "")}<br>${esc(p.billing_tax_id || "")}<br>${esc(p.billing_address || p.address || "")}</div></div>
-<p style="margin:18px 0 6px;"><b>Concepto:</b> comisión por la primera visita de los clientes nuevos que Massage Club os envió en ${MONTHS_ES[per.getUTCMonth()]} de ${per.getUTCFullYear()} y que vinieron a su cita. Sus visitas siguientes no se cobran.</p>
+<p style="margin:18px 0 6px;"><b>Concepto:</b> comisión por la primera visita de los clientes nuevos que Massage Club os envió en ${MONTHS_ES[per.getUTCMonth()]} de ${per.getUTCFullYear()} y que vinieron a su cita. Las siguientes visitas de esos clientes no se cobran.</p>
 <table style="width:100%;border-collapse:collapse;font-size:13px;">${lines}</table>
 <table style="width:100%;margin-top:12px;font-size:14px;"><tr><td>Base imponible</td><td style="text-align:right;">${eur2Es(inv.subtotal)}</td></tr><tr><td>IVA (${Number(inv.vat_rate)}%)</td><td style="text-align:right;">${eur2Es(inv.vat)}</td></tr><tr><td style="padding-top:6px;"><b>Total</b></td><td style="text-align:right;padding-top:6px;"><b>${eur2Es(inv.total)}</b></td></tr></table>
 <p style="margin:18px 0 0;font-size:13px;color:${C.muted};">Pago por transferencia a ${esc(st.iban)}, indicando ${esc(inv.number || "")} en el concepto. Gracias por trabajar con nosotros.</p></div>`;
@@ -1860,7 +1860,7 @@ async function billingPage(url: URL): Promise<Response> {
     const b = Number(url.searchParams.get("b") || 0);
     if (b) {
       await patch("bookings", `id=eq.${b}&invoice_id=is.null`, act === "done" ? { completed_at: new Date().toISOString(), completed_source: "founder", no_show_at: null } : { no_show_at: new Date().toISOString(), completed_at: null });
-      note = act === "done" ? `Booking ${b} marked as happened. It will be on next month's invoice.` : `Booking ${b} marked as a no-show. No fee.`;
+      note = act === "done" ? `Booking ${b} marked as happened. If it is a new customer's first visit from ${st.fees_from || "the fee start date"}, it goes on the next invoice; otherwise it is free.` : `Booking ${b} marked as a no-show. No fee.`;
     }
   } else if (act === "generate") {
     const m = String(url.searchParams.get("m") || "");
@@ -1919,8 +1919,7 @@ async function billingPage(url: URL): Promise<Response> {
   const btn = (href: string, label: string, strong = false) => `<a href="${esc(href)}" style="display:inline-block;text-decoration:none;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;margin:6px 6px 0 0;${strong ? `background:${C.clay};color:#fff;` : `background:#fff;color:${C.ink};border:1px solid ${C.dash};`}">${label}</a>`;
   // v213: pilot-period and repeat visits carry no fee and are never invoiced.
   const owed = (Array.isArray(ledger) ? ledger : []).filter((l) => l.attendance === "completed" && !l.invoice_id && Number(l.fee || 0) > 0);
-  const madridDay = (iso: string) => iso ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date(iso)) : "";
-  const freeWhy = (l: any) => Number(l.fee || 0) > 0 ? "" : l.first_visit === false ? " (repeat visit, free)" : st.fees_from && madridDay(l.start_at) < String(st.fees_from) ? " (pilot, free)" : "";
+  const freeWhy = (l: any) => Number(l.fee || 0) > 0 ? "" : st.fees_from && l.start_at && ISO_MADRID.format(new Date(l.start_at)) < String(st.fees_from) ? " (pilot, free)" : l.first_visit === false ? " (repeat visit, free)" : "";
   const owedSum = owed.reduce((a, l) => a + Number(l.fee || 0), 0);
   const fmtWhen = (iso: string) => iso ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "";
   const ledgerCards = (Array.isArray(ledger) ? ledger : []).map((l) => `<div class="card"><div class="h"><span class="n">${esc(l.business_name || "")}</span>${pill(String(l.attendance))}</div>
@@ -1932,7 +1931,7 @@ ${!l.invoice_id && (l.attendance === "to_confirm" || l.attendance === "completed
   const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Billing</h1><div class="sub">Studios pay ${eur2(st.default_fee_eur)} + IVA ${Number(st.vat_rate || 0)}% for a new customer's first visit that happened${st.fees_from ? `, from ${esc(String(st.fees_from))}` : ""}. Repeat visits are free.</div></div><a class="back" href="${esc(await inboxUrl())}">All chats</a></div>`;
   const body = `${note ? `<div class="note ${noteErr ? "err" : "done"}">${esc(note)}</div>` : ""}
 ${unfilled.length ? `<div class="note err">Invoices cannot be sent until your details are filled in: ${esc(unfilled.join(", "))} (Supabase, table billing_settings). Drafts still get made.</div>` : ""}
-<div class="card"><div class="h"><span class="n">Not yet invoiced</span><b>${eur2(owedSum)}</b></div><div class="m">${owed.length} first visit${owed.length === 1 ? "" : "s"} that happened and carry a fee. Drafts are made automatically on the 1st of each month for the month before.</div><div>${btn(`${base}&do=generate&m=${lastMonth}`, "Make last month's drafts now")}${btn(`${base}&do=generate&m=${now.toISOString().slice(0, 8)}01`, "Make this month's drafts")}</div></div>
+<div class="card"><div class="h"><span class="n">Not yet invoiced</span><b>${eur2(owedSum)}</b></div><div class="m">${owed.length} first visit${owed.length === 1 ? "" : "s"} that happened, with a fee. Drafts are made automatically on the 1st of each month for the month before.</div><div>${btn(`${base}&do=generate&m=${lastMonth}`, "Make last month's drafts now")}${btn(`${base}&do=generate&m=${now.toISOString().slice(0, 8)}01`, "Make this month's drafts")}</div></div>
 <div class="sec">INVOICES</div>${invCards || `<p class="empty">No invoices yet.</p>`}
 <div class="sec">BOOKINGS</div>${ledgerCards || `<p class="empty">No bookings yet.</p>`}
 <p class="empty"><a href="${esc(base)}">Refresh</a></p>`;
