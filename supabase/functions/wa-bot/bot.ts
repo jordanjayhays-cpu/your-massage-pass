@@ -2645,7 +2645,25 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
           });
           return;
         }
-        await sendText(from, coveredLine(sdStage, sd0 ? String(sd0.first_name || "") : "", sd0?.customer_flag === "cancelled", sd0 ? studioDayEs(sd0) : ""));
+        // v214 (17 Oct): Natura Spaces answered the covered line with "Vale, no
+        // te preocupes, quedo super atenta para cuando quieras agendar 🥰" and
+        // got the same covered line again. Said once; a friendly answer to it
+        // gets one short thanks, and after that only Jordan hears.
+        const cl = coveredLine(sdStage, sd0 ? String(sd0.first_name || "") : "", sd0?.customer_flag === "cancelled", sd0 ? studioDayEs(sd0) : "");
+        const lastOut = await coreLastOutbound(from);
+        if (lastOut === cl || lastOut === STUDIO_THANKS) {
+          if (studioAck(freeText)) {
+            if (lastOut === cl) await sendText(from, STUDIO_THANKS);
+          } else {
+            await founderCard(`${partner.business_name} wrote again after the stand-down · #${sdrow.request_id}`, {
+              badge: "STUDIO MESSAGE", title: `${partner.business_name} wrote again about a request that is closed`,
+              paras: ["They were already told it is not going ahead, so nothing was said back."],
+              quote: freeText, waNum: from, waLabel: "Reply to the studio", prefill: studioOpener(sd0),
+            });
+          }
+          return;
+        }
+        await sendText(from, cl);
         await founderCard(`💬 ${partner.business_name} answered a covered request · #${sdrow.request_id}`, {
           badge: "LATE REPLY", title: `${partner.business_name} wrote back after the request was covered`,
           paras: [`The bot thanked them and said the booking is covered (or that the client cancelled, when that is what happened). Nothing to do.`],
@@ -7011,6 +7029,15 @@ const coveredLine = (stage: string, name = "", byCustomer = false, dayEs = ""): 
   if (stage === "cancelled" || stage === "dismissed") return `Gracias. Al final lo de ${name || "este cliente"}${dd ? " " + dd : ""} no sigue adelante, así que no hace falta que le guardéis hueco.`;
   if (stage === "confirmed") return `Gracias. ${name || "El cliente"} ya ha reservado en otro centro${dayEs ? " para " + dayEs : ""}, así que no hace falta que le guardéis hueco. A la próxima.`;
   return `Gracias. Lo de ${name || "este cliente"}${dd ? " " + dd : ""} ya está cerrado, así que no hace falta que hagáis nada.`;
+};
+
+// v214: a studio's friendly sign-off ("vale", "gracias", "quedo atenta", an
+// emoji), as opposed to a question or anything new.
+const STUDIO_THANKS = "¡Gracias a vosotros! Que tengáis buen día.";
+const studioAck = (t: string): boolean => {
+  const s = String(t || "").trim();
+  return !!s && s.length <= 200 && !s.includes("?") && !/\b([01]?\d|2[0-3])[:.h][0-5]\d\b/.test(s) &&
+    /(vale|\bok\b|okay|gracias|perfecto|genial|entendido|de acuerdo|no te preocupes|no pasa nada|sin problema|igualmente|quedo|quedamos|atent[ao]s?|saludos?|buen d[ií]a|buenas tardes|👍|🙏|😊|🥰|❤|😘|🤗|🙌)/i.test(s);
 };
 
 const handleInner = async (req: Request) => {
