@@ -4646,6 +4646,283 @@ function jobSeekerKind(t: string): "explicit" | "job" | "" {
 const isJobSeeker = (t: string): boolean => !!jobSeekerKind(t);
 // ---- v204 requests, days and voice: pure helpers (end) ----
 
+// ---- v215 released slots: pure helpers (start) ----
+// v215 (17 Oct, Jordan: "We need more studios to give us times"). A studio
+// gives Massage Club a specific free time in advance (CLAUDE.md, PRE-RELEASED
+// SLOTS, 12 Oct): that release counts as the studio's tap, so the customer's
+// tap books it, the studio gets the written confirmation at once with the
+// client's name and phone and may reject it within 15 minutes. The table and
+// its state changes are supabase/migrations/20261018_released_slots.sql.
+// Behind app_secrets RELEASED: off (the default, and anything missing or
+// unknown) changes nothing for anyone; test shows test studios' times to test
+// contacts only; on shows real studios' times to real customers, and test
+// contacts still only ever see test studios.
+// tests/replay.mjs lifts this block out of the file like the two above, so it
+// only uses copy.ts (madridInstant, madridMidnight, stripAcc, euro).
+type RelMode = "off" | "test" | "on";
+function parseReleasedMode(v: unknown): RelMode {
+  const x = String(v ?? "").trim().toLowerCase();
+  return x === "on" || x === "test" ? x : "off";
+}
+// Who counts as a test customer for released times: Jordan's own numbers, the
+// canary's fake 3460000xxxx numbers, and CLAUDE.md's test contacts (his
+// addresses, the test domains, +mctest/+uitest, a name with test or prueba).
+// Cata and Yi, the friend testers, never see a released time at all, and
+// neither does anyone else the bot already treats as a tester (knownTester).
+const REL_TEST_PHONES = ["15622355063", "34612474827"];
+const REL_CANARY_RE = /^3460000\d{4}$/;
+const REL_FRIEND_EMAIL_RE = /^(cata\.waack@gmail\.com|elon_yilong@student\.ie\.edu|longyi_elon@outlook\.com)$/i;
+const REL_TEST_EMAIL_RE = /^(jordan\.hays@student\.ie\.edu|jordanjayhays@gmail\.com|jordan@massageclub\.io|support@massageclub\.io|jordan@niahconnect\.com)$|@(testing|example|test)\.com$|@placeholder\.local$|\+(mctest|uitest)[^@]*@/i;
+const REL_TEST_NAME_RE = /\b(test|prueba|uitest|mctest)\b/i;
+// A test studio, the same rule the migration uses for released_slots.is_test.
+const REL_TEST_STUDIO_RE = /\b(test|prueba)\b/i;
+type RelAudience = "test" | "real" | "none";
+function releasedAudience(c: { phone?: unknown; email?: unknown; name?: unknown; knownTester?: boolean }): RelAudience {
+  const d = String(c.phone ?? "").replace(/\D/g, "");
+  const e = String(c.email ?? "").trim().toLowerCase();
+  if (d === "17867276503" || /^86\d*997$/.test(d) || REL_FRIEND_EMAIL_RE.test(e)) return "none";
+  if (REL_TEST_PHONES.includes(d) || REL_CANARY_RE.test(d) || REL_TEST_EMAIL_RE.test(e) || REL_TEST_NAME_RE.test(String(c.name ?? ""))) return "test";
+  return c.knownTester ? "none" : "real";
+}
+// Which studios' times this customer may see: "test", "real" or none at all.
+function releasedScope(mode: RelMode, audience: RelAudience): "test" | "real" | null {
+  if (mode === "off" || audience === "none") return null;
+  if (audience === "test") return "test";
+  return mode === "on" ? "real" : null;
+}
+// Released times are offered from 09:00 to 20:40 Madrid, so the studio's
+// written confirmation goes out at once and inside studio hours (09:00 to
+// 21:00) even after the 10 minute hold. Outside that, today's path runs.
+const REL_HM_FMT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false });
+const REL_YMD_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
+const relMinOfDay = (ms: number): number => { const [h, m] = REL_HM_FMT.format(new Date(ms)).split(":").map((x) => parseInt(x, 10)); return (h % 24) * 60 + m; };
+const relHmOf = (min: number): string => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+const relHm = (ms: number): string => relHmOf(relMinOfDay(ms));
+const relYmd = (ms: number): string => REL_YMD_FMT.format(new Date(ms));
+function releasedHoursOk(nowMs: number): boolean {
+  const m = relMinOfDay(nowMs);
+  return m >= 9 * 60 && m < 20 * 60 + 40;
+}
+// The instant of a Madrid wall-clock time on a Madrid calendar day:
+// relAt("2026-10-25", 600) is 10:00 Madrid on the day the clocks go back
+// (09:00Z), and 1440 is midnight at the end of that day.
+function relAt(ymd: string, minutes: number): number {
+  const [y, mo, d] = ymd.split("-").map((x) => parseInt(x, 10));
+  const day = new Date(Date.UTC(y, mo - 1, d) + Math.floor(minutes / 1440) * 86400e3);
+  const m = ((minutes % 1440) + 1440) % 1440;
+  return madridInstant(day, Math.floor(m / 60)).getTime() + (m % 60) * 60e3;
+}
+// Today and the next n-1 days, as Madrid calendar dates.
+function slotDays(nowMs: number, n = 7): Array<{ ymd: string; dow: number }> {
+  const base = madridMidnight(new Date(nowMs)).getTime();
+  const out: Array<{ ymd: string; dow: number }> = [];
+  for (let i = 0; i < n; i++) { const d = new Date(base + i * 86400e3); out.push({ ymd: d.toISOString().slice(0, 10), dow: d.getUTCDay() }); }
+  return out;
+}
+// partners.opening_hours comes in two shapes: free text ("Mon-Sat 10:00-20:00",
+// "Lun-Vie 10:00-14:00 y 17:00-21:00", "Daily 10:00-21:00") as dispatch-studios
+// reads it, and the object PartnerCalendar.tsx writes ({mon: {open, close,
+// closed}}). Day -> its open windows in minutes, [] for a closed day. Null is
+// "cannot tell", which never rules a time out. In free text a day that is not
+// named is closed, as openDays reads it; in the object a missing day is unknown.
+// A window after a day's first one with no day of its own ("y 17:00-21:00") is
+// the same days' afternoon, which dispatch-studios reads as every day.
+const REL_DAY: Record<string, number> = { sun: 0, dom: 0, mon: 1, lun: 1, tue: 2, mar: 2, wed: 3, mie: 3, thu: 4, jue: 4, fri: 5, vie: 5, sat: 6, sab: 6 };
+const REL_DEFAULT_HOURS: Array<[number, number]> = [[8 * 60, 22 * 60]];
+function relToMin(t: unknown): number | null {
+  const m = String(t ?? "").trim().match(/^(\d{1,2})(?:[:.h](\d{2}))?$/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10), mi = parseInt(m[2] || "0", 10);
+  return h > 24 || mi > 59 || h * 60 + mi > 1440 ? null : h * 60 + mi;
+}
+function slotHours(oh: unknown): Map<number, Array<[number, number]>> | null {
+  let v: unknown = oh;
+  if (typeof v === "string" && /^\s*\{/.test(v)) { try { v = JSON.parse(v); } catch { return null; } }
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const out = new Map<number, Array<[number, number]>>();
+    for (const [k0, x] of Object.entries(v as Record<string, any>)) {
+      const d = REL_DAY[stripAcc(String(k0)).slice(0, 3)];
+      if (d === undefined) continue;
+      if (!x || x.closed === true) { out.set(d, []); continue; }
+      const o = relToMin(x.open), c = relToMin(x.close);
+      if (o === null || c === null) continue;
+      out.set(d, [[o, c <= o ? 1440 : c]]);
+    }
+    return out.size ? out : null;
+  }
+  const raw = stripAcc(String(v ?? "")).trim();
+  if (!raw) return null;
+  const out = new Map<number, Array<[number, number]>>();
+  let last: number[] = [];
+  for (const seg0 of raw.split(/[,;]|\s+y\s+|\s+and\s+/)) {
+    const seg = seg0.trim();
+    if (!seg) continue;
+    const m = seg.match(/^(.*?)\s*(\d{1,2}(?:[:.]\d{2})?)\s*h?\s*[-–a]\s*(\d{1,2}(?:[:.]\d{2})?)\s*h?$/);
+    if (!m) return null;
+    const o = relToMin(m[2]), c0 = relToMin(m[3]);
+    if (o === null || c0 === null) return null;
+    const dayPart = m[1].trim();
+    let days: number[] = [];
+    if (dayPart === "") days = last.length ? last : [0, 1, 2, 3, 4, 5, 6];
+    else if (/^(daily|todos los dias|every day|diario|cada dia)$/.test(dayPart)) days = [0, 1, 2, 3, 4, 5, 6];
+    else {
+      for (const tok of dayPart.split(/\s*\/\s*|\s+/)) {
+        const range = tok.match(/^([a-z]{3})[a-z]*\s*[-–]\s*([a-z]{3})[a-z]*$/);
+        if (range) {
+          const a = REL_DAY[range[1]], b = REL_DAY[range[2]];
+          if (a === undefined || b === undefined) return null;
+          for (let d = a; ; d = (d + 1) % 7) { days.push(d); if (d === b) break; }
+        } else {
+          const one = tok.match(/^([a-z]{3})[a-z]*\.?$/);
+          if (!one || REL_DAY[one[1]] === undefined) return null;
+          days.push(REL_DAY[one[1]]);
+        }
+      }
+    }
+    last = days;
+    for (const d of days) out.set(d, [...(out.get(d) || []), [o, c0 <= o ? 1440 : c0] as [number, number]]);
+  }
+  if (!out.size) return null;
+  for (let d = 0; d < 7; d++) if (!out.has(d)) out.set(d, []);
+  return out;
+}
+const slotWindows = (hours: Map<number, Array<[number, number]>> | null, dow: number): Array<[number, number]> =>
+  hours && hours.has(dow) ? hours.get(dow) || [] : REL_DEFAULT_HOURS;
+// The starts a studio can tap on one day: every half hour inside its windows
+// where a massage of `minutes` still ends by closing, and at least leadMin
+// from now (the page uses 65, one more than the 60 the database insists on).
+function slotGrid(ymd: string, windows: Array<[number, number]>, minutes: number, nowMs: number, leadMin = 65): Array<{ hm: string; min: number; startMs: number }> {
+  const seen = new Set<number>();
+  const out: Array<{ hm: string; min: number; startMs: number }> = [];
+  for (const [o, c] of windows) {
+    for (let t = Math.ceil(o / 30) * 30; t + minutes <= c; t += 30) {
+      if (seen.has(t)) continue;
+      seen.add(t);
+      const startMs = relAt(ymd, t);
+      if (startMs - leadMin * 60e3 < nowMs) continue;
+      out.push({ hm: relHmOf(t), min: t, startMs });
+    }
+  }
+  return out.sort((a, b) => a.min - b.min);
+}
+// Why one released time cannot be saved, or "" when it can. The studio page
+// and the ops release both use it; the database checks the same limits again.
+const REL_MINUTES = [30, 60, 90, 120];
+function releaseCheck(r: { ymd: string; hm: string; minutes: number }, hours: Map<number, Array<[number, number]>> | null, nowMs: number): "" | "format" | "duration" | "day" | "soon" | "closed" | "hours" {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(r.ymd || ""))) return "format";
+  const t = relToMin(r.hm);
+  if (t === null || t >= 1440 || t % 5) return "format";
+  if (!REL_MINUTES.includes(Number(r.minutes))) return "duration";
+  const day = slotDays(nowMs, 7).find((d) => d.ymd === r.ymd);
+  if (!day) return "day";
+  if (relAt(r.ymd, t) - 60 * 60e3 < nowMs) return "soon";
+  if (hours) {
+    const w = slotWindows(hours, day.dow);
+    if (!w.length) return "closed";
+    if (!w.some(([o, c]) => t >= o && t + Number(r.minutes) <= c)) return "hours";
+  }
+  return "";
+}
+// The stretch of time a customer's ask covers, for released_offers: the day
+// they asked for (a Madrid midnight, from resolveRequestDate) and the window
+// from askWindow (null is Flexible, [-1, -1] could not be read). Never sooner
+// than leadMin from now. Null when nothing can fit.
+function releasedRange(day: Date | null, win: [number, number] | null, nowMs: number, leadMin = 60): { from: number; to: number } | null {
+  if (!day || (win && win[1] < 0)) return null;
+  const ymd = day.toISOString().slice(0, 10);
+  const a = Math.max(0, win ? win[0] : 0), b = Math.min(1440, win ? win[1] : 1440);
+  if (b <= a) return null;
+  const from = Math.max(relAt(ymd, a), nowMs + leadMin * 60e3);
+  const to = relAt(ymd, b);
+  return from < to ? { from, to } : null;
+}
+// The customer's copy of a released time's day: "today", "tomorrow", "Sat 18 Oct".
+const REL_DAY_FMT: Record<string, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric", month: "short" }),
+  es: new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric", month: "short" }),
+};
+function relDayWord(slotMs: number, nowMs: number, L: string): string {
+  const n = Math.round((madridMidnight(new Date(slotMs)).getTime() - madridMidnight(new Date(nowMs)).getTime()) / 86400e3);
+  const es = L === "es";
+  if (n === 0) return es ? "hoy" : "today";
+  if (n === 1) return es ? "mañana" : "tomorrow";
+  return REL_DAY_FMT[es ? "es" : "en"].format(new Date(slotMs)).replace(/[.,]/g, "");
+}
+// What the customer reads. A price is shown only when the studio typed it
+// (exact) or as the studio's listed price ("about" unless it is a registered
+// studio's own menu), the way offerStudios shows prices.
+type RelLine = { studio: string; area: string; day: string; hm: string; svc: string; minutes: number; price: number | null; exact: boolean };
+function releasedLine(o: RelLine, L: string): string {
+  const es = L === "es";
+  const price = o.price && o.price > 0 ? `, ${o.exact ? "" : es ? "unos " : "about "}${euro(o.price)}` : "";
+  return `· *${o.studio}*${o.area ? ` (${o.area})` : ""}: ${o.day} ${o.hm}, ${o.svc} ${o.minutes} min${price}`;
+}
+const RELEASED_COPY: Record<string, {
+  many: (lines: string[]) => string; one: (line: string) => string; more: string; yes: (t: string) => string;
+  justTaken: string; stale: string; gone: string; heldOut: string; rejectNote: string; noThanks: string; showOptions: string; noThanksBtn: string;
+  rejectedNext: (first: string, studio: string, at: string, line: string) => string; rejectedNone: (first: string, studio: string, at: string) => string;
+  rejectedMail: (first: string, studio: string, at: string) => string; rejectedSubject: (studio: string) => string;
+}> = {
+  en: {
+    many: (lines) => `Good news: these times are free and you can book one right now.\n\n${lines.join("\n")}\n\nTap one and it's booked. The studio gets your name and phone for the booking. You pay at the studio, no fee from us.`,
+    one: (line) => `Good news: this time is free and you can book it right now.\n\n${line}\n\nTap Yes and it's booked. The studio gets your name and phone for the booking. You pay at the studio, no fee from us.`,
+    more: "More options",
+    yes: (t) => `Yes, book ${t}`,
+    justTaken: "Someone has just booked that time, sorry. Here is what is free now.",
+    stale: "Those times have changed since I sent them. Here is what is free now.",
+    gone: "Those times are no longer on offer. Write here whenever you would like to book.",
+    heldOut: "I held that time for 10 minutes and it has gone back on offer, so nothing is booked yet. Here is what is free now.",
+    rejectNote: "If the studio has a problem with it, they tell us within 15 minutes and we let you know straight away.",
+    noThanks: "No problem, nothing is booked. Write here whenever you would like a massage.",
+    showOptions: "Show options",
+    noThanksBtn: "No, thanks",
+    rejectedNext: (first, studio, at, line) => `Sorry${first ? " " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nThe next free time near you:\n${line}\n\nTap Yes and it's booked, or More options to see other studios.`,
+    rejectedNone: (first, studio, at) => `Sorry${first ? " " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nWould you like to see other studios near you?`,
+    rejectedMail: (first, studio, at) => `Sorry${first ? " " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there and you do not need to go.\n\nReply to us on WhatsApp and we will find you another time.\n\nMassage Club`,
+    rejectedSubject: (studio) => `${studio} cannot take you after all`,
+  },
+  es: {
+    many: (lines) => `Buenas noticias: estas horas están libres y puedes reservar una ahora mismo.\n\n${lines.join("\n")}\n\nToca una y queda reservada. El centro recibe tu nombre y tu teléfono para la reserva. Pagas en el centro, sin comisión.`,
+    one: (line) => `Buenas noticias: esta hora está libre y puedes reservarla ahora mismo.\n\n${line}\n\nToca Sí y queda reservada. El centro recibe tu nombre y tu teléfono para la reserva. Pagas en el centro, sin comisión.`,
+    more: "Más opciones",
+    yes: (t) => `Sí, reserva ${t}`,
+    justTaken: "Alguien acaba de reservar esa hora, lo siento. Esto es lo que queda libre.",
+    stale: "Esas horas han cambiado desde que te las mandé. Esto es lo que queda libre.",
+    gone: "Esas horas ya no están disponibles. Escríbenos cuando quieras reservar.",
+    heldOut: "Te guardé esa hora 10 minutos y ha vuelto a quedar libre, así que todavía no hay nada reservado. Esto es lo que queda libre.",
+    rejectNote: "Si el centro tuviera algún problema, nos lo dice en 15 minutos y te avisamos al momento.",
+    noThanks: "Sin problema, no hay nada reservado. Escríbenos cuando te apetezca un masaje.",
+    showOptions: "Ver opciones",
+    noThanksBtn: "No, gracias",
+    rejectedNext: (first, studio, at, line) => `Lo siento${first ? " " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\nLa siguiente hora libre cerca de ti:\n${line}\n\nToca Sí y queda reservada, o Más opciones para ver otros centros.`,
+    rejectedNone: (first, studio, at) => `Lo siento${first ? " " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\n¿Quieres ver otros centros cerca de ti?`,
+    rejectedMail: (first, studio, at) => `Lo siento${first ? " " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado y no hace falta que vayas.\n\nEscríbenos por WhatsApp y te buscamos otra hora.\n\nMassage Club`,
+    rejectedSubject: (studio) => `${studio} al final no puede`,
+  },
+};
+// Buttons. Two options: "18:00 Calma" style, cut at WhatsApp's 20 characters.
+// One option: "Yes, book 18:00". Always "More options", which runs today's path.
+function releasedButtons(L: string, opts: Array<{ studio: string; hm: string }>): Array<{ id: string; title: string }> {
+  const c = RELEASED_COPY[L === "es" ? "es" : "en"];
+  const short = (n: string) => String(n || "").replace(/\s+(Relax and Beauty|Wellness Studio|Madrid Spa|Massage Club|Masajes?|Spa|Studio)$/i, "");
+  const btns = opts.length === 1
+    ? [{ id: "rel_0", title: c.yes(opts[0].hm) }]
+    : opts.slice(0, 2).map((o, i) => ({ id: `rel_${i}`, title: `${o.hm} ${short(o.studio)}`.slice(0, 20).trim() }));
+  btns.push({ id: "rel_more", title: c.more });
+  return btns;
+}
+// The client's contact line in the studio's confirmation: "Su teléfono es
+// +34 600... y su email, ana@x.com." (Their phone is ... and their email ...)
+function releasedContactEs(phone: unknown, email: unknown): string {
+  const p = String(phone ?? "").replace(/\D/g, "");
+  const e = String(email ?? "").trim();
+  const tel = p ? `+${p}` : "";
+  if (tel && e) return `Su teléfono es ${tel} y su email, ${e}.`;
+  if (tel) return `Su teléfono es ${tel}.`;
+  return e ? `Su email es ${e}.` : "";
+}
+// ---- v215 released slots: pure helpers (end) ----
+
 // v203: says what became of the offer ("whatsapp", "email", "none", or why it
 // was held back), so a caller with no WhatsApp thread to the studio (a phone
 // call) knows when the customer was never shown it.
