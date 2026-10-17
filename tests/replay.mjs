@@ -2588,7 +2588,7 @@ for (const [msg, want, note] of [
   // Review (17 Oct).
   check("hook", "RELEASED off stops taps already on screen", /async function releasedTap[\s\S]{0,2400}const off = \(await releasedMode\(\)\) === "off" \|\| !releasedHoursOk\(Date\.now\(\), "tap"\);/.test(botSrc), true, "kill switch");
   check("hook", "RELEASED off stops a booking in progress", /async function finalizeReleased[\s\S]{0,1200}const off = !!r\?\.slot_id && \(await releasedMode\(\)\) === "off";/.test(botSrc), true, "kill switch");
-  check("hook", "a double tap says nothing", /if \(why === "dup"\) \{ await logEvent\(from, "released_dup_tap"/.test(botSrc) && /if \(!from \|\| why === "dup"\) return;/.test(botSrc), true, "the other tap carries on");
+  check("hook", "a double tap says nothing", /if \(why === "dup"\) \{ quietThisTurn = true; await logEvent\(from, "released_dup_tap"/.test(botSrc) && /if \(why === "dup"\) quietThisTurn = true;\s*if \(!from \|\| why === "dup"\) return;/.test(botSrc), true, "the other tap carries on, and no holding line");
   check("hook", "the page save passes when it was drawn", /p_source: "studio_link", p_evidence: `studio page \$\{new Date\(nowMs\)\.toISOString\(\)\}`, p_since: new Date\(at\)\.toISOString\(\)/.test(botSrc), true, "a reload never re-releases a rejected time");
   check("hook", "a reject reads the slot again before saying it is late", /const now2 = await readSlot\(\);\s*if \(now2\?\.status === "rejected"\) return pageOut\(url, already\(\)\);/.test(botSrc), true, "");
   check("hook", "a reject after the customer cancelled tells nobody but Jordan", /if \(req\.stage !== "confirmed" \|\| flag === "cancelled" \|\| flag === "change_requested"\) \{/.test(botSrc), true, "");

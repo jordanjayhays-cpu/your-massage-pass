@@ -6640,7 +6640,8 @@ async function releasedTap(s: Session, from: string, L: string, replyId: string)
     // Two taps of theirs handled side by side: the other one holds or booked
     // a time and carries on (name question, then "Booked!"). This one says
     // nothing and leaves the session to it.
-    if (why === "dup") { await logEvent(from, "released_dup_tap", { slot: p.slot_id, studio: p.studio, at: "hold" }); return; }
+    // quietThisTurn: saying nothing is the decision, so no holding line either.
+    if (why === "dup") { quietThisTurn = true; await logEvent(from, "released_dup_tap", { slot: p.slot_id, studio: p.studio, at: "hold" }); return; }
     s.data.relPicks = null;
     if (why === "clash") s.step = "done";
     await saveSession(s);
@@ -6724,6 +6725,7 @@ async function releasedTaken(row: any, req: any, from: string, L: string, s: Ses
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "expired" }) });
   await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(req.id)}&stage=eq.offered`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "dismissed", stage_note: `${note} (wa-bot v215).`, stage_updated_at: new Date().toISOString() }) });
   await logEvent(from || "web", "released_taken", { slot: row.slot_id || null, request_id: req.id, at: "book", why });
+  if (why === "dup") quietThisTurn = true;
   if (!from || why === "dup") return;
   const c = RELEASED_COPY[L === "es" ? "es" : "en"];
   await sendText(from, why === "clash" ? c.already : why === "too_close" ? c.tooClose : c.justTaken);
@@ -7981,13 +7983,17 @@ async function coreBookingFacts(s: Session, L: string): Promise<CoreBooking> {
 // Copied from the email block in handleInner, which now calls this too: the
 // address goes onto their open request, only into a blank.
 async function attachEmail(from: string, addr: string): Promise<number | null> {
-  const pr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&contact_email=is.null&stage=not.in.(cancelled,dismissed)&order=created_at.desc&limit=1&select=id`, { headers: H() });
+  const pr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&contact_email=is.null&stage=not.in.(cancelled,dismissed)&order=created_at.desc&limit=1&select=*`, { headers: H() });
   const prow = (await pr.json().catch(() => []))[0] || null;
   if (!prow?.id) return null;
   await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${prow.id}`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
     body: JSON.stringify({ contact_email: addr }),
   }).catch((e) => console.log("[wa] late email not saved to request", String(e)));
+  // v215 review (17 Oct): a released time's studio was confirmed before the
+  // email question; the address they agreed to share follows it. Nothing for
+  // any other request (no "| Hueco:" marker).
+  if (relHueco(prow.message_text) && prow.stage === "confirmed" && prow.partner_id) await releasedEmailFollowUp(prow, addr);
   return Number(prow.id) || null;
 }
 // The unprompted "Girl" branch of the gender gate: a preference lands on a
@@ -9420,7 +9426,7 @@ const handleInner = async (req: Request) => {
       if (/^(rel_\d|rel_more|relx_no)$/.test(replyId) && s.step !== "await_studio") {
         const fresh = Array.isArray(s.data.relPicks) && Date.now() - Number(s.data.relAt || 0) < 30 * 60e3;
         if (fresh && !["done", "human", "await_offer"].includes(s.step)) await releasedTap(s, from, L, replyId);
-        else if (s.data.released?.slot_id || await relBookedRecently(from)) await logEvent(from, "released_button_ignored", { button: replyId, step: s.step });
+        else if (s.data.released?.slot_id || await relBookedRecently(from)) { quietThisTurn = true; await logEvent(from, "released_button_ignored", { button: replyId, step: s.step }); }
         else await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].gone);
         return new Response("OK", { status: 200 });
       }
