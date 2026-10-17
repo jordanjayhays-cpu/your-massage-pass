@@ -48,7 +48,7 @@ Funnel, last 60 days: 127 people wrote on WhatsApp → 78 requests → 42 sent t
 1. **Offer first (wa-bot v152).** After day, time and area the customer sees two real studios with prices and taps one. That studio is asked right away, with the other as backup. The email is asked while they wait.
 2. **Ranking rewards offers (dispatch_candidates v4).** A studio is scored on the share of asks that ended in an offer, not just a reply. A studio asked 4 or more times that never offered is rested. Samsara and Masajes Chamberí dropped out of the top 5 for Centro.
 3. **Money side (wa-bot v153 and the billing migration).**
-   - A referral fee per booking that happened: 10 EUR by default, or set per studio in `partners.fee_eur` / `fee_pct`.
+   - A referral fee per booking that happened: 10 EUR by default, or set per studio in `partners.fee_eur` / `fee_pct`. (Superseded 17 Oct: 5 EUR + IVA on a new customer's first visit only, see below.)
    - The studio's arrival tap now marks the booking completed.
    - Invoice drafts are generated on the 1st of each month.
    - Billing page with one-tap "It happened" / "No-show" / "Approve and send" / "Mark paid".
@@ -56,7 +56,7 @@ Funnel, last 60 days: 127 people wrote on WhatsApp → 78 requests → 42 sent t
 
 ## Decisions waiting on Jordan
 
-1. **Fee level** and how to present it to studios: a fixed referral fee per completed booking. Recommended: 8 to 10 EUR or about 15%, charged only after the customer shows up.
+1. **Fee level. DECIDED 17 Oct (Jordan: "Let's do 5 euros I think it's more fair at first").** Free pilot to 30 November. From 1 December the studio pays 5 EUR + IVA (6,05 EUR on the invoice) for a new customer's first visit that actually happened, and nothing for that customer's later visits at the same studio. No monthly fee. Migration `20261017_first_visit_fee.sql`: `billing_settings.default_fee_eur` 5, `billing_settings.fees_from` 2026-12-01, the ledger marks `first_visit`, and invoices bill only lines with a fee. "At first": the level is meant to be reviewed once studios have seen real customers.
 2. **Stop the 10% / best-offer auction** (Trap 1) in favour of studio-set prices plus the referral fee. This changes the 5 Sept standing rule.
 3. **Niche:** English speakers only in the ads, or serve Spanish speakers too.
 4. **Issuer details for invoices:** legal name, tax ID, address, IBAN, and the correct IVA treatment. Check with a gestor, especially if the issuing entity is not Spanish. Fill these into `billing_settings`.

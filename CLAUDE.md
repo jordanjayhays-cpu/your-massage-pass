@@ -16,6 +16,7 @@
 - Always provide an English translation for any Spanish text shown to Jordan.
 - Never claim massage releases toxins, detoxes, cures, or boosts immunity. Never promise studios speak English.
 - Discounts (Jordan, 5 Sept): we never fund a discount, never invent one, and never quote one to a customer before the studio has confirmed it in writing. On every request the bot asks each studio for a 10% Massage Club rate, tells them truthfully that several studios were asked and the client goes with the best offer, and awards the booking to the best offer (same-day requests go to the first yes). Never tell a studio the client has another booking unless that is true. The customer hears about a discount only on the confirmation, once the studio gave it.
+- PARTNER FEE (Jordan, 17 Oct): "Let's do 5 euros I think it's more fair at first." Free pilot to 30 Nov; from 1 Dec a studio pays 5 EUR + IVA for a new customer's first visit that actually happened, 0 on that customer's later visits there, no monthly fee. Never quote a studio any other figure. Billing reads `billing_settings` (default_fee_eur, fees_from).
 - Instagram account is banned from automation: no DMs, no scheduling tools.
 - "Special massage" seekers get the standard shutdown line and no further replies.
 - Approval required before any outbound message to third parties, except automations Jordan has explicitly approved (lead-to-studio offer email).
