@@ -2348,6 +2348,195 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// v215 (17 Oct, Jordan: "We need more studios to give us times"). Released
+// slots: a studio gives us a time in advance, the customer's tap books it.
+// The helpers that decide who sees which times, the studio page's half-hour
+// grid inside its opening hours, and the window a customer's ask covers live
+// in bot.ts between "released slots: pure helpers (start)" and "(end)"; they
+// are lifted out the same way as the blocks above. The clock changes on
+// Sunday 25 Oct 2026, so the DST cases are real dates, not hypotheticals.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const migSrc = fs.readFileSync(path.join(here, "../supabase/migrations/20261018_released_slots.sql"), "utf8");
+  const a = botSrc.indexOf("// ---- v215 released slots: pure helpers (start) ----");
+  const b = botSrc.indexOf("// ---- v215 released slots: pure helpers (end) ----");
+  if (a < 0 || b < a) throw new Error("bot.ts: the v215 released-slot helper markers are missing");
+  const names = ["parseReleasedMode", "releasedAudience", "releasedScope", "releasedHoursOk", "relAt", "relHm", "relYmd", "slotDays", "slotHours", "slotWindows", "slotGrid", "releaseCheck", "releasedRange", "relDayWord", "releasedLine", "releasedButtons", "releasedContactEs", "RELEASED_COPY", "REL_TEST_STUDIO_RE"];
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const js = `import { madridInstant, madridMidnight, stripAcc, euro } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-released-"));
+  const file = path.join(dir, "released.mjs");
+  fs.writeFileSync(file, js);
+  const R = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  // Madrid wall clock on a given October 2026 day.
+  const M = (day, h, mi = 0) => madridInstant(new Date(Date.UTC(2026, 9, day)), h).getTime() + mi * 60e3;
+  const iso = (ms) => new Date(ms).toISOString();
+
+  // The switch. Anything that is not test or on is off.
+  for (const [v, want] of [["on", "on"], ["TEST", "test"], [" on ", "on"], ["off", "off"], ["", "off"], [undefined, "off"], [null, "off"], ["yes", "off"], ["true", "off"]]) {
+    check("RELEASED switch", String(v), R.parseReleasedMode(v), want, "off, missing or unknown must change nothing");
+  }
+
+  // Who is a test customer for released times.
+  for (const [c, want, note] of [
+    [{ phone: "15622355063" }, "test", "Jordan, CLAUDE.md test number"],
+    [{ phone: "+34 612 474 827" }, "test", "Jordan's business number"],
+    [{ phone: "34600001234" }, "test", "a canary number"],
+    [{ phone: "34611222333", email: "ana@example.com" }, "test", "a test domain"],
+    [{ phone: "34611222333", email: "jordan+mctest@gmail.com" }, "test", "+mctest"],
+    [{ phone: "34611222333", email: "jordan.hays@student.ie.edu" }, "test", "Jordan's student address"],
+    [{ phone: "34611222333", name: "Prueba Jordan" }, "test", "a name with prueba"],
+    [{ phone: "17867276503" }, "none", "Cata, friend tester: never"],
+    [{ phone: "34611222333", email: "cata.waack@gmail.com" }, "none", "Cata by email"],
+    [{ phone: "8615273855997" }, "none", "Yi, friend tester: never"],
+    [{ phone: "34635569364", knownTester: true }, "none", "another number the bot treats as a tester"],
+    [{ phone: "34611222333", email: "ana@gmail.com", name: "Ana" }, "real", "a real customer"],
+    [{ phone: "34611222333", name: "Testa" }, "real", "test only as a whole word"],
+  ]) check("released audience", JSON.stringify(c), R.releasedAudience(c), want, note);
+
+  // Test and real never meet: test contacts only ever see test studios, real
+  // customers only real ones, and only when the switch says so.
+  for (const [mode, aud, want] of [
+    ["off", "test", null], ["off", "real", null], ["off", "none", null],
+    ["test", "test", "test"], ["test", "real", null], ["test", "none", null],
+    ["on", "test", "test"], ["on", "real", "real"], ["on", "none", null],
+  ]) check("released scope", `${mode}/${aud}`, R.releasedScope(mode, aud), want, "");
+  for (const [studio, want] of [["ZZ Prueba Massage Club", true], ["Aurora Test Studio", true], ["Calma Madrid Spa", false], ["Testarossa Spa", false]]) {
+    check("test studio", studio, R.REL_TEST_STUDIO_RE.test(studio), want, "same rule as released_slots.is_test in the migration");
+  }
+
+  // Offered from 09:00 to 20:40 Madrid, so the studio's confirmation goes out at once, inside its hours.
+  for (const [ms, want, note] of [[M(19, 8, 59), false, ""], [M(19, 9), true, ""], [M(19, 20, 39), true, ""], [M(19, 20, 40), false, "a 10 minute hold would book after 20:50"], [M(25, 9), true, "the DST Sunday"]]) {
+    check("released offering hours", iso(ms), R.releasedHoursOk(ms), want, note);
+  }
+
+  // Madrid wall clock to an instant, across both clock changes.
+  for (const [ymd, min, want, note] of [
+    ["2026-10-24", 600, "2026-10-24T08:00:00.000Z", "Saturday, CEST (UTC+2)"],
+    ["2026-10-25", 600, "2026-10-25T09:00:00.000Z", "Sunday 25 Oct, the clocks went back at 03:00: CET (UTC+1)"],
+    ["2026-10-26", 630, "2026-10-26T09:30:00.000Z", ""],
+    ["2026-10-24", 1440, "2026-10-24T22:00:00.000Z", "midnight at the end of the 24th is still CEST"],
+    ["2026-03-29", 600, "2026-03-29T08:00:00.000Z", "spring forward"],
+  ]) check("relAt (Madrid to UTC)", `${ymd} +${min}`, iso(R.relAt(ymd, min)), want, note);
+  check("relHm across DST", "25 Oct 09:00Z", R.relHm(Date.parse("2026-10-25T09:00:00Z")), "10:00", "");
+  check("slotDays", "Sat 24 Oct, 23:30 Madrid", R.slotDays(M(24, 23, 30), 3).map((x) => `${x.ymd}/${x.dow}`), ["2026-10-24/6", "2026-10-25/0", "2026-10-26/1"], "the Madrid day, not the UTC one");
+
+  // opening_hours, both shapes.
+  const H = (oh) => { const h = R.slotHours(oh); return h ? [0, 1, 2, 3, 4, 5, 6].map((d) => JSON.stringify(R.slotWindows(h, d))) : null; };
+  const open = (o, c) => JSON.stringify([[o, c]]);
+  for (const [oh, want, note] of [
+    ["Mon-Sat 10:00-20:00", ["[]", open(600, 1200), open(600, 1200), open(600, 1200), open(600, 1200), open(600, 1200), open(600, 1200)], "a day not named is closed, as openDays reads it"],
+    ["Lun-Vie 10:00-14:00 y 17:00-21:00", ["[]", "[[600,840],[1020,1260]]", "[[600,840],[1020,1260]]", "[[600,840],[1020,1260]]", "[[600,840],[1020,1260]]", "[[600,840],[1020,1260]]", "[]"], "a split shift belongs to the same days"],
+    ["Daily 10:00-21:00", Array(7).fill(open(600, 1260)), ""],
+    ["Todos los días 12:00-20:00", Array(7).fill(open(720, 1200)), ""],
+    ["Sun-Thu 10:00-21:30, Fri-Sat 10:00-22:00", [open(600, 1290), open(600, 1290), open(600, 1290), open(600, 1290), open(600, 1290), open(600, 1320), open(600, 1320)], ""],
+    [{ mon: { open: "10:00", close: "20:00" }, sun: { closed: true }, sat: { open: "10:00", close: "14:00", closed: false } }, ["[]", open(600, 1200), open(480, 1320), open(480, 1320), open(480, 1320), open(480, 1320), open(600, 840)], "PartnerCalendar's object; a missing day is unknown (08:00 to 22:00)"],
+    ['{"tue":{"open":"11:00","close":"19:30"}}', [open(480, 1320), open(480, 1320), open(660, 1170), open(480, 1320), open(480, 1320), open(480, 1320), open(480, 1320)], "the object as a JSON string"],
+    ["", null, "unknown"], [null, null, "unknown"], ["llamar antes", null, "unreadable is unknown, never closed"],
+  ]) check("opening hours", typeof oh === "string" ? oh : JSON.stringify(oh), H(oh), want, note);
+
+  // The studio page's grid: every half hour inside the hours, the massage ends
+  // by closing, and at least 65 minutes from now.
+  const mon = [[600, 1200]];
+  const g1 = R.slotGrid("2026-10-19", mon, 60, M(18, 12));
+  check("slot grid", "Mon 10-20, 60 min, from the day before", [g1.length, g1[0].hm, g1[g1.length - 1].hm], [19, "10:00", "19:00"], "");
+  const g2 = R.slotGrid("2026-10-19", mon, 60, M(19, 9));
+  check("slot grid", "the same Monday at 09:00", [g2.length, g2[0].hm], [18, "10:30"], "10:00 is only an hour away");
+  const g3 = R.slotGrid("2026-10-19", mon, 90, M(18, 12));
+  check("slot grid", "90 min", g3[g3.length - 1].hm, "18:30", "a 90 minute massage at 19:00 would end after closing");
+  const g4 = R.slotGrid("2026-10-19", [[600, 840], [1020, 1260]], 60, M(18, 12));
+  check("slot grid", "split shift", g4.map((x) => x.hm).join(","), "10:00,10:30,11:00,11:30,12:00,12:30,13:00,17:00,17:30,18:00,18:30,19:00,19:30,20:00", "nothing across the lunch break");
+  const g5 = R.slotGrid("2026-10-25", [[615, 720]], 60, M(24, 12));
+  check("slot grid", "DST Sunday, opens 10:15", g5.map((x) => `${x.hm}=${iso(x.startMs)}`), ["10:30=2026-10-25T09:30:00.000Z", "11:00=2026-10-25T10:00:00.000Z"], "starts on the half hour, in CET");
+  check("slot grid", "a day already over", R.slotGrid("2026-10-19", mon, 60, M(19, 20)).length, 0, "");
+
+  // What may be saved (the page and the ops release both ask this).
+  const mh = R.slotHours("Mon-Sat 10:00-20:00");
+  const now = M(19, 9);
+  for (const [r, hours, want, note] of [
+    [{ ymd: "2026-10-19", hm: "18:00", minutes: 60 }, mh, "", ""],
+    [{ ymd: "2026-10-19", hm: "09:50", minutes: 60 }, mh, "soon", "under an hour away"],
+    [{ ymd: "2026-10-25", hm: "12:00", minutes: 60 }, mh, "closed", "Sunday, Mon-Sat hours"],
+    [{ ymd: "2026-10-19", hm: "19:30", minutes: 60 }, mh, "hours", "ends after 20:00"],
+    [{ ymd: "2026-10-20", hm: "08:00", minutes: 60 }, mh, "hours", "before opening"],
+    [{ ymd: "2026-10-19", hm: "19:30", minutes: 30 }, mh, "", "30 minutes fit"],
+    [{ ymd: "2026-10-19", hm: "18:00", minutes: 45 }, mh, "duration", ""],
+    [{ ymd: "2026-10-26", hm: "18:00", minutes: 60 }, mh, "day", "today and the next six days only"],
+    [{ ymd: "2026-10-25", hm: "12:00", minutes: 60 }, null, "", "unknown hours never rule a time out"],
+    [{ ymd: "2026-10-19", hm: "25:00", minutes: 60 }, mh, "format", ""],
+    [{ ymd: "19/10/2026", hm: "18:00", minutes: 60 }, mh, "format", ""],
+  ]) check("releaseCheck", JSON.stringify(r), R.releaseCheck(r, hours, now), want, note);
+
+  // The stretch a customer's ask covers. Monday 19 Oct.
+  const day19 = new Date(Date.UTC(2026, 9, 19));
+  const rng = (x) => x ? [iso(x.from), iso(x.to)] : null;
+  for (const [win, nowMs, want, note] of [
+    [[1080, 1260], M(19, 10), ["2026-10-19T16:00:00.000Z", "2026-10-19T19:00:00.000Z"], "Evening (18-21)"],
+    [[1080, 1081], M(19, 10), ["2026-10-19T16:00:00.000Z", "2026-10-19T16:01:00.000Z"], "an exact 18:00: only 18:00 fits"],
+    [[1080, 1260], M(19, 17, 30), ["2026-10-19T16:30:00.000Z", "2026-10-19T19:00:00.000Z"], "never sooner than an hour from now"],
+    [null, M(19, 10), ["2026-10-19T09:00:00.000Z", "2026-10-19T22:00:00.000Z"], "Flexible: the rest of the day"],
+    [[-1, -1], M(19, 10), null, "an ask that could not be read fits nothing"],
+    [[600, 780], M(19, 12, 30), null, "the window has gone"],
+  ]) check("released range", JSON.stringify(win), rng(R.releasedRange(day19, win, nowMs)), want, note);
+  check("released range", "no day", R.releasedRange(null, [1080, 1260], M(19, 10)), null, "a day that cannot be read gets today's path");
+  check("released range", "DST Sunday 10:00", rng(R.releasedRange(new Date(Date.UTC(2026, 9, 25)), [600, 601], M(24, 12))), ["2026-10-25T09:00:00.000Z", "2026-10-25T09:01:00.000Z"], "10:00 on 25 Oct is 09:00Z");
+
+  // What the customer reads.
+  for (const [ms, L, want] of [[M(19, 18), "en", "today"], [M(20, 18), "es", "mañana"], [M(24, 18), "en", "Sat 24 Oct"], [M(24, 18), "es", "sáb 24 oct"]]) {
+    check("released day word", `${iso(ms)} ${L}`, R.relDayWord(ms, M(19, 10), L), want, "");
+  }
+  check("released line", "en, typed price", R.releasedLine({ studio: "Calma Madrid Spa", area: "Chamberí", day: "today", hm: "18:00", svc: "Relaxing massage", minutes: 60, price: 60, exact: true }, "en"),
+    "· *Calma Madrid Spa* (Chamberí): today 18:00, Relaxing massage 60 min, 60 EUR", "");
+  check("released line", "es, listed price", R.releasedLine({ studio: "ZZ Prueba Massage Club", area: "Sol", day: "hoy", hm: "18:30", svc: "masaje relajante", minutes: 60, price: 55, exact: false }, "es"),
+    "· *ZZ Prueba Massage Club* (Sol): hoy 18:30, masaje relajante 60 min, unos 55 EUR", "a listing is never quoted as the price");
+  check("released line", "no price", R.releasedLine({ studio: "X", area: "", day: "today", hm: "18:00", svc: "massage", minutes: 90, price: null, exact: false }, "en"), "· *X*: today 18:00, massage 90 min", "");
+  const two = R.releasedButtons("en", [{ studio: "ZZ Prueba Massage Club", hm: "18:00" }, { studio: "Aurora Test Studio", hm: "18:30" }]);
+  check("released buttons", "two", two.map((x) => x.id), ["rel_0", "rel_1", "rel_more"], "");
+  check("released buttons", "two titles", two.map((x) => x.title), ["18:00 ZZ Prueba", "18:30 Aurora Test", "More options"], "");
+  check("released buttons", "one, es", R.releasedButtons("es", [{ studio: "Calma", hm: "18:00" }]).map((x) => `${x.id}=${x.title}`), ["rel_0=Sí, reserva 18:00", "rel_more=Más opciones"], "");
+  for (const L of ["en", "es"]) for (const opts of [[{ studio: "Centro de Masajes Muy Largo De Verdad", hm: "18:00" }, { studio: "Otro Centro Con Nombre Larguísimo", hm: "21:30" }], [{ studio: "X", hm: "23:30" }]]) {
+    check("released buttons fit in 20 characters", `${L} ${opts.length}`, R.releasedButtons(L, opts).every((x) => x.title.length <= 20), true, "");
+  }
+  check("released contact line", "phone and email", R.releasedContactEs("34600000501", "ana@gmail.com"), "Su teléfono es +34600000501 y su email, ana@gmail.com.", "");
+  check("released contact line", "phone only", R.releasedContactEs("+34 600 000 501", ""), "Su teléfono es +34600000501.", "");
+  check("released contact line", "nothing", R.releasedContactEs("", null), "", "");
+
+  // No em or en dashes in anything a customer or studio reads (standing rule).
+  const copyOut = [];
+  for (const L of ["en", "es"]) {
+    const c = R.RELEASED_COPY[L];
+    for (const [k, v] of Object.entries(c)) if (k !== "many") copyOut.push(typeof v === "function" ? v("Ana", "Calma", "at 18:00 today", "· *X* (Sol): today 18:00") : v);
+    copyOut.push(c.many(["· a", "· b"]), c.one("· a"));
+  }
+  check("released copy", "no em or en dashes", copyOut.filter((t) => /[—–]/.test(t)), [], "");
+  const sideA = botSrc.indexOf("// ---- v215 released slots: the bot side");
+  const sideB = botSrc.indexOf("async function createRequest(", sideA);
+  check("released copy", "no em or en dashes in the studio page, the reject page and the studio texts", sideA > 0 && sideB > sideA && !/[—–]/.test(botSrc.slice(sideA, sideB)), true, "");
+
+  // Hooks: the switch is read before anything else, and today's path is untouched without it.
+  check("hook", "offerReleased reads nothing when RELEASED is off", /async function offerReleased[\s\S]{0,200}const mode = await releasedMode\(\);\s*if \(mode === "off"\) return false;/.test(botSrc), true, "off must be zero change");
+  check("hook", "offerStudios asks offerReleased first, unless More options", /if \(!o\.noReleased && await offerReleased\(s, from, L\)\) return true;/.test(botSrc), true, "");
+  check("hook", "finalizeBooking books a tapped released time", /if \(s\.data\.released\) return await finalizeReleased\(s, from, L\);/.test(botSrc), true, "");
+  check("hook", "acceptOffer books the slot before it confirms", /relRpcOne\("book_released_slot"[\s\S]{0,2000}const claim = await fetch/.test(botSrc), true, "one conditional update decides who gets it");
+  check("hook", "confirmed_start is written for a released time", /confirmed_start: relSlot\.start_at/.test(botSrc), true, "ensureBooking needs it for the bookings row");
+  // The migration's ON CONFLICT names the same partial index it creates.
+  const idx = migSrc.match(/released_slots_live_seat\s+on public\.released_slots \(partner_id, start_at, seat\)\s+where (status in \([^)]*\))/);
+  const onc = migSrc.match(/on conflict \(partner_id, start_at, seat\) where (status in \([^)]*\)) do nothing/);
+  check("migration", "ON CONFLICT matches the live-seat index", !!idx && !!onc && idx[1] === onc[1], true, "otherwise Postgres cannot infer the index and the insert fails");
+  check("migration", "no access for anon or signed-in users", /revoke all on public\.released_slots from public, anon, authenticated;/.test(migSrc) && /enable row level security/.test(migSrc), true, "");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

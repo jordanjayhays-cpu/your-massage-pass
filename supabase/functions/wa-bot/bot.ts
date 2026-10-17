@@ -1157,6 +1157,9 @@ async function studioOptions(s: Session, from: string): Promise<StudioPick[]> {
 }
 async function offerStudios(s: Session, from: string, L: string, o: { noReleased?: boolean } = {}): Promise<boolean> {
   if (await staleDay(s, from, L)) return true;
+  // v215: a fresh offer replaces a released time tapped earlier, so a later
+  // tap on a studio can never book that old time instead.
+  if (s.data.released) await relDrop(s, from);
   // v215: released times that fit come first, behind RELEASED (off: nothing
   // is read and nothing changes). noReleased is "More options".
   if (!o.noReleased && await offerReleased(s, from, L)) return true;
@@ -5996,19 +5999,36 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     await notifyJordanWa(`${req.first_name || "Customer"} accepted ${studio}'s new time ${cwhen}. Studio told, customer confirmed by chat and email.`, from);
     return true;
   }
+  // v215: a released time (channel 'released') is the studio's tap already
+  // (12 Oct rule). Book the slot first, with one conditional update: only one
+  // customer can win it. If someone else did, this request is closed and the
+  // customer sees what is free now.
+  let relSlot: any = null;
+  if (row.channel === "released") {
+    relSlot = row.slot_id ? await relRpcOne("book_released_slot", { p_slot: row.slot_id, p_request: Number(req.id), p_phone: digitsOf(req.client_phone || from) || null }) : null;
+    if (!relSlot) { await releasedTaken(row, req, from, L, s); return false; }
+  }
+  const relStart = relSlot ? Date.parse(String(relSlot.start_at)) : NaN;
   // v51: the day comes from the offer itself (session, or the studio's words on
   // the dispatch row when the customer tapped an older offer), not the day asked.
   // v204 review: the studio's "mañana" read from when it wrote it (rowDayLabel).
-  const day = (s?.data.offer?.row === rowId && s?.data.offer?.day) || rowDayLabel(row, L) || offerDayFromText(String(row.reply_text || ""), L) || req.day1 || "";
+  const day = (relSlot ? offerDayLabel(madridMidnight(new Date(relStart)), new Date(), L) : "") || (s?.data.offer?.row === rowId && s?.data.offer?.day) || rowDayLabel(row, L) || offerDayFromText(String(row.reply_text || ""), L) || req.day1 || "";
   const when = [day, row.offered_time].filter(Boolean).join(" ");
   // Same race guard as a studio's Confirmado tap: only one confirmation per request.
   // v199: and never on a request that has since been cancelled or closed.
   const claim = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=not.in.(confirmed,cancelled,dismissed,no_show,needs_review,stale,too_late)`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
-    body: JSON.stringify({ stage: "confirmed", confirmed_day: day || null, confirmed_time: row.offered_time, partner_id: row.partner_id, studio_name: studio, studio_reply: `Cliente acepta ${row.offered_time} (${studio})`, stage_updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ stage: "confirmed", confirmed_day: day || null, confirmed_time: row.offered_time, partner_id: row.partner_id, studio_name: studio, studio_reply: `Cliente acepta ${row.offered_time} (${studio})`, stage_updated_at: new Date().toISOString(),
+      // v215: a released time has an exact start, so confirmed_start is written
+      // here and ensureBooking makes the bookings row billing reads. The price
+      // only when the studio typed one.
+      ...(relSlot ? { confirmed_start: relSlot.start_at, studio_reply: `Hora liberada ${row.offered_time}: el cliente la reserva (${studio})`, ...(Number(relSlot.price_eur) > 0 ? { price: Number(relSlot.price_eur) } : {}) } : {}) }),
   });
   const claimed = await claim.json().catch(() => []);
-  if (!Array.isArray(claimed) || !claimed.length) { await say(COPY[L].offerGone); await closeOffer(); return false; }
+  if (!Array.isArray(claimed) || !claimed.length) {
+    if (relSlot) await relRpc("unbook_released_slot", { p_slot: relSlot.id, p_request: Number(req.id) });
+    await say(COPY[L].offerGone); await closeOffer(); return false;
+  }
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "won", customer_answer: "yes", customer_answered_at: new Date().toISOString() }) });
   await awardRequest(req.id, row.partner_id);
   await ensureBooking(req.id);
@@ -6027,7 +6047,8 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   // for an English speaker, as information. The email is an email: who we
   // are, the full date, a sign-off.
   const fn = String(req.first_name || "").trim();
-  const dd = (s?.data.offer?.row === rowId ? studioSlotDate(s?.data.offer?.slotAt) : null)
+  const dd = (relSlot ? studioSlotDate(relSlot.start_at) : null)
+    || (s?.data.offer?.row === rowId ? studioSlotDate(s?.data.offer?.slotAt) : null)
     || studioWordDay(offerDayFromText(String(row.reply_text || ""), "es"), Date.parse(String(row.replied_at || row.offered_at || "")))
     || studioDate(req);
   const dEs = studioDayOf(dd);
@@ -6039,11 +6060,30 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   const habla = req.languages === "en" && !s?.data?.xlang ? " Habla inglés." : "";
   const what = `${svcEs} de ${reqDuration(req)} min${priceEs}`;
   const waRef = [dEs, atEs].filter(Boolean).join(" ");
-  const studioText = `Hola, ${fn || "el cliente"} ha dicho que sí, así que queda confirmado: ${waRef ? waRef + ", " : ""}${what}. Ya podéis apuntarlo.${habla} Si necesitáis decirle algo, escribidme por aquí y se lo paso.`;
-  const toldWa = await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha dicho que sí y queda confirmado, ${what}.${habla} Ya podéis apuntarlo`, { dayEs: dEs, v2: `Ha dicho que sí, así que queda confirmado: ${what}.${habla} Ya podéis apuntarlo.` });
+  // v215: a released time's confirmation carries the client's name, phone and
+  // email (the offer they tapped said the studio gets them) and the 15 minute
+  // reject link. It always goes by email too when the studio has an address,
+  // because the template fallback cannot carry the link.
+  const relLink = relSlot ? await slotRejectLink(String(relSlot.id)) : "";
+  const relWho = relSlot ? releasedContactEs(clientDigits, req.contact_email) : "";
   const mailRef = [studioDateFull(dd), atEs].filter(Boolean).join(" ");
-  const studioMail = `${studioMailHead(pc.business_name || String(s?.data.offer?.studio || ""))}\n\n${fn || "Nuestro cliente"} ha dicho que sí a vuestra hora, así que la reserva queda confirmada: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.\n\nYa podéis apuntarlo. Si necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`;
-  const toldMail = (row.channel === "email" || !toldWa) ? await emailStudio(String(row.partner_id || ""), `Reserva confirmada: ${fn || "nuestro cliente"}${mailRef ? ", " + mailRef.replace(/^el /, "") : ""}`, studioMail) : false;
+  // ES: "Hola, nueva reserva en una de las horas que nos disteis: Ana, hoy a las 18:00, masaje relajante de 60 min. Paga directamente en el centro. Su teléfono es +34... Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: <link>"
+  // EN: "Hello, a new booking in one of the times you gave us: Ana, today at 18:00, relaxing massage of 60 min. She pays at the studio. Her phone is +34... You can put it in your diary. If you cannot see her after all, reject it here within the next 15 minutes: <link>"
+  const studioText = relSlot
+    ? `Hola, nueva reserva en una de las horas que nos disteis: ${fn || "nuestro cliente"}, ${waRef ? waRef + ", " : ""}${what}. Paga directamente en el centro.${habla}${relWho ? " " + relWho : ""} Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: ${relLink}`
+    : `Hola, ${fn || "el cliente"} ha dicho que sí, así que queda confirmado: ${waRef ? waRef + ", " : ""}${what}. Ya podéis apuntarlo.${habla} Si necesitáis decirle algo, escribidme por aquí y se lo paso.`;
+  // Template fallback (aviso_centro_v2 {{2}}, then v1's short). v2 ends on a
+  // sentence, not the link, because the template adds its own full stop.
+  // ES "Ha reservado una de las horas que nos disteis: ... Si al final no podéis atenderle, rechazadla en los próximos 15 minutos aquí: <link> Si no, ya podéis apuntarlo."
+  // EN "They booked one of the times you gave us: ... If you cannot see them after all, reject it within the next 15 minutes here: <link> Otherwise, you can put it in your diary."
+  const toldWa = relSlot
+    ? await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha reservado una de las horas que nos disteis, ${what}. Ya podéis apuntarlo`, { dayEs: dEs, v2: `Ha reservado una de las horas que nos disteis: ${what}. Paga en el centro.${habla}${relWho ? " " + relWho : ""} Si al final no podéis atenderle, rechazadla en los próximos 15 minutos aquí: ${relLink} Si no, ya podéis apuntarlo.` })
+    : await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha dicho que sí y queda confirmado, ${what}.${habla} Ya podéis apuntarlo`, { dayEs: dEs, v2: `Ha dicho que sí, así que queda confirmado: ${what}.${habla} Ya podéis apuntarlo.` });
+  // Email, ES: "Ana ha reservado una de las horas que nos disteis: el sábado 18 de octubre a las 18:00, ... Paga directamente en el centro. Su teléfono es ... Ya podéis apuntarlo. Si al final no podéis atenderle, rechazad la reserva en los próximos 15 minutos con este enlace: <link>". EN: the same, as an email with Jordan's sign-off.
+  const studioMail = relSlot
+    ? `${studioMailHead(pc.business_name || "")}\n\n${fn || "Nuestro cliente"} ha reservado una de las horas que nos disteis: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.${relWho ? " " + relWho : ""}\n\nYa podéis apuntarlo. Si al final no podéis atenderle, rechazad la reserva en los próximos 15 minutos con este enlace:\n${relLink}\n\nSi necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`
+    : `${studioMailHead(pc.business_name || String(s?.data.offer?.studio || ""))}\n\n${fn || "Nuestro cliente"} ha dicho que sí a vuestra hora, así que la reserva queda confirmada: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.\n\nYa podéis apuntarlo. Si necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`;
+  const toldMail = (row.channel === "email" || !toldWa || relSlot) ? await emailStudio(String(row.partner_id || ""), `${relSlot ? "Reserva nueva" : "Reserva confirmada"}: ${fn || "nuestro cliente"}${mailRef ? ", " + mailRef.replace(/^el /, "") : ""}`, studioMail) : false;
   if (!toldWa && !toldMail) {
     await founderCard(`⚠️ ${studio} has not been told #${req.id} is confirmed`, {
       badge: "STUDIO NOT TOLD", title: `${req.first_name || "The customer"} confirmed ${studio} at ${when}, and the studio could not be reached`,
@@ -6051,7 +6091,10 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
       waNum: digitsOf(row.phone || ""),
     });
   }
-  await say(COPY[L].offerAccepted(studio, whenFor(when, L), pc.address, pc.phone));
+  // v215: on a released time the customer also hears that the studio has 15
+  // minutes to say no, and that we tell them at once if it does.
+  const accepted = COPY[L].offerAccepted(studio, whenFor(when, L), pc.address, pc.phone);
+  await say(relSlot ? accepted.replace(/\n\nMassage Club/, `\n\n${RELEASED_COPY[L === "es" ? "es" : "en"].rejectNote}\n\nMassage Club`) : accepted);
   await customerConfirmEmail(req, studio, whenFor(when, L), pc.address, pc.phone);
   // v81 (Jordan, 12 Sept): the email lands here, at the moment they have just
   // said yes to a real slot, where it buys them the member rate rather than
@@ -6067,11 +6110,11 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
       s.step = "done"; await saveSession(s);
     }
   }
-  await logEvent(from || "web", "confirmed", { id: req.id, studio, via: via === "web" ? "offer_page" : "offer" });
+  await logEvent(from || "web", "confirmed", { id: req.id, studio, via: relSlot ? "released" : via === "web" ? "offer_page" : "offer", ...(relSlot ? { slot: String(relSlot.id) } : {}) });
   await founderCard(`✅ Booked: ${req.first_name || "customer"} at ${studio}, ${when} · #${req.id}`, {
-    badge: "BOOKED",
+    badge: relSlot ? "BOOKED (RELEASED TIME)" : "BOOKED",
     title: `${studio} · ${when}`,
-    paras: [`${req.first_name || "The customer"} tapped Yes${via === "web" ? " on the offer page" : " on WhatsApp"}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
+    paras: [`${req.first_name || "The customer"} tapped ${relSlot ? `a time ${studio} had released to us, which books it (12 Oct rule; the studio can reject it until ${relHm(Date.parse(String(relSlot.reject_until)))})` : `Yes${via === "web" ? " on the offer page" : " on WhatsApp"}`}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
     waNum: clientDigits, studioNum: digitsOf(row.phone || ""), studioName: studio,
   });
   return true;
@@ -6351,6 +6394,14 @@ const relRpcOne = async (fn: string, args: Record<string, unknown>): Promise<any
 const relKnownTester = (phone: string, email: unknown, name: unknown): boolean =>
   TEST_PHONES.includes(digitsOf(phone)) || FAKE_NUM_RE.test(digitsOf(phone)) || TEST_EMAIL_RE.test(String(email || "")) || TEST_NAME_RE.test(String(name || ""));
 const relExcluded = (s: Session): string[] => Array.isArray(s.data.relExclude) && Date.now() - Number(s.data.relExcludeAt || 0) < 6 * 3600e3 ? s.data.relExclude.map(String) : [];
+const relAskKey = (s: Session): string => JSON.stringify([s.data.day || null, s.data.dayDate || null, s.data.time || null, s.data.area || null, s.data.service || null, Number(s.data.duration) || 60]);
+// Give back a released time this customer had tapped and not yet booked.
+async function relDrop(s: Session, from: string) {
+  const id = s.data.released?.slot_id;
+  s.data.released = null;
+  if (id) await relRpc("unhold_released_slot", { p_slot: id, p_phone: digitsOf(from) });
+  await saveSession(s);
+}
 const relClean = (v: unknown) => String(v || "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
 type RelPick = { slot_id: string; partner_id: string; studio: string; slug: string; area: string; address: string; wa: string; start_at: string; end_at: string; minutes: number; hm: string; typed: number | null; price: number | null; exact: boolean; km: number | null };
 // released_offers for one customer's ask (scope from releasedScope).
@@ -6447,9 +6498,10 @@ async function releasedTap(s: Session, from: string, L: string, replyId: string)
     if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
     return;
   }
-  // Another time they were shown is let go at once instead of after its hold.
-  for (const o of picks) if (o.slot_id !== p.slot_id) await relRpc("unhold_released_slot", { p_slot: o.slot_id, p_phone: phone });
-  s.data.released = { ...p, heldAt: Date.now() };
+  // ask: what they had asked for when they tapped. If that changes before the
+  // booking is finished (a new day or time typed at the name question), the
+  // tap no longer stands and finalizeReleased gives the time back.
+  s.data.released = { ...p, heldAt: Date.now(), ask: relAskKey(s) };
   s.data.relPicks = null; s.data.chosen = null; s.data.customStudio = null; s.data.prefer = null;
   await saveSession(s);
   await logEvent(from, "studio_chosen", { how: "released", studio: p.studio, time: p.hm, slot: p.slot_id });
@@ -6459,17 +6511,26 @@ async function releasedTap(s: Session, from: string, L: string, replyId: string)
 // offered (stage offered, dispatched, nothing for the dispatch sweep to ask),
 // the released time becomes a channel 'released' offer row, and acceptOffer
 // books it on the tap that already happened. A hold older than 15 minutes
-// (they went quiet at the name question) is given back and the times shown
-// again, rather than booking on an old tap.
+// (they went quiet at the name question), or an ask that changed since the
+// tap, is given back and the times shown again, rather than booking on an
+// old tap.
 async function finalizeReleased(s: Session, from: string, L: string): Promise<{ outcome: string; requestId: number | null }> {
   const r = s.data.released;
   const phone = digitsOf(from);
   s.data.released = null;
-  if (!r?.slot_id || Date.now() - Number(r.heldAt || 0) > 15 * 60e3) {
+  // Test and real never meet, checked once more at the last moment: a test
+  // contact only books a test studio and a real customer only a real one.
+  const aud = releasedAudience({ phone, email: s.data.email || s.data.known?.email || "", name: s.data.name || s.wa_name || "", knownTester: relKnownTester(phone, s.data.email, s.data.name || s.wa_name) });
+  const mixed = !!r?.slot_id && (aud === "none" || (aud === "test") !== REL_TEST_STUDIO_RE.test(String(r.studio || "")));
+  if (!r?.slot_id || mixed || r.ask !== relAskKey(s) || Date.now() - Number(r.heldAt || 0) > 15 * 60e3) {
+    if (mixed) await notifyJordanWa(`Released time ${r.studio} ${r.hm} was NOT booked for +${phone}: a test contact and a real studio (or the other way round) met. Nothing was sent to the studio.`, phone);
     if (r?.slot_id) await relRpc("unhold_released_slot", { p_slot: r.slot_id, p_phone: phone });
     await saveSession(s);
-    await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].heldOut);
-    await logEvent(from, "released_hold_lapsed", { slot: r?.slot_id || null });
+    // A changed ask needs no apology: the times for the new one follow.
+    const why = !r?.slot_id ? "none" : mixed ? "mixed" : r.ask !== relAskKey(s) ? "ask_changed" : "hold_lapsed";
+    if (why === "hold_lapsed") await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].heldOut);
+    else if (why === "mixed") await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].stale);
+    await logEvent(from, "released_not_booked", { slot: r?.slot_id || null, why });
     if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
     return { outcome: "released_reoffered", requestId: null };
   }
@@ -7234,7 +7295,11 @@ async function ensureBooking(requestId: number): Promise<string | null> {
     const bookingTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false }).format(start);
     const name = [req.first_name, req.last_name].filter(Boolean).join(" ").trim() || "WhatsApp customer";
     const phone = digitsOf(req.client_phone || "");
-    const isTest = TEST_PHONES.includes(phone) || TEST_EMAIL_RE.test(String(req.contact_email || "")) || TEST_NAME_RE.test(name);
+    // v215: a canary number (3460000xxxx) or a test studio (ZZ Prueba, Aurora
+    // Test) is a test booking too, so released-time tests never reach the
+    // ledger (mc_booking_ledger skips is_test). Real customers at real studios
+    // are unaffected.
+    const isTest = TEST_PHONES.includes(phone) || FAKE_NUM_RE.test(phone) || TEST_EMAIL_RE.test(String(req.contact_email || "")) || TEST_NAME_RE.test(name) || REL_TEST_STUDIO_RE.test(String(req.studio_name || ""));
     const body = {
       booking_ref: `wa-${requestId}`,
       client_name: name,
@@ -7815,7 +7880,16 @@ const handler = async (req: Request) => {
   // v139: the founder's reply-as-bot page. Not a Meta webhook, so it is routed
   // before the webhook body is read and never reaches the fallback below.
   const url = new URL(req.url);
-  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply") || url.searchParams.has("billing") || url.searchParams.has("invoice") || url.searchParams.has("offer") || url.searchParams.has("note"))) return new Response(null, { status: 204, headers: CORS });
+  if (req.method === "OPTIONS" && (url.searchParams.has("inbox") || url.searchParams.has("reply") || url.searchParams.has("billing") || url.searchParams.has("invoice") || url.searchParams.has("offer") || url.searchParams.has("note") || url.searchParams.has("slots") || url.searchParams.has("slotr"))) return new Response(null, { status: 204, headers: CORS });
+  // v215: a studio's free-times page and its 15 minute reject link, both
+  // signed, both shown through the bot.html shell like the offer page.
+  if (url.searchParams.has("slots") || url.searchParams.has("slotr")) {
+    try { return url.searchParams.has("slots") ? await slotsPage(url) : await slotRejectPage(url); } catch (e) {
+      console.log("[wa] slots page failed", String(e));
+      // Something went wrong. Open the link again in a moment.
+      return pageOut(url, simpleCard("Massage Club", "Algo ha fallado. Volved a abrir el enlace en un momento.", ""), 500);
+    }
+  }
   // v199: the customer's Yes / No page for an emailed offer, and the page a
   // studio lands on after tapping a time in its email.
   if (url.searchParams.has("offer")) {
@@ -8002,6 +8076,11 @@ const handleInner = async (req: Request) => {
     // v203 (12 Oct): the yes can also come from a phone call (studio-calls).
     // payload.channel says which ask it answered, 'email' by default or 'call',
     // and is kept on the dispatch row and in the reply label.
+    // v215: released times, ops only (release, list, a studio's link, reject).
+    if (["release_slots", "released_list", "slot_link", "released_reject"].includes(String(payload?.ops || ""))) {
+      if (String(payload.key || "") !== OPS_KEY || !OPS_KEY) return new Response("forbidden", { status: 403 });
+      return await releasedOps(payload);
+    }
     if (payload?.ops === "studio_offer") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
       const out = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -9995,6 +10074,7 @@ const handleInner = async (req: Request) => {
         }
         // v215: a released time (rel_0, rel_1), More options, or No thanks.
         if (/^(rel_\d|rel_more|relx_no)$/.test(replyId)) { await releasedTap(s, from, L, replyId); break; }
+        if (s.data.released) await relDrop(s, from);
         if (replyId === "pick_yes") {
           const top = (s.data.picks || [])[0];
           if (top) { s.data.chosen = top; s.data.customStudio = null; await logEvent(from, "studio_chosen", { how: "toppick", studio: top.name }); await askNameOrFinalize(s, from, L); }
