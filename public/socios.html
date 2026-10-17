@@ -19,12 +19,14 @@
   send customers its way.
 
   Landing: what Massage Club is, what the studio gets, how a booking reaches
-  it, what it costs, questions, who we are. One button.
+  it, what it costs, who we are, then the button again and questions. One
+  button label everywhere ("Ofrecer nuestras horas libres").
 
   Flow: 1 "Vuestro centro" (name, address, WhatsApp, opening hours), 2 "Vuestras
-  horas libres" (length, day, times; every week by default, or the next 7
-  days only), 3 "Últimos datos" (email, price, the terms), then the result
-  screen. Opening hours are asked on step 1, before the time grid, so the
+  horas libres" (length, day, times; every week by default, with one link for
+  the next 7 days only), 3 "Últimos datos" (email, price, the terms), then the
+  result screen. A studio that does 60 and 90 min sends one length, then the
+  other with "Añadir más horas" on the result screen. Opening hours are asked on step 1, before the time grid, so the
   grid only shows times when the studio is open and nothing picked on step 2
   can vanish later (tester blocker, 18 Oct).
 
@@ -35,7 +37,7 @@
 
   A draft (fields, times, mode, duration) is kept in localStorage per link, so
   a reload or WhatsApp's in-app browser coming back does not lose anything,
-  and the page says so. It is cleared after a save.
+  and the page says so beside "Paso X de 3". It is cleared after a save.
 
   SAVING (wired 18 Oct, wa-bot v216). Live is the default; ?preview=1 sends
   nothing and says so (no save, no view logged).
@@ -138,9 +140,10 @@ img{display:block;max-width:100%}
 /* Landing */
 .hero{padding:14px 0 6px}
 .kicker{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--clay-ink)}
-.hello{font-family:var(--serif);font-size:20px;line-height:1.5;color:var(--clay-ink);margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hello{font-family:var(--serif);font-size:20px;line-height:1.5;min-height:30px;color:var(--clay-ink);margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hello.reserve{visibility:hidden}
-h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.015em;color:var(--ink);text-wrap:balance}
+p,li,summary,figcaption,.d{text-wrap:pretty}
 h1{font-size:clamp(32px,9.4vw,46px);line-height:1.06;margin-top:8px}
 h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 .lead{font-size:18px;line-height:1.5;margin-top:14px}
@@ -167,6 +170,9 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 .cards li{display:flex;gap:14px;align-items:flex-start;background:var(--cream);border:1px solid var(--line);border-radius:18px;padding:16px}
 .cards h3{font-family:var(--sans);font-size:17.5px;line-height:1.3;letter-spacing:0;margin-top:2px}
 .cards p{font-size:16px;color:var(--muted-ink);margin-top:4px}
+.cards li.one{align-items:center;padding:12px 16px}
+.cards li.one .icon{width:40px;height:40px;border-radius:12px}
+.cards li.one h3{margin-top:0}
 .steps{list-style:none;display:grid;gap:16px}
 .steps li{display:flex;gap:14px;align-items:flex-start}
 .steps .sn{position:absolute;top:-7px;left:-7px;width:24px;height:24px;border-radius:50%;background:var(--clay);color:var(--white);font-size:13.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page);font-family:var(--sans)}
@@ -209,7 +215,9 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 .faq details[open] summary::after{content:"\2212"}
 .faq details p{padding:0 16px 16px;font-size:16px}
 
+#landing{padding-bottom:32px}
 .contact{margin:40px 0 28px;padding-top:22px;border-top:1px solid var(--edge);font-size:16px}
+#landing .contact{margin-bottom:0}
 .contact h2{margin-bottom:10px}
 .contact .who2{display:flex;gap:12px;align-items:center}
 .contact .who2 img{width:48px;height:48px;border-radius:50%;box-shadow:0 0 0 1px var(--edge)}
@@ -225,7 +233,10 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 /* Flow */
 .flow{padding:2px 0 32px}
 .preview{display:inline-block;font-size:13.5px;color:var(--muted-ink);background:var(--cream);border:1px dashed var(--field);border-radius:999px;padding:5px 12px;margin:0 0 8px}
-.stepno{font-size:15px;font-weight:700;color:var(--clay-ink);margin:2px 0 6px}
+.stepbar{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:6px;margin:2px 0 6px}
+.stepno{font-size:15px;font-weight:700;color:var(--clay-ink)}
+.draftnote{font-size:15px;color:var(--muted-ink)}
+.draftnote::before{content:"\00B7";margin-right:6px}
 .progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
 .progress li{font-size:13px;font-weight:700;color:var(--muted-ink);line-height:1.3}
 .progress li::before{content:"";display:block;height:6px;border-radius:6px;background:var(--edge);margin-bottom:5px}
@@ -234,7 +245,6 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 .step h2{outline:none;font-size:clamp(26px,7vw,31px)}
 .step .sub{margin-top:6px;font-size:17px;color:var(--ink)}
 .step .hello{margin-top:0;margin-bottom:4px}
-.draftnote{font-size:15px;color:var(--muted-ink);text-align:center;margin-top:18px}
 
 .field{margin-top:18px}
 .field label,.field .lbl{display:block;font-size:17px;font-weight:700;margin-bottom:6px}
@@ -265,29 +275,33 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 .who #whoText{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who b{color:var(--ink)}
 .who .btn-text{flex:none;min-height:44px;padding:0 4px 0 8px;font-size:16px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;border:0;margin-top:20px}
-.seg legend{font-size:17px;font-weight:700;margin-bottom:8px;padding:0}
-.seg label{position:relative;display:block}
-.seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
-.seg span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:50px;padding:4px 8px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16px;line-height:1.2}
-.seg input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
-.seg input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
-.lbl2{font-size:17.5px;font-weight:700;margin:24px 0 8px;scroll-margin-top:12px}
-.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.day{position:relative;min-height:54px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;line-height:1.2}
+.durrow{display:grid;grid-template-columns:1fr 76px 76px;gap:8px;align-items:center;margin-top:14px}
+.durrow .q{font-size:16.5px;font-weight:700;line-height:1.3}
+.durhint{font-size:15px;color:var(--muted-ink);margin-top:6px}
+.durrow label{position:relative;display:block}
+.durrow input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.durrow span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:50px;padding:4px 8px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16px;line-height:1.2}
+.durrow input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.durrow input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
+.lbl2{font-size:17.5px;font-weight:700;margin:18px 0 8px;scroll-margin-top:12px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day{position:relative;min-width:0;min-height:54px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;line-height:1.2}
 .day .dt{font-weight:700;font-size:16px}
 .day .dd{font-size:13.5px;color:var(--muted-ink)}
 .day[aria-current=true]{border:3px solid var(--clay-ink);background:var(--tint);color:var(--clay-ink)}
 .day[aria-current=true] .dd{color:var(--clay-ink)}
 .day[aria-current=true]::after{content:"";position:absolute;bottom:-9px;left:50%;margin-left:-7px;border:7px solid transparent;border-top-color:var(--clay-ink);border-bottom:0}
-.badge{position:absolute;top:-8px;right:-6px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--clay);color:var(--white);font-size:13.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page)}
+.badge{position:absolute;top:-9px;right:-4px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--clay);color:var(--white);font-size:13.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page)}
 .dayinfo{font-size:16px;color:var(--muted-ink);margin:0 0 4px}
 .dayinfo b{color:var(--ink)}
-.glabel{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin:12px 0 8px}
+.glabel{font-size:15px;font-weight:700;color:var(--muted-ink);margin:8px 0 6px}
 .times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tm{min-height:50px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16.5px;font-variant-numeric:tabular-nums}
 .tm[aria-pressed=true]{background:var(--clay);border-color:var(--clay);color:var(--white)}
 .tm[aria-pressed=true]::before{content:"\2713";margin-right:4px}
+.modeline{margin-top:18px}
+.modeline p{font-size:16.5px;color:var(--ink)}
+.modeline .btn-text{padding-left:0}
 .empty{margin-top:10px;padding:14px;border-radius:14px;background:var(--cream);font-size:16px}
 .copy{margin-top:16px;padding:12px;border-radius:14px;background:var(--cream);border:1.5px dashed var(--edge)}
 .copy p{font-size:16px;font-weight:700}
@@ -365,8 +379,8 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
         <h2 id="hGain" data-t="gainTitle"></h2>
         <ul class="cards">
           <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-people"/></svg></span><div><h3 data-t="g1t"></h3><p data-t="g1"></p></div></li>
-          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-chat"/></svg></span><div><h3 data-t="g2t"></h3><p data-t="g2"></p></div></li>
-          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-euro"/></svg></span><div><h3 data-t="g3t"></h3><p data-t="g3"></p></div></li>
+          <li class="one"><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-chat"/></svg></span><div><h3 data-t="g2t"></h3></div></li>
+          <li class="one"><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-euro"/></svg></span><div><h3 data-t="g3t"></h3></div></li>
         </ul>
       </section>
 
@@ -410,7 +424,9 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
         </div>
       </section>
 
-      <div class="ctas" style="margin-top:24px">
+      <!-- "Quiénes somos" (#contact) is placed here on the landing; in the
+           flow it moves to the end of the page as "¿Alguna duda?". -->
+      <div class="ctas" id="finalCtas" style="margin-top:24px">
         <button type="button" class="btn btn-primary" id="finalCta" data-start="1"></button>
       </div>
 
@@ -428,7 +444,7 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
     <!-- B to E. The steps and the result -->
     <div id="flow" class="flow" hidden>
       <p class="preview" id="previewNote" data-t="preview" hidden></p>
-      <p class="stepno" id="stepNo"></p>
+      <div class="stepbar"><p class="stepno" id="stepNo"></p><p class="draftnote" id="draftNote" data-t="draftNote" hidden></p></div>
       <ol class="progress" id="progress" data-aria="progressAria">
         <li data-n="1"><span data-t="p1"></span></li>
         <li data-n="2"><span data-t="p2"></span></li>
@@ -475,13 +491,13 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
       <section class="step" data-step="2" aria-labelledby="s2h" hidden>
         <h2 id="s2h" tabindex="-1" data-t="s2Title"></h2>
         <p class="who" id="who" hidden><span id="whoText"></span><button type="button" class="btn btn-text" data-back="1" data-t="change"></button></p>
-        <p class="sub" data-t="s2Sub"></p>
 
-        <fieldset class="seg" id="durSet">
-          <legend data-t="durLegend"></legend>
+        <div class="durrow" id="durSet" role="radiogroup" aria-labelledby="durQ" aria-describedby="durHint">
+          <p class="q" id="durQ" data-t="durLegend"></p>
           <label><input type="radio" name="dur" value="60" checked><span>60 min</span></label>
           <label><input type="radio" name="dur" value="90"><span>90 min</span></label>
-        </fieldset>
+        </div>
+        <p class="durhint" id="durHint" data-t="durHint"></p>
 
         <p class="lbl2" id="daysLbl" data-t="pickDay"></p>
         <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
@@ -490,14 +506,12 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
         <div id="grid"></div>
         <div id="copyBox"></div>
         <p class="sr" id="copyLive" aria-live="polite"></p>
-        <p class="hint" id="dropNote" aria-live="polite"></p>
+        <p class="warn" id="dropNote" aria-live="polite"></p>
 
-        <fieldset class="seg" id="modeSet">
-          <legend data-t="repeatLegend"></legend>
-          <label><input type="radio" name="mode" value="weekly" checked><span data-t="weeklyOpt"></span></label>
-          <label><input type="radio" name="mode" value="once"><span data-t="onceOpt"></span></label>
-        </fieldset>
-        <p class="hint" id="modeHint" aria-live="polite"></p>
+        <div class="modeline">
+          <p id="modeHint" aria-live="polite"></p>
+          <button type="button" class="btn btn-text" id="modeSwitch"></button>
+        </div>
 
         <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
         <div class="actions">
@@ -541,12 +555,14 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
                decided. If it does, termsLine needs one honest line about it
                before this page goes to any studio. Do not invent it here. -->
           <!-- termsLine is shown in full, word for word: it is sent as
-               terms.text and stored as the studio's written acceptance. -->
+               terms.text and stored as the studio's written acceptance.
+               paintTerms() only keeps "5 € + IVA" on one line and breaks the
+               line after "2026;" on screen; the words never change. -->
           <label class="check" id="acceptBox" for="accept">
             <input type="checkbox" id="accept" required aria-describedby="acceptLine acceptErr">
             <span>
               <span class="ttl" data-t="accept"></span>
-              <span class="line" id="acceptLine" data-t="termsLine"></span>
+              <span class="line" id="acceptLine"></span>
             </span>
           </label>
           <p class="err" id="acceptErr" aria-live="polite"></p>
@@ -595,10 +611,9 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
         </div>
       </section>
 
-      <p class="draftnote" id="draftNote" data-t="draftNote" hidden></p>
     </div>
 
-    <footer class="contact" aria-labelledby="contactTitle">
+    <section class="contact" id="contact" aria-labelledby="contactTitle">
       <h2 id="contactTitle"></h2>
       <div class="who2">
         <img src="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png" width="48" height="48" alt="" decoding="async" loading="lazy">
@@ -609,7 +624,7 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
         <a class="btn btn-secondary" href="mailto:jordan@massageclub.io"><svg class="ico plain" aria-hidden="true"><use href="#i-mail"/></svg><span>jordan@massageclub.io</span></a>
       </div>
       <p class="seeus"><span data-t="seeUs"></span> <a href="https://book.massageclub.io" target="_blank" rel="noopener">book.massageclub.io</a></p>
-    </footer>
+    </section>
   </main>
 </div>
 
@@ -666,34 +681,31 @@ const T = {
     hello: "Hola, {n}",
     h1: "Clientes nuevos para vuestras horas libres",
     sub: "Somos Massage Club, un pequeño servicio de reservas en Madrid. Gente que escribe en inglés nos pide un masaje. Nosotros les buscamos un centro.",
-    cta: "Empezar",
-    ctaKnown: "Elegir horas libres",
+    cta: "Ofrecer nuestras horas libres",
     ctaResume: "Seguir donde lo dejasteis",
-    ctaNote: "<b>Gratis hasta el 30 de noviembre.</b> Sin app ni contraseña.",
+    ctaNote: "<b>Gratis hasta el 30 de noviembre.</b> 3 pasos, unos 2 minutos. Sin app ni contraseña.",
     gainTitle: "¿Qué ganáis?",
     g1t: "Clientes nuevos",
     g1: "Extranjeros que viven en Madrid, estudiantes de fuera y turistas. Desde septiembre nos han escrito más de 100 personas.",
     g2t: "Todo en español, sin instalar nada",
-    g2: "Nosotros hablamos con el cliente en inglés. Vosotros recibís la reserva en español, por WhatsApp y email.",
     g3t: "Solo pagáis si el cliente viene",
-    g3: "Gratis hasta el 30 de noviembre. Después, 5\u00a0€ + IVA por cada cliente nuevo que venga.",
     howTitle: "Así funciona",
     how1t: "Nos decís qué horas tenéis libres.",
     how1: "Aquí mismo, con unos toques.",
     how2t: "Un cliente reserva una.",
     how2: "Hablamos nosotros con él, en inglés.",
     how3t: "Os llega la reserva por WhatsApp y email.",
-    how3: "En español, con su nombre y teléfono. Tenéis 15 minutos para rechazarla.",
+    how3: "En español, con su nombre, teléfono y email. Tenéis 15 minutos para rechazarla.",
     exLbl: "Ejemplo de lo que os llega:",
-    exNote: "",
+    exNote: "Nombre, hora, teléfono y email. Y un enlace para rechazarla en 15 minutos.",
     priceTitle: "Lo que cuesta",
     pr1k: "Hasta el 30 de noviembre",
     pr1v: "Gratis",
     pr2k: "Cada cliente nuevo, desde el 1 de diciembre",
-    pr2s: "Solo su primera visita, y solo si viene.",
+    pr2s: "Solo su primera visita, y solo si viene. IVA = impuesto.",
     pr2v: "5\u00a0€ + IVA",
     pr3k: "Si ese cliente vuelve",
-    pr4k: "Cuota al mes",
+    pr4k: "Pago fijo al mes",
     pr4s: "Sin contrato. Lo dejáis cuando queráis.",
     payLine: "El cliente os paga a vosotros, en el centro, a vuestro precio.",
     cmpCap: "Por un cliente nuevo, en un masaje de 68\u00a0€:",
@@ -719,7 +731,7 @@ const T = {
     progressAria: "Pasos",
     stepOf: "Paso {n} de 3",
     p1: "Centro", p2: "Horas libres", p3: "Últimos datos",
-    draftNote: "Se guarda en este móvil. Podéis terminar luego.",
+    draftNote: "Podéis terminar luego",
     s1Title: "Vuestro centro",
     s1SubKnown: "¿Está todo bien? Cambiad lo que haga falta.",
     s1SubNew: "Para saber a dónde mandar las reservas.",
@@ -733,7 +745,7 @@ const T = {
     opt: "(opcional)",
     fHours: "Horario",
     fHoursPh: "Ej.: Lun-Vie 10-20",
-    hoursHintNone: "Así solo os enseñamos horas en que abrís.",
+    hoursHintNone: "Si lo ponéis, solo os enseñamos horas en que abrís.",
     hoursHintOk: "Entendido: {h}.",
     hoursHintBad: "No lo entendemos del todo. Probad así: Lun-Vie 10-20, Sáb 10-14.",
     next1: "Siguiente: vuestras horas libres",
@@ -746,15 +758,15 @@ const T = {
 
     s2Title: "¿Qué horas tenéis libres?",
     change: "Cambiar datos",
-    s2Sub: "Tocad las horas en que tenéis una sala libre.",
-    durLegend: "¿Cuánto dura el masaje?",
+    durLegend: "¿Masajes de 60 o de 90 minutos?",
+    durHint: "¿Hacéis los dos? Uno ahora, el otro al final.",
     pickDay: "1. Elegid un día",
     pickTimes: "2. Tocad las horas libres",
     today: "Hoy",
     nSel: "{n} elegidas", nSel1: "1 elegida",
     every: "Cada {wd}",
     openSpans: "abierto {s}",
-    am: "Mañana", pm: "Tarde",
+    am: "Por la mañana", pm: "Por la tarde",
     amAria: "Horas por la mañana", pmAria: "Horas por la tarde",
     noTimes: "Este día no quedan horas para un masaje de {d} min.",
     noDaysW: "Con vuestro horario no abrís ningún día. Revisadlo en «Cambiar datos».",
@@ -764,12 +776,13 @@ const T = {
     copied0: "No caben en ningún otro día.", copiedTo: "Copiadas a: {d}.",
     dropped1: "1 hora ya no cabe en vuestro horario. No la enviamos.",
     droppedN: "{n} horas ya no caben en vuestro horario. No las enviamos.",
-    repeatLegend: "¿Se repiten cada semana?",
-    weeklyOpt: "Sí, cada semana", onceOpt: "No, solo los próximos 7 días",
-    modeWeekly: "Se repiten hasta que las quitéis.",
-    modeOnce: "Solo esos días. No se repiten.",
+    modeWeekly: "Se repiten cada semana hasta que las quitéis.",
+    modeToOnce: "Solo para los próximos 7 días",
+    modeOnce: "Solo para los próximos 7 días. No se repiten.",
+    modeToWeekly: "Que se repitan cada semana",
     sumLbl: "Vais a enviar",
     sumNone: "Todavía no habéis elegido ninguna hora.",
+    sumDropped: "Vuestras horas no caben en el nuevo horario. Elegid otras.",
     sum1: "1 hora libre de {d} min", sumN: "{n} horas libres de {d} min",
     weekly: "cada semana", once: "solo estos días",
     next2Zero: "Tocad al menos 1 hora", next2One: "Seguir con 1 hora", next2N: "Seguir con {n} horas",
@@ -782,7 +795,7 @@ const T = {
     fEmail: "Email para las reservas",
     fEmailPh: "hola@vuestrocentro.es",
     fEmailHint: "Cada reserva os llega también por email.",
-    fPrices: "Vuestro precio",
+    fPrices: "¿Cuánto cobráis?",
     priceHint: "El cliente os lo paga a vosotros.",
     priceFrom: "Tenemos apuntado: desde {p} €.",
     editTimes: "Cambiar las horas",
@@ -844,36 +857,33 @@ const T = {
     langBtn: "ES", langAria: "Leer esta página en español",
     kicker: "For massage studios in Madrid",
     hello: "Hi, {n}",
-    h1: "New customers for your free hours",
+    h1: "New customers for your free times",
     sub: "We are Massage Club, a small booking service in Madrid. People who write in English ask us for a massage. We find them a studio.",
-    cta: "Start",
-    ctaKnown: "Choose free times",
+    cta: "Offer our free times",
     ctaResume: "Carry on where you left off",
-    ctaNote: "<b>Free until 30 November.</b> No app, no password.",
+    ctaNote: "<b>No charge until 30 November.</b> 3 steps, about 2 minutes. No app, no password.",
     gainTitle: "What's in it for you?",
     g1t: "New customers",
     g1: "Foreigners who live in Madrid, students from abroad and tourists. Since September more than 100 people have written to us.",
     g2t: "Everything in Spanish, nothing to install",
-    g2: "We talk to the customer in English. You get the booking in Spanish, on WhatsApp and by email.",
     g3t: "You only pay if the customer comes",
-    g3: "Free until 30 November. After that, 5\u00a0€ + VAT for each new customer who comes.",
     howTitle: "How it works",
-    how1t: "You tell us which hours you have free.",
+    how1t: "You tell us which times you have free.",
     how1: "Right here, with a few taps.",
     how2t: "A customer books one.",
     how2: "We talk to them, in English.",
     how3t: "The booking reaches you on WhatsApp and by email.",
-    how3: "In Spanish, with their name and phone. You have 15 minutes to turn it down.",
+    how3: "In Spanish, with their name, phone and email. You have 15 minutes to turn it down.",
     exLbl: "Example. It reaches you in Spanish:",
     exNote: "Name, time, phone and email. Plus a link to turn it down within 15 minutes.",
     priceTitle: "What it costs",
     pr1k: "Until 30 November",
-    pr1v: "Free",
+    pr1v: "No charge",
     pr2k: "Each new customer, from 1 December",
-    pr2s: "Only their first visit, and only if they come.",
+    pr2s: "Only their first visit, and only if they come. VAT = tax.",
     pr2v: "5\u00a0€ + VAT",
     pr3k: "If that customer comes back",
-    pr4k: "Monthly fee",
+    pr4k: "Fixed payment each month",
     pr4s: "No contract. Stop whenever you like.",
     payLine: "The customer pays you at the studio, at your price.",
     cmpCap: "For a new customer on a 68\u00a0€ massage:",
@@ -884,7 +894,7 @@ const T = {
     q1: "Do we have to speak English?",
     a1: "Not for the bookings. We talk to the customer, and you get everything in Spanish. We can't promise the customer speaks Spanish.",
     q2: "We're already on Treatwell, Booksy or Fresha",
-    a2: "Keep them. We only use the hours you have left free. If one fills up, write \"ocupado\" (taken) on WhatsApp and we remove it.",
+    a2: "Keep them. We only use the times you have left free. If one fills up, write \"ocupado\" (taken) on WhatsApp and we remove it.",
     q3: "What if the customer doesn't come?",
     a3: "You pay nothing. We only charge if the customer really comes.",
     q4: "What if someone asks for something else?",
@@ -899,7 +909,7 @@ const T = {
     progressAria: "Steps",
     stepOf: "Step {n} of 3",
     p1: "Studio", p2: "Free times", p3: "Last details",
-    draftNote: "It's saved on this phone. You can finish later.",
+    draftNote: "You can finish later",
     s1Title: "Your studio",
     s1SubKnown: "Is it all right? Change whatever you need.",
     s1SubNew: "So we know where to send the bookings.",
@@ -913,7 +923,7 @@ const T = {
     opt: "(optional)",
     fHours: "Opening hours",
     fHoursPh: "E.g. Mon-Fri 10-20",
-    hoursHintNone: "Then we only show times when you're open.",
+    hoursHintNone: "If you add it, we only show times when you're open.",
     hoursHintOk: "Got it: {h}.",
     hoursHintBad: "We can't quite read that. Try: Mon-Fri 10-20, Sat 10-14.",
     next1: "Next: your free times",
@@ -924,17 +934,17 @@ const T = {
     errWa: "The WhatsApp for bookings is missing.",
     errWaLandline: "This looks like a landline. If it is your WhatsApp, tap the button again.",
 
-    s2Title: "Which hours do you have free?",
+    s2Title: "Which times do you have free?",
     change: "Edit details",
-    s2Sub: "Tap the times when you have a free room.",
-    durLegend: "How long is the massage?",
+    durLegend: "60 or 90 minute massages?",
+    durHint: "Do both? One now, the other at the end.",
     pickDay: "1. Pick a day",
     pickTimes: "2. Tap the free times",
     today: "Today",
     nSel: "{n} chosen", nSel1: "1 chosen",
     every: "Every {wd}",
     openSpans: "open {s}",
-    am: "Morning", pm: "Afternoon",
+    am: "In the morning", pm: "In the afternoon",
     amAria: "Morning times", pmAria: "Afternoon times",
     noTimes: "No times left this day for a {d} min massage.",
     noDaysW: "Your opening hours show no open day. Check them in \"Edit details\".",
@@ -944,12 +954,13 @@ const T = {
     copied0: "They don't fit on any other day.", copiedTo: "Copied to: {d}.",
     dropped1: "1 time no longer fits your hours. We won't send it.",
     droppedN: "{n} times no longer fit your hours. We won't send them.",
-    repeatLegend: "Do they repeat every week?",
-    weeklyOpt: "Yes, every week", onceOpt: "No, only the next 7 days",
-    modeWeekly: "They repeat until you remove them.",
-    modeOnce: "Only those days. They don't repeat.",
+    modeWeekly: "They repeat every week until you remove them.",
+    modeToOnce: "Only for the next 7 days",
+    modeOnce: "Only for the next 7 days. They don't repeat.",
+    modeToWeekly: "Repeat them every week",
     sumLbl: "You're sending",
     sumNone: "You haven't chosen any times yet.",
+    sumDropped: "Your times don't fit the new hours. Pick others.",
     sum1: "1 free time, {d} min", sumN: "{n} free times, {d} min",
     weekly: "every week", once: "these dates only",
     next2Zero: "Tap at least 1 time", next2One: "Continue with 1 time", next2N: "Continue with {n} times",
@@ -962,7 +973,7 @@ const T = {
     fEmail: "Email for bookings",
     fEmailPh: "hello@yourstudio.com",
     fEmailHint: "Every booking reaches you by email too.",
-    fPrices: "Your price",
+    fPrices: "How much do you charge?",
     priceHint: "The customer pays it to you.",
     priceFrom: "We have you down as: from {p} €.",
     editTimes: "Change the times",
@@ -1368,15 +1379,29 @@ function paintStatic() {
   lb.textContent = t("langBtn");
   lb.setAttribute("aria-label", t("langAria"));
   lb.setAttribute("lang", L === "es" ? "en" : "es");
-  document.querySelector(`input[name=mode][value=${S.repeat ? "weekly" : "once"}]`).checked = true;
   document.querySelector(`input[name=dur][value="${S.dur}"]`).checked = true;
   $("accept").checked = S.accepted;
+  paintTerms();
   paintDynamic();
 }
+// The terms beside the checkbox: termsLine word for word (it is what is sent
+// as terms.text). On screen only, "5 € + IVA" and "0 €" never break across
+// lines, and the line breaks after "2026;". Same words, same order.
+function paintTerms() {
+  const el = $("acceptLine");
+  const line = T[L].termsLine;
+  const keep = (x) => x.replace(/(\d) € \+ (IVA|VAT)/g, "$1\u00a0€\u00a0+\u00a0$2").replace(/(\d) €/g, "$1\u00a0€");
+  const i = line.indexOf("; ");
+  el.textContent = "";
+  if (i > 0) el.append(keep(line.slice(0, i + 1)), document.createElement("br"), keep(line.slice(i + 2)));
+  else el.textContent = keep(line);
+}
 // The main button: a studio we already know (or one coming back to a draft)
-// goes straight to its times; anyone else starts at "Vuestro centro".
+// goes straight to its times; anyone else starts at "Vuestro centro". The
+// label is the same either way, so it never changes under the thumb when a
+// personal link's details arrive.
 const skipStep1 = () => step1Valid() && (S.active || hasPicks());
-const ctaLabel = () => hasPicks() ? t("ctaResume") : skipStep1() ? t("ctaKnown") : t("cta");
+const ctaLabel = () => hasPicks() ? t("ctaResume") : t("cta");
 function start() { go(skipStep1() ? 2 : 1); }
 function paintDynamic() {
   const name = S.partner ? S.partner.business_name : "";
@@ -1384,7 +1409,7 @@ function paintDynamic() {
   // While a personal link loads, the greeting keeps its line so nothing jumps.
   $("helloTop").hidden = !name && !loading;
   $("helloTop").classList.toggle("reserve", !name);
-  $("helloTop").textContent = name ? t("hello", { n: name }) : " ";
+  $("helloTop").textContent = name ? t("hello", { n: name }) : "\u00a0";
   $("helloStep").hidden = !name;
   $("helloStep").textContent = name ? t("hello", { n: name }) : "";
   $("heroCta").textContent = ctaLabel();
@@ -1438,7 +1463,9 @@ function paintContact() {
 
 function chipHTML(d, n) {
   const top = d.weekly ? SH[L][d.wd] : d.offset === 0 ? t("today") : SH[L][d.wd];
-  const bottom = d.weekly ? "" : `<span class="dd">${d.dd} ${esc(MO[L][d.mm])}</span>`;
+  // Seven days sit in one row, so a date chip shows the day number only; the
+  // month is in its label and in the line above the times.
+  const bottom = d.weekly ? "" : `<span class="dd">${d.dd}</span>`;
   const badge = n ? `<span class="badge" aria-hidden="true">${n}</span>` : "";
   const full = d.weekly ? cap(LG[L][d.wd]) : (L === "es" ? `${cap(LG.es[d.wd])} ${d.dd} de ${MOL.es[d.mm]}` : `${LG.en[d.wd]} ${d.dd} ${MOL.en[d.mm]}`);
   const aria = full + (n ? ", " + (n === 1 ? t("nSel1") : t("nSel", { n })) : "");
@@ -1484,18 +1511,20 @@ function renderTimes() {
   const hid = hiddenCount();
   $("dropNote").textContent = hid ? t(hid === 1 ? "dropped1" : "droppedN", { n: hid, d: S.dur }) : "";
   $("modeHint").textContent = t(S.repeat ? "modeWeekly" : "modeOnce");
+  $("modeSwitch").textContent = t(S.repeat ? "modeToOnce" : "modeToWeekly");
   renderSummary();
 }
-function summaryHTML(list, dur, repeat, withLabel) {
+function summaryHTML(list, dur, repeat, withLabel, dropped) {
   const lbl = withLabel ? `<p class="sumlbl">${esc(t("sumLbl"))}</p>` : "";
-  if (!list.length) return withLabel ? `${lbl}<p>${esc(t("sumNone"))}</p>` : "";
+  // Times that no longer fit are not "never chosen": say so.
+  if (!list.length) return withLabel ? `${lbl}<p>${esc(t(dropped ? "sumDropped" : "sumNone"))}</p>` : "";
   const n = countOf(list);
   const head = (n === 1 ? t("sum1", { d: dur }) : t("sumN", { n, d: dur })) + " · " + t(repeat ? "weekly" : "once");
   const rows = list.map(({ d, mins }) => `<li><b>${esc(dayLabel(d))}</b>${mins.map(hhmm).join(", ")}</li>`).join("");
   return `${lbl}<p class="sumhead">${esc(head)}</p><ul>${rows}</ul>`;
 }
 function renderSummary() {
-  $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true);
+  $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true, hiddenCount() > 0);
   updateDock();
 }
 function renderMini() {
@@ -1503,8 +1532,8 @@ function renderMini() {
   // (wa-bot socSignedUpdate); an unsigned form waits for Jordan.
   const wa = val("wa") && S.signed ? `<p class="hint">${esc(t("sumWa", { v: pretty(val("wa")) }))}</p>` : "";
   const hid = hiddenCount();
-  const drop = hid ? `<p class="hint">${esc(t(hid === 1 ? "dropped1" : "droppedN", { n: hid, d: S.dur }))}</p>` : "";
-  $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true) + drop + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
+  const drop = hid ? `<p class="warn">${esc(t(hid === 1 ? "dropped1" : "droppedN", { n: hid, d: S.dur }))}</p>` : "";
+  $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true, hid > 0) + drop + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
 }
 function renderDone() {
   const r = S.result, last = S.last, srv = S.server || {};
@@ -1561,6 +1590,7 @@ function go(step, mode = "push") {
   if (mode === "push") history.pushState({ step, prev }, "", here(step));
   else if (mode === "replace") history.replaceState({ step, prev: (history.state && typeof history.state.prev === "number") ? history.state.prev : -1 }, "", here(step));
   S.step = step;
+  placeContact();
   $("landing").hidden = step !== 0;
   $("flow").hidden = step === 0;
   $("progress").hidden = step === 4;
@@ -1583,6 +1613,14 @@ function go(step, mode = "push") {
   window.scrollTo(0, 0);
   const h = step === 0 ? null : $("s" + step + "h");
   if (h && mode !== "none") h.focus({ preventScroll: true });
+}
+// "Quiénes somos" sits after the price on the landing (before the last
+// button and the questions); in the flow it is the "¿Alguna duda?" block at
+// the end. One block, moved, so its links keep one id each.
+function placeContact() {
+  const c = $("contact");
+  if (S.step === 0) { if (c.nextElementSibling !== $("finalCtas")) $("landing").insertBefore(c, $("finalCtas")); }
+  else if (c.parentNode !== $("main") || c.nextElementSibling) $("main").appendChild(c);
 }
 // In-page back: the phone's back button and ours must agree, so when the entry
 // before this one is the step we want, it is simply history.back().
@@ -1659,14 +1697,23 @@ function focusField(id) {
   try { box.scrollIntoView({ block: "center" }); } catch (_) { box.scrollIntoView(); }
   el.focus({ preventScroll: true });
 }
-// Beside the send button: what is still missing, in words.
+// Beside the send button: what is still missing, in words. Only when it adds
+// something: two or more things, or the one thing is out of view (its own
+// error already sits under it otherwise).
+const missBox = (k) => k === "accept" ? $("acceptBox") : $(k) ? $(k).closest(".field") : null;
+function outOfView(el) {
+  if (!el || S.step !== 3) return false;
+  const r = el.getBoundingClientRect();
+  return r.bottom < 0 || r.top > window.innerHeight;
+}
 function paintMiss() {
   const items = [];
   for (const k of S.miss) {
     const s = k === "email" ? t("missEmail") : k === "accept" ? t("missAccept") : k === "p60" || k === "p90" ? t("missPrice", { d: k === "p60" ? 60 : 90 }) : "";
     if (s && !items.includes(s)) items.push(s);
   }
-  $("missErr").textContent = items.length ? t("missLbl", { list: joinList(items) }) : "";
+  const show = items.length > 1 || (items.length === 1 && outOfView(missBox(S.miss[0])));
+  $("missErr").textContent = show ? t("missLbl", { list: joinList(items) }) : "";
 }
 function unmiss(...keys) {
   if (!S.miss.length) return;
@@ -1705,10 +1752,8 @@ $("addr").addEventListener("input", () => { if ($("addrErr").dataset.k && val("a
 ["name", "wa"].forEach((id) => $(id).addEventListener("input", () => { paintWho(); paintContact(); }));
 
 // ---------------------------------------------------------------- step 2
-$("modeSet").addEventListener("change", (e) => {
-  if (e.target.name !== "mode") return;
-  const on = e.target.value === "weekly";
-  if (on === S.repeat) return;
+$("modeSwitch").addEventListener("click", () => {
+  const on = !S.repeat;
   const fromKey = S.day;
   const has = (o) => Object.values(o).some((s) => s.size);
   S.repeat = on;
@@ -1790,10 +1835,17 @@ $("copyBox").addEventListener("click", (e) => {
   const days = dayList();
   const names = to.map((k) => days.find((x) => x.key === k)).filter(Boolean).map(chipName);
   $("copyLive").textContent = names.length ? t("copiedTo", { d: names.join(", ") }) : t("copied0");
+  keepAboveDock($("copyBox").querySelector(".copied"));
   saveDraft();
   const again = $("copyBox").querySelector(`[data-copy="${b.dataset.copy}"]`);
   if (again) again.focus({ preventScroll: true });
 });
+// A line that answers a tap is scrolled up out from under the bottom bar.
+function keepAboveDock(el) {
+  if (!el || $("dock").hidden) return;
+  const r = el.getBoundingClientRect(), top = $("dock").getBoundingClientRect().top - 12;
+  if (r.bottom > top) window.scrollBy(0, Math.ceil(r.bottom - top));
+}
 // The error sits in the bottom bar, right above the button that was tapped,
 // and the page scrolls to where the times are.
 function next2() {
@@ -1923,8 +1975,8 @@ async function send(btn) {
   if (countOf(list) > MAX_TIMES) { go(2); setErr(null, "timesErr", "errMany"); return; }
   const bad = checkStep3();
   S.miss = bad;
+  if (bad.length) { focusField(bad[0]); paintMiss(); return; }
   paintMiss();
-  if (bad.length) { focusField(bad[0]); return; }
   const payload = buildPayload(list);
   const key = batchKey(payload);
   if (key === S.lastKey) { setErr(null, "saveErr", "dup"); return; }
