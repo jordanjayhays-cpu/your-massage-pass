@@ -19,46 +19,61 @@
 
   Flow: landing, then 1 "Vuestro centro" (name, WhatsApp), 2 "Vuestras horas"
   (every week by default, or these dates only), 3 "Últimos datos" (address,
-  optional email, hours and prices, the terms), then the result screen.
+  email, hours and prices, the terms), then the result screen.
 
-  Personal link: /socios?s=<partners.slug> greets the studio and prefills its
-  details with a read-only select on the public partners table. Only a studio
-  whose row is status 'active' is offered "Ir directo a las horas"; a pending
+  Personal link: /socios?s=<partners.slug>&k=<sig> greets the studio and
+  prefills its details from wa-bot (see Prefill below). Only a studio whose
+  row is status 'active' is offered "Ir directo a las horas"; a pending
   listing goes through step 1 like anyone else.
 
   A draft (fields, times, mode, duration) is kept in localStorage per link, so
   a reload or WhatsApp's in-app browser coming back does not lose anything. It
   is cleared after a save.
 
-  SAVING. Live is the default; ?preview=1 sends nothing and says so.
-  The page POSTs {"ops":"studio_signup","payload":{...}} to wa-bot?socios=1
-  and counts it as saved ONLY on HTTP 2xx with JSON {"ok":true,"id":...}.
-  Anything else (today: wa-bot has no studio_signup op and answers the CORS
-  preflight for ?socios=1 with a plain "OK", so the browser blocks the POST)
-  shows "Falta un paso": the studio sends the same times by WhatsApp to
-  +34 612 474 827 (text prefilled) or by email to jordan@massageclub.io, so
-  the times are never lost and the page never says "Recibido" when nothing
-  was kept.
+  SAVING (wired 18 Oct, wa-bot v216). Live is the default; ?preview=1 sends
+  nothing and says so (no save, no view logged).
+  The page POSTs {"ops":"studio_signup","payload":{...}} to wa-bot?socios=1,
+  which answers JSON {ok, status, message} with CORS for book.massageclub.io,
+  massageclub.io and *.vercel.app:
+  - status "applied": a SIGNED personal link (/socios?s=<slug>&k=<sig>, from
+    Jordan's links page or the socios_link op). The link is the studio's own,
+    so its times are saved at once as released times (PRE-RELEASED SLOTS,
+    12 Oct): dated ones through release_slots, "every week" as weekly times
+    that keep themselves filled for the next 7 days. Customers see them only
+    when app_secrets RELEASED allows (the answer says, as "live"). Contact
+    details are filled only where we have none; a different WhatsApp, email,
+    address or hours goes to Jordan, never over what we have. The terms the
+    studio ticked are stored as its written acceptance (partner_terms).
+    Screen: "Guardado", with a link to the studio's own times page.
+  - status "pending_review": no link signature (the plain /socios, or a
+    /socios?s=<slug> anyone can type). Nothing is saved or offered; Jordan
+    gets a card with Aprobar / Rechazar. Screen: "Recibido, lo revisamos y os
+    confirmamos por WhatsApp o email".
+  - ok false with a message (a check failed, too many sends): shown under
+    the button, nothing else changes.
+  Only when the save cannot be reached at all (network, a server error, an
+  answer that is not JSON) does the page show "Falta un paso": the studio
+  sends the same times by WhatsApp to +34 612 474 827 (text prefilled) or by
+  email to jordan@massageclub.io, so the times are never lost and the page
+  never says "Guardado" when nothing was kept.
+  The fallback WhatsApp text starts "Hola, Massage Club. Somos <name>,
+  centro de masaje." and then its times. wa-bot v216 reads that first, from
+  any number:
+  the studio gets "Recibido, gracias. Lo revisamos y os confirmamos por
+  aquí." and Jordan a card with the message. It never enters the customer
+  flow and is never read as an answer to a booking ask.
 
-  Contract for studio_signup (to be built in supabase/functions, not here):
-  - A submission is UNVERIFIED. The save is unauthenticated and slugs are
-    public, so anyone can fill this in for any studio. Store it for Jordan's
-    review and tell him. It must never create released slots that count as
-    the studio's tap (PRE-RELEASED SLOTS rule), and never overwrite an
-    existing partner's whatsapp, email or opening_hours automatically. The
-    times are confirmed on the studio's existing WhatsApp before any of them
-    is offered; the result screen tells the studio exactly that.
-  - For a studio we already work with, prefer sending the signed slots link
-    (wa-bot ops slot_link) over /socios?s=<slug>#horas.
-  - OPTIONS wa-bot?socios=1 answers 204 with CORS; the POST answers JSON
-    {ok:true,id} with CORS.
-  - The fallback WhatsApp text always starts "Hola, Massage Club. Somos <name>,
-    centro de masaje." From a number that is not a partner, wa-bot today puts
-    it in the customer flow, and from a partner number handleStudioReply may
-    read a time in it as an answer to an open ask. Route that opening line to
-    Jordan before this page goes to studios.
+  Prefill: GET wa-bot?socios=1&s=<slug>[&k=<sig>][&view=1]. A signed link
+  also gets the email on file and logs one "link opened" (view=1, never in
+  preview) for Jordan's links page. If that call cannot be reached, an
+  unsigned link falls back to the read-only select below.
 
-  No tracking, no external JS, nothing sent on page load.
+  Email is required: released times are only offered at studios with an
+  email, because the email always carries the client's phone and the 15
+  minute reject link (build notes R7).
+
+  No tracking beyond that one "link opened" for a signed link, no external
+  JS, nothing saved on page load.
 -->
 <style>
 :root{
@@ -232,6 +247,9 @@ h3{font-size:21px;line-height:1.2}
 .done-mark{width:64px;height:64px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:32px;margin:8px 0 16px}
 .next{list-style:none;display:grid;gap:10px;margin-top:16px}
 .next li{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:16.5px}
+.srv{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--cream);border:1px solid var(--line);font-size:15.5px}
+.srv b{display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-ink);margin-bottom:2px}
+.srv + .srv{margin-top:8px}
 .msg{margin-top:10px;padding:14px;border-radius:14px;background:var(--white);border:1.5px solid var(--edge);font-size:14.5px;white-space:pre-wrap;word-break:break-word}
 
 @media (min-width:720px){
@@ -366,6 +384,7 @@ h3{font-size:21px;line-height:1.2}
           <label><input type="radio" name="mode" value="weekly" checked><span data-t="weeklyOpt"></span></label>
           <label><input type="radio" name="mode" value="once"><span data-t="onceOpt"></span></label>
         </fieldset>
+        <p class="hint" id="modeHint" aria-live="polite"></p>
 
         <span class="sr" id="daysLbl" data-t="dayLbl"></span>
         <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
@@ -400,8 +419,9 @@ h3{font-size:21px;line-height:1.2}
             <p class="err" id="addrErr" aria-live="polite"></p>
           </div>
           <div class="field">
-            <label for="email"><span data-t="fEmail"></span> <span class="opt" data-t="opt"></span></label>
-            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" data-ph="fEmailPh" aria-describedby="emailErr">
+            <label for="email" data-t="fEmail"></label>
+            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" data-ph="fEmailPh" required aria-describedby="emailHint emailErr">
+            <p class="hint" id="emailHint" data-t="fEmailHint"></p>
             <p class="err" id="emailErr" aria-live="polite"></p>
           </div>
           <div class="field">
@@ -457,12 +477,9 @@ h3{font-size:21px;line-height:1.2}
         <p class="sub" id="s4sub"></p>
 
         <div id="rSaved" hidden>
+          <div id="srvNote"></div>
           <h3 style="margin-top:22px" data-t="nextTitle"></h3>
-          <ul class="next">
-            <li data-t="nextA"></li>
-            <li data-t="nextB"></li>
-            <li data-t="nextC"></li>
-          </ul>
+          <ul class="next" id="nextList"></ul>
         </div>
 
         <div id="rFallback" hidden>
@@ -481,6 +498,7 @@ h3{font-size:21px;line-height:1.2}
         </div>
 
         <div class="actions">
+          <a class="btn btn-primary" id="manage" target="_blank" rel="noopener" hidden data-t="manage"></a>
           <a class="btn btn-secondary" id="doneWa" target="_blank" rel="noopener" hidden><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span data-t="waContact"></span></a>
           <button type="button" class="btn btn-secondary" id="more" data-t="more" hidden></button>
           <button type="button" class="btn btn-text" id="retry" data-t="fbRetry" hidden></button>
@@ -510,10 +528,12 @@ h3{font-size:21px;line-height:1.2}
 
 const SB = "https://jglftdstrowwckwqmpue.supabase.co";
 // Publishable key, the same one the website ships (src/lib/supabase.ts). Used
-// only for a read-only select on partners by slug.
+// only as a fallback for an unsigned link: a read-only select on partners by
+// slug when wa-bot's prefill cannot be reached.
 const SB_KEY = "sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
-const SAVE_URL = SB + "/functions/v1/wa-bot?socios=1";
-const FORM_VERSION = "socios-2026-10-17b";
+const API = SB + "/functions/v1/wa-bot";
+const SAVE_URL = API + "?socios=1";
+const FORM_VERSION = "socios-2026-10-18";
 const TERMS_VERSION = "2026-10-17";
 // The number studios get confirmed bookings from (the bot line).
 const WA_NUM = "34612474827";
@@ -523,6 +543,15 @@ const q = new URLSearchParams(location.search);
 const PREVIEW = q.get("preview") === "1";
 const SLUG = String(q.get("s") || "").trim().toLowerCase();
 const SLUG_OK = /^[a-z0-9][a-z0-9-]{0,79}$/.test(SLUG);
+// The personal link's signature (k). Checked only by wa-bot: a link without
+// one, or with a wrong one, is saved for Jordan's review instead.
+const SIG = String(q.get("k") || "").trim().toLowerCase();
+const SIG_OK = SLUG_OK && /^[0-9a-f]{24}$/.test(SIG);
+// When this page was drawn: the save never puts back a time the studio has
+// removed or rejected since (release_slots p_since).
+const DRAWN_AT = Date.now();
+// At most this many slots in one send (wa-bot checks it too).
+const MAX_TIMES = 40;
 let L = String(q.get("lang") || "es").toLowerCase().startsWith("en") ? "en" : "es";
 
 // Partner fee, as Jordan set it on 17 Oct (CLAUDE.md, billing_settings).
@@ -616,6 +645,9 @@ const T = {
     next2: "Siguiente", next2One: "Seguir con 1 hueco", next2N: "Seguir con {n} huecos",
     back1: "Volver",
     errNone: "Elegid al menos un hueco.",
+    errMany: "Como mucho 40 huecos de una vez. Quitad alguno, por favor.",
+    modeWeekly: "Se repiten solas cada semana hasta que las quitéis.",
+    modeOnce: "Solo esos días; no se repiten.",
 
     s3Title: "Últimos datos",
     s3Sub: "Lo opcional podéis dejarlo en blanco.",
@@ -623,6 +655,7 @@ const T = {
     fAddrPh: "Calle y número, o el barrio",
     fEmail: "Email",
     fEmailPh: "hola@vuestrocentro.es",
+    fEmailHint: "Imprescindible: cada reserva os llega también por email, con el teléfono del cliente y el enlace para rechazarla.",
     opt: "(opcional)",
     fHours: "Horario",
     fHoursPh: "Lun-Vie 10-14 y 17-21, Sáb 10-14",
@@ -638,16 +671,24 @@ const T = {
     termsLine: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
     errAddr: "Añadid la dirección o el barrio.",
     errEmail: "Ese email no parece correcto.",
+    errEmailNone: "Falta el email.",
     errPrice: "Poned solo el número, por ejemplo 45.",
     errAccept: "Para enviar, marcad «Acepto las condiciones».",
     save: "Enviar las horas", saving: "Enviando…",
     back2: "Volver",
     dup: "Ya nos habéis enviado estas mismas horas.",
 
-    s4Saved: "Recibido",
-    thanksN: "Gracias, {n}. Tenemos vuestras horas.", thanks0: "Gracias. Tenemos vuestras horas.",
+    s4Saved: "Guardado",
+    thanksN: "Gracias, {n}. Vuestras horas están guardadas.", thanks0: "Gracias. Vuestras horas están guardadas.",
+    s4Received: "Recibido",
+    receivedN: "Gracias, {n}. Lo revisamos y os confirmamos por WhatsApp o email.", received0: "Lo revisamos y os confirmamos por WhatsApp o email.",
     nextTitle: "Qué pasa ahora",
-    nextA: "Antes de ofrecer ninguna de estas horas a un cliente, os escribimos por WhatsApp para confirmarlas.",
+    nextLive: "Ya se pueden reservar. Si un cliente coge una, os llega la reserva por WhatsApp y por email, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
+    nextWait: "Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos. Desde entonces, si un cliente coge una, os llega la reserva por WhatsApp y por email, con su nombre y su teléfono (y su email, cuando lo tenemos), y tenéis 15 minutos para rechazarla.",
+    nextReview: "Hasta que os lo confirmemos, no ofrecemos ninguna de estas horas a clientes.",
+    nextWeekly: "Las de cada semana se repiten solas. Podéis verlas y quitarlas cuando queráis con el botón de abajo.",
+    manage: "Ver y cambiar vuestras horas",
+    srvNext: "Próximas fechas", srvNot: "No guardadas",
     nextB: "Si un cliente coge un hueco, os llega la reserva por WhatsApp, por escrito y en español, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
     nextC: "Si un hueco se os llena por otro lado, escribid «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
     waContact: "Escribirnos por WhatsApp",
@@ -763,6 +804,9 @@ const T = {
     next2: "Next", next2One: "Continue with 1 slot", next2N: "Continue with {n} slots",
     back1: "Back",
     errNone: "Choose at least one slot.",
+    errMany: "At most 40 slots at once. Please remove some.",
+    modeWeekly: "They repeat by themselves every week until you remove them.",
+    modeOnce: "Only those days; they don't repeat.",
 
     s3Title: "Last details",
     s3Sub: "You can leave the optional ones blank.",
@@ -770,6 +814,7 @@ const T = {
     fAddrPh: "Street and number, or the neighbourhood",
     fEmail: "Email",
     fEmailPh: "hello@yourstudio.com",
+    fEmailHint: "Required: every booking also reaches you by email, with the client's phone and the link to turn it down.",
     opt: "(optional)",
     fHours: "Opening hours",
     fHoursPh: "Mon-Fri 10-14 and 17-21, Sat 10-14",
@@ -785,16 +830,24 @@ const T = {
     termsLine: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
     errAddr: "Add the address or the neighbourhood.",
     errEmail: "That email doesn't look right.",
+    errEmailNone: "The email is missing.",
     errPrice: "Just the number, for example 45.",
     errAccept: "To send, tick \"I accept the terms\".",
     save: "Send the times", saving: "Sending…",
     back2: "Back",
     dup: "You've already sent us these exact times.",
 
-    s4Saved: "Received",
-    thanksN: "Thank you, {n}. We have your times.", thanks0: "Thank you. We have your times.",
+    s4Saved: "Saved",
+    thanksN: "Thank you, {n}. Your times are saved.", thanks0: "Thank you. Your times are saved.",
+    s4Received: "Received",
+    receivedN: "Thank you, {n}. We'll check it and confirm by WhatsApp or email.", received0: "We'll check it and confirm by WhatsApp or email.",
     nextTitle: "What happens now",
-    nextA: "Before we offer any of these times to a customer, we write to you on WhatsApp to confirm them.",
+    nextLive: "They can be booked now. If a customer takes one, the booking reaches you by WhatsApp and by email, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
+    nextWait: "We're not offering them to customers yet: we'll let you know as soon as we start. From then on, if a customer takes one, the booking reaches you by WhatsApp and by email, with their name and phone (and their email, when we have it), and you have 15 minutes to turn it down.",
+    nextReview: "Until we confirm, we don't offer any of these times to customers.",
+    nextWeekly: "The weekly ones repeat by themselves. You can see and remove them whenever you like with the button below.",
+    manage: "See and change your times",
+    srvNext: "Next dates", srvNot: "Not saved",
     nextB: "If a customer takes a slot, the booking reaches you on WhatsApp, in writing and in Spanish, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
     nextC: "If a slot fills up elsewhere, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it.",
     waContact: "Write to us on WhatsApp",
@@ -852,7 +905,9 @@ const S = {
   day: null,         // key of the open day chip
   selW: {},          // weekday "0".."6" -> Set of start minutes (every week)
   selD: {},          // "YYYY-MM-DD" -> Set of start minutes (these dates only)
-  result: null,      // "saved" | "fallback" | "preview"
+  result: null,      // "saved" | "received" | "fallback" | "preview"
+  server: null,      // wa-bot's answer to the last send
+  signed: false,     // wa-bot said this link is the studio's own
   last: null,        // what the result screen shows
   lastKey: "",       // the last batch that was sent, so it is never sent twice
   landlineOk: "",    // a landline the studio confirmed is its WhatsApp
@@ -862,7 +917,9 @@ const S = {
 };
 
 // ---------------------------------------------------------------- Madrid time
-const LEAD_MIN = 45; // notice a studio needs, the same as dispatch-studios
+// A dated time can be booked up to 60 minutes before (release_slots); the
+// grid starts at 65, as the studio's times page does.
+const LEAD_MIN = 65;
 function madridNow() {
   const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
   const g = (k) => Number((p.find((x) => x.type === k) || {}).value || 0);
@@ -1243,6 +1300,7 @@ function renderTimes() {
   }
   const hid = hiddenCount();
   $("dropNote").textContent = hid ? t(hid === 1 ? "dropped1" : "droppedN", { n: hid, d: S.dur }) : "";
+  $("modeHint").textContent = t(S.repeat ? "modeWeekly" : "modeOnce");
   renderSummary();
 }
 function summaryHTML(list, dur, repeat, withLabel) {
@@ -1262,15 +1320,33 @@ function renderMini() {
   $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true) + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
 }
 function renderDone() {
-  const r = S.result, last = S.last;
+  const r = S.result, last = S.last, srv = S.server || {};
   const name = val("name");
-  $("doneMark").hidden = r !== "saved";
-  $("s4h").textContent = r === "saved" ? t("s4Saved") : r === "fallback" ? t("s4Fallback") : t("s4Preview");
-  $("s4sub").textContent = r === "saved" ? (name ? t("thanksN", { n: name }) : t("thanks0")) : r === "fallback" ? t("fbSub") : t("pvSub");
-  $("rSaved").hidden = r !== "saved";
+  const kept = r === "saved" || r === "received";
+  $("doneMark").hidden = !kept;
+  $("s4h").textContent = r === "saved" ? t("s4Saved") : r === "received" ? t("s4Received") : r === "fallback" ? t("s4Fallback") : t("s4Preview");
+  $("s4sub").textContent = r === "saved" ? (name ? t("thanksN", { n: name }) : t("thanks0"))
+    : r === "received" ? (name ? t("receivedN", { n: name }) : t("received0"))
+    : r === "fallback" ? t("fbSub") : t("pvSub");
+  $("rSaved").hidden = !kept;
+  // What happens now: from what wa-bot said, never more than it said.
+  const weekly = !!(last && last.repeat);
+  const items = r === "saved"
+    ? [t(srv.live ? "nextLive" : "nextWait"), weekly && srv.manage_url ? t("nextWeekly") : "", t("nextC")]
+    : [t("nextReview"), t("nextB"), t("nextC")];
+  $("nextList").innerHTML = items.filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join("");
+  // The dates the weekly times fall on now, and anything not saved, as wa-bot
+  // listed them (already in the page's language).
+  const lines = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => typeof x === "string").slice(0, 20).map(esc).join("<br>");
+  const nx = r === "saved" && weekly ? lines(srv.next) : "";
+  const ns = r === "saved" ? lines(srv.not_saved) : "";
+  $("srvNote").innerHTML = (nx ? `<div class="srv"><b>${esc(t("srvNext"))}</b>${nx}</div>` : "") + (ns ? `<div class="srv"><b>${esc(t("srvNot"))}</b>${ns}</div>` : "");
+  const manage = r === "saved" && typeof srv.manage_url === "string" && /^https:\/\/book\.massageclub\.io\/bot\.html\?slots=/.test(srv.manage_url) ? srv.manage_url : "";
+  $("manage").hidden = !manage;
+  if (manage) $("manage").href = manage;
   $("rFallback").hidden = r !== "fallback";
   $("rPreview").hidden = r !== "preview";
-  $("doneWa").hidden = r !== "saved";
+  $("doneWa").hidden = !kept;
   $("more").hidden = r === "fallback";
   $("retry").hidden = r !== "fallback";
   $("sentSummary").innerHTML = last ? summaryHTML(last.list, last.dur, last.repeat, false) : "";
@@ -1494,6 +1570,7 @@ function next2() {
     if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center" }); }
     return;
   }
+  if (countOf(selList()) > MAX_TIMES) { setErr(null, "timesErr", "errMany"); return; }
   go(3);
 }
 
@@ -1501,8 +1578,9 @@ function next2() {
 function checkStep3() {
   const bad = [];
   setErr("addr", "addrErr", val("addr") ? "" : (bad.push("addr"), "errAddr"));
+  // Required: the email always carries the client's phone and the reject link.
   const em = val("email");
-  setErr("email", "emailErr", !em || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "" : (bad.push("email"), "errEmail"));
+  setErr("email", "emailErr", !em ? (bad.push("email"), "errEmailNone") : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "" : (bad.push("email"), "errEmail"));
   const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
   const pBad = Number.isNaN(p60) ? "p60" : Number.isNaN(p90) ? "p90" : "";
   setErr(null, "priceErr", pBad ? (bad.push(pBad), "errPrice") : "");
@@ -1532,10 +1610,13 @@ function buildPayload(list) {
     form: "socios",
     form_version: FORM_VERSION,
     lang: L,
-    // Anyone can open /socios?s=<slug>: nothing here is verified. Review it and
-    // confirm on the studio's own WhatsApp before any of it is used.
+    // Nothing here is trusted: wa-bot checks the link's signature (link_sig)
+    // and every field itself. A signed link is applied at once; anything else
+    // waits for Jordan. This flag is ignored.
     verified: false,
     link_slug: SLUG_OK ? SLUG : null,
+    link_sig: SIG_OK ? SIG : null,
+    drawn_at: DRAWN_AT,
     partner_slug: S.partner ? S.partner.slug : null,
     partner_status: S.partner ? String(S.partner.status || "") : null,
     studio: {
@@ -1591,6 +1672,7 @@ async function send(btn) {
   if (!step1Valid()) { S.resume = 3; go(1); const b = checkStep1(); if (b.length) $(b[0]).focus(); return; }
   const list = selList();
   if (!list.length) { go(2); setErr(null, "timesErr", "errNone"); return; }
+  if (countOf(list) > MAX_TIMES) { go(2); setErr(null, "timesErr", "errMany"); return; }
   const bad = checkStep3();
   if (bad.length) { $(bad[0]).focus(); return; }
   const payload = buildPayload(list);
@@ -1605,22 +1687,35 @@ async function send(btn) {
   S.saving = true;
   const label = btn.textContent;
   btn.disabled = true; btn.textContent = t("saving");
-  let ok = false;
+  // "applied" or "pending_review": kept. ok false with a message (a check, the
+  // rate limit): said under the button, nothing else changes. Anything else
+  // (no network, a server error, an answer that is not JSON) is the WhatsApp
+  // and email fallback, so the times are never lost.
+  let kind = "fallback", j = null;
   try {
     const ctl = "AbortController" in window ? new AbortController() : null;
     const timer = ctl ? setTimeout(() => ctl.abort(), 15000) : 0;
     const r = await fetch(SAVE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ops: "studio_signup", payload }), signal: ctl ? ctl.signal : undefined });
     clearTimeout(timer);
-    const j = await r.json().catch(() => null);
+    j = await r.json().catch(() => null);
     // Saved only when the server says so in JSON. A plain "OK" is not a save.
-    ok = r.ok && !!j && j.ok === true;
-  } catch (_) { ok = false; }
+    if (r.ok && j && j.ok === true && (j.status === "applied" || j.status === "pending_review")) kind = j.status;
+    else if (r.status >= 400 && r.status < 500 && j && j.ok === false && typeof j.message === "string" && j.message) kind = "refused";
+  } catch (_) { kind = "fallback"; }
   S.saving = false;
   btn.disabled = false; btn.textContent = label;
-  finish(ok ? "saved" : "fallback", list, key);
+  if (kind === "refused") {
+    const el = $("saveErr");
+    el.dataset.k = "";
+    el.textContent = j.message;
+    if (S.step !== 3) go(3);
+    return;
+  }
+  finish(kind === "applied" ? "saved" : kind === "pending_review" ? "received" : "fallback", list, key, kind === "fallback" ? null : j);
 }
-function finish(result, list, key) {
+function finish(result, list, key, server) {
   S.result = result;
+  S.server = server || null;
   S.last = { list, dur: S.dur, repeat: S.repeat };
   if (result === "fallback") { go(4); return; } // back returns to the form, nothing lost
   // Sent: the selection is cleared so the phone's back button cannot send the
@@ -1635,38 +1730,59 @@ $("retry").addEventListener("click", () => send($("retry")));
 $("more").addEventListener("click", () => { $("timesErr").textContent = ""; go(2); });
 
 // ---------------------------------------------------------------- personal link
-// /socios?s=<slug>: a read-only select of the studio's public listing.
+// /socios?s=<slug>[&k=<sig>]: wa-bot's prefill. A signed link also gets the
+// email on file and logs one "link opened" for Jordan (view=1, never in
+// preview). If wa-bot cannot be reached, an unsigned link falls back to a
+// read-only select of the studio's public listing.
 let partnerDone = !SLUG_OK;
 function pickWhatsApp(p) {
   // Never put a Spanish landline in "WhatsApp para las reservas".
   for (const v of [p.whatsapp, p.phone]) { const n = intl(v); if (n && n.replace(/\D/g, "").length >= 9 && !isLandline(n)) return pretty(n); }
   return "";
 }
+function fillPartner(p, withEmail) {
+  if (!p || !p.business_name) return;
+  S.partner = p;
+  S.active = String(p.status || "") === "active" || p.active === true;
+  const fill = (id, v) => { if (v && !val(id)) $(id).value = v; };
+  fill("name", p.business_name);
+  fill("wa", pickWhatsApp(p));
+  if (withEmail) fill("email", String(p.email || "").trim().toLowerCase());
+  const addr = String(p.address || "").trim();
+  const hood = String(p.neighbourhood || "").trim();
+  fill("addr", addr && hood && !addr.toLowerCase().includes(hood.toLowerCase()) ? `${addr} (${hood})` : addr || hood);
+  // Hours go in as text in the page's language ("Lun-Sáb 10:00-20:00"), never
+  // as an object; a string we cannot read goes in as it is.
+  const oh = p.opening_hours;
+  const map = oh ? parseHours(oh) : null;
+  fill("hours", map ? hoursField(map, L) : typeof oh === "string" && !/^\s*\{/.test(oh) ? oh.trim() : "");
+  HOURS = parseHours(val("hours"));
+}
+async function getJson(url, init, ms) {
+  const ctl = "AbortController" in window ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), ms) : 0;
+  try {
+    const r = await fetch(url, Object.assign({}, init, { signal: ctl ? ctl.signal : undefined }));
+    return { ok: r.ok, j: await r.json().catch(() => null) };
+  } finally { clearTimeout(timer); }
+}
 async function loadPartner() {
   if (!SLUG_OK) return;
   try {
-    const ctl = "AbortController" in window ? new AbortController() : null;
-    if (ctl) setTimeout(() => ctl.abort(), 7000);
+    let reached = false;
+    try {
+      const qs = "?socios=1&s=" + encodeURIComponent(SLUG) + (SIG_OK ? "&k=" + SIG + (PREVIEW ? "" : "&view=1") : "");
+      const { ok, j } = await getJson(API + qs, { headers: { Accept: "application/json" } }, 7000);
+      if (ok && j && j.ok === true) {
+        reached = true;
+        S.signed = j.status === "signed";
+        if (j.partner) fillPartner(j.partner, S.signed);
+      }
+    } catch (_) { /* fall through */ }
+    if (reached || SIG_OK) return;
     const url = `${SB}/rest/v1/partners?select=business_name,phone,whatsapp,address,neighbourhood,opening_hours,slug,price_from,status&slug=eq.${encodeURIComponent(SLUG)}&limit=1`;
-    const r = await fetch(url, { headers: { apikey: SB_KEY, Accept: "application/json" }, signal: ctl ? ctl.signal : undefined });
-    if (!r.ok) return;
-    const rows = await r.json();
-    const p = Array.isArray(rows) ? rows[0] : null;
-    if (!p || !p.business_name) return;
-    S.partner = p;
-    S.active = String(p.status || "") === "active";
-    const fill = (id, v) => { if (v && !val(id)) $(id).value = v; };
-    fill("name", p.business_name);
-    fill("wa", pickWhatsApp(p));
-    const addr = String(p.address || "").trim();
-    const hood = String(p.neighbourhood || "").trim();
-    fill("addr", addr && hood && !addr.toLowerCase().includes(hood.toLowerCase()) ? `${addr} (${hood})` : addr || hood);
-    // Hours go in as text in the page's language ("Lun-Sáb 10:00-20:00"), never
-    // as an object; a string we cannot read goes in as it is.
-    const oh = p.opening_hours;
-    const map = oh ? parseHours(oh) : null;
-    fill("hours", map ? hoursField(map, L) : typeof oh === "string" && !/^\s*\{/.test(oh) ? oh.trim() : "");
-    HOURS = parseHours(val("hours"));
+    const { ok, j } = await getJson(url, { headers: { apikey: SB_KEY, Accept: "application/json" } }, 7000);
+    if (ok && Array.isArray(j) && j[0]) fillPartner(j[0], false);
   } catch (_) { /* a personal link that cannot load is just the plain page */ }
   finally { partnerDone = true; }
 }
