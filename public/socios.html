@@ -4,31 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Centros socios · Massage Club</title>
-<meta name="description" content="Para centros de masaje en Madrid: pasadnos los huecos que se os quedan libres y se los ofrecemos a gente que nos escribe en inglés. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.">
+<meta name="description" content="Massage Club es un pequeño servicio de reservas en Madrid. Os mandamos clientes nuevos, que escriben en inglés, para vuestras horas libres. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por cada cliente nuevo que venga. Sin cuota ni contrato.">
 <meta name="theme-color" content="#F1EBE2">
 <meta name="color-scheme" content="light">
-<meta property="og:title" content="¿A qué hora se os suele quedar una sala vacía?">
-<meta property="og:description" content="Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.">
+<meta property="og:title" content="Massage Club: clientes nuevos para vuestras horas libres">
+<meta property="og:description" content="Un pequeño servicio de reservas en Madrid. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por cada cliente nuevo que venga. Sin cuota ni contrato.">
 <meta property="og:image" content="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png">
 <link rel="icon" href="/favicon.ico">
 <link rel="preconnect" href="https://jglftdstrowwckwqmpue.supabase.co" crossorigin>
 <!--
-  socios.html (17 Oct): the partnership page Jordan sends to studios by email
-  or WhatsApp. Its one job is to get a studio to give us the times it would
-  like to offer to Massage Club clients, so the bot can send customers its way.
+  socios.html (17 Oct, simplified 18 Oct): the partnership page Jordan sends
+  to studios by email or WhatsApp. Its one job is to get a studio to give us
+  the times it would like to offer to Massage Club clients, so the bot can
+  send customers its way.
 
-  Flow: landing, then 1 "Vuestro centro" (name, WhatsApp), 2 "Vuestras horas"
-  (every week by default, or these dates only), 3 "Últimos datos" (address,
-  email, hours and prices, the terms), then the result screen.
+  Landing: what Massage Club is, what the studio gets, how a booking reaches
+  it, what it costs, questions, who we are. One button.
+
+  Flow: 1 "Vuestro centro" (name, address, WhatsApp, opening hours), 2 "Vuestras
+  horas libres" (length, day, times; every week by default, or the next 7
+  days only), 3 "Últimos datos" (email, price, the terms), then the result
+  screen. Opening hours are asked on step 1, before the time grid, so the
+  grid only shows times when the studio is open and nothing picked on step 2
+  can vanish later (tester blocker, 18 Oct).
 
   Personal link: /socios?s=<partners.slug>&k=<sig> greets the studio and
-  prefills its details from wa-bot (see Prefill below). Only a studio whose
-  row is status 'active' is offered "Ir directo a las horas"; a pending
-  listing goes through step 1 like anyone else.
+  prefills its details from wa-bot (see Prefill below). A studio whose row is
+  status 'active' and whose step 1 is complete goes straight to its times;
+  a pending listing checks step 1 first (one tap).
 
   A draft (fields, times, mode, duration) is kept in localStorage per link, so
-  a reload or WhatsApp's in-app browser coming back does not lose anything. It
-  is cleared after a save.
+  a reload or WhatsApp's in-app browser coming back does not lose anything,
+  and the page says so. It is cleared after a save.
 
   SAVING (wired 18 Oct, wa-bot v216). Live is the default; ?preview=1 sends
   nothing and says so (no save, no view logged).
@@ -47,7 +54,9 @@
     address is only noted. Times are checked against the hours it gives,
     never outside 08:00 to 22:00. The terms the studio ticked are stored as
     its written acceptance (partner_terms), and only when the page sent them
-    word for word as wa-bot has them for that version.
+    word for word as wa-bot has them for that version. That is why termsLine
+    is shown in full beside the checkbox and never shortened: the words the
+    studio sees are the words billing relies on.
     Screen: "Guardado", with a link to the studio's own times page.
   - status "pending_review": no link signature (the plain /socios, or a
     /socios?s=<slug> anyone can type). Nothing is saved or offered; Jordan
@@ -65,8 +74,8 @@
   email to jordan@massageclub.io, so the times are never lost and the page
   never says "Guardado" when nothing was kept.
   The fallback WhatsApp text starts "Hola, Massage Club. Somos <name>,
-  centro de masaje." and then its times. wa-bot v216 reads that first, from
-  any number:
+  centro de masaje." and then "Horas que os ofrecemos (". wa-bot v216 reads
+  that first, from any number (SOCIOS_FALLBACK_RE):
   the studio gets "Recibido, gracias. Lo revisamos y os confirmamos por
   aquí." and Jordan a card with the message. It never enters the customer
   flow and is never read as an answer to a booking ask.
@@ -88,20 +97,25 @@
   email, because the email always carries the client's phone and the 15
   minute reject link (build notes R7).
 
+  The booking example on the landing copies wa-bot's released-time message
+  (bot.ts studioText for relSlot) with a placeholder client. If that message
+  changes, change the example.
+
   No tracking beyond that one "link opened" for a signed link, no external
   JS, nothing saved on page load.
 -->
 <style>
 :root{
-  --page:#F1EBE2; --ink:#262019; --muted:#8A7F73; --muted-ink:#62584E; --clay:#B85C38; --clay-ink:#9A4A2C;
-  --cream:#FAF6F0; --line:#F0E9E0; --edge:#DCD0C0; --field:#9C9083; --white:#FFFFFF; --bad:#A3271C; --wa:#1F8F4E;
+  --page:#F1EBE2; --ink:#262019; --muted:#8A7F73; --muted-ink:#5E544A; --clay:#B85C38; --clay-ink:#9A4A2C;
+  --cream:#FAF6F0; --line:#EDE4D9; --edge:#DCD0C0; --field:#9C9083; --white:#FFFFFF; --bad:#A3271C; --wa:#1F7A45;
+  --tint:#F6E4D9; --chat:#E9E1D5;
   --serif:Georgia,"Times New Roman",serif;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{font-family:var(--sans);font-size:17px;line-height:1.5;color:var(--ink);background:var(--page);overflow-x:hidden;min-height:100vh}
-body.docked{padding-bottom:92px}
+body.docked{padding-bottom:120px}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0}
 a{color:var(--clay-ink);text-underline-offset:3px}
@@ -122,138 +136,166 @@ img{display:block;max-width:100%}
 .lang:hover{border-color:var(--field)}
 
 /* Landing */
-.hero{padding:18px 0 8px}
-.kicker{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--clay-ink)}
-.hello{font-family:var(--serif);font-size:20px;line-height:1.5;color:var(--clay-ink);margin-top:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero{padding:14px 0 6px}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--clay-ink)}
+.hello{font-family:var(--serif);font-size:20px;line-height:1.5;color:var(--clay-ink);margin-top:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hello.reserve{visibility:hidden}
 h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.015em;color:var(--ink)}
-h1{font-size:clamp(31px,8.6vw,46px);line-height:1.08;margin-top:10px}
-h2{font-size:clamp(26px,7vw,32px);line-height:1.12}
-h3{font-size:21px;line-height:1.2}
-.lead{font-size:18px;line-height:1.5;margin-top:14px;color:var(--ink)}
-.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;padding:14px 20px;border-radius:16px;font-size:18px;font-weight:700;text-align:center;text-decoration:none;transition:transform .1s,background-color .15s}
+h1{font-size:clamp(32px,9.4vw,46px);line-height:1.06;margin-top:8px}
+h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
+.lead{font-size:18px;line-height:1.5;margin-top:14px}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;padding:14px 20px;border-radius:16px;font-size:18px;font-weight:700;line-height:1.25;text-align:center;text-decoration:none;transition:transform .1s,background-color .15s}
 .btn:active{transform:scale(.985)}
 .btn-primary{background:var(--clay);color:var(--white);box-shadow:0 10px 24px rgba(184,92,56,.28)}
 .btn-primary:hover{background:var(--clay-ink)}
+.btn-wait{background:var(--white);color:var(--ink);border:2px solid var(--field)}
 .btn-secondary{background:var(--cream);color:var(--ink);border:1.5px solid var(--field);font-size:16.5px;min-height:52px}
 .btn-secondary .ico{color:var(--wa)}
 .btn-secondary .ico.plain{color:var(--muted-ink)}
-.btn-text{min-height:48px;padding:10px 6px;font-size:16px;font-weight:700;color:var(--clay-ink);text-decoration:underline;text-underline-offset:3px;width:auto}
+.btn-text{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:10px 6px;font-size:16.5px;font-weight:700;color:var(--clay-ink);text-decoration:underline;text-underline-offset:3px;width:auto;border-radius:10px}
+.btn-text .ico{width:20px;height:20px;color:var(--wa)}
 .btn[disabled]{opacity:.6;cursor:progress}
 .ctas{display:grid;gap:10px;margin-top:22px}
-.note{font-size:15px;color:var(--muted-ink);text-align:center}
-.proof{margin-top:22px;padding:14px 16px;border-left:3px solid var(--clay);background:var(--cream);border-radius:0 14px 14px 0;font-size:16px;color:var(--ink)}
+.note{font-size:15.5px;color:var(--muted-ink);text-align:center}
+.note b{display:block;color:var(--ink)}
 
-.sec{margin-top:36px}
+.sec{margin-top:40px}
 .sec > h2{margin-bottom:14px}
-.benefits{list-style:none;display:grid;gap:10px}
-.benefits li{display:flex;gap:12px;align-items:flex-start;background:var(--cream);border:1px solid var(--line);border-radius:16px;padding:14px 16px;font-size:16px}
-.tick{flex:none;width:26px;height:26px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:15px;font-weight:700;margin-top:1px}
-.benefits b{display:block;font-size:17px}
-.steps{list-style:none;counter-reset:s;display:grid;gap:14px}
-.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;font-size:16.5px}
-.steps li::before{content:counter(s);flex:none;width:34px;height:34px;border-radius:50%;border:2px solid var(--clay);color:var(--clay-ink);font-family:var(--serif);font-weight:700;font-size:18px;display:grid;place-items:center;background:var(--cream)}
+.ic{width:28px;height:28px;flex:none}
+.icon{flex:none;width:48px;height:48px;border-radius:14px;background:var(--tint);color:var(--clay-ink);display:grid;place-items:center;position:relative}
+.cards{list-style:none;display:grid;gap:10px}
+.cards li{display:flex;gap:14px;align-items:flex-start;background:var(--cream);border:1px solid var(--line);border-radius:18px;padding:16px}
+.cards h3{font-family:var(--sans);font-size:17.5px;line-height:1.3;letter-spacing:0;margin-top:2px}
+.cards p{font-size:16px;color:var(--muted-ink);margin-top:4px}
+.steps{list-style:none;display:grid;gap:16px}
+.steps li{display:flex;gap:14px;align-items:flex-start}
+.steps .sn{position:absolute;top:-7px;left:-7px;width:24px;height:24px;border-radius:50%;background:var(--clay);color:var(--white);font-size:13.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page);font-family:var(--sans)}
+.steps b{display:block;font-size:17.5px;line-height:1.3;margin-top:2px}
+.steps span.d{display:block;font-size:16px;color:var(--muted-ink);margin-top:2px}
 
-.terms{background:var(--cream);border:2px solid var(--clay);border-radius:20px;padding:20px 18px}
-.terms h2{font-size:clamp(22px,6.2vw,27px)}
-.terms ul{list-style:none;margin-top:14px;display:grid;gap:0}
-.terms li{padding:11px 0;border-top:1px solid var(--line);font-size:16.5px}
-.terms li:first-child{border-top:0}
-.terms li.cmp{font-size:15px;color:var(--muted-ink);border-top:1px dashed var(--edge);margin-top:4px;padding-top:14px}
+.ex{margin-top:20px}
+.ex figcaption{font-size:15.5px;font-weight:700;margin-bottom:8px}
+.chat{background:var(--chat);border-radius:18px;padding:14px 12px 12px}
+.bubble{background:var(--white);border-radius:4px 16px 16px 16px;padding:9px 12px 6px;max-width:94%;box-shadow:0 1px 1px rgba(38,32,25,.10);font-size:15.5px;line-height:1.45}
+.bubble .from{font-size:13.5px;font-weight:700;color:var(--wa)}
+.bubble .lnk{color:#0B5F96;text-decoration:underline}
+.bubble .when{font-size:12px;color:var(--muted-ink);text-align:right;margin-top:2px}
+.exnote{font-size:15px;color:var(--muted-ink);margin-top:8px}
+.exnote:empty{display:none}
+
+.price{background:var(--cream);border:2px solid var(--clay);border-radius:20px;padding:20px 18px}
+.price h2{margin-bottom:6px}
+.prow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.prow:first-of-type{border-top:0}
+.prow .k{font-size:16.5px;line-height:1.35}
+.prow .k small{display:block;font-size:15px;color:var(--muted-ink);margin-top:2px}
+.prow .v{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.2;white-space:nowrap;text-align:right}
+.prow.free .v{color:var(--clay-ink);font-size:26px}
+.payline{font-size:16px;margin-top:4px;padding-top:12px;border-top:1px solid var(--line)}
+.cmp{margin-top:16px;padding-top:14px;border-top:1px dashed var(--edge)}
+.cmp .cap{font-size:15.5px;font-weight:700}
+.cmp .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cmp .box{border-radius:14px;padding:10px 12px;background:var(--white);border:1.5px solid var(--edge)}
+.cmp .box.us{border:2px solid var(--clay)}
+.cmp .box b{display:block;font-size:14.5px;color:var(--muted-ink)}
+.cmp .box span{display:block;font-family:var(--serif);font-weight:700;font-size:19px;line-height:1.25}
+.cmp .src{font-size:14.5px;color:var(--muted-ink);margin-top:8px}
 
 .faq{display:grid;gap:8px}
 .faq details{background:var(--cream);border:1px solid var(--line);border-radius:14px}
-.faq summary{list-style:none;cursor:pointer;min-height:52px;padding:13px 48px 13px 16px;font-weight:700;font-size:16.5px;position:relative;border-radius:14px}
+.faq summary{list-style:none;cursor:pointer;min-height:54px;padding:14px 48px 14px 16px;font-weight:700;font-size:16.5px;position:relative;border-radius:14px}
 .faq summary::-webkit-details-marker{display:none}
 .faq summary::after{content:"+";position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:400;color:var(--clay-ink)}
 .faq details[open] summary::after{content:"\2212"}
 .faq details p{padding:0 16px 16px;font-size:16px}
 
-.contact{margin:36px 0 28px;padding-top:20px;border-top:1px solid var(--edge);font-size:16px}
-.contact b{font-family:var(--serif);font-size:18px}
+.contact{margin:40px 0 28px;padding-top:22px;border-top:1px solid var(--edge);font-size:16px}
+.contact h2{margin-bottom:10px}
+.contact .who2{display:flex;gap:12px;align-items:center}
+.contact .who2 img{width:48px;height:48px;border-radius:50%;box-shadow:0 0 0 1px var(--edge)}
+.contact .who2 b{display:block;font-size:17px}
 .contact .ctas{margin-top:14px}
-.seeus{margin-top:16px;font-size:15px;color:var(--muted-ink)}
+.seeus{margin-top:14px;font-size:15px;color:var(--muted-ink)}
 .seeus a{display:inline-flex;align-items:center;min-height:44px;font-weight:700}
 
-.dock{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(241,235,226,.96);border-top:1px solid var(--edge);padding:12px 16px calc(12px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(241,235,226,.97);border-top:1px solid var(--edge);padding:10px 16px calc(12px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .dock .btn{max-width:568px;margin:0 auto}
+.dock .err{max-width:568px;margin:0 auto 8px;text-align:center;font-size:16px}
 
 /* Flow */
-.flow{padding:2px 0 40px}
+.flow{padding:2px 0 32px}
 .preview{display:inline-block;font-size:13.5px;color:var(--muted-ink);background:var(--cream);border:1px dashed var(--field);border-radius:999px;padding:5px 12px;margin:0 0 8px}
-.progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 12px}
-.progress li{font-size:12.5px;font-weight:700;color:var(--muted-ink);line-height:1.3}
-.progress li::before{content:"";display:block;height:5px;border-radius:5px;background:var(--edge);margin-bottom:5px}
+.stepno{font-size:15px;font-weight:700;color:var(--clay-ink);margin:2px 0 6px}
+.progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.progress li{font-size:13px;font-weight:700;color:var(--muted-ink);line-height:1.3}
+.progress li::before{content:"";display:block;height:6px;border-radius:6px;background:var(--edge);margin-bottom:5px}
 .progress li.done::before,.progress li[aria-current="step"]::before{background:var(--clay)}
 .progress li[aria-current="step"]{color:var(--ink)}
-.step h2{outline:none;font-size:clamp(25px,6.8vw,30px)}
-.step .sub{margin-top:6px;font-size:16px;color:var(--ink)}
-.step .sub.tight{margin-top:0;font-size:15px;color:var(--muted-ink)}
+.step h2{outline:none;font-size:clamp(26px,7vw,31px)}
+.step .sub{margin-top:6px;font-size:17px;color:var(--ink)}
 .step .hello{margin-top:0;margin-bottom:4px}
+.draftnote{font-size:15px;color:var(--muted-ink);text-align:center;margin-top:18px}
 
 .field{margin-top:18px}
-.field label,.field .lbl{display:block;font-size:16px;font-weight:700;margin-bottom:6px}
+.field label,.field .lbl{display:block;font-size:17px;font-weight:700;margin-bottom:6px}
 .opt{font-weight:400;color:var(--muted-ink)}
-.field input[type=text],.field input[type=tel],.field input[type=email]{width:100%;min-height:52px;background:var(--white);border:1.5px solid var(--field);border-radius:14px;padding:12px 14px;font-size:17px;outline:none;-webkit-appearance:none;appearance:none}
+.field input[type=text],.field input[type=tel],.field input[type=email]{width:100%;min-height:54px;background:var(--white);border:1.5px solid var(--field);border-radius:14px;padding:12px 14px;font-size:17px;outline:none;-webkit-appearance:none;appearance:none}
 .field input:focus{border-color:var(--clay-ink);box-shadow:0 0 0 3px rgba(184,92,56,.22)}
 .field input[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 2px rgba(163,39,28,.15)}
-.hint{font-size:14.5px;color:var(--muted-ink);margin-top:6px}
-.warn{font-size:15px;color:var(--clay-ink);font-weight:700;margin-top:6px}
+.hint{font-size:15.5px;color:var(--muted-ink);margin-top:6px}
+.hint:empty{display:none}
+.warn{font-size:15.5px;color:var(--clay-ink);font-weight:700;margin-top:6px}
 .warn:empty{display:none}
-.err{font-size:15px;color:var(--bad);font-weight:700;margin-top:6px}
+.err{font-size:16px;color:var(--bad);font-weight:700;margin-top:6px}
 .err:empty{display:none}
 .prices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .euro{position:relative}
 .euro input{padding-right:36px !important}
 .euro::after{content:"\20AC";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted-ink);font-weight:700;pointer-events:none}
-.sublbl{display:block;font-size:14.5px;color:var(--muted-ink);margin-bottom:4px;font-weight:700}
-.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px;cursor:pointer}
+.sublbl{display:block;font-size:16px;margin-bottom:4px;font-weight:700}
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px;cursor:pointer;scroll-margin:20px}
 .check.bad{border-color:var(--bad)}
-.check input{flex:none;width:26px;height:26px;margin-top:1px;accent-color:var(--clay)}
+.check input{flex:none;width:28px;height:28px;margin-top:0;accent-color:var(--clay)}
 .check .ttl{font-weight:700;font-size:17px;display:block}
-.check .line{display:block;font-weight:400;font-size:14.5px;color:var(--muted-ink);margin-top:4px}
+.check .line{display:block;font-weight:400;font-size:16px;color:var(--ink);margin-top:4px}
 .actions{display:grid;gap:6px;margin-top:22px;justify-items:center}
+.miss{text-align:center;margin-top:16px}
 
-.who{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:15px;color:var(--muted-ink);min-height:44px}
+.who{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:16px;color:var(--muted-ink);min-height:44px}
 .who #whoText{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who b{color:var(--ink)}
-.who .btn-text{flex:none;min-height:44px;padding:0 4px 0 8px;font-size:15px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;border:0;margin-top:12px}
-.seg legend{font-size:15.5px;font-weight:700;margin-bottom:6px;padding:0}
+.who .btn-text{flex:none;min-height:44px;padding:0 4px 0 8px;font-size:16px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;border:0;margin-top:20px}
+.seg legend{font-size:17px;font-weight:700;margin-bottom:8px;padding:0}
 .seg label{position:relative;display:block}
 .seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
-.seg span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;padding:4px 8px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16px;line-height:1.2}
+.seg span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:50px;padding:4px 8px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16px;line-height:1.2}
 .seg input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 .seg input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
-.durrow{display:flex;align-items:center;gap:10px;margin-top:22px}
-.durrow .dlbl{font-size:15.5px;font-weight:700}
-.durrow .opts{display:flex;gap:8px;margin-left:auto}
-.durrow label{position:relative;display:block}
-.durrow input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
-.durrow label span{display:flex;align-items:center;justify-content:center;min-height:44px;min-width:84px;padding:0 12px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:15.5px}
-.durrow label input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
-.durrow input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
-.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.lbl2{font-size:17.5px;font-weight:700;margin:24px 0 8px;scroll-margin-top:12px}
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .day{position:relative;min-height:54px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;line-height:1.2}
-.day.one{min-height:48px}
-.day .dt{font-weight:700;font-size:15.5px}
+.day .dt{font-weight:700;font-size:16px}
 .day .dd{font-size:13.5px;color:var(--muted-ink)}
-.day[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--cream)}
-.day[aria-pressed=true] .dd{color:#E9DFD2}
-.badge{position:absolute;top:-7px;right:-5px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--clay);color:var(--white);font-size:13px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page)}
-.dayinfo{font-size:14.5px;color:var(--muted-ink);margin-top:10px}
+.day[aria-current=true]{border:3px solid var(--clay-ink);background:var(--tint);color:var(--clay-ink)}
+.day[aria-current=true] .dd{color:var(--clay-ink)}
+.day[aria-current=true]::after{content:"";position:absolute;bottom:-9px;left:50%;margin-left:-7px;border:7px solid transparent;border-top-color:var(--clay-ink);border-bottom:0}
+.badge{position:absolute;top:-8px;right:-6px;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--clay);color:var(--white);font-size:13.5px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page)}
+.dayinfo{font-size:16px;color:var(--muted-ink);margin:0 0 4px}
 .dayinfo b{color:var(--ink)}
 .glabel{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin:12px 0 8px}
 .times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tm{min-height:50px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16.5px;font-variant-numeric:tabular-nums}
 .tm[aria-pressed=true]{background:var(--clay);border-color:var(--clay);color:var(--white)}
 .tm[aria-pressed=true]::before{content:"\2713";margin-right:4px}
-.empty{margin-top:14px;padding:14px;border-radius:14px;background:var(--cream);font-size:16px}
-.copy{margin-top:14px;padding:12px;border-radius:14px;background:var(--cream);border:1.5px dashed var(--edge)}
-.copy p{font-size:15px;font-weight:700}
+.empty{margin-top:10px;padding:14px;border-radius:14px;background:var(--cream);font-size:16px}
+.copy{margin-top:16px;padding:12px;border-radius:14px;background:var(--cream);border:1.5px dashed var(--edge)}
+.copy p{font-size:16px;font-weight:700}
 .copy .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-.copy button{min-height:44px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:15px;padding:4px 8px;line-height:1.2}
-.summary{margin-top:18px;padding:16px;border-radius:16px;background:var(--white);border:1.5px solid var(--edge)}
+.copy button{min-height:48px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:15.5px;padding:4px 8px;line-height:1.2}
+.copy .copied{font-size:16px;font-weight:700;color:var(--clay-ink);margin-top:10px}
+.summary{margin-top:20px;padding:16px;border-radius:16px;background:var(--white);border:1.5px solid var(--edge)}
+.summary:empty{display:none}
 .summary .sumlbl{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin-bottom:4px}
 .summary .sumhead{font-weight:700}
 .summary ul{list-style:none;margin-top:8px;display:grid;gap:6px;font-size:16px}
@@ -261,7 +303,8 @@ h3{font-size:21px;line-height:1.2}
 .summary .btn-text{margin-top:4px;padding-left:0}
 
 .done-mark{width:64px;height:64px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:32px;margin:8px 0 16px}
-.next{list-style:none;display:grid;gap:10px;margin-top:16px}
+.step h3{font-size:21px;line-height:1.2}
+.next{list-style:none;display:grid;gap:10px;margin-top:14px}
 .next li{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:16.5px}
 .srv{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--cream);border:1px solid var(--line);font-size:15.5px}
 .srv b{display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-ink);margin-bottom:2px}
@@ -270,8 +313,13 @@ h3{font-size:21px;line-height:1.2}
 
 @media (min-width:720px){
   .wrap{padding:0 24px}
-  .hero{padding-top:40px}
-  .ctas{grid-template-columns:1fr;max-width:420px}
+  .hero{padding-top:36px}
+  .ctas{max-width:420px}
+}
+@media (max-width:359px){
+  .lead{font-size:17px}
+  .prow .v{font-size:20px}
+  .prow.free .v{font-size:23px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none !important}}
 </style>
@@ -280,6 +328,12 @@ h3{font-size:21px;line-height:1.2}
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="i-wa" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2.4V17h16V7.4l-8 5.3-8-5.3zM5.6 7l6.4 4.3L18.4 7H5.6z"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><circle cx="17.2" cy="9" r="2.8"/><path d="M16.4 13.6c3-.2 5.1 2.3 5.1 5.4"/></g></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1h-9.5L6 20.5V17H4a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1z"/><path d="M7.5 9h9M7.5 12.5h6"/></g></symbol>
+  <symbol id="i-euro" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.4 8.7a4.2 4.2 0 1 0 0 6.6M7.2 10.8h5.6M7.2 13.2h5.6"/></g></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4M8.5 14.8l2.2 2.2 4.6-4.6"/></g></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M9.6 11.6l1.9 1.9 3.4-3.4M10.5 18.5h3"/></g></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/></g></symbol>
 </svg>
 <a class="skiplink" href="#main" data-t="skip">Saltar al contenido</a>
 
@@ -302,46 +356,62 @@ h3{font-size:21px;line-height:1.2}
         <h1 id="h1" data-t="h1"></h1>
         <p class="lead" data-t="sub"></p>
         <div class="ctas">
-          <button type="button" class="btn btn-primary" id="heroCta" data-go="1" data-t="cta"></button>
-          <button type="button" class="btn btn-secondary" id="knownCta" data-go="2" data-t="ctaKnown" hidden></button>
-          <p class="note" data-t="ctaNote"></p>
+          <button type="button" class="btn btn-primary" id="heroCta" data-start="1"></button>
+          <p class="note" data-h="ctaNote"></p>
         </div>
-        <p class="proof" data-t="proof"></p>
       </section>
 
-      <section class="sec" aria-labelledby="hWhy">
-        <h2 id="hWhy" data-t="whyTitle"></h2>
-        <ul class="benefits">
-          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b1"></span></li>
-          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b2"></span></li>
-          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b3"></span></li>
-          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b4"></span></li>
+      <section class="sec" aria-labelledby="hGain">
+        <h2 id="hGain" data-t="gainTitle"></h2>
+        <ul class="cards">
+          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-people"/></svg></span><div><h3 data-t="g1t"></h3><p data-t="g1"></p></div></li>
+          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-chat"/></svg></span><div><h3 data-t="g2t"></h3><p data-t="g2"></p></div></li>
+          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-euro"/></svg></span><div><h3 data-t="g3t"></h3><p data-t="g3"></p></div></li>
         </ul>
       </section>
 
       <section class="sec" aria-labelledby="hHow">
         <h2 id="hHow" data-t="howTitle"></h2>
         <ol class="steps">
-          <li data-t="how1"></li>
-          <li data-t="how2"></li>
-          <li data-t="how3"></li>
-          <li data-t="how4"></li>
+          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-cal"/></svg><span class="sn">1</span></span><div><b data-t="how1t"></b><span class="d" data-t="how1"></span></div></li>
+          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-phone"/></svg><span class="sn">2</span></span><div><b data-t="how2t"></b><span class="d" data-t="how2"></span></div></li>
+          <li><span class="icon" aria-hidden="true"><svg class="ic"><use href="#i-bell"/></svg><span class="sn">3</span></span><div><b data-t="how3t"></b><span class="d" data-t="how3"></span></div></li>
         </ol>
+        <!-- Copied from wa-bot's released-time message (bot.ts studioText,
+             relSlot), with a placeholder client. Always Spanish: it is what
+             the studio receives. -->
+        <figure class="ex">
+          <figcaption data-t="exLbl"></figcaption>
+          <div class="chat">
+            <div class="bubble" lang="es">
+              <p class="from">Massage Club</p>
+              <p>Hola, nueva reserva en una de las horas que nos disteis: Ana, hoy a las 18:00, masaje relajante de 60&nbsp;min. Paga directamente en el centro. Habla inglés. Su teléfono es +34&nbsp;600&nbsp;000&nbsp;000 y su email, ana@ejemplo.com. Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: <span class="lnk">enlace</span></p>
+              <p class="when" aria-hidden="true">12:04</p>
+            </div>
+          </div>
+          <p class="exnote" data-t="exNote"></p>
+        </figure>
       </section>
 
-      <section class="sec terms" id="terms" aria-labelledby="hTerms">
-        <h2 id="hTerms" data-t="termsTitle"></h2>
-        <ul>
-          <li data-h="t1"></li>
-          <li data-h="t2"></li>
-          <li data-h="t3"></li>
-          <li data-t="t4"></li>
-          <li class="cmp" data-t="t5"></li>
-        </ul>
+      <section class="sec price" id="terms" aria-labelledby="hPrice">
+        <h2 id="hPrice" data-t="priceTitle"></h2>
+        <div class="prow free"><span class="k" data-t="pr1k"></span><span class="v" data-t="pr1v"></span></div>
+        <div class="prow"><span class="k"><span data-t="pr2k"></span><small data-t="pr2s"></small></span><span class="v" data-t="pr2v"></span></div>
+        <div class="prow"><span class="k" data-t="pr3k"></span><span class="v">0&nbsp;€</span></div>
+        <div class="prow"><span class="k"><span data-t="pr4k"></span><small data-t="pr4s"></small></span><span class="v">0&nbsp;€</span></div>
+        <p class="payline" data-t="payLine"></p>
+        <div class="cmp">
+          <p class="cap" data-t="cmpCap"></p>
+          <div class="two">
+            <div class="box"><b>Treatwell</b><span data-t="cmpThem"></span></div>
+            <div class="box us"><b>Massage Club</b><span data-t="cmpUs"></span></div>
+          </div>
+          <p class="src" data-t="cmpSrc"></p>
+        </div>
       </section>
 
       <div class="ctas" style="margin-top:24px">
-        <button type="button" class="btn btn-primary" id="finalCta" data-go="1" data-t="cta"></button>
+        <button type="button" class="btn btn-primary" id="finalCta" data-start="1"></button>
       </div>
 
       <section class="sec" aria-labelledby="hFaq">
@@ -358,13 +428,14 @@ h3{font-size:21px;line-height:1.2}
     <!-- B to E. The steps and the result -->
     <div id="flow" class="flow" hidden>
       <p class="preview" id="previewNote" data-t="preview" hidden></p>
+      <p class="stepno" id="stepNo"></p>
       <ol class="progress" id="progress" data-aria="progressAria">
-        <li data-n="1"><span class="sr" data-t="stepWord1"></span><span data-t="p1"></span></li>
-        <li data-n="2"><span class="sr" data-t="stepWord2"></span><span data-t="p2"></span></li>
-        <li data-n="3"><span class="sr" data-t="stepWord3"></span><span data-t="p3"></span></li>
+        <li data-n="1"><span data-t="p1"></span></li>
+        <li data-n="2"><span data-t="p2"></span></li>
+        <li data-n="3"><span data-t="p3"></span></li>
       </ol>
 
-      <!-- B. Step 1: who you are -->
+      <!-- B. Step 1: the studio -->
       <section class="step" data-step="1" aria-labelledby="s1h" hidden>
         <p class="hello" id="helloStep" hidden></p>
         <h2 id="s1h" tabindex="-1" data-t="s1Title"></h2>
@@ -376,24 +447,50 @@ h3{font-size:21px;line-height:1.2}
             <p class="err" id="nameErr" aria-live="polite"></p>
           </div>
           <div class="field">
+            <label for="addr" data-t="fAddr"></label>
+            <input type="text" id="addr" name="addr" autocomplete="street-address" data-ph="fAddrPh" required aria-describedby="addrHint addrErr">
+            <p class="hint" id="addrHint" data-t="fAddrHint"></p>
+            <p class="err" id="addrErr" aria-live="polite"></p>
+          </div>
+          <div class="field">
             <label for="wa" data-t="fWa"></label>
             <input type="tel" id="wa" name="wa" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000" required aria-describedby="waHint waWarn waErr">
             <p class="hint" id="waHint" data-t="fWaHint"></p>
             <p class="warn" id="waWarn" aria-live="polite"></p>
             <p class="err" id="waErr" aria-live="polite"></p>
           </div>
+          <div class="field">
+            <label for="hours"><span data-t="fHours"></span> <span class="opt" data-t="opt"></span></label>
+            <input type="text" id="hours" name="hours" data-ph="fHoursPh" autocomplete="off" aria-describedby="hoursHint">
+            <p class="hint" id="hoursHint" aria-live="polite"></p>
+          </div>
           <div class="actions">
-            <button type="submit" class="btn btn-primary" data-t="next1"></button>
-            <button type="button" class="btn btn-text" data-back="0" data-t="back0"></button>
+            <button type="submit" class="btn btn-primary" id="next1"></button>
+            <button type="button" class="btn btn-text" id="back0" data-back="0" data-t="back0"></button>
           </div>
         </form>
       </section>
 
-      <!-- C. Step 2: times -->
+      <!-- C. Step 2: free times -->
       <section class="step" data-step="2" aria-labelledby="s2h" hidden>
         <h2 id="s2h" tabindex="-1" data-t="s2Title"></h2>
         <p class="who" id="who" hidden><span id="whoText"></span><button type="button" class="btn btn-text" data-back="1" data-t="change"></button></p>
-        <p class="sub tight" data-t="s2Sub"></p>
+        <p class="sub" data-t="s2Sub"></p>
+
+        <fieldset class="seg" id="durSet">
+          <legend data-t="durLegend"></legend>
+          <label><input type="radio" name="dur" value="60" checked><span>60 min</span></label>
+          <label><input type="radio" name="dur" value="90"><span>90 min</span></label>
+        </fieldset>
+
+        <p class="lbl2" id="daysLbl" data-t="pickDay"></p>
+        <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
+        <p class="lbl2" id="timesLbl" data-t="pickTimes"></p>
+        <p class="dayinfo" id="dayInfo"></p>
+        <div id="grid"></div>
+        <div id="copyBox"></div>
+        <p class="sr" id="copyLive" aria-live="polite"></p>
+        <p class="hint" id="dropNote" aria-live="polite"></p>
 
         <fieldset class="seg" id="modeSet">
           <legend data-t="repeatLegend"></legend>
@@ -402,58 +499,32 @@ h3{font-size:21px;line-height:1.2}
         </fieldset>
         <p class="hint" id="modeHint" aria-live="polite"></p>
 
-        <span class="sr" id="daysLbl" data-t="dayLbl"></span>
-        <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
-        <p class="dayinfo" id="dayInfo"></p>
-        <div id="grid"></div>
-        <div id="copyBox"></div>
-        <p class="hint" id="dropNote" aria-live="polite"></p>
-
-        <div class="durrow" id="durSet" role="radiogroup" aria-labelledby="durLbl">
-          <span class="dlbl" id="durLbl" data-t="duration"></span>
-          <div class="opts">
-            <label><input type="radio" name="dur" value="60" checked><span>60 min</span></label>
-            <label><input type="radio" name="dur" value="90"><span>90 min</span></label>
-          </div>
-        </div>
-
         <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
-        <p class="err" id="timesErr" aria-live="assertive"></p>
         <div class="actions">
-          <button type="button" class="btn btn-text" data-back="1" data-t="back1"></button>
+          <button type="button" class="btn btn-text" id="back1" data-back="1" data-t="back1"></button>
         </div>
       </section>
 
-      <!-- D. Step 3: the rest, terms and send -->
+      <!-- D. Step 3: email, price, terms and send -->
       <section class="step" data-step="3" aria-labelledby="s3h" hidden>
         <h2 id="s3h" tabindex="-1" data-t="s3Title"></h2>
         <p class="sub" data-t="s3Sub"></p>
         <form id="f3" novalidate>
-          <div class="field">
-            <label for="addr" data-t="fAddr"></label>
-            <input type="text" id="addr" name="addr" autocomplete="street-address" data-ph="fAddrPh" required aria-describedby="addrErr">
-            <p class="err" id="addrErr" aria-live="polite"></p>
-          </div>
           <div class="field">
             <label for="email" data-t="fEmail"></label>
             <input type="email" id="email" name="email" autocomplete="email" inputmode="email" data-ph="fEmailPh" required aria-describedby="emailHint emailErr">
             <p class="hint" id="emailHint" data-t="fEmailHint"></p>
             <p class="err" id="emailErr" aria-live="polite"></p>
           </div>
-          <div class="field">
-            <label for="hours"><span data-t="fHours"></span> <span class="opt" data-t="opt"></span></label>
-            <input type="text" id="hours" name="hours" data-ph="fHoursPh" autocomplete="off" aria-describedby="hoursHint">
-            <p class="hint" id="hoursHint" aria-live="polite"></p>
-          </div>
           <div class="field" role="group" aria-labelledby="priceLbl">
-            <span class="lbl" id="priceLbl"><span data-t="fPrices"></span> <span class="opt" id="priceOpt" data-t="opt"></span></span>
+            <span class="lbl" id="priceLbl" data-t="fPrices"></span>
             <div class="prices">
               <div>
-                <label class="sublbl" for="p60">60 min</label>
+                <label class="sublbl" for="p60">60 min <span class="opt" id="p60Opt" data-t="opt"></span></label>
                 <div class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></div>
               </div>
               <div>
-                <label class="sublbl" for="p90">90 min</label>
+                <label class="sublbl" for="p90">90 min <span class="opt" id="p90Opt" data-t="opt"></span></label>
                 <div class="euro"><input type="text" id="p90" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></div>
               </div>
             </div>
@@ -469,6 +540,8 @@ h3{font-size:21px;line-height:1.2}
                request. Whether that applies to times released here is not
                decided. If it does, termsLine needs one honest line about it
                before this page goes to any studio. Do not invent it here. -->
+          <!-- termsLine is shown in full, word for word: it is sent as
+               terms.text and stored as the studio's written acceptance. -->
           <label class="check" id="acceptBox" for="accept">
             <input type="checkbox" id="accept" required aria-describedby="acceptLine acceptErr">
             <span>
@@ -478,6 +551,7 @@ h3{font-size:21px;line-height:1.2}
           </label>
           <p class="err" id="acceptErr" aria-live="polite"></p>
 
+          <p class="err miss" id="missErr" aria-live="assertive"></p>
           <p class="err" id="saveErr" aria-live="assertive"></p>
           <div class="actions">
             <button type="submit" class="btn btn-primary" id="save" data-t="save"></button>
@@ -486,7 +560,7 @@ h3{font-size:21px;line-height:1.2}
         </form>
       </section>
 
-      <!-- E. The result: saved, not saved (send it yourselves), or preview -->
+      <!-- E. The result: saved, received, not saved (send it yourselves), or preview -->
       <section class="step" data-step="4" aria-labelledby="s4h" hidden>
         <div class="done-mark" id="doneMark" aria-hidden="true">&#10003;</div>
         <h2 id="s4h" tabindex="-1"></h2>
@@ -515,18 +589,23 @@ h3{font-size:21px;line-height:1.2}
 
         <div class="actions">
           <a class="btn btn-primary" id="manage" target="_blank" rel="noopener" hidden data-t="manage"></a>
-          <a class="btn btn-secondary" id="doneWa" target="_blank" rel="noopener" hidden><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span data-t="waContact"></span></a>
-          <button type="button" class="btn btn-secondary" id="more" data-t="more" hidden></button>
+          <button type="button" class="btn btn-text" id="more" data-t="more" hidden></button>
+          <a class="btn btn-text" id="doneWa" target="_blank" rel="noopener" hidden><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span data-t="waContact"></span></a>
           <button type="button" class="btn btn-text" id="retry" data-t="fbRetry" hidden></button>
         </div>
       </section>
+
+      <p class="draftnote" id="draftNote" data-t="draftNote" hidden></p>
     </div>
 
-    <footer class="contact">
-      <p><b data-t="contactName"></b></p>
-      <p data-t="contactLine"></p>
+    <footer class="contact" aria-labelledby="contactTitle">
+      <h2 id="contactTitle"></h2>
+      <div class="who2">
+        <img src="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png" width="48" height="48" alt="" decoding="async" loading="lazy">
+        <p><b data-t="contactName"></b><span data-t="contactLine"></span></p>
+      </div>
       <div class="ctas">
-        <a class="btn btn-secondary" id="footWa" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp +34 612 474 827</span></a>
+        <a class="btn btn-secondary" id="footWa" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp +34&nbsp;612&nbsp;474&nbsp;827</span></a>
         <a class="btn btn-secondary" href="mailto:jordan@massageclub.io"><svg class="ico plain" aria-hidden="true"><use href="#i-mail"/></svg><span>jordan@massageclub.io</span></a>
       </div>
       <p class="seeus"><span data-t="seeUs"></span> <a href="https://book.massageclub.io" target="_blank" rel="noopener">book.massageclub.io</a></p>
@@ -535,6 +614,7 @@ h3{font-size:21px;line-height:1.2}
 </div>
 
 <div class="dock" id="dock" hidden>
+  <p class="err" id="timesErr" aria-live="assertive"></p>
   <button type="button" class="btn btn-primary" id="dockBtn"></button>
 </div>
 
@@ -571,7 +651,12 @@ const MAX_TIMES = 40;
 let L = String(q.get("lang") || "es").toLowerCase().startsWith("en") ? "en" : "es";
 
 // Partner fee, as Jordan set it on 17 Oct (CLAUDE.md, billing_settings).
-// Never quote another figure here.
+// Never quote another figure here. Short sentences, everyday words, one name
+// for a free time ("hora libre" / "free time") everywhere.
+// termsLine is checked word for word by wa-bot (SOCIOS_TERMS, TERMS_VERSION)
+// and by tests/replay.mjs: never change it here alone.
+// msgHello, msgTimes, contactHello and contactHello0 are read by wa-bot
+// (SOCIOS_FALLBACK_RE, SOCIOS_HELLO_RE): keep their openings.
 const T = {
   es: {
     docTitle: "Centros socios · Massage Club",
@@ -579,119 +664,139 @@ const T = {
     langBtn: "EN", langAria: "Read this page in English",
     kicker: "Para centros de masaje en Madrid",
     hello: "Hola, {n}",
-    h1: "¿A qué hora se os suele quedar una sala vacía?",
-    sub: "Pasadnos ese hueco y se lo ofrecemos a gente que nos escribe en inglés buscando un masaje en Madrid; si nadie lo coge, no os cuesta nada.",
-    cta: "Elegir horas",
-    ctaKnown: "Ir directo a las horas",
-    ctaNote: "Sin app ni contraseñas. Gratis hasta el 30 de noviembre; después, 5 € + IVA por cliente nuevo que venga.",
-    proof: "Desde septiembre nos han escrito más de 100 personas, en inglés, buscando un masaje: extranjeros que viven en Madrid, estudiantes de fuera y turistas. No os prometemos un número de clientes.",
-    whyTitle: "Lo esencial",
-    b1: "<b>Solo pagáis si el cliente viene.</b> Si nadie coge el hueco, o el cliente no se presenta, no nos debéis nada. Por sus siguientes visitas, tampoco.",
-    b2: "<b>Todo por escrito y en español.</b> Nosotros hablamos con el cliente en inglés; a vosotros os llega la reserva confirmada por WhatsApp, con su nombre y su teléfono (y su email, cuando lo tenemos).",
-    b3: "<b>Vuestro precio, vuestro cliente.</b> El cliente os paga a vosotros, a vuestro precio. Si vuelve, es vuestro y no nos debéis nada.",
-    b4: "<b>Solo masaje profesional.</b> A quien pide otra cosa le decimos que no y no le contestamos más.",
-    howTitle: "Cómo funciona",
-    how1: "Nos pasáis por adelantado los huecos que de verdad tengáis libres: por ejemplo 2 o 3 al día, o uno para empezar. Los marcáis aquí mismo.",
-    how2: "Nosotros hablamos con el cliente en inglés y le ofrecemos vuestros huecos.",
-    how3: "Si coge uno, os llega al momento un WhatsApp con la reserva confirmada. Tenéis 15 minutos para rechazarla si algo ha cambiado.",
-    how4: "Si un hueco se os llena antes por otro lado, escribid «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
-    termsTitle: "Lo que cuesta: gratis hasta el 30 de noviembre. Después, 5 € + IVA por cliente nuevo, no un 25 %.",
-    t1: "<b>Gratis</b> hasta el 30 de noviembre de 2026.",
-    t2: "A partir del 1 de diciembre de 2026: <b>5&nbsp;€ + IVA</b> por la primera visita de cada cliente nuevo, solo si viene.",
-    t3: "Por sus siguientes visitas: <b>0&nbsp;€</b>.",
-    t4: "Sin cuota mensual. Sin contrato. Lo dejáis cuando queráis.",
-    t5: "Para comparar: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo (unos 17 € + IVA en un masaje de 68 €). Fresha cobra el 20 % por los clientes nuevos que trae.",
-    faqTitle: "Lo que nos suelen preguntar",
-    q1: "Ya estamos en Treatwell, Booksy o Fresha",
-    a1: "Perfecto, podéis seguir con ellos: no tenéis que dejar nada. Somos otro canal, solo para los huecos que se os quedan libres, y si uno se os llena antes por otro lado, escribidnos «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos. El coste sí cambia: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo, y Fresha el 20 % por los clientes nuevos que trae. Nosotros, a partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.",
-    q2: "No tenemos huecos libres",
-    a2: "Pues enhorabuena, y no os pedimos nada. Si alguna semana se os queda un hueco libre, aunque sea por una cancelación, pasádnoslo por WhatsApp al +34\u00a0612\u00a0474\u00a0827. Si nadie lo coge, no os cuesta nada.",
+    h1: "Clientes nuevos para vuestras horas libres",
+    sub: "Somos Massage Club, un pequeño servicio de reservas en Madrid. Gente que escribe en inglés nos pide un masaje. Nosotros les buscamos un centro.",
+    cta: "Empezar",
+    ctaKnown: "Elegir horas libres",
+    ctaResume: "Seguir donde lo dejasteis",
+    ctaNote: "<b>Gratis hasta el 30 de noviembre.</b> Sin app ni contraseña.",
+    gainTitle: "¿Qué ganáis?",
+    g1t: "Clientes nuevos",
+    g1: "Extranjeros que viven en Madrid, estudiantes de fuera y turistas. Desde septiembre nos han escrito más de 100 personas.",
+    g2t: "Todo en español, sin instalar nada",
+    g2: "Nosotros hablamos con el cliente en inglés. Vosotros recibís la reserva en español, por WhatsApp y email.",
+    g3t: "Solo pagáis si el cliente viene",
+    g3: "Gratis hasta el 30 de noviembre. Después, 5\u00a0€ + IVA por cada cliente nuevo que venga.",
+    howTitle: "Así funciona",
+    how1t: "Nos decís qué horas tenéis libres.",
+    how1: "Aquí mismo, con unos toques.",
+    how2t: "Un cliente reserva una.",
+    how2: "Hablamos nosotros con él, en inglés.",
+    how3t: "Os llega la reserva por WhatsApp y email.",
+    how3: "En español, con su nombre y teléfono. Tenéis 15 minutos para rechazarla.",
+    exLbl: "Ejemplo de lo que os llega:",
+    exNote: "",
+    priceTitle: "Lo que cuesta",
+    pr1k: "Hasta el 30 de noviembre",
+    pr1v: "Gratis",
+    pr2k: "Cada cliente nuevo, desde el 1 de diciembre",
+    pr2s: "Solo su primera visita, y solo si viene.",
+    pr2v: "5\u00a0€ + IVA",
+    pr3k: "Si ese cliente vuelve",
+    pr4k: "Cuota al mes",
+    pr4s: "Sin contrato. Lo dejáis cuando queráis.",
+    payLine: "El cliente os paga a vosotros, en el centro, a vuestro precio.",
+    cmpCap: "Por un cliente nuevo, en un masaje de 68\u00a0€:",
+    cmpThem: "unos 17\u00a0€ + IVA",
+    cmpUs: "5\u00a0€ + IVA",
+    cmpSrc: "Treatwell España cobra el 25\u00a0% + IVA de la primera reserva de un cliente nuevo.",
+    faqTitle: "Preguntas",
+    q1: "¿Tenemos que hablar inglés?",
+    a1: "Para las reservas, no. Hablamos nosotros con el cliente. A vosotros os llega todo en español. No os prometemos que el cliente hable español.",
+    q2: "Ya estamos en Treatwell, Booksy o Fresha",
+    a2: "Seguid con ellos. Solo usamos las horas que os quedan libres. Si una se llena, escribid «ocupado» por WhatsApp y la quitamos.",
     q3: "¿Y si el cliente no viene?",
-    a3: "Entonces no pagáis nada: solo cobramos la primera visita si el cliente viene de verdad, y hasta el 30 de noviembre, ni eso. Además, desde el primer momento tenéis por escrito su nombre y su teléfono (y su email, cuando lo tenemos).",
-    q4: "¿Tenemos que hablar inglés?",
-    a4: "No. Nosotros hablamos con el cliente en inglés y a vosotros os lo pasamos todo por escrito y en español: hora, nombre y teléfono (y email, cuando lo tenemos). No os prometemos que el cliente hable español, pero la reserva os llega clara y confirmada.",
+    a3: "No pagáis nada. Solo cobramos si el cliente viene de verdad.",
+    q4: "¿Y si alguien pide otra cosa?",
+    a4: "Solo hacemos masaje profesional. A quien pide otra cosa le decimos que no.",
+    contactTitle: "Quiénes somos",
+    contactHelp: "¿Alguna duda?",
     contactName: "Jordan, de Massage Club",
-    contactLine: "¿Alguna duda? Escribidme.",
+    contactLine: "Llevo Massage Club desde Madrid. ¿Dudas? Escribidme.",
     seeUs: "Así nos ven los clientes:",
 
     preview: "Vista previa: no se envía nada",
     progressAria: "Pasos",
-    stepWord1: "Paso 1 de 3: ", stepWord2: "Paso 2 de 3: ", stepWord3: "Paso 3 de 3: ",
-    p1: "Centro", p2: "Horas", p3: "Últimos datos",
+    stepOf: "Paso {n} de 3",
+    p1: "Centro", p2: "Horas libres", p3: "Últimos datos",
+    draftNote: "Se guarda en este móvil. Podéis terminar luego.",
     s1Title: "Vuestro centro",
-    s1SubKnown: "Comprobad que está bien y cambiad lo que haga falta.",
-    s1SubNew: "Para saber a quién enviamos las reservas.",
+    s1SubKnown: "¿Está todo bien? Cambiad lo que haga falta.",
+    s1SubNew: "Para saber a dónde mandar las reservas.",
     fName: "Nombre del centro",
-    fWa: "WhatsApp para las reservas",
-    fWaHint: "Aquí os llegan las reservas confirmadas, por escrito y en español.",
-    waLandline: "Esto parece un fijo. ¿Es vuestro WhatsApp?",
-    next1: "Siguiente: vuestras horas",
-    back0: "Volver",
-    errName: "Falta el nombre del centro.",
-    errWa: "Añadid el WhatsApp donde queréis recibir las reservas.",
-    errWaLandline: "Esto parece un fijo. Si de verdad es vuestro WhatsApp, tocad «Siguiente» otra vez.",
-
-    s2Title: "Vuestras horas",
-    s2Sub: "Solo horas en que de verdad tenéis sala libre.",
-    change: "Cambiar",
-    repeatLegend: "¿Cada semana o solo estos días?",
-    weeklyOpt: "Cada semana", onceOpt: "Solo estos días",
-    dayLbl: "Día",
-    today: "Hoy",
-    nSel: "{n} elegidos", nSel1: "1 elegido",
-    every: "Cada {wd}",
-    openSpans: "abierto {s}",
-    unknownHours: "sin horario: os enseñamos de 08:00 a 22:00",
-    unparsedHours: "no hemos entendido el horario: os enseñamos de 08:00 a 22:00",
-    am: "Por la mañana", pm: "Por la tarde",
-    amAria: "Horas por la mañana", pmAria: "Horas por la tarde",
-    noTimes: "Este día ya no queda ninguna hora en la que quepa un masaje de {d} min.",
-    noDaysW: "Según vuestro horario no abrís ningún día de la semana. Revisad el horario en «Últimos datos».",
-    noDaysD: "Según vuestro horario no abrís ningún día en los próximos 7 días. Revisad el horario en «Últimos datos».",
-    copyLbl: "Copiar estas horas a:",
-    copyAll: "Todos los días", copyWk: "Lunes a viernes",
-    copied0: "No hay otro día en el que quepan.", copied1: "Copiadas a 1 día más.", copiedN: "Copiadas a {n} días más.",
-    dropped1: "1 hueco elegido ya no cabe en vuestro horario con {d} min: no lo enviamos.",
-    droppedN: "{n} huecos elegidos ya no caben en vuestro horario con {d} min: no los enviamos.",
-    duration: "Duración",
-    sumLbl: "Vais a enviar",
-    sumNone: "Todavía no habéis elegido ningún hueco.",
-    sum1: "1 hueco de {d} min", sumN: "{n} huecos de {d} min",
-    weekly: "cada semana", once: "solo estos días",
-    next2: "Siguiente", next2One: "Seguir con 1 hueco", next2N: "Seguir con {n} huecos",
-    back1: "Volver",
-    errNone: "Elegid al menos un hueco.",
-    errMany: "Como mucho 40 huecos de una vez. Quitad alguno, por favor.",
-    modeWeekly: "Se repiten solas cada semana hasta que las quitéis.",
-    modeOnce: "Solo esos días; no se repiten.",
-
-    s3Title: "Últimos datos",
-    s3Sub: "Lo opcional podéis dejarlo en blanco.",
     fAddr: "Dirección o barrio",
     fAddrPh: "Calle y número, o el barrio",
-    fEmail: "Email",
-    fEmailPh: "hola@vuestrocentro.es",
-    fEmailHint: "Imprescindible: cada reserva os llega también por email, con el teléfono del cliente y el enlace para rechazarla.",
+    fAddrHint: "Para que el cliente sepa llegar.",
+    fWa: "WhatsApp para las reservas",
+    fWaHint: "Aquí os llegan las reservas, en español.",
+    waLandline: "Esto parece un fijo. ¿Es vuestro WhatsApp?",
     opt: "(opcional)",
     fHours: "Horario",
-    fHoursPh: "Lun-Vie 10-14 y 17-21, Sáb 10-14",
-    hoursHintNone: "Por ejemplo: Lun-Vie 10-14 y 17-21, Sáb 10-14. Así nunca os pedimos nada cuando estáis cerrados.",
+    fHoursPh: "Ej.: Lun-Vie 10-20",
+    hoursHintNone: "Así solo os enseñamos horas en que abrís.",
     hoursHintOk: "Entendido: {h}.",
-    hoursHintBad: "No lo entendemos del todo. Probad así: Lun-Vie 10-20, Sáb 10-14. Si no, lo apuntamos tal cual.",
+    hoursHintBad: "No lo entendemos del todo. Probad así: Lun-Vie 10-20, Sáb 10-14.",
+    next1: "Siguiente: vuestras horas libres",
+    next1Known: "Sí, está bien. Seguir",
+    back0: "Volver",
+    errName: "Falta el nombre del centro.",
+    errAddr: "Falta la dirección o el barrio.",
+    errWa: "Falta el WhatsApp para las reservas.",
+    errWaLandline: "Parece un fijo. Si es vuestro WhatsApp, tocad el botón otra vez.",
+
+    s2Title: "¿Qué horas tenéis libres?",
+    change: "Cambiar datos",
+    s2Sub: "Tocad las horas en que tenéis una sala libre.",
+    durLegend: "¿Cuánto dura el masaje?",
+    pickDay: "1. Elegid un día",
+    pickTimes: "2. Tocad las horas libres",
+    today: "Hoy",
+    nSel: "{n} elegidas", nSel1: "1 elegida",
+    every: "Cada {wd}",
+    openSpans: "abierto {s}",
+    am: "Mañana", pm: "Tarde",
+    amAria: "Horas por la mañana", pmAria: "Horas por la tarde",
+    noTimes: "Este día no quedan horas para un masaje de {d} min.",
+    noDaysW: "Con vuestro horario no abrís ningún día. Revisadlo en «Cambiar datos».",
+    noDaysD: "Con vuestro horario no abrís en los próximos 7 días. Revisadlo en «Cambiar datos».",
+    copyLbl: "¿Las mismas horas otros días?",
+    copyAll: "Todos los días", copyWk: "De lunes a viernes",
+    copied0: "No caben en ningún otro día.", copiedTo: "Copiadas a: {d}.",
+    dropped1: "1 hora ya no cabe en vuestro horario. No la enviamos.",
+    droppedN: "{n} horas ya no caben en vuestro horario. No las enviamos.",
+    repeatLegend: "¿Se repiten cada semana?",
+    weeklyOpt: "Sí, cada semana", onceOpt: "No, solo los próximos 7 días",
+    modeWeekly: "Se repiten hasta que las quitéis.",
+    modeOnce: "Solo esos días. No se repiten.",
+    sumLbl: "Vais a enviar",
+    sumNone: "Todavía no habéis elegido ninguna hora.",
+    sum1: "1 hora libre de {d} min", sumN: "{n} horas libres de {d} min",
+    weekly: "cada semana", once: "solo estos días",
+    next2Zero: "Tocad al menos 1 hora", next2One: "Seguir con 1 hora", next2N: "Seguir con {n} horas",
+    back1: "Volver",
+    errNone: "Elegid al menos una hora.",
+    errMany: "Como mucho 40 horas de una vez. Quitad alguna.",
+
+    s3Title: "Últimos datos",
+    s3Sub: "Casi está.",
+    fEmail: "Email para las reservas",
+    fEmailPh: "hola@vuestrocentro.es",
+    fEmailHint: "Cada reserva os llega también por email.",
     fPrices: "Vuestro precio",
-    priceHint: "El cliente os paga a vosotros, a este precio.",
+    priceHint: "El cliente os lo paga a vosotros.",
     priceFrom: "Tenemos apuntado: desde {p} €.",
     editTimes: "Cambiar las horas",
     sumWa: "Las reservas os llegan por WhatsApp al {v}.",
-    accept: "Acepto las condiciones",
+    accept: "Acepto estas condiciones:",
     termsLine: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
-    errAddr: "Añadid la dirección o el barrio.",
     errEmail: "Ese email no parece correcto.",
     errEmailNone: "Falta el email.",
     errPrice: "Poned solo el número, por ejemplo 45.",
-    errAccept: "Para enviar, marcad «Acepto las condiciones».",
-    errPriceNeed: "Poned vuestro precio de {d} min: es el que ve el cliente.",
-    save: "Enviar las horas", saving: "Enviando…",
+    errAccept: "Marcad la casilla para enviar.",
+    errPriceNeed: "Falta vuestro precio de {d} min.",
+    missLbl: "Revisad: {list}.",
+    missEmail: "el email", missPrice: "el precio de {d} min", missAccept: "la casilla de las condiciones",
+    save: "Enviar nuestras horas", saving: "Enviando…",
     back2: "Volver",
     dup: "Ya nos habéis enviado estas mismas horas.",
 
@@ -700,22 +805,22 @@ const T = {
     s4Received: "Recibido",
     receivedN: "Gracias, {n}. Lo revisamos y os confirmamos por WhatsApp o email.", received0: "Lo revisamos y os confirmamos por WhatsApp o email.",
     nextTitle: "Qué pasa ahora",
-    nextLive: "Ya se pueden reservar. Si un cliente coge una, os llega la reserva por WhatsApp y por email, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
-    nextWait: "Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos. Desde entonces, si un cliente coge una, os llega la reserva por WhatsApp y por email, con su nombre y su teléfono (y su email, cuando lo tenemos), y tenéis 15 minutos para rechazarla.",
-    nextReview: "Hasta que os lo confirmemos, no ofrecemos ninguna de estas horas a clientes.",
-    nextWeekly: "Las de cada semana se repiten solas. Podéis verlas y quitarlas cuando queráis con el botón de abajo.",
+    nextLive: "Ya se pueden reservar. Si un cliente coge una, os llega por WhatsApp y email. Tenéis 15 minutos para rechazarla.",
+    nextWait: "Aún no las ofrecemos a clientes. Os avisamos cuando empecemos.",
+    nextReview: "Hasta que os lo confirmemos, no las ofrecemos a clientes.",
+    nextWeekly: "Las de cada semana se repiten solas. Podéis quitarlas cuando queráis.",
     manage: "Ver y cambiar vuestras horas",
     srvNext: "Próximas fechas", srvNot: "No guardadas",
-    nextB: "Si un cliente coge un hueco, os llega la reserva por WhatsApp y por email, por escrito y en español, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
-    nextC: "Si un hueco se os llena por otro lado, escribid «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
+    nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email. Tenéis 15 minutos para rechazarla.",
+    nextC: "¿Se os llena una hora por otro lado? Escribid «ocupado» por WhatsApp y la quitamos.",
     waContact: "Escribirnos por WhatsApp",
     more: "Añadir más horas",
     s4Fallback: "Falta un paso",
-    fbSub: "No hemos podido guardar las horas desde aquí. Para que no se pierdan, enviádnoslas por WhatsApp: el mensaje ya va escrito, solo tenéis que enviarlo.",
+    fbSub: "No hemos podido guardar vuestras horas. Enviádnoslas por WhatsApp: el mensaje ya está escrito.",
     fbWa: "Enviar por WhatsApp",
     fbMail: "Enviar por email",
     fbRetry: "Probar a guardar otra vez",
-    fbNote: "Antes de ofrecer ninguna de estas horas a un cliente, os escribimos por WhatsApp para confirmarlas.",
+    fbNote: "Antes de ofrecerlas, os escribimos para confirmarlas.",
     s4Preview: "Vista previa",
     pvSub: "No se ha enviado nada. Con el enlace normal, aquí terminaría el alta.",
     pvMsgLbl: "Si el guardado falla, el centro nos envía este mensaje por WhatsApp:",
@@ -739,119 +844,139 @@ const T = {
     langBtn: "ES", langAria: "Leer esta página en español",
     kicker: "For massage studios in Madrid",
     hello: "Hi, {n}",
-    h1: "What time does a room usually sit empty for you?",
-    sub: "Send us that slot and we offer it to people who write to us in English looking for a massage in Madrid; if nobody takes it, it costs you nothing.",
-    cta: "Choose your times",
-    ctaKnown: "Go straight to your times",
-    ctaNote: "No app, no passwords. Free until 30 November; after that, 5 € + VAT per new customer who comes.",
-    proof: "Since September more than 100 people have written to us in English looking for a massage: foreigners living in Madrid, students from abroad and tourists. We don't promise you a number of customers.",
-    whyTitle: "The essentials",
-    b1: "<b>You only pay if the customer comes.</b> If nobody takes the slot, or the customer doesn't show up, you owe us nothing. Nor for their later visits.",
-    b2: "<b>Everything in writing and in Spanish.</b> We talk to the customer in English; you get the booking confirmed on WhatsApp, with their name and phone (and their email, when we have it).",
-    b3: "<b>Your price, your customer.</b> The customer pays you, at your price. If they come back, they're yours and you owe us nothing.",
-    b4: "<b>Professional massage only.</b> Anyone asking for something else gets a no and no further replies.",
+    h1: "New customers for your free hours",
+    sub: "We are Massage Club, a small booking service in Madrid. People who write in English ask us for a massage. We find them a studio.",
+    cta: "Start",
+    ctaKnown: "Choose free times",
+    ctaResume: "Carry on where you left off",
+    ctaNote: "<b>Free until 30 November.</b> No app, no password.",
+    gainTitle: "What's in it for you?",
+    g1t: "New customers",
+    g1: "Foreigners who live in Madrid, students from abroad and tourists. Since September more than 100 people have written to us.",
+    g2t: "Everything in Spanish, nothing to install",
+    g2: "We talk to the customer in English. You get the booking in Spanish, on WhatsApp and by email.",
+    g3t: "You only pay if the customer comes",
+    g3: "Free until 30 November. After that, 5\u00a0€ + VAT for each new customer who comes.",
     howTitle: "How it works",
-    how1: "You send us, in advance, the slots that are really free: for example 2 or 3 a day, or one to start with. You tap them right here.",
-    how2: "We talk to the customer in English and offer them your slots.",
-    how3: "If they take one, you immediately get a WhatsApp with the booking confirmed. You have 15 minutes to turn it down if something has changed.",
-    how4: "If a slot fills up elsewhere first, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it.",
-    termsTitle: "What it costs: free until 30 November. After that, 5 € + VAT per new customer, not 25%.",
-    t1: "<b>Free</b> until 30 November 2026.",
-    t2: "From 1 December 2026: <b>5&nbsp;€ + VAT</b> for each new customer's first visit, only if they come.",
-    t3: "Their later visits: <b>0&nbsp;€</b>.",
-    t4: "No monthly fee. No contract. Stop whenever you like.",
-    t5: "For comparison: Treatwell Spain charges 25% + VAT of a new client's first booking (about 17 € + VAT on a 68 € massage). Fresha charges 20% on the new clients it brings.",
-    faqTitle: "What studios usually ask",
-    q1: "We're already on Treatwell, Booksy or Fresha",
-    a1: "Great, you can keep using them: you don't have to leave anything. We're one more channel, only for the slots that stay free, and if one fills up elsewhere first, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it. The cost is what differs: Treatwell Spain charges 25% + VAT of a new client's first booking, and Fresha 20% on the new clients it brings. We charge, from 1 December, 5 € + VAT for each new customer's first visit, only if they come.",
-    q2: "We have no free slots",
-    a2: "Well, congratulations, and we're not asking you for anything. If a slot does come free some week, even from a cancellation, send it to us on WhatsApp at +34\u00a0612\u00a0474\u00a0827. If nobody takes it, it costs you nothing.",
-    q3: "What if the customer doesn't show up?",
-    a3: "Then you pay nothing: we only charge for the first visit if the customer actually comes, and until 30 November, not even that. You also have their name and phone in writing from the very start (and their email, when we have it).",
-    q4: "Do we have to speak English?",
-    a4: "No. We talk to the customer in English and send you everything in writing and in Spanish: time, name and phone (and email, when we have it). We can't promise the customer speaks Spanish, but the booking reaches you clear and confirmed.",
+    how1t: "You tell us which hours you have free.",
+    how1: "Right here, with a few taps.",
+    how2t: "A customer books one.",
+    how2: "We talk to them, in English.",
+    how3t: "The booking reaches you on WhatsApp and by email.",
+    how3: "In Spanish, with their name and phone. You have 15 minutes to turn it down.",
+    exLbl: "Example. It reaches you in Spanish:",
+    exNote: "Name, time, phone and email. Plus a link to turn it down within 15 minutes.",
+    priceTitle: "What it costs",
+    pr1k: "Until 30 November",
+    pr1v: "Free",
+    pr2k: "Each new customer, from 1 December",
+    pr2s: "Only their first visit, and only if they come.",
+    pr2v: "5\u00a0€ + VAT",
+    pr3k: "If that customer comes back",
+    pr4k: "Monthly fee",
+    pr4s: "No contract. Stop whenever you like.",
+    payLine: "The customer pays you at the studio, at your price.",
+    cmpCap: "For a new customer on a 68\u00a0€ massage:",
+    cmpThem: "about 17\u00a0€ + VAT",
+    cmpUs: "5\u00a0€ + VAT",
+    cmpSrc: "Treatwell Spain charges 25% + VAT of a new client's first booking.",
+    faqTitle: "Questions",
+    q1: "Do we have to speak English?",
+    a1: "Not for the bookings. We talk to the customer, and you get everything in Spanish. We can't promise the customer speaks Spanish.",
+    q2: "We're already on Treatwell, Booksy or Fresha",
+    a2: "Keep them. We only use the hours you have left free. If one fills up, write \"ocupado\" (taken) on WhatsApp and we remove it.",
+    q3: "What if the customer doesn't come?",
+    a3: "You pay nothing. We only charge if the customer really comes.",
+    q4: "What if someone asks for something else?",
+    a4: "Professional massage only. Anyone asking for something else gets a no.",
+    contactTitle: "Who we are",
+    contactHelp: "Any questions?",
     contactName: "Jordan, from Massage Club",
-    contactLine: "Any questions? Write to me.",
+    contactLine: "I run Massage Club from Madrid. Questions? Write to me.",
     seeUs: "How customers see us:",
 
     preview: "Preview: nothing is sent",
     progressAria: "Steps",
-    stepWord1: "Step 1 of 3: ", stepWord2: "Step 2 of 3: ", stepWord3: "Step 3 of 3: ",
-    p1: "Studio", p2: "Times", p3: "Last details",
+    stepOf: "Step {n} of 3",
+    p1: "Studio", p2: "Free times", p3: "Last details",
+    draftNote: "It's saved on this phone. You can finish later.",
     s1Title: "Your studio",
-    s1SubKnown: "Check that it's right and change whatever you need.",
+    s1SubKnown: "Is it all right? Change whatever you need.",
     s1SubNew: "So we know where to send the bookings.",
     fName: "Studio name",
+    fAddr: "Address or neighbourhood",
+    fAddrPh: "Street and number, or the neighbourhood",
+    fAddrHint: "So the customer can find you.",
     fWa: "WhatsApp for bookings",
-    fWaHint: "Confirmed bookings arrive here, in writing and in Spanish.",
+    fWaHint: "Bookings reach you here, in Spanish.",
     waLandline: "This looks like a landline. Is it your WhatsApp?",
-    next1: "Next: your times",
+    opt: "(optional)",
+    fHours: "Opening hours",
+    fHoursPh: "E.g. Mon-Fri 10-20",
+    hoursHintNone: "Then we only show times when you're open.",
+    hoursHintOk: "Got it: {h}.",
+    hoursHintBad: "We can't quite read that. Try: Mon-Fri 10-20, Sat 10-14.",
+    next1: "Next: your free times",
+    next1Known: "Yes, that's right. Continue",
     back0: "Back",
     errName: "The studio name is missing.",
-    errWa: "Add the WhatsApp number where you want to receive bookings.",
-    errWaLandline: "This looks like a landline. If it really is your WhatsApp, tap \"Next\" again.",
+    errAddr: "The address or neighbourhood is missing.",
+    errWa: "The WhatsApp for bookings is missing.",
+    errWaLandline: "This looks like a landline. If it is your WhatsApp, tap the button again.",
 
-    s2Title: "Your times",
-    s2Sub: "Only times when a room is really free.",
-    change: "Change",
-    repeatLegend: "Every week, or these dates only?",
-    weeklyOpt: "Every week", onceOpt: "These dates only",
-    dayLbl: "Day",
+    s2Title: "Which hours do you have free?",
+    change: "Edit details",
+    s2Sub: "Tap the times when you have a free room.",
+    durLegend: "How long is the massage?",
+    pickDay: "1. Pick a day",
+    pickTimes: "2. Tap the free times",
     today: "Today",
     nSel: "{n} chosen", nSel1: "1 chosen",
     every: "Every {wd}",
     openSpans: "open {s}",
-    unknownHours: "no opening hours: we show 08:00 to 22:00",
-    unparsedHours: "we couldn't read your opening hours: we show 08:00 to 22:00",
     am: "Morning", pm: "Afternoon",
     amAria: "Morning times", pmAria: "Afternoon times",
-    noTimes: "No times left on this day that fit a {d} min massage.",
-    noDaysW: "Your opening hours show no open day in the week. Check them in \"Last details\".",
-    noDaysD: "Your opening hours show no open day in the next 7 days. Check them in \"Last details\".",
-    copyLbl: "Copy these times to:",
+    noTimes: "No times left this day for a {d} min massage.",
+    noDaysW: "Your opening hours show no open day. Check them in \"Edit details\".",
+    noDaysD: "Your opening hours show no open day in the next 7 days. Check them in \"Edit details\".",
+    copyLbl: "Same times on other days?",
     copyAll: "Every day", copyWk: "Monday to Friday",
-    copied0: "No other day where they fit.", copied1: "Copied to 1 more day.", copiedN: "Copied to {n} more days.",
-    dropped1: "1 chosen slot no longer fits your hours at {d} min, so we won't send it.",
-    droppedN: "{n} chosen slots no longer fit your hours at {d} min, so we won't send them.",
-    duration: "Length",
+    copied0: "They don't fit on any other day.", copiedTo: "Copied to: {d}.",
+    dropped1: "1 time no longer fits your hours. We won't send it.",
+    droppedN: "{n} times no longer fit your hours. We won't send them.",
+    repeatLegend: "Do they repeat every week?",
+    weeklyOpt: "Yes, every week", onceOpt: "No, only the next 7 days",
+    modeWeekly: "They repeat until you remove them.",
+    modeOnce: "Only those days. They don't repeat.",
     sumLbl: "You're sending",
-    sumNone: "You haven't chosen any slots yet.",
-    sum1: "1 slot, {d} min", sumN: "{n} slots, {d} min",
+    sumNone: "You haven't chosen any times yet.",
+    sum1: "1 free time, {d} min", sumN: "{n} free times, {d} min",
     weekly: "every week", once: "these dates only",
-    next2: "Next", next2One: "Continue with 1 slot", next2N: "Continue with {n} slots",
+    next2Zero: "Tap at least 1 time", next2One: "Continue with 1 time", next2N: "Continue with {n} times",
     back1: "Back",
-    errNone: "Choose at least one slot.",
-    errMany: "At most 40 slots at once. Please remove some.",
-    modeWeekly: "They repeat by themselves every week until you remove them.",
-    modeOnce: "Only those days; they don't repeat.",
+    errNone: "Choose at least one time.",
+    errMany: "At most 40 times at once. Please remove some.",
 
     s3Title: "Last details",
-    s3Sub: "You can leave the optional ones blank.",
-    fAddr: "Address or neighbourhood",
-    fAddrPh: "Street and number, or the neighbourhood",
-    fEmail: "Email",
+    s3Sub: "Almost done.",
+    fEmail: "Email for bookings",
     fEmailPh: "hello@yourstudio.com",
-    fEmailHint: "Required: every booking also reaches you by email, with the client's phone and the link to turn it down.",
-    opt: "(optional)",
-    fHours: "Opening hours",
-    fHoursPh: "Mon-Fri 10-14 and 17-21, Sat 10-14",
-    hoursHintNone: "For example: Mon-Fri 10-14 and 17-21, Sat 10-14. Then we never ask you for anything while you're closed.",
-    hoursHintOk: "Got it: {h}.",
-    hoursHintBad: "We can't quite read that. Try: Mon-Fri 10-20, Sat 10-14. Otherwise we save it as you wrote it.",
+    fEmailHint: "Every booking reaches you by email too.",
     fPrices: "Your price",
-    priceHint: "The customer pays you, at this price.",
+    priceHint: "The customer pays it to you.",
     priceFrom: "We have you down as: from {p} €.",
     editTimes: "Change the times",
     sumWa: "Bookings reach you on WhatsApp at {v}.",
-    accept: "I accept the terms",
+    accept: "I accept these terms:",
     termsLine: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
-    errAddr: "Add the address or the neighbourhood.",
     errEmail: "That email doesn't look right.",
     errEmailNone: "The email is missing.",
     errPrice: "Just the number, for example 45.",
-    errAccept: "To send, tick \"I accept the terms\".",
-    errPriceNeed: "Add your {d} min price: it is what the customer sees.",
-    save: "Send the times", saving: "Sending…",
+    errAccept: "Tick the box to send.",
+    errPriceNeed: "Your {d} min price is missing.",
+    missLbl: "Please check: {list}.",
+    missEmail: "the email", missPrice: "the {d} min price", missAccept: "the terms box",
+    save: "Send our times", saving: "Sending…",
     back2: "Back",
     dup: "You've already sent us these exact times.",
 
@@ -860,22 +985,22 @@ const T = {
     s4Received: "Received",
     receivedN: "Thank you, {n}. We'll check it and confirm by WhatsApp or email.", received0: "We'll check it and confirm by WhatsApp or email.",
     nextTitle: "What happens now",
-    nextLive: "They can be booked now. If a customer takes one, the booking reaches you by WhatsApp and by email, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
-    nextWait: "We're not offering them to customers yet: we'll let you know as soon as we start. From then on, if a customer takes one, the booking reaches you by WhatsApp and by email, with their name and phone (and their email, when we have it), and you have 15 minutes to turn it down.",
-    nextReview: "Until we confirm, we don't offer any of these times to customers.",
-    nextWeekly: "The weekly ones repeat by themselves. You can see and remove them whenever you like with the button below.",
+    nextLive: "They can be booked now. If a customer takes one, you get it on WhatsApp and by email. You have 15 minutes to turn it down.",
+    nextWait: "We're not offering them to customers yet. We'll tell you when we start.",
+    nextReview: "Until we confirm, we don't offer them to customers.",
+    nextWeekly: "The weekly ones repeat by themselves. You can remove them whenever you like.",
     manage: "See and change your times",
     srvNext: "Next dates", srvNot: "Not saved",
-    nextB: "If a customer takes a slot, the booking reaches you by WhatsApp and by email, in writing and in Spanish, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
-    nextC: "If a slot fills up elsewhere, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it.",
+    nextB: "If a customer takes a time, you get the booking on WhatsApp and by email. You have 15 minutes to turn it down.",
+    nextC: "Did a time fill up some other way? Write \"ocupado\" (taken) on WhatsApp and we remove it.",
     waContact: "Write to us on WhatsApp",
     more: "Add more times",
     s4Fallback: "One more step",
-    fbSub: "We couldn't save your times from here. So they don't get lost, send them to us on WhatsApp: the message is already written, you only need to send it.",
+    fbSub: "We couldn't save your times. Send them to us on WhatsApp: the message is already written.",
     fbWa: "Send on WhatsApp",
     fbMail: "Send by email",
     fbRetry: "Try saving again",
-    fbNote: "Before we offer any of these times to a customer, we write to you on WhatsApp to confirm them.",
+    fbNote: "Before we offer them, we write to you to confirm.",
     s4Preview: "Preview",
     pvSub: "Nothing was sent. With the normal link, sign-up would end here.",
     pvMsgLbl: "If saving fails, the studio sends us this message on WhatsApp:",
@@ -911,6 +1036,7 @@ const t = (k, vars) => {
 };
 const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 const val = (id) => $(id).value.trim();
+const joinList = (a) => a.length > 1 ? a.slice(0, -1).join(", ") + t("and") + a[a.length - 1] : (a[0] || "");
 
 // ---------------------------------------------------------------- state
 const S = {
@@ -919,7 +1045,7 @@ const S = {
   active: false,     // partners.status === 'active': we already work together
   accepted: false,
   dur: 60,
-  repeat: true,      // every week is the default: the headline asks a weekly question
+  repeat: true,      // every week is the default
   day: null,         // key of the open day chip
   selW: {},          // weekday "0".."6" -> Set of start minutes (every week)
   selD: {},          // "YYYY-MM-DD" -> Set of start minutes (these dates only)
@@ -931,7 +1057,8 @@ const S = {
   landlineOk: "",    // a landline the studio confirmed is its WhatsApp
   resume: 0,         // where step 1 goes next when it was a detour
   saving: false,
-  copied: null,
+  copied: null,      // day keys the last "same times" tap copied to
+  miss: [],          // what step 3 still needs, said by the send button
 };
 
 // ---------------------------------------------------------------- Madrid time
@@ -964,7 +1091,9 @@ const LIST_W = new Set(["/", "&", "+", "y", "e", "and"]);
 const CLOSED_RE = /\b(?:cerrado|cerrados|cerramos|closed)\b/g;
 const TIME_P = "(\\d{1,2}(?:[:.h]\\d{2})?)";
 const RANGE_RE = new RegExp("(?:\\b(?:de|desde|from)\\s+)?" + TIME_P + "\\s*(?:h(?:rs?|s)?\\.?)?\\s*(?:-|\\ba\\b|\\bal\\b|\\bhasta\\b|\\bto\\b)\\s*(?:las\\s+)?" + TIME_P + "\\s*(?:h(?:rs?|s)?\\b\\.?)?", "g");
-const normTxt = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[‐-―−]/g, "-").replace(/\s+/g, " ").trim();
+// Accents off; every kind of dash or minus sign (U+2010 to U+2015, U+2212)
+// read as a hyphen. Written as escapes so the file itself has no dashes.
+const normTxt = (s) => String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\u2010-\u2015\u2212]/g, "-").replace(/\s+/g, " ").trim();
 function toMin(s) {
   const m = String(s == null ? "" : s).trim().match(/^(\d{1,2})(?:[:.h](\d{2}))?$/);
   if (!m) return null;
@@ -1158,6 +1287,8 @@ function firstDate(wd, m) {
   return mkDate(7).iso;
 }
 const dayLabel = (d) => d.weekly ? cap(t("every", { wd: LG[L][d.wd] })) : SH[L][d.wd] + " " + d.dd + " " + MO[L][d.mm];
+const chipName = (d) => d.weekly ? SH[L][d.wd] : SH[L][d.wd] + " " + d.dd;
+const hasPicks = () => Object.values(S.selW).some((s) => s.size) || Object.values(S.selD).some((s) => s.size);
 
 // ---------------------------------------------------------------- phone
 // Stored like every other number: "+<country><number>". A Spanish number typed
@@ -1187,8 +1318,11 @@ const waLink = (text) => "https://wa.me/" + WA_NUM + (text ? "?text=" + encodeUR
 
 // ---------------------------------------------------------------- draft
 // Per link, in this browser only. Wrapped: storage can be missing or blocked.
+// The page only says "it's saved on this phone" when storage works.
 const DKEY = "socios-draft-v2:" + (PREVIEW ? "preview:" : "") + (SLUG_OK ? SLUG : "-");
 const FIELDS = ["name", "wa", "addr", "email", "hours", "p60", "p90"];
+let DRAFT_OK = false;
+try { localStorage.setItem("socios-probe", "1"); localStorage.removeItem("socios-probe"); DRAFT_OK = true; } catch (_) { DRAFT_OK = false; }
 const setsOut = (o) => Object.fromEntries(Object.entries(o).filter(([, s]) => s.size).map(([k, s]) => [k, Array.from(s)]));
 function saveDraft() {
   try {
@@ -1239,30 +1373,46 @@ function paintStatic() {
   $("accept").checked = S.accepted;
   paintDynamic();
 }
+// The main button: a studio we already know (or one coming back to a draft)
+// goes straight to its times; anyone else starts at "Vuestro centro".
+const skipStep1 = () => step1Valid() && (S.active || hasPicks());
+const ctaLabel = () => hasPicks() ? t("ctaResume") : skipStep1() ? t("ctaKnown") : t("cta");
+function start() { go(skipStep1() ? 2 : 1); }
 function paintDynamic() {
   const name = S.partner ? S.partner.business_name : "";
   const loading = SLUG_OK && !S.partner && !partnerDone;
   // While a personal link loads, the greeting keeps its line so nothing jumps.
   $("helloTop").hidden = !name && !loading;
   $("helloTop").classList.toggle("reserve", !name);
-  $("helloTop").textContent = name ? t("hello", { n: name }) : " ";
+  $("helloTop").textContent = name ? t("hello", { n: name }) : " ";
   $("helloStep").hidden = !name;
   $("helloStep").textContent = name ? t("hello", { n: name }) : "";
-  $("knownCta").hidden = !S.active;
+  $("heroCta").textContent = ctaLabel();
+  $("finalCta").textContent = ctaLabel();
   $("s1sub").textContent = S.partner ? t("s1SubKnown") : t("s1SubNew");
+  $("next1").textContent = S.partner ? t("next1Known") : t("next1");
   $("previewNote").hidden = !PREVIEW;
   $("priceHint").textContent = t("priceHint") + (S.active && S.partner.price_from ? " " + t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "");
+  paintStepBits();
   paintWa();
   paintHoursHint();
   paintWho();
   paintContact();
   paintPriceOpt();
+  paintMiss();
   if (S.step === 2) renderTimes();
   if (S.step === 3) renderMini();
   if (S.step === 4) renderDone();
   updateDock();
   // Errors already on screen follow the language.
   document.querySelectorAll(".err[data-k]").forEach((el) => { if (el.textContent && el.dataset.k) el.textContent = t(el.dataset.k, { d: S.dur }); });
+}
+function paintStepBits() {
+  const inFlow = S.step >= 1 && S.step <= 3;
+  $("stepNo").hidden = !inFlow;
+  $("stepNo").textContent = inFlow ? t("stepOf", { n: S.step }) : "";
+  $("draftNote").hidden = !(DRAFT_OK && inFlow);
+  $("contactTitle").textContent = t(S.step === 0 ? "contactTitle" : "contactHelp");
 }
 function paintWa() {
   const p = intl(val("wa"));
@@ -1289,9 +1439,11 @@ function paintContact() {
 function chipHTML(d, n) {
   const top = d.weekly ? SH[L][d.wd] : d.offset === 0 ? t("today") : SH[L][d.wd];
   const bottom = d.weekly ? "" : `<span class="dd">${d.dd} ${esc(MO[L][d.mm])}</span>`;
-  const badge = n ? `<span class="badge" aria-hidden="true">${n}</span><span class="sr">, ${esc(n === 1 ? t("nSel1") : t("nSel", { n }))}</span>` : "";
-  const aria = d.weekly ? ` aria-label="${esc(cap(LG[L][d.wd]) + (n ? ", " + (n === 1 ? t("nSel1") : t("nSel", { n })) : ""))}"` : "";
-  return `<button type="button" class="day${d.weekly ? " one" : ""}" data-key="${d.key}" aria-pressed="${d.key === S.day}"${aria}><span class="dt">${esc(top)}</span>${bottom}${badge}</button>`;
+  const badge = n ? `<span class="badge" aria-hidden="true">${n}</span>` : "";
+  const full = d.weekly ? cap(LG[L][d.wd]) : (L === "es" ? `${cap(LG.es[d.wd])} ${d.dd} de ${MOL.es[d.mm]}` : `${LG.en[d.wd]} ${d.dd} ${MOL.en[d.mm]}`);
+  const aria = full + (n ? ", " + (n === 1 ? t("nSel1") : t("nSel", { n })) : "");
+  // The open day is outlined, never filled: a filled chip read as "chosen".
+  return `<button type="button" class="day" data-key="${d.key}" aria-current="${d.key === S.day}" aria-label="${esc(aria)}"><span class="dt">${esc(top)}</span>${bottom}${badge}</button>`;
 }
 function renderTimes() {
   const days = dayList();
@@ -1301,24 +1453,32 @@ function renderTimes() {
   $("days").innerHTML = days.map((d) => chipHTML(d, valid.get(d.key) || 0)).join("");
   const d = days.find((x) => x.key === S.day);
   $("copyBox").innerHTML = "";
+  $("timesLbl").hidden = !d;
   if (!d) {
     $("dayInfo").textContent = "";
     $("grid").innerHTML = `<p class="empty">${esc(t(S.repeat ? "noDaysW" : "noDaysD"))}</p>`;
   } else {
     const where = d.weekly ? cap(t("every", { wd: LG[L][d.wd] })) : (L === "es" ? `${cap(LG.es[d.wd])} ${d.dd} de ${MOL.es[d.mm]}` : `${LG.en[d.wd]} ${d.dd} ${MOL.en[d.mm]}`);
-    const info = hoursKnown(d.wd) ? t("openSpans", { s: spans(hoursFor(d.wd)) }) : (val("hours") && !HOURS ? t("unparsedHours") : t("unknownHours"));
-    $("dayInfo").innerHTML = `<b>${esc(where)}</b> · ${esc(info)}`;
+    const n = valid.get(d.key) || 0;
+    const bits = [];
+    if (hoursKnown(d.wd)) bits.push(t("openSpans", { s: spans(hoursFor(d.wd)) }));
+    if (n) bits.push(n === 1 ? t("nSel1") : t("nSel", { n }));
+    $("dayInfo").innerHTML = `<b>${esc(where)}</b>${bits.length ? " · " + esc(bits.join(" · ")) : ""}`;
     const starts = startsFor(d);
     const sel = map[d.key] || new Set();
     const btn = (m) => `<button type="button" class="tm" data-m="${m}" aria-pressed="${sel.has(m)}">${hhmm(m)}</button>`;
     const am = starts.filter((m) => m < 14 * 60), pm = starts.filter((m) => m >= 14 * 60);
     const group = (list, k) => list.length ? `<p class="glabel" aria-hidden="true">${esc(t(k))}</p><div class="times" role="group" aria-label="${esc(t(k + "Aria"))}">${list.map(btn).join("")}</div>` : "";
     $("grid").innerHTML = (group(am, "am") + group(pm, "pm")) || `<p class="empty">${esc(t("noTimes", { d: S.dur }))}</p>`;
-    // "Same times on other days": one tap instead of five.
-    if (valid.get(d.key) && days.length > 1) {
+    // "Same times on other days": one tap instead of five, and it says where.
+    if (n && days.length > 1) {
       const wk = days.some((x) => x.key !== d.key && x.wd >= 1 && x.wd <= 5);
-      const note = S.copied === null ? "" : `<p class="hint" aria-live="polite">${esc(S.copied === 0 ? t("copied0") : S.copied === 1 ? t("copied1") : t("copiedN", { n: S.copied }))}</p>`;
-      $("copyBox").innerHTML = `<div class="copy"><p>${esc(t("copyLbl"))}</p><div class="row"><button type="button" data-copy="all">${esc(t("copyAll"))}</button>${wk ? `<button type="button" data-copy="wk">${esc(t("copyWk"))}</button>` : ""}</div>${note}</div>`;
+      let note = "";
+      if (S.copied !== null) {
+        const names = S.copied.map((k) => days.find((x) => x.key === k)).filter(Boolean).map(chipName);
+        note = `<p class="copied">${esc(names.length ? t("copiedTo", { d: names.join(", ") }) : t("copied0"))}</p>`;
+      }
+      $("copyBox").innerHTML = `<div class="copy"><p>${esc(t("copyLbl"))}</p><div class="row">${wk ? `<button type="button" data-copy="wk">${esc(t("copyWk"))}</button>` : ""}<button type="button" data-copy="all">${esc(t("copyAll"))}</button></div>${note}</div>`;
     }
   }
   const hid = hiddenCount();
@@ -1328,21 +1488,23 @@ function renderTimes() {
 }
 function summaryHTML(list, dur, repeat, withLabel) {
   const lbl = withLabel ? `<p class="sumlbl">${esc(t("sumLbl"))}</p>` : "";
-  if (!list.length) return `${lbl}<p>${esc(t("sumNone"))}</p>`;
+  if (!list.length) return withLabel ? `${lbl}<p>${esc(t("sumNone"))}</p>` : "";
   const n = countOf(list);
   const head = (n === 1 ? t("sum1", { d: dur }) : t("sumN", { n, d: dur })) + " · " + t(repeat ? "weekly" : "once");
   const rows = list.map(({ d, mins }) => `<li><b>${esc(dayLabel(d))}</b>${mins.map(hhmm).join(", ")}</li>`).join("");
   return `${lbl}<p class="sumhead">${esc(head)}</p><ul>${rows}</ul>`;
 }
 function renderSummary() {
-  $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat, false);
+  $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true);
   updateDock();
 }
 function renderMini() {
   // Only a studio's own signed link saves its booking WhatsApp at once
   // (wa-bot socSignedUpdate); an unsigned form waits for Jordan.
   const wa = val("wa") && S.signed ? `<p class="hint">${esc(t("sumWa", { v: pretty(val("wa")) }))}</p>` : "";
-  $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true) + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
+  const hid = hiddenCount();
+  const drop = hid ? `<p class="hint">${esc(t(hid === 1 ? "dropped1" : "droppedN", { n: hid, d: S.dur }))}</p>` : "";
+  $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true) + drop + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
 }
 function renderDone() {
   const r = S.result, last = S.last, srv = S.server || {};
@@ -1388,7 +1550,7 @@ function renderDone() {
 const HASH = ["", "#centro", "#horas", "#datos", "#listo"];
 const stepFromHash = () => Math.max(0, HASH.indexOf(location.hash));
 const here = (step) => location.pathname + location.search + HASH[step];
-const step1Valid = () => !!val("name") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
+const step1Valid = () => !!val("name") && !!val("addr") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
 function go(step, mode = "push") {
   const asked = step;
   if (step === 3 && !step1Valid()) { S.resume = 3; step = 1; }
@@ -1408,10 +1570,15 @@ function go(step, mode = "push") {
     if (n === step) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
     li.classList.toggle("done", n < step);
   });
-  if (step === 1) paintWa();
-  if (step === 2) { paintWho(); renderTimes(); }
-  if (step === 3) { renderMini(); paintHoursHint(); }
+  paintStepBits();
+  if (step !== 2) setErr(null, "timesErr", "");
+  // Our "Volver" goes where the phone's back button would.
+  const st = history.state || {};
+  if (step === 1) { paintWa(); $("back0").dataset.back = st.prev === 2 ? "2" : "0"; }
+  if (step === 2) { paintWho(); renderTimes(); $("back1").dataset.back = st.prev === 0 ? "0" : "1"; }
+  if (step === 3) { renderMini(); paintPriceOpt(); }
   if (step === 4) renderDone();
+  if (step === 0) paintDynamic();
   updateDock();
   window.scrollTo(0, 0);
   const h = step === 0 ? null : $("s" + step + "h");
@@ -1426,6 +1593,8 @@ function back(target) {
 }
 window.addEventListener("popstate", () => go(stepFromHash(), "none"));
 document.addEventListener("click", (e) => {
+  const s = e.target.closest("[data-start]");
+  if (s) { e.preventDefault(); start(); return; }
   const g = e.target.closest("[data-go]");
   if (g) { e.preventDefault(); go(Number(g.dataset.go)); return; }
   const b = e.target.closest("[data-back]");
@@ -1443,24 +1612,28 @@ $("lang").addEventListener("click", () => {
 });
 
 // The bottom bar: on the landing, the main button once the top one is out of
-// view; on the times step, always, with how many slots are chosen.
+// view; on the times step, always, saying what it needs or how many are chosen.
 const visible = new Set();
 let seenScroll = false;
 function updateDock() {
   let on = false;
   const b = $("dockBtn");
+  let ready = true;
   if (S.step === 2) {
     const n = countOf(selList());
-    b.textContent = n === 0 ? t("next2") : n === 1 ? t("next2One") : t("next2N", { n });
+    b.textContent = n === 0 ? t("next2Zero") : n === 1 ? t("next2One") : t("next2N", { n });
+    ready = n > 0;
     on = true;
   } else if (S.step === 0 && "IntersectionObserver" in window && !visible.has("heroCta") && !visible.has("finalCta") && seenScroll) {
-    b.textContent = t("cta");
+    b.textContent = ctaLabel();
     on = true;
   }
+  b.classList.toggle("btn-primary", ready);
+  b.classList.toggle("btn-wait", !ready);
   $("dock").hidden = !on;
   document.body.classList.toggle("docked", on);
 }
-$("dockBtn").addEventListener("click", () => { if (S.step === 2) next2(); else go(1); });
+$("dockBtn").addEventListener("click", () => { if (S.step === 2) next2(); else start(); });
 if ("IntersectionObserver" in window) {
   const io = new IntersectionObserver((entries) => {
     for (const en of entries) { if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id); }
@@ -1477,11 +1650,35 @@ function setErr(inputId, errId, key, vars) {
   el.textContent = key ? t(key, vars) : "";
   if (inputId) $(inputId).setAttribute("aria-invalid", key ? "true" : "false");
 }
+// A field with an error is brought to the middle of the screen, label and all,
+// before it takes focus (the phone's keyboard then opens under it).
+function focusField(id) {
+  const el = $(id);
+  if (!el) return;
+  const box = el.closest(".field, .check") || el;
+  try { box.scrollIntoView({ block: "center" }); } catch (_) { box.scrollIntoView(); }
+  el.focus({ preventScroll: true });
+}
+// Beside the send button: what is still missing, in words.
+function paintMiss() {
+  const items = [];
+  for (const k of S.miss) {
+    const s = k === "email" ? t("missEmail") : k === "accept" ? t("missAccept") : k === "p60" || k === "p90" ? t("missPrice", { d: k === "p60" ? 60 : 90 }) : "";
+    if (s && !items.includes(s)) items.push(s);
+  }
+  $("missErr").textContent = items.length ? t("missLbl", { list: joinList(items) }) : "";
+}
+function unmiss(...keys) {
+  if (!S.miss.length) return;
+  S.miss = S.miss.filter((k) => !keys.includes(k));
+  paintMiss();
+}
 
 // ---------------------------------------------------------------- step 1
 function checkStep1() {
   const bad = [];
   setErr("name", "nameErr", val("name") ? "" : (bad.push("name"), "errName"));
+  setErr("addr", "addrErr", val("addr") ? "" : (bad.push("addr"), "errAddr"));
   const p = intl(val("wa"));
   if (!waDigitsOk()) { setErr("wa", "waErr", "errWa"); bad.push("wa"); }
   else if (isLandline(p) && S.landlineOk !== p) {
@@ -1497,12 +1694,14 @@ $("f1").addEventListener("submit", (e) => {
   e.preventDefault();
   const bad = checkStep1();
   saveDraft();
-  if (bad.length) { $(bad[0]).focus(); return; }
+  if (bad.length) { focusField(bad[0]); return; }
   const to = S.resume || 2;
   S.resume = 0;
   go(to);
 });
-$("wa").addEventListener("input", () => { if ($("waErr").dataset.k === "errWaLandline") setErr("wa", "waErr", ""); paintWa(); });
+$("wa").addEventListener("input", () => { if ($("waErr").dataset.k) setErr("wa", "waErr", ""); paintWa(); });
+$("name").addEventListener("input", () => { if ($("nameErr").dataset.k && val("name")) setErr("name", "nameErr", ""); });
+$("addr").addEventListener("input", () => { if ($("addrErr").dataset.k && val("addr")) setErr("addr", "addrErr", ""); });
 ["name", "wa"].forEach((id) => $(id).addEventListener("input", () => { paintWho(); paintContact(); }));
 
 // ---------------------------------------------------------------- step 2
@@ -1532,14 +1731,16 @@ $("modeSet").addEventListener("change", (e) => {
   const same = wd == null ? null : dayList().find((d) => d.wd === wd);
   S.day = same ? same.key : null;
   S.copied = null;
-  $("timesErr").textContent = "";
+  setErr(null, "timesErr", "");
   renderTimes();
   saveDraft();
 });
 $("durSet").addEventListener("change", (e) => {
   if (e.target.name !== "dur") return;
   S.dur = Number(e.target.value) === 90 ? 90 : 60;
+  S.copied = null;
   renderTimes();
+  paintPriceOpt();
   saveDraft();
 });
 $("days").addEventListener("click", (e) => {
@@ -1560,7 +1761,7 @@ $("grid").addEventListener("click", (e) => {
   if (set.has(m)) set.delete(m); else set.add(m);
   if (!set.size) delete map[S.day];
   S.copied = null;
-  $("timesErr").textContent = "";
+  setErr(null, "timesErr", "");
   const y = window.scrollY;
   renderTimes();
   window.scrollTo(0, y);
@@ -1574,25 +1775,32 @@ $("copyBox").addEventListener("click", (e) => {
   const map = selMap(), src = map[S.day];
   if (!src || !src.size) return;
   const wkOnly = b.dataset.copy === "wk";
-  let n = 0;
+  const to = [];
   for (const d of dayList()) {
     if (d.key === S.day || (wkOnly && !(d.wd >= 1 && d.wd <= 5))) continue;
     const ok = new Set(startsFor(d));
     let added = false;
     for (const m of src) if (ok.has(m)) { (map[d.key] || (map[d.key] = new Set())).add(m); added = true; }
-    if (added) n++;
+    if (added) to.push(d.key);
   }
-  S.copied = n;
+  S.copied = to;
+  const y = window.scrollY;
   renderTimes();
+  window.scrollTo(0, y);
+  const days = dayList();
+  const names = to.map((k) => days.find((x) => x.key === k)).filter(Boolean).map(chipName);
+  $("copyLive").textContent = names.length ? t("copiedTo", { d: names.join(", ") }) : t("copied0");
   saveDraft();
   const again = $("copyBox").querySelector(`[data-copy="${b.dataset.copy}"]`);
   if (again) again.focus({ preventScroll: true });
 });
+// The error sits in the bottom bar, right above the button that was tapped,
+// and the page scrolls to where the times are.
 function next2() {
   if (!selList().length) {
     setErr(null, "timesErr", "errNone");
-    const first = $("grid").querySelector(".tm");
-    if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center" }); }
+    const lbl = $("timesLbl");
+    if (lbl && !lbl.hidden) lbl.scrollIntoView({ block: "start" });
     return;
   }
   if (countOf(selList()) > MAX_TIMES) { setErr(null, "timesErr", "errMany"); return; }
@@ -1604,10 +1812,14 @@ function next2() {
 // for the chosen length is needed unless this is the studio's own signed link
 // and we already have its menu (wa-bot socValidate, priceKnown).
 const priceNeeded = () => !(S.signed && S.partner && S.partner.has_menu === true);
-function paintPriceOpt() { const o = $("priceOpt"); if (o) o.hidden = priceNeeded(); }
+// The price for the chosen length has no "(opcional)"; the other one does.
+function paintPriceOpt() {
+  const need = priceNeeded();
+  $("p60Opt").hidden = need && S.dur === 60;
+  $("p90Opt").hidden = need && S.dur === 90;
+}
 function checkStep3() {
   const bad = [];
-  setErr("addr", "addrErr", val("addr") ? "" : (bad.push("addr"), "errAddr"));
   // Required: the email always carries the client's phone and the reject link.
   const em = val("email");
   setErr("email", "emailErr", !em ? (bad.push("email"), "errEmailNone") : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "" : (bad.push("email"), "errEmail"));
@@ -1625,9 +1837,14 @@ function checkStep3() {
 }
 $("accept").addEventListener("change", () => {
   S.accepted = $("accept").checked;
-  if (S.accepted) { setErr(null, "acceptErr", ""); $("acceptBox").classList.remove("bad"); }
+  if (S.accepted) { setErr(null, "acceptErr", ""); $("acceptBox").classList.remove("bad"); unmiss("accept"); }
   saveDraft();
 });
+$("email").addEventListener("input", () => { if ($("emailErr").dataset.k) setErr("email", "emailErr", ""); unmiss("email"); });
+["p60", "p90"].forEach((id) => $(id).addEventListener("input", () => {
+  if ($("priceErr").dataset.k) { setErr(null, "priceErr", ""); $("p60").setAttribute("aria-invalid", "false"); $("p90").setAttribute("aria-invalid", "false"); }
+  unmiss("p60", "p90");
+}));
 $("hours").addEventListener("input", () => {
   HOURS = parseHours(val("hours"));
   paintHoursHint();
@@ -1700,12 +1917,14 @@ async function send(btn) {
   if (S.saving) return;
   setErr(null, "saveErr", "");
   setErr(null, "miniErr", "");
-  if (!step1Valid()) { S.resume = 3; go(1); const b = checkStep1(); if (b.length) $(b[0]).focus(); return; }
+  if (!step1Valid()) { S.resume = 3; go(1); const b = checkStep1(); if (b.length) focusField(b[0]); return; }
   const list = selList();
   if (!list.length) { go(2); setErr(null, "timesErr", "errNone"); return; }
   if (countOf(list) > MAX_TIMES) { go(2); setErr(null, "timesErr", "errMany"); return; }
   const bad = checkStep3();
-  if (bad.length) { $(bad[0]).focus(); return; }
+  S.miss = bad;
+  paintMiss();
+  if (bad.length) { focusField(bad[0]); return; }
   const payload = buildPayload(list);
   const key = batchKey(payload);
   if (key === S.lastKey) { setErr(null, "saveErr", "dup"); return; }
@@ -1758,7 +1977,7 @@ function finish(result, list, key, server) {
 }
 $("f3").addEventListener("submit", (e) => { e.preventDefault(); send($("save")); });
 $("retry").addEventListener("click", () => send($("retry")));
-$("more").addEventListener("click", () => { $("timesErr").textContent = ""; go(2); });
+$("more").addEventListener("click", () => { setErr(null, "timesErr", ""); go(2); });
 
 // ---------------------------------------------------------------- personal link
 // /socios?s=<slug>[&k=<sig>]: wa-bot's prefill. A signed link also gets the
