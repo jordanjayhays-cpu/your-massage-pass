@@ -391,7 +391,8 @@ $$;
 --  - a hold that ran out goes back to released;
 --  - a released or held time inside its last 60 minutes expires;
 --  - a booked time whose request the customer cancelled (or Jordan closed) is
---    withdrawn; the existing cancel path already tells the studio.
+--    withdrawn. wa-bot's cancel path does this at once (released_request_closed)
+--    and tells the studio by WhatsApp and email; this catches anything else.
 create or replace function public.sweep_released_slots()
 returns jsonb
 language plpgsql
