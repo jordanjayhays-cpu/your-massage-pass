@@ -2896,11 +2896,26 @@ async function handleCustomerReconfirm(kind: "yes" | "change" | "cancel", reqId:
     await logEvent(from, "reconfirmed", { id: req.id });
     return;
   }
+  // v215 review (17 Oct): a booking made on a time the studio released. Its
+  // studio may only be reachable by email (released times go to studios with
+  // an email), and its confirmation always went by email, so the cancel and
+  // the change go by email too. Every other booking is exactly as before.
+  const relSlotId = relHueco(req.message_text);
+  const subjRef = [dEs, hEs].filter(Boolean).join(" ");
+  const relMail = async (subject: string, line: string): Promise<boolean> =>
+    relSlotId && req.partner_id ? await emailStudio(String(req.partner_id), subject, `${studioMailHead(studio)}\n\n${line}\n\n${STUDIO_MAIL_SIGN}`) : false;
+  const toldHow = (wa: boolean, mail: boolean) => wa || mail ? `Studio told (${[wa ? "WhatsApp" : "", mail ? "email" : ""].filter(Boolean).join(" and ")})` : "Studio NOT told: no WhatsApp or email reached them, please tell them";
   if (kind === "cancel") {
     await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "cancelled", customer_flag: "cancelled", stage_note: "Cancelled by the customer on WhatsApp", stage_updated_at: new Date().toISOString() }) });
+    // The released time is withdrawn at once, so the studio's reject link
+    // finds nothing left to reject and nobody else is offered it.
+    if (relSlotId) await relRpc("released_request_closed", { p_request: Number(req.id) });
     await sendText(from, COPY[L].cancelled(studio));
-    await tellStudio(studioNum, name, time, `Hola, ${who} acaba de cancelar su masaje${ref ? " " + ref : ""}, así que podéis dar el hueco a otra persona. Perdonad las molestias.`, "ha cancelado, así que podéis dar el hueco a otra persona", { dayEs: dEs, v2: "Acaba de cancelar, así que podéis dar el hueco a otra persona. Perdonad las molestias." });
-    await notifyJordanWa(`${name || "Customer"} CANCELLED ${studio} ${time} (${minsTo > 0 ? minsTo + " min before" : "after the time"}). Studio told. Request #${req.id}.`, from);
+    const cancelLine = `Hola, ${who} acaba de cancelar su masaje${ref ? " " + ref : ""}, así que podéis dar el hueco a otra persona. Perdonad las molestias.`;
+    const cWa = await tellStudio(studioNum, name, time, cancelLine, "ha cancelado, así que podéis dar el hueco a otra persona", { dayEs: dEs, v2: "Acaba de cancelar, así que podéis dar el hueco a otra persona. Perdonad las molestias." });
+    // Email, subject "Cancelada: Ana, mañana a las 18:00" (Cancelled: Ana, tomorrow at 18:00); body "Ana acaba de cancelar su masaje de mañana a las 18:00, así que podéis dar el hueco a otra persona. Perdonad las molestias." (Ana has just cancelled their massage tomorrow at 18:00, so you can give the slot to someone else. Sorry for the trouble.)
+    const cMail = await relMail(`Cancelada: ${who}${subjRef ? ", " + subjRef : ""}`, `${who.charAt(0).toUpperCase() + who.slice(1)} acaba de cancelar su masaje${ref ? " " + ref : ""}, así que podéis dar el hueco a otra persona. Perdonad las molestias.`);
+    await notifyJordanWa(`${name || "Customer"} CANCELLED ${studio} ${time} (${minsTo > 0 ? minsTo + " min before" : "after the time"}). ${toldHow(!!cWa, cMail)}. Request #${req.id}.`, from);
     s.step = "done"; s.data.reconfirm = null; await saveSession(s);
     await logEvent(from, "cancelled", { id: req.id, minsTo });
     return;
@@ -2909,9 +2924,14 @@ async function handleCustomerReconfirm(kind: "yes" | "change" | "cancel", reqId:
   await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ customer_flag: "change_requested" }) });
   await sendText(from, COPY[L].changeAsk(studio, time));
   // v212: nothing new is promised to the studio until the customer names a time.
-  if (minsTo <= 240) await tellStudio(studioNum, name, time, `Hola, ${who} me pide cambiar su masaje${ref ? " " + ref : ""}, así que podéis dejar libre ese hueco. Cuando me diga otra hora, os pregunto si os va bien.`, "pide cambiar la hora, así que podéis dejar libre ese hueco", { dayEs: dEs, v2: "Me pide cambiar la hora, así que podéis dejar libre ese hueco. Cuando me diga otra, os pregunto si os va bien." });
+  let chWa = false, chMail = false;
+  if (minsTo <= 240) {
+    chWa = !!(await tellStudio(studioNum, name, time, `Hola, ${who} me pide cambiar su masaje${ref ? " " + ref : ""}, así que podéis dejar libre ese hueco. Cuando me diga otra hora, os pregunto si os va bien.`, "pide cambiar la hora, así que podéis dejar libre ese hueco", { dayEs: dEs, v2: "Me pide cambiar la hora, así que podéis dejar libre ese hueco. Cuando me diga otra, os pregunto si os va bien." }));
+    // Released time with no WhatsApp that went: by email. Subject "Cambio de hora: Ana, mañana a las 18:00" (Time change: ...); body "Ana me pide cambiar su masaje de mañana a las 18:00, así que podéis dejar libre ese hueco. Cuando me diga otra hora, os pregunto si os va bien." (Ana asks me to change their massage ..., so you can free that slot. When they tell me another time, I will ask you if it works.)
+    if (!chWa) chMail = await relMail(`Cambio de hora: ${who}${subjRef ? ", " + subjRef : ""}`, `${who.charAt(0).toUpperCase() + who.slice(1)} me pide cambiar su masaje${ref ? " " + ref : ""}, así que podéis dejar libre ese hueco. Cuando me diga otra hora, os pregunto si os va bien.`);
+  }
   s.data.prevStep = s.step; s.step = "await_change"; s.data.change = { request: req.id, studio, time, studioNum }; s.data.reconfirm = null; await saveSession(s);
-  await notifyJordanWa(`${name || "Customer"} wants to CHANGE ${studio} ${time}. Bot asked what works${minsTo <= 240 ? " and told the studio to free the slot" : ""}. Request #${req.id}.`, from);
+  await notifyJordanWa(`${name || "Customer"} wants to CHANGE ${studio} ${time}. Bot asked what works${minsTo <= 240 ? (chWa || chMail ? ` and told the studio to free the slot (${chWa ? "WhatsApp" : "email"})` : ". The studio could NOT be told to free the slot, please tell them") : ""}. Request #${req.id}.`, from);
   await logEvent(from, "change_requested", { id: req.id, minsTo });
 }
 
@@ -4661,7 +4681,7 @@ const isJobSeeker = (t: string): boolean => !!jobSeekerKind(t);
 // gives Massage Club a specific free time in advance (CLAUDE.md, PRE-RELEASED
 // SLOTS, 12 Oct): that release counts as the studio's tap, so the customer's
 // tap books it, the studio gets the written confirmation at once with the
-// client's name and phone and may reject it within 15 minutes. The table and
+// client's name, phone and email and may reject it within 15 minutes. The table and
 // its state changes are supabase/migrations/20261018_released_slots.sql.
 // Behind app_secrets RELEASED: off (the default, and anything missing or
 // unknown) changes nothing for anyone; test shows test studios' times to test
@@ -4675,10 +4695,14 @@ function parseReleasedMode(v: unknown): RelMode {
   return x === "on" || x === "test" ? x : "off";
 }
 // Who counts as a test customer for released times: Jordan's own numbers, the
-// canary's fake 3460000xxxx numbers, and CLAUDE.md's test contacts (his
-// addresses, the test domains, +mctest/+uitest, a name with test or prueba).
-// Cata and Yi, the friend testers, never see a released time at all, and
-// neither does anyone else the bot already treats as a tester (knownTester).
+// canary's fake 3460000xxxx numbers, and CLAUDE.md's test addresses (his
+// addresses, the test domains, +mctest/+uitest). Cata and Yi, the friend
+// testers, never see a released time at all, and neither does anyone else the
+// bot already treats as a tester (knownTester).
+// Review (17 Oct): a name with test or prueba is still a CLAUDE.md test
+// contact, but a name is whatever the customer's WhatsApp profile says, so it
+// never opens the test studios to anyone: on a number and address that are
+// not test ones it means "none" (no released times at all).
 const REL_TEST_PHONES = ["15622355063", "34612474827"];
 const REL_CANARY_RE = /^3460000\d{4}$/;
 const REL_FRIEND_EMAIL_RE = /^(cata\.waack@gmail\.com|elon_yilong@student\.ie\.edu|longyi_elon@outlook\.com)$/i;
@@ -4691,7 +4715,8 @@ function releasedAudience(c: { phone?: unknown; email?: unknown; name?: unknown;
   const d = String(c.phone ?? "").replace(/\D/g, "");
   const e = String(c.email ?? "").trim().toLowerCase();
   if (d === "17867276503" || /^86\d*997$/.test(d) || REL_FRIEND_EMAIL_RE.test(e)) return "none";
-  if (REL_TEST_PHONES.includes(d) || REL_CANARY_RE.test(d) || REL_TEST_EMAIL_RE.test(e) || REL_TEST_NAME_RE.test(String(c.name ?? ""))) return "test";
+  if (REL_TEST_PHONES.includes(d) || REL_CANARY_RE.test(d) || REL_TEST_EMAIL_RE.test(e)) return "test";
+  if (REL_TEST_NAME_RE.test(String(c.name ?? ""))) return "none";
   return c.knownTester ? "none" : "real";
 }
 // Which studios' times this customer may see: "test", "real" or none at all.
@@ -4700,18 +4725,20 @@ function releasedScope(mode: RelMode, audience: RelAudience): "test" | "real" | 
   if (audience === "test") return "test";
   return mode === "on" ? "real" : null;
 }
-// Released times are offered from 09:00 to 20:40 Madrid, so the studio's
-// written confirmation goes out at once and inside studio hours (09:00 to
-// 21:00) even after the 10 minute hold. Outside that, today's path runs.
+// Released times are offered from 09:00 to 20:15 Madrid and a tap is taken
+// until 20:45 (review, 17 Oct). An offer stays tappable for 30 minutes and a
+// tapped time is booked within 15 minutes of the tap or given back, so the
+// studio's written confirmation always goes out inside studio hours (09:00
+// to 21:00). Outside that, today's path runs.
 const REL_HM_FMT = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false });
 const REL_YMD_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
 const relMinOfDay = (ms: number): number => { const [h, m] = REL_HM_FMT.format(new Date(ms)).split(":").map((x) => parseInt(x, 10)); return (h % 24) * 60 + m; };
 const relHmOf = (min: number): string => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const relHm = (ms: number): string => relHmOf(relMinOfDay(ms));
 const relYmd = (ms: number): string => REL_YMD_FMT.format(new Date(ms));
-function releasedHoursOk(nowMs: number): boolean {
+function releasedHoursOk(nowMs: number, kind: "offer" | "tap" = "offer"): boolean {
   const m = relMinOfDay(nowMs);
-  return m >= 9 * 60 && m < 20 * 60 + 40;
+  return m >= 9 * 60 && m < 20 * 60 + (kind === "tap" ? 45 : 15);
 }
 // The instant of a Madrid wall-clock time on a Madrid calendar day:
 // relAt("2026-10-25", 600) is 10:00 Madrid on the day the clocks go back
@@ -4867,46 +4894,56 @@ function releasedLine(o: RelLine, L: string): string {
   const price = o.price && o.price > 0 ? `, ${o.exact ? "" : es ? "unos " : "about "}${euro(o.price)}` : "";
   return `· *${o.studio}*${o.area ? ` (${o.area})` : ""}: ${o.day} ${o.hm}, ${o.svc} ${o.minutes} min${price}`;
 }
+// Review (17 Oct): the offer says the studio gets the name, phone and email,
+// because the confirmation carries all three (the email as soon as we have
+// it). "Here is what is free now" is gone from the lines that come before
+// offerStudios, which may show studios to ask rather than free times.
+// tooClose and already: a refused tap is told why, never "someone booked it"
+// when nobody did.
 const RELEASED_COPY: Record<string, {
   many: (lines: string[]) => string; one: (line: string) => string; more: string; yes: (t: string) => string;
-  justTaken: string; stale: string; gone: string; heldOut: string; rejectNote: string; noThanks: string; showOptions: string; noThanksBtn: string;
+  justTaken: string; stale: string; gone: string; heldOut: string; tooClose: string; already: string; rejectNote: string; noThanks: string; showOptions: string; noThanksBtn: string;
   rejectedNext: (first: string, studio: string, at: string, line: string) => string; rejectedNone: (first: string, studio: string, at: string) => string;
   rejectedMail: (first: string, studio: string, at: string) => string; rejectedSubject: (studio: string) => string;
 }> = {
   en: {
-    many: (lines) => `Good news: these times are free and you can book one right now.\n\n${lines.join("\n")}\n\nTap one and it's booked. The studio gets your name and phone for the booking. You pay at the studio, no fee from us.`,
-    one: (line) => `Good news: this time is free and you can book it right now.\n\n${line}\n\nTap Yes and it's booked. The studio gets your name and phone for the booking. You pay at the studio, no fee from us.`,
+    many: (lines) => `Good news: these times are free and you can book one right now.\n\n${lines.join("\n")}\n\nTap one and it's booked. The studio gets your name, phone and email for the booking. You pay at the studio, no fee from us.`,
+    one: (line) => `Good news: this time is free and you can book it right now.\n\n${line}\n\nTap Yes and it's booked. The studio gets your name, phone and email for the booking. You pay at the studio, no fee from us.`,
     more: "More options",
     yes: (t) => `Yes, book ${t}`,
-    justTaken: "Someone has just booked that time, sorry. Here is what is free now.",
-    stale: "Those times have changed since I sent them. Here is what is free now.",
+    justTaken: "Someone has just booked that time, sorry, so nothing is booked for you there.",
+    stale: "Those times have changed since I sent them, so nothing is booked yet.",
     gone: "Those times are no longer on offer. Write here whenever you would like to book.",
-    heldOut: "I held that time for 10 minutes and it has gone back on offer, so nothing is booked yet. Here is what is free now.",
+    heldOut: "I held that time for 10 minutes and it has gone back on offer, so nothing is booked yet.",
+    tooClose: "That time is now too close to book, sorry, so nothing is booked.",
+    already: "You already have a massage booked at that time, so I have not booked a second one. Write here if you would like to change it.",
     rejectNote: "If the studio has a problem with it, they tell us within 15 minutes and we let you know straight away.",
     noThanks: "No problem, nothing is booked. Write here whenever you would like a massage.",
     showOptions: "Show options",
     noThanksBtn: "No, thanks",
-    rejectedNext: (first, studio, at, line) => `Sorry${first ? " " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nThe next free time near you:\n${line}\n\nTap Yes and it's booked, or More options to see other studios.`,
-    rejectedNone: (first, studio, at) => `Sorry${first ? " " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nWould you like to see other studios near you?`,
-    rejectedMail: (first, studio, at) => `Sorry${first ? " " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there and you do not need to go.\n\nReply to us on WhatsApp and we will find you another time.\n\nMassage Club`,
+    rejectedNext: (first, studio, at, line) => `Sorry${first ? ", " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nThe next free time near you:\n${line}\n\nTap Yes and it's booked, or More options to see other studios.`,
+    rejectedNone: (first, studio, at) => `Sorry${first ? ", " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nWould you like to see other studios near you?`,
+    rejectedMail: (first, studio, at) => `Sorry${first ? ", " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there and you do not need to go.\n\nReply to us on WhatsApp and we will find you another time.\n\nMassage Club`,
     rejectedSubject: (studio) => `${studio} cannot take you after all`,
   },
   es: {
-    many: (lines) => `Buenas noticias: estas horas están libres y puedes reservar una ahora mismo.\n\n${lines.join("\n")}\n\nToca una y queda reservada. El centro recibe tu nombre y tu teléfono para la reserva. Pagas en el centro, sin comisión.`,
-    one: (line) => `Buenas noticias: esta hora está libre y puedes reservarla ahora mismo.\n\n${line}\n\nToca Sí y queda reservada. El centro recibe tu nombre y tu teléfono para la reserva. Pagas en el centro, sin comisión.`,
+    many: (lines) => `Buenas noticias: estas horas están libres y puedes reservar una ahora mismo.\n\n${lines.join("\n")}\n\nToca una y queda reservada. El centro recibe tu nombre, tu teléfono y tu email para la reserva. Pagas en el centro, sin comisión.`,
+    one: (line) => `Buenas noticias: esta hora está libre y puedes reservarla ahora mismo.\n\n${line}\n\nToca Sí y queda reservada. El centro recibe tu nombre, tu teléfono y tu email para la reserva. Pagas en el centro, sin comisión.`,
     more: "Más opciones",
     yes: (t) => `Sí, reserva ${t}`,
-    justTaken: "Alguien acaba de reservar esa hora, lo siento. Esto es lo que queda libre.",
-    stale: "Esas horas han cambiado desde que te las mandé. Esto es lo que queda libre.",
+    justTaken: "Alguien acaba de reservar esa hora, lo siento, así que ahí no tienes nada reservado.",
+    stale: "Esas horas han cambiado desde que te las he mandado, así que todavía no hay nada reservado.",
     gone: "Esas horas ya no están disponibles. Escríbenos cuando quieras reservar.",
-    heldOut: "Te guardé esa hora 10 minutos y ha vuelto a quedar libre, así que todavía no hay nada reservado. Esto es lo que queda libre.",
-    rejectNote: "Si el centro tuviera algún problema, nos lo dice en 15 minutos y te avisamos al momento.",
+    heldOut: "Te he guardado esa hora 10 minutos y ya ha vuelto a quedar libre, así que todavía no hay nada reservado.",
+    tooClose: "Esa hora ya está demasiado cerca para reservarla, lo siento, así que no hay nada reservado.",
+    already: "Ya tienes un masaje reservado a esa hora, así que no he reservado otro. Escríbenos si quieres cambiarlo.",
+    rejectNote: "Si el centro tiene algún problema, nos lo dice en 15 minutos y te avisamos al momento.",
     noThanks: "Sin problema, no hay nada reservado. Escríbenos cuando te apetezca un masaje.",
     showOptions: "Ver opciones",
     noThanksBtn: "No, gracias",
-    rejectedNext: (first, studio, at, line) => `Lo siento${first ? " " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\nLa siguiente hora libre cerca de ti:\n${line}\n\nToca Sí y queda reservada, o Más opciones para ver otros centros.`,
-    rejectedNone: (first, studio, at) => `Lo siento${first ? " " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\n¿Quieres ver otros centros cerca de ti?`,
-    rejectedMail: (first, studio, at) => `Lo siento${first ? " " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado y no hace falta que vayas.\n\nEscríbenos por WhatsApp y te buscamos otra hora.\n\nMassage Club`,
+    rejectedNext: (first, studio, at, line) => `Lo siento${first ? ", " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\nLa siguiente hora libre cerca de ti:\n${line}\n\nToca Sí y queda reservada, o Más opciones para ver otros centros.`,
+    rejectedNone: (first, studio, at) => `Lo siento${first ? ", " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\n¿Quieres ver otros centros cerca de ti?`,
+    rejectedMail: (first, studio, at) => `Lo siento${first ? ", " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado y no hace falta que vayas.\n\nEscríbenos por WhatsApp y te buscamos otra hora.\n\nMassage Club`,
     rejectedSubject: (studio) => `${studio} al final no puede`,
   },
 };
@@ -4930,6 +4967,61 @@ function releasedContactEs(phone: unknown, email: unknown): string {
   if (tel && e) return `Su teléfono es ${tel} y su email, ${e}.`;
   if (tel) return `Su teléfono es ${tel}.`;
   return e ? `Su email es ${e}.` : "";
+}
+// Review (17 Oct): why a tap could not hold or book a released time, read
+// from the slot and from this phone's own live rows, so the customer is never
+// told "someone booked it" when nobody did.
+//   dup        this customer's other tap holds or booked a time a moment ago
+//              (two taps handled side by side): say nothing, that tap carries on
+//   stale_hold this phone holds another time from an earlier ask: give it back
+//              and try once more
+//   clash      this phone has a booking that overlaps this time
+//   too_close  the time can no longer be booked (under 10 minutes before it
+//              stops being bookable, or already expired)
+//   taken      anyone else: another customer won it
+type RelRow = { id: string; status: string; held_by_phone?: string | null; held_until?: string | null; booked_phone?: string | null; booked_at?: string | null; start_at?: string; end_at?: string; expires_at?: string; updated_at?: string | null };
+function releasedRefusal(rows: RelRow[], slotId: string, phone: string, nowMs: number): "dup" | "stale_hold" | "clash" | "too_close" | "taken" {
+  const t = (v: unknown) => Date.parse(String(v ?? ""));
+  const me = String(phone || "").replace(/\D/g, "");
+  const target = rows.find((r) => r.id === slotId) || null;
+  const mineBooked = rows.filter((r) => r.status === "booked" && me && r.booked_phone === me);
+  if (target && mineBooked.some((r) => r.id === target.id)) return "dup";
+  if (mineBooked.some((r) => nowMs - t(r.booked_at) < 2 * 60e3)) return "dup";
+  const mineHeld = rows.filter((r) => r.id !== slotId && r.status === "held" && me && r.held_by_phone === me && t(r.held_until) > nowMs);
+  if (mineHeld.some((r) => nowMs - t(r.updated_at) < 2 * 60e3)) return "dup";
+  if (target && mineBooked.some((r) => t(r.start_at) < t(target.end_at) && t(target.start_at) < t(r.end_at))) return "clash";
+  if (mineHeld.length) return "stale_hold";
+  if (target && (target.status === "expired" || t(target.expires_at) - nowMs < 10 * 60e3)) return "too_close";
+  return "taken";
+}
+// The studio page's note after a save (review, 17 Oct: singular and plural
+// agree). Spanish, for the studio:
+//   "Guardado. Ya se puede reservar: 18:00." (Saved. It can be booked now: 18:00.)
+//   "Guardado. Ya se pueden reservar: 18:00 y 18:30." (Saved. They can be booked now: ...)
+//   "No hemos guardado las 20:30: ya estaba marcada o acaba de cambiar, falta
+//    menos de una hora o no cabe en vuestro horario." (We did not save 20:30:
+//    it was already marked or has just changed, it is less than an hour away
+//    or it does not fit your hours.)
+//   "No hemos guardado las 20:00 ni las 20:30: ya estaban marcadas o acaban de
+//    cambiar, falta menos de una hora o no caben en vuestro horario." (The same,
+//    for several times.)
+function releasedSaveNote(saved: string[], missed: string[]): { note: string; err: boolean } {
+  const y = (xs: string[]) => xs.length <= 1 ? (xs[0] || "") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
+  const ni = (xs: string[]) => { const l = xs.map((x) => `las ${x}`); return l.length <= 1 ? (l[0] || "") : `${l.slice(0, -1).join(", ")} ni ${l[l.length - 1]}`; };
+  const parts: string[] = [];
+  if (saved.length) parts.push(`Guardado. Ya se ${saved.length === 1 ? "puede" : "pueden"} reservar: ${y(saved)}.`);
+  if (missed.length) {
+    const one = missed.length === 1;
+    parts.push(`No hemos guardado ${ni(missed)}: ${one ? "ya estaba marcada o acaba" : "ya estaban marcadas o acaban"} de cambiar, falta menos de una hora o no ${one ? "cabe" : "caben"} en vuestro horario.`);
+  }
+  return { note: parts.join(" "), err: !saved.length };
+}
+// The released slot a request was made for, from the "| Hueco: <slot id>"
+// createRequest writes into message_text. Null for every other request, so
+// the cancel and email paths change nothing for them.
+function relHueco(messageText: unknown): string | null {
+  const m = String(messageText ?? "").match(/\| Hueco: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+  return m ? m[1].toLowerCase() : null;
 }
 // ---- v215 released slots: pure helpers (end) ----
 
@@ -6074,6 +6166,11 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     : `Hola, ${fn || "el cliente"} ha dicho que sí, así que queda confirmado: ${waRef ? waRef + ", " : ""}${what}. Ya podéis apuntarlo.${habla} Si necesitáis decirle algo, escribidme por aquí y se lo paso.`;
   // Template fallback (aviso_centro_v2 {{2}}, then v1's short). v2 ends on a
   // sentence, not the link, because the template adds its own full stop.
+  // v1's short for a released time, ES "ha reservado una de las horas que nos
+  // disteis, masaje relajante de 60 min. Ya podéis apuntarlo", EN "has booked
+  // one of the times you gave us, relaxing massage of 60 min. You can put it
+  // in your diary". It has no room for the phone or the link, which is why a
+  // released time is only offered at studios with an email (review, 17 Oct).
   // ES "Ha reservado una de las horas que nos disteis: ... Si al final no podéis atenderle, rechazadla en los próximos 15 minutos aquí: <link> Si no, ya podéis apuntarlo."
   // EN "They booked one of the times you gave us: ... If you cannot see them after all, reject it within the next 15 minutes here: <link> Otherwise, you can put it in your diary."
   const toldWa = relSlot
@@ -6083,7 +6180,19 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   const studioMail = relSlot
     ? `${studioMailHead(pc.business_name || "")}\n\n${fn || "Nuestro cliente"} ha reservado una de las horas que nos disteis: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.${relWho ? " " + relWho : ""}\n\nYa podéis apuntarlo. Si al final no podéis atenderle, rechazad la reserva en los próximos 15 minutos con este enlace:\n${relLink}\n\nSi necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`
     : `${studioMailHead(pc.business_name || String(s?.data.offer?.studio || ""))}\n\n${fn || "Nuestro cliente"} ha dicho que sí a vuestra hora, así que la reserva queda confirmada: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.\n\nYa podéis apuntarlo. Si necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`;
+  // Subject: "Reserva nueva: Ana, sábado 18 de octubre a las 18:00" (New booking: ...) for a released time, else "Reserva confirmada: ..." (Booking confirmed: ...).
   const toldMail = (row.channel === "email" || !toldWa || relSlot) ? await emailStudio(String(row.partner_id || ""), `${relSlot ? "Reserva nueva" : "Reserva confirmada"}: ${fn || "nuestro cliente"}${mailRef ? ", " + mailRef.replace(/^el /, "") : ""}`, studioMail) : false;
+  // v215 review (17 Oct): the email is the released confirmation's sure
+  // channel (client's phone, reject link). WhatsApp alone may have been the v1
+  // template, which carries neither, and the 15 minutes are running.
+  if (relSlot && toldWa && !toldMail) {
+    await notifyJordanWa(`${studio} got the released-time booking #${req.id} (${when}) by WhatsApp only: the email did not go, so they may not have the client's phone or the 15 minute reject link. Please call them.`, clientDigits);
+    await founderCard(`⚠️ ${studio}: released booking #${req.id} told by WhatsApp only`, {
+      badge: "STUDIO TOLD BY WHATSAPP ONLY", title: `${studio} may not have the details for ${req.first_name || "the customer"} at ${when}`,
+      paras: [`The confirmation email did not go out, so the studio may only have had the short template, without the client's phone or the reject link. Please call them.`],
+      waNum: digitsOf(row.phone || ""),
+    });
+  }
   if (!toldWa && !toldMail) {
     await founderCard(`⚠️ ${studio} has not been told #${req.id} is confirmed`, {
       badge: "STUDIO NOT TOLD", title: `${req.first_name || "The customer"} confirmed ${studio} at ${when}, and the studio could not be reached`,
@@ -6403,6 +6512,25 @@ async function relDrop(s: Session, from: string) {
   await saveSession(s);
 }
 const relClean = (v: unknown) => String(v || "").replace(/[^0-9a-fA-F-]/g, "").slice(0, 36);
+// Review (17 Oct): why hold_released_slot or book_released_slot said no, from
+// the slot and this phone's own rows (releasedRefusal). "taken" if they cannot
+// be read, as before.
+async function relWhyRefused(slotId: string, phone: string): Promise<ReturnType<typeof releasedRefusal>> {
+  const id = relClean(slotId), me = digitsOf(phone);
+  const flt = [`id.eq.${id}`, ...(me ? [`held_by_phone.eq.${me}`, `booked_phone.eq.${me}`] : [])].join(",");
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?or=(${flt})&status=in.(released,held,booked,expired,rejected,withdrawn)&order=updated_at.desc&limit=40&select=id,status,held_by_phone,held_until,booked_phone,booked_at,start_at,end_at,expires_at,updated_at`, { headers: H() }).catch(() => null);
+  const rows = r ? await r.json().catch(() => []) : [];
+  return releasedRefusal(Array.isArray(rows) ? rows : [], id, me, Date.now());
+}
+// A booked released time for this phone in the last 30 minutes: a late tap on
+// an old button then says nothing rather than "no longer on offer".
+async function relBookedRecently(phone: string): Promise<boolean> {
+  const me = digitsOf(phone);
+  if (!me) return false;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?booked_phone=eq.${me}&status=eq.booked&booked_at=gte.${encodeURIComponent(new Date(Date.now() - 30 * 60e3).toISOString())}&select=id&limit=1`, { headers: H() }).catch(() => null);
+  const rows = r ? await r.json().catch(() => []) : [];
+  return Array.isArray(rows) && rows.length > 0;
+}
 type RelPick = { slot_id: string; partner_id: string; studio: string; slug: string; area: string; address: string; wa: string; start_at: string; end_at: string; minutes: number; hm: string; typed: number | null; price: number | null; exact: boolean; km: number | null };
 // released_offers for one customer's ask (scope from releasedScope).
 async function releasedSearch(o: { scope: "test" | "real"; day: Date | null; win: [number, number] | null; area: string; want: string | null; minutes: number; exclude: string[]; limit: number }): Promise<RelPick[]> {
@@ -6484,18 +6612,41 @@ async function releasedTap(s: Session, from: string, L: string, replyId: string)
   }
   const picks: RelPick[] = Array.isArray(s.data.relPicks) ? s.data.relPicks : [];
   const p = picks[Number(replyId.slice(4))];
-  if (!p || Date.now() - Number(s.data.relAt || 0) > 30 * 60e3) {
-    s.data.relPicks = null; await saveSession(s);
+  // Review (17 Oct): RELEASED off is a kill switch for buttons already on
+  // screen too, and a tap after 20:45 is not booked, so the studio is never
+  // confirmed after 21:00. Either way today's path runs.
+  const off = (await releasedMode()) === "off" || !releasedHoursOk(Date.now(), "tap");
+  if (!p || off || Date.now() - Number(s.data.relAt || 0) > 30 * 60e3) {
+    if (off) await giveBack();
+    s.data.relPicks = null; if (off) s.data.relSkipAt = Date.now(); await saveSession(s);
     await sendText(from, c.stale);
-    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+    if (!(await offerStudios(s, from, L, { noReleased: off }))) await askNameOrFinalize(s, from, L);
     return;
   }
-  const held = await relRpcOne("hold_released_slot", { p_slot: p.slot_id, p_phone: phone, p_request: null, p_secs: 600 });
+  let held = await relRpcOne("hold_released_slot", { p_slot: p.slot_id, p_phone: phone, p_request: null, p_secs: 600 });
+  let why: ReturnType<typeof releasedRefusal> | "" = "";
   if (!held) {
-    s.data.relPicks = null; await saveSession(s);
-    await logEvent(from, "released_taken", { slot: p.slot_id, studio: p.studio, at: "hold" });
-    await sendText(from, c.justTaken);
-    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+    why = await relWhyRefused(p.slot_id, phone);
+    // A hold this phone kept from an earlier ask (a give-back that never
+    // arrived): give it back and try once more.
+    if (why === "stale_hold") {
+      const ur = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?held_by_phone=eq.${phone}&status=eq.held&id=neq.${relClean(p.slot_id)}&select=id`, { headers: H() }).catch(() => null);
+      for (const x of (ur ? await ur.json().catch(() => []) : []) || []) await relRpc("unhold_released_slot", { p_slot: String(x.id), p_phone: phone });
+      held = await relRpcOne("hold_released_slot", { p_slot: p.slot_id, p_phone: phone, p_request: null, p_secs: 600 });
+      if (!held) why = await relWhyRefused(p.slot_id, phone);
+    }
+  }
+  if (!held) {
+    // Two taps of theirs handled side by side: the other one holds or booked
+    // a time and carries on (name question, then "Booked!"). This one says
+    // nothing and leaves the session to it.
+    if (why === "dup") { await logEvent(from, "released_dup_tap", { slot: p.slot_id, studio: p.studio, at: "hold" }); return; }
+    s.data.relPicks = null;
+    if (why === "clash") s.step = "done";
+    await saveSession(s);
+    await logEvent(from, "released_taken", { slot: p.slot_id, studio: p.studio, at: "hold", why });
+    await sendText(from, why === "clash" ? c.already : why === "too_close" ? c.tooClose : c.justTaken);
+    if (why !== "clash" && !(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
     return;
   }
   // ask: what they had asked for when they tapped. If that changes before the
@@ -6522,16 +6673,19 @@ async function finalizeReleased(s: Session, from: string, L: string): Promise<{ 
   // contact only books a test studio and a real customer only a real one.
   const aud = releasedAudience({ phone, email: s.data.email || s.data.known?.email || "", name: s.data.name || s.wa_name || "", knownTester: relKnownTester(phone, s.data.email, s.data.name || s.wa_name) });
   const mixed = !!r?.slot_id && (aud === "none" || (aud === "test") !== REL_TEST_STUDIO_RE.test(String(r.studio || "")));
-  if (!r?.slot_id || mixed || r.ask !== relAskKey(s) || Date.now() - Number(r.heldAt || 0) > 15 * 60e3) {
+  // Review (17 Oct): RELEASED switched off since the tap stops the booking too.
+  const off = !!r?.slot_id && (await releasedMode()) === "off";
+  if (!r?.slot_id || mixed || off || r.ask !== relAskKey(s) || Date.now() - Number(r.heldAt || 0) > 15 * 60e3) {
     if (mixed) await notifyJordanWa(`Released time ${r.studio} ${r.hm} was NOT booked for +${phone}: a test contact and a real studio (or the other way round) met. Nothing was sent to the studio.`, phone);
     if (r?.slot_id) await relRpc("unhold_released_slot", { p_slot: r.slot_id, p_phone: phone });
+    if (off) s.data.relSkipAt = Date.now();
     await saveSession(s);
     // A changed ask needs no apology: the times for the new one follow.
-    const why = !r?.slot_id ? "none" : mixed ? "mixed" : r.ask !== relAskKey(s) ? "ask_changed" : "hold_lapsed";
+    const why = !r?.slot_id ? "none" : mixed ? "mixed" : off ? "switched_off" : r.ask !== relAskKey(s) ? "ask_changed" : "hold_lapsed";
     if (why === "hold_lapsed") await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].heldOut);
-    else if (why === "mixed") await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].stale);
+    else if (why === "mixed" || why === "switched_off") await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].stale);
     await logEvent(from, "released_not_booked", { slot: r?.slot_id || null, why });
-    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+    if (!(await offerStudios(s, from, L, { noReleased: off }))) await askNameOrFinalize(s, from, L);
     return { outcome: "released_reoffered", requestId: null };
   }
   s.step = "done"; await saveSession(s);
@@ -6556,16 +6710,28 @@ async function finalizeReleased(s: Session, from: string, L: string): Promise<{ 
   const ok = await acceptOffer(rowId, from, L, s);
   return { outcome: ok ? "released_booked" : "released_taken", requestId: id };
 }
-// acceptOffer could not book the slot: someone else's tap won it. The request
-// made for it is closed (nothing was asked of anyone) and the customer sees
-// what is free now.
+// acceptOffer could not book the slot. The request made for it is closed
+// (nothing was asked of anyone) and the customer is told why (review, 17 Oct):
+//   dup        their own other tap booked a time a moment ago: say nothing,
+//              that booking stands and its "Booked!" is theirs
+//   clash      they already have a booking at that time
+//   too_close  the time can no longer be booked (it expired, nobody took it)
+//   taken      another customer won it
+// and, unless it was their own double tap or a clash, sees other options.
 async function releasedTaken(row: any, req: any, from: string, L: string, s: Session | null) {
+  const why = row.slot_id ? await relWhyRefused(String(row.slot_id), digitsOf(req.client_phone || from)) : "taken";
+  const note = why === "dup" ? "Duplicate tap: this customer's other tap had just booked a released time" : why === "clash" ? "This customer already has a booking that overlaps this released time" : why === "too_close" ? "Released time could no longer be booked (too close to its start)" : "Released time taken by another customer before it could be booked";
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "expired" }) });
-  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(req.id)}&stage=eq.offered`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "dismissed", stage_note: "Released time taken by another customer before it could be booked (wa-bot v215).", stage_updated_at: new Date().toISOString() }) });
-  await logEvent(from || "web", "released_taken", { slot: row.slot_id || null, request_id: req.id, at: "book" });
-  if (!from) return;
-  await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].justTaken);
-  if (s) { s.data.offer = null; if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L); }
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(req.id)}&stage=eq.offered`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "dismissed", stage_note: `${note} (wa-bot v215).`, stage_updated_at: new Date().toISOString() }) });
+  await logEvent(from || "web", "released_taken", { slot: row.slot_id || null, request_id: req.id, at: "book", why });
+  if (!from || why === "dup") return;
+  const c = RELEASED_COPY[L === "es" ? "es" : "en"];
+  await sendText(from, why === "clash" ? c.already : why === "too_close" ? c.tooClose : c.justTaken);
+  if (s) {
+    s.data.offer = null;
+    if (why === "clash") { s.step = "done"; await saveSession(s); return; }
+    if (!(await offerStudios(s, from, L))) await askNameOrFinalize(s, from, L);
+  }
 }
 // The studio used its reject link within the 15 minutes (or Jordan the ops
 // call). The booking is cancelled, the request closed, the customer told and
@@ -6584,6 +6750,16 @@ async function releasedRejected(slot: any, via: string): Promise<string> {
     await notifyJordanWa(`${studio} rejected released time ${relYmd(startMs)} ${relHm(startMs)} (slot ${slot.id}), but request #${rid} could not be read. Nobody was told; please look.`);
     return "none";
   }
+  // Review (17 Oct): the customer is only told, and offered a next time, while
+  // the booking is still theirs. A customer who cancelled (or Jordan closed
+  // it) hears nothing more; one who has asked to change it is mid-change and
+  // Jordan tells them. Either way the reject is recorded and Jordan is told.
+  const flag = String(req.customer_flag || "");
+  if (req.stage !== "confirmed" || flag === "cancelled" || flag === "change_requested") {
+    await logEvent(digitsOf(String(req.client_phone || "")) || "system", "released_rejected", { request_id: rid, slot: String(slot.id), via, told: "none", stage: req.stage, flag });
+    await notifyJordanWa(`${studio} rejected the released time ${relYmd(startMs)} ${relHm(startMs)} on #${rid}, which is ${flag === "change_requested" ? "waiting for the customer's new time (change requested). The customer was NOT messaged: tell them this studio cannot do the old time" : `already ${req.stage}${flag ? " (" + flag + ")" : ""}. The customer was not messaged`}.`, digitsOf(String(req.client_phone || "")));
+    return "none";
+  }
   await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${rid}&stage=eq.confirmed`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
     body: JSON.stringify({ stage: "dismissed", partner_id: null, confirmed_time: null, confirmed_day: null, confirmed_start: null, stage_note: `${studio} rejected the released time within its 15 minutes (${via}). Booking cancelled (wa-bot v215).`.slice(0, 500), stage_updated_at: new Date().toISOString() }),
@@ -6600,7 +6776,9 @@ async function releasedRejected(slot: any, via: string): Promise<string> {
   if (ph && s && await waWindowOpen(ph)) {
     let next: RelPick | null = null;
     const scope = releasedScope(await releasedMode(), releasedAudience({ phone: ph, email: req.contact_email, name: req.first_name, knownTester: relKnownTester(ph, req.contact_email, req.first_name) }));
-    if (scope) {
+    // A next released time only inside the offering hours, so its studio is
+    // confirmed by 21:00 too (review, 17 Oct); after that, other studios.
+    if (scope && releasedHoursOk(Date.now())) {
       const area = req.area && !/^(madrid|anywhere)$/i.test(String(req.area)) ? String(req.area) : "";
       const picks = await releasedSearch({ scope, day: madridMidnight(new Date(startMs)), win: askWindow(req.time1, req.message_text), area, want: String(req.service_name || "") || null, minutes: reqDuration(req), exclude: [String(slot.partner_id)], limit: 1 });
       if (picks[0] && await relRpcOne("hold_released_slot", { p_slot: picks[0].slot_id, p_phone: ph, p_request: null, p_secs: 900 })) next = picks[0];
@@ -6630,12 +6808,30 @@ async function releasedRejected(slot: any, via: string): Promise<string> {
   return told;
 }
 
+// v215 review (17 Oct): the customer gave their email after a released time
+// was booked (the question comes after "Booked!", v81). The offer they tapped
+// said the studio gets it, so it follows the confirmation, by email only
+// (released times only go to studios with an email).
+async function releasedEmailFollowUp(req: any, email: string): Promise<boolean> {
+  const pc = await partnerCard(String(req.partner_id || ""));
+  const fn = String(req.first_name || "").trim() || "nuestro cliente";
+  const mailRef = [studioDateFull(studioSlotDate(req.confirmed_start)), studioAtEs(reqTime(req))].filter(Boolean).join(" ");
+  // Subject "Email de Ana, sábado 18 de octubre a las 18:00" (Ana's email, Saturday 18 October at 18:00).
+  // Body "Os paso el email de Ana para su reserva del sábado 18 de octubre a las 18:00: ana@x.com. La reserva sigue igual, no tenéis que hacer nada más." (Here is Ana's email for their booking on Saturday 18 October at 18:00: ana@x.com. The booking is unchanged, there is nothing else to do.)
+  const ok = await emailStudio(String(req.partner_id), `Email de ${fn}${mailRef ? ", " + mailRef.replace(/^el /, "") : ""}`, `${studioMailHead(pc.business_name || "")}\n\nOs paso el email de ${fn} para su reserva${mailRef ? " " + mailRef.replace(/^el /, "del ") : ""}: ${email}. La reserva sigue igual, no tenéis que hacer nada más.\n\n${STUDIO_MAIL_SIGN}`);
+  const ph = digitsOf(String(req.client_phone || ""));
+  await logEvent(ph || "system", "released_email_followup", { request_id: req.id, sent: ok });
+  if (!ok) await notifyJordanWa(`${fn} gave their email (${email}) after booking a released time at ${pc.business_name || "the studio"} (#${req.id}), and it could not be emailed to the studio. Please pass it on.`, ph);
+  return ok;
+}
+
 // The studio's free-times page, rendered here and shown through the
 // book.massageclub.io/bot.html shell (pageOut with fmt=json), like the offer
 // and invoice pages. Every change is a GET the page's own form or links make,
 // so a mail scanner opening the emailed link changes nothing, and each one is
-// safe to repeat (release_slots skips a time already live, a withdraw only
-// touches a free time). The shell strips scripts, so the page works without
+// safe to repeat (release_slots skips a time already live, or one changed in
+// any way since the page was drawn, review 17 Oct; a withdraw only touches a
+// free time). The shell strips scripts, so the page works without
 // any. It sits in a fixed scroll box, because the shell scrolls every page
 // that has no reply form to the bottom.
 //   ?slots=<partner id>&k=<sig>[&d=YYYY-MM-DD][&m=60]
@@ -6683,8 +6879,6 @@ const escAttr = (s: unknown) => esc(String(s ?? "")).replace(/"/g, "&quot;");
 function slotsShell(title: string, body: string): string {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>${SLOTS_CSS}</style></head><body><div class="mcs"><main><div class="brand">MASSAGE CLUB</div>${body}</main></div></body></html>`;
 }
-// "18:00", "18:00 y 18:30", "10:00, 10:30 y 11:00".
-const listEs = (xs: string[]): string => xs.length <= 1 ? (xs[0] || "") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
 // A day chip: "Hoy", "Mañana", "lun 20".
 const SLOT_CHIP_FMT = new Intl.DateTimeFormat("es-ES", { timeZone: "UTC", weekday: "short", day: "numeric" });
 const slotChip = (ymd: string, i: number): string => i === 0 ? "Hoy" : i === 1 ? "Mañana" : SLOT_CHIP_FMT.format(new Date(ymd + "T12:00:00Z")).replace(/[.,]/g, "");
@@ -6698,8 +6892,12 @@ async function slotsPage(url: URL): Promise<Response> {
   const studio = String(p.business_name || "");
   const isTest = REL_TEST_STUDIO_RE.test(studio);
   const mode = await releasedMode();
+  // This page is not active. (A studio that opted out or is suspended: no promise of anything.)
+  if (p.opted_out_at || p.status === "suspended") {
+    return pageOut(url, slotsShell("Massage Club", `<h1>Esta página no está activa</h1>`));
+  }
   // Not switched on for real studios yet. We will let you know as soon as it is.
-  if (p.opted_out_at || p.status === "suspended" || (!isTest && mode !== "on")) {
+  if (!isTest && mode !== "on") {
     return pageOut(url, slotsShell("Massage Club", `<h1>Todavía no está activa</h1><p class="sub">Esta página todavía no está activa para ${esc(studio || "vuestro centro")}. Os avisamos en cuanto lo esté.</p>`));
   }
   const nowMs = Date.now();
@@ -6731,16 +6929,17 @@ async function slotsPage(url: URL): Promise<Response> {
         const st = relAt(ymd, relToMin(hm) as number);
         for (let seat = 1; seat <= seats; seat++) rows.push({ start_at: new Date(st).toISOString(), end_at: new Date(st + minutes * 60e3).toISOString(), seat, price_eur: price });
       }
-      const res = rows.length ? await relRpc("release_slots", { p_partner: p.id, p_rows: rows, p_source: "studio_link", p_evidence: `studio page ${new Date(nowMs).toISOString()}` }) : { ok: true, rows: [] as any[], error: "" };
+      // p_since (review, 17 Oct): the moment this page was drawn. Opening the
+      // same save link again (Back, a reload, a phone restoring the tab) saves
+      // nothing for a time that has changed since, so a time the studio has
+      // rejected or removed never goes back on offer by itself.
+      const res = rows.length ? await relRpc("release_slots", { p_partner: p.id, p_rows: rows, p_source: "studio_link", p_evidence: `studio page ${new Date(nowMs).toISOString()}`, p_since: new Date(at).toISOString() }) : { ok: true, rows: [] as any[], error: "" };
       if (!res.ok) { note = "No se han podido guardar. Probad otra vez en un momento."; noteErr = true; } // They could not be saved. Try again in a moment.
       else {
         const saved = [...new Set(res.rows.map((x: any) => relHm(Date.parse(String(x.start_at)))))].sort();
         const missed = ts.filter((hm) => !saved.includes(hm)).sort();
-        // Saved. They can be booked now: 18:00 and 18:30.
-        if (saved.length) note = `Guardado. Ya se pueden reservar: ${listEs(saved)}.`;
-        // We did not save 20:30: it was already marked, it is less than an hour away or it does not fit your hours.
-        if (missed.length) note = `${note ? note + " " : ""}No hemos guardado ${listEs(missed)}: ya estaba marcada, falta menos de una hora o no cabe en vuestro horario.`;
-        noteErr = !saved.length;
+        // "Guardado. Ya se puede reservar: 18:00." / "No hemos guardado las 20:30: ..." (releasedSaveNote has the English).
+        ({ note, err: noteErr } = releasedSaveNote(saved, missed));
         if (saved.length) {
           await logEvent("system", "released_by_studio", { partner_id: p.id, studio, day: ymd, times: saved, minutes, seats, price, test: isTest });
           if (!isTest) {
@@ -6811,7 +7010,7 @@ async function slotsPage(url: URL): Promise<Response> {
       ? `<form method="get" action="">
 <input type="hidden" name="slots" value="${escAttr(p.id)}"><input type="hidden" name="k" value="${escAttr(k)}"><input type="hidden" name="d" value="${ymd}"><input type="hidden" name="m" value="${minutes}"><input type="hidden" name="do" value="add"><input type="hidden" name="at" value="${nowMs}">
 <div class="grid">${cells}</div>
-<div class="opt"><span>Camillas libres a esa hora</span><select name="n"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+<div class="opt"><span>Salas libres a esa hora</span><select name="n"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
 <div class="opt"><span>Precio final para el cliente (opcional)</span><input type="number" name="p" min="1" max="500" step="1" inputmode="numeric" placeholder="€"></div>
 <button class="save" type="submit">Guardar horas</button>
 </form>`
@@ -6830,19 +7029,20 @@ async function slotsPage(url: URL): Promise<Response> {
     return `<div class="li"><div><div>${esc(when)}</div><div class="m">${esc(parts.join(" · "))}</div></div>${del}</div>`;
   }).join("");
   const body = `<h1>Horas libres</h1><div class="who">${esc(studio)}</div>
-<p class="sub">Marcad las horas en las que podéis atender a un cliente de Massage Club. Lo que marquéis se puede reservar al momento: os llega la confirmación por escrito con su nombre y su teléfono, y tenéis 15 minutos para rechazarla si no os cuadra.</p>
+<p class="sub">Marcad las horas en las que podéis atender a un cliente de Massage Club. Lo que marquéis se puede reservar al momento: os llega la confirmación por escrito con su nombre y su teléfono (y su email, cuando lo tenemos), y tenéis 15 minutos para rechazarla si no os cuadra.</p>
 ${note ? `<div class="note ${noteErr ? "err" : "ok"}">${esc(note)}</div>` : ""}
 <div class="lbl">Día</div><div class="chips">${dayChips}</div>
 <div class="lbl">Duración del masaje</div><div class="chips">${durChips}</div>
 <div class="lbl">Horas de inicio</div>${gridHtml}
-<div class="lbl">Vuestras horas para Massage Club</div>${listHtml ? `<div class="list">${listHtml}</div>` : `<p class="empty">Todavía no hay ninguna hora marcada.</p>`}
+<div class="lbl">Vuestras horas para Massage Club</div>${listHtml ? `<div class="list">${listHtml}</div>` : `<p class="empty">Todavía no hay ninguna hora marcada.</p>` /* No times marked yet. */}
 <p class="foot">Una hora se puede reservar hasta 60 minutos antes. Si deja de estar libre, quitadla aquí mientras nadie la haya reservado. Este enlace es solo para vuestro centro, no lo compartáis.</p>`;
   // Page copy in English, for Jordan: "Free times. Mark the times you can see a
   // Massage Club client. Anything you mark can be booked straight away: you
-  // get the written confirmation with their name and phone, and 15 minutes to
-  // reject it if it does not suit you." Labels: Day, Massage length, Start
-  // times, Treatment rooms free at that time, Final price for the client
-  // (optional), Save times, Your times for Massage Club, Remove. Footer: "A
+  // get the written confirmation with their name and phone (and their email,
+  // when we have it), and 15 minutes to reject it if it does not suit you."
+  // Labels: Day, Massage length, Start times, Rooms free at that time ("sala",
+  // not "camilla", for studios that work on floor mats), Final price for the
+  // client (optional), Save times, Your times for Massage Club, Remove. Footer: "A
   // time can be booked up to 60 minutes before. If it stops being free,
   // remove it here while nobody has booked it. This link is only for your
   // studio, do not share it."
@@ -6850,48 +7050,72 @@ ${note ? `<div class="note ${noteErr ? "err" : "ok"}">${esc(note)}</div>` : ""}
 }
 // The studio's 15 minute reject link, from its confirmation. GET shows the
 // booking; only the button on the page (a=no) rejects it.
+// Review (17 Oct): a booking the customer has cancelled (or Jordan closed) is
+// withdrawn here at once and shows as no longer active; and when the reject
+// finds nothing (two presses at once, a slow network), the slot is read again
+// before anything is said, so a reject that did happen is never reported to
+// the studio or to Jordan as a late one.
 async function slotRejectPage(url: URL): Promise<Response> {
   const id = relClean(url.searchParams.get("slotr"));
   const sig = String(url.searchParams.get("sig") || "");
   // This link is not valid. Write to us on WhatsApp and we will look at it.
   if (!id || !sig || sig !== await relSig("slot-reject", id)) return pageOut(url, simpleCard("Este enlace no es válido", "Escribidnos por WhatsApp y lo vemos.", ""), 403);
-  const sr = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?id=eq.${encodeURIComponent(id)}&select=*`, { headers: H() });
-  const slot = ((await sr.json().catch(() => [])) || [])[0] || null;
+  const readSlot = async () => {
+    const sr = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?id=eq.${encodeURIComponent(id)}&select=*`, { headers: H() });
+    return ((await sr.json().catch(() => [])) || [])[0] || null;
+  };
+  const slot = await readSlot();
   // This booking no longer exists. Nothing for you to do.
   if (!slot) return pageOut(url, simpleCard("Esta reserva ya no existe", "No tenéis que hacer nada.", ""), 404);
-  const rq = slot.request_id ? await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(slot.request_id)}&select=id,first_name,service_name,message_text`, { headers: H() }) : null;
+  const rq = slot.request_id ? await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(slot.request_id)}&select=id,first_name,service_name,message_text,stage,customer_flag`, { headers: H() }) : null;
   const req = rq ? ((await rq.json().catch(() => [])) || [])[0] || {} : {};
   const first = String(req.first_name || "").trim().split(" ")[0] || "nuestro cliente";
   const startMs = Date.parse(String(slot.start_at));
   const when = [studioDayOf(madridMidnight(new Date(startMs))), `a las ${relHm(startMs)}`].filter(Boolean).join(" ");
   const mins = Math.round((Date.parse(String(slot.end_at)) - startMs) / 60e3);
   const svc = String(trSvc(req.service_name || "Massage", "es")).toLowerCase();
-  // Already rejected: the booking for Ana today at 18:00 is cancelled and we have told them. Thanks for letting us know.
-  if (slot.status === "rejected") return pageOut(url, simpleCard("Ya está rechazada", `La reserva de ${first} ${when} ya está anulada y se lo hemos dicho. Gracias por avisar.`, "", "ok"));
+  // Already rejected: the booking for Ana today at 18:00 is cancelled and we let them know. Thanks for telling us.
+  const already = () => simpleCard("Ya está rechazada", `La reserva de ${first} ${when} ya está anulada y le avisamos nosotros. Gracias por avisar.`, "", "ok");
   // This booking is no longer active. Nothing for you to do.
-  if (slot.status !== "booked") return pageOut(url, simpleCard("Esta reserva ya no está activa", "No tenéis que hacer nada.", ""));
+  const inactive = () => simpleCard("Esta reserva ya no está activa", "No tenéis que hacer nada.", "");
+  if (slot.status === "rejected") return pageOut(url, already());
+  if (slot.status === "booked" && ["cancelled", "dismissed"].includes(String(req.stage || ""))) {
+    await relRpc("released_request_closed", { p_request: Number(slot.request_id) });
+    return pageOut(url, inactive());
+  }
+  if (slot.status !== "booked") return pageOut(url, inactive());
   const until = Date.parse(String(slot.reject_until));
   const open = Date.now() <= until;
-  // The 15 minutes have passed: the booking for Ana stands. If you really cannot see them, reply to our WhatsApp message and we will sort it out.
-  const late = () => simpleCard("Ya han pasado los 15 minutos", `La reserva de ${first} ${when} sigue en pie. Si de verdad no podéis atenderle, contestad a nuestro mensaje por WhatsApp y lo arreglamos.`, "");
-  if (String(url.searchParams.get("a") || "") === "no") {
-    const row = open ? await relRpcOne("reject_released_slot", { p_slot: id, p_note: "studio reject link" }) : null;
-    if (row) {
-      await releasedRejected(row, "studio reject link");
-      // Done, booking cancelled. We have cancelled Ana's booking today at 18:00 and are telling them now. Nothing else to do. Thanks for letting us know.
-      return pageOut(url, simpleCard("Hecho, reserva anulada", `Hemos anulado la reserva de ${first} ${when} y ya se lo estamos diciendo. No tenéis que hacer nada más. Gracias por avisar.`, "", "ok"));
-    }
+  // The 15 minutes have passed: the booking for Ana stands. If you really cannot see them, write to us on WhatsApp or reply to the email and we will sort it out.
+  const late = () => simpleCard("Ya han pasado los 15 minutos", `La reserva de ${first} ${when} sigue en pie. Si de verdad no podéis atenderle, escribidnos por WhatsApp o contestad al correo y lo arreglamos.`, "");
+  const lateCard = async () => {
     const pc = await partnerCard(String(slot.partner_id || ""));
     await founderCard(`⚠️ ${pc.business_name || "A studio"} tried to reject a released time after 15 minutes`, {
       badge: "LATE REJECT", title: `${pc.business_name || "The studio"} pressed reject on #${slot.request_id} after its 15 minutes`,
-      paras: [`The booking for ${first} at ${relHm(startMs)} on ${relYmd(startMs)} stands and the customer has not been told anything. The studio was asked to reply on WhatsApp. Please call them.`],
+      paras: [`The booking for ${first} at ${relHm(startMs)} on ${relYmd(startMs)} stands and the customer has not been told anything. The studio was asked to write on WhatsApp or reply to the email. Please call them.`],
       studioName: pc.business_name,
     });
-    return pageOut(url, late());
+  };
+  if (String(url.searchParams.get("a") || "") === "no") {
+    const row = open ? await relRpcOne("reject_released_slot", { p_slot: id, p_note: "studio reject link" }) : null;
+    if (row) {
+      const told = await releasedRejected(row, "studio reject link");
+      const reached = /^(whatsapp|email)/.test(told);
+      // Done, booking cancelled. We have cancelled Ana's booking today at 18:00 and have told them (or: and we will let them know). Nothing else to do. Thanks for telling us.
+      return pageOut(url, simpleCard("Hecho, reserva anulada", `Hemos anulado la reserva de ${first} ${when} y ${reached ? "ya se lo hemos dicho" : "le avisamos nosotros"}. No tenéis que hacer nada más. Gracias por avisar.`, "", "ok"));
+    }
+    // Nothing came back: read the slot again before saying anything.
+    const now2 = await readSlot();
+    if (now2?.status === "rejected") return pageOut(url, already());
+    if (now2?.status === "booked" && Date.now() > Date.parse(String(now2.reject_until))) { await lateCard(); return pageOut(url, late()); }
+    // It could not be cancelled just now. Please try again in a moment.
+    if (now2?.status === "booked") return pageOut(url, simpleCard("No se ha podido anular", "Probad otra vez en un momento, por favor.", pillLink(`${await slotRejectLink(id)}&a=no`, "No podemos atenderle", false)));
+    return pageOut(url, inactive());
   }
   if (!open) return pageOut(url, late());
   // Ana's booking. Today at 18:00, relaxing massage of 60 min. If you cannot see them, reject it before 18:17. If you can, there is nothing to do.
   const body = `${when.charAt(0).toUpperCase() + when.slice(1)}, ${svc} de ${mins} min.\n\nSi no podéis atenderle, rechazadla antes de las ${relHm(until)}. Si podéis, no hace falta hacer nada.`;
+  // Button: "No podemos atenderle" (We can't see them).
   return pageOut(url, simpleCard(`Reserva de ${first}`, body, pillLink(`${await slotRejectLink(id)}&a=no`, "No podemos atenderle", false)));
 }
 // Ops (key-guarded, like studio_offer):
@@ -6969,7 +7193,7 @@ async function releasedOps(payload: any): Promise<Response> {
 // dispatch_count 0, so neither the dispatch sweep nor the widen sweep ever asks
 // a studio about it, and partner_id stays null until acceptOffer books it (the
 // notify trigger sends Jordan only its slim card). share_ok, because the offer
-// they tapped said the studio gets their name and phone for the booking.
+// they tapped said the studio gets their name, phone and email for the booking.
 async function createRequest(s: Session, rel: any = null): Promise<number | null> {
   const d = s.data;
   // v40: "Help me figure it out" is booked as a relaxing massage, which every
@@ -9184,9 +9408,14 @@ const handleInner = async (req: Request) => {
       // v215: a released-time button tapped after the chat moved on. Fresh
       // times still on screen mid-booking are handled as at the studio step;
       // anything older is not booked, and they are told so.
+      // Review (17 Oct): unless a time is held for them (they are at the name
+      // question) or they booked one in the last half hour. A second tap on
+      // the same message then says nothing: "no longer on offer" right after
+      // "Booked!" or the name question would contradict it.
       if (/^(rel_\d|rel_more|relx_no)$/.test(replyId) && s.step !== "await_studio") {
         const fresh = Array.isArray(s.data.relPicks) && Date.now() - Number(s.data.relAt || 0) < 30 * 60e3;
         if (fresh && !["done", "human", "await_offer"].includes(s.step)) await releasedTap(s, from, L, replyId);
+        else if (s.data.released?.slot_id || await relBookedRecently(from)) await logEvent(from, "released_button_ignored", { button: replyId, step: s.step });
         else await sendText(from, RELEASED_COPY[L === "es" ? "es" : "en"].gone);
         return new Response("OK", { status: 200 });
       }
@@ -10300,6 +10529,9 @@ const handleInner = async (req: Request) => {
             await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${reqRow.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ contact_email: email }) });
             reqRow.contact_email = email;
             await fetch(`${SUPABASE_URL}/functions/v1/booking-ack`, { method: "POST", headers: H(), body: JSON.stringify({ type: "INSERT", table: "whatsapp_requests", record: reqRow }) }).catch((e) => console.log("[wa] booking-ack call failed", String(e)));
+            // v215 review (17 Oct): a released time's studio was confirmed
+            // before this question; the email they agreed to share follows.
+            if (relHueco(reqRow.message_text) && reqRow.stage === "confirmed" && reqRow.partner_id) await releasedEmailFollowUp(reqRow, email);
           }
         } catch (e) { console.log("[wa] email-post attach failed", String(e)); }
         await logEvent(from, "email_captured", { when: "post_confirm" });

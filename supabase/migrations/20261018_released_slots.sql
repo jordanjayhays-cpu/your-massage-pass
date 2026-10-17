@@ -43,6 +43,9 @@ create table if not exists public.released_slots (
   held_request_id bigint,
   held_until      timestamptz,
   request_id      bigint,              -- whatsapp_requests.id once booked (kept after a reject, for the record)
+  -- The customer's phone (digits) that booked it. One customer cannot book two
+  -- released times at once (review, 17 Oct): two taps handled side by side.
+  booked_phone    text,
   booked_at       timestamptz,
   reject_until    timestamptz,
   rejected_at     timestamptz,
@@ -70,7 +73,11 @@ create unique index if not exists released_slots_one_booking
 create unique index if not exists released_slots_source_ref
   on public.released_slots (partner_id, source, source_ref)
   where source_ref is not null and status in ('released', 'held', 'booked');
+-- Re-applying over a copy from before the review adds the column.
+alter table public.released_slots add column if not exists booked_phone text;
 create index if not exists released_slots_open on public.released_slots (start_at) where status = 'released';
+create index if not exists released_slots_held_phone on public.released_slots (held_by_phone) where status = 'held';
+create index if not exists released_slots_booked_phone on public.released_slots (booked_phone) where status = 'booked';
 create index if not exists released_slots_partner on public.released_slots (partner_id, start_at);
 
 -- Service role only: no policies, nothing for anon or signed-in users. The
@@ -104,7 +111,17 @@ alter table public.partners add column if not exists slots_link_v int not null d
 -- far (8 days), too long (3 hours), out of range, or already live are skipped,
 -- not errors; the caller compares what came back with what it sent. At most
 -- 40 rows a call and 200 live slots a studio.
-create or replace function public.release_slots(p_partner uuid, p_rows jsonb, p_source text, p_evidence text default null)
+-- p_since (review, 17 Oct): when the studio's page was drawn. A start and
+-- seat that has any row created or changed since then is skipped, whatever
+-- its status, so reloading a save link (Back, a reload, a phone restoring the
+-- tab) never puts back a time the studio has rejected or removed since. A
+-- time marked again from a freshly drawn page is saved as usual.
+-- A row whose source_ref is already live for this studio and source is
+-- skipped too, so one moved calendar event cannot abort the whole batch.
+-- The signature gained p_since: the four-argument version is dropped first so
+-- that re-applying never leaves two overloads.
+drop function if exists public.release_slots(uuid, jsonb, text, text);
+create or replace function public.release_slots(p_partner uuid, p_rows jsonb, p_source text, p_evidence text default null, p_since timestamptz default null)
 returns setof public.released_slots
 language plpgsql
 security definer
@@ -159,6 +176,14 @@ begin
        and r.seat between 1 and 20
        and (r.price_eur is null or r.price_eur between 1 and 500)
        and (r.discount_pct is null or r.discount_pct between 1 and 50)
+       and (p_since is null or not exists (
+             select 1 from released_slots o
+              where o.partner_id = p_partner and o.start_at = r.start_at and o.seat = r.seat
+                and greatest(o.released_at, o.updated_at) >= p_since))
+       and (r.source_ref is null or not exists (
+             select 1 from released_slots o
+              where o.partner_id = p_partner and o.source = p_source and o.source_ref = r.source_ref
+                and o.status in ('released', 'held', 'booked')))
      order by r.start_at, r.seat
      limit v_room
   ), ins as (
@@ -176,9 +201,16 @@ end;
 $$;
 
 -- A customer has tapped this time and is finishing (their name, the readback).
--- Held for p_secs (at most 15 minutes). The same phone or request can hold it
--- again; anyone else only once the hold has run out. Refused when an
--- overlapping slot on the same seat is already booked.
+-- Held for p_secs (at most 15 minutes), and never past expires_at, so a hold
+-- never outlasts the time it can still be booked in. The same phone or
+-- request can hold it again; anyone else only once the hold has run out.
+-- Refused when an overlapping slot on the same seat is already booked, and
+-- (review, 17 Oct) when fewer than 10 minutes are left to book it.
+-- One customer, one released time at a time (review, 17 Oct): under a lock
+-- on the phone, a hold is refused while the same phone holds another time,
+-- has booked another one in the last 2 minutes (two taps handled side by
+-- side), or has booked one that overlaps this. The bot reads why and stays
+-- quiet on a double tap instead of saying someone else took it.
 create or replace function public.hold_released_slot(p_slot uuid, p_phone text, p_request bigint default null, p_secs int default 600)
 returns setof public.released_slots
 language plpgsql
@@ -187,26 +219,39 @@ set search_path = public
 as $$
 declare
   v released_slots;
+  v_phone text := nullif(btrim(coalesce(p_phone, '')), '');
 begin
   select * into v from released_slots where id = p_slot;
   if not found then return; end if;
+  -- Always phone first, then the seat: the same order as book_released_slot.
+  if v_phone is not null then
+    perform pg_advisory_xact_lock(hashtextextended('released-phone:' || v_phone, 0));
+  end if;
   perform pg_advisory_xact_lock(hashtextextended('released:' || v.partner_id::text || ':' || v.seat::text, 0));
   if exists (select 1 from released_slots o
               where o.partner_id = v.partner_id and o.seat = v.seat and o.id <> v.id and o.status = 'booked'
                 and o.start_at < v.end_at and v.start_at < o.end_at) then
     return;
   end if;
+  if v_phone is not null and exists (
+       select 1 from released_slots o
+        where o.id <> v.id
+          and ((o.status = 'held' and o.held_by_phone = v_phone and o.held_until > now())
+               or (o.status = 'booked' and o.booked_phone = v_phone
+                   and (o.booked_at > now() - interval '2 minutes' or (o.start_at < v.end_at and v.start_at < o.end_at))))) then
+    return;
+  end if;
   return query
   with u as (
     update released_slots
        set status = 'held',
-           held_by_phone = nullif(p_phone, ''),
+           held_by_phone = v_phone,
            held_request_id = p_request,
-           held_until = now() + make_interval(secs => least(greatest(coalesce(p_secs, 600), 60), 900)),
+           held_until = least(expires_at, now() + make_interval(secs => least(greatest(coalesce(p_secs, 600), 60), 900))),
            updated_at = now()
-     where id = p_slot and now() < expires_at
+     where id = p_slot and now() + interval '10 minutes' <= expires_at
        and (status = 'released'
-            or (status = 'held' and (held_by_phone = nullif(p_phone, '') or held_request_id = p_request or held_until < now())))
+            or (status = 'held' and (held_by_phone = v_phone or held_request_id = p_request or held_until < now())))
     returning *
   )
   select * from u;
@@ -216,7 +261,10 @@ $$;
 -- The customer's tap books it. Exactly one winner: callers for the same seat
 -- queue on the advisory lock, and the UPDATE re-checks the status, so the
 -- second one finds 'booked' and gets nothing back. The 15 minute reject window
--- starts now.
+-- starts now. Review (17 Oct): the same phone cannot book a second time
+-- within 2 minutes (a double tap) or one that overlaps a time it has booked,
+-- and two bookings for one request queue on a lock of their own, so the
+-- second gets nothing back instead of a unique_violation.
 create or replace function public.book_released_slot(p_slot uuid, p_request bigint, p_phone text default null)
 returns setof public.released_slots
 language plpgsql
@@ -225,10 +273,16 @@ set search_path = public
 as $$
 declare
   v released_slots;
+  v_phone text := nullif(btrim(coalesce(p_phone, '')), '');
 begin
   if p_request is null then return; end if;
   select * into v from released_slots where id = p_slot;
   if not found then return; end if;
+  -- Phone, then request, then seat: one order everywhere, so no deadlock.
+  if v_phone is not null then
+    perform pg_advisory_xact_lock(hashtextextended('released-phone:' || v_phone, 0));
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('released-req:' || p_request::text, 0));
   perform pg_advisory_xact_lock(hashtextextended('released:' || v.partner_id::text || ':' || v.seat::text, 0));
   if exists (select 1 from released_slots where request_id = p_request and status = 'booked') then return; end if;
   if exists (select 1 from released_slots o
@@ -236,15 +290,21 @@ begin
                 and o.start_at < v.end_at and v.start_at < o.end_at) then
     return;
   end if;
+  if v_phone is not null and exists (
+       select 1 from released_slots o
+        where o.id <> v.id and o.status = 'booked' and o.booked_phone = v_phone
+          and (o.booked_at > now() - interval '2 minutes' or (o.start_at < v.end_at and v.start_at < o.end_at))) then
+    return;
+  end if;
   return query
   with u as (
     update released_slots
-       set status = 'booked', request_id = p_request, booked_at = now(),
+       set status = 'booked', request_id = p_request, booked_phone = v_phone, booked_at = now(),
            reject_until = now() + interval '15 minutes',
            held_by_phone = null, held_request_id = null, held_until = null, updated_at = now()
      where id = p_slot and now() < expires_at
        and (status = 'released'
-            or (status = 'held' and (held_by_phone = nullif(p_phone, '') or held_request_id = p_request or held_until < now())))
+            or (status = 'held' and (held_by_phone = v_phone or held_request_id = p_request or held_until < now())))
     returning *
   )
   select * from u;
@@ -261,7 +321,7 @@ set search_path = public
 as $$
   update released_slots
      set status = case when now() < expires_at then 'released' else 'expired' end,
-         request_id = null, booked_at = null, reject_until = null, updated_at = now()
+         request_id = null, booked_phone = null, booked_at = null, reject_until = null, updated_at = now()
    where id = p_slot and request_id = p_request and status = 'booked'
   returning *;
 $$;
@@ -281,17 +341,37 @@ as $$
   returning *;
 $$;
 
--- The studio's reject link. Only a booked slot, only within its 15 minutes.
+-- The studio's reject link. Only a booked slot, only within its 15 minutes,
+-- and (review, 17 Oct) only while the customer still has the booking: once
+-- they have cancelled it there is nothing left to reject.
 create or replace function public.reject_released_slot(p_slot uuid, p_note text default null)
 returns setof public.released_slots
 language sql
 security definer
 set search_path = public
 as $$
-  update released_slots
+  update released_slots s
      set status = 'rejected', rejected_at = now(), reject_note = left(p_note, 500), updated_at = now()
-   where id = p_slot and status = 'booked' and now() <= reject_until
-  returning *;
+   where s.id = p_slot and s.status = 'booked' and now() <= s.reject_until
+     and not exists (select 1 from whatsapp_requests r where r.id = s.request_id and r.stage in ('cancelled', 'dismissed'))
+  returning s.*;
+$$;
+
+-- The customer cancelled (or Jordan closed) the request a released time was
+-- booked for: the time is withdrawn at once, not up to 5 minutes later by the
+-- sweep, so the studio's reject link finds nothing left to reject. Never
+-- re-released automatically. Does nothing while the request is still live.
+create or replace function public.released_request_closed(p_request bigint)
+returns setof public.released_slots
+language sql
+security definer
+set search_path = public
+as $$
+  update released_slots s
+     set status = 'withdrawn', reject_note = coalesce(s.reject_note || ' ', '') || 'request ' || r.stage, updated_at = now()
+    from whatsapp_requests r
+   where s.request_id = p_request and s.status = 'booked' and r.id = s.request_id and r.stage in ('cancelled', 'dismissed')
+  returning s.*;
 $$;
 
 -- The studio takes a time back. Only a time nobody is holding or has booked.
@@ -361,9 +441,11 @@ as $$
     select s.*, (extract(epoch from (s.end_at - s.start_at)) / 60)::int as mins
       from released_slots s
      cross join terms tm
-     where s.status = 'released' and s.confirm_mode = 'instant' and s.is_test = coalesce(p_test, false)
+     where (s.status = 'released' or (s.status = 'held' and s.held_until < now()))
+       and s.confirm_mode = 'instant' and s.is_test = coalesce(p_test, false)
        and s.start_at >= p_from and s.start_at < p_to
-       and s.expires_at > now() + interval '2 minutes'
+       -- Room for the 10 minute hold and the name question (review, 17 Oct).
+       and s.expires_at > now() + interval '15 minutes'
        and (p_exclude is null or not (s.partner_id = any(p_exclude)))
        and (s.service is null or s.service = any(tm.t))
        and not exists (select 1 from released_slots o
@@ -381,7 +463,12 @@ as $$
       left join centre c on true
      where l.mins = coalesce(p_minutes, 60)
        and p.opted_out_at is null and coalesce(p.status, '') <> 'suspended'
-       and (mc_wa_number(coalesce(p.whatsapp, p.phone)) is not null or coalesce(p.booking_email, p.email, '') like '%_@_%')
+       -- Review (17 Oct): an email address is required. The confirmation's
+       -- email is the one channel sure to carry the client's phone and the
+       -- 15 minute reject link: outside the studio's 24 hour WhatsApp window
+       -- the aviso_centro_v1 fallback carries neither. Until the T3 template
+       -- (hueco_reservado_v1) exists, a WhatsApp-only studio is not offered.
+       and coalesce(p.booking_email, p.email, '') like '%_@_%.%'
   ),
   near as (
     select distinct on (f.partner_id) f.*
@@ -407,21 +494,23 @@ as $$
    limit greatest(1, least(coalesce(p_limit, 3), 6));
 $$;
 
-revoke all on function public.release_slots(uuid, jsonb, text, text) from public, anon, authenticated;
+revoke all on function public.release_slots(uuid, jsonb, text, text, timestamptz) from public, anon, authenticated;
 revoke all on function public.hold_released_slot(uuid, text, bigint, int) from public, anon, authenticated;
 revoke all on function public.book_released_slot(uuid, bigint, text) from public, anon, authenticated;
 revoke all on function public.unbook_released_slot(uuid, bigint) from public, anon, authenticated;
 revoke all on function public.unhold_released_slot(uuid, text) from public, anon, authenticated;
 revoke all on function public.reject_released_slot(uuid, text) from public, anon, authenticated;
+revoke all on function public.released_request_closed(bigint) from public, anon, authenticated;
 revoke all on function public.withdraw_released_slot(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.sweep_released_slots() from public, anon, authenticated;
 revoke all on function public.released_offers(timestamptz, timestamptz, text, text, boolean, int, uuid[], int) from public, anon, authenticated;
-grant execute on function public.release_slots(uuid, jsonb, text, text) to service_role;
+grant execute on function public.release_slots(uuid, jsonb, text, text, timestamptz) to service_role;
 grant execute on function public.hold_released_slot(uuid, text, bigint, int) to service_role;
 grant execute on function public.book_released_slot(uuid, bigint, text) to service_role;
 grant execute on function public.unbook_released_slot(uuid, bigint) to service_role;
 grant execute on function public.unhold_released_slot(uuid, text) to service_role;
 grant execute on function public.reject_released_slot(uuid, text) to service_role;
+grant execute on function public.released_request_closed(bigint) to service_role;
 grant execute on function public.withdraw_released_slot(uuid, uuid) to service_role;
 grant execute on function public.sweep_released_slots() to service_role;
 grant execute on function public.released_offers(timestamptz, timestamptz, text, text, boolean, int, uuid[], int) to service_role;

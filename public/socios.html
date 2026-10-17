@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Centros socios · Massage Club</title>
-<meta name="description" content="Para centros de masaje en Madrid: pasadnos los huecos que se os quedan libres y se los ofrecemos a gente que nos escribe en inglés. Gratis hasta el 30 de noviembre de 2026.">
+<meta name="description" content="Para centros de masaje en Madrid: pasadnos los huecos que se os quedan libres y se los ofrecemos a gente que nos escribe en inglés. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.">
 <meta name="theme-color" content="#F1EBE2">
 <meta name="color-scheme" content="light">
 <meta property="og:title" content="¿A qué hora se os suele quedar una sala vacía?">
-<meta property="og:description" content="Massage Club, para centros de masaje en Madrid. Gratis hasta el 30 de noviembre de 2026. Sin cuota ni contrato.">
+<meta property="og:description" content="Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.">
 <meta property="og:image" content="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png">
 <link rel="icon" href="/favicon.ico">
 <link rel="preconnect" href="https://jglftdstrowwckwqmpue.supabase.co" crossorigin>
@@ -17,19 +17,53 @@
   or WhatsApp. Its one job is to get a studio to give us the times it would
   like to offer to Massage Club clients, so the bot can send customers its way.
 
-  Personal link: /socios?s=<partners.slug> greets the studio and prefills its
-  details with a read-only select on the public partners table. A studio we
-  already work with can go straight to its times (#horas).
+  Flow: landing, then 1 "Vuestro centro" (name, WhatsApp), 2 "Vuestras horas"
+  (every week by default, or these dates only), 3 "Últimos datos" (address,
+  optional email, hours and prices, the terms), then the result screen.
 
-  Saving: nothing is sent anywhere unless the page is opened with ?live=1.
-  Then the save button POSTs {"ops":"studio_signup","payload":{...}} to
-  wa-bot. Without it the page is a preview and says so on every step.
+  Personal link: /socios?s=<partners.slug> greets the studio and prefills its
+  details with a read-only select on the public partners table. Only a studio
+  whose row is status 'active' is offered "Ir directo a las horas"; a pending
+  listing goes through step 1 like anyone else.
+
+  A draft (fields, times, mode, duration) is kept in localStorage per link, so
+  a reload or WhatsApp's in-app browser coming back does not lose anything. It
+  is cleared after a save.
+
+  SAVING. Live is the default; ?preview=1 sends nothing and says so.
+  The page POSTs {"ops":"studio_signup","payload":{...}} to wa-bot?socios=1
+  and counts it as saved ONLY on HTTP 2xx with JSON {"ok":true,"id":...}.
+  Anything else (today: wa-bot has no studio_signup op and answers the CORS
+  preflight for ?socios=1 with a plain "OK", so the browser blocks the POST)
+  shows "Falta un paso": the studio sends the same times by WhatsApp to
+  +34 612 474 827 (text prefilled) or by email to jordan@massageclub.io, so
+  the times are never lost and the page never says "Recibido" when nothing
+  was kept.
+
+  Contract for studio_signup (to be built in supabase/functions, not here):
+  - A submission is UNVERIFIED. The save is unauthenticated and slugs are
+    public, so anyone can fill this in for any studio. Store it for Jordan's
+    review and tell him. It must never create released slots that count as
+    the studio's tap (PRE-RELEASED SLOTS rule), and never overwrite an
+    existing partner's whatsapp, email or opening_hours automatically. The
+    times are confirmed on the studio's existing WhatsApp before any of them
+    is offered; the result screen tells the studio exactly that.
+  - For a studio we already work with, prefer sending the signed slots link
+    (wa-bot ops slot_link) over /socios?s=<slug>#horas.
+  - OPTIONS wa-bot?socios=1 answers 204 with CORS; the POST answers JSON
+    {ok:true,id} with CORS.
+  - The fallback WhatsApp text always starts "Hola, Massage Club. Somos <name>,
+    centro de masaje." From a number that is not a partner, wa-bot today puts
+    it in the customer flow, and from a partner number handleStudioReply may
+    read a time in it as an answer to an open ask. Route that opening line to
+    Jordan before this page goes to studios.
+
   No tracking, no external JS, nothing sent on page load.
 -->
 <style>
 :root{
   --page:#F1EBE2; --ink:#262019; --muted:#8A7F73; --muted-ink:#62584E; --clay:#B85C38; --clay-ink:#9A4A2C;
-  --cream:#FAF6F0; --line:#F0E9E0; --edge:#DCD0C0; --field:#9C9083; --white:#FFFFFF; --bad:#A3271C;
+  --cream:#FAF6F0; --line:#F0E9E0; --edge:#DCD0C0; --field:#9C9083; --white:#FFFFFF; --bad:#A3271C; --wa:#1F8F4E;
   --serif:Georgia,"Times New Roman",serif;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
@@ -46,30 +80,34 @@ img{display:block;max-width:100%}
 :focus-visible{outline:3px solid var(--clay-ink);outline-offset:3px;border-radius:8px}
 .skiplink{position:absolute;left:16px;top:-60px;background:var(--ink);color:var(--cream);padding:12px 16px;border-radius:10px;z-index:20;text-decoration:none;font-weight:700}
 .skiplink:focus{top:12px}
+.ico{width:22px;height:22px;flex:none;fill:currentColor}
 
 .wrap{max-width:600px;margin:0 auto;padding:0 16px}
-.top{display:flex;align-items:center;gap:10px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:4px;min-height:64px}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);flex:1;min-width:0}
+.top{display:flex;align-items:center;gap:10px;padding-top:max(8px,env(safe-area-inset-top));padding-bottom:4px;min-height:58px}
+.brand{display:flex;align-items:center;gap:10px;min-height:48px;text-decoration:none;color:var(--ink);flex:1;min-width:0}
 .brand img{width:40px;height:40px;border-radius:50%;box-shadow:0 0 0 1px var(--edge)}
 .brand span{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
-.lang{min-width:48px;height:44px;padding:0 14px;border-radius:999px;background:var(--cream);border:1.5px solid var(--edge);font-size:15px;font-weight:700}
+.lang{min-width:52px;height:44px;padding:0 14px;border-radius:999px;background:var(--cream);border:1.5px solid var(--edge);font-size:15px;font-weight:700}
 .lang:hover{border-color:var(--field)}
 
 /* Landing */
-.hero{padding:22px 0 8px}
+.hero{padding:18px 0 8px}
 .kicker{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--clay-ink)}
-.hello{font-family:var(--serif);font-size:20px;color:var(--clay-ink);margin-top:14px}
+.hello{font-family:var(--serif);font-size:20px;line-height:1.5;color:var(--clay-ink);margin-top:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hello.reserve{visibility:hidden}
 h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.015em;color:var(--ink)}
 h1{font-size:clamp(31px,8.6vw,46px);line-height:1.08;margin-top:10px}
 h2{font-size:clamp(26px,7vw,32px);line-height:1.12}
 h3{font-size:21px;line-height:1.2}
 .lead{font-size:18px;line-height:1.5;margin-top:14px;color:var(--ink)}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:14px 20px;border-radius:16px;font-size:18px;font-weight:700;text-align:center;text-decoration:none;transition:transform .1s,background-color .15s}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;padding:14px 20px;border-radius:16px;font-size:18px;font-weight:700;text-align:center;text-decoration:none;transition:transform .1s,background-color .15s}
 .btn:active{transform:scale(.985)}
 .btn-primary{background:var(--clay);color:var(--white);box-shadow:0 10px 24px rgba(184,92,56,.28)}
 .btn-primary:hover{background:var(--clay-ink)}
 .btn-secondary{background:var(--cream);color:var(--ink);border:1.5px solid var(--field);font-size:16.5px;min-height:52px}
-.btn-text{min-height:48px;padding:10px 4px;font-size:16px;font-weight:700;color:var(--clay-ink);text-decoration:underline;text-underline-offset:3px;width:auto}
+.btn-secondary .ico{color:var(--wa)}
+.btn-secondary .ico.plain{color:var(--muted-ink)}
+.btn-text{min-height:48px;padding:10px 6px;font-size:16px;font-weight:700;color:var(--clay-ink);text-decoration:underline;text-underline-offset:3px;width:auto}
 .btn[disabled]{opacity:.6;cursor:progress}
 .ctas{display:grid;gap:10px;margin-top:22px}
 .note{font-size:15px;color:var(--muted-ink);text-align:center}
@@ -102,22 +140,25 @@ h3{font-size:21px;line-height:1.2}
 
 .contact{margin:36px 0 28px;padding-top:20px;border-top:1px solid var(--edge);font-size:16px}
 .contact b{font-family:var(--serif);font-size:18px}
-.contact a{word-break:break-word}
+.contact .ctas{margin-top:14px}
+.seeus{margin-top:16px;font-size:15px;color:var(--muted-ink)}
+.seeus a{display:inline-flex;align-items:center;min-height:44px;font-weight:700}
 
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(241,235,226,.96);border-top:1px solid var(--edge);padding:12px 16px calc(12px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .dock .btn{max-width:568px;margin:0 auto}
 
 /* Flow */
-.flow{padding:8px 0 40px}
-.preview{display:inline-block;font-size:13.5px;color:var(--muted-ink);background:var(--cream);border:1px dashed var(--field);border-radius:999px;padding:5px 12px;margin:6px 0 10px}
-.progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 22px}
-.progress li{font-size:13.5px;font-weight:700;color:var(--muted-ink)}
-.progress li::before{content:"";display:block;height:6px;border-radius:6px;background:var(--edge);margin-bottom:7px}
+.flow{padding:2px 0 40px}
+.preview{display:inline-block;font-size:13.5px;color:var(--muted-ink);background:var(--cream);border:1px dashed var(--field);border-radius:999px;padding:5px 12px;margin:0 0 8px}
+.progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 12px}
+.progress li{font-size:12.5px;font-weight:700;color:var(--muted-ink);line-height:1.3}
+.progress li::before{content:"";display:block;height:5px;border-radius:5px;background:var(--edge);margin-bottom:5px}
 .progress li.done::before,.progress li[aria-current="step"]::before{background:var(--clay)}
 .progress li[aria-current="step"]{color:var(--ink)}
-.step h2{outline:none}
-.step .sub{margin-top:8px;font-size:16.5px;color:var(--ink)}
-.step .hello{margin-top:0;margin-bottom:6px}
+.step h2{outline:none;font-size:clamp(25px,6.8vw,30px)}
+.step .sub{margin-top:6px;font-size:16px;color:var(--ink)}
+.step .sub.tight{margin-top:0;font-size:15px;color:var(--muted-ink)}
+.step .hello{margin-top:0;margin-bottom:4px}
 
 .field{margin-top:18px}
 .field label,.field .lbl{display:block;font-size:16px;font-weight:700;margin-bottom:6px}
@@ -126,6 +167,8 @@ h3{font-size:21px;line-height:1.2}
 .field input:focus{border-color:var(--clay-ink);box-shadow:0 0 0 3px rgba(184,92,56,.22)}
 .field input[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 2px rgba(163,39,28,.15)}
 .hint{font-size:14.5px;color:var(--muted-ink);margin-top:6px}
+.warn{font-size:15px;color:var(--clay-ink);font-weight:700;margin-top:6px}
+.warn:empty{display:none}
 .err{font-size:15px;color:var(--bad);font-weight:700;margin-top:6px}
 .err:empty{display:none}
 .prices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -133,52 +176,63 @@ h3{font-size:21px;line-height:1.2}
 .euro input{padding-right:36px !important}
 .euro::after{content:"\20AC";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted-ink);font-weight:700;pointer-events:none}
 .sublbl{display:block;font-size:14.5px;color:var(--muted-ink);margin-bottom:4px;font-weight:700}
-.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px}
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px;cursor:pointer}
 .check.bad{border-color:var(--bad)}
 .check input{flex:none;width:26px;height:26px;margin-top:1px;accent-color:var(--clay)}
-.check label{font-weight:700;font-size:17px;cursor:pointer}
+.check .ttl{font-weight:700;font-size:17px;display:block}
 .check .line{display:block;font-weight:400;font-size:14.5px;color:var(--muted-ink);margin-top:4px}
 .actions{display:grid;gap:6px;margin-top:22px;justify-items:center}
 
-.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:15px;color:var(--muted-ink)}
+.who{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:15px;color:var(--muted-ink);min-height:44px}
+.who #whoText{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who b{color:var(--ink)}
-.who .btn-text{min-height:40px;padding:6px 2px;font-size:15px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;border:0}
-.seg legend{font-size:16px;font-weight:700;margin-bottom:8px;padding:0}
+.who .btn-text{flex:none;min-height:44px;padding:0 4px 0 8px;font-size:15px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;border:0;margin-top:12px}
+.seg legend{font-size:15.5px;font-weight:700;margin-bottom:6px;padding:0}
 .seg label{position:relative;display:block}
 .seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
-.seg span{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:17px}
+.seg span{display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;padding:4px 8px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16px;line-height:1.2}
 .seg input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 .seg input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
-.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.day{position:relative;min-height:62px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 2px;line-height:1.2}
+.durrow{display:flex;align-items:center;gap:10px;margin-top:22px}
+.durrow .dlbl{font-size:15.5px;font-weight:700}
+.durrow .opts{display:flex;gap:8px;margin-left:auto}
+.durrow label{position:relative;display:block}
+.durrow input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.durrow label span{display:flex;align-items:center;justify-content:center;min-height:44px;min-width:84px;padding:0 12px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:15.5px}
+.durrow label input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.durrow input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.day{position:relative;min-height:54px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;line-height:1.2}
+.day.one{min-height:48px}
 .day .dt{font-weight:700;font-size:15.5px}
 .day .dd{font-size:13.5px;color:var(--muted-ink)}
 .day[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--cream)}
 .day[aria-pressed=true] .dd{color:#E9DFD2}
 .badge{position:absolute;top:-7px;right:-5px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--clay);color:var(--white);font-size:13px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page)}
-.dayinfo{font-size:15px;color:var(--muted-ink);margin-top:14px}
-.glabel{font-size:13.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin:16px 0 8px}
+.dayinfo{font-size:14.5px;color:var(--muted-ink);margin-top:10px}
+.dayinfo b{color:var(--ink)}
+.glabel{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin:12px 0 8px}
 .times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tm{min-height:50px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16.5px;font-variant-numeric:tabular-nums}
 .tm[aria-pressed=true]{background:var(--clay);border-color:var(--clay);color:var(--white)}
 .tm[aria-pressed=true]::before{content:"\2713";margin-right:4px}
 .empty{margin-top:14px;padding:14px;border-radius:14px;background:var(--cream);font-size:16px}
-.switch{display:flex;align-items:center;gap:14px;justify-content:space-between;margin-top:22px;padding:12px 14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px}
-.switch label{font-weight:700;font-size:17px;cursor:pointer}
-.switch .hint{margin-top:2px}
-.switch input{-webkit-appearance:none;appearance:none;flex:none;width:56px;height:32px;border-radius:16px;background:var(--field);position:relative;cursor:pointer;transition:background-color .15s}
-.switch input::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--white);transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-.switch input:checked{background:var(--clay)}
-.switch input:checked::after{transform:translateX(24px)}
+.copy{margin-top:14px;padding:12px;border-radius:14px;background:var(--cream);border:1.5px dashed var(--edge)}
+.copy p{font-size:15px;font-weight:700}
+.copy .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.copy button{min-height:44px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:15px;padding:4px 8px;line-height:1.2}
 .summary{margin-top:18px;padding:16px;border-radius:16px;background:var(--white);border:1.5px solid var(--edge)}
+.summary .sumlbl{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin-bottom:4px}
 .summary .sumhead{font-weight:700}
 .summary ul{list-style:none;margin-top:8px;display:grid;gap:6px;font-size:16px}
 .summary li b{margin-right:6px}
+.summary .btn-text{margin-top:4px;padding-left:0}
 
-.done-mark{width:64px;height:64px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:32px;margin-bottom:16px}
+.done-mark{width:64px;height:64px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:32px;margin:8px 0 16px}
 .next{list-style:none;display:grid;gap:10px;margin-top:16px}
 .next li{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:16.5px}
+.msg{margin-top:10px;padding:14px;border-radius:14px;background:var(--white);border:1.5px solid var(--edge);font-size:14.5px;white-space:pre-wrap;word-break:break-word}
 
 @media (min-width:720px){
   .wrap{padding:0 24px}
@@ -189,6 +243,10 @@ h3{font-size:21px;line-height:1.2}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-wa" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2.4V17h16V7.4l-8 5.3-8-5.3zM5.6 7l6.4 4.3L18.4 7H5.6z"/></symbol>
+</svg>
 <a class="skiplink" href="#main" data-t="skip">Saltar al contenido</a>
 
 <div class="wrap">
@@ -224,7 +282,6 @@ h3{font-size:21px;line-height:1.2}
           <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b2"></span></li>
           <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b3"></span></li>
           <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b4"></span></li>
-          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b5"></span></li>
         </ul>
       </section>
 
@@ -260,12 +317,11 @@ h3{font-size:21px;line-height:1.2}
           <details><summary data-t="q2"></summary><p data-t="a2"></p></details>
           <details><summary data-t="q3"></summary><p data-t="a3"></p></details>
           <details><summary data-t="q4"></summary><p data-t="a4"></p></details>
-          <details><summary data-t="q5"></summary><p data-t="a5"></p></details>
         </div>
       </section>
     </div>
 
-    <!-- B to D. The three steps -->
+    <!-- B to E. The steps and the result -->
     <div id="flow" class="flow" hidden>
       <p class="preview" id="previewNote" data-t="preview" hidden></p>
       <ol class="progress" id="progress" data-aria="progressAria">
@@ -274,7 +330,7 @@ h3{font-size:21px;line-height:1.2}
         <li data-n="3"><span class="sr" data-t="stepWord3"></span><span data-t="p3"></span></li>
       </ol>
 
-      <!-- B. Step 1: details -->
+      <!-- B. Step 1: who you are -->
       <section class="step" data-step="1" aria-labelledby="s1h" hidden>
         <p class="hello" id="helloStep" hidden></p>
         <h2 id="s1h" tabindex="-1" data-t="s1Title"></h2>
@@ -287,10 +343,57 @@ h3{font-size:21px;line-height:1.2}
           </div>
           <div class="field">
             <label for="wa" data-t="fWa"></label>
-            <input type="tel" id="wa" name="wa" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000" required aria-describedby="waHint waErr">
+            <input type="tel" id="wa" name="wa" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000" required aria-describedby="waHint waWarn waErr">
             <p class="hint" id="waHint" data-t="fWaHint"></p>
+            <p class="warn" id="waWarn" aria-live="polite"></p>
             <p class="err" id="waErr" aria-live="polite"></p>
           </div>
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" data-t="next1"></button>
+            <button type="button" class="btn btn-text" data-back="0" data-t="back0"></button>
+          </div>
+        </form>
+      </section>
+
+      <!-- C. Step 2: times -->
+      <section class="step" data-step="2" aria-labelledby="s2h" hidden>
+        <h2 id="s2h" tabindex="-1" data-t="s2Title"></h2>
+        <p class="who" id="who" hidden><span id="whoText"></span><button type="button" class="btn btn-text" data-back="1" data-t="change"></button></p>
+        <p class="sub tight" data-t="s2Sub"></p>
+
+        <fieldset class="seg" id="modeSet">
+          <legend data-t="repeatLegend"></legend>
+          <label><input type="radio" name="mode" value="weekly" checked><span data-t="weeklyOpt"></span></label>
+          <label><input type="radio" name="mode" value="once"><span data-t="onceOpt"></span></label>
+        </fieldset>
+
+        <span class="sr" id="daysLbl" data-t="dayLbl"></span>
+        <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
+        <p class="dayinfo" id="dayInfo"></p>
+        <div id="grid"></div>
+        <div id="copyBox"></div>
+        <p class="hint" id="dropNote" aria-live="polite"></p>
+
+        <div class="durrow" id="durSet" role="radiogroup" aria-labelledby="durLbl">
+          <span class="dlbl" id="durLbl" data-t="duration"></span>
+          <div class="opts">
+            <label><input type="radio" name="dur" value="60" checked><span>60 min</span></label>
+            <label><input type="radio" name="dur" value="90"><span>90 min</span></label>
+          </div>
+        </div>
+
+        <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
+        <p class="err" id="timesErr" aria-live="assertive"></p>
+        <div class="actions">
+          <button type="button" class="btn btn-text" data-back="1" data-t="back1"></button>
+        </div>
+      </section>
+
+      <!-- D. Step 3: the rest, terms and send -->
+      <section class="step" data-step="3" aria-labelledby="s3h" hidden>
+        <h2 id="s3h" tabindex="-1" data-t="s3Title"></h2>
+        <p class="sub" data-t="s3Sub"></p>
+        <form id="f3" novalidate>
           <div class="field">
             <label for="addr" data-t="fAddr"></label>
             <input type="text" id="addr" name="addr" autocomplete="street-address" data-ph="fAddrPh" required aria-describedby="addrErr">
@@ -298,13 +401,13 @@ h3{font-size:21px;line-height:1.2}
           </div>
           <div class="field">
             <label for="email"><span data-t="fEmail"></span> <span class="opt" data-t="opt"></span></label>
-            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" placeholder="hola@vuestrocentro.es" aria-describedby="emailErr">
+            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" data-ph="fEmailPh" aria-describedby="emailErr">
             <p class="err" id="emailErr" aria-live="polite"></p>
           </div>
           <div class="field">
             <label for="hours"><span data-t="fHours"></span> <span class="opt" data-t="opt"></span></label>
-            <input type="text" id="hours" name="hours" data-ph="fHoursPh" aria-describedby="hoursHint">
-            <p class="hint" id="hoursHint"></p>
+            <input type="text" id="hours" name="hours" data-ph="fHoursPh" autocomplete="off" aria-describedby="hoursHint">
+            <p class="hint" id="hoursHint" aria-live="polite"></p>
           </div>
           <div class="field" role="group" aria-labelledby="priceLbl">
             <span class="lbl" id="priceLbl"><span data-t="fPrices"></span> <span class="opt" data-t="opt"></span></span>
@@ -321,81 +424,66 @@ h3{font-size:21px;line-height:1.2}
             <p class="hint" id="priceHint"></p>
             <p class="err" id="priceErr" aria-live="polite"></p>
           </div>
-          <div class="check" id="acceptBox">
+
+          <div class="summary" id="sumMini"></div>
+          <p class="err" id="miniErr" aria-live="polite"></p>
+
+          <!-- OPEN for Jordan (pitch kit notes, review 17 Oct): the 5 Sept rule
+               has the bot ask every studio for a 10% Massage Club rate on every
+               request. Whether that applies to times released here is not
+               decided. If it does, termsLine needs one honest line about it
+               before this page goes to any studio. Do not invent it here. -->
+          <label class="check" id="acceptBox" for="accept">
             <input type="checkbox" id="accept" required aria-describedby="acceptLine acceptErr">
-            <div>
-              <label for="accept" data-t="accept"></label>
+            <span>
+              <span class="ttl" data-t="accept"></span>
               <span class="line" id="acceptLine" data-t="termsLine"></span>
-            </div>
-          </div>
+            </span>
+          </label>
           <p class="err" id="acceptErr" aria-live="polite"></p>
+
+          <p class="err" id="saveErr" aria-live="assertive"></p>
           <div class="actions">
-            <button type="submit" class="btn btn-primary" data-t="next1"></button>
-            <button type="button" class="btn btn-text" data-go="0" data-t="back0"></button>
+            <button type="submit" class="btn btn-primary" id="save" data-t="save"></button>
+            <button type="button" class="btn btn-text" data-back="2" data-t="back2"></button>
           </div>
         </form>
       </section>
 
-      <!-- C. Step 2: times -->
-      <section class="step" data-step="2" aria-labelledby="s2h" hidden>
-        <h2 id="s2h" tabindex="-1" data-t="s2Title"></h2>
-        <p class="sub" data-t="s2Sub"></p>
-        <p class="who" id="who" hidden><span id="whoText"></span><button type="button" class="btn btn-text" data-go="1" data-t="change"></button></p>
+      <!-- E. The result: saved, not saved (send it yourselves), or preview -->
+      <section class="step" data-step="4" aria-labelledby="s4h" hidden>
+        <div class="done-mark" id="doneMark" aria-hidden="true">&#10003;</div>
+        <h2 id="s4h" tabindex="-1"></h2>
+        <p class="sub" id="s4sub"></p>
 
-        <fieldset class="seg field" id="durSet">
-          <legend data-t="duration"></legend>
-          <label><input type="radio" name="dur" value="60" checked><span>60 min</span></label>
-          <label><input type="radio" name="dur" value="90"><span>90 min</span></label>
-        </fieldset>
-
-        <div class="field">
-          <span class="lbl" id="daysLbl" data-t="dayLbl"></span>
-          <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
-          <p class="dayinfo" id="dayInfo"></p>
-          <div id="grid"></div>
-          <p class="hint" id="dropNote" aria-live="polite"></p>
+        <div id="rSaved" hidden>
+          <h3 style="margin-top:22px" data-t="nextTitle"></h3>
+          <ul class="next">
+            <li data-t="nextA"></li>
+            <li data-t="nextB"></li>
+            <li data-t="nextC"></li>
+          </ul>
         </div>
 
-        <div class="switch">
-          <div>
-            <label for="repeat" data-t="repeat"></label>
-            <p class="hint" id="repeatHint" data-t="repeatHint"></p>
+        <div id="rFallback" hidden>
+          <div class="ctas">
+            <a class="btn btn-primary" id="fbWa" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span data-t="fbWa"></span></a>
+            <a class="btn btn-secondary" id="fbMail"><svg class="ico plain" aria-hidden="true"><use href="#i-mail"/></svg><span data-t="fbMail"></span></a>
           </div>
-          <input type="checkbox" role="switch" id="repeat" aria-describedby="repeatHint">
+          <p class="hint" data-t="fbNote" style="margin-top:12px"></p>
         </div>
 
-        <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
-
-        <div class="check" id="accept2Box" hidden>
-          <input type="checkbox" id="accept2" aria-describedby="accept2Line accept2Err">
-          <div>
-            <label for="accept2" data-t="accept"></label>
-            <span class="line" id="accept2Line" data-t="termsLine"></span>
-          </div>
-        </div>
-        <p class="err" id="accept2Err" aria-live="polite"></p>
-
-        <p class="err" id="saveErr" aria-live="assertive"></p>
-        <div class="actions">
-          <button type="button" class="btn btn-primary" id="save" data-t="save"></button>
-          <button type="button" class="btn btn-text" data-go="1" data-t="back1"></button>
-        </div>
-      </section>
-
-      <!-- D. Step 3: done -->
-      <section class="step" data-step="3" aria-labelledby="s3h" hidden>
-        <div class="done-mark" aria-hidden="true">&#10003;</div>
-        <h2 id="s3h" tabindex="-1" data-t="s3Title"></h2>
-        <p class="sub" id="thanks"></p>
-        <h3 style="margin-top:22px" data-t="nextTitle"></h3>
-        <ul class="next">
-          <li data-t="next1Line"></li>
-          <li data-t="next2Line"></li>
-        </ul>
         <div class="summary" id="sentSummary"></div>
-        <p class="hint" id="sentPreview" data-t="sentPreview" hidden></p>
+
+        <div id="rPreview" hidden>
+          <p class="hint" style="margin-top:16px" data-t="pvMsgLbl"></p>
+          <div class="msg" id="pvMsg"></div>
+        </div>
+
         <div class="actions">
-          <button type="button" class="btn btn-secondary" id="more" data-t="more"></button>
+          <a class="btn btn-secondary" id="doneWa" target="_blank" rel="noopener" hidden><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span data-t="waContact"></span></a>
+          <button type="button" class="btn btn-secondary" id="more" data-t="more" hidden></button>
+          <button type="button" class="btn btn-text" id="retry" data-t="fbRetry" hidden></button>
         </div>
       </section>
     </div>
@@ -403,13 +491,17 @@ h3{font-size:21px;line-height:1.2}
     <footer class="contact">
       <p><b data-t="contactName"></b></p>
       <p data-t="contactLine"></p>
-      <p><a href="mailto:jordan@massageclub.io">jordan@massageclub.io</a></p>
+      <div class="ctas">
+        <a class="btn btn-secondary" id="footWa" target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp +34 612 474 827</span></a>
+        <a class="btn btn-secondary" href="mailto:jordan@massageclub.io"><svg class="ico plain" aria-hidden="true"><use href="#i-mail"/></svg><span>jordan@massageclub.io</span></a>
+      </div>
+      <p class="seeus"><span data-t="seeUs"></span> <a href="https://book.massageclub.io" target="_blank" rel="noopener">book.massageclub.io</a></p>
     </footer>
   </main>
 </div>
 
 <div class="dock" id="dock" hidden>
-  <button type="button" class="btn btn-primary" data-go="1" data-t="cta"></button>
+  <button type="button" class="btn btn-primary" id="dockBtn"></button>
 </div>
 
 <script>
@@ -420,11 +512,15 @@ const SB = "https://jglftdstrowwckwqmpue.supabase.co";
 // Publishable key, the same one the website ships (src/lib/supabase.ts). Used
 // only for a read-only select on partners by slug.
 const SB_KEY = "sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
-const SAVE_URL = SB + "/functions/v1/wa-bot";
-const FORM_VERSION = "socios-2026-10-17";
+const SAVE_URL = SB + "/functions/v1/wa-bot?socios=1";
+const FORM_VERSION = "socios-2026-10-17b";
+const TERMS_VERSION = "2026-10-17";
+// The number studios get confirmed bookings from (the bot line).
+const WA_NUM = "34612474827";
+const MAIL_TO = "jordan@massageclub.io";
 
 const q = new URLSearchParams(location.search);
-const LIVE = q.get("live") === "1";
+const PREVIEW = q.get("preview") === "1";
 const SLUG = String(q.get("s") || "").trim().toLowerCase();
 const SLUG_OK = /^[a-z0-9][a-z0-9-]{0,79}$/.test(SLUG);
 let L = String(q.get("lang") || "es").toLowerCase().startsWith("en") ? "en" : "es";
@@ -440,107 +536,144 @@ const T = {
     hello: "Hola, {n}",
     h1: "¿A qué hora se os suele quedar una sala vacía?",
     sub: "Pasadnos ese hueco y se lo ofrecemos a gente que nos escribe en inglés buscando un masaje en Madrid; si nadie lo coge, no os cuesta nada.",
-    cta: "Elegir mis horas",
-    ctaKnown: "Ya trabajamos juntos: ir directo a las horas",
-    ctaNote: "Sin app ni contraseñas. Gratis hasta el 30 de noviembre.",
+    cta: "Elegir horas",
+    ctaKnown: "Ir directo a las horas",
+    ctaNote: "Sin app ni contraseñas. Gratis hasta el 30 de noviembre; después, 5 € + IVA por cliente nuevo que venga.",
     proof: "Desde septiembre nos han escrito más de 100 personas, en inglés, buscando un masaje: extranjeros que viven en Madrid, estudiantes de fuera y turistas. No os prometemos un número de clientes.",
     whyTitle: "Lo esencial",
-    b1: "<b>Solo pagáis si el cliente viene.</b> Gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5&nbsp;€ + IVA por la primera visita de cada cliente nuevo. Por sus siguientes visitas, nada.",
-    b2: "<b>Todo por escrito y en español.</b> Nosotros hablamos con el cliente en inglés; a vosotros os llega la reserva confirmada por WhatsApp, con nombre, teléfono y email.",
+    b1: "<b>Solo pagáis si el cliente viene.</b> Si nadie coge el hueco, o el cliente no se presenta, no nos debéis nada. Por sus siguientes visitas, tampoco.",
+    b2: "<b>Todo por escrito y en español.</b> Nosotros hablamos con el cliente en inglés; a vosotros os llega la reserva confirmada por WhatsApp, con su nombre y su teléfono (y su email, cuando lo tenemos).",
     b3: "<b>Vuestro precio, vuestro cliente.</b> El cliente os paga a vosotros, a vuestro precio. Si vuelve, es vuestro y no nos debéis nada.",
     b4: "<b>Solo masaje profesional.</b> A quien pide otra cosa le decimos que no y no le contestamos más.",
-    b5: "<b>Nada que aprender.</b> Sin app, sin contraseñas, nada que instalar.",
     howTitle: "Cómo funciona",
     how1: "Nos pasáis por adelantado los huecos que de verdad tengáis libres: por ejemplo 2 o 3 al día, o uno para empezar. Los marcáis aquí mismo.",
     how2: "Nosotros hablamos con el cliente en inglés y le ofrecemos vuestros huecos.",
     how3: "Si coge uno, os llega al momento un WhatsApp con la reserva confirmada. Tenéis 15 minutos para rechazarla si algo ha cambiado.",
-    how4: "Si un hueco se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos.",
-    termsTitle: "Lo que cuesta: gratis hasta el 30 de noviembre. Después, 5 € + IVA por cliente nuevo, no un 25 %.",
+    how4: "Si un hueco se os llena antes por otro lado, escribid «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
+    termsTitle: "Lo que cuesta: gratis hasta el 30 de noviembre. Después, 5 € + IVA por cliente nuevo, no un 25 %.",
     t1: "<b>Gratis</b> hasta el 30 de noviembre de 2026.",
-    t2: "A partir del 1 de diciembre de 2026: <b>5&nbsp;€ + IVA</b> por la primera visita de cada cliente nuevo, solo si viene.",
+    t2: "A partir del 1 de diciembre de 2026: <b>5&nbsp;€ + IVA</b> por la primera visita de cada cliente nuevo, solo si viene.",
     t3: "Por sus siguientes visitas: <b>0&nbsp;€</b>.",
     t4: "Sin cuota mensual. Sin contrato. Lo dejáis cuando queráis.",
-    t5: "Para comparar: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo (unos 17 € + IVA en un masaje de 68 €). Fresha cobra el 20 % por los clientes nuevos que trae.",
+    t5: "Para comparar: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo (unos 17 € + IVA en un masaje de 68 €). Fresha cobra el 20 % por los clientes nuevos que trae.",
     faqTitle: "Lo que nos suelen preguntar",
     q1: "Ya estamos en Treatwell, Booksy o Fresha",
-    a1: "Perfecto, podéis seguir con ellos: no tenéis que dejar nada. Somos otro canal, solo para los huecos que se os quedan libres, y si uno se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos. El coste sí cambia: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo, y Fresha el 20 % por los clientes nuevos que trae. Nosotros, a partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.",
+    a1: "Perfecto, podéis seguir con ellos: no tenéis que dejar nada. Somos otro canal, solo para los huecos que se os quedan libres, y si uno se os llena antes por otro lado, escribidnos «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos. El coste sí cambia: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo, y Fresha el 20 % por los clientes nuevos que trae. Nosotros, a partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.",
     q2: "No tenemos huecos libres",
-    a2: "Pues enhorabuena, y no os pedimos nada. Si alguna semana se os queda un hueco libre, aunque sea por una cancelación, pasádnoslo por WhatsApp. Si nadie lo coge, no os cuesta nada.",
+    a2: "Pues enhorabuena, y no os pedimos nada. Si alguna semana se os queda un hueco libre, aunque sea por una cancelación, pasádnoslo por WhatsApp al +34\u00a0612\u00a0474\u00a0827. Si nadie lo coge, no os cuesta nada.",
     q3: "¿Y si el cliente no viene?",
-    a3: "Entonces no pagáis nada: solo cobramos la primera visita si el cliente viene de verdad, y hasta el 30 de noviembre, ni eso. Además, desde el primer momento tenéis por escrito su nombre, teléfono y email.",
-    q4: "¿Cuánto cobráis exactamente?",
-    a4: "Hasta el 30 de noviembre, nada. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota mensual ni contrato, y lo dejáis cuando queráis. El cliente os paga a vosotros, a vuestro precio.",
-    q5: "¿Tenemos que hablar inglés?",
-    a5: "No. Nosotros hablamos con el cliente en inglés y a vosotros os lo pasamos todo por escrito y en español: hora, nombre, teléfono y email. No os prometemos que el cliente hable español, pero la reserva os llega clara y confirmada.",
+    a3: "Entonces no pagáis nada: solo cobramos la primera visita si el cliente viene de verdad, y hasta el 30 de noviembre, ni eso. Además, desde el primer momento tenéis por escrito su nombre y su teléfono (y su email, cuando lo tenemos).",
+    q4: "¿Tenemos que hablar inglés?",
+    a4: "No. Nosotros hablamos con el cliente en inglés y a vosotros os lo pasamos todo por escrito y en español: hora, nombre y teléfono (y email, cuando lo tenemos). No os prometemos que el cliente hable español, pero la reserva os llega clara y confirmada.",
     contactName: "Jordan, de Massage Club",
     contactLine: "¿Alguna duda? Escribidme.",
+    seeUs: "Así nos ven los clientes:",
 
-    preview: "Vista previa: no se guarda nada todavía",
+    preview: "Vista previa: no se envía nada",
     progressAria: "Pasos",
     stepWord1: "Paso 1 de 3: ", stepWord2: "Paso 2 de 3: ", stepWord3: "Paso 3 de 3: ",
-    p1: "Vuestros datos", p2: "Vuestras horas", p3: "Listo",
-    s1Title: "Vuestros datos",
-    s1SubKnown: "Comprobad que está todo bien y cambiad lo que haga falta.",
+    p1: "Centro", p2: "Horas", p3: "Últimos datos",
+    s1Title: "Vuestro centro",
+    s1SubKnown: "Comprobad que está bien y cambiad lo que haga falta.",
     s1SubNew: "Para saber a quién enviamos las reservas.",
     fName: "Nombre del centro",
     fWa: "WhatsApp para las reservas",
     fWaHint: "Aquí os llegan las reservas confirmadas, por escrito y en español.",
-    fAddr: "Dirección o barrio",
-    fAddrPh: "Calle y número, o el barrio",
-    fEmail: "Email",
-    opt: "(opcional)",
-    fHours: "Horario",
-    fHoursPh: "Lun-Vie 10:00-20:00, Sáb 10:00-14:00",
-    hoursHintNone: "Así solo os enseñamos horas en las que estáis abiertos.",
-    hoursHintOk: "Entendido: {h}.",
-    hoursHintBad: "No lo entendemos del todo; os enseñamos de 09:00 a 21:00 y lo apuntamos tal cual.",
-    fPrices: "Vuestro precio",
-    priceHint: "El cliente os paga a vosotros, a este precio.",
-    priceFrom: "En nuestra ficha pone: desde {p} €.",
-    accept: "Acepto las condiciones",
-    termsLine: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
+    waLandline: "Esto parece un fijo. ¿Es vuestro WhatsApp?",
     next1: "Siguiente: vuestras horas",
     back0: "Volver",
     errName: "Falta el nombre del centro.",
     errWa: "Añadid el WhatsApp donde queréis recibir las reservas.",
+    errWaLandline: "Esto parece un fijo. Si de verdad es vuestro WhatsApp, tocad «Siguiente» otra vez.",
+
+    s2Title: "Vuestras horas",
+    s2Sub: "Solo horas en que de verdad tenéis sala libre.",
+    change: "Cambiar",
+    repeatLegend: "¿Cada semana o solo estos días?",
+    weeklyOpt: "Cada semana", onceOpt: "Solo estos días",
+    dayLbl: "Día",
+    today: "Hoy",
+    nSel: "{n} elegidos", nSel1: "1 elegido",
+    every: "Cada {wd}",
+    openSpans: "abierto {s}",
+    unknownHours: "sin horario: os enseñamos de 08:00 a 22:00",
+    unparsedHours: "no hemos entendido el horario: os enseñamos de 08:00 a 22:00",
+    am: "Por la mañana", pm: "Por la tarde",
+    amAria: "Horas por la mañana", pmAria: "Horas por la tarde",
+    noTimes: "Este día ya no queda ninguna hora en la que quepa un masaje de {d} min.",
+    noDaysW: "Según vuestro horario no abrís ningún día de la semana. Revisad el horario en «Últimos datos».",
+    noDaysD: "Según vuestro horario no abrís ningún día en los próximos 7 días. Revisad el horario en «Últimos datos».",
+    copyLbl: "Copiar estas horas a:",
+    copyAll: "Todos los días", copyWk: "Lunes a viernes",
+    copied0: "No hay otro día en el que quepan.", copied1: "Copiadas a 1 día más.", copiedN: "Copiadas a {n} días más.",
+    dropped1: "1 hueco elegido ya no cabe en vuestro horario con {d} min: no lo enviamos.",
+    droppedN: "{n} huecos elegidos ya no caben en vuestro horario con {d} min: no los enviamos.",
+    duration: "Duración",
+    sumLbl: "Vais a enviar",
+    sumNone: "Todavía no habéis elegido ningún hueco.",
+    sum1: "1 hueco de {d} min", sumN: "{n} huecos de {d} min",
+    weekly: "cada semana", once: "solo estos días",
+    next2: "Siguiente", next2One: "Seguir con 1 hueco", next2N: "Seguir con {n} huecos",
+    back1: "Volver",
+    errNone: "Elegid al menos un hueco.",
+
+    s3Title: "Últimos datos",
+    s3Sub: "Lo opcional podéis dejarlo en blanco.",
+    fAddr: "Dirección o barrio",
+    fAddrPh: "Calle y número, o el barrio",
+    fEmail: "Email",
+    fEmailPh: "hola@vuestrocentro.es",
+    opt: "(opcional)",
+    fHours: "Horario",
+    fHoursPh: "Lun-Vie 10-14 y 17-21, Sáb 10-14",
+    hoursHintNone: "Por ejemplo: Lun-Vie 10-14 y 17-21, Sáb 10-14. Así nunca os pedimos nada cuando estáis cerrados.",
+    hoursHintOk: "Entendido: {h}.",
+    hoursHintBad: "No lo entendemos del todo. Probad así: Lun-Vie 10-20, Sáb 10-14. Si no, lo apuntamos tal cual.",
+    fPrices: "Vuestro precio",
+    priceHint: "El cliente os paga a vosotros, a este precio.",
+    priceFrom: "Tenemos apuntado: desde {p} €.",
+    editTimes: "Cambiar las horas",
+    sumWa: "Las reservas os llegan por WhatsApp al {v}.",
+    accept: "Acepto las condiciones",
+    termsLine: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
     errAddr: "Añadid la dirección o el barrio.",
     errEmail: "Ese email no parece correcto.",
     errPrice: "Poned solo el número, por ejemplo 45.",
-    errAccept: "Para seguir, marcad «Acepto las condiciones».",
+    errAccept: "Para enviar, marcad «Acepto las condiciones».",
+    save: "Enviar las horas", saving: "Enviando…",
+    back2: "Volver",
+    dup: "Ya nos habéis enviado estas mismas horas.",
 
-    s2Title: "Vuestras horas",
-    s2Sub: "Tocad todas las horas a las que podríais empezar un masaje. Solo huecos que de verdad tengáis libres.",
-    change: "Cambiar datos",
-    duration: "Duración",
-    dayLbl: "Día",
-    today: "Hoy", tomorrow: "Mañana",
-    nSel: "{n} elegidas", nSel1: "1 elegida",
-    openFromTo: "Abierto de {a} a {b}.",
-    unknownHours: "Sin horario guardado: os enseñamos de 09:00 a 21:00.",
-    am: "Por la mañana", pm: "Por la tarde",
-    amAria: "Horas por la mañana", pmAria: "Horas por la tarde",
-    noTimes: "Este día ya no quedan horas en las que quepa un masaje de {d} min.",
-    noDays: "Según vuestro horario no abrís ningún día de esta semana. Revisad el horario en vuestros datos.",
-    dropped1: "Con {d} min, 1 hora ya no cabía antes del cierre y la hemos quitado.",
-    droppedN: "Con {d} min, {n} horas ya no cabían antes del cierre y las hemos quitado.",
-    repeat: "Repetir cada semana",
-    repeatHint: "Las mismas horas cada semana, hasta que nos digáis lo contrario.",
-    sumNone: "Todavía no habéis elegido ninguna hora.",
-    sum1: "1 hora de {d} min", sumN: "{n} horas de {d} min",
-    weekly: "cada semana", once: "solo esta semana",
-    every: "Cada {wd}",
-    save: "Enviar mis horas", saving: "Enviando…",
-    back1: "Vuestros datos",
-    errNone: "Elegid al menos una hora.",
-    errSave: "No se ha podido guardar. Probad otra vez o escribid a jordan@massageclub.io.",
-
-    s3Title: "Listo",
-    thanksN: "Gracias, {n}.", thanks0: "Gracias.",
+    s4Saved: "Recibido",
+    thanksN: "Gracias, {n}. Tenemos vuestras horas.", thanks0: "Gracias. Tenemos vuestras horas.",
     nextTitle: "Qué pasa ahora",
-    next1Line: "Os avisamos por WhatsApp cuando alguien reserve. Si un hueco se os llena por otro lado, escribidnos «ocupado».",
-    next2Line: "La reserva os llega por escrito y en español, con nombre, teléfono y email. Tenéis 15 minutos para rechazarla si algo ha cambiado.",
-    sentPreview: "Vista previa: estas horas no se han enviado.",
+    nextA: "Antes de ofrecer ninguna de estas horas a un cliente, os escribimos por WhatsApp para confirmarlas.",
+    nextB: "Si un cliente coge un hueco, os llega la reserva por WhatsApp, por escrito y en español, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
+    nextC: "Si un hueco se os llena por otro lado, escribid «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
+    waContact: "Escribirnos por WhatsApp",
     more: "Añadir más horas",
+    s4Fallback: "Falta un paso",
+    fbSub: "No hemos podido guardar las horas desde aquí. Para que no se pierdan, enviádnoslas por WhatsApp: el mensaje ya va escrito, solo tenéis que enviarlo.",
+    fbWa: "Enviar por WhatsApp",
+    fbMail: "Enviar por email",
+    fbRetry: "Probar a guardar otra vez",
+    fbNote: "Antes de ofrecer ninguna de estas horas a un cliente, os escribimos por WhatsApp para confirmarlas.",
+    s4Preview: "Vista previa",
+    pvSub: "No se ha enviado nada. Con el enlace normal, aquí terminaría el alta.",
+    pvMsgLbl: "Si el guardado falla, el centro nos envía este mensaje por WhatsApp:",
+
+    msgHello: "Hola, Massage Club. Somos {n}, centro de masaje.",
+    msgTimes: "Horas que os ofrecemos ({s}):",
+    msgWa: "WhatsApp para las reservas: {v}",
+    msgAddr: "Dirección: {v}",
+    msgEmail: "Email: {v}",
+    msgHours: "Horario: {v}",
+    msgPrice: "Precio: {v}",
+    msgTerms: "Aceptamos las condiciones: gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.",
+    mailSubject: "Horas para Massage Club: {n}",
+    contactHello: "Hola, Massage Club. Somos {n}, centro de masaje. ",
+    contactHello0: "Hola, Massage Club. Somos un centro de masaje. ",
+    allDays: "Todos los días", allDaysRead: "todos los días", closedRead: "cerrado: {d}", and: " y ",
   },
   en: {
     docTitle: "Partner studios · Massage Club",
@@ -550,109 +683,152 @@ const T = {
     hello: "Hi, {n}",
     h1: "What time does a room usually sit empty for you?",
     sub: "Send us that slot and we offer it to people who write to us in English looking for a massage in Madrid; if nobody takes it, it costs you nothing.",
-    cta: "Choose my times",
-    ctaKnown: "Already working with us? Go straight to your times",
-    ctaNote: "No app, no passwords. Free until 30 November.",
+    cta: "Choose your times",
+    ctaKnown: "Go straight to your times",
+    ctaNote: "No app, no passwords. Free until 30 November; after that, 5 € + VAT per new customer who comes.",
     proof: "Since September more than 100 people have written to us in English looking for a massage: foreigners living in Madrid, students from abroad and tourists. We don't promise you a number of customers.",
     whyTitle: "The essentials",
-    b1: "<b>You only pay if the customer comes.</b> Free until 30 November. From 1 December, 5&nbsp;€ + VAT for each new customer's first visit. Nothing for their later visits.",
-    b2: "<b>Everything in writing and in Spanish.</b> We talk to the customer in English; you get the booking confirmed on WhatsApp, with name, phone and email.",
+    b1: "<b>You only pay if the customer comes.</b> If nobody takes the slot, or the customer doesn't show up, you owe us nothing. Nor for their later visits.",
+    b2: "<b>Everything in writing and in Spanish.</b> We talk to the customer in English; you get the booking confirmed on WhatsApp, with their name and phone (and their email, when we have it).",
     b3: "<b>Your price, your customer.</b> The customer pays you, at your price. If they come back, they're yours and you owe us nothing.",
     b4: "<b>Professional massage only.</b> Anyone asking for something else gets a no and no further replies.",
-    b5: "<b>Nothing to learn.</b> No app, no passwords, nothing to install.",
     howTitle: "How it works",
     how1: "You send us, in advance, the slots that are really free: for example 2 or 3 a day, or one to start with. You tap them right here.",
     how2: "We talk to the customer in English and offer them your slots.",
     how3: "If they take one, you immediately get a WhatsApp with the booking confirmed. You have 15 minutes to turn it down if something has changed.",
-    how4: "If a slot fills up elsewhere first, write \"ocupado\" (taken) and we remove it.",
-    termsTitle: "What it costs: free until 30 November. After that, 5 € + VAT per new customer, not 25%.",
+    how4: "If a slot fills up elsewhere first, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it.",
+    termsTitle: "What it costs: free until 30 November. After that, 5 € + VAT per new customer, not 25%.",
     t1: "<b>Free</b> until 30 November 2026.",
-    t2: "From 1 December 2026: <b>5&nbsp;€ + VAT</b> for each new customer's first visit, only if they come.",
+    t2: "From 1 December 2026: <b>5&nbsp;€ + VAT</b> for each new customer's first visit, only if they come.",
     t3: "Their later visits: <b>0&nbsp;€</b>.",
     t4: "No monthly fee. No contract. Stop whenever you like.",
-    t5: "For comparison: Treatwell Spain charges 25% + VAT of a new client's first booking (about 17 € + VAT on a 68 € massage). Fresha charges 20% on the new clients it brings.",
+    t5: "For comparison: Treatwell Spain charges 25% + VAT of a new client's first booking (about 17 € + VAT on a 68 € massage). Fresha charges 20% on the new clients it brings.",
     faqTitle: "What studios usually ask",
     q1: "We're already on Treatwell, Booksy or Fresha",
-    a1: "Great, you can keep using them: you don't have to leave anything. We're one more channel, only for the slots that stay free, and if one fills up elsewhere first, write \"ocupado\" (taken) and we remove it. The cost is what differs: Treatwell Spain charges 25% + VAT of a new client's first booking, and Fresha 20% on the new clients it brings. We charge, from 1 December, 5 € + VAT for each new customer's first visit, only if they come.",
+    a1: "Great, you can keep using them: you don't have to leave anything. We're one more channel, only for the slots that stay free, and if one fills up elsewhere first, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it. The cost is what differs: Treatwell Spain charges 25% + VAT of a new client's first booking, and Fresha 20% on the new clients it brings. We charge, from 1 December, 5 € + VAT for each new customer's first visit, only if they come.",
     q2: "We have no free slots",
-    a2: "Well, congratulations, and we're not asking you for anything. If a slot does come free some week, even from a cancellation, send it to us on WhatsApp. If nobody takes it, it costs you nothing.",
+    a2: "Well, congratulations, and we're not asking you for anything. If a slot does come free some week, even from a cancellation, send it to us on WhatsApp at +34\u00a0612\u00a0474\u00a0827. If nobody takes it, it costs you nothing.",
     q3: "What if the customer doesn't show up?",
-    a3: "Then you pay nothing: we only charge for the first visit if the customer actually comes, and until 30 November, not even that. You also have their name, phone and email in writing from the very start.",
-    q4: "How much do you charge, exactly?",
-    a4: "Until 30 November, nothing. From 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract, and you can stop whenever you like. The customer pays you, at your price.",
-    q5: "Do we have to speak English?",
-    a5: "No. We talk to the customer in English and send you everything in writing and in Spanish: time, name, phone and email. We can't promise the customer speaks Spanish, but the booking reaches you clear and confirmed.",
+    a3: "Then you pay nothing: we only charge for the first visit if the customer actually comes, and until 30 November, not even that. You also have their name and phone in writing from the very start (and their email, when we have it).",
+    q4: "Do we have to speak English?",
+    a4: "No. We talk to the customer in English and send you everything in writing and in Spanish: time, name and phone (and email, when we have it). We can't promise the customer speaks Spanish, but the booking reaches you clear and confirmed.",
     contactName: "Jordan, from Massage Club",
     contactLine: "Any questions? Write to me.",
+    seeUs: "How customers see us:",
 
-    preview: "Preview: nothing is saved yet",
+    preview: "Preview: nothing is sent",
     progressAria: "Steps",
     stepWord1: "Step 1 of 3: ", stepWord2: "Step 2 of 3: ", stepWord3: "Step 3 of 3: ",
-    p1: "Your details", p2: "Your times", p3: "Done",
-    s1Title: "Your details",
-    s1SubKnown: "Check that everything is right and change whatever you need.",
+    p1: "Studio", p2: "Times", p3: "Last details",
+    s1Title: "Your studio",
+    s1SubKnown: "Check that it's right and change whatever you need.",
     s1SubNew: "So we know where to send the bookings.",
     fName: "Studio name",
     fWa: "WhatsApp for bookings",
     fWaHint: "Confirmed bookings arrive here, in writing and in Spanish.",
-    fAddr: "Address or neighbourhood",
-    fAddrPh: "Street and number, or the neighbourhood",
-    fEmail: "Email",
-    opt: "(optional)",
-    fHours: "Opening hours",
-    fHoursPh: "Mon-Fri 10:00-20:00, Sat 10:00-14:00",
-    hoursHintNone: "So we only show you times when you are open.",
-    hoursHintOk: "Got it: {h}.",
-    hoursHintBad: "We can't quite read that; we show 09:00 to 21:00 and save it as you wrote it.",
-    fPrices: "Your price",
-    priceHint: "The customer pays you, at this price.",
-    priceFrom: "Our listing says: from {p} €.",
-    accept: "I accept the terms",
-    termsLine: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
+    waLandline: "This looks like a landline. Is it your WhatsApp?",
     next1: "Next: your times",
     back0: "Back",
     errName: "The studio name is missing.",
     errWa: "Add the WhatsApp number where you want to receive bookings.",
-    errAddr: "Add the address or the neighbourhood.",
-    errEmail: "That email doesn't look right.",
-    errPrice: "Just the number, for example 45.",
-    errAccept: "To continue, tick \"I accept the terms\".",
+    errWaLandline: "This looks like a landline. If it really is your WhatsApp, tap \"Next\" again.",
 
     s2Title: "Your times",
-    s2Sub: "Tap every time you could start a massage. Only slots that are really free.",
-    change: "Change details",
-    duration: "Length",
+    s2Sub: "Only times when a room is really free.",
+    change: "Change",
+    repeatLegend: "Every week, or these dates only?",
+    weeklyOpt: "Every week", onceOpt: "These dates only",
     dayLbl: "Day",
-    today: "Today", tomorrow: "Tomorrow",
+    today: "Today",
     nSel: "{n} chosen", nSel1: "1 chosen",
-    openFromTo: "Open {a} to {b}.",
-    unknownHours: "No opening hours saved: we show 09:00 to 21:00.",
+    every: "Every {wd}",
+    openSpans: "open {s}",
+    unknownHours: "no opening hours: we show 08:00 to 22:00",
+    unparsedHours: "we couldn't read your opening hours: we show 08:00 to 22:00",
     am: "Morning", pm: "Afternoon",
     amAria: "Morning times", pmAria: "Afternoon times",
     noTimes: "No times left on this day that fit a {d} min massage.",
-    noDays: "Your opening hours show no open day this week. Check the hours in your details.",
-    dropped1: "With {d} min, 1 time no longer fitted before closing, so we removed it.",
-    droppedN: "With {d} min, {n} times no longer fitted before closing, so we removed them.",
-    repeat: "Repeat every week",
-    repeatHint: "The same times every week, until you tell us otherwise.",
-    sumNone: "You haven't chosen any times yet.",
-    sum1: "1 time, {d} min", sumN: "{n} times, {d} min",
-    weekly: "every week", once: "this week only",
-    every: "Every {wd}",
-    save: "Send my times", saving: "Sending…",
-    back1: "Your details",
-    errNone: "Choose at least one time.",
-    errSave: "That didn't save. Try again, or write to jordan@massageclub.io.",
+    noDaysW: "Your opening hours show no open day in the week. Check them in \"Last details\".",
+    noDaysD: "Your opening hours show no open day in the next 7 days. Check them in \"Last details\".",
+    copyLbl: "Copy these times to:",
+    copyAll: "Every day", copyWk: "Monday to Friday",
+    copied0: "No other day where they fit.", copied1: "Copied to 1 more day.", copiedN: "Copied to {n} more days.",
+    dropped1: "1 chosen slot no longer fits your hours at {d} min, so we won't send it.",
+    droppedN: "{n} chosen slots no longer fit your hours at {d} min, so we won't send them.",
+    duration: "Length",
+    sumLbl: "You're sending",
+    sumNone: "You haven't chosen any slots yet.",
+    sum1: "1 slot, {d} min", sumN: "{n} slots, {d} min",
+    weekly: "every week", once: "these dates only",
+    next2: "Next", next2One: "Continue with 1 slot", next2N: "Continue with {n} slots",
+    back1: "Back",
+    errNone: "Choose at least one slot.",
 
-    s3Title: "Done",
-    thanksN: "Thank you, {n}.", thanks0: "Thank you.",
+    s3Title: "Last details",
+    s3Sub: "You can leave the optional ones blank.",
+    fAddr: "Address or neighbourhood",
+    fAddrPh: "Street and number, or the neighbourhood",
+    fEmail: "Email",
+    fEmailPh: "hello@yourstudio.com",
+    opt: "(optional)",
+    fHours: "Opening hours",
+    fHoursPh: "Mon-Fri 10-14 and 17-21, Sat 10-14",
+    hoursHintNone: "For example: Mon-Fri 10-14 and 17-21, Sat 10-14. Then we never ask you for anything while you're closed.",
+    hoursHintOk: "Got it: {h}.",
+    hoursHintBad: "We can't quite read that. Try: Mon-Fri 10-20, Sat 10-14. Otherwise we save it as you wrote it.",
+    fPrices: "Your price",
+    priceHint: "The customer pays you, at this price.",
+    priceFrom: "We have you down as: from {p} €.",
+    editTimes: "Change the times",
+    sumWa: "Bookings reach you on WhatsApp at {v}.",
+    accept: "I accept the terms",
+    termsLine: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
+    errAddr: "Add the address or the neighbourhood.",
+    errEmail: "That email doesn't look right.",
+    errPrice: "Just the number, for example 45.",
+    errAccept: "To send, tick \"I accept the terms\".",
+    save: "Send the times", saving: "Sending…",
+    back2: "Back",
+    dup: "You've already sent us these exact times.",
+
+    s4Saved: "Received",
+    thanksN: "Thank you, {n}. We have your times.", thanks0: "Thank you. We have your times.",
     nextTitle: "What happens now",
-    next1Line: "We let you know on WhatsApp when someone books. If a slot fills up elsewhere, write to us \"ocupado\" (taken).",
-    next2Line: "The booking reaches you in writing and in Spanish, with name, phone and email. You have 15 minutes to turn it down if something has changed.",
-    sentPreview: "Preview: these times were not sent.",
+    nextA: "Before we offer any of these times to a customer, we write to you on WhatsApp to confirm them.",
+    nextB: "If a customer takes a slot, the booking reaches you on WhatsApp, in writing and in Spanish, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
+    nextC: "If a slot fills up elsewhere, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it.",
+    waContact: "Write to us on WhatsApp",
     more: "Add more times",
+    s4Fallback: "One more step",
+    fbSub: "We couldn't save your times from here. So they don't get lost, send them to us on WhatsApp: the message is already written, you only need to send it.",
+    fbWa: "Send on WhatsApp",
+    fbMail: "Send by email",
+    fbRetry: "Try saving again",
+    fbNote: "Before we offer any of these times to a customer, we write to you on WhatsApp to confirm them.",
+    s4Preview: "Preview",
+    pvSub: "Nothing was sent. With the normal link, sign-up would end here.",
+    pvMsgLbl: "If saving fails, the studio sends us this message on WhatsApp:",
+
+    msgHello: "Hello, Massage Club. We are {n}, a massage studio.",
+    msgTimes: "Times we offer you ({s}):",
+    msgWa: "WhatsApp for bookings: {v}",
+    msgAddr: "Address: {v}",
+    msgEmail: "Email: {v}",
+    msgHours: "Opening hours: {v}",
+    msgPrice: "Price: {v}",
+    msgTerms: "We accept the terms: free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come.",
+    mailSubject: "Times for Massage Club: {n}",
+    contactHello: "Hello, Massage Club. We are {n}, a massage studio. ",
+    contactHello0: "Hello, Massage Club. We are a massage studio. ",
+    allDays: "Daily", allDaysRead: "every day", closedRead: "closed: {d}", and: " and ",
   },
 };
+
+const SH = { es: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"], en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] };
+const LG = { es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"], en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] };
+const MO = { es: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"], en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] };
+const MOL = { es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"], en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] };
+const WEEK = [1, 2, 3, 4, 5, 6, 0]; // Monday first, as in Spain
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -669,13 +845,20 @@ const val = (id) => $(id).value.trim();
 const S = {
   step: 0,
   partner: null,
+  active: false,     // partners.status === 'active': we already work together
   accepted: false,
   dur: 60,
-  repeat: false,
-  day: null,
-  sel: {},      // "YYYY-MM-DD" -> Set of start minutes
-  sent: [],     // what step 3 shows
+  repeat: true,      // every week is the default: the headline asks a weekly question
+  day: null,         // key of the open day chip
+  selW: {},          // weekday "0".."6" -> Set of start minutes (every week)
+  selD: {},          // "YYYY-MM-DD" -> Set of start minutes (these dates only)
+  result: null,      // "saved" | "fallback" | "preview"
+  last: null,        // what the result screen shows
+  lastKey: "",       // the last batch that was sent, so it is never sent twice
+  landlineOk: "",    // a landline the studio confirmed is its WhatsApp
+  resume: 0,         // where step 1 goes next when it was a detour
   saving: false,
+  copied: null,
 };
 
 // ---------------------------------------------------------------- Madrid time
@@ -686,88 +869,216 @@ function madridNow() {
   return { y: g("year"), m: g("month"), d: g("day"), min: (g("hour") % 24) * 60 + g("minute") };
 }
 const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
-const locale = () => (L === "es" ? "es-ES" : "en-GB");
-const fmt = (d, o) => new Intl.DateTimeFormat(locale(), Object.assign({ timeZone: "UTC" }, o)).format(d.dt).replace(/\./g, "").replace(/,/g, "");
 
 // ---------------------------------------------------------------- opening hours
-// The same reader as dispatch-studios v16: partners.opening_hours is free text
-// ("Lun-Vie 10:00-20:00, Sáb 10:00-14:00", "Daily 10:00-21:00"). Anything it
-// cannot read counts as unknown and shows 09:00 to 21:00.
-const DAY_IDX = { sun: 0, dom: 0, mon: 1, lun: 1, tue: 2, mar: 2, wed: 3, mie: 3, thu: 4, jue: 4, fri: 5, vie: 5, sat: 6, sab: 6 };
-const stripAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
-function parseHours(text) {
-  const raw = stripAccents(String(text || "").toLowerCase()).trim();
+// partners.opening_hours is free text ("Lun-Vie 10:00-14:00 y 17:00-21:00",
+// "Mon-Sat 10:00-20:00", "Daily 10:00-21:00") or the object PartnerCalendar
+// writes ({mon: {open, close, closed}}). Read like wa-bot slotHours: a day can
+// have several windows, and a window with no day of its own ("y 17:00-21:00")
+// belongs to the days before it. It also takes the ways people type hours in
+// Spanish: "de lunes a sábado, de 10 a 21", "L-S 10-21h", "Lun a Vie 10-20",
+// "10h-20h", "todos los días de 10 a 21". Anything else is null ("cannot
+// tell"), which the page says out loud instead of guessing.
+// Result: Map weekday -> [[open, close], ...] in minutes. In text, a day that
+// is not named is closed ([]); in the object, a missing day is unknown.
+const DAY_WORDS = [["domingo", "sunday"], ["lunes", "monday"], ["martes", "tuesday"], ["miercoles", "wednesday", "weds"], ["jueves", "thursday"], ["viernes", "friday"], ["sabado", "saturday"]];
+const DAY_LETTER = { l: 1, m: 2, x: 3, j: 4, v: 5, s: 6, d: 0 };
+const IGNORE_W = new Set(["de", "del", "los", "las", "el", "la", "on", "from", "the", "desde"]);
+const RANGE_W = new Set(["-", "a", "al", "hasta", "to", "through", "thru", "till", "until"]);
+const LIST_W = new Set(["/", "&", "+", "y", "e", "and"]);
+const CLOSED_RE = /\b(?:cerrado|cerrados|cerramos|closed)\b/g;
+const TIME_P = "(\\d{1,2}(?:[:.h]\\d{2})?)";
+const RANGE_RE = new RegExp("(?:\\b(?:de|desde|from)\\s+)?" + TIME_P + "\\s*(?:h(?:rs?|s)?\\.?)?\\s*(?:-|\\ba\\b|\\bal\\b|\\bhasta\\b|\\bto\\b)\\s*(?:las\\s+)?" + TIME_P + "\\s*(?:h(?:rs?|s)?\\b\\.?)?", "g");
+const normTxt = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[‐-―−]/g, "-").replace(/\s+/g, " ").trim();
+function toMin(s) {
+  const m = String(s == null ? "" : s).trim().match(/^(\d{1,2})(?:[:.h](\d{2}))?$/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10), mi = parseInt(m[2] || "0", 10);
+  return h > 24 || mi > 59 || h * 60 + mi > 1440 ? null : h * 60 + mi;
+}
+function dayOf(tok) {
+  if (tok.length === 1) return tok in DAY_LETTER ? DAY_LETTER[tok] : -1;
+  const hits = new Set();
+  DAY_WORDS.forEach((ws, d) => { if (ws.some((w) => w.startsWith(tok))) hits.add(d); });
+  if (!hits.size && tok.length > 3 && tok.endsWith("s")) return dayOf(tok.slice(0, -1)); // "domingos", "sábados"
+  return hits.size === 1 ? hits.values().next().value : -1;
+}
+function daysIn(part) {
+  const toks = part.match(/[a-z]+|\d+|-|\/|&|\+/g) || [];
+  const out = [];
+  let prev = null, ranging = false;
+  for (const tk of toks) {
+    if (IGNORE_W.has(tk)) continue;
+    if (RANGE_W.has(tk)) { if (prev === null || ranging) return null; ranging = true; continue; }
+    if (LIST_W.has(tk)) continue;
+    const d = /^\d+$/.test(tk) ? -1 : dayOf(tk);
+    if (d < 0) return null;
+    if (ranging) { for (let x = prev; ; x = (x + 1) % 7) { if (!out.includes(x)) out.push(x); if (x === d) break; } ranging = false; }
+    else if (!out.includes(d)) out.push(d);
+    prev = d;
+  }
+  return ranging ? null : out;
+}
+function mergeWins(ws) {
+  const s = ws.slice().sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const w of s) { const l = out[out.length - 1]; if (l && w[0] <= l[1]) l[1] = Math.max(l[1], w[1]); else out.push([w[0], w[1]]); }
+  return out;
+}
+function parseHours(input) {
+  let v = input;
+  if (typeof v === "string" && /^\s*\{/.test(v)) { try { v = JSON.parse(v); } catch (_) { return null; } }
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const out = new Map();
+    for (const [k, x] of Object.entries(v)) {
+      const d = dayOf(normTxt(k).replace(/[^a-z]/g, "").slice(0, 3));
+      if (d < 0) continue;
+      if (!x || x.closed === true) { out.set(d, []); continue; }
+      const o = toMin(x.open), c = toMin(x.close);
+      if (o === null || c === null) continue;
+      out.set(d, [[o, c <= o ? 1440 : c]]);
+    }
+    return out.size ? out : null;
+  }
+  let raw = normTxt(v == null ? "" : v);
   if (!raw) return null;
+  raw = " " + raw + " ";
+  raw = raw
+    .replace(/\b(?:horario|horarios|hours|abierto|abiertos|abrimos|open)\b:?/g, " ")
+    .replace(/\b(?:todos los dias(?: de la semana)?|toda la semana|diariamente|diario|daily|every ?day|cada dia|(?:los )?7 dias(?: de la semana)?|siete dias)\b/g, " lun-dom ")
+    .replace(/\b(?:(?:los )?fines? de semana|weekends?)\b/g, " sab y dom ")
+    .replace(/\b(?:(?:de |los )?(?:dias )?laborables|entre semana|weekdays?)\b/g, " lun-vie ")
+    .replace(/\b(?:(?:y|and) )?(?:(?:los |public |bank )?(?:festivos|holidays))\b/g, " ")
+    // "Lun-Vie 10-20 Sáb 10-14": a day word right after a time starts a new part.
+    .replace(/(\d(?:[:.h]\d{2})?\s*(?:h(?:rs?|s)?\b\.?)?)\s+(?=(?!(?:y|e|a|al|de|and|to|hasta|h|hrs?|hs)\b)[a-z])/g, "$1; ");
+  const segs = raw.split(/[;,\n]|\s+(?:y|e|and)\s+(?=[a-z\d])/);
   const out = new Map();
-  const toMin = (h) => { const [a, b] = h.split(/[:.]/); return parseInt(a, 10) * 60 + (parseInt(b || "0", 10) || 0); };
-  for (const seg0 of raw.split(/[,;]|\s+y\s+|\s+and\s+/)) {
+  let last = [], pending = [], any = false;
+  for (const seg0 of segs) {
     const seg = seg0.trim();
     if (!seg) continue;
-    const m = seg.match(/^(.*?)\s*(\d{1,2}(?:[:.]\d{2})?)\s*(?:-|\u2013|a)\s*(\d{1,2}(?:[:.]\d{2})?)\s*h?$/);
-    if (!m) return null;
-    const dayPart = m[1].trim().replace(/:$/, "");
-    const open = toMin(m[2]), close = toMin(m[3]);
-    if (!(close > open)) return null;
-    const days = [];
-    if (dayPart === "" || /^(daily|todos los dias|every day|diario|cada dia)$/.test(dayPart)) days.push(0, 1, 2, 3, 4, 5, 6);
-    else {
-      for (const tok of dayPart.split(/\s*\/\s*|\s+/)) {
-        const range = tok.match(/^([a-z]{3})[a-z]*\.?\s*(?:-|\u2013)\s*([a-z]{3})[a-z]*\.?$/);
-        if (range) {
-          const a = DAY_IDX[range[1]], b = DAY_IDX[range[2]];
-          if (a === undefined || b === undefined) return null;
-          for (let d = a; ; d = (d + 1) % 7) { days.push(d); if (d === b) break; }
-        } else {
-          const one = tok.match(/^([a-z]{3})[a-z]*\.?$/);
-          if (!one || DAY_IDX[one[1]] === undefined) return null;
-          days.push(DAY_IDX[one[1]]);
-        }
-      }
+    const ranges = [];
+    let m;
+    RANGE_RE.lastIndex = 0;
+    while ((m = RANGE_RE.exec(seg))) ranges.push([m[1], m[2]]);
+    const closed = CLOSED_RE.test(seg);
+    CLOSED_RE.lastIndex = 0;
+    const part = seg.replace(RANGE_RE, " ").replace(CLOSED_RE, " ").replace(/[:.()]/g, " ").trim();
+    RANGE_RE.lastIndex = 0; CLOSED_RE.lastIndex = 0;
+    const days = part ? daysIn(part) : [];
+    if (days === null) return null;
+    if (!ranges.length) {
+      if (closed) { for (const d of days) out.set(d, []); pending = []; continue; }
+      if (!days.length) return null;
+      pending.push(...days);
+      continue;
     }
-    for (const d of days) out.set(d, [open, close]);
+    const use = days.length || pending.length ? Array.from(new Set(pending.concat(days))) : (last.length ? last : [0, 1, 2, 3, 4, 5, 6]);
+    pending = [];
+    for (const [a, b] of ranges) {
+      const o = toMin(a);
+      let c = toMin(b);
+      if (o === null || c === null) return null;
+      if (c === 0) c = 1440;
+      if (!(c > o)) return null;
+      for (const d of use) { out.set(d, (out.get(d) || []).concat([[o, c]])); any = true; }
+    }
+    last = use;
   }
-  return out.size ? out : null;
+  if (pending.length || !any) return null;
+  for (let d = 0; d < 7; d++) out.set(d, mergeWins(out.get(d) || []));
+  return out;
+}
+// Neighbouring days with the same windows join, Monday first.
+function groupDays(map) {
+  const groups = [];
+  for (const d of WEEK) {
+    if (!map.has(d)) continue;
+    const w = map.get(d), key = JSON.stringify(w);
+    const g = groups[groups.length - 1];
+    if (g && g.key === key && WEEK.indexOf(g.last) + 1 === WEEK.indexOf(d)) g.last = d;
+    else groups.push({ first: d, last: d, key, w });
+  }
+  return groups;
+}
+const isEveryDay = (open) => open.length === 1 && open[0].first === 1 && open[0].last === 0;
+// "Lun-Vie 10:00-14:00 y 17:00-21:00, Sáb 10:00-14:00": what goes in the field.
+function hoursField(map, lang) {
+  if (!map) return "";
+  const open = groupDays(map).filter((g) => g.w.length);
+  const wins = (w) => w.map(([o, c]) => hhmm(o) + "-" + hhmm(c)).join(T[lang].and);
+  if (isEveryDay(open)) return T[lang].allDays + " " + wins(open[0].w);
+  return open.map((g) => (g.first === g.last ? SH[lang][g.first] : SH[lang][g.first] + "-" + SH[lang][g.last]) + " " + wins(g.w)).join(", ");
+}
+const spans = (w) => w.map(([o, c]) => L === "es" ? `de ${hhmm(o)} a ${hhmm(c)}` : `${hhmm(o)} to ${hhmm(c)}`).join(t("and"));
+// "lun-vie, de 10:00 a 14:00 y de 17:00 a 21:00; sáb, de 10:00 a 14:00; cerrado: dom"
+function hoursRead(map) {
+  const groups = groupDays(map);
+  const open = groups.filter((g) => g.w.length);
+  if (!open.length) return "";
+  const nm = (d) => L === "es" ? SH.es[d].toLowerCase() : SH.en[d];
+  if (isEveryDay(open)) return t("allDaysRead") + ", " + spans(open[0].w);
+  const parts = open.map((g) => (g.first === g.last ? nm(g.first) : nm(g.first) + "-" + nm(g.last)) + ", " + spans(g.w));
+  const closed = WEEK.filter((d) => map.has(d) && !map.get(d).length).map(nm);
+  if (closed.length) parts.push(t("closedRead", { d: closed.join(", ") }));
+  return parts.join("; ");
 }
 let HOURS = null;
-const DEFAULT_HOURS = [9 * 60, 21 * 60];
-const hoursFor = (wd) => (HOURS ? HOURS.get(wd) || null : DEFAULT_HOURS);
+const DEFAULT_WIN = [[8 * 60, 22 * 60]]; // as wa-bot REL_DEFAULT_HOURS
+const hoursFor = (wd) => (HOURS && HOURS.has(wd) ? HOURS.get(wd) : DEFAULT_WIN);
+const hoursKnown = (wd) => !!(HOURS && HOURS.has(wd));
 
-function mkDay(i) {
+// ---------------------------------------------------------------- days and times
+function mkDate(i) {
   const n = madridNow();
   const dt = new Date(Date.UTC(n.y, n.m - 1, n.d) + i * 864e5);
-  return { iso: dt.toISOString().slice(0, 10), wd: dt.getUTCDay(), offset: i, dt };
+  return { key: dt.toISOString().slice(0, 10), iso: dt.toISOString().slice(0, 10), wd: dt.getUTCDay(), offset: i, dd: dt.getUTCDate(), mm: dt.getUTCMonth(), weekly: false };
 }
 function startsFor(d) {
-  const h = hoursFor(d.wd);
-  if (!h) return [];
-  let first = Math.ceil(h[0] / 30) * 30;
-  if (d.offset === 0) first = Math.max(first, Math.ceil((madridNow().min + LEAD_MIN) / 30) * 30);
+  // Every week: the whole day, from the next one on. A date: from now + notice.
+  const cut = !d.weekly && d.offset === 0 ? madridNow().min + LEAD_MIN : -1;
+  const set = new Set();
+  for (const [o, c] of hoursFor(d.wd)) for (let m = Math.ceil(o / 30) * 30; m + S.dur <= c; m += 30) if (m >= cut) set.add(m);
+  return Array.from(set).sort((a, b) => a - b);
+}
+const weekDays = () => WEEK.filter((wd) => hoursFor(wd).length).map((wd) => ({ key: String(wd), wd, weekly: true }));
+// The next seven days in Madrid, today first; today drops out once no massage
+// fits before closing, and closed days never show.
+function dateDays() {
+  const startAt = startsFor(mkDate(0)).length ? 0 : 1;
   const out = [];
-  for (let m = first; m + S.dur <= h[1]; m += 30) out.push(m);
+  for (let i = startAt; i < startAt + 7; i++) { const d = mkDate(i); if (hoursFor(d.wd).length) out.push(d); }
   return out;
 }
-// The next seven days in Madrid, today first. Today drops out once no massage
-// fits before closing; closed days never show when the hours are known.
-function dayList() {
-  const startAt = startsFor(mkDay(0)).length ? 0 : 1;
-  const out = [];
-  for (let i = startAt; i < startAt + 7; i++) { const d = mkDay(i); if (hoursFor(d.wd)) out.push(d); }
-  return out;
-}
-function prune() {
-  const days = dayList();
-  let dropped = 0;
-  for (const iso of Object.keys(S.sel)) {
-    const d = days.find((x) => x.iso === iso);
-    const ok = new Set(d ? startsFor(d) : []);
-    for (const m of Array.from(S.sel[iso])) if (!ok.has(m)) { S.sel[iso].delete(m); dropped++; }
-    if (!S.sel[iso].size) delete S.sel[iso];
-  }
-  return dropped;
-}
+const dayList = () => (S.repeat ? weekDays() : dateDays());
+const selMap = () => (S.repeat ? S.selW : S.selD);
+// Chosen times that still fit (hours, duration, notice). Others stay remembered
+// but are neither shown nor sent, so 90 then 60 min brings them back.
 function selList() {
-  return dayList().filter((d) => S.sel[d.iso] && S.sel[d.iso].size).map((d) => ({ d, mins: Array.from(S.sel[d.iso]).sort((a, b) => a - b) }));
+  const map = selMap(), out = [];
+  for (const d of dayList()) {
+    const set = map[d.key];
+    if (!set || !set.size) continue;
+    const ok = new Set(startsFor(d));
+    const mins = Array.from(set).filter((m) => ok.has(m)).sort((a, b) => a - b);
+    if (mins.length) out.push({ d, mins });
+  }
+  return out;
 }
+const countOf = (list) => list.reduce((a, x) => a + x.mins.length, 0);
+function hiddenCount() {
+  let all = 0;
+  const map = selMap();
+  for (const k of Object.keys(map)) all += map[k].size;
+  return all - countOf(selList());
+}
+// The first date a weekly time happens, in Madrid.
+function firstDate(wd, m) {
+  const now = madridNow().min;
+  for (let k = 0; k < 8; k++) { const d = mkDate(k); if (d.wd === wd && (k > 0 || m >= now + LEAD_MIN)) return d.iso; }
+  return mkDate(7).iso;
+}
+const dayLabel = (d) => d.weekly ? cap(t("every", { wd: LG[L][d.wd] })) : SH[L][d.wd] + " " + d.dd + " " + MO[L][d.mm];
 
 // ---------------------------------------------------------------- phone
 // Stored like every other number: "+<country><number>". A Spanish number typed
@@ -784,12 +1095,53 @@ function pretty(v) {
   const m = p.match(/^\+34(\d{3})(\d{3})(\d{3})$/);
   return m ? `+34 ${m[1]} ${m[2]} ${m[3]}` : p;
 }
+const isLandline = (p) => /^\+34[89]\d{8}$/.test(p);
+const waDigitsOk = () => intl(val("wa")).replace(/\D/g, "").length >= 9;
 const priceNum = (v) => {
   const s = String(v || "").replace(/[€\s]/g, "").replace(",", ".");
   if (!s) return null;
   const n = Number(s);
   return Number.isFinite(n) && n > 0 && n < 1000 ? Math.round(n * 100) / 100 : NaN;
 };
+const euro = (n) => String(n).replace(".", L === "es" ? "," : ".") + " €";
+const waLink = (text) => "https://wa.me/" + WA_NUM + (text ? "?text=" + encodeURIComponent(text) : "");
+
+// ---------------------------------------------------------------- draft
+// Per link, in this browser only. Wrapped: storage can be missing or blocked.
+const DKEY = "socios-draft-v2:" + (PREVIEW ? "preview:" : "") + (SLUG_OK ? SLUG : "-");
+const FIELDS = ["name", "wa", "addr", "email", "hours", "p60", "p90"];
+const setsOut = (o) => Object.fromEntries(Object.entries(o).filter(([, s]) => s.size).map(([k, s]) => [k, Array.from(s)]));
+function saveDraft() {
+  try {
+    localStorage.setItem(DKEY, JSON.stringify({
+      v: 2, at: Date.now(), f: Object.fromEntries(FIELDS.map((id) => [id, $(id).value])),
+      accepted: S.accepted, dur: S.dur, repeat: S.repeat, selW: setsOut(S.selW), selD: setsOut(S.selD), landlineOk: S.landlineOk,
+    }));
+  } catch (_) { /* no storage: the page still works */ }
+}
+function clearDraft() { try { localStorage.removeItem(DKEY); } catch (_) {} }
+function loadDraft() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(DKEY) || "null"); } catch (_) { return; }
+  if (!d || d.v !== 2 || !(Date.now() - Number(d.at) < 30 * 864e5)) return;
+  for (const id of FIELDS) if (d.f && typeof d.f[id] === "string") $(id).value = d.f[id];
+  S.accepted = d.accepted === true;
+  S.dur = d.dur === 90 ? 90 : 60;
+  S.repeat = d.repeat !== false;
+  S.landlineOk = typeof d.landlineOk === "string" ? d.landlineOk : "";
+  const sets = (o, okKey) => {
+    const out = {};
+    for (const [k, arr] of Object.entries(o || {})) {
+      if (!okKey(k) || !Array.isArray(arr)) continue;
+      const s = new Set(arr.map(Number).filter((m) => Number.isInteger(m) && m >= 0 && m < 1440 && m % 30 === 0));
+      if (s.size) out[k] = s;
+    }
+    return out;
+  };
+  const today = mkDate(0).iso;
+  S.selW = sets(d.selW, (k) => /^[0-6]$/.test(k));
+  S.selD = sets(d.selD, (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= today);
+}
 
 // ---------------------------------------------------------------- painting
 function paintStatic() {
@@ -803,139 +1155,211 @@ function paintStatic() {
   lb.textContent = t("langBtn");
   lb.setAttribute("aria-label", t("langAria"));
   lb.setAttribute("lang", L === "es" ? "en" : "es");
-  $("hours").placeholder = t("fHoursPh");
+  document.querySelector(`input[name=mode][value=${S.repeat ? "weekly" : "once"}]`).checked = true;
+  document.querySelector(`input[name=dur][value="${S.dur}"]`).checked = true;
+  $("accept").checked = S.accepted;
   paintDynamic();
 }
 function paintDynamic() {
   const name = S.partner ? S.partner.business_name : "";
-  ["helloTop", "helloStep"].forEach((id) => { $(id).hidden = !name; $(id).textContent = name ? t("hello", { n: name }) : ""; });
-  $("knownCta").hidden = !S.partner;
+  const loading = SLUG_OK && !S.partner && !partnerDone;
+  // While a personal link loads, the greeting keeps its line so nothing jumps.
+  $("helloTop").hidden = !name && !loading;
+  $("helloTop").classList.toggle("reserve", !name);
+  $("helloTop").textContent = name ? t("hello", { n: name }) : " ";
+  $("helloStep").hidden = !name;
+  $("helloStep").textContent = name ? t("hello", { n: name }) : "";
+  $("knownCta").hidden = !S.active;
   $("s1sub").textContent = S.partner ? t("s1SubKnown") : t("s1SubNew");
-  $("previewNote").hidden = LIVE;
-  $("priceHint").textContent = t("priceHint") + (S.partner && S.partner.price_from ? " " + t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "");
+  $("previewNote").hidden = !PREVIEW;
+  $("priceHint").textContent = t("priceHint") + (S.active && S.partner.price_from ? " " + t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "");
+  paintWa();
   paintHoursHint();
   paintWho();
-  $("accept2Box").hidden = S.accepted;
+  paintContact();
   if (S.step === 2) renderTimes();
-  if (S.step === 3) renderDone();
+  if (S.step === 3) renderMini();
+  if (S.step === 4) renderDone();
+  updateDock();
   // Errors already on screen follow the language.
-  document.querySelectorAll(".err[data-k]").forEach((el) => { if (el.textContent) el.textContent = t(el.dataset.k, { d: S.dur }); });
+  document.querySelectorAll(".err[data-k]").forEach((el) => { if (el.textContent && el.dataset.k) el.textContent = t(el.dataset.k, { d: S.dur }); });
+}
+function paintWa() {
+  const p = intl(val("wa"));
+  $("waWarn").textContent = isLandline(p) && S.landlineOk !== p ? t("waLandline") : "";
 }
 function paintHoursHint() {
   const raw = val("hours");
   const el = $("hoursHint");
   if (!raw) { el.textContent = t("hoursHintNone"); return; }
-  const h = parseHours(raw);
-  if (!h) { el.textContent = t("hoursHintBad"); return; }
-  // Read it back so the studio can see we understood it: "lun-vie, de 10:00 a
-  // 20:00; sáb, de 10:00 a 14:00". Neighbouring days with the same hours join.
-  const order = [1, 2, 3, 4, 5, 6, 0];
-  const wd = (d) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", weekday: "short" }).format(new Date(Date.UTC(2026, 9, 4 + d))).replace(/\./g, ""); // 4 Oct 2026 is a Sunday
-  const groups = [];
-  for (const d of order) {
-    if (!h.has(d)) continue;
-    const [o, c] = h.get(d);
-    const g = groups[groups.length - 1];
-    if (g && g.o === o && g.c === c && order.indexOf(g.last) + 1 === order.indexOf(d)) g.last = d;
-    else groups.push({ first: d, last: d, o, c });
-  }
-  const span = (o, c) => L === "es" ? `de ${hhmm(o)} a ${hhmm(c)}` : `${hhmm(o)} to ${hhmm(c)}`;
-  const names = groups.length === 1 && h.size === 7
-    ? [(L === "es" ? "todos los días, " : "every day, ") + span(groups[0].o, groups[0].c)]
-    : groups.map((g) => (g.first === g.last ? wd(g.first) : wd(g.first) + "-" + wd(g.last)) + ", " + span(g.o, g.c));
-  el.textContent = t("hoursHintOk", { h: names.join("; ") });
+  el.textContent = HOURS ? t("hoursHintOk", { h: hoursRead(HOURS) || raw }) : t("hoursHintBad");
 }
 function paintWho() {
-  const name = val("name"), wa = val("wa");
+  const name = val("name");
   $("who").hidden = !name;
-  $("whoText").innerHTML = name ? `<b>${esc(name)}</b>${wa ? " · " + esc(pretty(wa)) : ""}` : "";
+  $("whoText").innerHTML = name ? `<b>${esc(name)}</b>` : "";
+}
+function paintContact() {
+  const name = val("name");
+  const hello = name ? t("contactHello", { n: name }) : t("contactHello0");
+  $("footWa").href = waLink(hello);
+  $("doneWa").href = waLink(hello);
 }
 
+function chipHTML(d, n) {
+  const top = d.weekly ? SH[L][d.wd] : d.offset === 0 ? t("today") : SH[L][d.wd];
+  const bottom = d.weekly ? "" : `<span class="dd">${d.dd} ${esc(MO[L][d.mm])}</span>`;
+  const badge = n ? `<span class="badge" aria-hidden="true">${n}</span><span class="sr">, ${esc(n === 1 ? t("nSel1") : t("nSel", { n }))}</span>` : "";
+  const aria = d.weekly ? ` aria-label="${esc(cap(LG[L][d.wd]) + (n ? ", " + (n === 1 ? t("nSel1") : t("nSel", { n })) : ""))}"` : "";
+  return `<button type="button" class="day${d.weekly ? " one" : ""}" data-key="${d.key}" aria-pressed="${d.key === S.day}"${aria}><span class="dt">${esc(top)}</span>${bottom}${badge}</button>`;
+}
 function renderTimes() {
   const days = dayList();
-  if (!days.find((d) => d.iso === S.day)) S.day = days.length ? days[0].iso : null;
-  $("days").innerHTML = days.map((d) => {
-    const n = S.sel[d.iso] ? S.sel[d.iso].size : 0;
-    const top = d.offset === 0 ? t("today") : d.offset === 1 ? t("tomorrow") : cap(fmt(d, { weekday: "short" }));
-    const bottom = fmt(d, { day: "numeric", month: "short" });
-    const badge = n ? `<span class="badge" aria-hidden="true">${n}</span><span class="sr">, ${esc(n === 1 ? t("nSel1") : t("nSel", { n }))}</span>` : "";
-    return `<button type="button" class="day" data-iso="${d.iso}" aria-pressed="${d.iso === S.day}"><span class="dt">${esc(top)}</span><span class="dd">${esc(bottom)}</span>${badge}</button>`;
-  }).join("");
-  const d = days.find((x) => x.iso === S.day);
+  const map = selMap();
+  const valid = new Map(selList().map((x) => [x.d.key, x.mins.length]));
+  if (!days.find((d) => d.key === S.day)) S.day = (days.find((d) => valid.get(d.key)) || days[0] || {}).key || null;
+  $("days").innerHTML = days.map((d) => chipHTML(d, valid.get(d.key) || 0)).join("");
+  const d = days.find((x) => x.key === S.day);
+  $("copyBox").innerHTML = "";
   if (!d) {
     $("dayInfo").textContent = "";
-    $("grid").innerHTML = `<p class="empty">${esc(t("noDays"))}</p>`;
+    $("grid").innerHTML = `<p class="empty">${esc(t(S.repeat ? "noDaysW" : "noDaysD"))}</p>`;
   } else {
-    const h = hoursFor(d.wd);
-    $("dayInfo").textContent = cap(fmt(d, { weekday: "long", day: "numeric", month: "long" })) + ". " + (HOURS ? t("openFromTo", { a: hhmm(h[0]), b: hhmm(h[1]) }) : t("unknownHours"));
+    const where = d.weekly ? cap(t("every", { wd: LG[L][d.wd] })) : (L === "es" ? `${cap(LG.es[d.wd])} ${d.dd} de ${MOL.es[d.mm]}` : `${LG.en[d.wd]} ${d.dd} ${MOL.en[d.mm]}`);
+    const info = hoursKnown(d.wd) ? t("openSpans", { s: spans(hoursFor(d.wd)) }) : (val("hours") && !HOURS ? t("unparsedHours") : t("unknownHours"));
+    $("dayInfo").innerHTML = `<b>${esc(where)}</b> · ${esc(info)}`;
     const starts = startsFor(d);
-    const sel = S.sel[d.iso] || new Set();
+    const sel = map[d.key] || new Set();
     const btn = (m) => `<button type="button" class="tm" data-m="${m}" aria-pressed="${sel.has(m)}">${hhmm(m)}</button>`;
     const am = starts.filter((m) => m < 14 * 60), pm = starts.filter((m) => m >= 14 * 60);
     const group = (list, k) => list.length ? `<p class="glabel" aria-hidden="true">${esc(t(k))}</p><div class="times" role="group" aria-label="${esc(t(k + "Aria"))}">${list.map(btn).join("")}</div>` : "";
     $("grid").innerHTML = (group(am, "am") + group(pm, "pm")) || `<p class="empty">${esc(t("noTimes", { d: S.dur }))}</p>`;
+    // "Same times on other days": one tap instead of five.
+    if (valid.get(d.key) && days.length > 1) {
+      const wk = days.some((x) => x.key !== d.key && x.wd >= 1 && x.wd <= 5);
+      const note = S.copied === null ? "" : `<p class="hint" aria-live="polite">${esc(S.copied === 0 ? t("copied0") : S.copied === 1 ? t("copied1") : t("copiedN", { n: S.copied }))}</p>`;
+      $("copyBox").innerHTML = `<div class="copy"><p>${esc(t("copyLbl"))}</p><div class="row"><button type="button" data-copy="all">${esc(t("copyAll"))}</button>${wk ? `<button type="button" data-copy="wk">${esc(t("copyWk"))}</button>` : ""}</div>${note}</div>`;
+    }
   }
+  const hid = hiddenCount();
+  $("dropNote").textContent = hid ? t(hid === 1 ? "dropped1" : "droppedN", { n: hid, d: S.dur }) : "";
   renderSummary();
 }
-function summaryHTML(list, dur, repeat) {
-  if (!list.length) return `<p>${esc(t("sumNone"))}</p>`;
-  const n = list.reduce((a, x) => a + x.mins.length, 0);
+function summaryHTML(list, dur, repeat, withLabel) {
+  const lbl = withLabel ? `<p class="sumlbl">${esc(t("sumLbl"))}</p>` : "";
+  if (!list.length) return `${lbl}<p>${esc(t("sumNone"))}</p>`;
+  const n = countOf(list);
   const head = (n === 1 ? t("sum1", { d: dur }) : t("sumN", { n, d: dur })) + " · " + t(repeat ? "weekly" : "once");
-  const rows = list.map(({ d, mins }) => {
-    const label = repeat ? t("every", { wd: fmt(d, { weekday: "long" }) }) : cap(fmt(d, { weekday: "short", day: "numeric", month: "short" }));
-    return `<li><b>${esc(cap(label))}</b>${mins.map(hhmm).join(", ")}</li>`;
-  }).join("");
-  return `<p class="sumhead">${esc(head)}</p><ul>${rows}</ul>`;
+  const rows = list.map(({ d, mins }) => `<li><b>${esc(dayLabel(d))}</b>${mins.map(hhmm).join(", ")}</li>`).join("");
+  return `${lbl}<p class="sumhead">${esc(head)}</p><ul>${rows}</ul>`;
 }
-function renderSummary() { $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat); }
+function renderSummary() {
+  $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat, false);
+  updateDock();
+}
+function renderMini() {
+  const wa = val("wa") ? `<p class="hint">${esc(t("sumWa", { v: pretty(val("wa")) }))}</p>` : "";
+  $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true) + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
+}
 function renderDone() {
+  const r = S.result, last = S.last;
   const name = val("name");
-  $("thanks").textContent = name ? t("thanksN", { n: name }) : t("thanks0");
-  const last = S.sent[S.sent.length - 1];
-  $("sentSummary").innerHTML = last ? summaryHTML(last.list, last.dur, last.repeat) : "";
+  $("doneMark").hidden = r !== "saved";
+  $("s4h").textContent = r === "saved" ? t("s4Saved") : r === "fallback" ? t("s4Fallback") : t("s4Preview");
+  $("s4sub").textContent = r === "saved" ? (name ? t("thanksN", { n: name }) : t("thanks0")) : r === "fallback" ? t("fbSub") : t("pvSub");
+  $("rSaved").hidden = r !== "saved";
+  $("rFallback").hidden = r !== "fallback";
+  $("rPreview").hidden = r !== "preview";
+  $("doneWa").hidden = r !== "saved";
+  $("more").hidden = r === "fallback";
+  $("retry").hidden = r !== "fallback";
+  $("sentSummary").innerHTML = last ? summaryHTML(last.list, last.dur, last.repeat, false) : "";
   $("sentSummary").hidden = !last;
-  $("sentPreview").hidden = LIVE || !last;
+  if (last) {
+    const msg = buildMessage(last);
+    $("fbWa").href = waLink(msg);
+    $("fbMail").href = "mailto:" + MAIL_TO + "?subject=" + encodeURIComponent(t("mailSubject", { n: name || "?" })) + "&body=" + encodeURIComponent(msg);
+    $("pvMsg").textContent = msg;
+  }
 }
 
 // ---------------------------------------------------------------- navigation
-const HASH = { 0: "", 1: "#datos", 2: "#horas", 3: "#listo" };
-const stepFromHash = () => ({ "#datos": 1, "#horas": 2, "#listo": 3 })[location.hash] || 0;
-function go(step, push = true) {
-  if (step === 3 && !S.sent.length) step = 2;
+const HASH = ["", "#centro", "#horas", "#datos", "#listo"];
+const stepFromHash = () => Math.max(0, HASH.indexOf(location.hash));
+const here = (step) => location.pathname + location.search + HASH[step];
+const step1Valid = () => !!val("name") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
+function go(step, mode = "push") {
+  const asked = step;
+  if (step === 3 && !step1Valid()) { S.resume = 3; step = 1; }
+  if (step === 4 && !S.result) step = selList().length ? 3 : 2;
+  if (step === 3 && !step1Valid()) step = 1;
+  if (mode === "none" && step !== asked) mode = "replace";
+  const prev = S.step;
+  if (mode === "push") history.pushState({ step, prev }, "", here(step));
+  else if (mode === "replace") history.replaceState({ step, prev: (history.state && typeof history.state.prev === "number") ? history.state.prev : -1 }, "", here(step));
   S.step = step;
   $("landing").hidden = step !== 0;
   $("flow").hidden = step === 0;
+  $("progress").hidden = step === 4;
   document.querySelectorAll(".step").forEach((el) => { el.hidden = Number(el.dataset.step) !== step; });
   document.querySelectorAll("#progress li").forEach((li) => {
     const n = Number(li.dataset.n);
     if (n === step) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
     li.classList.toggle("done", n < step);
   });
-  if (push) history.pushState({ step }, "", location.pathname + location.search + HASH[step]);
-  if (step === 2) { prune(); paintWho(); renderTimes(); $("accept2Box").hidden = S.accepted; }
-  if (step === 3) renderDone();
+  if (step === 1) paintWa();
+  if (step === 2) { paintWho(); renderTimes(); }
+  if (step === 3) { renderMini(); paintHoursHint(); }
+  if (step === 4) renderDone();
   updateDock();
   window.scrollTo(0, 0);
   const h = step === 0 ? null : $("s" + step + "h");
-  if (h && push) h.focus({ preventScroll: true });
+  if (h && mode !== "none") h.focus({ preventScroll: true });
 }
-window.addEventListener("popstate", () => go(stepFromHash(), false));
+// In-page back: the phone's back button and ours must agree, so when the entry
+// before this one is the step we want, it is simply history.back().
+function back(target) {
+  const st = history.state || {};
+  if (st.step === S.step && st.prev === target) history.back();
+  else go(target);
+}
+window.addEventListener("popstate", () => go(stepFromHash(), "none"));
 document.addEventListener("click", (e) => {
-  const b = e.target.closest("[data-go]");
-  if (b) { e.preventDefault(); go(Number(b.dataset.go)); }
+  const g = e.target.closest("[data-go]");
+  if (g) { e.preventDefault(); go(Number(g.dataset.go)); return; }
+  const b = e.target.closest("[data-back]");
+  if (b) { e.preventDefault(); back(Number(b.dataset.back)); }
 });
-$("home").addEventListener("click", (e) => { e.preventDefault(); go(0); });
-$("lang").addEventListener("click", () => { L = L === "es" ? "en" : "es"; paintStatic(); });
+$("home").addEventListener("click", (e) => { e.preventDefault(); if (S.step !== 0) go(0); });
+$("lang").addEventListener("click", () => {
+  L = L === "es" ? "en" : "es";
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("lang", L);
+    history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+  } catch (_) {}
+  paintStatic();
+});
 
-// The bottom bar only shows on the landing, once the top button is out of view
-// and before the second one comes in.
+// The bottom bar: on the landing, the main button once the top one is out of
+// view; on the times step, always, with how many slots are chosen.
 const visible = new Set();
+let seenScroll = false;
 function updateDock() {
-  const on = S.step === 0 && "IntersectionObserver" in window && !visible.has("heroCta") && !visible.has("finalCta") && seenScroll;
+  let on = false;
+  const b = $("dockBtn");
+  if (S.step === 2) {
+    const n = countOf(selList());
+    b.textContent = n === 0 ? t("next2") : n === 1 ? t("next2One") : t("next2N", { n });
+    on = true;
+  } else if (S.step === 0 && "IntersectionObserver" in window && !visible.has("heroCta") && !visible.has("finalCta") && seenScroll) {
+    b.textContent = t("cta");
+    on = true;
+  }
   $("dock").hidden = !on;
   document.body.classList.toggle("docked", on);
 }
-let seenScroll = false;
+$("dockBtn").addEventListener("click", () => { if (S.step === 2) next2(); else go(1); });
 if ("IntersectionObserver" in window) {
   const io = new IntersectionObserver((entries) => {
     for (const en of entries) { if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id); }
@@ -945,17 +1369,137 @@ if ("IntersectionObserver" in window) {
   window.addEventListener("scroll", () => { if (!seenScroll && window.scrollY > 40) { seenScroll = true; updateDock(); } }, { passive: true });
 }
 
-// ---------------------------------------------------------------- step 1
-function setErr(inputId, errId, key) {
+// ---------------------------------------------------------------- errors
+function setErr(inputId, errId, key, vars) {
   const el = $(errId);
   el.dataset.k = key || "";
-  el.textContent = key ? t(key) : "";
+  el.textContent = key ? t(key, vars) : "";
   if (inputId) $(inputId).setAttribute("aria-invalid", key ? "true" : "false");
 }
-function checkDetails() {
+
+// ---------------------------------------------------------------- step 1
+function checkStep1() {
   const bad = [];
   setErr("name", "nameErr", val("name") ? "" : (bad.push("name"), "errName"));
-  setErr("wa", "waErr", intl(val("wa")).replace(/\D/g, "").length >= 9 ? "" : (bad.push("wa"), "errWa"));
+  const p = intl(val("wa"));
+  if (!waDigitsOk()) { setErr("wa", "waErr", "errWa"); bad.push("wa"); }
+  else if (isLandline(p) && S.landlineOk !== p) {
+    // A warning, not a wall: the second tap means "yes, this is our WhatsApp".
+    S.landlineOk = p;
+    setErr("wa", "waErr", "errWaLandline");
+    $("waWarn").textContent = "";
+    bad.push("wa");
+  } else setErr("wa", "waErr", "");
+  return bad;
+}
+$("f1").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const bad = checkStep1();
+  saveDraft();
+  if (bad.length) { $(bad[0]).focus(); return; }
+  const to = S.resume || 2;
+  S.resume = 0;
+  go(to);
+});
+$("wa").addEventListener("input", () => { if ($("waErr").dataset.k === "errWaLandline") setErr("wa", "waErr", ""); paintWa(); });
+["name", "wa"].forEach((id) => $(id).addEventListener("input", () => { paintWho(); paintContact(); }));
+
+// ---------------------------------------------------------------- step 2
+$("modeSet").addEventListener("change", (e) => {
+  if (e.target.name !== "mode") return;
+  const on = e.target.value === "weekly";
+  if (on === S.repeat) return;
+  const fromKey = S.day;
+  const has = (o) => Object.values(o).some((s) => s.size);
+  S.repeat = on;
+  // Switching keeps what was chosen: weekdays become this week's dates, and back.
+  if (on && !has(S.selW) && has(S.selD)) {
+    for (const [iso, set] of Object.entries(S.selD)) {
+      const wd = String(new Date(iso + "T12:00:00Z").getUTCDay());
+      for (const m of set) (S.selW[wd] || (S.selW[wd] = new Set())).add(m);
+    }
+  } else if (!on && !has(S.selD) && has(S.selW)) {
+    for (const d of dateDays()) {
+      const set = S.selW[String(d.wd)];
+      if (!set) continue;
+      const ok = new Set(startsFor(d));
+      for (const m of set) if (ok.has(m)) (S.selD[d.key] || (S.selD[d.key] = new Set())).add(m);
+    }
+  }
+  // Stay on the same weekday.
+  const wd = fromKey == null ? null : /^\d$/.test(fromKey) ? Number(fromKey) : new Date(fromKey + "T12:00:00Z").getUTCDay();
+  const same = wd == null ? null : dayList().find((d) => d.wd === wd);
+  S.day = same ? same.key : null;
+  S.copied = null;
+  $("timesErr").textContent = "";
+  renderTimes();
+  saveDraft();
+});
+$("durSet").addEventListener("change", (e) => {
+  if (e.target.name !== "dur") return;
+  S.dur = Number(e.target.value) === 90 ? 90 : 60;
+  renderTimes();
+  saveDraft();
+});
+$("days").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-key]");
+  if (!b) return;
+  S.day = b.dataset.key;
+  S.copied = null;
+  renderTimes();
+  const again = $("days").querySelector(`[data-key="${S.day}"]`);
+  if (again) again.focus();
+});
+$("grid").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-m]");
+  if (!b || !S.day) return;
+  const m = Number(b.dataset.m);
+  const map = selMap();
+  const set = map[S.day] || (map[S.day] = new Set());
+  if (set.has(m)) set.delete(m); else set.add(m);
+  if (!set.size) delete map[S.day];
+  S.copied = null;
+  $("timesErr").textContent = "";
+  const y = window.scrollY;
+  renderTimes();
+  window.scrollTo(0, y);
+  const again = $("grid").querySelector(`[data-m="${m}"]`);
+  if (again) again.focus({ preventScroll: true });
+  saveDraft();
+});
+$("copyBox").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-copy]");
+  if (!b) return;
+  const map = selMap(), src = map[S.day];
+  if (!src || !src.size) return;
+  const wkOnly = b.dataset.copy === "wk";
+  let n = 0;
+  for (const d of dayList()) {
+    if (d.key === S.day || (wkOnly && !(d.wd >= 1 && d.wd <= 5))) continue;
+    const ok = new Set(startsFor(d));
+    let added = false;
+    for (const m of src) if (ok.has(m)) { (map[d.key] || (map[d.key] = new Set())).add(m); added = true; }
+    if (added) n++;
+  }
+  S.copied = n;
+  renderTimes();
+  saveDraft();
+  const again = $("copyBox").querySelector(`[data-copy="${b.dataset.copy}"]`);
+  if (again) again.focus({ preventScroll: true });
+});
+function next2() {
+  if (!selList().length) {
+    setErr(null, "timesErr", "errNone");
+    const first = $("grid").querySelector(".tm");
+    if (first) { first.focus({ preventScroll: true }); first.scrollIntoView({ block: "center" }); }
+    return;
+  }
+  go(3);
+}
+
+// ---------------------------------------------------------------- step 3
+function checkStep3() {
+  const bad = [];
   setErr("addr", "addrErr", val("addr") ? "" : (bad.push("addr"), "errAddr"));
   const em = val("email");
   setErr("email", "emailErr", !em || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "" : (bad.push("email"), "errEmail"));
@@ -964,177 +1508,182 @@ function checkDetails() {
   setErr(null, "priceErr", pBad ? (bad.push(pBad), "errPrice") : "");
   $("p60").setAttribute("aria-invalid", Number.isNaN(p60) ? "true" : "false");
   $("p90").setAttribute("aria-invalid", Number.isNaN(p90) ? "true" : "false");
-  return bad;
-}
-$("f1").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const bad = checkDetails();
   S.accepted = $("accept").checked;
   setErr(null, "acceptErr", S.accepted ? "" : "errAccept");
   $("acceptBox").classList.toggle("bad", !S.accepted);
   if (!S.accepted) bad.push("accept");
-  if (bad.length) { $(bad[0]).focus(); return; }
-  go(2);
-});
+  return bad;
+}
 $("accept").addEventListener("change", () => {
-  S.accepted = $("accept").checked; $("accept2").checked = S.accepted;
+  S.accepted = $("accept").checked;
   if (S.accepted) { setErr(null, "acceptErr", ""); $("acceptBox").classList.remove("bad"); }
+  saveDraft();
 });
-$("hours").addEventListener("input", () => { HOURS = parseHours(val("hours")); paintHoursHint(); });
-["name", "wa"].forEach((id) => $(id).addEventListener("input", paintWho));
-
-// ---------------------------------------------------------------- step 2
-$("durSet").addEventListener("change", (e) => {
-  if (e.target.name !== "dur") return;
-  S.dur = Number(e.target.value);
-  const n = prune();
-  $("dropNote").textContent = n ? t(n === 1 ? "dropped1" : "droppedN", { n, d: S.dur }) : "";
-  renderTimes();
+$("hours").addEventListener("input", () => {
+  HOURS = parseHours(val("hours"));
+  paintHoursHint();
+  renderMini();
 });
-$("days").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-iso]");
-  if (!b) return;
-  S.day = b.dataset.iso;
-  renderTimes();
-  const again = $("days").querySelector(`[data-iso="${S.day}"]`);
-  if (again) again.focus();
-});
-$("grid").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-m]");
-  if (!b || !S.day) return;
-  const m = Number(b.dataset.m);
-  const set = S.sel[S.day] || (S.sel[S.day] = new Set());
-  if (set.has(m)) set.delete(m); else set.add(m);
-  if (!set.size) delete S.sel[S.day];
-  b.setAttribute("aria-pressed", String(!!(S.sel[S.day] && S.sel[S.day].has(m))));
-  // Only the badge on the day changes; the grid keeps focus where it was.
-  const chip = $("days").querySelector(`[data-iso="${S.day}"]`);
-  if (chip) {
-    const n = S.sel[S.day] ? S.sel[S.day].size : 0;
-    chip.querySelectorAll(".badge,.sr").forEach((x) => x.remove());
-    if (n) chip.insertAdjacentHTML("beforeend", `<span class="badge" aria-hidden="true">${n}</span><span class="sr">, ${esc(n === 1 ? t("nSel1") : t("nSel", { n }))}</span>`);
-  }
-  $("saveErr").textContent = "";
-  renderSummary();
-});
-$("repeat").addEventListener("change", () => { S.repeat = $("repeat").checked; renderSummary(); });
-$("accept2").addEventListener("change", () => {
-  S.accepted = $("accept2").checked; $("accept").checked = S.accepted;
-  if (S.accepted) { setErr(null, "accept2Err", ""); $("accept2Box").classList.remove("bad"); }
-});
+document.addEventListener("input", (e) => { if (e.target && FIELDS.includes(e.target.id)) saveDraft(); });
 
 function buildPayload(list) {
+  const wa = intl(val("wa"));
   return {
     form: "socios",
     form_version: FORM_VERSION,
     lang: L,
+    // Anyone can open /socios?s=<slug>: nothing here is verified. Review it and
+    // confirm on the studio's own WhatsApp before any of it is used.
+    verified: false,
     link_slug: SLUG_OK ? SLUG : null,
     partner_slug: S.partner ? S.partner.slug : null,
+    partner_status: S.partner ? String(S.partner.status || "") : null,
     studio: {
       business_name: val("name"),
-      whatsapp: intl(val("wa")),
+      whatsapp: wa,
+      whatsapp_looks_landline: isLandline(wa),
       address: val("addr"),
       email: val("email").toLowerCase() || null,
       opening_hours: val("hours") || null,
+      opening_hours_read: HOURS ? hoursField(HOURS, "es") : null,
       price_60_eur: priceNum(val("p60")),
       price_90_eur: priceNum(val("p90")),
     },
     terms: {
       accepted: true,
       accepted_at: new Date().toISOString(),
-      version: "2026-10-17",
+      version: TERMS_VERSION,
       text: T[L].termsLine,
     },
     availability: {
       tz: "Europe/Madrid",
       duration_min: S.dur,
       repeat_weekly: S.repeat,
-      slots: list.flatMap(({ d, mins }) => mins.map((m) => ({ date: d.iso, weekday: d.wd, start: hhmm(m), end: hhmm(m + S.dur) }))),
+      slots: list.flatMap(({ d, mins }) => mins.map((m) => d.weekly
+        ? { weekday: d.wd, start: hhmm(m), end: hhmm(m + S.dur), first_date: firstDate(d.wd, m), date: firstDate(d.wd, m) }
+        : { date: d.iso, weekday: d.wd, start: hhmm(m), end: hhmm(m + S.dur) })),
     },
   };
 }
+const batchKey = (p) => JSON.stringify([p.studio.whatsapp, p.availability.duration_min, p.availability.repeat_weekly, p.availability.slots.map((s) => [p.availability.repeat_weekly ? s.weekday : s.date, s.start])]);
+// The text a studio sends us itself when the save does not work.
+function buildMessage(last) {
+  const lines = [t("msgHello", { n: val("name") || "?" }), ""];
+  const n = countOf(last.list);
+  lines.push(t("msgTimes", { s: (n === 1 ? t("sum1", { d: last.dur }) : t("sumN", { n, d: last.dur })) + ", " + t(last.repeat ? "weekly" : "once") }));
+  for (const { d, mins } of last.list) lines.push(dayLabel(d) + ": " + mins.map(hhmm).join(", "));
+  lines.push("");
+  lines.push(t("msgWa", { v: pretty(val("wa")) }));
+  if (val("addr")) lines.push(t("msgAddr", { v: val("addr") }));
+  if (val("email")) lines.push(t("msgEmail", { v: val("email") }));
+  if (val("hours")) lines.push(t("msgHours", { v: val("hours") }));
+  const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
+  const pr = [p60 ? "60 min " + euro(p60) : "", p90 ? "90 min " + euro(p90) : ""].filter(Boolean).join(", ");
+  if (pr) lines.push(t("msgPrice", { v: pr }));
+  lines.push(t("msgTerms"));
+  return lines.join("\n");
+}
 
-$("save").addEventListener("click", async () => {
+async function send(btn) {
   if (S.saving) return;
-  $("saveErr").textContent = "";
-  prune();
+  setErr(null, "saveErr", "");
+  setErr(null, "miniErr", "");
+  if (!step1Valid()) { S.resume = 3; go(1); const b = checkStep1(); if (b.length) $(b[0]).focus(); return; }
   const list = selList();
-  if (!list.length) { renderTimes(); setErr(null, "saveErr", "errNone"); const first = $("grid").querySelector(".tm"); if (first) first.focus(); return; }
-  if (!S.accepted) {
-    $("accept2Box").hidden = false;
-    $("accept2Box").classList.add("bad");
-    setErr(null, "accept2Err", "errAccept");
-    $("accept2").focus();
-    return;
-  }
-  // A studio that came straight here still needs a name, a WhatsApp and an address.
-  if (checkDetails().length) { go(1); const b = checkDetails(); if (b.length) $(b[0]).focus(); return; }
-
+  if (!list.length) { go(2); setErr(null, "timesErr", "errNone"); return; }
+  const bad = checkStep3();
+  if (bad.length) { $(bad[0]).focus(); return; }
   const payload = buildPayload(list);
-  if (LIVE) {
-    S.saving = true;
-    const btn = $("save");
-    btn.disabled = true; btn.textContent = t("saving");
-    try {
-      const r = await fetch(SAVE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ops: "studio_signup", payload }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || j.ok === false) throw new Error(j.error || String(r.status));
-    } catch (err) {
-      setErr(null, "saveErr", "errSave");
-      btn.disabled = false; btn.textContent = t("save");
-      S.saving = false;
-      return;
-    }
-    btn.disabled = false; btn.textContent = t("save");
-    S.saving = false;
-  } else {
-    // Preview: nothing leaves the browser. The payload is shown in the console
-    // so the backend can be built against the exact shape.
+  const key = batchKey(payload);
+  if (key === S.lastKey) { setErr(null, "saveErr", "dup"); return; }
+  if (PREVIEW) {
+    // Nothing leaves the browser. The payload is in the console so the backend
+    // can be built against the exact shape.
     try { console.info("[socios] preview, not sent:", { ops: "studio_signup", payload }); } catch (_) {}
+    return finish("preview", list, key);
   }
-  S.sent.push({ list, dur: S.dur, repeat: S.repeat });
-  go(3);
-});
-
-// ---------------------------------------------------------------- step 3
-$("more").addEventListener("click", () => {
-  S.sel = {};
-  $("dropNote").textContent = "";
-  go(2);
-});
+  S.saving = true;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = t("saving");
+  let ok = false;
+  try {
+    const ctl = "AbortController" in window ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 15000) : 0;
+    const r = await fetch(SAVE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ops: "studio_signup", payload }), signal: ctl ? ctl.signal : undefined });
+    clearTimeout(timer);
+    const j = await r.json().catch(() => null);
+    // Saved only when the server says so in JSON. A plain "OK" is not a save.
+    ok = r.ok && !!j && j.ok === true;
+  } catch (_) { ok = false; }
+  S.saving = false;
+  btn.disabled = false; btn.textContent = label;
+  finish(ok ? "saved" : "fallback", list, key);
+}
+function finish(result, list, key) {
+  S.result = result;
+  S.last = { list, dur: S.dur, repeat: S.repeat };
+  if (result === "fallback") { go(4); return; } // back returns to the form, nothing lost
+  // Sent: the selection is cleared so the phone's back button cannot send the
+  // same batch again, and #datos becomes #listo in the history.
+  S.lastKey = key;
+  S.selW = {}; S.selD = {}; S.copied = null;
+  clearDraft();
+  go(4, "replace");
+}
+$("f3").addEventListener("submit", (e) => { e.preventDefault(); send($("save")); });
+$("retry").addEventListener("click", () => send($("retry")));
+$("more").addEventListener("click", () => { $("timesErr").textContent = ""; go(2); });
 
 // ---------------------------------------------------------------- personal link
 // /socios?s=<slug>: a read-only select of the studio's public listing.
+let partnerDone = !SLUG_OK;
+function pickWhatsApp(p) {
+  // Never put a Spanish landline in "WhatsApp para las reservas".
+  for (const v of [p.whatsapp, p.phone]) { const n = intl(v); if (n && n.replace(/\D/g, "").length >= 9 && !isLandline(n)) return pretty(n); }
+  return "";
+}
 async function loadPartner() {
   if (!SLUG_OK) return;
   try {
     const ctl = "AbortController" in window ? new AbortController() : null;
     if (ctl) setTimeout(() => ctl.abort(), 7000);
-    const url = `${SB}/rest/v1/partners?select=business_name,phone,whatsapp,address,neighbourhood,opening_hours,slug,price_from&slug=eq.${encodeURIComponent(SLUG)}&limit=1`;
+    const url = `${SB}/rest/v1/partners?select=business_name,phone,whatsapp,address,neighbourhood,opening_hours,slug,price_from,status&slug=eq.${encodeURIComponent(SLUG)}&limit=1`;
     const r = await fetch(url, { headers: { apikey: SB_KEY, Accept: "application/json" }, signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return;
     const rows = await r.json();
     const p = Array.isArray(rows) ? rows[0] : null;
     if (!p || !p.business_name) return;
     S.partner = p;
+    S.active = String(p.status || "") === "active";
     const fill = (id, v) => { if (v && !val(id)) $(id).value = v; };
     fill("name", p.business_name);
-    fill("wa", (p.whatsapp || p.phone) ? pretty(p.whatsapp || p.phone) : "");
+    fill("wa", pickWhatsApp(p));
     const addr = String(p.address || "").trim();
     const hood = String(p.neighbourhood || "").trim();
     fill("addr", addr && hood && !addr.toLowerCase().includes(hood.toLowerCase()) ? `${addr} (${hood})` : addr || hood);
-    fill("hours", p.opening_hours || "");
+    // Hours go in as text in the page's language ("Lun-Sáb 10:00-20:00"), never
+    // as an object; a string we cannot read goes in as it is.
+    const oh = p.opening_hours;
+    const map = oh ? parseHours(oh) : null;
+    fill("hours", map ? hoursField(map, L) : typeof oh === "string" && !/^\s*\{/.test(oh) ? oh.trim() : "");
     HOURS = parseHours(val("hours"));
-    paintDynamic();
   } catch (_) { /* a personal link that cannot load is just the plain page */ }
+  finally { partnerDone = true; }
 }
 
 // ---------------------------------------------------------------- start
+loadDraft();
+HOURS = parseHours(val("hours"));
 paintStatic();
-const startStep = stepFromHash() === 3 ? 0 : stepFromHash();
-history.replaceState({ step: startStep }, "", location.pathname + location.search + HASH[startStep]);
-go(startStep, false);
-loadPartner().then(() => { if (S.step === 2) renderTimes(); });
+let startStep = stepFromHash();
+if (startStep === 4) startStep = selList().length && step1Valid() ? 3 : 0;
+if (startStep === 3 && !step1Valid()) startStep = val("name") || val("wa") ? 1 : 0;
+// A reload keeps the entry's state: keep its "previous step" so our back
+// buttons still match the phone's.
+const hs = history.state;
+history.replaceState({ step: startStep, prev: hs && hs.step === startStep && typeof hs.prev === "number" ? hs.prev : -1 }, "", here(startStep));
+go(startStep, "none");
+loadPartner().then(() => { paintDynamic(); });
 })();
 </script>
 </body>
