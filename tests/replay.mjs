@@ -2638,7 +2638,7 @@ for (const [msg, want, note] of [
   const b = botSrc.indexOf("// ---- v216 socios: pure helpers (end) ----");
   const s0 = botSrc.indexOf("// ---- v216 socios: pure helpers (start) ----");
   if (a < 0 || s0 < a || b < s0) throw new Error("bot.ts: the v216 socios helper markers are missing");
-  const names = ["SOCIOS_TERMS", "socAllowedOrigin", "socPhone", "relHmac", "socSigValue", "socTimeCheck", "socWeeklyCheck", "socValidate", "socPatternDates", "socDiff", "socSlug", "socMsg", "SOC_MSG", "ocupadoIntent", "ocupadoPick", "ocupadoReply", "socFunnelRank", "socShareText", "SOC_PITCH_ES", "relAt", "relYmd"];
+  const names = ["SOCIOS_TERMS", "socAllowedOrigin", "socPhone", "relHmac", "socSigValue", "socTimeCheck", "socWeeklyCheck", "socValidate", "socPatternDates", "socDiff", "socSlug", "socMsg", "SOC_MSG", "ocupadoIntent", "ocupadoPick", "ocupadoReply", "socFunnelRank", "socShareText", "SOC_PITCH_ES", "relAt", "relYmd", "socSignedUpdate", "ocupadoClash", "socWindows"];
   const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
   const js = `import { madridInstant, madridMidnight, stripAcc, euro } from ${JSON.stringify(copyUrl)};\n`
     + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
@@ -2659,7 +2659,7 @@ for (const [msg, want, note] of [
   check("socios terms", "the fee is 5 EUR + IVA from 1 Dec, free to 30 Nov (CLAUDE.md, 17 Oct)", /Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € \+ IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas/.test(R.SOCIOS_TERMS[ver].es), true, "never quote another figure");
 
   // The page's origins.
-  for (const [o, want] of [["https://book.massageclub.io", true], ["https://massageclub.io", true], ["https://your-massage-pass-git-main.vercel.app", true], ["https://www.massageclub.io", false], ["http://book.massageclub.io", false], ["https://book.massageclub.io.evil.com", false], ["https://evil.com/?https://book.massageclub.io", false], ["", false], ["https://a.b.vercel.app", false]]) {
+  for (const [o, want] of [["https://book.massageclub.io", true], ["https://massageclub.io", true], ["https://your-massage-pass-git-main.vercel.app", true], ["https://www.massageclub.io", false], ["http://book.massageclub.io", false], ["https://book.massageclub.io.evil.com", false], ["https://evil.com/?https://book.massageclub.io", false], ["", false], ["https://a.b.vercel.app", false], ["https://your-massage-pass.vercel.app", true], ["https://your-massage-pass-o5fo.vercel.app", true], ["https://evil-app.vercel.app", false], ["https://evil.vercel.app", false], ["https://notyour-massage-pass.vercel.app", false]]) {
     check("socios CORS origin", o, !!R.socAllowedOrigin(o), want, "");
   }
   // Phones as the page sends them.
@@ -2687,7 +2687,7 @@ for (const [msg, want, note] of [
   });
   const V = (o, stored = null, at = now) => R.socValidate(P(o), at, stored);
   let v = V({});
-  check("socios checks", "a good dated time", [v.ok, v.plan.once, v.plan.price, v.plan.terms.sameAsPage, v.plan.drawnAt], [true, [{ ymd: "2026-10-22", hm: "18:00" }], 50, true, now - 5 * 60e3], "");
+  check("socios checks", "a good dated time", [v.ok, v.plan.once, v.plan.price, v.plan.terms.text, v.plan.drawnAt], [true, [{ ymd: "2026-10-22", hm: "18:00" }], 50, R.SOCIOS_TERMS["2026-10-17"].es, now - 5 * 60e3], "");
   for (const [o, err, note] of [
     [{ studio: { email: "" } }, "email_missing", "released times need an email (R7)"],
     [{ studio: { email: "hola@calma" } }, "email", ""],
@@ -2703,6 +2703,11 @@ for (const [msg, want, note] of [
     [{ availability: { duration_min: 30 } }, "duration", "60 or 90 only"],
     [{ terms: { accepted: false } }, "terms", ""],
     [{ terms: { version: "2025-01-01" } }, "terms", "unknown version"],
+    [{ terms: { text: "Gratis siempre. Nunca pagaréis nada." } }, "terms_text", "review fix: a different terms text is refused, never stored as ours"],
+    [{ terms: { text: undefined } }, "terms_text", "no text at all is refused too"],
+    [{ terms: { lang: "en" } }, "terms_text", "the Spanish sentence ticked on an English page is not the English one"],
+    [{ studio: { price_60_eur: null } }, "price_needed", "review fix: every offer carries a price"],
+    [{ studio: { price_60_eur: null, price_90_eur: 80 } }, "price_needed", "60 min chosen: the 60 min price is the one needed"],
     [{ availability: { slots: [] } }, "times_none", ""],
     [{ availability: { slots: Array.from({ length: 41 }, (_, i) => ({ date: "2026-10-22", start: `${String(8 + Math.floor(i / 2) % 12).padStart(2, "0")}:${i % 2 ? "30" : "00"}` })) } }, "times_many", "a sane maximum"],
   ]) {
@@ -2724,15 +2729,29 @@ for (const [msg, want, note] of [
   check("socios checks", "unknown hours: 08:00 to 22:00", V({ studio: U, availability: { slots: [{ date: "2026-10-24", start: "07:30" }, { date: "2026-10-24", start: "08:00" }, { date: "2026-10-24", start: "21:00" }, { date: "2026-10-24", start: "21:30" }] } }).plan.once.map((x) => x.hm), ["08:00", "21:00"], "REL_DEFAULT_HOURS");
   check("socios checks", "stored hours when none typed", V({ studio: U, availability: { slots: [{ date: "2026-10-24", start: "12:00" }] } }, "Lun-Vie 10:00-20:00").errors, ["times_invalid"], "Saturday is closed on file");
   check("socios checks", "the page's reading wins over a raw text it could not parse", V({ studio: { opening_hours: "de lunes a sábado, de 10 a 21", opening_hours_read: "Lun-Sáb 10:00-21:00" }, availability: { slots: [{ date: "2026-10-24", start: "12:00" }] } }).ok, true, "");
-  check("socios checks", "90 minutes must end by closing", V({ availability: { duration_min: 90, slots: [{ date: "2026-10-22", start: "18:30" }, { date: "2026-10-22", start: "19:00" }] } }).plan.once.map((x) => x.hm), ["18:30"], "");
+  check("socios checks", "90 minutes must end by closing", V({ studio: { price_90_eur: 80 }, availability: { duration_min: 90, slots: [{ date: "2026-10-22", start: "18:30" }, { date: "2026-10-22", start: "19:00" }] } }).plan.once.map((x) => x.hm), ["18:30"], "");
   check("socios checks", "a 90 minute price comes from price_90_eur", V({ studio: { price_90_eur: 80 }, availability: { duration_min: 90 } }).plan.price, 80, "only a price the studio typed");
   // Every week.
   v = V({ availability: { repeat_weekly: true, slots: [{ weekday: 1, start: "18:00" }, { weekday: 1, start: "18:00" }, { weekday: 0, start: "12:00" }, { weekday: 3, start: "19:30" }, { weekday: 7, start: "12:00" }, { weekday: 2, start: "10:10" }] } });
   check("socios checks", "weekly: Monday 18:00 once; Sunday closed, 19:30 past closing, weekday 7 and 10:10 refused", [v.plan.pattern, v.plan.skipped.map((x) => x.why)], [[{ dow: 1, hm: "18:00" }], ["closed", "hours", "format", "grid"]], "");
-  // Terms text from the server, whatever the request says.
+  // Terms: exactly our sentence for that version and language, or refused.
   v = V({ terms: { text: "0 € para siempre" } });
-  check("socios checks", "a changed terms text is never stored", [v.plan.terms.text, v.plan.terms.sameAsPage], [R.SOCIOS_TERMS["2026-10-17"].es, false], "flagged on Jordan's card");
-  check("socios checks", "English page, English terms", V({ terms: { lang: "en" } }).plan.terms.text, R.SOCIOS_TERMS["2026-10-17"].en, "");
+  check("socios checks", "a changed terms text is refused (review fix)", [v.ok, v.errors], [false, ["terms_text"]], "partner_terms only ever holds what the studio saw");
+  check("socios checks", "English page, English terms", V({ terms: { lang: "en", text: R.SOCIOS_TERMS["2026-10-17"].en } }).plan.terms.text, R.SOCIOS_TERMS["2026-10-17"].en, "");
+  check("socios checks", "the same sentence with extra spaces still counts", V({ terms: { text: "  " + R.SOCIOS_TERMS["2026-10-17"].es.replace(/ /g, "  ") + " " } }).ok, true, "socLine collapses spaces");
+  // Price (review fix): optional only when the studio's own link and a menu on file.
+  check("socios checks", "no price, menu on file (priceKnown): accepted", [R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).ok, R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).plan.price], [true, null], "the listed price is quoted");
+  // Hours (review fixes): the hard 08:00 to 22:00 window; on file first unless it is the studio's own link.
+  const H24 = { opening_hours: "Lun-Dom 0-24", opening_hours_read: "Lun-Dom 00:00-24:00" };
+  v = V({ studio: H24, availability: { slots: [{ date: "2026-10-24", start: "03:00" }, { date: "2026-10-23", start: "23:00" }, { date: "2026-10-23", start: "21:30" }, { date: "2026-10-23", start: "21:00" }, { date: "2026-10-23", start: "08:00" }, { date: "2026-10-23", start: "07:30" }] } });
+  check("socios checks", "never before 08:00 or after 22:00, whatever was typed", [v.plan.once.map((x) => x.hm), v.plan.skipped.map((x) => `${x.hm} ${x.why}`)], [["21:00", "08:00"], ["03:00 hours", "23:00 hours", "21:30 hours", "07:30 hours"]], "attack scenario A");
+  v = V({ studio: H24, availability: { repeat_weekly: true, slots: [{ weekday: 0, start: "00:00" }, { weekday: 1, start: "22:00" }, { weekday: 1, start: "12:00" }] } });
+  check("socios checks", "a weekly 00:00 or 22:00 is refused", [v.plan.pattern, v.plan.skipped.map((x) => x.why)], [[{ dow: 1, hm: "12:00" }], ["hours", "hours"]], "materialised every 5 minutes otherwise");
+  check("socios checks", "unsigned: the hours on file come before what was typed", V({ studio: H24, availability: { slots: [{ date: "2026-10-24", start: "12:00" }] } }, "Lun-Vie 10:00-20:00").errors, ["times_invalid"], "Saturday is closed on file");
+  check("socios checks", "own signed link: what it typed comes first (then saved on its row)", R.socValidate(P({ studio: { opening_hours: "Lun-Sáb 10-20", opening_hours_read: "Lun-Sáb 10:00-20:00" }, availability: { slots: [{ date: "2026-10-24", start: "12:00" }] } }), now, "Lun-Vie 10:00-20:00", { typedFirst: true }).ok, true, "");
+  check("socios checks", "own signed link, nothing typed: the file", R.socValidate(P({ studio: U, availability: { slots: [{ date: "2026-10-24", start: "12:00" }] } }), now, "Lun-Vie 10:00-20:00", { typedFirst: true }).errors, ["times_invalid"], "");
+  check("socios checks", "the window clamps a day that opens early and closes late", R.socWindows(new Map([[1, [[6 * 60, 23 * 60]]], [2, [[22 * 60, 24 * 60]]]]), 1), [[480, 1320]], "");
+  check("socios checks", "a day open only after 22:00 is closed", R.socWindows(new Map([[2, [[22 * 60, 24 * 60]]]]), 2), [], "");
   check("socios checks", "drawn_at in the future or days old is ignored", [V({}, null, now).plan.drawnAt, R.socValidate({ ...P({}), drawn_at: now + 3600e3 }, now).plan.drawnAt, R.socValidate({ ...P({}), drawn_at: now - 3 * 86400e3 }, now).plan.drawnAt], [now - 5 * 60e3, null, null], "");
 
   // "Every week" dates across the clock change (Sunday 25 Oct 2026, 03:00 -> 02:00).
@@ -2754,6 +2773,15 @@ for (const [msg, want, note] of [
   check("socios on file", "same WhatsApp in another format, same hours in another language: no difference; another email: noted, not filled", [d.fill, d.differ.map((x) => x.field)], [{}, ["email"]], "never overwrite email silently");
   d = R.socDiff({ whatsapp: "+34 699 999 999", email: "x@y.es", booking_email: "hola@calma.es", address: "Otra calle 3", opening_hours: { mon: { open: "09:00", close: "14:00" } } }, st);
   check("socios on file", "booking_email counts; WhatsApp, address and hours differences noted", [d.fill, d.differ.map((x) => x.field)], [{}, ["whatsapp", "address", "opening_hours"]], "");
+  // Review fix (17 Oct): on its own signed link the studio's booking details replace ours.
+  let up = R.socSignedUpdate({ whatsapp: "+34655000006", phone: "+34655000006", email: "calma@studio.es", booking_email: null, address: "Calle Mayor 1", opening_hours: "Lun-Sáb 10:00-20:00" }, { ...st, wa: "34655111222", email: "reservas@calmareal.es", hoursRead: "Lun-Dom 10:00-20:00" });
+  check("socios own link", "WhatsApp, booking email and hours replaced; old ones kept", [up.set, up.replaced.map((x) => `${x.field}: ${x.was} -> ${x.now}`), up.lostNumber], [{ whatsapp: "+34655111222", booking_email: "reservas@calmareal.es", opening_hours: "Lun-Dom 10:00-20:00" }, ["whatsapp: +34655000006 -> +34655111222", "booking_email: calma@studio.es -> reservas@calmareal.es", "opening_hours: Lun-Sáb 10:00-20:00 -> Lun-Dom 10:00-20:00"], ""], "the reviewer's Calma case: bookings now reach what the page said");
+  up = R.socSignedUpdate({ whatsapp: "+34655000006", phone: null, email: null, booking_email: null, address: "", opening_hours: null }, { ...st, wa: "34655111222" });
+  check("socios own link", "old WhatsApp moves to an empty phone, so it still reads as the studio", [up.set.whatsapp, up.set.phone, up.filled.sort()], ["+34655111222", "+34655000006", ["address", "email", "opening_hours"]], "");
+  up = R.socSignedUpdate({ whatsapp: "+34655000006", phone: "+34910000001", email: "a@b.es", booking_email: "a@b.es" }, { ...st, wa: "34655111222", email: "a@b.es" });
+  check("socios own link", "phone holds another number: the old WhatsApp is said to be lost", [up.set.phone, up.lostNumber], [undefined, "+34655000006"], "on Jordan's card");
+  up = R.socSignedUpdate({ whatsapp: "+34 600 111 222", phone: "+34600111222", email: "hola@calma.es", address: "Otra calle 9", opening_hours: "Lun-Vie 10:00-20:00" }, st);
+  check("socios own link", "same details: nothing changes; a different address is only noted", [up.set, up.replaced, up.noted.map((x) => x.field)], [{}, [], ["address"]], "");
   check("socios slug", "new studio slug", [R.socSlug("Centro Ána Masajes & Spa"), R.socSlug("¡¡!!"), R.socSlug("x".repeat(80)).length], ["centro-ana-masajes-spa", "centro", 60], "");
 
   // «ocupado»: read only when the message is mainly that.
@@ -2780,6 +2808,12 @@ for (const [msg, want, note] of [
     ["ocupado, 45 € el masaje", null, "a price"],
     ["Ahora mismo estamos ocupados, te respondemos en breve", null, "an away message"],
     ["Hola, tenemos libre mañana a las 18", null, "free, not taken"],
+    ["No, a las 18 está ocupado, podemos a las 19", null, "review fix: a counter-offer is an answer, not a withdrawal"],
+    ["ocupado a las 18 y a las 19", null, "two hours named: today's path"],
+    ["Ocupado a las 18, pero mañana sí", null, "pero"],
+    ["mejor a las 19, a las 18 lleno", null, "mejor"],
+    ["Lo siento, mañana a las 18 al final estamos llenos", { ymd: "2026-10-25", mins: [1080] }, "still read; the open-ask check decides (scenario F)"],
+    ["la de las 18:30 ocupada", { ymd: null, mins: [1110] }, "18 and 18:30 are one hour"],
     ["", null, ""],
   ]) check("ocupado intent", t, R.ocupadoIntent(t, sat), want, note);
   // Which time it means.
@@ -2798,6 +2832,17 @@ for (const [msg, want, note] of [
   check("ocupado pick", "a day with nothing live: none", pick("ocupado el jueves"), ["none", null], "");
   check("ocupado pick", "a past time is not live", pick("ocupado", [row("x", 24, 11, 0, "released")]), ["ask", null], "");
   check("ocupado pick", "7 means 19:00 when that is the one we have", pick("ocupado a las 7", [row("y", 24, 19, 0, "released")]), ["withdraw", "2026-10-24 19:00 free=y"], "");
+  // Review fix (17 Oct): could it be about one of the studio's own bookings?
+  const I = (t) => R.ocupadoIntent(t, sat);
+  const tom18 = M(25, 18), mon12 = M(26, 12);
+  check("ocupado clash", "no bookings: no", R.ocupadoClash(I("ocupado"), []), false, "");
+  check("ocupado clash", "a booking and no time named: yes", R.ocupadoClash(I("ocupado"), [mon12]), true, "it may be about the booking");
+  check("ocupado clash", "the booking's hour named (scenario F): yes", R.ocupadoClash(I("Lo siento, mañana a las 18 al final estamos llenos"), [tom18]), true, "today's path and Jordan's card");
+  check("ocupado clash", "another hour named: no", R.ocupadoClash(I("ocupado mañana a las 12"), [tom18]), false, "the released 12:00 can go");
+  check("ocupado clash", "the same hour on another day: no", R.ocupadoClash(I("ocupado el lunes a las 18"), [tom18]), false, "");
+  check("ocupado clash", "the hour without a day: yes", R.ocupadoClash(I("ocupado a las 18"), [tom18]), true, "");
+  check("ocupado clash", "a booking with no start on file: yes", R.ocupadoClash(I("ocupado mañana a las 12"), [NaN]), true, "never a guess");
+  check("ocupado clash", "7 could be 19:00: yes when a booking is at 19:00", R.ocupadoClash(I("ocupado a las 7"), [M(25, 19)]), true, "");
   // What the studio is told.
   const link = "https://book.massageclub.io/bot.html?slots=1&k=2";
   const say = (t, rs = rows, first = "") => { const i = R.ocupadoIntent(t, sat); return R.ocupadoReply(R.ocupadoPick(i, rs, sat), i, link, sat, first); };
@@ -2813,6 +2858,8 @@ for (const [msg, want, note] of [
   // Jordan's links page order, and the share text.
   const F = (o) => R.socFunnelRank({ review: false, viewed: false, submitted: false, live: 0, weekly: 0, terms: false, ...o }).rank;
   check("socios links page", "review, not opened, opened, sent, live", [F({ review: true, live: 3 }), F({}), F({ viewed: true }), F({ viewed: true, submitted: true }), F({ submitted: true, weekly: 1 })], [0, 1, 2, 3, 4], "");
+  const FL = (o) => R.socFunnelRank({ review: false, viewed: false, submitted: false, live: 0, weekly: 0, terms: false, ...o }).label;
+  check("socios links page", "saved is not bookable (review nit)", [FL({ live: 2 }), FL({ live: 2, bookable: true }), FL({ submitted: true })], ["Times saved, not offered yet", "Times saved, customers can book", "Submitted, nothing saved"], "");
   check("socios links page", "share text: the pitch kit's first line, the link, the signature", [kit.includes(R.SOC_PITCH_ES), R.socShareText("L")], [true, `${R.SOC_PITCH_ES}\n\nL\n\nJordan, de Massage Club`], "");
 
   // No em or en dashes anywhere in the new code (pages, cards, studio texts, comments).
@@ -2823,15 +2870,29 @@ for (const [msg, want, note] of [
 
   // Hooks.
   check("hook", "the page's endpoint is routed before anything else reads the body", /const url = new URL\(req\.url\);\s*\/\/ v216[^\n]*\n[^\n]*\n\s*if \(url\.searchParams\.has\("socios"\)\) return await sociosApi\(req, url\);/.test(botSrc), true, "");
-  check("hook", "«ocupado» only after the away-message check, and today's path otherwise", /if \(!autoReply && await studioOcupado\(from, text, partner\)\.catch\([^\n]*\) \{ \/\* answered \*\/ \}\s*else if \(autoReply\) \{/.test(botSrc), true, "");
-  check("hook", "«ocupado» reads the switch first: off changes nothing", /async function studioOcupado\([^)]*\): Promise<boolean> \{\s*if \(\(await releasedMode\(\)\) === "off"\) return false;/.test(botSrc), true, "");
-  check("hook", "«ocupado» checks for an open ask before it acts", /if \(await studioOpenAsk\(partner\.id\)\) \{[\s\S]{0,900}return false;\s*\}\s*let plan = ocupadoPick/.test(botSrc), true, "never confused with an answer to an ask");
-  check("hook", "a failed read counts as an open ask", /if \(!asked \|\| !chased \|\| !mine \|\| !lv\) return true;/.test(botSrc), true, "");
+  check("hook", "«ocupado» before the 45 second away-message guess; only away text skips it (review fix)", /const awayOnly = awayText && !ourQuestion;\s*if \(!awayOnly && await studioOcupado\(from, text, partner\)\.catch\([^\n]*\) \{ \/\* answered \*\/ \}\s*else if \(autoReply\) \{/.test(botSrc) && /const autoReply = !ourQuestion && \(awayText \|\| \(sinceMs < 45_000 && !parseOfferedTime\(text\)\)\);/.test(botSrc), true, "a quick 'Ocupado' and the answer to 'which one?' were dropped");
+  check("hook", "an answer to our released-times question is never an away message", /async function ocupadoQuestionOpen\(from: string\)[\s\S]{0,700}¿Cuál se os ha llenado\\\?\|¿Me confirmáis que al final no podéis atenderle\\\?/.test(botSrc), true, "'Sí, no podemos atenderle' matched AUTOREPLY_RE");
+  check("hook", "«ocupado» is not gated by RELEASED any more (review fix)", /async function studioOcupado\([^)]*\): Promise<boolean> \{\s*const nowMs = Date\.now\(\);/.test(botSrc) && !/async function studioOcupado\([^)]*\): Promise<boolean> \{\s*if \(\(await releasedMode/.test(botSrc), true, "times saved while off must still come off");
+  check("hook", "«ocupado» checks for an open ask or a booking of theirs before it acts", /const openWhy = await studioOpenAsk\(partner\.id, intent\)[^\n]*\n\s*if \(openWhy\) \{[\s\S]{0,900}return false;\s*\}\s*let plan = ocupadoPick/.test(botSrc), true, "never confused with an answer to an ask");
+  check("hook", "a time we have nothing at goes to today's path", /if \(plan\.kind === "none"\) \{[^\n]*return false; \}/.test(botSrc), true, "scenario F");
+  check("hook", "a failed read counts as an open ask; won rows, 8 days of confirmed bookings and website bookings are read", /if \(!asked \|\| !chased \|\| !won \|\| !mine \|\| !conf \|\| !confNoStart \|\| !web\) return "a read failed";/.test(botSrc) && /outcome=eq\.won/.test(botSrc) && /confirmed_start=lte\.\$\{iso\(nowMs \+ 8 \* 86400e3\)\}/.test(botSrc) && /bookings\?partner_id=eq\.\$\{p\}&status=in\.\(pending,confirmed\)/.test(botSrc), true, "");
   check("hook", "a signed submit releases through release_slots, source studio_link, evidence the signup", /relRpc\("release_slots", \{ p_partner: pid, p_rows: rows, p_source: "studio_link", p_evidence: `socios signup \$\{signup\.id\}`, p_since:/.test(botSrc), true, "");
   check("hook", "only a signed, live studio is applied at once", /const why = !signed \? [\s\S]{0,400}socTestish\(plan\.studio\.wa, plan\.studio\.email\) && !socIsTestStudio\(partner\) \? "a test contact on a real studio" : "";/.test(botSrc), true, "test contacts never reach a real studio");
   check("hook", "approve claims before it applies (one conditional update)", /const claimed = await socPatch\(id, \{ status: "applied", reviewed_at: new Date\(\)\.toISOString\(\) \}, row\.status\);\s*if \(!claimed\)/.test(botSrc), true, "a double tap applies once");
   check("hook", "approve and reject need the page's own button (fresh t)", /const fresh = t > 0 && nowMs - t < 2 \* 3600e3 && t <= nowMs \+ 60e3;/.test(botSrc) && /if \(a === "yes" && fresh\)/.test(botSrc) && /if \(a === "no" && fresh\)/.test(botSrc), true, "a scanner opening the emailed link changes nothing");
-  check("hook", "a test studio's contact fields are never filled", /if \(!socIsTestStudio\(partner\)\) \{\s*for \(const \[field, value\] of Object\.entries\(diff\.fill\)\)/.test(botSrc), true, "");
+  check("hook", "a test studio's contact fields are never changed; only its own link changes a studio's details", /const own = via === "socios_link";\s*if \(own && !socIsTestStudio\(partner\)\) \{\s*const up = socSignedUpdate\(partner, plan\.studio\);/.test(botSrc), true, "");
+  check("hook", "terms recorded only on the studio's own link or for a new studio (review fix)", /if \(own \|\| created\) \{\s*const tr = await fetch\(`\$\{SUPABASE_URL\}\/rest\/v1\/partner_terms/.test(botSrc), true, "an unsigned form never records terms in an existing studio's name");
+  check("hook", "a signed send counts only against its own signed sends (review fix)", /if \(signed\) \{\s*if \(\(await socCount\(`partner_id=eq\.\$\{encodeURIComponent\(String\(partner\.id\)\)\}&signed=is\.true&/.test(botSrc) && /partner_id: signed \? partner\.id : null, status: "rejected"/.test(botSrc), true, "a public slug can no longer lock a studio out");
+  check("hook", "the sender address is cf-connecting-ip, else the last X-Forwarded-For entry (review fix)", /const cf = \(req\.headers\.get\("cf-connecting-ip"\) \|\| ""\)\.trim\(\);\s*if \(cf\) return cf;[\s\S]{0,200}return xff\[xff\.length - 1\];/.test(botSrc) && !/x-forwarded-for"\) \|\| ""\)\.split\(","\)\[0\]/.test(botSrc), true, "the first entry is whatever the client sent");
+  check("hook", "one cap for every unsigned send, and a card limit for Jordan", /signed=is\.false&created_at=gte\.\$\{since\(3600e3\)\}`\)\) >= SOC_LIMIT_UNSIGNED_H\) return limited;/.test(botSrc) && /if \(cardsH < SOC_CARDS_UNSIGNED_H\) await socReviewCard/.test(botSrc), true, "");
+  check("hook", "Aprobar and Rechazar are form submits, not links (review nit)", /const yes = pillForm\(f\("yes"\)/.test(botSrc) && /const no = pillForm\(f\("no"\)/.test(botSrc) && !/pillLink\(`\$\{base\}&a=yes/.test(botSrc), true, "a link follower cannot approve");
+  check("hook", "the unsigned prefill shows nothing for a studio that is not active (review nit)", /if \(!signed && String\(partner\.status \|\| ""\) !== "active"\) return \{ ok: true, status: "unknown" \};/.test(botSrc), true, "");
+  check("hook", "the fast lane offers released times before finalising (review fix)", /await continueFromKnown\(s, from, L, \{ released: true \}\);/.test(botSrc) && /if \(o\.released && !s\.data\.chosen[^\n]*\n\s*&& await offerReleased\(s, from, L\)\) return;\s*await askNameOrFinalize\(s, from, L\);/.test(botSrc), true, "the one-sentence opener never saw them");
+  check("hook", "the page's hello from a number that is not a partner never enters the customer flow (review fix)", botSrc.indexOf("if (text && SOCIOS_HELLO_RE.test(text) && !(await findPartnerByNumber(") > 0 && botSrc.indexOf("if (text && SOCIOS_HELLO_RE.test(text) && !(await findPartnerByNumber(") < botSrc.indexOf("// ---- Studio replies: template button payloads") && /if \(s\.data\.socStudioAt && Date\.now\(\) - Number\(s\.data\.socStudioAt\) < SOC_STUDIO_CHAT_MS/.test(botSrc), true, "");
+  const helloRe = new RegExp((botSrc.match(/const SOCIOS_HELLO_RE = \/(.*)\/;/) || [])[1]);
+  const pageHello = (k, L) => (html.match(new RegExp(`\\n  ${L}: \\{[\\s\\S]*?\\n    ${k}: "([^"]*)",`)) || [])[1];
+  check("hook", "the page's four hellos are recognised", ["es", "en"].flatMap((L) => [pageHello("contactHello", L).replace("{n}", "Centro Nuevo Masajes"), pageHello("contactHello0", L)]).map((t) => helloRe.test(t + "¿Cómo funciona?")), [true, true, true, true], "contactHello and contactHello0, es and en");
+  check("hook", "a released booking's email question promises no rate (review nit)", /await say\(relSlot \? RELEASED_COPY\[L === "es" \? "es" : "en"\]\.emailAsk : COPY\[L\]\.memberJoin\);/.test(botSrc), true, "");
   check("hook", "the times page works before RELEASED is on, and says so", !/Todavía no está activa/.test(botSrc) && /const liveNow = socLiveFor\(mode, isTest\);/.test(botSrc) && /Todavía no las ofrecemos a clientes: las guardamos y os avisamos en cuanto empecemos\./.test(botSrc), true, "Jordan: studios may load times before it is on");
   check("hook", "the page's WhatsApp fallback is read before the studio and customer paths", botSrc.indexOf("if (text && SOCIOS_FALLBACK_RE.test(text)) {") > 0 && botSrc.indexOf("if (text && SOCIOS_FALLBACK_RE.test(text)) {") < botSrc.indexOf("// ---- Studio replies: template button payloads"), true, "");
   const fbRe = new RegExp((botSrc.match(/const SOCIOS_FALLBACK_RE = \/(.*)\/;/) || [])[1]);
@@ -2844,6 +2905,9 @@ for (const [msg, want, note] of [
   check("socios page", "sends the link signature and when it was drawn", /link_sig: SIG_OK \? SIG : null,\s*drawn_at: DRAWN_AT,/.test(html), true, "");
   check("socios page", "the view is logged only for a signed link and never in preview", /\(SIG_OK \? "&k=" \+ SIG \+ \(PREVIEW \? "" : "&view=1"\) : ""\)/.test(html), true, "");
   check("socios page", "the same limits as the server", [(html.match(/const MAX_TIMES = (\d+);/) || [])[1], (botSrc.match(/const SOC_MAX_TIMES = (\d+);/) || [])[1], (html.match(/const LEAD_MIN = (\d+);/) || [])[1]], ["40", "40", "65"], "65: the grid's lead, one hour is release_slots'");
+  check("socios page", "Recibido says WhatsApp and email too (review nit)", /nextB: "Si un cliente coge un hueco, os llega la reserva por WhatsApp y por email/.test(html), true, "");
+  check("socios page", "the page holds times to 08:00 to 22:00 like the server", /const DAY_WIN = \[8 \* 60, 22 \* 60\];/.test(html) && /\.map\(\(\[o, c\]\) => \[Math\.max\(o, DAY_WIN\[0\]\), Math\.min\(c, DAY_WIN\[1\]\)\]\)/.test(html), true, "");
+  check("socios page", "the price for the chosen length is required unless own link with a menu", /const priceNeeded = \(\) => !\(S\.signed && S\.partner && S\.partner\.has_menu === true\);/.test(html) && /errPriceNeed/.test(html), true, "");
   check("socios page", "the result screens say what the server said", /s4Saved: "Guardado"/.test(html) && /s4Received: "Recibido"/.test(html) && /received0: "Lo revisamos y os confirmamos por WhatsApp o email\."/.test(html), true, "");
 
   // The migration.

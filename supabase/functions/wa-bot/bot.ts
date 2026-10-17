@@ -1316,7 +1316,7 @@ async function greet(s: Session, from: string, firstText?: string, preAnswer = "
     if (s.data.service) await logEvent(from, "service_chosen", { service: s.data.service, fastlane: true });
     const understood = [row ? (L === "es" ? String(row.tEs).toLowerCase() : String(row.tEn).toLowerCase()) : "", s.data.day, s.data.time, s.data.area].filter(Boolean).join(" · ");
     await sendText(from, COPY[L].gotItSvc(understood || (L === "es" ? "tu petición" : "your request")));
-    await continueFromKnown(s, from, L);
+    await continueFromKnown(s, from, L, { released: true });
     return;
   }
   // v59: anyone whose first message shows the language gets the same single
@@ -4908,7 +4908,7 @@ const RELEASED_COPY: Record<string, {
   many: (lines: string[]) => string; one: (line: string) => string; more: string; yes: (t: string) => string;
   justTaken: string; stale: string; gone: string; heldOut: string; tooClose: string; already: string; rejectNote: string; noThanks: string; showOptions: string; noThanksBtn: string;
   rejectedNext: (first: string, studio: string, at: string, line: string) => string; rejectedNone: (first: string, studio: string, at: string) => string;
-  rejectedMail: (first: string, studio: string, at: string) => string; rejectedSubject: (studio: string) => string;
+  rejectedMail: (first: string, studio: string, at: string) => string; rejectedSubject: (studio: string) => string; emailAsk: string;
 }> = {
   en: {
     many: (lines) => `Good news: these times are free and you can book one right now.\n\n${lines.join("\n")}\n\nTap one and it's booked. The studio gets your name, phone and email for the booking. You pay at the studio, no fee from us.`,
@@ -4929,6 +4929,7 @@ const RELEASED_COPY: Record<string, {
     rejectedNone: (first, studio, at) => `Sorry${first ? ", " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there.\n\nWould you like to see other studios near you?`,
     rejectedMail: (first, studio, at) => `Sorry${first ? ", " + first : ""}, ${studio} has just told us they cannot take you ${at} after all, so nothing is booked there and you do not need to go.\n\nReply to us on WhatsApp and we will find you another time.\n\nMassage Club`,
     rejectedSubject: (studio) => `${studio} cannot take you after all`,
+    emailAsk: "If you send me your email, I'll email you the confirmation too and pass it to the studio for your booking.",
   },
   es: {
     many: (lines) => `Buenas noticias: estas horas están libres y puedes reservar una ahora mismo.\n\n${lines.join("\n")}\n\nToca una y queda reservada. El centro recibe tu nombre, tu teléfono y tu email para la reserva. Pagas en el centro, sin comisión.`,
@@ -4949,6 +4950,7 @@ const RELEASED_COPY: Record<string, {
     rejectedNone: (first, studio, at) => `Lo siento${first ? ", " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado.\n\n¿Quieres ver otros centros cerca de ti?`,
     rejectedMail: (first, studio, at) => `Lo siento${first ? ", " + first : ""}, ${studio} nos acaba de decir que al final no puede ${at}, así que ahí no hay nada reservado y no hace falta que vayas.\n\nEscríbenos por WhatsApp y te buscamos otra hora.\n\nMassage Club`,
     rejectedSubject: (studio) => `${studio} al final no puede`,
+    emailAsk: "Si me mandas tu email, te mando también la confirmación por correo y se lo paso al centro para tu reserva.",
   },
 };
 // Buttons. Two options: "18:00 Calma" style, cut at WhatsApp's 20 characters.
@@ -5068,10 +5070,14 @@ async function relHmac(opsKey: string, kind: string, value: string): Promise<str
   return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 const socSigValue = (p: { id: string; slots_link_v?: unknown }): string => `${p.id}:${Number(p.slots_link_v || 1)}`;
-// The page's origins: the live site, the bare domain and Vercel previews.
+// The page's origins: the live site, the bare domain and this project's own
+// Vercel previews (your-massage-pass-*.vercel.app). Review fix (17 Oct): any
+// *.vercel.app was allowed, which anyone can deploy. CORS only stops other
+// sites' pages in a browser; a request without an Origin (curl) still gets in,
+// which is why every check and limit is on the server.
 function socAllowedOrigin(origin: unknown): string {
   const o = String(origin ?? "");
-  return /^https:\/\/(book\.)?massageclub\.io$/.test(o) || /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(o) ? o : "";
+  return /^https:\/\/(book\.)?massageclub\.io$/.test(o) || /^https:\/\/your-massage-pass(?:-[a-z0-9-]+)?\.vercel\.app$/.test(o) ? o : "";
 }
 // A phone as digits with its country code, the way the page sends it ("+34
 // 600 000 000", a bare Spanish 9 digits is +34). "" when it cannot be one.
@@ -5087,10 +5093,21 @@ const socLast9 = (d: unknown): string => String(d ?? "").replace(/\D/g, "").slic
 const socLine = (v: unknown): string => String(v ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
 const SOC_EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const SOC_MAX_TIMES = 40;
+// Review fix (17 Oct): whatever the hours say, a /socios time starts at 08:00
+// or later and ends by 22:00 (REL_DEFAULT_HOURS). Typed hours of "0-24" once
+// saved 03:00 and 23:00, and a weekly 00:00. The migration holds weekly times
+// to the same window (released_patterns_window).
+const SOC_DAY_WINDOW: [number, number] = [8 * 60, 22 * 60];
+function socWindows(hours: Map<number, Array<[number, number]>> | null, dow: number): Array<[number, number]> {
+  return slotWindows(hours || new Map(), dow)
+    .map(([o, c]) => [Math.max(o, SOC_DAY_WINDOW[0]), Math.min(c, SOC_DAY_WINDOW[1])] as [number, number])
+    .filter(([o, c]) => c > o);
+}
 // Why one time cannot be saved, or "". Madrid wall clock, 30 minute grid,
 // today to 7 days ahead (the page's chips; release_slots takes under 8 days),
 // at least 60 minutes ahead (release_slots), inside the day's opening hours,
-// 08:00 to 22:00 when they are unknown (REL_DEFAULT_HOURS, as the page shows).
+// 08:00 to 22:00 when they are unknown (REL_DEFAULT_HOURS, as the page shows),
+// and never outside 08:00 to 22:00 (SOC_DAY_WINDOW).
 function socTimeCheck(ymd: string, hm: string, minutes: number, hours: Map<number, Array<[number, number]>> | null, nowMs: number): "" | "format" | "grid" | "day" | "soon" | "far" | "closed" | "hours" {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || "")) || !/^\d{2}:\d{2}$/.test(String(hm || ""))) return "format";
   const t = relToMin(hm);
@@ -5101,7 +5118,7 @@ function socTimeCheck(ymd: string, hm: string, minutes: number, hours: Map<numbe
   const st = relAt(ymd, t);
   if (st - 60 * 60e3 < nowMs) return "soon";
   if (st >= nowMs + 8 * 86400e3) return "far";
-  const w = slotWindows(hours || new Map(), day.dow);
+  const w = socWindows(hours, day.dow);
   if (!w.length) return "closed";
   if (!w.some(([o, c]) => t >= o && t + minutes <= c)) return "hours";
   return "";
@@ -5112,7 +5129,7 @@ function socWeeklyCheck(dow: number, hm: string, minutes: number, hours: Map<num
   const t = relToMin(hm);
   if (t === null || t >= 1440) return "format";
   if (t % 30) return "grid";
-  const w = slotWindows(hours || new Map(), dow);
+  const w = socWindows(hours, dow);
   if (!w.length) return "closed";
   if (!w.some(([o, c]) => t >= o && t + minutes <= c)) return "hours";
   return "";
@@ -5126,15 +5143,24 @@ type SocPlan = {
   pattern: Array<{ dow: number; hm: string }>;
   skipped: Array<{ day: string; hm: string; why: string }>;
   price: number | null;
-  terms: { version: string; lang: "es" | "en"; text: string; sameAsPage: boolean };
+  terms: { version: string; lang: "es" | "en"; text: string };
   drawnAt: number | null;
 };
 // Everything the page sends, checked here whatever the page did. Form-level
 // problems refuse the whole submission (errors); a single time that no longer
 // fits (it is now too soon, the hours changed) is only skipped, unless no
-// time is left at all. hours: what the studio typed (the page's normalised
-// reading first), else what we have on file, else 08:00 to 22:00.
-function socValidate(p: any, nowMs: number, storedHours: unknown = null): { ok: boolean; errors: string[]; plan: SocPlan | null } {
+// time is left at all.
+// Hours (review fix, 17 Oct): on the studio's own signed link (typedFirst)
+// what it typed comes first (the page's normalised reading, then the raw
+// text), because those hours are then saved on its row; otherwise what we
+// have on file comes first and what was typed only counts when the file has
+// none. Unknown is 08:00 to 22:00, and nothing is ever outside 08:00 to 22:00.
+// Price (review fix): every offer to a customer carries a price, so the price
+// for the chosen length is required unless the studio already has one listed
+// (priceKnown: a signed link for a studio with a menu on file).
+// Terms (review fix): the sentence sent must be exactly the one we have for
+// that version and language, or nothing is accepted (terms_text).
+function socValidate(p: any, nowMs: number, storedHours: unknown = null, o: { typedFirst?: boolean; priceKnown?: boolean } = {}): { ok: boolean; errors: string[]; plan: SocPlan | null } {
   const errors: string[] = [];
   const st = p && typeof p.studio === "object" && p.studio ? p.studio : {};
   const av = p && typeof p.availability === "object" && p.availability ? p.availability : {};
@@ -5163,13 +5189,17 @@ function socValidate(p: any, nowMs: number, storedHours: unknown = null): { ok: 
   if (minutes !== 60 && minutes !== 90) errors.push("duration");
   const version = String(tm.version || "");
   const known = SOCIOS_TERMS[version];
+  const tl: "es" | "en" = String(tm.lang || lang) === "en" ? "en" : "es";
   if (tm.accepted !== true || !known) errors.push("terms");
+  else if (socLine(tm.text) !== known[tl]) errors.push("terms_text");
+  if ((minutes === 90 ? p90 : p60) === null && !o.priceKnown && (minutes === 60 || minutes === 90)) errors.push("price_needed");
   const weekly = av.repeat_weekly === true;
   const list = Array.isArray(av.slots) ? av.slots : [];
   if (!list.length) errors.push("times_none");
   if (list.length > SOC_MAX_TIMES) errors.push("times_many");
   if (errors.length) return { ok: false, errors, plan: null };
-  const hours = slotHours(hoursRead) || slotHours(hoursRaw) || slotHours(storedHours);
+  const typed = slotHours(hoursRead) || slotHours(hoursRaw);
+  const hours = o.typedFirst ? typed || slotHours(storedHours) : slotHours(storedHours) || typed;
   const once: Array<{ ymd: string; hm: string }> = [];
   const pattern: Array<{ dow: number; hm: string }> = [];
   const skipped: Array<{ day: string; hm: string; why: string }> = [];
@@ -5193,7 +5223,6 @@ function socValidate(p: any, nowMs: number, storedHours: unknown = null): { ok: 
   if (!once.length && !pattern.length) return { ok: false, errors: ["times_invalid"], plan: null };
   const drawn = Number(p?.drawn_at);
   const drawnAt = Number.isFinite(drawn) && drawn <= nowMs + 60e3 && drawn >= nowMs - 24 * 3600e3 ? Math.min(drawn, nowMs) : null;
-  const tl: "es" | "en" = String(tm.lang || lang) === "en" ? "en" : "es";
   return {
     ok: true,
     errors: [],
@@ -5201,7 +5230,7 @@ function socValidate(p: any, nowMs: number, storedHours: unknown = null): { ok: 
       lang, minutes, weekly, once, pattern, skipped, drawnAt,
       studio: { name, wa, address, email, hoursRaw, hoursRead, p60, p90 },
       price: minutes === 90 ? p90 : p60,
-      terms: { version, lang: tl, text: known[tl], sameAsPage: socLine(tm.text) === known[tl] },
+      terms: { version, lang: tl, text: known[tl] },
     },
   };
 }
@@ -5250,6 +5279,38 @@ function socDiff(partner: any, s: SocPlan["studio"]): SocDiff {
   }
   return out;
 }
+// What a studio's own signed link changes on its row. Review fix (17 Oct): on
+// its own link the studio is the source of truth for where its bookings reach
+// it. The page tells it "Las reservas os llegan por WhatsApp al <its number>"
+// and asks for the email every booking goes to, so a different booking
+// WhatsApp, booking email or opening hours replace ours (the old value stays
+// in the signup's result and on Jordan's card). Empty fields are filled. The
+// old WhatsApp moves to phone when phone is empty, so a message from it still
+// reads as the studio; when phone holds another number the old WhatsApp is no
+// longer on file (lostNumber, said on the card). The address is only noted.
+// Only for a signed link: an unsigned form never changes a studio's details.
+type SocUpdate = { set: Record<string, string>; filled: string[]; replaced: Array<{ field: string; was: string; now: string }>; noted: SocDiff["differ"]; lostNumber: string };
+function socSignedUpdate(partner: any, s: SocPlan["studio"]): SocUpdate {
+  const d = socDiff(partner, s);
+  const out: SocUpdate = { set: { ...d.fill }, filled: Object.keys(d.fill), replaced: [], noted: [], lostNumber: "" };
+  for (const x of d.differ) {
+    if (x.field === "whatsapp") {
+      out.set.whatsapp = x.given;
+      out.replaced.push({ field: "whatsapp", was: x.onFile, now: x.given });
+      const ph = String(partner?.phone ?? "").trim();
+      if (!ph) out.set.phone = x.onFile;
+      else if (socLast9(ph) !== socLast9(x.onFile)) out.lostNumber = x.onFile;
+    } else if (x.field === "email") {
+      // Bookings go to booking_email first; the general email stays as it is.
+      out.set.booking_email = x.given;
+      out.replaced.push({ field: "booking_email", was: x.onFile, now: x.given });
+    } else if (x.field === "opening_hours") {
+      out.set.opening_hours = x.given;
+      out.replaced.push({ field: "opening_hours", was: x.onFile, now: x.given });
+    } else out.noted.push(x);
+  }
+  return out;
+}
 // A slug for a new studio: "Centro Ána Masajes" -> "centro-ana-masajes".
 function socSlug(name: string): string {
   return stripAcc(String(name || "")).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/g, "") || "centro";
@@ -5272,6 +5333,10 @@ const SOC_MSG: Record<string, { es: string; en: string }> = {
   price: { es: "El precio tiene que ser un número entre 1 y 500.", en: "The price has to be a number between 1 and 500." },
   duration: { es: "Elegid 60 o 90 minutos.", en: "Choose 60 or 90 minutes." },
   terms: { es: "Para enviar, marcad «Acepto las condiciones».", en: "To send, tick \"I accept the terms\"." },
+  // Review fix (17 Oct): the terms sent are not the ones we have for that version.
+  terms_text: { es: "Las condiciones de esta página han cambiado. Recargad la página, leedlas y volved a enviarlo.", en: "The terms on this page have changed. Reload the page, read them and send it again." },
+  // Review fix (17 Oct): every offer to a customer carries a price.
+  price_needed: { es: "Poned vuestro precio para esa duración: es el que ve el cliente.", en: "Add your price for that length: it is what the customer sees." },
   times_none: { es: "Elegid al menos un hueco.", en: "Choose at least one slot." },
   times_many: { es: `Como mucho ${SOC_MAX_TIMES} huecos de una vez. Quitad alguno, por favor.`, en: `At most ${SOC_MAX_TIMES} slots at once. Please remove some.` },
   times_invalid: { es: "Ninguna de esas horas se puede guardar: falta menos de una hora, ya ha pasado o no cabe en vuestro horario. Elegid otras, por favor.", en: "None of those times can be saved: they are less than an hour away, already past, or outside your opening hours. Please choose others." },
@@ -5291,6 +5356,11 @@ const OCU_FILLER = new Set(("hola buenas buenos dias dia tardes noches buen ya n
   "perdona perdon sorry siento eso ese esa este esto tarde noche mediodia ok vale aviso avisamos avisar avisaros tenemos tengo hay finalmente final ahora mismo tambien una uno un si " +
   "saludo saludos besos abrazo porfa pls please taken busy full ocupe media menos cuarto pm am the con otro otra cliente clientes camilla camillas reserva").split(" "));
 const OCU_DAYS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+// Review fix (17 Oct): a counter-offer or a change is an answer, never a
+// withdrawal: "No, a las 18 está ocupado, podemos a las 19" read as "remove
+// 18:00". So is anything naming two different hours.
+const OCU_COUNTER_RE = /\b(?:podemos|podriamos|puedo|podria|puede|pueden|pero|mejor|en vez|en cambio|otra hora|alternativa|cambiar|cambiamos|mover|movemos|retrasar|retrasamos|adelantar|adelantamos|si quiere|si quieres|que tal)\b/;
+const OCU_HOURS_RE = /\b([01]?\d|2[0-3])[:.h][0-5]\d\b|\b(?:a las|las|a la)\s+([01]?\d|2[0-3])\b(?!\s*(?:salas?|camillas?|personas?|clientes?|huecos?)\b)|\b([01]?\d|2[0-3])\s*(?:h|hs|horas)\b/g;
 type OcuIntent = { ymd: string | null; mins: number[] };
 function ocupadoIntent(text: unknown, nowMs: number): OcuIntent | null {
   const raw = String(text ?? "");
@@ -5299,6 +5369,8 @@ function ocupadoIntent(text: unknown, nowMs: number): OcuIntent | null {
   // ocupado"); quotes and the like go.
   let s = " " + stripAcc(raw).replace(/[‘’“”'"!¡()*_~;]+/g, " ").replace(/,/g, " , ") + " ";
   if (!OCU_TRIGGER_RE.test(s) || OCU_NEGATED_RE.test(s)) return null;
+  if (OCU_COUNTER_RE.test(s)) return null;
+  if (new Set([...s.matchAll(OCU_HOURS_RE)].map((m) => Number(m[1] ?? m[2] ?? m[3]))).size > 1) return null;
   // The day.
   const days = slotDays(nowMs, 8);
   let off: number | null = null;
@@ -5345,6 +5417,19 @@ function ocupadoIntent(text: unknown, nowMs: number): OcuIntent | null {
     else mins.push(h * 60 + mi, (h + 12) * 60 + mi);
   }
   return { ymd: off !== null && off >= 0 && off < days.length ? days[off].ymd : null, mins };
+}
+// Review fix (17 Oct): could the message be about one of the studio's own
+// bookings rather than a released time? bookings: the start of each confirmed
+// booking (not on a released time) and each pending or confirmed website
+// booking at this studio in the window, as epoch ms; NaN when its time is not
+// known. A message that names no time, or names a time (and day, if given)
+// at which one of them starts, or any booking whose time is unknown: yes.
+// Then nothing is withdrawn and today's handling answers it.
+function ocupadoClash(intent: OcuIntent, bookings: number[]): boolean {
+  if (!bookings.length) return false;
+  if (bookings.some((ms) => !Number.isFinite(ms))) return true;
+  if (!intent.mins.length) return true;
+  return bookings.some((ms) => intent.mins.includes(relMinOfDay(ms)) && (!intent.ymd || relYmd(ms) === intent.ymd));
 }
 type OcuRow = { id: string; start_at: string; end_at?: string; status: string; seat?: number; request_id?: number | null; pattern_id?: string | null };
 type OcuGroup = { startMs: number; ymd: string; hm: string; free: string[]; held: number; booked: number[]; weekly: boolean };
@@ -5420,12 +5505,14 @@ function ocupadoReply(plan: OcuPlan, intent: OcuIntent, link: string, nowMs: num
 
 // ---- Jordan's links page: where each studio is in the funnel ----
 // Order: a form waiting for his review first, then not opened, opened, sent
-// with nothing live yet, and times live.
-type SocFunnel = { review: boolean; viewed: boolean; submitted: boolean; live: number; weekly: number; terms: boolean };
+// with nothing saved yet, and times saved. Review fix (17 Oct): "Times live"
+// was said while customers could not book them yet (RELEASED off or test for
+// a real studio); bookable says which (socLiveFor).
+type SocFunnel = { review: boolean; viewed: boolean; submitted: boolean; live: number; weekly: number; terms: boolean; bookable?: boolean };
 function socFunnelRank(f: SocFunnel): { rank: number; label: string } {
   if (f.review) return { rank: 0, label: "Waiting for your review" };
-  if (f.live > 0 || f.weekly > 0) return { rank: 4, label: "Times live" };
-  if (f.submitted) return { rank: 3, label: "Submitted, nothing live" };
+  if (f.live > 0 || f.weekly > 0) return { rank: 4, label: f.bookable ? "Times saved, customers can book" : "Times saved, not offered yet" };
+  if (f.submitted) return { rank: 3, label: "Submitted, nothing saved" };
   if (f.viewed) return { rank: 2, label: "Opened, not submitted" };
   return { rank: 1, label: "Not opened" };
 }
@@ -6626,7 +6713,9 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     s.data.offer = null;
     if (!req.contact_email && !s.data.emailRefused && from) {
       s.step = "await_email_post"; await saveSession(s);
-      await say(COPY[L].memberJoin);
+      // Review nit (17 Oct): a released time has no rate to lock in and the
+      // confirmation has just gone, so its email question promises neither.
+      await say(relSlot ? RELEASED_COPY[L === "es" ? "es" : "en"].emailAsk : COPY[L].memberJoin);
     } else {
       s.step = "done"; await saveSession(s);
     }
@@ -7637,20 +7726,57 @@ async function releasedOps(payload: any): Promise<Response> {
 // ---- v216 socios: the page's endpoint, Jordan's review and links pages, «ocupado» ----
 // The pure helpers are in the v216 block above; the tables are in
 // supabase/migrations/20261018_socios_signup.sql. Nothing here writes to a
-// studio or a customer except the «ocupado» answer, which only goes back to a
-// partner number that has just written to us, and only while RELEASED is test
-// or on. Jordan gets cards; every message to a studio he still sends himself
-// (the review page and the links page only open his own WhatsApp).
+// studio or a customer except two answers to a number that has just written
+// to us: the «ocupado» answer (to a partner number with live released times,
+// whatever RELEASED says since the 17 Oct review) and the one acknowledgement
+// of the page's own WhatsApp messages. Jordan gets cards; every other message
+// to a studio he still sends himself (the review page and the links page only
+// open his own WhatsApp).
 const SOCIOS_PAGE = "https://book.massageclub.io/socios";
 // The page's fallback message (its msgHello, then its msgTimes block) and the
 // one answer to it. The page's other WhatsApp links open with the same hello
 // but no times block: those are ordinary studio messages.
 const SOCIOS_FALLBACK_RE = /^\s*(?:Hola, Massage Club\. Somos [^\n]{1,160}, centro de masaje\.\s*\n\s*Horas que os ofrecemos \(|Hello, Massage Club\. We are [^\n]{1,160}, a massage studio\.\s*\n\s*Times we offer you \()/;
 const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos por aquí.";
+// Review fix (17 Oct): the page's other WhatsApp buttons (the result screen's
+// "Escribirnos por WhatsApp" and the footer) open with its hello and no times
+// block (contactHello / contactHello0, es and en). From a number that is not a
+// partner yet (a new studio, the "Recibido" case) that message, and anything
+// that number writes in the next 2 days, never enters the customer flow: the
+// studio gets one acknowledgement and Jordan a studio card. From a partner's
+// number it stays an ordinary studio message.
+const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, centro de masaje|un centro de masaje)\.|Hello, Massage Club\. We are (?:[^\n]{1,160}, a massage studio|a massage studio)\.)/;
+// "Thanks for writing to us. We will read it and answer you here."
+const SOCIOS_HELLO_ACK = "Gracias por escribirnos. Lo leemos y os contestamos por aquí.";
+const SOC_STUDIO_CHAT_MS = 2 * 86400e3;
 const SOC_COLS = "id,business_name,slug,status,opted_out_at,whatsapp,phone,email,booking_email,address,neighbourhood,opening_hours,price_from,slots_link_v";
 const SOC_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-// Sends per sender (a keyed IP hash) and per studio.
-const SOC_LIMIT_IP_10M = 6, SOC_LIMIT_IP_DAY = 30, SOC_LIMIT_STUDIO_H = 6;
+// Rate limits. Review fix (17 Oct): a signed send counts only against its own
+// studio's signed sends (only the studio has that link), so nobody can use up
+// a studio's limit with its public slug or its WhatsApp. Unsigned sends count
+// per sender address, per typed WhatsApp (unsigned only), and against one cap
+// for everyone; with no address at all they share a smaller bucket.
+const SOC_LIMIT_IP_10M = 6, SOC_LIMIT_IP_DAY = 30, SOC_LIMIT_STUDIO_H = 6, SOC_LIMIT_NOIP_10M = 3, SOC_LIMIT_UNSIGNED_H = 30;
+// Jordan gets one card per unsigned form, up to this many an hour; after
+// that one "more are waiting" card, and the rest are on his links page.
+const SOC_CARDS_UNSIGNED_H = 5;
+// The sender's address for the rate limit. Review fix (17 Oct): the first
+// X-Forwarded-For entry is whatever the client sent (on Supabase a spoofed
+// header is kept and the real address is appended after it, and
+// cf-connecting-ip holds the real one). So: cf-connecting-ip, else the last
+// X-Forwarded-For entry, else x-real-ip.
+function socClientIp(req: Request): string {
+  const cf = (req.headers.get("cf-connecting-ip") || "").trim();
+  if (cf) return cf;
+  const xff = (req.headers.get("x-forwarded-for") || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (xff.length) return xff[xff.length - 1];
+  return (req.headers.get("x-real-ip") || "").trim();
+}
+// The studio has a price on file the bot can quote (released_offers'
+// listed_price: an active menu row with a price).
+async function socHasMenu(pid: string): Promise<boolean> {
+  return (await socRows(`partner_services?partner_id=eq.${encodeURIComponent(pid)}&is_active=is.true&price=gt.0&select=id&limit=1`)).length > 0;
+}
 // A studio's personal link: /socios?s=<slug>&k=<sig>, signed like its free-times
 // page (relSig, over partner id and slots_link_v), so bumping slots_link_v
 // revokes both links at once.
@@ -7665,6 +7791,16 @@ async function socReviewLink(id: string, want = ""): Promise<string> {
 }
 async function socLinksUrl(): Promise<string> {
   return `${REPLY_BASE}?socios_links=1&sig=${await replySig("inbox")}`;
+}
+// Jordan's card for a new studio writing to the bot number from the page.
+async function socStudioChatCard(from: string, text: string, what: string) {
+  await founderCard(`📝 +${digitsOf(from)} ${what}`, {
+    badge: "NEW STUDIO ON WHATSAPP", title: `A studio ${what}`,
+    paras: ["Not a partner number yet, so the bot said nothing beyond one acknowledgement and kept it out of the customer flow. Answer them from your own WhatsApp; if they are a new studio, send them their signed /socios link once they have a row (or approve their form)."],
+    quote: text, waNum: from, waLabel: "Chat with the studio", prefill: "Hola, soy Jordan, de Massage Club. ",
+    links: [{ href: await socLinksUrl(), label: "Studio links" }],
+    to: ["jordan@massageclub.io"],
+  });
 }
 async function socRows(path: string): Promise<any[]> {
   try {
@@ -7735,11 +7871,15 @@ async function socLogView(pid: string) {
   await logEvent("system", "socios_view", { partner_id: pid });
 }
 // GET ?socios=1&s=<slug>[&k=<sig>][&view=1]: what the page prefills. The
-// email only for a signed link.
+// email and whether a menu is on file only for a signed link. Review fix (17
+// Oct): without a valid signature, only an active studio is prefilled, with
+// what its public listing already shows; a lead or pending studio reads as
+// unknown, so a guessed slug reveals nothing about it.
 async function socPrefill(url: URL): Promise<Record<string, unknown>> {
   const { partner, signed, sigBad } = await socResolve(url.searchParams.get("s"), url.searchParams.get("k"));
   if (!partner) return { ok: true, status: "unknown" };
   if (socInactive(partner)) return { ok: true, status: "inactive" };
+  if (!signed && String(partner.status || "") !== "active") return { ok: true, status: "unknown" };
   if (signed && url.searchParams.get("view") === "1") await socLogView(String(partner.id));
   const addr = socLine(partner.address), hood = socLine(partner.neighbourhood);
   return {
@@ -7747,7 +7887,7 @@ async function socPrefill(url: URL): Promise<Record<string, unknown>> {
     partner: {
       business_name: String(partner.business_name || ""),
       whatsapp: socPick(partner),
-      ...(signed ? { email: String(partner.booking_email || partner.email || "") } : {}),
+      ...(signed ? { email: String(partner.booking_email || partner.email || ""), has_menu: await socHasMenu(String(partner.id)) } : {}),
       address: addr && hood && !addr.toLowerCase().includes(hood.toLowerCase()) ? `${addr} (${hood})` : addr || hood,
       opening_hours: partner.opening_hours ?? null,
       price_from: Number(partner.price_from) > 0 ? Number(partner.price_from) : null,
@@ -7771,37 +7911,56 @@ const SOC_WD = { es: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"], en: ["
 const socWhen = (ms: number, L: "es" | "en", nowMs: number): string => `${relDayWord(ms, nowMs, L)} ${relHm(ms)}`;
 
 type SocApplied = {
-  filled: string[]; differ: SocDiff["differ"]; saved: Array<{ startMs: number }>; refused: Array<{ startMs: number }>;
-  skipped: SocPlan["skipped"]; weekly: Array<{ dow: number; hm: string; isNew: boolean }>; next: Array<{ startMs: number }>; terms: string;
+  filled: string[]; differ: SocDiff["differ"]; replaced: SocUpdate["replaced"]; lostNumber: string; saved: Array<{ startMs: number }>; refused: Array<{ startMs: number }>;
+  skipped: SocPlan["skipped"]; weekly: Array<{ dow: number; hm: string; isNew: boolean }>; next: Array<{ startMs: number }>; terms: string; live?: boolean;
 };
-// Saves a checked submission onto a studio: contact details where empty, the
-// terms, the dated times through release_slots (source studio_link, evidence
-// the signup id), and "every week" as released_patterns, materialised at once.
-// A test studio's contact details are never filled: they are Jordan's own.
-async function socApply(signup: any, partner: any, plan: SocPlan, via: "socios_link" | "socios_review"): Promise<{ ok: boolean; error: string; result: SocApplied }> {
+// Saves a checked submission onto a studio: the dated times through
+// release_slots (source studio_link, evidence the signup id), "every week" as
+// released_patterns, materialised at once, and:
+//   - its own signed link (socios_link): its details (socSignedUpdate: empty
+//     ones filled, a different booking WhatsApp, booking email or hours
+//     replace ours) and its acceptance of the terms;
+//   - a form Jordan approved for a NEW studio (socios_review, created): the
+//     row was made from the form, and the terms are recorded;
+//   - a form Jordan approved for a studio we ALREADY HAD (review fix, 17 Oct):
+//     only the times. Anyone can type a studio's WhatsApp into the plain
+//     page, so its details are never changed and no acceptance of the terms
+//     is recorded in its name; Jordan's card offers its own link instead.
+// A test studio's contact details are never changed: they are Jordan's own.
+async function socApply(signup: any, partner: any, plan: SocPlan, via: "socios_link" | "socios_review", created = false): Promise<{ ok: boolean; error: string; result: SocApplied }> {
   const nowMs = Date.now();
   const pid = String(partner.id);
-  const result: SocApplied = { filled: [], differ: [], saved: [], refused: [], skipped: plan.skipped, weekly: [], next: [], terms: "" };
-  const diff = socDiff(partner, plan.studio);
-  result.differ = diff.differ;
-  if (!socIsTestStudio(partner)) {
-    for (const [field, value] of Object.entries(diff.fill)) {
-      const cur = partner[field];
-      // Only a value that is really empty: null, or an empty string for text.
-      if (cur !== null && cur !== undefined && !(typeof cur === "string" && !cur.trim())) continue;
-      const cond = cur === null || cur === undefined ? "is.null" : `eq.${encodeURIComponent(String(cur))}`;
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(pid)}&${field}=${cond}`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ [field]: value }) });
-      const rows = await r.json().catch(() => []);
-      if (r.ok && Array.isArray(rows) && rows.length) result.filled.push(field);
+  const result: SocApplied = { filled: [], differ: [], replaced: [], lostNumber: "", saved: [], refused: [], skipped: plan.skipped, weekly: [], next: [], terms: "" };
+  const own = via === "socios_link";
+  if (own && !socIsTestStudio(partner)) {
+    const up = socSignedUpdate(partner, plan.studio);
+    // A WhatsApp that is already another studio's is never moved onto this
+    // one (two rows with one number would route that studio's messages here).
+    if (up.set.whatsapp) {
+      const other = await findPartnerByNumber(plan.studio.wa).catch(() => null);
+      if (other && String(other.id) !== pid) {
+        delete up.set.whatsapp; delete up.set.phone; up.lostNumber = "";
+        up.replaced = up.replaced.filter((x) => x.field !== "whatsapp"); up.filled = up.filled.filter((f) => f !== "whatsapp");
+        up.noted.push({ field: "whatsapp", onFile: String(partner.whatsapp || partner.phone || ""), given: `+${plan.studio.wa} (already on file for ${other.business_name}, so not used)` });
+      }
     }
-  }
-  const tr = await fetch(`${SUPABASE_URL}/rest/v1/partner_terms?on_conflict=partner_id,version`, {
-    method: "POST", headers: { ...H(), Prefer: "resolution=ignore-duplicates,return=representation" },
-    body: JSON.stringify({ partner_id: pid, version: plan.terms.version, text: plan.terms.text, lang: plan.terms.lang, accepted_at: signup.created_at || new Date(nowMs).toISOString(), via, signup_id: signup.id }),
-  });
-  if (!tr.ok) return { ok: false, error: `terms not stored (${tr.status})`, result };
-  const trows = await tr.json().catch(() => []);
-  result.terms = Array.isArray(trows) && trows.length ? "accepted now" : "already on file";
+    result.differ = up.noted;
+    if (Object.keys(up.set).length) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(pid)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify(up.set) });
+      const rows = await r.json().catch(() => []);
+      if (r.ok && Array.isArray(rows) && rows.length) { result.filled = up.filled; result.replaced = up.replaced; result.lostNumber = up.lostNumber; }
+      else result.differ = socDiff(partner, plan.studio).differ;
+    }
+  } else if (!created) result.differ = socDiff(partner, plan.studio).differ;
+  if (own || created) {
+    const tr = await fetch(`${SUPABASE_URL}/rest/v1/partner_terms?on_conflict=partner_id,version`, {
+      method: "POST", headers: { ...H(), Prefer: "resolution=ignore-duplicates,return=representation" },
+      body: JSON.stringify({ partner_id: pid, version: plan.terms.version, text: plan.terms.text, lang: plan.terms.lang, accepted_at: signup.created_at || new Date(nowMs).toISOString(), via, signup_id: signup.id }),
+    });
+    if (!tr.ok) return { ok: false, error: `terms not stored (${tr.status})`, result };
+    const trows = await tr.json().catch(() => []);
+    result.terms = Array.isArray(trows) && trows.length ? "accepted now" : "already on file";
+  } else result.terms = "NOT recorded (an unsigned form for a studio we already had)";
   if (plan.once.length) {
     const want = plan.once.map((x) => relAt(x.ymd, relToMin(x.hm) as number));
     const rows = want.map((st) => ({ start_at: new Date(st).toISOString(), end_at: new Date(st + plan.minutes * 60e3).toISOString(), seat: 1, price_eur: plan.price }));
@@ -7848,36 +8007,46 @@ function socAppliedEn(r: SocApplied, nowMs: number): string[] {
   if (r.refused.length) out.push(`Not saved (already marked, or changed since the page was opened): ${r.refused.map((x) => socWhen(x.startMs, "en", nowMs)).join(", ")}.`);
   if (r.skipped.length) out.push(`Skipped: ${r.skipped.map((x) => `${x.day} ${x.hm} (${socWhyText(x.why, "en")})`).join(", ")}.`);
   if (r.filled.length) out.push(`Filled where we had nothing: ${r.filled.join(", ")}.`);
+  for (const d of r.replaced || []) out.push(`Changed to what they gave on their own link: ${d.field} was "${d.was}", now "${d.now}".`);
+  if (r.lostNumber) out.push(`Their old WhatsApp ${r.lostNumber} is no longer on file (phone holds another number): a message from it now reads as a customer.`);
   for (const d of r.differ) out.push(`Different from what we have, NOT changed: ${d.field} on file "${d.onFile}", they gave "${d.given}".`);
   out.push(`Terms: ${r.terms}.`);
   return out;
 }
 function socStudioEn(plan: SocPlan): string[] {
   const s = plan.studio;
-  return [`WhatsApp: +${s.wa}`, `Email: ${s.email}`, `Address: ${s.address}`, `Opening hours: ${s.hoursRaw || "not given"}${s.hoursRead && s.hoursRead !== s.hoursRaw ? ` (read as ${s.hoursRead})` : ""}`, `Prices: ${[s.p60 ? `60 min ${s.p60} EUR` : "", s.p90 ? `90 min ${s.p90} EUR` : ""].filter(Boolean).join(", ") || "not given"}`, `Terms ${plan.terms.version} accepted${plan.terms.sameAsPage ? "" : " (the page sent a different wording; the stored text is ours)"}`];
+  return [`WhatsApp: +${s.wa}`, `Email: ${s.email}`, `Address: ${s.address}`, `Opening hours: ${s.hoursRaw || "not given"}${s.hoursRead && s.hoursRead !== s.hoursRaw ? ` (read as ${s.hoursRead})` : ""}`, `Prices: ${[s.p60 ? `60 min ${s.p60} EUR` : "", s.p90 ? `90 min ${s.p90} EUR` : ""].filter(Boolean).join(", ") || "not given (their menu on file is used)"}`, `Terms ${plan.terms.version} ticked, word for word as we have them`];
 }
 
 // POST ?socios=1 {"ops":"studio_signup","payload":{...}} from the page.
 async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status: number; body: Record<string, unknown> }> {
   const nowMs = Date.now();
-  const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || "";
-  const ipHash = await socIpHash(ip);
+  const ipHash = await socIpHash(socClientIp(req));
   const ua = socLine(req.headers.get("user-agent")).slice(0, 300);
   const since = (ms: number) => encodeURIComponent(new Date(nowMs - ms).toISOString());
   const limited = { status: 429, body: { ok: false, status: "rate_limited", message: socMsg("rate", L) } };
-  if (ipHash && ((await socCount(`ip_hash=eq.${ipHash}&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_IP_10M || (await socCount(`ip_hash=eq.${ipHash}&created_at=gte.${since(86400e3)}`)) >= SOC_LIMIT_IP_DAY)) return limited;
   const { partner, signed, sigBad } = await socResolve(p?.link_slug, p?.link_sig);
   const waDigits = socPhone(p?.studio?.whatsapp);
-  const studioKey = partner ? `partner_id=eq.${encodeURIComponent(String(partner.id))}` : waDigits ? `whatsapp_digits=eq.${waDigits}` : "";
-  if (studioKey && (await socCount(`${studioKey}&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_STUDIO_H) return limited;
-  const v = socValidate(p, nowMs, partner?.opening_hours ?? null);
+  if (signed) {
+    if ((await socCount(`partner_id=eq.${encodeURIComponent(String(partner.id))}&signed=is.true&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_STUDIO_H) return limited;
+  } else {
+    if (!ipHash) { if ((await socCount(`signed=is.false&ip_hash=is.null&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_NOIP_10M) return limited; }
+    else if ((await socCount(`ip_hash=eq.${ipHash}&signed=is.false&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_IP_10M || (await socCount(`ip_hash=eq.${ipHash}&signed=is.false&created_at=gte.${since(86400e3)}`)) >= SOC_LIMIT_IP_DAY) return limited;
+    if (waDigits && (await socCount(`whatsapp_digits=eq.${waDigits}&signed=is.false&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_STUDIO_H) return limited;
+    if ((await socCount(`signed=is.false&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_UNSIGNED_H) return limited;
+  }
+  // Signed: the studio's own hours come first (they are saved on its row),
+  // and a studio with a menu on file may leave the price blank. Unsigned: the
+  // hours on file come first, and the price is always needed.
+  const v = socValidate(p, nowMs, partner?.opening_hours ?? null, { typedFirst: signed, priceKnown: signed && await socHasMenu(String(partner.id)) });
   // The payload as it came, except the link's signature (a bearer key for
   // that studio's page): whether it was valid is the signed column.
   const stored = { ...p, link_sig: p?.link_sig ? "(given)" : null };
   const base = { signed, payload: stored, whatsapp_digits: waDigits || null, ip_hash: ipHash || null, user_agent: ua || null };
   if (!v.ok || !v.plan) {
-    // Kept for the record (status rejected), no card: the studio sees why on the page.
-    await socInsert({ ...base, partner_id: partner?.id || null, status: "rejected", note: `invalid: ${v.errors.join(", ")}` });
+    // Kept for the record (status rejected), no card: the studio sees why on
+    // the page. Only a signed one names its studio (review fix, 17 Oct).
+    await socInsert({ ...base, partner_id: signed ? partner.id : null, status: "rejected", note: `invalid: ${v.errors.join(", ")}` });
     return { status: 400, body: { ok: false, status: "invalid", errors: v.errors, message: socMsg(v.errors[0], L) } };
   }
   const plan = v.plan;
@@ -7892,17 +8061,18 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
   if (!why) {
     const res = await socApply(row, partner, plan, "socios_link");
     if (res.ok) {
-      await socPatch(row.id, { status: "applied", applied_at: new Date().toISOString(), result: res.result });
       const mode = await releasedMode();
       const isTest = socIsTestStudio(partner);
       const live = socLiveFor(mode, isTest);
+      res.result.live = live;
+      await socPatch(row.id, { status: "applied", applied_at: new Date().toISOString(), result: res.result });
       const manage = await slotsLink(partner);
       const name = String(partner.business_name || plan.studio.name);
       const n = res.result.saved.length + res.result.next.length;
       await logEvent("system", "socios_applied", { partner_id: partner.id, signup: row.id, saved: res.result.saved.length, weekly: res.result.weekly.length, test: isTest });
       await founderCard(`📥 ${name} gave ${n} time${n === 1 ? "" : "s"} on its /socios link`, {
         badge: "STUDIO GAVE TIMES", title: `${name} signed up on its own link`,
-        paras: [`Applied at once (signed link). Customers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode})`}.`, ...socAppliedEn(res.result, nowMs)],
+        paras: [`Applied at once (signed link). Customers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode}); the studio was told we will let them know when we start`}.`, ...socAppliedEn(res.result, nowMs)],
         after: socStudioEn(plan),
         links: [{ href: manage, label: "Their times page" }, { href: await socLinksUrl(), label: "All studio links" }],
         to: ["jordan@massageclub.io"],
@@ -7929,26 +8099,56 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
   await socPatch(row.id, { status: "pending_review", note: why });
   const canApprove = why !== "a test contact on a real studio" && !socInactive(match);
   const byPhoneOther = byPhone && partner && String(byPhone.id) !== String(partner.id) ? `The WhatsApp they typed belongs to ${byPhone.business_name}, but the link was ${partner.business_name}'s.` : "";
-  await socReviewCard(row, plan, match, why, canApprove, byPhoneOther);
+  // Review fix (17 Oct): unsigned forms cannot flood Jordan's inbox. Up to
+  // SOC_CARDS_UNSIGNED_H cards an hour, then one "more are waiting" card; the
+  // rest wait on his links page (NEW STUDIOS and each studio's Review link).
+  const cardsH = signed ? 0 : await socCount(`signed=is.false&status=eq.pending_review&created_at=gte.${since(3600e3)}&id=neq.${encodeURIComponent(String(row.id))}`);
+  if (cardsH < SOC_CARDS_UNSIGNED_H) await socReviewCard(row, plan, match, why, canApprove, byPhoneOther);
+  else if (cardsH === SOC_CARDS_UNSIGNED_H) {
+    await founderCard(`📝 More /socios forms are waiting for your review`, {
+      badge: "STUDIO SIGN-UPS TO REVIEW", title: `${SOC_CARDS_UNSIGNED_H + 1} or more unsigned forms in the last hour`,
+      paras: ["More forms without a studio's own link arrived in the last hour than usual. No more cards are sent for them this hour: they are listed on your studio links page with a Review link each. Nothing is saved or offered until you approve one."],
+      links: [{ href: await socLinksUrl(), label: "Studio links" }],
+      to: ["jordan@massageclub.io"],
+    });
+  }
   return { status: 200, body: { ok: true, status: "pending_review", id: row.id, message: socMsg("pending", L) } };
+}
+// What Aprobar will do, in Jordan's words (review fix, 17 Oct: the card used
+// to list only what differed, not what approving fills or records).
+function socApproveEffect(match: any | null, signedApplyFailed: boolean): string {
+  if (signedApplyFailed) return "Approving saves these times on their own link's terms: their details as they gave them and their acceptance of the terms.";
+  if (match) return `Approving saves ONLY these times, in ${match.business_name}'s name. Their WhatsApp, email and hours on file are NOT changed and no acceptance of the terms is recorded for them, because anyone can type a studio's number into this form. Safer: send them their own link (below); what they send there is saved as theirs.`;
+  return "Approving creates a new studio row (status pending) with the WhatsApp, email, address and hours they typed, records their acceptance of the terms (as a form you approved), and saves these times.";
+}
+// The studio's own /socios link, as a WhatsApp draft to its number on file
+// (Jordan's own WhatsApp; nothing is sent by us).
+async function socOwnLinkShare(match: any): Promise<{ href: string; label: string } | null> {
+  const p = (await socRows(`partners?id=eq.${encodeURIComponent(String(match.id))}&select=${SOC_COLS}&limit=1`))[0] || match;
+  const to = socPick(p).replace(/\D/g, "");
+  const link = await socLink(p);
+  return { href: `https://wa.me/${to}?text=${encodeURIComponent(socShareText(link))}`, label: to ? "Send them their own link (my WhatsApp)" : "Their own link (no WhatsApp on file)" };
 }
 async function socReviewCard(row: any, plan: SocPlan, match: any | null, why: string, canApprove: boolean, extra = "") {
   const nowMs = Date.now();
   const name = plan.studio.name;
-  const diff = match ? socDiff(match, plan.studio).differ : [];
+  const failed = /^saving it failed/.test(why);
+  const diff = match && !failed ? socDiff(match, plan.studio).differ : [];
+  const own = match && canApprove && !failed ? await socOwnLinkShare(match) : null;
   await founderCard(`📝 ${name} sent times on /socios: ${canApprove ? "needs your OK" : "not saved"}`, {
     badge: canApprove ? "STUDIO SIGN-UP TO REVIEW" : "STUDIO SIGN-UP NOT SAVED",
     title: `${name} wants to give us times`,
     paras: [
       `Not saved yet: ${why}. Nothing is offered to customers until you approve it.${canApprove ? "" : " This one cannot be approved from here."}`,
-      match ? `Matches our studio ${match.business_name} (${match.status || "no status"}).` : "A new studio: approving creates a pending studio row for it.",
+      match ? `Matches our studio ${match.business_name} (${match.status || "no status"}).` : "A new studio.",
+      canApprove ? socApproveEffect(match, failed) : "",
       extra,
       socTimesEn(plan, nowMs),
       ...(plan.skipped.length ? [`Skipped: ${plan.skipped.map((x) => `${x.day} ${x.hm} (${socWhyText(x.why, "en")})`).join(", ")}.`] : []),
-      ...diff.map((d) => `Different from what we have: ${d.field} on file "${d.onFile}", they gave "${d.given}".`),
+      ...diff.map((d) => `Different from what we have (approving does NOT change it): ${d.field} on file "${d.onFile}", they gave "${d.given}".`),
     ],
     after: [...socStudioEn(plan), `Sent from IP hash ${String(row.ip_hash || "none").slice(0, 8)}, ${String(row.user_agent || "").slice(0, 80)}`],
-    links: canApprove ? [{ href: await socReviewLink(String(row.id), "yes"), label: "Aprobar (Approve)", primary: true }, { href: await socReviewLink(String(row.id), "no"), label: "Rechazar (Reject)" }] : [{ href: await socReviewLink(String(row.id)), label: "Open it" }],
+    links: canApprove ? [{ href: await socReviewLink(String(row.id), "yes"), label: "Aprobar (Approve)", primary: true }, { href: await socReviewLink(String(row.id), "no"), label: "Rechazar (Reject)" }, ...(own ? [own] : [])] : [{ href: await socReviewLink(String(row.id)), label: "Open it" }],
     to: ["jordan@massageclub.io"],
   });
 }
@@ -7987,7 +8187,12 @@ async function sociosApi(req: Request, url: URL): Promise<Response> {
 // The email links only open this page; the buttons on it (a=yes, a=no, with
 // the time the page was drawn, good for 2 hours) do it. A mail scanner opening
 // the emailed link changes nothing, and the claim is one conditional update,
-// so a double tap applies once.
+// so a double tap applies once. Review fix (17 Oct): the buttons are form
+// submits, not links, so a scanner or prefetcher that follows links on the
+// rendered page cannot approve either (bot.html submits a GET form to itself,
+// as the times page's Guardar does).
+const pillForm = (fields: Record<string, string>, label: string, primary: boolean) =>
+  `<form method="get" action="" style="margin:0">${Object.entries(fields).map(([k, v]) => `<input type="hidden" name="${escAttr(k)}" value="${escAttr(v)}">`).join("")}<button type="submit" style="display:block;width:100%;margin:12px 0 0;background:${primary ? "#1FA855" : "#fff"};color:${primary ? "#fff" : C.ink};border:${primary ? "0" : `1px solid ${C.dash}`};font:700 16px ${SANS};padding:15px 20px;border-radius:999px;cursor:pointer;">${esc(label)}</button></form>`;
 async function socReviewPage(url: URL): Promise<Response> {
   const id = relClean(url.searchParams.get("socios_ok"));
   const sig = String(url.searchParams.get("sig") || "");
@@ -8000,11 +8205,13 @@ async function socReviewPage(url: URL): Promise<Response> {
   const a = String(url.searchParams.get("a") || "");
   const t = Number(url.searchParams.get("t") || 0);
   const fresh = t > 0 && nowMs - t < 2 * 3600e3 && t <= nowMs + 60e3;
-  const base = await socReviewLink(id);
   const done = (title: string, text: string, extra = "", tone: "ok" | "plain" = "plain") => pageOut(url, simpleCard(title, text, extra, tone));
   if (row.status === "applied") return done("Already approved", `${name}: saved on ${String(row.applied_at || row.reviewed_at || row.created_at).slice(0, 16).replace("T", " ")} UTC. Nothing else to do.`, "", "ok");
   if (row.status === "rejected") return done("Already rejected", `${name}: nothing was saved.${row.note ? `\n\n${row.note}` : ""}`);
-  const v0 = socValidate(p, nowMs, null);
+  // A signed send whose save failed is still the studio's own link.
+  const signedRow = row.signed === true && !!row.partner_id;
+  const known = row.partner_id ? await socPartner(row.partner_id) : null;
+  const v0 = socValidate(p, nowMs, known?.opening_hours ?? null, { typedFirst: signedRow || !known, priceKnown: signedRow && !!known && await socHasMenu(String(known.id)) });
   const summary = v0.ok && v0.plan ? [socTimesEn(v0.plan, nowMs), ...socStudioEn(v0.plan)].join("\n") : `This form no longer passes the checks: ${v0.errors.join(", ")}.`;
   if (a === "no" && fresh) {
     const r = await socPatch(id, { status: "rejected", reviewed_at: new Date().toISOString(), note: `${row.note ? row.note + "; " : ""}rejected by Jordan` }, row.status);
@@ -8018,10 +8225,11 @@ async function socReviewPage(url: URL): Promise<Response> {
     // The studio: the one matched when it arrived, else by phone, else by the
     // slug in its link, else a new pending studio row.
     const wa = socPhone(p?.studio?.whatsapp);
-    let partner = row.partner_id ? await socPartner(row.partner_id) : null;
+    let partner = known;
     if (!partner && wa) { const f = await findPartnerByNumber(wa).catch(() => null); if (f) partner = await socPartner(f.id); }
     if (!partner && p?.link_slug) partner = await socPartner(p.link_slug);
-    const v = socValidate(p, nowMs, partner?.opening_hours ?? null);
+    const own = signedRow && !!partner && String(partner.id) === String(row.partner_id);
+    const v = socValidate(p, nowMs, partner?.opening_hours ?? null, { typedFirst: own || !partner, priceKnown: own && await socHasMenu(String(partner.id)) });
     if (!v.ok || !v.plan) return await back(`it no longer passes the checks (${v.errors.join(", ")}): the dates may have passed.`);
     const plan = v.plan;
     let created = false;
@@ -8030,7 +8238,11 @@ async function socReviewPage(url: URL): Promise<Response> {
       const pid = crypto.randomUUID();
       let slug = socSlug(plan.studio.name);
       for (let i = 2; i < 12 && (await socRows(`partners?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`)).length; i++) slug = `${socSlug(plan.studio.name).slice(0, 56)}-${i}`;
-      const cr = await fetch(`${SUPABASE_URL}/rest/v1/partners`, { method: "POST", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ id: pid, business_name: plan.studio.name, slug, status: "pending", whatsapp: "+" + plan.studio.wa, email: plan.studio.email, address: plan.studio.address, city: "Madrid", ...(plan.studio.hoursRead || plan.studio.hoursRaw ? { opening_hours: plan.studio.hoursRead || plan.studio.hoursRaw } : {}) }) });
+      // Review fix (17 Oct): its neighbourhood from the address when we can
+      // read one, so customers see where it is. With no map position it is
+      // only offered to customers who name that neighbourhood (released_offers).
+      const hood = detectArea(plan.studio.address);
+      const cr = await fetch(`${SUPABASE_URL}/rest/v1/partners`, { method: "POST", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ id: pid, business_name: plan.studio.name, slug, status: "pending", whatsapp: "+" + plan.studio.wa, email: plan.studio.email, address: plan.studio.address, city: "Madrid", ...(hood ? { neighbourhood: hood } : {}), ...(plan.studio.hoursRead || plan.studio.hoursRaw ? { opening_hours: plan.studio.hoursRead || plan.studio.hoursRaw } : {}) }) });
       const cj = await cr.json().catch(() => null);
       if (!cr.ok) return await back(`the new studio row could not be created (${cr.status} ${String(cj?.message || "").slice(0, 120)}).`);
       partner = await socPartner(pid);
@@ -8039,28 +8251,36 @@ async function socReviewPage(url: URL): Promise<Response> {
     }
     if (socInactive(partner)) return await back(`${partner.business_name} has opted out, or is suspended or archived.`);
     if (socTestish(plan.studio.wa, plan.studio.email) && !socIsTestStudio(partner)) return await back(`it was sent with a test contact and ${partner.business_name} is a real studio.`);
-    const res = await socApply(claimed, partner, plan, "socios_review");
+    const res = await socApply(claimed, partner, plan, own ? "socios_link" : "socios_review", created);
     if (!res.ok) return await back(`saving failed (${res.error}).`);
-    await socPatch(id, { partner_id: partner.id, applied_at: new Date().toISOString(), result: res.result });
-    await logEvent("system", "socios_approved", { partner_id: partner.id, signup: id, created });
     const mode = await releasedMode();
     const live = socLiveFor(mode, socIsTestStudio(partner));
+    res.result.live = live;
+    await socPatch(id, { partner_id: partner.id, applied_at: new Date().toISOString(), result: res.result });
+    await logEvent("system", "socios_approved", { partner_id: partner.id, signup: id, created });
     const manage = await slotsLink(partner);
     // A draft for Jordan to send himself, from his own WhatsApp or email.
-    const es = `Hola, soy Jordan, de Massage Club. Ya tenemos vuestras horas guardadas.${live ? "" : " Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos."} Podéis verlas y cambiarlas aquí: ${manage}\n\nSi una hora se os llena por otro lado, escribid «ocupado» por aquí y la quitamos.`;
-    const en = `Hi, this is Jordan from Massage Club. We have saved your times.${live ? "" : " We are not offering them to customers yet: we will let you know as soon as we start."} You can see and change them here: ${manage}\n\nIf a time fills up elsewhere, write "ocupado" here and we remove it.`;
+    // A studio we already had (an unsigned form) also gets its own link, so
+    // its details and the terms can be confirmed as its own.
+    const ownLink = !own && !created ? await socLink(partner) : "";
+    const es = `Hola, soy Jordan, de Massage Club. Ya tenemos vuestras horas guardadas.${live ? "" : " Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos."} Podéis verlas y cambiarlas aquí: ${manage}${ownLink ? `\n\nPara confirmar vuestros datos y las condiciones, usad vuestro enlace: ${ownLink}` : ""}\n\nSi una hora se os llena por otro lado, escribid «ocupado» por aquí y la quitamos.`;
+    const en = `Hi, this is Jordan from Massage Club. We have saved your times.${live ? "" : " We are not offering them to customers yet: we will let you know as soon as we start."} You can see and change them here: ${manage}${ownLink ? ` To confirm your details and the terms, use your own link: ${ownLink}` : ""}\n\nIf a time fills up elsewhere, write "ocupado" here and we remove it.`;
     const to = socPick(partner).replace(/\D/g, "");
     const mail = String(partner.booking_email || partner.email || plan.studio.email || "");
     const extra = (to ? pillLink(`https://wa.me/${to}?text=${encodeURIComponent(es)}`, "Tell them on my WhatsApp", true) : "")
       + (mail ? pillLink(`mailto:${encodeURIComponent(mail)}?subject=${encodeURIComponent("Vuestras horas en Massage Club")}&body=${encodeURIComponent(es)}`, "Tell them by email", false) : "");
-    return done("Approved and saved", `${partner.business_name}${created ? " (new studio, status pending)" : ""}\n\n${socAppliedEn(res.result, nowMs).join("\n")}\nCustomers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode})`}.\n\nNothing was sent to the studio. The draft below opens in your own WhatsApp:\n\n${es}\n\n(English: ${en})`, extra, "ok");
+    const where = created ? (partner.neighbourhood ? `\nNeighbourhood ${partner.neighbourhood} (from the address). No map position yet: until you add latitude and longitude it is only offered to customers who name ${partner.neighbourhood}.` : "\nNo neighbourhood could be read from the address and there is no map position: until you add them it is only offered to customers who give no area.") : "";
+    return done("Approved and saved", `${partner.business_name}${created ? " (new studio, status pending)" : ""}${where}\n\n${socAppliedEn(res.result, nowMs).join("\n")}\nCustomers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode})`}.\n\nNothing was sent to the studio. The draft below opens in your own WhatsApp:\n\n${es}\n\n(English: ${en})`, extra, "ok");
   }
   // The confirm page (also what a stale button shows).
   const want = String(url.searchParams.get("want") || "");
-  const yes = pillLink(`${base}&a=yes&t=${nowMs}`, "Aprobar (Approve): save these times", want !== "no");
-  const no = pillLink(`${base}&a=no&t=${nowMs}`, "Rechazar (Reject): save nothing", want === "no");
+  const f = (act: string) => ({ socios_ok: id, sig, a: act, t: String(nowMs) });
+  const yes = pillForm(f("yes"), "Aprobar (Approve): save these times", want !== "no");
+  const no = pillForm(f("no"), "Rechazar (Reject): save nothing", want === "no");
   const note = row.note ? `\n\nWhy it waits for you: ${row.note}.` : "";
-  return done(`${name}`, `${summary}${note}\n\nApproving saves its times as released times (customers see them only when RELEASED allows), its contact details where we have none, and its acceptance of the terms. Nothing is sent to anyone.`, want === "no" ? no + yes : yes + no);
+  const ownShare = known && !signedRow ? await socOwnLinkShare(known) : null;
+  const effect = known && !signedRow ? socApproveEffect(known, false) : signedRow ? socApproveEffect(known, true) : socApproveEffect(null, false);
+  return done(`${name}`, `${summary}${note}\n\n${effect} Customers see the times only when RELEASED allows. Nothing is sent to anyone.`, (want === "no" ? no + yes : yes + no) + (ownShare ? pillLink(escAttr(ownShare.href), ownShare.label, false) : ""));
 }
 
 // Jordan's links page: bot.html?socios_links=1&sig=<the inbox sig>. Every
@@ -8070,21 +8290,26 @@ async function socReviewPage(url: URL): Promise<Response> {
 async function socLinksPage(url: URL): Promise<Response> {
   if (String(url.searchParams.get("sig") || "") !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
   const nowMs = Date.now();
-  const all = await socRows(`partners?select=id,business_name,slug,status,opted_out_at,outreach_status,slots_link_v&order=business_name.asc&limit=2000`);
+  const all = await socRows(`partners?select=id,business_name,slug,status,opted_out_at,outreach_status,slots_link_v,whatsapp,phone&order=business_name.asc&limit=2000`);
+  const mode = await releasedMode();
   const studios = all.filter((p) => !socInactive(p) && String(p.outreach_status || "") !== "opted_out" && String(p.business_name || "").trim());
   const views = new Map<string, number>();
   for (const e of await socRows(`funnel_events?event=eq.socios_view&created_at=gte.${encodeURIComponent(new Date(nowMs - 90 * 86400e3).toISOString())}&select=meta,created_at&order=created_at.desc&limit=5000`)) {
     const pid = String(e?.meta?.partner_id || "");
     if (pid && !views.has(pid)) views.set(pid, Date.parse(String(e.created_at)));
   }
-  const signups = await socRows(`studio_signups?select=id,partner_id,status,created_at,payload&order=created_at.desc&limit=1000`);
+  const signups = await socRows(`studio_signups?select=id,partner_id,status,created_at,payload,result&order=created_at.desc&limit=1000`);
   const lastSignup = new Map<string, any>();
   const reviewNew: any[] = [];
   const review = new Set<string>();
+  // Studios told "we will let you know as soon as we start" (saved while
+  // customers could not book them): the go-live list.
+  const promised = new Set<string>();
   for (const s of signups) {
     const pid = String(s.partner_id || "");
     if (s.status === "pending_review") { if (pid) review.add(pid); else reviewNew.push(s); }
     if (pid && !lastSignup.has(pid) && s.status !== "rejected") lastSignup.set(pid, s);
+    if (pid && s.status === "applied" && s.result && s.result.live === false) promised.add(pid);
   }
   const live = new Map<string, number>();
   for (const s of await socRows(`released_slots?status=in.(released,held,booked)&end_at=gte.${encodeURIComponent(new Date(nowMs).toISOString())}&select=partner_id&limit=10000`)) live.set(String(s.partner_id), (live.get(String(s.partner_id)) || 0) + 1);
@@ -8093,52 +8318,87 @@ async function socLinksPage(url: URL): Promise<Response> {
   const terms = new Map<string, string>();
   for (const s of await socRows(`partner_terms?select=partner_id,version,accepted_at&order=accepted_at.desc&limit=5000`)) if (!terms.has(String(s.partner_id))) terms.set(String(s.partner_id), `${s.version} (accepted ${String(s.accepted_at).slice(0, 10)})`);
   const ago = (ms: number) => { const m = Math.round((nowMs - ms) / 60e3); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
-  type Row = { p: any; rank: number; label: string; link: string; bits: string[]; review: string };
+  type Row = { p: any; rank: number; label: string; link: string; bits: string[]; review: string; to: string; bookable: boolean; saved: boolean };
   const rows: Row[] = [];
   for (const p of studios) {
     const pid = String(p.id);
     const su = lastSignup.get(pid);
-    const f = { review: review.has(pid), viewed: views.has(pid), submitted: !!su, live: live.get(pid) || 0, weekly: weekly.get(pid) || 0, terms: terms.has(pid) };
+    const bookable = socLiveFor(mode, socIsTestStudio(p));
+    const f = { review: review.has(pid), viewed: views.has(pid), submitted: !!su, live: live.get(pid) || 0, weekly: weekly.get(pid) || 0, terms: terms.has(pid), bookable };
     const { rank, label } = socFunnelRank(f);
     const bits = [
       f.viewed ? `link opened ${ago(views.get(pid) as number)}` : "link not opened",
       su ? `sent ${ago(Date.parse(String(su.created_at)))} (${String(su.status).replace("_", " ")})` : "nothing sent",
-      `${f.live} time${f.live === 1 ? "" : "s"} live${f.weekly ? `, ${f.weekly} every week` : ""}`,
+      `${f.live} time${f.live === 1 ? "" : "s"} saved${f.weekly ? `, ${f.weekly} every week` : ""}${f.live || f.weekly ? (bookable ? ", customers can book them" : `, not offered yet (RELEASED ${mode})`) : ""}`,
       f.terms ? `terms ${terms.get(pid)}` : "terms not accepted",
     ];
     const pend = f.review ? signups.find((s) => String(s.partner_id) === pid && s.status === "pending_review") : null;
-    rows.push({ p, rank, label, link: await socLink(p), bits, review: pend ? await socReviewLink(String(pend.id)) : "" });
+    rows.push({ p, rank, label, link: await socLink(p), bits, review: pend ? await socReviewLink(String(pend.id)) : "", to: socPick(p).replace(/\D/g, ""), bookable, saved: f.live > 0 || f.weekly > 0 });
   }
   rows.sort((a, b) => a.rank - b.rank || String(a.p.business_name).localeCompare(String(b.p.business_name), "es"));
   const pill = (rank: number, label: string) => `<span class="pill ${rank === 0 ? "wait" : rank === 4 ? "ok" : rank === 1 ? "mute" : "warn"}">${esc(label)}</span>`;
-  const card = (r: Row) => `<div class="card"><div class="h"><span class="n">${esc(String(r.p.business_name))}</span>${pill(r.rank, r.label)}</div>`
+  // Review fix (17 Oct): the share opens a chat with the studio's own
+  // WhatsApp when we have a mobile for it (Jordan's own WhatsApp, nothing is
+  // sent by us); the plain wa.me/?text= only when we have none.
+  const shareHref = (r: Row) => `https://wa.me/${r.to}?text=${encodeURIComponent(socShareText(r.link))}`;
+  const card = (r: Row) => `<div class="card" data-name="${escAttr(stripAcc(String(r.p.business_name)))}"><div class="h"><span class="n">${esc(String(r.p.business_name))}</span>${pill(r.rank, r.label)}</div>`
     + `<div class="m">${esc(r.bits.join(" · "))}${String(r.p.status || "") === "active" ? "" : ` · listing ${esc(String(r.p.status || "no status"))}`}</div>`
     + `<div class="lkrow"><input class="lk" readonly value="${escAttr(r.link)}" aria-label="Link for ${escAttr(String(r.p.business_name))}"><button type="button" class="cp" data-copy="${escAttr(r.link)}">Copy</button></div>`
-    + `<a class="share" target="_blank" rel="noopener" href="${escAttr(`https://wa.me/?text=${encodeURIComponent(socShareText(r.link))}`)}">Compartir por WhatsApp (Share on WhatsApp)</a>`
+    + `<a class="share" target="_blank" rel="noopener" href="${escAttr(shareHref(r))}">Compartir por WhatsApp${r.to ? ` al +${esc(r.to)}` : ""} (Share on WhatsApp)</a>`
     + (r.review ? ` <a class="share" href="${escAttr(r.review)}">Review</a>` : "")
     + `</div>`;
-  const newCards = await Promise.all(reviewNew.map(async (s) => `<div class="card"><div class="h"><span class="n">${esc(socLine(s.payload?.studio?.business_name) || "A new studio")}</span>${pill(0, "New studio, waiting for your review")}</div><div class="m">sent ${esc(ago(Date.parse(String(s.created_at))))} · +${esc(socPhone(s.payload?.studio?.whatsapp))}</div><a class="share" href="${escAttr(await socReviewLink(String(s.id)))}">Review</a></div>`));
+  // Review fix (17 Oct): the go-live list. Studios whose times were saved
+  // while customers could not book them were told "os avisamos en cuanto
+  // empecemos" (we will let you know as soon as we start). When they can be
+  // booked, each gets a draft to send from Jordan's own WhatsApp.
+  const goLive = rows.filter((r) => promised.has(String(r.p.id)) && r.saved);
+  const liveDraft = async (r: Row) => `Hola, soy Jordan, de Massage Club. Ya estamos ofreciendo vuestras horas a clientes: desde hoy se pueden reservar al momento. Podéis verlas y cambiarlas aquí: ${await slotsLink(r.p)}`;
+  const goLiveCards = await Promise.all(goLive.map(async (r) => `<div class="card" data-name="${escAttr(stripAcc(String(r.p.business_name)))}"><div class="h"><span class="n">${esc(String(r.p.business_name))}</span>${pill(r.bookable ? 4 : 3, r.bookable ? "Bookable now: tell them" : `Waiting for RELEASED (${mode})`)}</div>`
+    + (r.bookable ? `<a class="share" target="_blank" rel="noopener" href="${escAttr(`https://wa.me/${r.to}?text=${encodeURIComponent(await liveDraft(r))}`)}">Tell them they are live (my WhatsApp)</a>` : `<div class="m">They were told we would let them know. When customers can book them, a draft to tell them appears here.</div>`)
+    + `</div>`));
+  const newCards = await Promise.all(reviewNew.map(async (s) => `<div class="card" data-name="${escAttr(stripAcc(socLine(s.payload?.studio?.business_name)))}"><div class="h"><span class="n">${esc(socLine(s.payload?.studio?.business_name) || "A new studio")}</span>${pill(0, "New studio, waiting for your review")}</div><div class="m">sent ${esc(ago(Date.parse(String(s.created_at))))} · +${esc(socPhone(s.payload?.studio?.whatsapp))}</div><a class="share" href="${escAttr(await socReviewLink(String(s.id)))}">Review</a></div>`));
   const counts = [0, 1, 2, 3, 4].map((k) => [k, rows.filter((r) => r.rank === k).length + (k === 0 ? reviewNew.length : 0)] as const).filter(([, n]) => n > 0);
-  const names = ["waiting for review", "not opened", "opened", "sent, nothing live", "times live"];
+  const names = ["waiting for review", "not opened", "opened", "sent, nothing saved", "times saved"];
   const css = `<style>.lkrow{display:flex;gap:8px;margin-top:10px}.lk{flex:1;min-width:0;border:1px solid ${C.dash};border-radius:999px;padding:8px 12px;font:12.5px ${SANS};color:${C.ink};background:${C.cream}}
 .cp{border:0;background:${C.clay};color:#fff;border-radius:999px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer}
 .share{display:inline-block;margin-top:10px;color:#1A7F42;font-size:13px;font-weight:700;text-decoration:none}
-.pitch{margin:12px 16px 0;padding:12px 14px;background:#fff;border:1px solid ${C.line};border-radius:14px;font-size:13px;line-height:1.5;color:${C.muted}}</style>`;
+.pitch{margin:12px 16px 0;padding:12px 14px;background:#fff;border:1px solid ${C.line};border-radius:14px;font-size:13px;line-height:1.5;color:${C.muted}}
+.flt{display:block;box-sizing:border-box;width:calc(100% - 32px);margin:12px 16px 0;border:1px solid ${C.dash};border-radius:999px;padding:10px 14px;font:15px ${SANS};color:${C.ink};background:#fff}</style>`;
   const generic = SOCIOS_PAGE;
   const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Studio links</h1><div class="sub">${esc(counts.map(([k, n]) => `${n} ${names[k]}`).join(" · ") || "No studios")}</div></div><a class="back" href="${esc(await inboxUrl())}">Inbox</a></div>`;
   const pitch = `<div class="pitch">Each link is that studio's own: what it sends is saved at once (customers see the times only when RELEASED allows). Share text: «${esc(SOC_PITCH_ES)}» (English: "Hi, I'm writing from Massage Club. What time does a room usually sit empty for you?") plus the link and "Jordan, de Massage Club". The plain page without a signature, ${esc(generic)}, only sends forms to your review.</div>`;
-  const body = css + pitch + (newCards.length ? `<div class="sec">NEW STUDIOS</div>${newCards.join("")}` : "") + `<div class="sec">STUDIOS</div>` + (rows.length ? rows.map(card).join("") : `<p class="empty">No studios.</p>`);
+  // data-top: bot.html leaves this page at the top (it scrolls other pages
+  // without a reply box to the bottom); data-filter: its name box.
+  const filter = `<div data-top hidden></div><input class="flt" type="search" data-filter placeholder="Filter by name" aria-label="Filter studios by name">`;
+  const body = css + filter + pitch + (newCards.length ? `<div class="sec">NEW STUDIOS</div>${newCards.join("")}` : "")
+    + (goLiveCards.length ? `<div class="sec">GO-LIVE: TOLD WE WOULD LET THEM KNOW</div>${goLiveCards.join("")}` : "")
+    + `<div class="sec">STUDIOS</div>` + (rows.length ? rows.map(card).join("") : `<p class="empty">No studios.</p>`);
   return pageOut(url, pageShell("Studio links · Massage Club", top, body));
 }
 
 // «ocupado» (v216). A studio with live released times writes that one has
-// filled up. Only while RELEASED is test or on, only when the message is
-// mainly that (ocupadoIntent), and never when the studio has an open booking
-// ask, a chased reply or a booking in its live window: those keep today's
-// handling (handleStudioReply), so a "no" to an ask can never be read as a
-// withdrawal. A free time is withdrawn; a booked one is never touched and
-// goes to Jordan. False: not handled here, today's path runs.
-async function studioOpenAsk(pid: string): Promise<boolean> {
+// filled up. Only when the message is mainly that (ocupadoIntent), and never
+// when it could be about something else of ours: an open booking ask, a
+// chased reply, or one of its own bookings (studioOpenAsk). Those keep today's
+// handling (handleStudioReply), so a "no" to an ask, or a studio pulling out
+// of a customer's booking, can never be read as a withdrawal. A free time is
+// withdrawn; a booked one is never touched and goes to Jordan. False: not
+// handled here, today's path runs.
+// Review fixes (17 Oct):
+//   - RELEASED no longer gates it. Studios save times while RELEASED is off,
+//     every result screen tells them to write «ocupado», and a time left in
+//     place would become bookable the moment RELEASED is switched on.
+//     Withdrawing a free time is harmless; RELEASED still decides who is
+//     offered one. A studio with no live released time is never read here.
+//   - studioOpenAsk also sees a won dispatch row, every confirmed booking of
+//     the studio in the next 8 days (and one with no start on file, as
+//     handleStudioReply's 14 day rule does), and website bookings; a
+//     message that names no time, or the hour of one of those bookings, goes
+//     to today's path.
+//   - A time we have nothing at ("none") goes to today's path too.
+//   - It runs before the away-message check (see the webhook).
+// The reason there is an open ask, or "".
+async function studioOpenAsk(pid: string, intent: OcuIntent): Promise<string> {
   const nowMs = Date.now();
   const iso = (ms: number) => encodeURIComponent(new Date(ms).toISOString());
   const q = async (path: string): Promise<any[] | null> => {
@@ -8147,18 +8407,49 @@ async function studioOpenAsk(pid: string): Promise<boolean> {
   const p = encodeURIComponent(pid);
   const asked = await q(`request_dispatch?partner_id=eq.${p}&outcome=in.(pending,accepted)&created_at=gte.${iso(nowMs - 48 * 3600e3)}&select=request_id&limit=20`);
   const chased = await q(`request_dispatch?partner_id=eq.${p}&outcome=in.(pending,accepted,won)&chased_at=gte.${iso(nowMs - 48 * 3600e3)}&select=request_id&limit=20`);
+  const won = await q(`request_dispatch?partner_id=eq.${p}&outcome=eq.won&created_at=gte.${iso(nowMs - 48 * 3600e3)}&select=request_id,channel&limit=20`);
   const mine = await q(`whatsapp_requests?partner_id=eq.${p}&stage=in.(studio_asked,studio_replied,bidding)&created_at=gte.${iso(nowMs - 7 * 86400e3)}&select=id&limit=1`);
-  const lv = await q(`whatsapp_requests?partner_id=eq.${p}&stage=eq.confirmed&confirmed_start=gte.${iso(nowMs - 3 * 3600e3)}&confirmed_start=lte.${iso(nowMs + 6 * 3600e3)}&select=id,message_text&limit=5`);
+  const conf = await q(`whatsapp_requests?partner_id=eq.${p}&stage=eq.confirmed&confirmed_start=gte.${iso(nowMs - 3 * 3600e3)}&confirmed_start=lte.${iso(nowMs + 8 * 86400e3)}&select=id,confirmed_start,message_text&limit=50`);
+  const confNoStart = await q(`whatsapp_requests?partner_id=eq.${p}&stage=eq.confirmed&confirmed_start=is.null&stage_updated_at=gte.${iso(nowMs - 14 * 86400e3)}&select=id,message_text&limit=5`);
+  const today = relYmd(nowMs), last = relYmd(nowMs + 8 * 86400e3);
+  const web = await q(`bookings?partner_id=eq.${p}&status=in.(pending,confirmed)&booking_date=gte.${today}&booking_date=lte.${last}&select=booking_ref,booking_date,booking_time&limit=50`);
   // A read that failed counts as an open ask: today's path, never a guess.
-  if (!asked || !chased || !mine || !lv) return true;
-  if (mine.length || lv.some((x) => !relHueco(x.message_text))) return true;
+  if (!asked || !chased || !won || !mine || !conf || !confNoStart || !web) return "a read failed";
+  if (mine.length) return "an open booking ask";
   const ids = [...new Set([...asked, ...chased].map((x) => Number(x.request_id)).filter((n) => n > 0))];
-  if (!ids.length) return false;
-  const open = await q(`whatsapp_requests?id=in.(${ids.join(",")})&stage=in.(${OPEN_STAGES.join(",")})&select=id&limit=1`);
-  return !open || open.length > 0;
+  if (ids.length) {
+    const open = await q(`whatsapp_requests?id=in.(${ids.join(",")})&stage=in.(${OPEN_STAGES.join(",")})&select=id&limit=1`);
+    if (!open || open.length) return "an open booking ask";
+  }
+  const starts: number[] = conf.filter((x) => !relHueco(x.message_text)).map((x) => Date.parse(String(x.confirmed_start)));
+  if (confNoStart.some((x) => !relHueco(x.message_text))) starts.push(NaN);
+  const wonIds = [...new Set(won.filter((x) => String(x.channel || "") !== "released").map((x) => Number(x.request_id)).filter((n) => n > 0))];
+  if (wonIds.length) {
+    const wr = await q(`whatsapp_requests?id=in.(${wonIds.join(",")})&select=id,stage,confirmed_start,message_text&limit=20`);
+    if (!wr) return "a read failed";
+    for (const x of wr) {
+      if (relHueco(x.message_text)) continue;
+      if (OPEN_STAGES.includes(String(x.stage))) return "an open booking ask";
+      if (String(x.stage) === "confirmed") starts.push(x.confirmed_start ? Date.parse(String(x.confirmed_start)) : NaN);
+    }
+  }
+  for (const b of web) {
+    if (/^wa-/.test(String(b.booking_ref || ""))) continue; // a bot booking: whatsapp_requests above
+    const t = relToMin(String(b.booking_time || "").slice(0, 5));
+    starts.push(/^\d{4}-\d{2}-\d{2}$/.test(String(b.booking_date || "")) && t !== null ? relAt(String(b.booking_date), t) : NaN);
+  }
+  return ocupadoClash(intent, starts) ? "a booking of theirs at that time, or no time named" : "";
+}
+// Our last message to this studio asked it something about its released
+// times ("¿Cuál se os ha llenado?", "¿Me confirmáis que al final no podéis
+// atenderle?") in the last 24 hours. Its answer is then never an away message.
+async function ocupadoQuestionOpen(from: string): Promise<boolean> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(from)}&direction=eq.out&order=created_at.desc&limit=1&select=body,created_at`, { headers: H() }).catch(() => null);
+  const rows = r && r.ok ? await r.json().catch(() => []) : [];
+  const m = Array.isArray(rows) ? rows[0] : null;
+  return !!m && Date.now() - Date.parse(String(m.created_at)) < 24 * 3600e3 && /¿Cuál se os ha llenado\?|¿Me confirmáis que al final no podéis atenderle\?/.test(String(m.body || ""));
 }
 async function studioOcupado(from: string, text: string, partner: { id: string; business_name: string }): Promise<boolean> {
-  if ((await releasedMode()) === "off") return false;
   const nowMs = Date.now();
   let intent = ocupadoIntent(text, nowMs);
   // The answer to our "¿Cuál se os ha llenado?" (which one?) a few minutes
@@ -8172,20 +8463,23 @@ async function studioOcupado(from: string, text: string, partner: { id: string; 
   const lr = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?partner_id=eq.${pid}&status=in.(released,held,booked)&start_at=gt.${encodeURIComponent(new Date(nowMs).toISOString())}&start_at=lt.${encodeURIComponent(new Date(nowMs + 8 * 86400e3).toISOString())}&order=start_at.asc&select=id,start_at,end_at,status,seat,request_id,pattern_id&limit=300`, { headers: H() }).catch(() => null);
   const rows = lr && lr.ok ? await lr.json().catch(() => []) : [];
   if (!Array.isArray(rows) || !rows.length) return false;
-  if (await studioOpenAsk(partner.id)) {
+  const pr = (await socRows(`partners?id=eq.${pid}&select=id,slots_link_v&limit=1`))[0] || { id: partner.id };
+  const link = await slotsLink(pr);
+  const openWhy = await studioOpenAsk(partner.id, intent).catch(() => "a read failed");
+  if (openWhy) {
     // Today's path answers it; Jordan sees that a live released time may need removing.
     await founderCard(`⚠️ ${partner.business_name} wrote «ocupado» with an open ask`, {
       badge: "OCUPADO, NOT ACTED ON", title: `${partner.business_name} may mean one of its released times`,
-      paras: ["They also have an open booking ask (or a booking in its live window), so the bot treated the message as an answer to that and removed nothing. If they meant a released time, remove it on their times page."],
-      quote: text, waNum: from, waLabel: "Chat with the studio", links: [{ href: await slotsLink(partner), label: "Their times page" }],
+      paras: [`Nothing was removed: ${openWhy}. The bot handled the message the usual way (as an answer to that, or a note about their booking). If they meant a released time, remove it on their times page.`],
+      quote: text, waNum: from, waLabel: "Chat with the studio", links: [{ href: link, label: "Their times page" }],
       to: ["jordan@massageclub.io"],
     });
-    await logEvent(from, "ocupado_open_ask", { partner_id: partner.id });
+    await logEvent(from, "ocupado_open_ask", { partner_id: partner.id, why: openWhy });
     return false;
   }
   let plan = ocupadoPick(intent, rows, nowMs);
-  const pr = (await socRows(`partners?id=eq.${pid}&select=id,slots_link_v&limit=1`))[0] || { id: partner.id };
-  const link = await slotsLink(pr);
+  // Nothing of theirs at that time: today's path (and Jordan's card) as before.
+  if (plan.kind === "none") { await logEvent(from, "ocupado_none", { partner_id: partner.id, ymd: intent.ymd, mins: intent.mins }); return false; }
   const g = plan.group;
   let withdrawn = 0;
   if (plan.kind === "withdraw" && g) {
@@ -8207,6 +8501,24 @@ async function studioOcupado(from: string, text: string, partner: { id: string; 
     });
   }
   return true;
+}
+// A studio's message dropped as an away message that reads like «ocupado»,
+// from a studio with live released times: Jordan gets one card per studio per
+// 6 hours, so a real «ocupado» is never lost without anyone seeing it.
+async function ocupadoAwayCard(from: string, text: string, partner: { id: string; business_name: string }) {
+  if (!OCU_TRIGGER_RE.test(" " + stripAcc(text) + " ")) return;
+  const nowMs = Date.now();
+  const live = await socRows(`released_slots?partner_id=eq.${encodeURIComponent(partner.id)}&status=in.(released,held,booked)&start_at=gt.${encodeURIComponent(new Date(nowMs).toISOString())}&select=id&limit=1`);
+  if (!live.length) return;
+  if ((await socRows(`funnel_events?event=eq.ocupado_away&phone=eq.${digitsOf(from)}&created_at=gte.${encodeURIComponent(new Date(nowMs - 6 * 3600e3).toISOString())}&select=id&limit=1`)).length) return;
+  const link = await slotsLink((await socRows(`partners?id=eq.${encodeURIComponent(partner.id)}&select=id,slots_link_v&limit=1`))[0] || { id: partner.id });
+  await founderCard(`⚠️ ${partner.business_name}: an away message that mentions «ocupado»`, {
+    badge: "OCUPADO? READ AS AN AWAY MESSAGE", title: `${partner.business_name} has released times and wrote something the bot took for an away message`,
+    paras: ["Nothing was removed and nothing was said back. If they meant one of their released times has filled up, remove it on their times page."],
+    quote: text, waNum: from, waLabel: "Chat with the studio", links: [{ href: link, label: "Their times page" }],
+    to: ["jordan@massageclub.io"],
+  });
+  await logEvent(from, "ocupado_away", { partner_id: partner.id });
 }
 
 // v215: rel is a released time the customer has tapped (finalizeReleased).
@@ -8756,7 +9068,14 @@ function dropStaleDay(s: Session, L: string) {
   if (!isToday && today.includes(s.data.dayDate)) { s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0); return; }
   s.data.day = null; s.data.dayDate = null; s.data.time = null; s.data.timeBand = null; s.data.timeBandId = null;
 }
-async function continueFromKnown(s: Session, from: string, L: string) {
+// Review fix (17 Oct): o.released, from the paths where the customer has
+// typed their whole request (the fast lane opener, a typed sentence, a new
+// request after a finished one). With everything known, a released time that
+// fits is offered before the request goes to the studios, exactly as the
+// step-by-step path does in offerStudios (same RELEASED, audience and hours
+// rules inside offerReleased; off: nothing is read). Never when a studio was
+// named or a released time is already tapped, or on a repeat booking.
+async function continueFromKnown(s: Session, from: string, L: string, o: { released?: boolean } = {}) {
   dropStaleDay(s, L);
   // v154: with a studio's offer waiting for an answer, never rebuild the request.
   if (s.step === "await_offer" && s.data.offer?.row && await reshowOffer(s, from, L, "continue_from_known")) return;
@@ -8764,6 +9083,8 @@ async function continueFromKnown(s: Session, from: string, L: string) {
   if (!s.data.day) { s.step = "await_day"; await saveSession(s); if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L); return; }
   if (!s.data.time) { s.step = "await_time"; await saveSession(s); await askTime(from, L); return; }
   if (!s.data.area) { s.step = "await_area"; await saveSession(s); await askArea(from, L); return; }
+  if (o.released && !s.data.chosen && !s.data.customStudio && !s.data.released && !s.data.rebook && !(Array.isArray(s.data.prefer) && s.data.prefer.length)
+    && await offerReleased(s, from, L)) return;
   await askNameOrFinalize(s, from, L);
 }
 // v81: a customer answering a question we did not ask. Jorge typed "Por plaza
@@ -10000,10 +10321,14 @@ const handleInner = async (req: Request) => {
     if (text && SOCIOS_FALLBACK_RE.test(text)) {
       quietThisTurn = true;
       // A muted number still gets nothing, ever.
-      if ((await getSession(from)).step === "muted") return new Response("OK", { status: 200 });
+      const fbSess = await getSession(from);
+      if (fbSess.step === "muted") return new Response("OK", { status: 200 });
       // "Received, thank you. We will check it and confirm here."
       if (!(await sentRecently(from, SOCIOS_FALLBACK_ACK, 10 * 60e3))) await sendText(from, SOCIOS_FALLBACK_ACK);
       const known = await findPartnerByNumber(digitsOf(from)).catch(() => null);
+      // A number that is not a partner yet: what it writes next is a studio
+      // talking to us too, never the customer flow (SOCIOS_HELLO_RE above).
+      if (!known) { fbSess.data.socStudioAt = Date.now(); await saveSession(fbSess); }
       await founderCard(`📝 ${known ? known.business_name : "+" + digitsOf(from)} sent its times by WhatsApp (from /socios)`, {
         badge: "STUDIO SIGN-UP BY WHATSAPP", title: `${known ? known.business_name : "A studio"} sent the /socios message by hand`,
         paras: ["The page could not reach the save, so the studio sent the prefilled message. Nothing was saved. Enter the times on their times page or send them their signed /socios link. They were told we will confirm by WhatsApp."],
@@ -10012,6 +10337,17 @@ const handleInner = async (req: Request) => {
         to: ["jordan@massageclub.io"],
       });
       await logEvent(from, "socios_whatsapp", { partner_id: known ? known.id : null });
+      return new Response("OK", { status: 200 });
+    }
+    // Review fix (17 Oct): the page's hello from a number that is not a partner.
+    if (text && SOCIOS_HELLO_RE.test(text) && !(await findPartnerByNumber(digitsOf(from)).catch(() => null))) {
+      quietThisTurn = true;
+      const hSess = await getSession(from);
+      if (hSess.step === "muted") return new Response("OK", { status: 200 });
+      hSess.data.socStudioAt = Date.now(); await saveSession(hSess);
+      if (!(await sentRecently(from, SOCIOS_HELLO_ACK, 10 * 60e3))) await sendText(from, SOCIOS_HELLO_ACK);
+      await socStudioChatCard(from, text, "wrote from the /socios page");
+      await logEvent(from, "socios_hello", {});
       return new Response("OK", { status: 200 });
     }
 
@@ -10039,16 +10375,28 @@ const handleInner = async (req: Request) => {
           // v36: an away message is not an answer. Studios fire one within
           // seconds of our template ("gracias por contactar, te responderemos").
           const sinceMs = priorLastAt === null ? Infinity : Date.now() - priorLastAt;
-          const autoReply = AUTOREPLY_RE.test(text) || (sinceMs < 45_000 && !parseOfferedTime(text));
-          // v216: «ocupado» about one of its released times (RELEASED test or
-          // on, no open ask). studioOcupado says false for anything else, and
-          // today's handling below runs exactly as before.
-          if (!autoReply && await studioOcupado(from, text, partner).catch((e) => { console.log("[studio] ocupado failed", String(e)); return false; })) { /* answered */ }
+          const awayText = AUTOREPLY_RE.test(text);
+          // Review fix (17 Oct): when our last message to them asked them
+          // something about their released times ("¿Cuál se os ha
+          // llenado?", "¿Me confirmáis que al final no podéis atenderle?"),
+          // their answer is never an away message, however fast it comes and
+          // even when it says "no podemos atenderle".
+          const ourQuestion = (awayText || sinceMs < 45_000) ? await ocupadoQuestionOpen(from).catch(() => false) : false;
+          const autoReply = !ourQuestion && (awayText || (sinceMs < 45_000 && !parseOfferedTime(text)));
+          // v216: «ocupado» about one of its released times (no open ask, no
+          // booking of theirs it could be about). Review fix (17 Oct): read
+          // BEFORE the 45 second away-message guess, which dropped a studio's
+          // quick "Ocupado" and its answer to our "which one?"; only text
+          // that reads as an away message is kept from it. studioOcupado says
+          // false for anything else, and today's handling below runs as before.
+          const awayOnly = awayText && !ourQuestion;
+          if (!awayOnly && await studioOcupado(from, text, partner).catch((e) => { console.log("[studio] ocupado failed", String(e)); return false; })) { /* answered */ }
           else if (autoReply) {
             // v212: an away message gets no answer at all, not even the
             // holding line, so two bots never end up talking to each other.
             quietThisTurn = true;
             console.log(`[studio] auto-reply from ${partner.business_name} ignored (${Math.round(sinceMs / 1000)}s after our message)`);
+            if (awayOnly) await ocupadoAwayCard(from, text, partner).catch((e) => console.log("[studio] ocupado away card failed", String(e)));
             const em = text.match(EMAIL_IN_TEXT_RE);
             if (em) {
               await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partner.id)}&booking_email=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ booking_email: em[0].toLowerCase() }) }).catch(() => {});
@@ -10085,6 +10433,14 @@ const handleInner = async (req: Request) => {
     // separate step, "muted", which is the only one that stays silent, so the
     // recovery cannot accidentally reopen a thread Jordan closed on purpose.
     if (s.step === "muted") return new Response("OK", { status: 200 });
+    // Review fix (17 Oct): a new studio that wrote from the /socios page in the
+    // last 2 days. Its messages go to Jordan as a studio, never the customer flow.
+    if (s.data.socStudioAt && Date.now() - Number(s.data.socStudioAt) < SOC_STUDIO_CHAT_MS && (text || btnText || MEDIA_TYPES.includes(String(msg.type)))) {
+      quietThisTurn = true;
+      await socStudioChatCard(from, text || btnText || `[${msg.type}]`, "wrote again (a studio from the /socios page)");
+      await logEvent(from, "socios_studio_chat", {});
+      return new Response("OK", { status: 200 });
+    }
     if (s.step === "blocked") {
       s.step = "start";
       await saveSession(s);
@@ -11000,7 +11356,7 @@ const handleInner = async (req: Request) => {
             if (s.data.service) await logEvent(from, "service_chosen", { service: s.data.service, typed: true });
             const understood = [row ? (L === "es" ? String(row.tEs).toLowerCase() : String(row.tEn).toLowerCase()) : "", s.data.day, s.data.time, s.data.area].filter(Boolean).join(" · ");
             await sendText(from, COPY[L].gotItSvc(understood || (L === "es" ? "tu petición" : "your request")));
-            await continueFromKnown(s, from, L);
+            await continueFromKnown(s, from, L, { released: true });
           } else if (text && zoneQ(text)) {
             await sendText(from, await whereAnswer(from, L));
             await askService(from, L);
@@ -11774,7 +12130,7 @@ const handleInner = async (req: Request) => {
         } else if (text && (() => { const fresh = { phone: s.phone, step: s.step, wa_name: s.wa_name, data: { lang: s.data.lang || "", known: s.data.known || null, adRef: s.data.adRef || null } }; if (absorbSentence(fresh, text, L)) { s.data = fresh.data; return true; } return false; })()) {
           // v39: a new request typed after a finished one ("otro masaje el sábado").
           // The finished booking's answers are cleared first so the sentence is read fresh.
-          await continueFromKnown(s, from, L);
+          await continueFromKnown(s, from, L, { released: true });
         } else if (text && await lastResort(s, from, L, text)) {
           // v65: the model read it. Nothing more to do here.
         } else if (text && (/\?/.test(text) || text.trim().split(/\s+/).length >= 3)) {

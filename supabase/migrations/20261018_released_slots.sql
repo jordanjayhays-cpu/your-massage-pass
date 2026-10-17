@@ -458,7 +458,10 @@ as $$
            p.business_name, p.slug, coalesce(p.neighbourhood, p.city, 'Madrid') as area, p.address, p.status as pstatus,
            mc_wa_number(coalesce(p.whatsapp, p.phone)) as wa,
            mc_km(c.lat, c.lon, p.latitude, p.longitude) as km,
-           lower(coalesce(p.city, '')) as city_l
+           lower(coalesce(p.city, '')) as city_l,
+           c.lat is not null as centre_known,
+           p.latitude is not null and p.longitude is not null as has_ll,
+           p.neighbourhood as hood
       from live l
       join partners p on p.id = l.partner_id
       left join centre c on true
@@ -471,12 +474,19 @@ as $$
        -- (hueco_reservado_v1) exists, a WhatsApp-only studio is not offered.
        and coalesce(p.booking_email, p.email, '') like '%_@_%.%'
   ),
+  -- Review fix (socios, 17 Oct): a studio with no map position (a new one
+  -- approved from /socios) used to match any area through "city Madrid", so
+  -- the 12 km check never applied to it. Now it matches only a customer who
+  -- names its neighbourhood. The city fallback stays for a customer whose
+  -- area has no known centre, as before.
   near as (
     select distinct on (f.partner_id) f.*
       from fit f
      where p_area is null or btrim(p_area) = ''
         or (f.km is not null and f.km <= 12)
-        or (f.km is null and (f.area ilike '%' || p_area || '%' or f.city_l like '%madrid%'))
+        or (f.centre_known and not f.has_ll and f.hood is not null and btrim(f.hood) <> ''
+            and (f.hood ilike '%' || btrim(p_area) || '%' or btrim(p_area) ilike '%' || f.hood || '%'))
+        or (not f.centre_known and (f.area ilike '%' || p_area || '%' or f.city_l like '%madrid%'))
      order by f.partner_id, f.start_at, f.seat
   )
   select n.id, n.partner_id, n.business_name, n.slug, n.area, n.address, n.wa, n.start_at, n.end_at, n.mins, n.seat,
@@ -491,6 +501,9 @@ as $$
     left join lateral (
       select count(*) as n from partner_services ms where ms.partner_id = n.partner_id and ms.is_active and ms.price > 0
     ) rc on true
+   -- Review fix (socios, 17 Oct): every offer carries a price, so a time with
+   -- neither the studio's typed price nor a listed one is never offered.
+   where coalesce(n.price_eur, lp.price) is not null
    order by n.km nulls last, coalesce(n.price_eur, lp.price, 999), n.start_at
    limit greatest(1, least(coalesce(p_limit, 3), 6));
 $$;

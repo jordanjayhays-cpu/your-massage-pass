@@ -34,21 +34,29 @@
   nothing and says so (no save, no view logged).
   The page POSTs {"ops":"studio_signup","payload":{...}} to wa-bot?socios=1,
   which answers JSON {ok, status, message} with CORS for book.massageclub.io,
-  massageclub.io and *.vercel.app:
+  massageclub.io and this project's previews (your-massage-pass-*.vercel.app):
   - status "applied": a SIGNED personal link (/socios?s=<slug>&k=<sig>, from
     Jordan's links page or the socios_link op). The link is the studio's own,
     so its times are saved at once as released times (PRE-RELEASED SLOTS,
     12 Oct): dated ones through release_slots, "every week" as weekly times
     that keep themselves filled for the next 7 days. Customers see them only
-    when app_secrets RELEASED allows (the answer says, as "live"). Contact
-    details are filled only where we have none; a different WhatsApp, email,
-    address or hours goes to Jordan, never over what we have. The terms the
-    studio ticked are stored as its written acceptance (partner_terms).
+    when app_secrets RELEASED allows (the answer says, as "live"). On its
+    own link the studio is the source of truth for where bookings reach it
+    (review fix, 17 Oct): the booking WhatsApp, the email and the hours it
+    gives replace ours (the old ones go on Jordan's card); a different
+    address is only noted. Times are checked against the hours it gives,
+    never outside 08:00 to 22:00. The terms the studio ticked are stored as
+    its written acceptance (partner_terms), and only when the page sent them
+    word for word as wa-bot has them for that version.
     Screen: "Guardado", with a link to the studio's own times page.
   - status "pending_review": no link signature (the plain /socios, or a
     /socios?s=<slug> anyone can type). Nothing is saved or offered; Jordan
     gets a card with Aprobar / Rechazar. Screen: "Recibido, lo revisamos y os
-    confirmamos por WhatsApp o email".
+    confirmamos por WhatsApp o email". Approving one for a studio we already
+    have saves only its times: its details are not changed and no terms are
+    recorded in its name (anyone can type a studio's number here).
+  The price for the chosen length is required, unless it is the studio's own
+  link and we already have its menu (prefill has_menu).
   - ok false with a message (a check failed, too many sends): shown under
     the button, nothing else changes.
   Only when the save cannot be reached at all (network, a server error, an
@@ -64,9 +72,17 @@
   flow and is never read as an answer to a booking ask.
 
   Prefill: GET wa-bot?socios=1&s=<slug>[&k=<sig>][&view=1]. A signed link
-  also gets the email on file and logs one "link opened" (view=1, never in
-  preview) for Jordan's links page. If that call cannot be reached, an
-  unsigned link falls back to the read-only select below.
+  also gets the email on file and whether a menu is on file, and logs one
+  "link opened" (view=1, never in preview) for Jordan's links page. Without
+  a signature only an active studio is prefilled (its public listing). If
+  that call cannot be reached, an unsigned link falls back to the read-only
+  select below.
+
+  The page's other WhatsApp buttons open with "Hola, Massage Club. Somos
+  <name>, centro de masaje." and no times. From a number that is not a
+  partner, wa-bot answers once ("Gracias por escribirnos. Lo leemos y os
+  contestamos por aquí.") and sends Jordan a studio card; that number stays
+  out of the customer flow for 2 days.
 
   Email is required: released times are only offered at studios with an
   email, because the email always carries the client's phone and the 15
@@ -430,7 +446,7 @@ h3{font-size:21px;line-height:1.2}
             <p class="hint" id="hoursHint" aria-live="polite"></p>
           </div>
           <div class="field" role="group" aria-labelledby="priceLbl">
-            <span class="lbl" id="priceLbl"><span data-t="fPrices"></span> <span class="opt" data-t="opt"></span></span>
+            <span class="lbl" id="priceLbl"><span data-t="fPrices"></span> <span class="opt" id="priceOpt" data-t="opt"></span></span>
             <div class="prices">
               <div>
                 <label class="sublbl" for="p60">60 min</label>
@@ -674,6 +690,7 @@ const T = {
     errEmailNone: "Falta el email.",
     errPrice: "Poned solo el número, por ejemplo 45.",
     errAccept: "Para enviar, marcad «Acepto las condiciones».",
+    errPriceNeed: "Poned vuestro precio de {d} min: es el que ve el cliente.",
     save: "Enviar las horas", saving: "Enviando…",
     back2: "Volver",
     dup: "Ya nos habéis enviado estas mismas horas.",
@@ -689,7 +706,7 @@ const T = {
     nextWeekly: "Las de cada semana se repiten solas. Podéis verlas y quitarlas cuando queráis con el botón de abajo.",
     manage: "Ver y cambiar vuestras horas",
     srvNext: "Próximas fechas", srvNot: "No guardadas",
-    nextB: "Si un cliente coge un hueco, os llega la reserva por WhatsApp, por escrito y en español, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
+    nextB: "Si un cliente coge un hueco, os llega la reserva por WhatsApp y por email, por escrito y en español, con su nombre y su teléfono (y su email, cuando lo tenemos). Tenéis 15 minutos para rechazarla si algo ha cambiado.",
     nextC: "Si un hueco se os llena por otro lado, escribid «ocupado» por WhatsApp al +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
     waContact: "Escribirnos por WhatsApp",
     more: "Añadir más horas",
@@ -833,6 +850,7 @@ const T = {
     errEmailNone: "The email is missing.",
     errPrice: "Just the number, for example 45.",
     errAccept: "To send, tick \"I accept the terms\".",
+    errPriceNeed: "Add your {d} min price: it is what the customer sees.",
     save: "Send the times", saving: "Sending…",
     back2: "Back",
     dup: "You've already sent us these exact times.",
@@ -848,7 +866,7 @@ const T = {
     nextWeekly: "The weekly ones repeat by themselves. You can see and remove them whenever you like with the button below.",
     manage: "See and change your times",
     srvNext: "Next dates", srvNot: "Not saved",
-    nextB: "If a customer takes a slot, the booking reaches you on WhatsApp, in writing and in Spanish, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
+    nextB: "If a customer takes a slot, the booking reaches you by WhatsApp and by email, in writing and in Spanish, with their name and phone (and their email, when we have it). You have 15 minutes to turn it down if something has changed.",
     nextC: "If a slot fills up elsewhere, write \"ocupado\" (taken) on WhatsApp to +34\u00a0612\u00a0474\u00a0827 and we remove it.",
     waContact: "Write to us on WhatsApp",
     more: "Add more times",
@@ -1082,7 +1100,11 @@ function hoursRead(map) {
 }
 let HOURS = null;
 const DEFAULT_WIN = [[8 * 60, 22 * 60]]; // as wa-bot REL_DEFAULT_HOURS
-const hoursFor = (wd) => (HOURS && HOURS.has(wd) ? HOURS.get(wd) : DEFAULT_WIN);
+// Never before 08:00 or after 22:00, whatever the hours say (wa-bot
+// SOC_DAY_WINDOW, review fix 17 Oct).
+const DAY_WIN = [8 * 60, 22 * 60];
+const hoursFor = (wd) => (HOURS && HOURS.has(wd) ? HOURS.get(wd) : DEFAULT_WIN)
+  .map(([o, c]) => [Math.max(o, DAY_WIN[0]), Math.min(c, DAY_WIN[1])]).filter(([o, c]) => c > o);
 const hoursKnown = (wd) => !!(HOURS && HOURS.has(wd));
 
 // ---------------------------------------------------------------- days and times
@@ -1234,6 +1256,7 @@ function paintDynamic() {
   paintHoursHint();
   paintWho();
   paintContact();
+  paintPriceOpt();
   if (S.step === 2) renderTimes();
   if (S.step === 3) renderMini();
   if (S.step === 4) renderDone();
@@ -1316,7 +1339,9 @@ function renderSummary() {
   updateDock();
 }
 function renderMini() {
-  const wa = val("wa") ? `<p class="hint">${esc(t("sumWa", { v: pretty(val("wa")) }))}</p>` : "";
+  // Only a studio's own signed link saves its booking WhatsApp at once
+  // (wa-bot socSignedUpdate); an unsigned form waits for Jordan.
+  const wa = val("wa") && S.signed ? `<p class="hint">${esc(t("sumWa", { v: pretty(val("wa")) }))}</p>` : "";
   $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true) + wa + `<button type="button" class="btn btn-text" data-back="2">${esc(t("editTimes"))}</button>`;
 }
 function renderDone() {
@@ -1575,6 +1600,11 @@ function next2() {
 }
 
 // ---------------------------------------------------------------- step 3
+// Every offer to a customer carries a price (review fix, 17 Oct): the price
+// for the chosen length is needed unless this is the studio's own signed link
+// and we already have its menu (wa-bot socValidate, priceKnown).
+const priceNeeded = () => !(S.signed && S.partner && S.partner.has_menu === true);
+function paintPriceOpt() { const o = $("priceOpt"); if (o) o.hidden = priceNeeded(); }
 function checkStep3() {
   const bad = [];
   setErr("addr", "addrErr", val("addr") ? "" : (bad.push("addr"), "errAddr"));
@@ -1583,9 +1613,10 @@ function checkStep3() {
   setErr("email", "emailErr", !em ? (bad.push("email"), "errEmailNone") : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "" : (bad.push("email"), "errEmail"));
   const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
   const pBad = Number.isNaN(p60) ? "p60" : Number.isNaN(p90) ? "p90" : "";
-  setErr(null, "priceErr", pBad ? (bad.push(pBad), "errPrice") : "");
-  $("p60").setAttribute("aria-invalid", Number.isNaN(p60) ? "true" : "false");
-  $("p90").setAttribute("aria-invalid", Number.isNaN(p90) ? "true" : "false");
+  const need = !pBad && priceNeeded() && (S.dur === 90 ? p90 : p60) === null ? (S.dur === 90 ? "p90" : "p60") : "";
+  setErr(null, "priceErr", pBad ? (bad.push(pBad), "errPrice") : need ? (bad.push(need), "errPriceNeed") : "", { d: S.dur });
+  $("p60").setAttribute("aria-invalid", Number.isNaN(p60) || need === "p60" ? "true" : "false");
+  $("p90").setAttribute("aria-invalid", Number.isNaN(p90) || need === "p90" ? "true" : "false");
   S.accepted = $("accept").checked;
   setErr(null, "acceptErr", S.accepted ? "" : "errAccept");
   $("acceptBox").classList.toggle("bad", !S.accepted);

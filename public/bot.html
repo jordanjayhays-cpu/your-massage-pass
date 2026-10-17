@@ -64,6 +64,10 @@
       if ("IntersectionObserver" in window) {
         new IntersectionObserver(function (es) { btn.classList.toggle("hide", es[0].isIntersecting); }, { threshold: 0.15 }).observe(form);
       }
+    } else if (document.querySelector("[data-top]")) {
+      // Pages that start at the top (the studio links page): its first card
+      // is the one waiting for Jordan.
+      window.scrollTo(0, 0);
     } else {
       window.scrollTo(0, document.body.scrollHeight);
     }
@@ -162,6 +166,19 @@
         else old();
       });
     });
+
+    // A name filter (the studio links page): hides the cards whose
+    // data-name does not contain what is typed, accents ignored.
+    var flt = document.querySelector("[data-filter]");
+    if (flt) {
+      var fold = function (v) { return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); };
+      flt.addEventListener("input", function () {
+        var q = fold(flt.value.trim());
+        document.querySelectorAll(".card[data-name]").forEach(function (c) {
+          c.style.display = !q || fold(c.getAttribute("data-name")).indexOf(q) >= 0 ? "" : "none";
+        });
+      });
+    }
 
     // Button presets fill the three tap-button boxes ("Clear" empties them).
     document.querySelectorAll(".chip.preset").forEach(function (b) {

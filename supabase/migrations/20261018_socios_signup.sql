@@ -119,6 +119,16 @@ create table if not exists public.released_patterns (
 create unique index if not exists released_patterns_live
   on public.released_patterns (partner_id, weekday, start_time, minutes) where active;
 create index if not exists released_patterns_partner on public.released_patterns (partner_id) where active;
+-- Review fix (17 Oct): a weekly time starts at 08:00 or later and ends by
+-- 22:00 Madrid, whatever hours were typed (wa-bot SOC_DAY_WINDOW). A typed
+-- "0-24" once saved a weekly 00:00 that was materialised every 5 minutes.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'released_patterns_window') then
+    alter table public.released_patterns
+      add constraint released_patterns_window check (start_time >= time '08:00' and extract(epoch from start_time) / 60 + minutes <= 22 * 60);
+  end if;
+end $$;
 
 alter table public.released_patterns enable row level security;
 revoke all on public.released_patterns from public, anon, authenticated;
@@ -170,6 +180,9 @@ begin
       join partners p on p.id = rp.partner_id
      where rp.active
        and (p_partner is null or rp.partner_id = p_partner)
+       -- The same 08:00 to 22:00 window as released_patterns_window, for a
+       -- row that was saved before the constraint existed.
+       and rp.start_time >= time '08:00' and extract(epoch from rp.start_time) / 60 + rp.minutes <= 22 * 60
        and p.opted_out_at is null
        and coalesce(p.status, '') not in ('suspended', 'archived')
      order by rp.partner_id, rp.created_at
