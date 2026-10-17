@@ -226,6 +226,12 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
 .seeus{margin-top:14px;font-size:15px;color:var(--muted-ink)}
 .seeus a{display:inline-flex;align-items:center;min-height:44px;font-weight:700}
 
+/* Developer mode (?preview=1&dev=1): jump to any screen, nothing is sent. */
+.devbar{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:30;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));background:#241E18;color:#fff;font:600 13px/1 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.devbar b{margin-right:4px;letter-spacing:.06em}
+.devbar button{font:inherit;color:#241E18;background:#F2E1D7;border:0;border-radius:999px;padding:8px 11px;cursor:pointer}
+.devbar button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+body.dev{padding-top:52px}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(241,235,226,.97);border-top:1px solid var(--edge);padding:10px 16px calc(12px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .dock .btn{max-width:568px;margin:0 auto}
 .dock .err{max-width:568px;margin:0 auto 8px;text-align:center;font-size:16px}
@@ -652,6 +658,7 @@ const MAIL_TO = "jordan@massageclub.io";
 
 const q = new URLSearchParams(location.search);
 const PREVIEW = q.get("preview") === "1";
+const DEV = PREVIEW && q.get("dev") === "1"; // developer mode: skip every check, jump to any screen
 const SLUG = String(q.get("s") || "").trim().toLowerCase();
 const SLUG_OK = /^[a-z0-9][a-z0-9-]{0,79}$/.test(SLUG);
 // The personal link's signature (k). Checked only by wa-bot: a link without
@@ -1573,7 +1580,7 @@ function renderDone() {
 const HASH = ["", "#centro", "#horas", "#datos", "#listo"];
 const stepFromHash = () => Math.max(0, HASH.indexOf(location.hash));
 const here = (step) => location.pathname + location.search + HASH[step];
-const step1Valid = () => PREVIEW || !!val("name") && !!val("addr") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
+const step1Valid = () => DEV || !!val("name") && !!val("addr") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa")));
 function go(step, mode = "push") {
   const asked = step;
   if (step === 3 && !step1Valid()) { S.resume = 3; step = 1; }
@@ -2094,6 +2101,28 @@ if (startStep === 3 && !step1Valid()) startStep = val("name") || val("wa") ? 1 :
 // buttons still match the phone's.
 const hs = history.state;
 history.replaceState({ step: startStep, prev: hs && hs.step === startStep && typeof hs.prev === "number" ? hs.prev : -1 }, "", here(startStep));
+// Developer mode (Jordan, 17 Oct: "I need a developer mode"): with
+// ?preview=1&dev=1 a bar jumps to any screen without filling anything in.
+// Preview only, so nothing is ever sent.
+if (DEV) {
+  const bar = document.createElement("div");
+  bar.className = "devbar";
+  bar.innerHTML = "<b>DEV</b>";
+  const jumps = [["Inicio", 0], ["1 Centro", 1], ["2 Horas", 2], ["3 Datos", 3], ["Fin (vista previa)", 4], ["Fin (guardado)", 5]];
+  jumps.forEach(([label, n]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.addEventListener("click", () => {
+      if (n === 5) { S.result = "saved"; S.server = { live: true }; go(4); return; }
+      if (n === 4) { S.result = "preview"; }
+      go(n);
+    });
+    bar.appendChild(b);
+  });
+  document.body.appendChild(bar);
+  document.body.classList.add("dev");
+}
 go(startStep, "none");
 loadPartner().then(() => { paintDynamic(); });
 })();
