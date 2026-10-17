@@ -2368,7 +2368,7 @@ for (const [msg, want, note] of [
   const a = botSrc.indexOf("// ---- v215 released slots: pure helpers (start) ----");
   const b = botSrc.indexOf("// ---- v215 released slots: pure helpers (end) ----");
   if (a < 0 || b < a) throw new Error("bot.ts: the v215 released-slot helper markers are missing");
-  const names = ["parseReleasedMode", "releasedAudience", "releasedScope", "releasedHoursOk", "relAt", "relHm", "relYmd", "slotDays", "slotHours", "slotWindows", "slotGrid", "releaseCheck", "releasedRange", "relDayWord", "releasedLine", "releasedButtons", "releasedContactEs", "RELEASED_COPY", "REL_TEST_STUDIO_RE"];
+  const names = ["parseReleasedMode", "releasedAudience", "releasedScope", "releasedHoursOk", "relAt", "relHm", "relYmd", "slotDays", "slotHours", "slotWindows", "slotGrid", "releaseCheck", "releasedRange", "relDayWord", "releasedLine", "releasedButtons", "releasedContactEs", "RELEASED_COPY", "REL_TEST_STUDIO_RE", "releasedRefusal", "releasedSaveNote", "relHueco"];
   const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
   const js = `import { madridInstant, madridMidnight, stripAcc, euro } from ${JSON.stringify(copyUrl)};\n`
     + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
@@ -2395,7 +2395,10 @@ for (const [msg, want, note] of [
     [{ phone: "34611222333", email: "ana@example.com" }, "test", "a test domain"],
     [{ phone: "34611222333", email: "jordan+mctest@gmail.com" }, "test", "+mctest"],
     [{ phone: "34611222333", email: "jordan.hays@student.ie.edu" }, "test", "Jordan's student address"],
-    [{ phone: "34611222333", name: "Prueba Jordan" }, "test", "a name with prueba"],
+    [{ phone: "34611222333", name: "Prueba Jordan" }, "none", "review 17 Oct: a profile name alone never opens the test studios"],
+    [{ phone: "34611222333", name: "Test" }, "none", "nor a real studio: a test name is held back from both"],
+    [{ phone: "15622355063", name: "Ana" }, "test", "a test number with any name"],
+    [{ phone: "34600001234", name: "Prueba" }, "test", "a canary number named Prueba"],
     [{ phone: "17867276503" }, "none", "Cata, friend tester: never"],
     [{ phone: "34611222333", email: "cata.waack@gmail.com" }, "none", "Cata by email"],
     [{ phone: "8615273855997" }, "none", "Yi, friend tester: never"],
@@ -2415,9 +2418,14 @@ for (const [msg, want, note] of [
     check("test studio", studio, R.REL_TEST_STUDIO_RE.test(studio), want, "same rule as released_slots.is_test in the migration");
   }
 
-  // Offered from 09:00 to 20:40 Madrid, so the studio's confirmation goes out at once, inside its hours.
-  for (const [ms, want, note] of [[M(19, 8, 59), false, ""], [M(19, 9), true, ""], [M(19, 20, 39), true, ""], [M(19, 20, 40), false, "a 10 minute hold would book after 20:50"], [M(25, 9), true, "the DST Sunday"]]) {
+  // Review (17 Oct): offered from 09:00 to 20:15 Madrid and a tap taken until
+  // 20:45, so with the 30 minute offer and the 15 minutes from tap to booking
+  // the studio's confirmation always goes out by 21:00.
+  for (const [ms, want, note] of [[M(19, 8, 59), false, ""], [M(19, 9), true, ""], [M(19, 20, 14), true, ""], [M(19, 20, 15), false, "tapped by 20:45, booked by 21:00"], [M(19, 20, 39), false, "was true before the review: a confirmation at about 21:20"], [M(25, 9), true, "the DST Sunday"]]) {
     check("released offering hours", iso(ms), R.releasedHoursOk(ms), want, note);
+  }
+  for (const [ms, want, note] of [[M(19, 8, 59), false, ""], [M(19, 20, 44), true, "booked by 20:59 at the latest"], [M(19, 20, 45), false, ""], [M(19, 21, 8), false, "the reviewer's 21:08 tap"]]) {
+    check("released tap hours", iso(ms), R.releasedHoursOk(ms, "tap"), want, note);
   }
 
   // Madrid wall clock to an instant, across both clock changes.
@@ -2511,6 +2519,54 @@ for (const [msg, want, note] of [
   check("released contact line", "phone only", R.releasedContactEs("+34 600 000 501", ""), "Su teléfono es +34600000501.", "");
   check("released contact line", "nothing", R.releasedContactEs("", null), "", "");
 
+  // Review (17 Oct): why a tap was refused. Never "someone booked it" when nobody did.
+  {
+    const now = Date.parse("2026-10-19T15:00:00Z");
+    const ago = (min) => new Date(now - min * 60e3).toISOString();
+    const at = (min) => new Date(now + min * 60e3).toISOString();
+    const A = { id: "a", status: "booked", booked_phone: "34611000001", booked_at: ago(0.2), start_at: at(180), end_at: at(240), expires_at: at(120) };
+    const B = { id: "b", status: "released", start_at: at(210), end_at: at(270), expires_at: at(150) };
+    const C = { id: "c", status: "released", start_at: at(600), end_at: at(660), expires_at: at(540) };
+    for (const [rows, id, want, note] of [
+      [[A, B], "b", "dup", "two buttons tapped side by side: the other tap booked a moment ago"],
+      [[A], "a", "dup", "the same button twice: this customer booked this very time"],
+      [[{ ...A, booked_phone: "34622000002" }], "a", "taken", "someone else booked it"],
+      [[{ ...A, booked_at: ago(5) }, B], "b", "clash", "their own booking overlaps this time"],
+      [[{ ...A, booked_at: ago(5) }, C], "c", "too_close".replace("too_close", "taken"), "a later time they could also take: another customer won it"],
+      [[{ id: "h", status: "held", held_by_phone: "34611000001", held_until: at(8), updated_at: ago(0.1) }, C], "c", "dup", "their other tap holds a time right now"],
+      [[{ id: "h", status: "held", held_by_phone: "34611000001", held_until: at(8), updated_at: ago(6) }, C], "c", "stale_hold", "a hold left over from an earlier ask: give it back and retry"],
+      [[{ id: "h", status: "held", held_by_phone: "34611000001", held_until: ago(1), updated_at: ago(11) }, C], "c", "taken", "a hold that ran out does not count"],
+      [[{ ...C, status: "expired" }], "c", "too_close", "expired, nobody took it"],
+      [[{ ...C, expires_at: at(9) }], "c", "too_close", "under 10 minutes left to book it"],
+      [[], "c", "taken", "nothing could be read: as before"],
+    ]) check("released refusal", note, R.releasedRefusal(rows, id, "+34 611 000 001", now), want, "");
+  }
+  // The studio page's save note: singular and plural agree (review, 17 Oct).
+  for (const [saved, missed, want] of [
+    [["18:00"], [], "Guardado. Ya se puede reservar: 18:00."],
+    [["18:00", "18:30"], [], "Guardado. Ya se pueden reservar: 18:00 y 18:30."],
+    [["18:00"], ["20:30"], "Guardado. Ya se puede reservar: 18:00. No hemos guardado las 20:30: ya estaba marcada o acaba de cambiar, falta menos de una hora o no cabe en vuestro horario."],
+    [[], ["20:00", "20:30"], "No hemos guardado las 20:00 ni las 20:30: ya estaban marcadas o acaban de cambiar, falta menos de una hora o no caben en vuestro horario."],
+    [[], ["19:00", "20:00", "20:30"], "No hemos guardado las 19:00, las 20:00 ni las 20:30: ya estaban marcadas o acaban de cambiar, falta menos de una hora o no caben en vuestro horario."],
+  ]) check("released save note", `${saved.length}/${missed.length}`, R.releasedSaveNote(saved, missed).note, want, "");
+  check("released save note", "error only when nothing saved", [R.releasedSaveNote(["18:00"], ["20:00"]).err, R.releasedSaveNote([], ["20:00"]).err], [false, true], "");
+  // The released slot a request was made for, from message_text.
+  for (const [t, want, note] of [
+    ["Quiere: Relaxing massage | Cuando: Tomorrow Evening | Zona: Sol | Origen: whatsapp-bot | Hueco: 5B2C1E0A-1111-4222-8333-944445555666 (ZZ Prueba 18:00)", "5b2c1e0a-1111-4222-8333-944445555666", "a released booking"],
+    ["Quiere: Relaxing massage | Cuando: Tomorrow Evening | Zona: Sol | Origen: whatsapp-bot", null, "every other request: the cancel path is unchanged"],
+    ["Hueco: 5b2c1e0a-1111-4222-8333-944445555666", null, "only the marker createRequest writes"],
+    [null, null, ""],
+  ]) check("relHueco", note || String(t), R.relHueco(t), want, "");
+  // What the customer agrees to, and what follows a refused tap.
+  for (const L of ["en", "es"]) {
+    const c = R.RELEASED_COPY[L];
+    const consent = L === "en" ? "your name, phone and email" : "tu nombre, tu teléfono y tu email";
+    check("released consent", L, [c.many(["· a"]).includes(consent), c.one("· a").includes(consent)], [true, true], "the confirmation carries the email too (review, 17 Oct)");
+    check("released copy", `${L}: no "free now" before offerStudios`, [c.justTaken, c.stale, c.heldOut, c.tooClose].filter((t) => /free now|queda libre\./i.test(t)), [], "offerStudios may show studios to ask, not free times");
+    check("released copy", `${L}: vocative comma`, c.rejectedNone("Ana", "Calma", "x").startsWith(L === "en" ? "Sorry, Ana, Calma" : "Lo siento, Ana, Calma"), true, "");
+  }
+  check("released copy", "es: present perfect and indicative", [R.RELEASED_COPY.es.rejectNote, R.RELEASED_COPY.es.heldOut.slice(0, 33), R.RELEASED_COPY.es.stale.slice(0, 48)], ["Si el centro tiene algún problema, nos lo dice en 15 minutos y te avisamos al momento.", "Te he guardado esa hora 10 minuto", "Esas horas han cambiado desde que te las he mand"], "");
+
   // No em or en dashes in anything a customer or studio reads (standing rule).
   const copyOut = [];
   for (const L of ["en", "es"]) {
@@ -2529,11 +2585,31 @@ for (const [msg, want, note] of [
   check("hook", "finalizeBooking books a tapped released time", /if \(s\.data\.released\) return await finalizeReleased\(s, from, L\);/.test(botSrc), true, "");
   check("hook", "acceptOffer books the slot before it confirms", /relRpcOne\("book_released_slot"[\s\S]{0,2000}const claim = await fetch/.test(botSrc), true, "one conditional update decides who gets it");
   check("hook", "confirmed_start is written for a released time", /confirmed_start: relSlot\.start_at/.test(botSrc), true, "ensureBooking needs it for the bookings row");
+  // Review (17 Oct).
+  check("hook", "RELEASED off stops taps already on screen", /async function releasedTap[\s\S]{0,2400}const off = \(await releasedMode\(\)\) === "off" \|\| !releasedHoursOk\(Date\.now\(\), "tap"\);/.test(botSrc), true, "kill switch");
+  check("hook", "RELEASED off stops a booking in progress", /async function finalizeReleased[\s\S]{0,1200}const off = !!r\?\.slot_id && \(await releasedMode\(\)\) === "off";/.test(botSrc), true, "kill switch");
+  check("hook", "a double tap says nothing", /if \(why === "dup"\) \{ await logEvent\(from, "released_dup_tap"/.test(botSrc) && /if \(!from \|\| why === "dup"\) return;/.test(botSrc), true, "the other tap carries on");
+  check("hook", "the page save passes when it was drawn", /p_source: "studio_link", p_evidence: `studio page \$\{new Date\(nowMs\)\.toISOString\(\)\}`, p_since: new Date\(at\)\.toISOString\(\)/.test(botSrc), true, "a reload never re-releases a rejected time");
+  check("hook", "a reject reads the slot again before saying it is late", /const now2 = await readSlot\(\);\s*if \(now2\?\.status === "rejected"\) return pageOut\(url, already\(\)\);/.test(botSrc), true, "");
+  check("hook", "a reject after the customer cancelled tells nobody but Jordan", /if \(req\.stage !== "confirmed" \|\| flag === "cancelled" \|\| flag === "change_requested"\) \{/.test(botSrc), true, "");
+  check("hook", "a cancel withdraws the released time at once", /if \(relSlotId\) await relRpc\("released_request_closed", \{ p_request: Number\(req\.id\) \}\);/.test(botSrc), true, "");
+  check("hook", "a released cancel is emailed to the studio", /const cMail = await relMail\(`Cancelada: /.test(botSrc) && /relSlotId && req\.partner_id \? await emailStudio\(/.test(botSrc), true, "email-only studios");
+  check("hook", "a late-given email follows the released confirmation", /if \(relHueco\(reqRow\.message_text\) && reqRow\.stage === "confirmed" && reqRow\.partner_id\) await releasedEmailFollowUp\(reqRow, email\);/.test(botSrc), true, "");
+  check("hook", "a next released time after a reject only inside the offering hours", /if \(scope && releasedHoursOk\(Date\.now\(\)\)\) \{/.test(botSrc), true, "");
   // The migration's ON CONFLICT names the same partial index it creates.
   const idx = migSrc.match(/released_slots_live_seat\s+on public\.released_slots \(partner_id, start_at, seat\)\s+where (status in \([^)]*\))/);
   const onc = migSrc.match(/on conflict \(partner_id, start_at, seat\) where (status in \([^)]*\)) do nothing/);
   check("migration", "ON CONFLICT matches the live-seat index", !!idx && !!onc && idx[1] === onc[1], true, "otherwise Postgres cannot infer the index and the insert fails");
   check("migration", "no access for anon or signed-in users", /revoke all on public\.released_slots from public, anon, authenticated;/.test(migSrc) && /enable row level security/.test(migSrc), true, "");
+  // Review (17 Oct).
+  const fnDefs = [...migSrc.matchAll(/create or replace function public\.(\w+)\(([^)]*)\)/g)].map((m) => [m[1], m[2].split(",").map((x) => x.trim().split(/\s+/)[1]).join(", ")]);
+  const grants = new Set([...migSrc.matchAll(/grant execute on function public\.(\w+)\(([^)]*)\) to service_role;/g)].map((m) => `${m[1]}(${m[2]})`));
+  const revokes = new Set([...migSrc.matchAll(/revoke all on function public\.(\w+)\(([^)]*)\) from public, anon, authenticated;/g)].map((m) => `${m[1]}(${m[2]})`));
+  check("migration", "every function is revoked from anon and granted to service_role, with its own signature", fnDefs.filter(([n, a]) => !grants.has(`${n}(${a})`) || !revokes.has(`${n}(${a})`)).map(([n, a]) => `${n}(${a})`), [], "a changed signature must change both lines");
+  check("migration", "the old release_slots signature is dropped first", /drop function if exists public\.release_slots\(uuid, jsonb, text, text\);\s*create or replace function public\.release_slots\(p_partner uuid, p_rows jsonb, p_source text, p_evidence text default null, p_since timestamptz default null\)/.test(migSrc), true, "re-applying never leaves two overloads");
+  check("migration", "a hold never outlasts the time it can be booked in", /held_until = least\(expires_at,/.test(migSrc) && /now\(\) \+ interval '10 minutes' <= expires_at/.test(migSrc) && /s\.expires_at > now\(\) \+ interval '15 minutes'/.test(migSrc), true, "");
+  check("migration", "released times only at studios with an email", /and coalesce\(p\.booking_email, p\.email, ''\) like '%_@_%\.%'/.test(migSrc) && !/mc_wa_number\(coalesce\(p\.whatsapp, p\.phone\)\) is not null or/.test(migSrc), true, "the email carries the phone and the reject link");
+  check("migration", "one phone, one released time at a time", (migSrc.match(/hashtextextended\('released-phone:' \|\| v_phone, 0\)/g) || []).length, 2, "hold and book both lock the phone first");
 }
 
 // ---------------------------------------------------------------------------
