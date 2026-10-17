@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Centros socios · Massage Club</title>
-<meta name="description" content="Massage Club es un pequeño servicio de reservas en Madrid. Os mandamos clientes nuevos, que escriben en inglés, para vuestras horas libres. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por cada cliente nuevo que venga. Sin cuota ni contrato.">
+<meta name="description" content="Massage Club es un servicio de reservas en Madrid. Os mandamos clientes nuevos, que escriben en inglés, para vuestras horas libres. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por cada cliente nuevo que venga. Sin cuota ni contrato.">
 <meta name="theme-color" content="#F1EBE2">
 <meta name="color-scheme" content="light">
 <meta property="og:title" content="Massage Club: clientes nuevos para vuestras horas libres">
-<meta property="og:description" content="Un pequeño servicio de reservas en Madrid. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por cada cliente nuevo que venga. Sin cuota ni contrato.">
+<meta property="og:description" content="Un servicio de reservas de masajes en Madrid. Gratis hasta el 30 de noviembre de 2026. Después, 5 € + IVA por cada cliente nuevo que venga. Sin cuota ni contrato.">
 <meta property="og:image" content="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png">
 <link rel="icon" href="/favicon.ico">
 <link rel="preconnect" href="https://jglftdstrowwckwqmpue.supabase.co" crossorigin>
@@ -556,8 +556,8 @@ h2{font-size:clamp(26px,7.2vw,32px);line-height:1.12}
                before this page goes to any studio. Do not invent it here. -->
           <!-- termsLine is shown in full, word for word: it is sent as
                terms.text and stored as the studio's written acceptance.
-               paintTerms() only keeps "5 € + IVA" on one line and breaks the
-               line after "2026;" on screen; the words never change. -->
+               paintTerms() only keeps "5 € + IVA" on one line on screen;
+               the words never change. -->
           <label class="check" id="acceptBox" for="accept">
             <input type="checkbox" id="accept" required aria-describedby="acceptLine acceptErr">
             <span>
@@ -680,7 +680,7 @@ const T = {
     kicker: "Para centros de masaje en Madrid",
     hello: "Hola, {n}",
     h1: "Clientes nuevos para vuestras horas libres",
-    sub: "Somos Massage Club, un pequeño servicio de reservas en Madrid. Gente que escribe en inglés nos pide un masaje. Nosotros les buscamos un centro.",
+    sub: "Somos Massage Club, un servicio de reservas en Madrid. Gente que escribe en inglés nos pide un masaje. Nosotros les buscamos un centro.",
     cta: "Ofrecer nuestras horas libres",
     ctaResume: "Seguir donde lo dejasteis",
     ctaNote: "<b>Gratis hasta el 30 de noviembre.</b> 3 pasos, unos 2 minutos. Sin app ni contraseña.",
@@ -858,7 +858,7 @@ const T = {
     kicker: "For massage studios in Madrid",
     hello: "Hi, {n}",
     h1: "New customers for your free times",
-    sub: "We are Massage Club, a small booking service in Madrid. People who write in English ask us for a massage. We find them a studio.",
+    sub: "We are Massage Club, a booking service in Madrid. People who write in English ask us for a massage. We find them a studio.",
     cta: "Offer our free times",
     ctaResume: "Carry on where you left off",
     ctaNote: "<b>No charge until 30 November.</b> 3 steps, about 2 minutes. No app, no password.",
@@ -1386,15 +1386,9 @@ function paintStatic() {
 }
 // The terms beside the checkbox: termsLine word for word (it is what is sent
 // as terms.text). On screen only, "5 € + IVA" and "0 €" never break across
-// lines, and the line breaks after "2026;". Same words, same order.
+// lines. Same words, same order; buildPayload still sends T[L].termsLine.
 function paintTerms() {
-  const el = $("acceptLine");
-  const line = T[L].termsLine;
-  const keep = (x) => x.replace(/(\d) € \+ (IVA|VAT)/g, "$1\u00a0€\u00a0+\u00a0$2").replace(/(\d) €/g, "$1\u00a0€");
-  const i = line.indexOf("; ");
-  el.textContent = "";
-  if (i > 0) el.append(keep(line.slice(0, i + 1)), document.createElement("br"), keep(line.slice(i + 2)));
-  else el.textContent = keep(line);
+  $("acceptLine").textContent = T[L].termsLine.replace(/(\d) € \+ (IVA|VAT)/g, "$1\u00a0€\u00a0+\u00a0$2").replace(/(\d) €/g, "$1\u00a0€");
 }
 // The main button: a studio we already know (or one coming back to a draft)
 // goes straight to its times; anyone else starts at "Vuestro centro". The
