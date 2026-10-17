@@ -2532,7 +2532,7 @@ for (const [msg, want, note] of [
       [[A], "a", "dup", "the same button twice: this customer booked this very time"],
       [[{ ...A, booked_phone: "34622000002" }], "a", "taken", "someone else booked it"],
       [[{ ...A, booked_at: ago(5) }, B], "b", "clash", "their own booking overlaps this time"],
-      [[{ ...A, booked_at: ago(5) }, C], "c", "too_close".replace("too_close", "taken"), "a later time they could also take: another customer won it"],
+      [[{ ...A, booked_at: ago(5) }, C], "c", "taken", "a later time they could also take: another customer won it"],
       [[{ id: "h", status: "held", held_by_phone: "34611000001", held_until: at(8), updated_at: ago(0.1) }, C], "c", "dup", "their other tap holds a time right now"],
       [[{ id: "h", status: "held", held_by_phone: "34611000001", held_until: at(8), updated_at: ago(6) }, C], "c", "stale_hold", "a hold left over from an earlier ask: give it back and retry"],
       [[{ id: "h", status: "held", held_by_phone: "34611000001", held_until: ago(1), updated_at: ago(11) }, C], "c", "taken", "a hold that ran out does not count"],

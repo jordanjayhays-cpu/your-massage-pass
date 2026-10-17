@@ -6925,7 +6925,9 @@ async function slotsPage(url: URL): Promise<Response> {
     else {
       const rows: Array<Record<string, unknown>> = [];
       for (const hm of ts) {
-        if (releaseCheck({ ymd, hm, minutes }, hours, nowMs)) continue;
+        // Unknown hours: the same 08:00 to 22:00 the grid shows, so an edited
+        // link cannot save 23:30 either (an empty map falls back per day).
+        if (releaseCheck({ ymd, hm, minutes }, hours || new Map(), nowMs)) continue;
         const st = relAt(ymd, relToMin(hm) as number);
         for (let seat = 1; seat <= seats; seat++) rows.push({ start_at: new Date(st).toISOString(), end_at: new Date(st + minutes * 60e3).toISOString(), seat, price_eur: price });
       }
@@ -7081,7 +7083,10 @@ async function slotRejectPage(url: URL): Promise<Response> {
   if (slot.status === "rejected") return pageOut(url, already());
   if (slot.status === "booked" && ["cancelled", "dismissed"].includes(String(req.stage || ""))) {
     await relRpc("released_request_closed", { p_request: Number(slot.request_id) });
-    return pageOut(url, inactive());
+    // A reject pressed a moment ago closes the request too: read the slot
+    // again so this press then shows "Ya está rechazada".
+    const again = await readSlot();
+    return pageOut(url, again?.status === "rejected" ? already() : inactive());
   }
   if (slot.status !== "booked") return pageOut(url, inactive());
   const until = Date.parse(String(slot.reject_until));
