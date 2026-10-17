@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Centros socios · Massage Club</title>
+<meta name="description" content="Para centros de masaje en Madrid: pasadnos los huecos que se os quedan libres y se los ofrecemos a gente que nos escribe en inglés. Gratis hasta el 30 de noviembre de 2026.">
+<meta name="theme-color" content="#F1EBE2">
+<meta name="color-scheme" content="light">
+<meta property="og:title" content="¿A qué hora se os suele quedar una sala vacía?">
+<meta property="og:description" content="Massage Club, para centros de masaje en Madrid. Gratis hasta el 30 de noviembre de 2026. Sin cuota ni contrato.">
+<meta property="og:image" content="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://jglftdstrowwckwqmpue.supabase.co" crossorigin>
+<!--
+  socios.html (17 Oct): the partnership page Jordan sends to studios by email
+  or WhatsApp. Its one job is to get a studio to give us the times it would
+  like to offer to Massage Club clients, so the bot can send customers its way.
+
+  Personal link: /socios?s=<partners.slug> greets the studio and prefills its
+  details with a read-only select on the public partners table. A studio we
+  already work with can go straight to its times (#horas).
+
+  Saving: nothing is sent anywhere unless the page is opened with ?live=1.
+  Then the save button POSTs {"ops":"studio_signup","payload":{...}} to
+  wa-bot. Without it the page is a preview and says so on every step.
+  No tracking, no external JS, nothing sent on page load.
+-->
+<style>
+:root{
+  --page:#F1EBE2; --ink:#262019; --muted:#8A7F73; --muted-ink:#62584E; --clay:#B85C38; --clay-ink:#9A4A2C;
+  --cream:#FAF6F0; --line:#F0E9E0; --edge:#DCD0C0; --field:#9C9083; --white:#FFFFFF; --bad:#A3271C;
+  --serif:Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-family:var(--sans);font-size:17px;line-height:1.5;color:var(--ink);background:var(--page);overflow-x:hidden;min-height:100vh}
+body.docked{padding-bottom:92px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:var(--clay-ink);text-underline-offset:3px}
+img{display:block;max-width:100%}
+[hidden]{display:none !important}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+:focus-visible{outline:3px solid var(--clay-ink);outline-offset:3px;border-radius:8px}
+.skiplink{position:absolute;left:16px;top:-60px;background:var(--ink);color:var(--cream);padding:12px 16px;border-radius:10px;z-index:20;text-decoration:none;font-weight:700}
+.skiplink:focus{top:12px}
+
+.wrap{max-width:600px;margin:0 auto;padding:0 16px}
+.top{display:flex;align-items:center;gap:10px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:4px;min-height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);flex:1;min-width:0}
+.brand img{width:40px;height:40px;border-radius:50%;box-shadow:0 0 0 1px var(--edge)}
+.brand span{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.lang{min-width:48px;height:44px;padding:0 14px;border-radius:999px;background:var(--cream);border:1.5px solid var(--edge);font-size:15px;font-weight:700}
+.lang:hover{border-color:var(--field)}
+
+/* Landing */
+.hero{padding:22px 0 8px}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--clay-ink)}
+.hello{font-family:var(--serif);font-size:20px;color:var(--clay-ink);margin-top:14px}
+h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+h1{font-size:clamp(31px,8.6vw,46px);line-height:1.08;margin-top:10px}
+h2{font-size:clamp(26px,7vw,32px);line-height:1.12}
+h3{font-size:21px;line-height:1.2}
+.lead{font-size:18px;line-height:1.5;margin-top:14px;color:var(--ink)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:14px 20px;border-radius:16px;font-size:18px;font-weight:700;text-align:center;text-decoration:none;transition:transform .1s,background-color .15s}
+.btn:active{transform:scale(.985)}
+.btn-primary{background:var(--clay);color:var(--white);box-shadow:0 10px 24px rgba(184,92,56,.28)}
+.btn-primary:hover{background:var(--clay-ink)}
+.btn-secondary{background:var(--cream);color:var(--ink);border:1.5px solid var(--field);font-size:16.5px;min-height:52px}
+.btn-text{min-height:48px;padding:10px 4px;font-size:16px;font-weight:700;color:var(--clay-ink);text-decoration:underline;text-underline-offset:3px;width:auto}
+.btn[disabled]{opacity:.6;cursor:progress}
+.ctas{display:grid;gap:10px;margin-top:22px}
+.note{font-size:15px;color:var(--muted-ink);text-align:center}
+.proof{margin-top:22px;padding:14px 16px;border-left:3px solid var(--clay);background:var(--cream);border-radius:0 14px 14px 0;font-size:16px;color:var(--ink)}
+
+.sec{margin-top:36px}
+.sec > h2{margin-bottom:14px}
+.benefits{list-style:none;display:grid;gap:10px}
+.benefits li{display:flex;gap:12px;align-items:flex-start;background:var(--cream);border:1px solid var(--line);border-radius:16px;padding:14px 16px;font-size:16px}
+.tick{flex:none;width:26px;height:26px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:15px;font-weight:700;margin-top:1px}
+.benefits b{display:block;font-size:17px}
+.steps{list-style:none;counter-reset:s;display:grid;gap:14px}
+.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;font-size:16.5px}
+.steps li::before{content:counter(s);flex:none;width:34px;height:34px;border-radius:50%;border:2px solid var(--clay);color:var(--clay-ink);font-family:var(--serif);font-weight:700;font-size:18px;display:grid;place-items:center;background:var(--cream)}
+
+.terms{background:var(--cream);border:2px solid var(--clay);border-radius:20px;padding:20px 18px}
+.terms h2{font-size:clamp(22px,6.2vw,27px)}
+.terms ul{list-style:none;margin-top:14px;display:grid;gap:0}
+.terms li{padding:11px 0;border-top:1px solid var(--line);font-size:16.5px}
+.terms li:first-child{border-top:0}
+.terms li.cmp{font-size:15px;color:var(--muted-ink);border-top:1px dashed var(--edge);margin-top:4px;padding-top:14px}
+
+.faq{display:grid;gap:8px}
+.faq details{background:var(--cream);border:1px solid var(--line);border-radius:14px}
+.faq summary{list-style:none;cursor:pointer;min-height:52px;padding:13px 48px 13px 16px;font-weight:700;font-size:16.5px;position:relative;border-radius:14px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:400;color:var(--clay-ink)}
+.faq details[open] summary::after{content:"\2212"}
+.faq details p{padding:0 16px 16px;font-size:16px}
+
+.contact{margin:36px 0 28px;padding-top:20px;border-top:1px solid var(--edge);font-size:16px}
+.contact b{font-family:var(--serif);font-size:18px}
+.contact a{word-break:break-word}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(241,235,226,.96);border-top:1px solid var(--edge);padding:12px 16px calc(12px + env(safe-area-inset-bottom));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.dock .btn{max-width:568px;margin:0 auto}
+
+/* Flow */
+.flow{padding:8px 0 40px}
+.preview{display:inline-block;font-size:13.5px;color:var(--muted-ink);background:var(--cream);border:1px dashed var(--field);border-radius:999px;padding:5px 12px;margin:6px 0 10px}
+.progress{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 22px}
+.progress li{font-size:13.5px;font-weight:700;color:var(--muted-ink)}
+.progress li::before{content:"";display:block;height:6px;border-radius:6px;background:var(--edge);margin-bottom:7px}
+.progress li.done::before,.progress li[aria-current="step"]::before{background:var(--clay)}
+.progress li[aria-current="step"]{color:var(--ink)}
+.step h2{outline:none}
+.step .sub{margin-top:8px;font-size:16.5px;color:var(--ink)}
+.step .hello{margin-top:0;margin-bottom:6px}
+
+.field{margin-top:18px}
+.field label,.field .lbl{display:block;font-size:16px;font-weight:700;margin-bottom:6px}
+.opt{font-weight:400;color:var(--muted-ink)}
+.field input[type=text],.field input[type=tel],.field input[type=email]{width:100%;min-height:52px;background:var(--white);border:1.5px solid var(--field);border-radius:14px;padding:12px 14px;font-size:17px;outline:none;-webkit-appearance:none;appearance:none}
+.field input:focus{border-color:var(--clay-ink);box-shadow:0 0 0 3px rgba(184,92,56,.22)}
+.field input[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 2px rgba(163,39,28,.15)}
+.hint{font-size:14.5px;color:var(--muted-ink);margin-top:6px}
+.err{font-size:15px;color:var(--bad);font-weight:700;margin-top:6px}
+.err:empty{display:none}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.euro{position:relative}
+.euro input{padding-right:36px !important}
+.euro::after{content:"\20AC";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted-ink);font-weight:700;pointer-events:none}
+.sublbl{display:block;font-size:14.5px;color:var(--muted-ink);margin-bottom:4px;font-weight:700}
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;padding:14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px}
+.check.bad{border-color:var(--bad)}
+.check input{flex:none;width:26px;height:26px;margin-top:1px;accent-color:var(--clay)}
+.check label{font-weight:700;font-size:17px;cursor:pointer}
+.check .line{display:block;font-weight:400;font-size:14.5px;color:var(--muted-ink);margin-top:4px}
+.actions{display:grid;gap:6px;margin-top:22px;justify-items:center}
+
+.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:15px;color:var(--muted-ink)}
+.who b{color:var(--ink)}
+.who .btn-text{min-height:40px;padding:6px 2px;font-size:15px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;border:0}
+.seg legend{font-size:16px;font-weight:700;margin-bottom:8px;padding:0}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.seg span{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:17px}
+.seg input:checked + span{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.seg input:focus-visible + span{outline:3px solid var(--clay-ink);outline-offset:3px}
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.day{position:relative;min-height:62px;border-radius:14px;border:1.5px solid var(--field);background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 2px;line-height:1.2}
+.day .dt{font-weight:700;font-size:15.5px}
+.day .dd{font-size:13.5px;color:var(--muted-ink)}
+.day[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.day[aria-pressed=true] .dd{color:#E9DFD2}
+.badge{position:absolute;top:-7px;right:-5px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--clay);color:var(--white);font-size:13px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--page)}
+.dayinfo{font-size:15px;color:var(--muted-ink);margin-top:14px}
+.glabel{font-size:13.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-ink);margin:16px 0 8px}
+.times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tm{min-height:50px;border-radius:12px;border:1.5px solid var(--field);background:var(--white);font-weight:700;font-size:16.5px;font-variant-numeric:tabular-nums}
+.tm[aria-pressed=true]{background:var(--clay);border-color:var(--clay);color:var(--white)}
+.tm[aria-pressed=true]::before{content:"\2713";margin-right:4px}
+.empty{margin-top:14px;padding:14px;border-radius:14px;background:var(--cream);font-size:16px}
+.switch{display:flex;align-items:center;gap:14px;justify-content:space-between;margin-top:22px;padding:12px 14px;background:var(--cream);border:1.5px solid var(--edge);border-radius:14px}
+.switch label{font-weight:700;font-size:17px;cursor:pointer}
+.switch .hint{margin-top:2px}
+.switch input{-webkit-appearance:none;appearance:none;flex:none;width:56px;height:32px;border-radius:16px;background:var(--field);position:relative;cursor:pointer;transition:background-color .15s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:var(--white);transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked{background:var(--clay)}
+.switch input:checked::after{transform:translateX(24px)}
+.summary{margin-top:18px;padding:16px;border-radius:16px;background:var(--white);border:1.5px solid var(--edge)}
+.summary .sumhead{font-weight:700}
+.summary ul{list-style:none;margin-top:8px;display:grid;gap:6px;font-size:16px}
+.summary li b{margin-right:6px}
+
+.done-mark{width:64px;height:64px;border-radius:50%;background:var(--clay);color:var(--white);display:grid;place-items:center;font-size:32px;margin-bottom:16px}
+.next{list-style:none;display:grid;gap:10px;margin-top:16px}
+.next li{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:16.5px}
+
+@media (min-width:720px){
+  .wrap{padding:0 24px}
+  .hero{padding-top:40px}
+  .ctas{grid-template-columns:1fr;max-width:420px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<a class="skiplink" href="#main" data-t="skip">Saltar al contenido</a>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/socios" id="home">
+      <img src="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png" width="40" height="40" alt="" decoding="async">
+      <span>Massage Club</span>
+    </a>
+    <button type="button" class="lang" id="lang" lang="en" aria-label="Read this page in English">EN</button>
+  </header>
+
+  <main id="main" tabindex="-1">
+
+    <!-- A. Landing -->
+    <div id="landing">
+      <section class="hero" aria-labelledby="h1">
+        <p class="kicker" data-t="kicker"></p>
+        <p class="hello" id="helloTop" hidden></p>
+        <h1 id="h1" data-t="h1"></h1>
+        <p class="lead" data-t="sub"></p>
+        <div class="ctas">
+          <button type="button" class="btn btn-primary" id="heroCta" data-go="1" data-t="cta"></button>
+          <button type="button" class="btn btn-secondary" id="knownCta" data-go="2" data-t="ctaKnown" hidden></button>
+          <p class="note" data-t="ctaNote"></p>
+        </div>
+        <p class="proof" data-t="proof"></p>
+      </section>
+
+      <section class="sec" aria-labelledby="hWhy">
+        <h2 id="hWhy" data-t="whyTitle"></h2>
+        <ul class="benefits">
+          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b1"></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b2"></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b3"></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b4"></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span><span data-h="b5"></span></li>
+        </ul>
+      </section>
+
+      <section class="sec" aria-labelledby="hHow">
+        <h2 id="hHow" data-t="howTitle"></h2>
+        <ol class="steps">
+          <li data-t="how1"></li>
+          <li data-t="how2"></li>
+          <li data-t="how3"></li>
+          <li data-t="how4"></li>
+        </ol>
+      </section>
+
+      <section class="sec terms" id="terms" aria-labelledby="hTerms">
+        <h2 id="hTerms" data-t="termsTitle"></h2>
+        <ul>
+          <li data-h="t1"></li>
+          <li data-h="t2"></li>
+          <li data-h="t3"></li>
+          <li data-t="t4"></li>
+          <li class="cmp" data-t="t5"></li>
+        </ul>
+      </section>
+
+      <div class="ctas" style="margin-top:24px">
+        <button type="button" class="btn btn-primary" id="finalCta" data-go="1" data-t="cta"></button>
+      </div>
+
+      <section class="sec" aria-labelledby="hFaq">
+        <h2 id="hFaq" data-t="faqTitle"></h2>
+        <div class="faq">
+          <details><summary data-t="q1"></summary><p data-t="a1"></p></details>
+          <details><summary data-t="q2"></summary><p data-t="a2"></p></details>
+          <details><summary data-t="q3"></summary><p data-t="a3"></p></details>
+          <details><summary data-t="q4"></summary><p data-t="a4"></p></details>
+          <details><summary data-t="q5"></summary><p data-t="a5"></p></details>
+        </div>
+      </section>
+    </div>
+
+    <!-- B to D. The three steps -->
+    <div id="flow" class="flow" hidden>
+      <p class="preview" id="previewNote" data-t="preview" hidden></p>
+      <ol class="progress" id="progress" data-aria="progressAria">
+        <li data-n="1"><span class="sr" data-t="stepWord1"></span><span data-t="p1"></span></li>
+        <li data-n="2"><span class="sr" data-t="stepWord2"></span><span data-t="p2"></span></li>
+        <li data-n="3"><span class="sr" data-t="stepWord3"></span><span data-t="p3"></span></li>
+      </ol>
+
+      <!-- B. Step 1: details -->
+      <section class="step" data-step="1" aria-labelledby="s1h" hidden>
+        <p class="hello" id="helloStep" hidden></p>
+        <h2 id="s1h" tabindex="-1" data-t="s1Title"></h2>
+        <p class="sub" id="s1sub"></p>
+        <form id="f1" novalidate>
+          <div class="field">
+            <label for="name" data-t="fName"></label>
+            <input type="text" id="name" name="name" autocomplete="organization" autocapitalize="words" required aria-describedby="nameErr">
+            <p class="err" id="nameErr" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="wa" data-t="fWa"></label>
+            <input type="tel" id="wa" name="wa" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000" required aria-describedby="waHint waErr">
+            <p class="hint" id="waHint" data-t="fWaHint"></p>
+            <p class="err" id="waErr" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="addr" data-t="fAddr"></label>
+            <input type="text" id="addr" name="addr" autocomplete="street-address" data-ph="fAddrPh" required aria-describedby="addrErr">
+            <p class="err" id="addrErr" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="email"><span data-t="fEmail"></span> <span class="opt" data-t="opt"></span></label>
+            <input type="email" id="email" name="email" autocomplete="email" inputmode="email" placeholder="hola@vuestrocentro.es" aria-describedby="emailErr">
+            <p class="err" id="emailErr" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="hours"><span data-t="fHours"></span> <span class="opt" data-t="opt"></span></label>
+            <input type="text" id="hours" name="hours" data-ph="fHoursPh" aria-describedby="hoursHint">
+            <p class="hint" id="hoursHint"></p>
+          </div>
+          <div class="field" role="group" aria-labelledby="priceLbl">
+            <span class="lbl" id="priceLbl"><span data-t="fPrices"></span> <span class="opt" data-t="opt"></span></span>
+            <div class="prices">
+              <div>
+                <label class="sublbl" for="p60">60 min</label>
+                <div class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></div>
+              </div>
+              <div>
+                <label class="sublbl" for="p90">90 min</label>
+                <div class="euro"><input type="text" id="p90" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></div>
+              </div>
+            </div>
+            <p class="hint" id="priceHint"></p>
+            <p class="err" id="priceErr" aria-live="polite"></p>
+          </div>
+          <div class="check" id="acceptBox">
+            <input type="checkbox" id="accept" required aria-describedby="acceptLine acceptErr">
+            <div>
+              <label for="accept" data-t="accept"></label>
+              <span class="line" id="acceptLine" data-t="termsLine"></span>
+            </div>
+          </div>
+          <p class="err" id="acceptErr" aria-live="polite"></p>
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" data-t="next1"></button>
+            <button type="button" class="btn btn-text" data-go="0" data-t="back0"></button>
+          </div>
+        </form>
+      </section>
+
+      <!-- C. Step 2: times -->
+      <section class="step" data-step="2" aria-labelledby="s2h" hidden>
+        <h2 id="s2h" tabindex="-1" data-t="s2Title"></h2>
+        <p class="sub" data-t="s2Sub"></p>
+        <p class="who" id="who" hidden><span id="whoText"></span><button type="button" class="btn btn-text" data-go="1" data-t="change"></button></p>
+
+        <fieldset class="seg field" id="durSet">
+          <legend data-t="duration"></legend>
+          <label><input type="radio" name="dur" value="60" checked><span>60 min</span></label>
+          <label><input type="radio" name="dur" value="90"><span>90 min</span></label>
+        </fieldset>
+
+        <div class="field">
+          <span class="lbl" id="daysLbl" data-t="dayLbl"></span>
+          <div class="days" id="days" role="group" aria-labelledby="daysLbl"></div>
+          <p class="dayinfo" id="dayInfo"></p>
+          <div id="grid"></div>
+          <p class="hint" id="dropNote" aria-live="polite"></p>
+        </div>
+
+        <div class="switch">
+          <div>
+            <label for="repeat" data-t="repeat"></label>
+            <p class="hint" id="repeatHint" data-t="repeatHint"></p>
+          </div>
+          <input type="checkbox" role="switch" id="repeat" aria-describedby="repeatHint">
+        </div>
+
+        <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
+
+        <div class="check" id="accept2Box" hidden>
+          <input type="checkbox" id="accept2" aria-describedby="accept2Line accept2Err">
+          <div>
+            <label for="accept2" data-t="accept"></label>
+            <span class="line" id="accept2Line" data-t="termsLine"></span>
+          </div>
+        </div>
+        <p class="err" id="accept2Err" aria-live="polite"></p>
+
+        <p class="err" id="saveErr" aria-live="assertive"></p>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="save" data-t="save"></button>
+          <button type="button" class="btn btn-text" data-go="1" data-t="back1"></button>
+        </div>
+      </section>
+
+      <!-- D. Step 3: done -->
+      <section class="step" data-step="3" aria-labelledby="s3h" hidden>
+        <div class="done-mark" aria-hidden="true">&#10003;</div>
+        <h2 id="s3h" tabindex="-1" data-t="s3Title"></h2>
+        <p class="sub" id="thanks"></p>
+        <h3 style="margin-top:22px" data-t="nextTitle"></h3>
+        <ul class="next">
+          <li data-t="next1Line"></li>
+          <li data-t="next2Line"></li>
+        </ul>
+        <div class="summary" id="sentSummary"></div>
+        <p class="hint" id="sentPreview" data-t="sentPreview" hidden></p>
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="more" data-t="more"></button>
+        </div>
+      </section>
+    </div>
+
+    <footer class="contact">
+      <p><b data-t="contactName"></b></p>
+      <p data-t="contactLine"></p>
+      <p><a href="mailto:jordan@massageclub.io">jordan@massageclub.io</a></p>
+    </footer>
+  </main>
+</div>
+
+<div class="dock" id="dock" hidden>
+  <button type="button" class="btn btn-primary" data-go="1" data-t="cta"></button>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const SB = "https://jglftdstrowwckwqmpue.supabase.co";
+// Publishable key, the same one the website ships (src/lib/supabase.ts). Used
+// only for a read-only select on partners by slug.
+const SB_KEY = "sb_publishable_oxG5Zjo1ERmCl57_zhJ-dw_aI7jf7ky";
+const SAVE_URL = SB + "/functions/v1/wa-bot";
+const FORM_VERSION = "socios-2026-10-17";
+
+const q = new URLSearchParams(location.search);
+const LIVE = q.get("live") === "1";
+const SLUG = String(q.get("s") || "").trim().toLowerCase();
+const SLUG_OK = /^[a-z0-9][a-z0-9-]{0,79}$/.test(SLUG);
+let L = String(q.get("lang") || "es").toLowerCase().startsWith("en") ? "en" : "es";
+
+// Partner fee, as Jordan set it on 17 Oct (CLAUDE.md, billing_settings).
+// Never quote another figure here.
+const T = {
+  es: {
+    docTitle: "Centros socios · Massage Club",
+    skip: "Saltar al contenido",
+    langBtn: "EN", langAria: "Read this page in English",
+    kicker: "Para centros de masaje en Madrid",
+    hello: "Hola, {n}",
+    h1: "¿A qué hora se os suele quedar una sala vacía?",
+    sub: "Pasadnos ese hueco y se lo ofrecemos a gente que nos escribe en inglés buscando un masaje en Madrid; si nadie lo coge, no os cuesta nada.",
+    cta: "Elegir mis horas",
+    ctaKnown: "Ya trabajamos juntos: ir directo a las horas",
+    ctaNote: "Sin app ni contraseñas. Gratis hasta el 30 de noviembre.",
+    proof: "Desde septiembre nos han escrito más de 100 personas, en inglés, buscando un masaje: extranjeros que viven en Madrid, estudiantes de fuera y turistas. No os prometemos un número de clientes.",
+    whyTitle: "Lo esencial",
+    b1: "<b>Solo pagáis si el cliente viene.</b> Gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5&nbsp;€ + IVA por la primera visita de cada cliente nuevo. Por sus siguientes visitas, nada.",
+    b2: "<b>Todo por escrito y en español.</b> Nosotros hablamos con el cliente en inglés; a vosotros os llega la reserva confirmada por WhatsApp, con nombre, teléfono y email.",
+    b3: "<b>Vuestro precio, vuestro cliente.</b> El cliente os paga a vosotros, a vuestro precio. Si vuelve, es vuestro y no nos debéis nada.",
+    b4: "<b>Solo masaje profesional.</b> A quien pide otra cosa le decimos que no y no le contestamos más.",
+    b5: "<b>Nada que aprender.</b> Sin app, sin contraseñas, nada que instalar.",
+    howTitle: "Cómo funciona",
+    how1: "Nos pasáis por adelantado los huecos que de verdad tengáis libres: por ejemplo 2 o 3 al día, o uno para empezar. Los marcáis aquí mismo.",
+    how2: "Nosotros hablamos con el cliente en inglés y le ofrecemos vuestros huecos.",
+    how3: "Si coge uno, os llega al momento un WhatsApp con la reserva confirmada. Tenéis 15 minutos para rechazarla si algo ha cambiado.",
+    how4: "Si un hueco se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos.",
+    termsTitle: "Lo que cuesta: gratis hasta el 30 de noviembre. Después, 5 € + IVA por cliente nuevo, no un 25 %.",
+    t1: "<b>Gratis</b> hasta el 30 de noviembre de 2026.",
+    t2: "A partir del 1 de diciembre de 2026: <b>5&nbsp;€ + IVA</b> por la primera visita de cada cliente nuevo, solo si viene.",
+    t3: "Por sus siguientes visitas: <b>0&nbsp;€</b>.",
+    t4: "Sin cuota mensual. Sin contrato. Lo dejáis cuando queráis.",
+    t5: "Para comparar: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo (unos 17 € + IVA en un masaje de 68 €). Fresha cobra el 20 % por los clientes nuevos que trae.",
+    faqTitle: "Lo que nos suelen preguntar",
+    q1: "Ya estamos en Treatwell, Booksy o Fresha",
+    a1: "Perfecto, podéis seguir con ellos: no tenéis que dejar nada. Somos otro canal, solo para los huecos que se os quedan libres, y si uno se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos. El coste sí cambia: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo, y Fresha el 20 % por los clientes nuevos que trae. Nosotros, a partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.",
+    q2: "No tenemos huecos libres",
+    a2: "Pues enhorabuena, y no os pedimos nada. Si alguna semana se os queda un hueco libre, aunque sea por una cancelación, pasádnoslo por WhatsApp. Si nadie lo coge, no os cuesta nada.",
+    q3: "¿Y si el cliente no viene?",
+    a3: "Entonces no pagáis nada: solo cobramos la primera visita si el cliente viene de verdad, y hasta el 30 de noviembre, ni eso. Además, desde el primer momento tenéis por escrito su nombre, teléfono y email.",
+    q4: "¿Cuánto cobráis exactamente?",
+    a4: "Hasta el 30 de noviembre, nada. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota mensual ni contrato, y lo dejáis cuando queráis. El cliente os paga a vosotros, a vuestro precio.",
+    q5: "¿Tenemos que hablar inglés?",
+    a5: "No. Nosotros hablamos con el cliente en inglés y a vosotros os lo pasamos todo por escrito y en español: hora, nombre, teléfono y email. No os prometemos que el cliente hable español, pero la reserva os llega clara y confirmada.",
+    contactName: "Jordan, de Massage Club",
+    contactLine: "¿Alguna duda? Escribidme.",
+
+    preview: "Vista previa: no se guarda nada todavía",
+    progressAria: "Pasos",
+    stepWord1: "Paso 1 de 3: ", stepWord2: "Paso 2 de 3: ", stepWord3: "Paso 3 de 3: ",
+    p1: "Vuestros datos", p2: "Vuestras horas", p3: "Listo",
+    s1Title: "Vuestros datos",
+    s1SubKnown: "Comprobad que está todo bien y cambiad lo que haga falta.",
+    s1SubNew: "Para saber a quién enviamos las reservas.",
+    fName: "Nombre del centro",
+    fWa: "WhatsApp para las reservas",
+    fWaHint: "Aquí os llegan las reservas confirmadas, por escrito y en español.",
+    fAddr: "Dirección o barrio",
+    fAddrPh: "Calle y número, o el barrio",
+    fEmail: "Email",
+    opt: "(opcional)",
+    fHours: "Horario",
+    fHoursPh: "Lun-Vie 10:00-20:00, Sáb 10:00-14:00",
+    hoursHintNone: "Así solo os enseñamos horas en las que estáis abiertos.",
+    hoursHintOk: "Entendido: {h}.",
+    hoursHintBad: "No lo entendemos del todo; os enseñamos de 09:00 a 21:00 y lo apuntamos tal cual.",
+    fPrices: "Vuestro precio",
+    priceHint: "El cliente os paga a vosotros, a este precio.",
+    priceFrom: "En nuestra ficha pone: desde {p} €.",
+    accept: "Acepto las condiciones",
+    termsLine: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
+    next1: "Siguiente: vuestras horas",
+    back0: "Volver",
+    errName: "Falta el nombre del centro.",
+    errWa: "Añadid el WhatsApp donde queréis recibir las reservas.",
+    errAddr: "Añadid la dirección o el barrio.",
+    errEmail: "Ese email no parece correcto.",
+    errPrice: "Poned solo el número, por ejemplo 45.",
+    errAccept: "Para seguir, marcad «Acepto las condiciones».",
+
+    s2Title: "Vuestras horas",
+    s2Sub: "Tocad todas las horas a las que podríais empezar un masaje. Solo huecos que de verdad tengáis libres.",
+    change: "Cambiar datos",
+    duration: "Duración",
+    dayLbl: "Día",
+    today: "Hoy", tomorrow: "Mañana",
+    nSel: "{n} elegidas", nSel1: "1 elegida",
+    openFromTo: "Abierto de {a} a {b}.",
+    unknownHours: "Sin horario guardado: os enseñamos de 09:00 a 21:00.",
+    am: "Por la mañana", pm: "Por la tarde",
+    amAria: "Horas por la mañana", pmAria: "Horas por la tarde",
+    noTimes: "Este día ya no quedan horas en las que quepa un masaje de {d} min.",
+    noDays: "Según vuestro horario no abrís ningún día de esta semana. Revisad el horario en vuestros datos.",
+    dropped1: "Con {d} min, 1 hora ya no cabía antes del cierre y la hemos quitado.",
+    droppedN: "Con {d} min, {n} horas ya no cabían antes del cierre y las hemos quitado.",
+    repeat: "Repetir cada semana",
+    repeatHint: "Las mismas horas cada semana, hasta que nos digáis lo contrario.",
+    sumNone: "Todavía no habéis elegido ninguna hora.",
+    sum1: "1 hora de {d} min", sumN: "{n} horas de {d} min",
+    weekly: "cada semana", once: "solo esta semana",
+    every: "Cada {wd}",
+    save: "Enviar mis horas", saving: "Enviando…",
+    back1: "Vuestros datos",
+    errNone: "Elegid al menos una hora.",
+    errSave: "No se ha podido guardar. Probad otra vez o escribid a jordan@massageclub.io.",
+
+    s3Title: "Listo",
+    thanksN: "Gracias, {n}.", thanks0: "Gracias.",
+    nextTitle: "Qué pasa ahora",
+    next1Line: "Os avisamos por WhatsApp cuando alguien reserve. Si un hueco se os llena por otro lado, escribidnos «ocupado».",
+    next2Line: "La reserva os llega por escrito y en español, con nombre, teléfono y email. Tenéis 15 minutos para rechazarla si algo ha cambiado.",
+    sentPreview: "Vista previa: estas horas no se han enviado.",
+    more: "Añadir más horas",
+  },
+  en: {
+    docTitle: "Partner studios · Massage Club",
+    skip: "Skip to content",
+    langBtn: "ES", langAria: "Leer esta página en español",
+    kicker: "For massage studios in Madrid",
+    hello: "Hi, {n}",
+    h1: "What time does a room usually sit empty for you?",
+    sub: "Send us that slot and we offer it to people who write to us in English looking for a massage in Madrid; if nobody takes it, it costs you nothing.",
+    cta: "Choose my times",
+    ctaKnown: "Already working with us? Go straight to your times",
+    ctaNote: "No app, no passwords. Free until 30 November.",
+    proof: "Since September more than 100 people have written to us in English looking for a massage: foreigners living in Madrid, students from abroad and tourists. We don't promise you a number of customers.",
+    whyTitle: "The essentials",
+    b1: "<b>You only pay if the customer comes.</b> Free until 30 November. From 1 December, 5&nbsp;€ + VAT for each new customer's first visit. Nothing for their later visits.",
+    b2: "<b>Everything in writing and in Spanish.</b> We talk to the customer in English; you get the booking confirmed on WhatsApp, with name, phone and email.",
+    b3: "<b>Your price, your customer.</b> The customer pays you, at your price. If they come back, they're yours and you owe us nothing.",
+    b4: "<b>Professional massage only.</b> Anyone asking for something else gets a no and no further replies.",
+    b5: "<b>Nothing to learn.</b> No app, no passwords, nothing to install.",
+    howTitle: "How it works",
+    how1: "You send us, in advance, the slots that are really free: for example 2 or 3 a day, or one to start with. You tap them right here.",
+    how2: "We talk to the customer in English and offer them your slots.",
+    how3: "If they take one, you immediately get a WhatsApp with the booking confirmed. You have 15 minutes to turn it down if something has changed.",
+    how4: "If a slot fills up elsewhere first, write \"ocupado\" (taken) and we remove it.",
+    termsTitle: "What it costs: free until 30 November. After that, 5 € + VAT per new customer, not 25%.",
+    t1: "<b>Free</b> until 30 November 2026.",
+    t2: "From 1 December 2026: <b>5&nbsp;€ + VAT</b> for each new customer's first visit, only if they come.",
+    t3: "Their later visits: <b>0&nbsp;€</b>.",
+    t4: "No monthly fee. No contract. Stop whenever you like.",
+    t5: "For comparison: Treatwell Spain charges 25% + VAT of a new client's first booking (about 17 € + VAT on a 68 € massage). Fresha charges 20% on the new clients it brings.",
+    faqTitle: "What studios usually ask",
+    q1: "We're already on Treatwell, Booksy or Fresha",
+    a1: "Great, you can keep using them: you don't have to leave anything. We're one more channel, only for the slots that stay free, and if one fills up elsewhere first, write \"ocupado\" (taken) and we remove it. The cost is what differs: Treatwell Spain charges 25% + VAT of a new client's first booking, and Fresha 20% on the new clients it brings. We charge, from 1 December, 5 € + VAT for each new customer's first visit, only if they come.",
+    q2: "We have no free slots",
+    a2: "Well, congratulations, and we're not asking you for anything. If a slot does come free some week, even from a cancellation, send it to us on WhatsApp. If nobody takes it, it costs you nothing.",
+    q3: "What if the customer doesn't show up?",
+    a3: "Then you pay nothing: we only charge for the first visit if the customer actually comes, and until 30 November, not even that. You also have their name, phone and email in writing from the very start.",
+    q4: "How much do you charge, exactly?",
+    a4: "Until 30 November, nothing. From 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract, and you can stop whenever you like. The customer pays you, at your price.",
+    q5: "Do we have to speak English?",
+    a5: "No. We talk to the customer in English and send you everything in writing and in Spanish: time, name, phone and email. We can't promise the customer speaks Spanish, but the booking reaches you clear and confirmed.",
+    contactName: "Jordan, from Massage Club",
+    contactLine: "Any questions? Write to me.",
+
+    preview: "Preview: nothing is saved yet",
+    progressAria: "Steps",
+    stepWord1: "Step 1 of 3: ", stepWord2: "Step 2 of 3: ", stepWord3: "Step 3 of 3: ",
+    p1: "Your details", p2: "Your times", p3: "Done",
+    s1Title: "Your details",
+    s1SubKnown: "Check that everything is right and change whatever you need.",
+    s1SubNew: "So we know where to send the bookings.",
+    fName: "Studio name",
+    fWa: "WhatsApp for bookings",
+    fWaHint: "Confirmed bookings arrive here, in writing and in Spanish.",
+    fAddr: "Address or neighbourhood",
+    fAddrPh: "Street and number, or the neighbourhood",
+    fEmail: "Email",
+    opt: "(optional)",
+    fHours: "Opening hours",
+    fHoursPh: "Mon-Fri 10:00-20:00, Sat 10:00-14:00",
+    hoursHintNone: "So we only show you times when you are open.",
+    hoursHintOk: "Got it: {h}.",
+    hoursHintBad: "We can't quite read that; we show 09:00 to 21:00 and save it as you wrote it.",
+    fPrices: "Your price",
+    priceHint: "The customer pays you, at this price.",
+    priceFrom: "Our listing says: from {p} €.",
+    accept: "I accept the terms",
+    termsLine: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
+    next1: "Next: your times",
+    back0: "Back",
+    errName: "The studio name is missing.",
+    errWa: "Add the WhatsApp number where you want to receive bookings.",
+    errAddr: "Add the address or the neighbourhood.",
+    errEmail: "That email doesn't look right.",
+    errPrice: "Just the number, for example 45.",
+    errAccept: "To continue, tick \"I accept the terms\".",
+
+    s2Title: "Your times",
+    s2Sub: "Tap every time you could start a massage. Only slots that are really free.",
+    change: "Change details",
+    duration: "Length",
+    dayLbl: "Day",
+    today: "Today", tomorrow: "Tomorrow",
+    nSel: "{n} chosen", nSel1: "1 chosen",
+    openFromTo: "Open {a} to {b}.",
+    unknownHours: "No opening hours saved: we show 09:00 to 21:00.",
+    am: "Morning", pm: "Afternoon",
+    amAria: "Morning times", pmAria: "Afternoon times",
+    noTimes: "No times left on this day that fit a {d} min massage.",
+    noDays: "Your opening hours show no open day this week. Check the hours in your details.",
+    dropped1: "With {d} min, 1 time no longer fitted before closing, so we removed it.",
+    droppedN: "With {d} min, {n} times no longer fitted before closing, so we removed them.",
+    repeat: "Repeat every week",
+    repeatHint: "The same times every week, until you tell us otherwise.",
+    sumNone: "You haven't chosen any times yet.",
+    sum1: "1 time, {d} min", sumN: "{n} times, {d} min",
+    weekly: "every week", once: "this week only",
+    every: "Every {wd}",
+    save: "Send my times", saving: "Sending…",
+    back1: "Your details",
+    errNone: "Choose at least one time.",
+    errSave: "That didn't save. Try again, or write to jordan@massageclub.io.",
+
+    s3Title: "Done",
+    thanksN: "Thank you, {n}.", thanks0: "Thank you.",
+    nextTitle: "What happens now",
+    next1Line: "We let you know on WhatsApp when someone books. If a slot fills up elsewhere, write to us \"ocupado\" (taken).",
+    next2Line: "The booking reaches you in writing and in Spanish, with name, phone and email. You have 15 minutes to turn it down if something has changed.",
+    sentPreview: "Preview: these times were not sent.",
+    more: "Add more times",
+  },
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const t = (k, vars) => {
+  let s = T[L][k];
+  if (s == null) return "";
+  if (vars) for (const [a, b] of Object.entries(vars)) s = s.split("{" + a + "}").join(String(b));
+  return s;
+};
+const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const val = (id) => $(id).value.trim();
+
+// ---------------------------------------------------------------- state
+const S = {
+  step: 0,
+  partner: null,
+  accepted: false,
+  dur: 60,
+  repeat: false,
+  day: null,
+  sel: {},      // "YYYY-MM-DD" -> Set of start minutes
+  sent: [],     // what step 3 shows
+  saving: false,
+};
+
+// ---------------------------------------------------------------- Madrid time
+const LEAD_MIN = 45; // notice a studio needs, the same as dispatch-studios
+function madridNow() {
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const g = (k) => Number((p.find((x) => x.type === k) || {}).value || 0);
+  return { y: g("year"), m: g("month"), d: g("day"), min: (g("hour") % 24) * 60 + g("minute") };
+}
+const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const locale = () => (L === "es" ? "es-ES" : "en-GB");
+const fmt = (d, o) => new Intl.DateTimeFormat(locale(), Object.assign({ timeZone: "UTC" }, o)).format(d.dt).replace(/\./g, "").replace(/,/g, "");
+
+// ---------------------------------------------------------------- opening hours
+// The same reader as dispatch-studios v16: partners.opening_hours is free text
+// ("Lun-Vie 10:00-20:00, Sáb 10:00-14:00", "Daily 10:00-21:00"). Anything it
+// cannot read counts as unknown and shows 09:00 to 21:00.
+const DAY_IDX = { sun: 0, dom: 0, mon: 1, lun: 1, tue: 2, mar: 2, wed: 3, mie: 3, thu: 4, jue: 4, fri: 5, vie: 5, sat: 6, sab: 6 };
+const stripAccents = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+function parseHours(text) {
+  const raw = stripAccents(String(text || "").toLowerCase()).trim();
+  if (!raw) return null;
+  const out = new Map();
+  const toMin = (h) => { const [a, b] = h.split(/[:.]/); return parseInt(a, 10) * 60 + (parseInt(b || "0", 10) || 0); };
+  for (const seg0 of raw.split(/[,;]|\s+y\s+|\s+and\s+/)) {
+    const seg = seg0.trim();
+    if (!seg) continue;
+    const m = seg.match(/^(.*?)\s*(\d{1,2}(?:[:.]\d{2})?)\s*(?:-|\u2013|a)\s*(\d{1,2}(?:[:.]\d{2})?)\s*h?$/);
+    if (!m) return null;
+    const dayPart = m[1].trim().replace(/:$/, "");
+    const open = toMin(m[2]), close = toMin(m[3]);
+    if (!(close > open)) return null;
+    const days = [];
+    if (dayPart === "" || /^(daily|todos los dias|every day|diario|cada dia)$/.test(dayPart)) days.push(0, 1, 2, 3, 4, 5, 6);
+    else {
+      for (const tok of dayPart.split(/\s*\/\s*|\s+/)) {
+        const range = tok.match(/^([a-z]{3})[a-z]*\.?\s*(?:-|\u2013)\s*([a-z]{3})[a-z]*\.?$/);
+        if (range) {
+          const a = DAY_IDX[range[1]], b = DAY_IDX[range[2]];
+          if (a === undefined || b === undefined) return null;
+          for (let d = a; ; d = (d + 1) % 7) { days.push(d); if (d === b) break; }
+        } else {
+          const one = tok.match(/^([a-z]{3})[a-z]*\.?$/);
+          if (!one || DAY_IDX[one[1]] === undefined) return null;
+          days.push(DAY_IDX[one[1]]);
+        }
+      }
+    }
+    for (const d of days) out.set(d, [open, close]);
+  }
+  return out.size ? out : null;
+}
+let HOURS = null;
+const DEFAULT_HOURS = [9 * 60, 21 * 60];
+const hoursFor = (wd) => (HOURS ? HOURS.get(wd) || null : DEFAULT_HOURS);
+
+function mkDay(i) {
+  const n = madridNow();
+  const dt = new Date(Date.UTC(n.y, n.m - 1, n.d) + i * 864e5);
+  return { iso: dt.toISOString().slice(0, 10), wd: dt.getUTCDay(), offset: i, dt };
+}
+function startsFor(d) {
+  const h = hoursFor(d.wd);
+  if (!h) return [];
+  let first = Math.ceil(h[0] / 30) * 30;
+  if (d.offset === 0) first = Math.max(first, Math.ceil((madridNow().min + LEAD_MIN) / 30) * 30);
+  const out = [];
+  for (let m = first; m + S.dur <= h[1]; m += 30) out.push(m);
+  return out;
+}
+// The next seven days in Madrid, today first. Today drops out once no massage
+// fits before closing; closed days never show when the hours are known.
+function dayList() {
+  const startAt = startsFor(mkDay(0)).length ? 0 : 1;
+  const out = [];
+  for (let i = startAt; i < startAt + 7; i++) { const d = mkDay(i); if (hoursFor(d.wd)) out.push(d); }
+  return out;
+}
+function prune() {
+  const days = dayList();
+  let dropped = 0;
+  for (const iso of Object.keys(S.sel)) {
+    const d = days.find((x) => x.iso === iso);
+    const ok = new Set(d ? startsFor(d) : []);
+    for (const m of Array.from(S.sel[iso])) if (!ok.has(m)) { S.sel[iso].delete(m); dropped++; }
+    if (!S.sel[iso].size) delete S.sel[iso];
+  }
+  return dropped;
+}
+function selList() {
+  return dayList().filter((d) => S.sel[d.iso] && S.sel[d.iso].size).map((d) => ({ d, mins: Array.from(S.sel[d.iso]).sort((a, b) => a - b) }));
+}
+
+// ---------------------------------------------------------------- phone
+// Stored like every other number: "+<country><number>". A Spanish number typed
+// without a prefix ("660 390 910") is +34.
+function intl(v) {
+  let d = String(v || "").replace(/[^0-9+]/g, "");
+  if (!d) return "";
+  if (d.startsWith("00")) d = "+" + d.slice(2);
+  if (d.startsWith("+")) return "+" + d.slice(1).replace(/\D/g, "");
+  return /^[6789]\d{8}$/.test(d) ? "+34" + d : "+" + d;
+}
+function pretty(v) {
+  const p = intl(v);
+  const m = p.match(/^\+34(\d{3})(\d{3})(\d{3})$/);
+  return m ? `+34 ${m[1]} ${m[2]} ${m[3]}` : p;
+}
+const priceNum = (v) => {
+  const s = String(v || "").replace(/[€\s]/g, "").replace(",", ".");
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 && n < 1000 ? Math.round(n * 100) / 100 : NaN;
+};
+
+// ---------------------------------------------------------------- painting
+function paintStatic() {
+  document.documentElement.lang = L;
+  document.title = t("docTitle");
+  document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll("[data-h]").forEach((el) => { el.innerHTML = t(el.dataset.h); });
+  document.querySelectorAll("[data-ph]").forEach((el) => { el.placeholder = t(el.dataset.ph); });
+  document.querySelectorAll("[data-aria]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.aria)); });
+  const lb = $("lang");
+  lb.textContent = t("langBtn");
+  lb.setAttribute("aria-label", t("langAria"));
+  lb.setAttribute("lang", L === "es" ? "en" : "es");
+  $("hours").placeholder = t("fHoursPh");
+  paintDynamic();
+}
+function paintDynamic() {
+  const name = S.partner ? S.partner.business_name : "";
+  ["helloTop", "helloStep"].forEach((id) => { $(id).hidden = !name; $(id).textContent = name ? t("hello", { n: name }) : ""; });
+  $("knownCta").hidden = !S.partner;
+  $("s1sub").textContent = S.partner ? t("s1SubKnown") : t("s1SubNew");
+  $("previewNote").hidden = LIVE;
+  $("priceHint").textContent = t("priceHint") + (S.partner && S.partner.price_from ? " " + t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "");
+  paintHoursHint();
+  paintWho();
+  $("accept2Box").hidden = S.accepted;
+  if (S.step === 2) renderTimes();
+  if (S.step === 3) renderDone();
+  // Errors already on screen follow the language.
+  document.querySelectorAll(".err[data-k]").forEach((el) => { if (el.textContent) el.textContent = t(el.dataset.k, { d: S.dur }); });
+}
+function paintHoursHint() {
+  const raw = val("hours");
+  const el = $("hoursHint");
+  if (!raw) { el.textContent = t("hoursHintNone"); return; }
+  const h = parseHours(raw);
+  if (!h) { el.textContent = t("hoursHintBad"); return; }
+  // Read it back so the studio can see we understood it: "lun-vie, de 10:00 a
+  // 20:00; sáb, de 10:00 a 14:00". Neighbouring days with the same hours join.
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const wd = (d) => new Intl.DateTimeFormat(locale(), { timeZone: "UTC", weekday: "short" }).format(new Date(Date.UTC(2026, 9, 4 + d))).replace(/\./g, ""); // 4 Oct 2026 is a Sunday
+  const groups = [];
+  for (const d of order) {
+    if (!h.has(d)) continue;
+    const [o, c] = h.get(d);
+    const g = groups[groups.length - 1];
+    if (g && g.o === o && g.c === c && order.indexOf(g.last) + 1 === order.indexOf(d)) g.last = d;
+    else groups.push({ first: d, last: d, o, c });
+  }
+  const span = (o, c) => L === "es" ? `de ${hhmm(o)} a ${hhmm(c)}` : `${hhmm(o)} to ${hhmm(c)}`;
+  const names = groups.length === 1 && h.size === 7
+    ? [(L === "es" ? "todos los días, " : "every day, ") + span(groups[0].o, groups[0].c)]
+    : groups.map((g) => (g.first === g.last ? wd(g.first) : wd(g.first) + "-" + wd(g.last)) + ", " + span(g.o, g.c));
+  el.textContent = t("hoursHintOk", { h: names.join("; ") });
+}
+function paintWho() {
+  const name = val("name"), wa = val("wa");
+  $("who").hidden = !name;
+  $("whoText").innerHTML = name ? `<b>${esc(name)}</b>${wa ? " · " + esc(pretty(wa)) : ""}` : "";
+}
+
+function renderTimes() {
+  const days = dayList();
+  if (!days.find((d) => d.iso === S.day)) S.day = days.length ? days[0].iso : null;
+  $("days").innerHTML = days.map((d) => {
+    const n = S.sel[d.iso] ? S.sel[d.iso].size : 0;
+    const top = d.offset === 0 ? t("today") : d.offset === 1 ? t("tomorrow") : cap(fmt(d, { weekday: "short" }));
+    const bottom = fmt(d, { day: "numeric", month: "short" });
+    const badge = n ? `<span class="badge" aria-hidden="true">${n}</span><span class="sr">, ${esc(n === 1 ? t("nSel1") : t("nSel", { n }))}</span>` : "";
+    return `<button type="button" class="day" data-iso="${d.iso}" aria-pressed="${d.iso === S.day}"><span class="dt">${esc(top)}</span><span class="dd">${esc(bottom)}</span>${badge}</button>`;
+  }).join("");
+  const d = days.find((x) => x.iso === S.day);
+  if (!d) {
+    $("dayInfo").textContent = "";
+    $("grid").innerHTML = `<p class="empty">${esc(t("noDays"))}</p>`;
+  } else {
+    const h = hoursFor(d.wd);
+    $("dayInfo").textContent = cap(fmt(d, { weekday: "long", day: "numeric", month: "long" })) + ". " + (HOURS ? t("openFromTo", { a: hhmm(h[0]), b: hhmm(h[1]) }) : t("unknownHours"));
+    const starts = startsFor(d);
+    const sel = S.sel[d.iso] || new Set();
+    const btn = (m) => `<button type="button" class="tm" data-m="${m}" aria-pressed="${sel.has(m)}">${hhmm(m)}</button>`;
+    const am = starts.filter((m) => m < 14 * 60), pm = starts.filter((m) => m >= 14 * 60);
+    const group = (list, k) => list.length ? `<p class="glabel" aria-hidden="true">${esc(t(k))}</p><div class="times" role="group" aria-label="${esc(t(k + "Aria"))}">${list.map(btn).join("")}</div>` : "";
+    $("grid").innerHTML = (group(am, "am") + group(pm, "pm")) || `<p class="empty">${esc(t("noTimes", { d: S.dur }))}</p>`;
+  }
+  renderSummary();
+}
+function summaryHTML(list, dur, repeat) {
+  if (!list.length) return `<p>${esc(t("sumNone"))}</p>`;
+  const n = list.reduce((a, x) => a + x.mins.length, 0);
+  const head = (n === 1 ? t("sum1", { d: dur }) : t("sumN", { n, d: dur })) + " · " + t(repeat ? "weekly" : "once");
+  const rows = list.map(({ d, mins }) => {
+    const label = repeat ? t("every", { wd: fmt(d, { weekday: "long" }) }) : cap(fmt(d, { weekday: "short", day: "numeric", month: "short" }));
+    return `<li><b>${esc(cap(label))}</b>${mins.map(hhmm).join(", ")}</li>`;
+  }).join("");
+  return `<p class="sumhead">${esc(head)}</p><ul>${rows}</ul>`;
+}
+function renderSummary() { $("summary").innerHTML = summaryHTML(selList(), S.dur, S.repeat); }
+function renderDone() {
+  const name = val("name");
+  $("thanks").textContent = name ? t("thanksN", { n: name }) : t("thanks0");
+  const last = S.sent[S.sent.length - 1];
+  $("sentSummary").innerHTML = last ? summaryHTML(last.list, last.dur, last.repeat) : "";
+  $("sentSummary").hidden = !last;
+  $("sentPreview").hidden = LIVE || !last;
+}
+
+// ---------------------------------------------------------------- navigation
+const HASH = { 0: "", 1: "#datos", 2: "#horas", 3: "#listo" };
+const stepFromHash = () => ({ "#datos": 1, "#horas": 2, "#listo": 3 })[location.hash] || 0;
+function go(step, push = true) {
+  if (step === 3 && !S.sent.length) step = 2;
+  S.step = step;
+  $("landing").hidden = step !== 0;
+  $("flow").hidden = step === 0;
+  document.querySelectorAll(".step").forEach((el) => { el.hidden = Number(el.dataset.step) !== step; });
+  document.querySelectorAll("#progress li").forEach((li) => {
+    const n = Number(li.dataset.n);
+    if (n === step) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+    li.classList.toggle("done", n < step);
+  });
+  if (push) history.pushState({ step }, "", location.pathname + location.search + HASH[step]);
+  if (step === 2) { prune(); paintWho(); renderTimes(); $("accept2Box").hidden = S.accepted; }
+  if (step === 3) renderDone();
+  updateDock();
+  window.scrollTo(0, 0);
+  const h = step === 0 ? null : $("s" + step + "h");
+  if (h && push) h.focus({ preventScroll: true });
+}
+window.addEventListener("popstate", () => go(stepFromHash(), false));
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-go]");
+  if (b) { e.preventDefault(); go(Number(b.dataset.go)); }
+});
+$("home").addEventListener("click", (e) => { e.preventDefault(); go(0); });
+$("lang").addEventListener("click", () => { L = L === "es" ? "en" : "es"; paintStatic(); });
+
+// The bottom bar only shows on the landing, once the top button is out of view
+// and before the second one comes in.
+const visible = new Set();
+function updateDock() {
+  const on = S.step === 0 && "IntersectionObserver" in window && !visible.has("heroCta") && !visible.has("finalCta") && seenScroll;
+  $("dock").hidden = !on;
+  document.body.classList.toggle("docked", on);
+}
+let seenScroll = false;
+if ("IntersectionObserver" in window) {
+  const io = new IntersectionObserver((entries) => {
+    for (const en of entries) { if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id); }
+    updateDock();
+  });
+  io.observe($("heroCta")); io.observe($("finalCta"));
+  window.addEventListener("scroll", () => { if (!seenScroll && window.scrollY > 40) { seenScroll = true; updateDock(); } }, { passive: true });
+}
+
+// ---------------------------------------------------------------- step 1
+function setErr(inputId, errId, key) {
+  const el = $(errId);
+  el.dataset.k = key || "";
+  el.textContent = key ? t(key) : "";
+  if (inputId) $(inputId).setAttribute("aria-invalid", key ? "true" : "false");
+}
+function checkDetails() {
+  const bad = [];
+  setErr("name", "nameErr", val("name") ? "" : (bad.push("name"), "errName"));
+  setErr("wa", "waErr", intl(val("wa")).replace(/\D/g, "").length >= 9 ? "" : (bad.push("wa"), "errWa"));
+  setErr("addr", "addrErr", val("addr") ? "" : (bad.push("addr"), "errAddr"));
+  const em = val("email");
+  setErr("email", "emailErr", !em || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em) ? "" : (bad.push("email"), "errEmail"));
+  const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
+  const pBad = Number.isNaN(p60) ? "p60" : Number.isNaN(p90) ? "p90" : "";
+  setErr(null, "priceErr", pBad ? (bad.push(pBad), "errPrice") : "");
+  $("p60").setAttribute("aria-invalid", Number.isNaN(p60) ? "true" : "false");
+  $("p90").setAttribute("aria-invalid", Number.isNaN(p90) ? "true" : "false");
+  return bad;
+}
+$("f1").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const bad = checkDetails();
+  S.accepted = $("accept").checked;
+  setErr(null, "acceptErr", S.accepted ? "" : "errAccept");
+  $("acceptBox").classList.toggle("bad", !S.accepted);
+  if (!S.accepted) bad.push("accept");
+  if (bad.length) { $(bad[0]).focus(); return; }
+  go(2);
+});
+$("accept").addEventListener("change", () => {
+  S.accepted = $("accept").checked; $("accept2").checked = S.accepted;
+  if (S.accepted) { setErr(null, "acceptErr", ""); $("acceptBox").classList.remove("bad"); }
+});
+$("hours").addEventListener("input", () => { HOURS = parseHours(val("hours")); paintHoursHint(); });
+["name", "wa"].forEach((id) => $(id).addEventListener("input", paintWho));
+
+// ---------------------------------------------------------------- step 2
+$("durSet").addEventListener("change", (e) => {
+  if (e.target.name !== "dur") return;
+  S.dur = Number(e.target.value);
+  const n = prune();
+  $("dropNote").textContent = n ? t(n === 1 ? "dropped1" : "droppedN", { n, d: S.dur }) : "";
+  renderTimes();
+});
+$("days").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-iso]");
+  if (!b) return;
+  S.day = b.dataset.iso;
+  renderTimes();
+  const again = $("days").querySelector(`[data-iso="${S.day}"]`);
+  if (again) again.focus();
+});
+$("grid").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-m]");
+  if (!b || !S.day) return;
+  const m = Number(b.dataset.m);
+  const set = S.sel[S.day] || (S.sel[S.day] = new Set());
+  if (set.has(m)) set.delete(m); else set.add(m);
+  if (!set.size) delete S.sel[S.day];
+  b.setAttribute("aria-pressed", String(!!(S.sel[S.day] && S.sel[S.day].has(m))));
+  // Only the badge on the day changes; the grid keeps focus where it was.
+  const chip = $("days").querySelector(`[data-iso="${S.day}"]`);
+  if (chip) {
+    const n = S.sel[S.day] ? S.sel[S.day].size : 0;
+    chip.querySelectorAll(".badge,.sr").forEach((x) => x.remove());
+    if (n) chip.insertAdjacentHTML("beforeend", `<span class="badge" aria-hidden="true">${n}</span><span class="sr">, ${esc(n === 1 ? t("nSel1") : t("nSel", { n }))}</span>`);
+  }
+  $("saveErr").textContent = "";
+  renderSummary();
+});
+$("repeat").addEventListener("change", () => { S.repeat = $("repeat").checked; renderSummary(); });
+$("accept2").addEventListener("change", () => {
+  S.accepted = $("accept2").checked; $("accept").checked = S.accepted;
+  if (S.accepted) { setErr(null, "accept2Err", ""); $("accept2Box").classList.remove("bad"); }
+});
+
+function buildPayload(list) {
+  return {
+    form: "socios",
+    form_version: FORM_VERSION,
+    lang: L,
+    link_slug: SLUG_OK ? SLUG : null,
+    partner_slug: S.partner ? S.partner.slug : null,
+    studio: {
+      business_name: val("name"),
+      whatsapp: intl(val("wa")),
+      address: val("addr"),
+      email: val("email").toLowerCase() || null,
+      opening_hours: val("hours") || null,
+      price_60_eur: priceNum(val("p60")),
+      price_90_eur: priceNum(val("p90")),
+    },
+    terms: {
+      accepted: true,
+      accepted_at: new Date().toISOString(),
+      version: "2026-10-17",
+      text: T[L].termsLine,
+    },
+    availability: {
+      tz: "Europe/Madrid",
+      duration_min: S.dur,
+      repeat_weekly: S.repeat,
+      slots: list.flatMap(({ d, mins }) => mins.map((m) => ({ date: d.iso, weekday: d.wd, start: hhmm(m), end: hhmm(m + S.dur) }))),
+    },
+  };
+}
+
+$("save").addEventListener("click", async () => {
+  if (S.saving) return;
+  $("saveErr").textContent = "";
+  prune();
+  const list = selList();
+  if (!list.length) { renderTimes(); setErr(null, "saveErr", "errNone"); const first = $("grid").querySelector(".tm"); if (first) first.focus(); return; }
+  if (!S.accepted) {
+    $("accept2Box").hidden = false;
+    $("accept2Box").classList.add("bad");
+    setErr(null, "accept2Err", "errAccept");
+    $("accept2").focus();
+    return;
+  }
+  // A studio that came straight here still needs a name, a WhatsApp and an address.
+  if (checkDetails().length) { go(1); const b = checkDetails(); if (b.length) $(b[0]).focus(); return; }
+
+  const payload = buildPayload(list);
+  if (LIVE) {
+    S.saving = true;
+    const btn = $("save");
+    btn.disabled = true; btn.textContent = t("saving");
+    try {
+      const r = await fetch(SAVE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ops: "studio_signup", payload }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.ok === false) throw new Error(j.error || String(r.status));
+    } catch (err) {
+      setErr(null, "saveErr", "errSave");
+      btn.disabled = false; btn.textContent = t("save");
+      S.saving = false;
+      return;
+    }
+    btn.disabled = false; btn.textContent = t("save");
+    S.saving = false;
+  } else {
+    // Preview: nothing leaves the browser. The payload is shown in the console
+    // so the backend can be built against the exact shape.
+    try { console.info("[socios] preview, not sent:", { ops: "studio_signup", payload }); } catch (_) {}
+  }
+  S.sent.push({ list, dur: S.dur, repeat: S.repeat });
+  go(3);
+});
+
+// ---------------------------------------------------------------- step 3
+$("more").addEventListener("click", () => {
+  S.sel = {};
+  $("dropNote").textContent = "";
+  go(2);
+});
+
+// ---------------------------------------------------------------- personal link
+// /socios?s=<slug>: a read-only select of the studio's public listing.
+async function loadPartner() {
+  if (!SLUG_OK) return;
+  try {
+    const ctl = "AbortController" in window ? new AbortController() : null;
+    if (ctl) setTimeout(() => ctl.abort(), 7000);
+    const url = `${SB}/rest/v1/partners?select=business_name,phone,whatsapp,address,neighbourhood,opening_hours,slug,price_from&slug=eq.${encodeURIComponent(SLUG)}&limit=1`;
+    const r = await fetch(url, { headers: { apikey: SB_KEY, Accept: "application/json" }, signal: ctl ? ctl.signal : undefined });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const p = Array.isArray(rows) ? rows[0] : null;
+    if (!p || !p.business_name) return;
+    S.partner = p;
+    const fill = (id, v) => { if (v && !val(id)) $(id).value = v; };
+    fill("name", p.business_name);
+    fill("wa", (p.whatsapp || p.phone) ? pretty(p.whatsapp || p.phone) : "");
+    const addr = String(p.address || "").trim();
+    const hood = String(p.neighbourhood || "").trim();
+    fill("addr", addr && hood && !addr.toLowerCase().includes(hood.toLowerCase()) ? `${addr} (${hood})` : addr || hood);
+    fill("hours", p.opening_hours || "");
+    HOURS = parseHours(val("hours"));
+    paintDynamic();
+  } catch (_) { /* a personal link that cannot load is just the plain page */ }
+}
+
+// ---------------------------------------------------------------- start
+paintStatic();
+const startStep = stepFromHash() === 3 ? 0 : stepFromHash();
+history.replaceState({ step: startStep }, "", location.pathname + location.search + HASH[startStep]);
+go(startStep, false);
+loadPartner().then(() => { if (S.step === 2) renderTimes(); });
+})();
+</script>
+</body>
+</html>

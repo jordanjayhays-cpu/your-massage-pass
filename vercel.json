@@ -14,6 +14,10 @@
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours"
     },
     {
+      "source": "/socios",
+      "destination": "/socios.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
