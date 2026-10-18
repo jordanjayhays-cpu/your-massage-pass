@@ -108,9 +108,13 @@ alter table public.partners add column if not exists slots_link_v int not null d
 
 -- Release times. p_rows: [{start_at, end_at, seat?, price_eur?, discount_pct?,
 -- service?, source_ref?}]. Rows that are too soon (under 60 minutes away), too
--- far (8 days), too long (3 hours), out of range, or already live are skipped,
--- not errors; the caller compares what came back with what it sent. At most
--- 40 rows a call and 200 live slots a studio.
+-- far (56 days: 8 weeks, wa-bot REL_STUDIO_HORIZON_DAYS; it was 8 days), too
+-- long (3 hours), out of range, or already live are skipped, not errors; the
+-- caller compares what came back with what it sent. At most 40 rows a call
+-- and 200 live slots a studio.
+-- 8 weeks (18 Oct, Jordan): studios change their times whenever they want and
+-- give times as far ahead as they choose. Weekly times are still made 7 days
+-- ahead (materialise_released_patterns), and released_offers is unchanged.
 -- p_since (review, 17 Oct): when the studio's page was drawn. A start and
 -- seat that has any row created or changed since then is skipped, whatever
 -- its status, so reloading a save link (Back, a reload, a phone restoring the
@@ -172,7 +176,7 @@ begin
      where r.start_at is not null and r.end_at > r.start_at
        and r.end_at - r.start_at <= interval '180 minutes'
        and r.start_at >= now() + interval '60 minutes'
-       and r.start_at < now() + interval '8 days'
+       and r.start_at < now() + interval '56 days'
        and r.seat between 1 and 20
        and (r.price_eur is null or r.price_eur between 1 and 500)
        and (r.discount_pct is null or r.discount_pct between 1 and 50)

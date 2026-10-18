@@ -2479,7 +2479,10 @@ for (const [msg, want, note] of [
     [{ ymd: "2026-10-20", hm: "08:00", minutes: 60 }, mh, "hours", "before opening"],
     [{ ymd: "2026-10-19", hm: "19:30", minutes: 30 }, mh, "", "30 minutes fit"],
     [{ ymd: "2026-10-19", hm: "18:00", minutes: 45 }, mh, "duration", ""],
-    [{ ymd: "2026-10-26", hm: "18:00", minutes: 60 }, mh, "day", "today and the next six days only"],
+    // v217 (18 Oct): studios give times up to 8 weeks ahead (was today and the next six days).
+    [{ ymd: "2026-10-26", hm: "18:00", minutes: 60 }, mh, "", "a week out: inside the 8 weeks now (v217; was refused)"],
+    [{ ymd: "2026-12-12", hm: "18:00", minutes: 60 }, mh, "", "Sat 12 Dec, today plus 54 days: inside the 8 weeks"],
+    [{ ymd: "2026-12-14", hm: "18:00", minutes: 60 }, mh, "day", "Mon 14 Dec, today plus 56 days: past the 8 weeks"],
     [{ ymd: "2026-10-25", hm: "12:00", minutes: 60 }, null, "", "unknown hours never rule a time out"],
     [{ ymd: "2026-10-19", hm: "25:00", minutes: 60 }, mh, "format", ""],
     [{ ymd: "19/10/2026", hm: "18:00", minutes: 60 }, mh, "format", ""],
@@ -2718,11 +2721,13 @@ for (const [msg, want, note] of [
   // Single times that no longer fit are skipped and said; none left is an error.
   v = V({ availability: { slots: [
     { date: "2026-10-22", start: "18:00" }, { date: "2026-10-22", start: "18:15" }, { date: "2026-10-21", start: "12:30" },
-    { date: "2026-10-24", start: "12:00" }, { date: "2026-10-22", start: "19:30" }, { date: "2026-10-29", start: "12:00" },
-    { date: "2026-10-30", start: "12:00" }, { date: "2026-10-20", start: "12:00" }, { date: "2026-10-22", start: "18:00" }, { date: "22/10", start: "18:00" },
+    { date: "2026-10-24", start: "12:00" }, { date: "2026-10-22", start: "19:30" }, { date: "2026-12-16", start: "12:00" },
+    { date: "2026-12-17", start: "12:00" }, { date: "2026-10-20", start: "12:00" }, { date: "2026-10-22", start: "18:00" }, { date: "22/10", start: "18:00" },
   ] } });
+  // v217: the two dates past the limit were 29 and 30 Oct (more than 7 days
+  // ahead); with 8 weeks they are 16 and 17 Dec (today plus 56 and 57 days).
   check("socios checks", "only the good one kept, once", v.plan.once, [{ ymd: "2026-10-22", hm: "18:00" }], "");
-  check("socios checks", "why each was skipped", v.plan.skipped.map((x) => `${x.day} ${x.hm} ${x.why}`), ["2026-10-22 18:15 grid", "2026-10-21 12:30 soon", "2026-10-24 12:00 closed", "2026-10-22 19:30 hours", "2026-10-29 12:00 day", "2026-10-30 12:00 day", "2026-10-20 12:00 day", "22/10 18:00 format"], "grid, 60 minutes ahead, hours, at most 8 days ahead");
+  check("socios checks", "why each was skipped", v.plan.skipped.map((x) => `${x.day} ${x.hm} ${x.why}`), ["2026-10-22 18:15 grid", "2026-10-21 12:30 soon", "2026-10-24 12:00 closed", "2026-10-22 19:30 hours", "2026-12-16 12:00 day", "2026-12-17 12:00 day", "2026-10-20 12:00 day", "22/10 18:00 format"], "grid, 60 minutes ahead, hours, at most 8 weeks ahead (v217)");
   check("socios checks", "nothing left: times_invalid", V({ availability: { slots: [{ date: "2026-10-24", start: "12:00" }] } }).errors, ["times_invalid"], "");
   // Hours: unknown is 08:00 to 22:00, as the page shows; the page's reading first; stored hours last.
   const U = { opening_hours: "", opening_hours_read: "" };
@@ -2876,7 +2881,8 @@ for (const [msg, want, note] of [
   check("hook", "«ocupado» checks for an open ask or a booking of theirs before it acts", /const openWhy = await studioOpenAsk\(partner\.id, intent\)[^\n]*\n\s*if \(openWhy\) \{[\s\S]{0,900}return false;\s*\}\s*let plan = ocupadoPick/.test(botSrc), true, "never confused with an answer to an ask");
   check("hook", "a time we have nothing at goes to today's path", /if \(plan\.kind === "none"\) \{[^\n]*return false; \}/.test(botSrc), true, "scenario F");
   check("hook", "a failed read counts as an open ask; won rows, 8 days of confirmed bookings and website bookings are read", /if \(!asked \|\| !chased \|\| !won \|\| !mine \|\| !conf \|\| !confNoStart \|\| !web\) return "a read failed";/.test(botSrc) && /outcome=eq\.won/.test(botSrc) && /confirmed_start=lte\.\$\{iso\(nowMs \+ 8 \* 86400e3\)\}/.test(botSrc) && /bookings\?partner_id=eq\.\$\{p\}&status=in\.\(pending,confirmed\)/.test(botSrc), true, "");
-  check("hook", "a signed submit releases through release_slots, source studio_link, evidence the signup", /relRpc\("release_slots", \{ p_partner: pid, p_rows: rows, p_source: "studio_link", p_evidence: `socios signup \$\{signup\.id\}`, p_since:/.test(botSrc), true, "");
+  // v217: the times part of socApply moved into socSaveTimes, shared with studio_times.
+  check("hook", "a signed submit releases through release_slots, source studio_link, evidence the signup", /const sv = await socSaveTimes\(pid, plan, plan\.minutes, plan\.price, `socios signup \$\{signup\.id\}`, plan\.drawnAt, String\(signup\.id\), nowMs\);/.test(botSrc) && /relRpc\("release_slots", \{ p_partner: pid, p_rows: rows, p_source: "studio_link", p_evidence: evidence, p_since: drawnAt \? new Date\(drawnAt\)\.toISOString\(\) : null \}\)/.test(botSrc), true, "");
   check("hook", "only a signed, live studio is applied at once", /const why = !signed \? [\s\S]{0,400}socTestish\(plan\.studio\.wa, plan\.studio\.email\) && !socIsTestStudio\(partner\) \? "a test contact on a real studio" : "";/.test(botSrc), true, "test contacts never reach a real studio");
   check("hook", "approve claims before it applies (one conditional update)", /const claimed = await socPatch\(id, \{ status: "applied", reviewed_at: new Date\(\)\.toISOString\(\) \}, row\.status\);\s*if \(!claimed\)/.test(botSrc), true, "a double tap applies once");
   check("hook", "approve and reject need the page's own button (fresh t)", /const fresh = t > 0 && nowMs - t < 2 \* 3600e3 && t <= nowMs \+ 60e3;/.test(botSrc) && /if \(a === "yes" && fresh\)/.test(botSrc) && /if \(a === "no" && fresh\)/.test(botSrc), true, "a scanner opening the emailed link changes nothing");
@@ -2922,6 +2928,130 @@ for (const [msg, want, note] of [
   check("socios migration", "the sweep job, replaced not doubled", /cron\.unschedule\('mc-released-patterns'\)/.test(migSrc) && /cron\.schedule\('mc-released-patterns', '\*\/5 \* \* \* \*', 'select public\.materialise_released_patterns\(\)'\)/.test(migSrc), true, "");
   check("socios migration", "the status vocabulary the task names", (migSrc.match(/check \(status in \('received', 'applied', 'pending_review', 'rejected'\)\)/) || []).length, 1, "");
   check("socios migration", "the written agreement survives a partner delete", /partner_id\s+uuid not null references public\.partners\(id\),/.test(migSrc), true, "like studio_invoices");
+}
+
+// ---------------------------------------------------------------------------
+// v217 (18 Oct, Jordan: studios change their times whenever they want, from
+// the same link they start with, with no WhatsApp, and give times as far
+// ahead as they choose). The signed /socios prefill now carries the studio's
+// own times (socTimesView) and the page sends changes as ops studio_times
+// (socTimesAsk, socTimesSplit, then socTimesSubmit). A "just once" time may
+// be up to 8 weeks ahead (REL_STUDIO_HORIZON_DAYS, and release_slots in the
+// migration). The pure parts are lifted with the v215 and v216 blocks; the
+// rest (signatures, the database) runs in the offline harness on local
+// Postgres. Now: Wednesday 21 Oct 2026, 12:00 Madrid.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const relSql = fs.readFileSync(path.join(here, "../supabase/migrations/20261018_released_slots.sql"), "utf8");
+  const socSql = fs.readFileSync(path.join(here, "../supabase/migrations/20261018_socios_signup.sql"), "utf8");
+  const a = botSrc.indexOf("// ---- v215 released slots: pure helpers (start) ----");
+  const b = botSrc.indexOf("// ---- v216 socios: pure helpers (end) ----");
+  if (a < 0 || b < a) throw new Error("bot.ts: the v215 / v216 helper markers are missing");
+  const names = ["REL_STUDIO_HORIZON_DAYS", "socTimeCheck", "socValidate", "socTimesSplit", "socTimesAsk", "socTimesView", "socRemoveWhy", "socAddMissWhy", "socWhyText", "SOC_WHY", "SOC_MSG", "socMsg", "SOCIOS_TERMS", "releaseCheck", "slotHours", "slotDays", "SOC_MAX_TIMES", "SOC_MAX_REMOVE"];
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const js = `import { madridInstant, madridMidnight, stripAcc, euro } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-times-"));
+  const file = path.join(dir, "times.mjs");
+  fs.writeFileSync(file, js);
+  const R = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+  const { madridInstant } = await import(copyUrl);
+  const M = (mo, day, h, mi = 0) => madridInstant(new Date(Date.UTC(2026, mo - 1, day)), h).getTime() + mi * 60e3;
+  const now = M(10, 21, 12);
+  const H = R.slotHours("Lun-Sáb 10:00-20:00");
+
+  // The horizon: one constant, the same limit as the database.
+  check("v217 horizon", "8 weeks", R.REL_STUDIO_HORIZON_DAYS, 56, "Jordan: as far ahead as they choose");
+  check("v217 horizon", "release_slots holds the same limit", new RegExp(`and r\\.start_at < now\\(\\) \\+ interval '${R.REL_STUDIO_HORIZON_DAYS} days'`).test(relSql) && !/and r\.start_at < now\(\) \+ interval '8 days'/.test(relSql), true, "one number in bot.ts, one check in the SQL function");
+  check("v217 horizon", "weekly times are still made 7 days ahead", /c\.start_at < now\(\) \+ interval '8 days'/.test(socSql) && /generate_series\(0, 6\)/.test(socSql), true, "only dated times go further");
+  for (const [ymd, want, note] of [
+    ["2026-12-09", "", "7 weeks out (Wed 9 Dec): accepted"],
+    ["2026-12-15", "", "today plus 55 days, the last day shown: accepted"],
+    ["2026-12-16", "day", "today plus 56 days: refused"],
+    ["2026-12-23", "day", "9 weeks out (Wed 23 Dec): refused"],
+    ["2026-10-20", "day", "yesterday"],
+    ["2026-11-22", "closed", "a Sunday 4 weeks out: still the opening hours"],
+    ["2026-11-21", "", "a Saturday 4 weeks out"],
+  ]) check("v217 horizon", `socTimeCheck ${ymd} 12:00`, R.socTimeCheck(ymd, "12:00", 60, H, now), want, note);
+  check("v217 horizon", "still at least 60 minutes ahead", [R.socTimeCheck("2026-10-21", "12:30", 60, H, now), R.socTimeCheck("2026-10-21", "13:00", 60, H, now)], ["soon", ""], "");
+  check("v217 horizon", "still 08:00 to 22:00 whatever the hours", R.socTimeCheck("2026-12-09", "22:00", 60, R.slotHours("Lun-Dom 0-24"), now), "hours", "");
+  check("v217 horizon", "the times page and the ops release: 8 weeks too", [R.releaseCheck({ ymd: "2026-12-09", hm: "12:00", minutes: 60 }, H, now), R.releaseCheck({ ymd: "2026-12-23", hm: "12:00", minutes: 60 }, H, now)], ["", "day"], "releaseCheck");
+  check("v217 horizon", "the reason reads 8 weeks", [R.socWhyText("day", "es"), R.socWhyText("far", "en")], ["fuera de las próximas 8 semanas", "outside the next 8 weeks"], "");
+  // The sign-up form gets the same 8 weeks.
+  const P = (slots, weekly = false) => ({
+    lang: "es", drawn_at: now - 60e3,
+    studio: { business_name: "Calma", whatsapp: "+34 600 111 222", address: "Calle Mayor 1", email: "hola@calma.es", opening_hours: "Lun-Sáb 10-20", opening_hours_read: "Lun-Sáb 10:00-20:00", price_60_eur: 50 },
+    terms: { accepted: true, version: "2026-10-17", text: R.SOCIOS_TERMS["2026-10-17"].es },
+    availability: { duration_min: 60, repeat_weekly: weekly, slots },
+  });
+  let v = R.socValidate(P([{ date: "2026-12-09", start: "18:00" }, { date: "2026-12-23", start: "18:00" }]), now);
+  check("v217 horizon", "sign-up: 7 weeks out saved, 9 weeks out skipped", [v.ok, v.plan.once, v.plan.skipped.map((x) => `${x.day} ${x.why}`)], [true, [{ ymd: "2026-12-09", hm: "18:00" }], ["2026-12-23 day"]], "");
+  check("v217 horizon", "the times_invalid message says 8 weeks", /más de 8 semanas/.test(R.socMsg("times_invalid", "es")) && /more than 8 weeks/.test(R.socMsg("times_invalid", "en")), true, "");
+
+  // What a studio_times request asks for.
+  const id1 = "11111111-1111-4111-8111-111111111111", id2 = "22222222-2222-4222-8222-222222222222";
+  let q = R.socTimesAsk({ add: [{ date: "2026-12-09", start: "18:00" }], remove: [id1, id1.toUpperCase(), "x' or 1=1", 5], end_weekly: [id2], drawn_at: now - 60e3 }, now);
+  check("v217 ask", "lists read; ids kept once, lower case; a non-id is answered not found", [q.ok, q.remove, q.endWeekly, q.badRemove, q.minutes, q.price, q.drawnAt], [true, [id1], [id2], ["x' or 1=1", ""], 60, null, now - 60e3], "never put into a query");
+  check("v217 ask", "nothing to do", R.socTimesAsk({}, now).errors, ["nothing"], "");
+  check("v217 ask", "a list that is not a list", R.socTimesAsk({ add: "18:00" }, now).errors, ["bad"], "");
+  check("v217 ask", "too many at once", [R.socTimesAsk({ add: Array.from({ length: R.SOC_MAX_TIMES + 1 }, () => ({})) }, now).errors, R.socTimesAsk({ remove: Array.from({ length: R.SOC_MAX_REMOVE + 1 }, () => id1) }, now).errors], [["times_many"], ["remove_many"]], "");
+  check("v217 ask", "length: 60 unless 90", [R.socTimesAsk({ remove: [id1] }, now).minutes, R.socTimesAsk({ remove: [id1], minutes: 90 }, now).minutes, R.socTimesAsk({ remove: [id1], minutes: 45 }, now).errors], [60, 90, ["duration"]], "the page never asks");
+  check("v217 ask", "a price only between 1 and 500", [R.socTimesAsk({ remove: [id1], price_eur: "48" }, now).price, R.socTimesAsk({ remove: [id1], price_eur: 0 }, now).errors, R.socTimesAsk({ remove: [id1], price_eur: "abc" }, now).errors], [48, ["price"], ["price"]], "");
+  check("v217 ask", "drawn_at in the future or days old is ignored", [R.socTimesAsk({ remove: [id1], drawn_at: now + 3600e3 }, now).drawnAt, R.socTimesAsk({ remove: [id1], drawn_at: now - 3 * 86400e3 }, now).drawnAt], [null, null], "as the sign-up");
+  check("v217 ask", "every error code has Spanish and English copy", ["nothing", "bad", "times_many", "remove_many", "duration", "price", "times_link", "times_inactive", "times_done", "times_nothing", "rate", "error"].filter((k) => !R.SOC_MSG[k] || !R.SOC_MSG[k].es || !R.SOC_MSG[k].en), [], "");
+
+  // Each time says whether it is weekly.
+  const t = R.socTimesSplit([
+    { date: "2026-12-09", start: "18:00" }, { date: "2026-12-09", start: "18:00", weekly: false }, { date: "2026-12-23", start: "18:00" },
+    { weekday: 2, start: "18:00", weekly: true }, { date: "2026-10-27", start: "19:00", weekly: true }, { weekday: 0, start: "12:00", weekly: true },
+  ], (x) => x?.weekly === true, 60, H, now);
+  check("v217 split", "dated and weekly side by side; a weekly time by its date takes that weekday", [t.once, t.pattern, t.skipped.map((x) => `${x.weekly ? "w" : "d"} ${x.day} ${x.hm} ${x.why}`)], [[{ ymd: "2026-12-09", hm: "18:00" }], [{ dow: 2, hm: "18:00" }, { dow: 2, hm: "19:00" }], ["d 2026-12-23 18:00 day", "w 0 12:00 closed"]], "27 Oct is a Tuesday");
+
+  // The studio's times as its page shows them: never anything about a customer.
+  const iso = (ms) => new Date(ms).toISOString();
+  const row = (id, mo, d, h, status, extra = {}) => ({ id, start_at: iso(M(mo, d, h)), end_at: iso(M(mo, d, h) + 3600e3), seat: 1, status, price_eur: 50, pattern_id: null,
+    request_id: 77, held_by_phone: "34600000001", booked_phone: "34600000002", first_name: "Ana", contact_email: "ana@x.com", evidence: "x", ...extra });
+  const view = R.socTimesView([
+    row("a", 10, 22, 18, "released"), row("b", 10, 23, 18, "held"), row("c", 10, 24, 12, "booked"), row("d", 12, 9, 18, "released", { pattern_id: "p1" }),
+    row("e", 10, 21, 10, "released"), row("f", 12, 16, 12, "released"), row("g", 10, 25, 12, "withdrawn"), row("h", 10, 26, 12, "rejected"), row("i", 10, 27, 12, "expired"),
+  ], [{ id: "p2", weekday: 0, start_time: "12:00:00", minutes: 60, active: true }, { id: "p1", weekday: 3, start_time: "18:00:00", minutes: 60, price_eur: 45, active: true }, { id: "p3", weekday: 1, start_time: "10:00:00", minutes: 60, active: false }], now);
+  check("v217 view", "only live times from now to the end of the 8 weeks, in order", view.slots.map((x) => `${x.id} ${x.date} ${x.time} ${x.status} ${x.removable}`), ["a 2026-10-22 18:00 free true", "b 2026-10-23 18:00 being booked false", "c 2026-10-24 12:00 booked false", "d 2026-12-09 18:00 free true"], "past, 16 Dec, removed, rejected and expired are left out");
+  check("v217 view", "no customer data, whatever the rows hold", [...new Set(view.slots.flatMap((x) => Object.keys(x)))].sort(), ["date", "id", "minutes", "price_eur", "removable", "seat", "status", "time", "weekly_id"], "no request id, phone, name or email");
+  check("v217 view", "nothing of the customer anywhere in it", /Ana|ana@x\.com|3460000000[12]|"77"|request|phone|evidence/.test(JSON.stringify(view)), false, "");
+  check("v217 view", "active weekly times, Monday first", view.weekly, [{ id: "p1", weekday: 3, start: "18:00", minutes: 60, price_eur: 45 }, { id: "p2", weekday: 0, start: "12:00", minutes: 60, price_eur: null }], "an ended one is not shown");
+  check("v217 view", "the days it covers", [view.horizon_days, view.first_day, view.last_day, view.slots[3].weekly_id], [56, "2026-10-21", "2026-12-15", "p1"], "");
+  // What could not be removed, and why an added time was not saved.
+  check("v217 remove", "free goes; being booked and booked stay; anything else is not found", ["withdrawn", "held", "booked", "rejected", "expired", "released", undefined].map((x) => R.socRemoveWhy(x)), ["", "being booked", "booked", "not_found", "not_found", "not_found", "not_found"], "another studio's id is never read, so it is not found too");
+  check("v217 remove", "a booked time points to the reject link in the confirmation email", [/enlace del email de confirmación/.test(R.socWhyText("booked", "es")), /link in the confirmation email/.test(R.socWhyText("booked", "en")), /15 minutos/.test(R.socWhyText("being booked", "es"))], [true, true, true], "nothing goes to WhatsApp");
+  check("v217 add", "why the database did not take a time", [R.socAddMissWhy(5, new Set([5]), 3), R.socAddMissWhy(6, new Set([5]), 200), R.socAddMissWhy(6, new Set([5]), 3)], ["already", "limit", "taken"], "");
+  check("v217 copy", "no em or en dashes in the reasons and messages", JSON.stringify([R.SOC_WHY, R.SOC_MSG]).match(/[–—]/g), null, "");
+
+  // Hooks: the endpoint, the order of the checks, the tables.
+  const fn = (head) => { const i = botSrc.indexOf(head); return i < 0 ? "" : botSrc.slice(i, botSrc.indexOf("\n}\n", i) + 3); };
+  const sub = fn("async function socTimesSubmit(");
+  check("v217 hook", "studio_times is routed to socTimesSubmit", /const r = ops === "studio_times" \? await socTimesSubmit\(p, req, L\) : await socSubmit\(p, req, L\);/.test(botSrc), true, "same CORS, body limit and origin checks as studio_signup");
+  check("v217 hook", "only the studio's own signed link: refused before anything is stored", /^async function socTimesSubmit[^\n]*\n\s*const nowMs = Date\.now\(\);\s*const \{ partner, signed \} = await socResolve\(p\?\.link_slug, p\?\.link_sig\);\s*if \(!partner \|\| !signed\) return \{ status: 403,/.test(sub) && sub.indexOf("socInsert(") > sub.indexOf("if (!partner || !signed)"), true, "an unsigned or wrongly signed request writes nothing");
+  check("v217 hook", "its own limit, counted on its own rows", /socCount\(`partner_id=eq\.\$\{enc\}&kind=eq\.times&created_at=gte\.\$\{since\(3600e3\)\}`\)\) >= SOC_LIMIT_TIMES_H\)/.test(sub) && /const SOC_LIMIT_TIMES_H = SOC_LIMIT_STUDIO_H;/.test(botSrc) && /signed=is\.true&kind=eq\.signup&created_at=gte/.test(botSrc), true, "the same 6 an hour as a signed sign-up");
+  check("v217 hook", "remove: only this studio's rows, through withdraw_released_slot", /released_slots\?partner_id=eq\.\$\{enc\}&id=in\./.test(sub) && /relRpc\("withdraw_released_slot", \{ p_slot: id, p_partner: pid \}\)/.test(sub), true, "another studio's id is never read");
+  check("v217 hook", "end weekly: end_released_pattern for this studio", /rpc\/end_released_pattern`[\s\S]{0,200}p_pattern: id, p_partner: pid/.test(sub) && /released_patterns\?partner_id=eq\.\$\{enc\}&id=in\./.test(sub), true, "");
+  check("v217 hook", "add: the sign-up's checks and saving, the terms and a price first", /socTimesSplit\(ask\.add, \(x\) => x\?\.weekly === true, ask\.minutes, slotHours\(partner\.opening_hours\), nowMs\)/.test(sub) && /else if \(!terms\.length\) refuseReady\("terms"\);\s*else if \(price === null && !\(await socHasMenu\(pid\)\)\) refuseReady\("price_needed"\);/.test(sub) && /socSaveTimes\(pid, t, ask\.minutes, price, `socios times \$\{row\.id\}`, ask\.drawnAt, String\(row\.id\), nowMs\)/.test(sub), true, "release_slots with p_since, released_patterns for weekly");
+  check("v217 hook", "removes and ends come before adds", sub.indexOf("// 1. Remove.") < sub.indexOf("// 2. End weekly times.") && sub.indexOf("// 2. End weekly times.") < sub.indexOf("// 3. Add."), true, "room under the 200 cap first");
+  check("v217 hook", "nothing is sent to the studio or a customer", /sendText|sendWa|sendTemplate|emailStudio|emailCustomer|notifyJordanWa/.test(sub), false, "only Jordan's email card");
+  check("v217 hook", "the answer carries the fresh list", /const times = await socTimesList\(partner, Date\.now\(\)\);/.test(sub) && /saved, removed, could_not_remove: couldNot, ended_weekly: ended, could_not_end: couldNotEnd, refused, next, times \} \};/.test(sub), true, "");
+  check("v217 hook", "the prefill's times only for a signed link", /\.\.\.\(signed \? \{ times: await socTimesList\(partner, Date\.now\(\)\) \} : \{\}\),/.test(botSrc), true, "an unsigned prefill shows nothing of them");
+  check("v217 hook", "the times list reads no customer column", /status=in\.\(released,held,booked\)&start_at=gte\.[^`]*select=id,start_at,end_at,seat,status,price_eur,pattern_id&limit=400`/.test(fn("async function socTimesList(")), true, "");
+  check("v217 hook", "the times page shows the same 8 weeks", /const days = slotDays\(nowMs, REL_STUDIO_HORIZON_DAYS\);\s*const dq = /.test(botSrc), true, "a far time given on /socios can be removed there too");
+  check("v217 hook", "the links page counts sign-ups only", /studio_signups\?kind=eq\.signup&select=id,partner_id,status,created_at,payload,result/.test(botSrc), true, "a change of times is not a form to review");
+  check("v217 migration", "studio_signups.kind, signed only for times", /add column if not exists kind text not null default 'signup';/.test(socSql) && /check \(kind in \('signup', 'times'\) and \(kind = 'signup' or \(signed and status in \('received', 'applied', 'rejected'\)\)\)\)/.test(socSql), true, "safe to apply more than once");
+  check("v217 copy", "no em or en dashes in the new code", /[–—]/.test(sub + fn("async function socTimesList(") + fn("async function socPricesOnFile(") + fn("async function socSaveTimes(")), false, "");
 }
 
 // ---------------------------------------------------------------------------

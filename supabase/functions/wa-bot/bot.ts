@@ -4753,6 +4753,17 @@ function relAt(ymd: string, minutes: number): number {
   const m = ((minutes % 1440) + 1440) % 1440;
   return madridInstant(day, Math.floor(m / 60)).getTime() + (m % 60) * 60e3;
 }
+// v217 (18 Oct, Jordan: studios change their times whenever they want, from
+// the link they start with, and give times as far ahead as they choose): how
+// far ahead a studio may give a "just once" (dated) time, in Madrid calendar
+// days counting today: 8 weeks. A start must also be less than this many days
+// from now, the same limit release_slots holds (start_at < now() + interval
+// '56 days', 20261018_released_slots.sql; a replay case keeps them equal).
+// The studio pages' days, releaseCheck (the times page and the ops release)
+// and socTimeCheck (/socios) use it. Weekly times are still made into dated
+// times 7 days ahead (materialise_released_patterns), and nothing on the
+// customer's side changes.
+const REL_STUDIO_HORIZON_DAYS = 56;
 // Today and the next n-1 days, as Madrid calendar dates.
 function slotDays(nowMs: number, n = 7): Array<{ ymd: string; dow: number }> {
   const base = madridMidnight(new Date(nowMs)).getTime();
@@ -4854,7 +4865,8 @@ function releaseCheck(r: { ymd: string; hm: string; minutes: number }, hours: Ma
   const t = relToMin(r.hm);
   if (t === null || t >= 1440 || t % 5) return "format";
   if (!REL_MINUTES.includes(Number(r.minutes))) return "duration";
-  const day = slotDays(nowMs, 7).find((d) => d.ymd === r.ymd);
+  // v217: today and the next 8 weeks (was 7 days).
+  const day = slotDays(nowMs, REL_STUDIO_HORIZON_DAYS).find((d) => d.ymd === r.ymd);
   if (!day) return "day";
   if (relAt(r.ymd, t) - 60 * 60e3 < nowMs) return "soon";
   if (hours) {
@@ -5104,20 +5116,21 @@ function socWindows(hours: Map<number, Array<[number, number]>> | null, dow: num
     .filter(([o, c]) => c > o);
 }
 // Why one time cannot be saved, or "". Madrid wall clock, 30 minute grid,
-// today to 7 days ahead (the page's chips; release_slots takes under 8 days),
-// at least 60 minutes ahead (release_slots), inside the day's opening hours,
-// 08:00 to 22:00 when they are unknown (REL_DEFAULT_HOURS, as the page shows),
-// and never outside 08:00 to 22:00 (SOC_DAY_WINDOW).
+// today to 8 weeks ahead (v217, REL_STUDIO_HORIZON_DAYS: a Madrid day among
+// today and the next 55, and a start under 56 days from now, as release_slots
+// holds; it was 7 days), at least 60 minutes ahead (release_slots), inside the
+// day's opening hours, 08:00 to 22:00 when they are unknown (REL_DEFAULT_HOURS,
+// as the page shows), and never outside 08:00 to 22:00 (SOC_DAY_WINDOW).
 function socTimeCheck(ymd: string, hm: string, minutes: number, hours: Map<number, Array<[number, number]>> | null, nowMs: number): "" | "format" | "grid" | "day" | "soon" | "far" | "closed" | "hours" {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || "")) || !/^\d{2}:\d{2}$/.test(String(hm || ""))) return "format";
   const t = relToMin(hm);
   if (t === null || t >= 1440) return "format";
   if (t % 30) return "grid";
-  const day = slotDays(nowMs, 8).find((d) => d.ymd === ymd);
+  const day = slotDays(nowMs, REL_STUDIO_HORIZON_DAYS).find((d) => d.ymd === ymd);
   if (!day) return "day";
   const st = relAt(ymd, t);
   if (st - 60 * 60e3 < nowMs) return "soon";
-  if (st >= nowMs + 8 * 86400e3) return "far";
+  if (st >= nowMs + REL_STUDIO_HORIZON_DAYS * 86400e3) return "far";
   const w = socWindows(hours, day.dow);
   if (!w.length) return "closed";
   if (!w.some(([o, c]) => t >= o && t + minutes <= c)) return "hours";
@@ -5134,6 +5147,40 @@ function socWeeklyCheck(dow: number, hm: string, minutes: number, hours: Map<num
   if (!w.some(([o, c]) => t >= o && t + minutes <= c)) return "hours";
   return "";
 }
+// v217: the times in a request, one by one. The sign-up form sends one kind
+// for all of them (repeat_weekly); a studio changing its times later
+// (studio_times) says it for each one (weekly: true). A weekly time names a
+// weekday (0 Sunday to 6), or only a date, whose weekday it then takes; a
+// dated time names a date. Each is kept once; one that does not fit is
+// skipped with its reason (socTimeCheck, socWeeklyCheck).
+type SocTimes = {
+  once: Array<{ ymd: string; hm: string }>;
+  pattern: Array<{ dow: number; hm: string }>;
+  skipped: Array<{ day: string; hm: string; why: string; weekly: boolean }>;
+};
+function socTimesSplit(list: any[], isWeekly: (x: any) => boolean, minutes: number, hours: Map<number, Array<[number, number]>> | null, nowMs: number): SocTimes {
+  const out: SocTimes = { once: [], pattern: [], skipped: [] };
+  const seen = new Set<string>();
+  for (const x of list) {
+    const hm = String(x?.start || "");
+    if (isWeekly(x)) {
+      const wd = x?.weekday;
+      const byDate = (wd === undefined || wd === null || wd === "") && /^\d{4}-\d{2}-\d{2}$/.test(String(x?.date || ""));
+      const dow = byDate ? new Date(String(x.date) + "T12:00:00Z").getUTCDay() : Number(wd);
+      const why = socWeeklyCheck(dow, hm, minutes, hours);
+      const key = `${dow} ${hm}`;
+      if (why) out.skipped.push({ day: byDate ? String(dow) : String(wd ?? ""), hm, why, weekly: true });
+      else if (!seen.has(key)) { seen.add(key); out.pattern.push({ dow, hm }); }
+    } else {
+      const ymd = String(x?.date || "");
+      const why = socTimeCheck(ymd, hm, minutes, hours, nowMs);
+      const key = `${ymd} ${hm}`;
+      if (why) out.skipped.push({ day: ymd, hm, why, weekly: false });
+      else if (!seen.has(key)) { seen.add(key); out.once.push({ ymd, hm }); }
+    }
+  }
+  return out;
+}
 type SocPlan = {
   lang: "es" | "en";
   studio: { name: string; wa: string; address: string; email: string; hoursRaw: string; hoursRead: string; p60: number | null; p90: number | null };
@@ -5141,7 +5188,7 @@ type SocPlan = {
   weekly: boolean;
   once: Array<{ ymd: string; hm: string }>;
   pattern: Array<{ dow: number; hm: string }>;
-  skipped: Array<{ day: string; hm: string; why: string }>;
+  skipped: SocTimes["skipped"];
   price: number | null;
   terms: { version: string; lang: "es" | "en"; text: string };
   drawnAt: number | null;
@@ -5200,26 +5247,8 @@ function socValidate(p: any, nowMs: number, storedHours: unknown = null, o: { ty
   if (errors.length) return { ok: false, errors, plan: null };
   const typed = slotHours(hoursRead) || slotHours(hoursRaw);
   const hours = o.typedFirst ? typed || slotHours(storedHours) : slotHours(storedHours) || typed;
-  const once: Array<{ ymd: string; hm: string }> = [];
-  const pattern: Array<{ dow: number; hm: string }> = [];
-  const skipped: Array<{ day: string; hm: string; why: string }> = [];
-  const seen = new Set<string>();
-  for (const x of list) {
-    const hm = String(x?.start || "");
-    if (weekly) {
-      const dow = Number(x?.weekday);
-      const why = socWeeklyCheck(dow, hm, minutes, hours);
-      const key = `${dow} ${hm}`;
-      if (why) skipped.push({ day: String(x?.weekday ?? ""), hm, why });
-      else if (!seen.has(key)) { seen.add(key); pattern.push({ dow, hm }); }
-    } else {
-      const ymd = String(x?.date || "");
-      const why = socTimeCheck(ymd, hm, minutes, hours, nowMs);
-      const key = `${ymd} ${hm}`;
-      if (why) skipped.push({ day: ymd, hm, why });
-      else if (!seen.has(key)) { seen.add(key); once.push({ ymd, hm }); }
-    }
-  }
+  // v217: the same per-time checks a studio's later changes go through.
+  const { once, pattern, skipped } = socTimesSplit(list, () => weekly, minutes, hours, nowMs);
   if (!once.length && !pattern.length) return { ok: false, errors: ["times_invalid"], plan: null };
   const drawn = Number(p?.drawn_at);
   const drawnAt = Number.isFinite(drawn) && drawn <= nowMs + 60e3 && drawn >= nowMs - 24 * 3600e3 ? Math.min(drawn, nowMs) : null;
@@ -5244,6 +5273,117 @@ function socPatternDates(dow: number, hm: string, minutes: number, nowMs: number
     return { ymd: d.ymd, startMs, endMs: startMs + minutes * 60e3 };
   }).filter((x) => x.startMs >= nowMs + 60 * 60e3 && x.startMs < nowMs + 8 * 86400e3);
 }
+
+// ---- v217: a studio changes its times on its own signed link ----
+// (18 Oct, Jordan: studios change their times whenever they want, from the
+// same link they start with, with no WhatsApp, and give times as far ahead
+// as they choose, so each can go all in or just offer a few times.) The page
+// reads its times with the signed prefill (socTimesView) and sends changes
+// as ops studio_times (socTimesAsk here, socTimesSubmit for the rest).
+const SOC_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const SOC_MAX_REMOVE = 100, SOC_MAX_END = 30;
+// What a studio_times request asks for, checked for shape only: the lists,
+// the length (60 unless it says 90: the page never asks), a price only when
+// one was typed now, and when the page was drawn (as socValidate). An id that
+// is not one of ours is kept apart and answered "not found".
+type SocTimesAsk = {
+  ok: boolean; errors: string[];
+  add: any[]; remove: string[]; endWeekly: string[]; badRemove: string[]; badEnd: string[];
+  minutes: number; price: number | null; drawnAt: number | null;
+};
+function socTimesAsk(p: any, nowMs: number): SocTimesAsk {
+  const errors: string[] = [];
+  const arr = (v: unknown): any[] | null => v === undefined || v === null ? [] : Array.isArray(v) ? v : null;
+  const add = arr(p?.add), rem = arr(p?.remove), end = arr(p?.end_weekly);
+  if (!add || !rem || !end) errors.push("bad");
+  const ids = (xs: any[] | null) => [...new Set((xs || []).map((x) => typeof x === "string" ? x.trim().toLowerCase() : ""))];
+  const remAll = ids(rem), endAll = ids(end);
+  const remove = remAll.filter((x) => SOC_UUID_RE.test(x)), endWeekly = endAll.filter((x) => SOC_UUID_RE.test(x));
+  const bad = (xs: string[]) => xs.filter((x) => !SOC_UUID_RE.test(x)).slice(0, 10).map((x) => x.slice(0, 40));
+  if ((add || []).length > SOC_MAX_TIMES) errors.push("times_many");
+  if ((rem || []).length > SOC_MAX_REMOVE || (end || []).length > SOC_MAX_END) errors.push("remove_many");
+  const m = p?.minutes === undefined || p?.minutes === null || p?.minutes === "" ? 60 : Number(p.minutes);
+  if (m !== 60 && m !== 90) errors.push("duration");
+  let price: number | null = null;
+  if (!(p?.price_eur === undefined || p?.price_eur === null || p?.price_eur === "")) {
+    const n = Number(p.price_eur);
+    if (Number.isFinite(n) && n >= 1 && n <= 500) price = Math.round(n * 100) / 100;
+    else errors.push("price");
+  }
+  if (!errors.length && !(add || []).length && !(rem || []).length && !(end || []).length) errors.push("nothing");
+  const drawn = Number(p?.drawn_at);
+  const drawnAt = Number.isFinite(drawn) && drawn <= nowMs + 60e3 && drawn >= nowMs - 24 * 3600e3 ? Math.min(drawn, nowMs) : null;
+  return { ok: !errors.length, errors, add: add || [], remove, endWeekly, badRemove: bad(remAll), badEnd: bad(endAll), minutes: m, price, drawnAt };
+}
+// A studio's own times as its signed page shows them (the signed prefill and
+// every studio_times answer): its dated times from now to the end of the 8
+// weeks that are free, being booked or booked, and its active weekly times.
+// Built field by field, so nothing about a customer (name, phone, email,
+// request) can be in it whatever the rows hold. Only a free time can be
+// removed here (withdraw_released_slot); a booked one is changed with the
+// reject link in the confirmation email.
+const SOC_STATUS: Record<string, string> = { released: "free", held: "being booked", booked: "booked" };
+function socTimesView(rows: any[], pats: any[], nowMs: number) {
+  const days = slotDays(nowMs, REL_STUDIO_HORIZON_DAYS);
+  const until = relAt(days[days.length - 1].ymd, 1440);
+  const slots = (rows || [])
+    .filter((x) => x && SOC_STATUS[String(x.status)])
+    .map((x) => ({ x, sm: Date.parse(String(x.start_at)), em: Date.parse(String(x.end_at)) }))
+    .filter((r) => r.sm >= nowMs && r.sm < until)
+    .sort((a, b) => a.sm - b.sm || Number(a.x.seat || 1) - Number(b.x.seat || 1))
+    .map(({ x, sm, em }) => ({
+      id: String(x.id), date: relYmd(sm), time: relHm(sm), minutes: Math.round((em - sm) / 60e3), seat: Number(x.seat) || 1,
+      status: SOC_STATUS[String(x.status)], removable: x.status === "released",
+      weekly_id: x.pattern_id ? String(x.pattern_id) : null, price_eur: Number(x.price_eur) > 0 ? Number(x.price_eur) : null,
+    }));
+  const weekly = (pats || [])
+    .filter((x) => x && x.active !== false && Number.isInteger(Number(x.weekday)))
+    .map((x) => ({ id: String(x.id), weekday: Number(x.weekday), start: String(x.start_time || "").slice(0, 5), minutes: Number(x.minutes), price_eur: Number(x.price_eur) > 0 ? Number(x.price_eur) : null }))
+    .sort((a, b) => (a.weekday + 6) % 7 - (b.weekday + 6) % 7 || a.start.localeCompare(b.start));
+  return { horizon_days: REL_STUDIO_HORIZON_DAYS, first_day: days[0].ymd, last_day: days[days.length - 1].ymd, slots, weekly };
+}
+// Why a time asked to be removed was not, from its status now ("" when it is
+// gone already, which counts as removed). Only this studio's rows are ever
+// read, so another studio's id is "not_found" like an unknown one.
+function socRemoveWhy(status: unknown): "" | "booked" | "being booked" | "not_found" {
+  const s = String(status ?? "");
+  return s === "withdrawn" ? "" : s === "booked" ? "booked" : s === "held" ? "being booked" : "not_found";
+}
+// Why release_slots did not take a dated time it was sent: this studio
+// already has it live, it is at its 200 live times, or the time was changed
+// (removed, rejected) after the page was drawn (p_since).
+function socAddMissWhy(startMs: number, liveStarts: Set<number>, liveCount: number): "already" | "limit" | "taken" {
+  return liveStarts.has(startMs) ? "already" : liveCount >= 200 ? "limit" : "taken";
+}
+// Why a time was not saved or removed, as the studio reads it (es) or the
+// page in English. (v217: moved here from the endpoint block, with the 8
+// week horizon and the studio_times reasons.)
+const SOC_WEEKS = REL_STUDIO_HORIZON_DAYS / 7;
+const SOC_WHY: Record<string, { es: string; en: string }> = {
+  soon: { es: "falta menos de una hora", en: "less than an hour away" },
+  day: { es: `fuera de las próximas ${SOC_WEEKS} semanas`, en: `outside the next ${SOC_WEEKS} weeks` },
+  far: { es: `fuera de las próximas ${SOC_WEEKS} semanas`, en: `outside the next ${SOC_WEEKS} weeks` },
+  format: { es: "no la hemos entendido", en: "we could not read it" },
+  grid: { es: "solo en punto o y media", en: "only on the hour or half past" },
+  closed: { es: "ese día cerráis", en: "you are closed that day" },
+  hours: { es: "fuera de vuestro horario", en: "outside your opening hours" },
+  taken: { es: "ya estaba marcada o acaba de cambiar", en: "already marked or just changed" },
+  // v217, studio_times.
+  already: { es: "ya la teníais", en: "you already had it" },
+  limit: { es: "ya tenéis 200 horas guardadas, el máximo", en: "you already have 200 saved times, the most there can be" },
+  terms: { es: "antes hay que enviar el formulario con las condiciones", en: "the form with the terms has to be sent first" },
+  price_needed: { es: "falta vuestro precio para esa duración", en: "your price for that length is missing" },
+  error: { es: "no se ha podido guardar, probad otra vez en un momento", en: "it could not be saved, try again in a moment" },
+  not_found: { es: "no la encontramos entre vuestras horas", en: "we could not find it among your times" },
+  // "Already booked, so it cannot be removed here. If you cannot see the
+  // client, reject it with the link in the confirmation email (you have 15
+  // minutes); after that, reply to that email."
+  booked: { es: "ya está reservada, así que no se puede quitar desde aquí. Si no podéis atender al cliente, rechazadla con el enlace del email de confirmación (tenéis 15 minutos); pasado ese tiempo, contestad a ese email", en: "it is already booked, so it cannot be removed here. If you cannot see the client, reject it with the link in the confirmation email (you have 15 minutes); after that, reply to that email" },
+  // "A client is booking it right now. If they book it, you get the
+  // confirmation and can reject it within the next 15 minutes."
+  being_booked: { es: "un cliente la está reservando ahora mismo. Si la reserva, os llega la confirmación y podéis rechazarla en los 15 minutos siguientes", en: "a client is booking it right now. If they book it, you get the confirmation and can reject it within the next 15 minutes" },
+};
+const socWhyText = (code: string, L: "es" | "en"): string => (SOC_WHY[code.replace(/ /g, "_")] || SOC_WHY.format)[L];
 // What to fill on the partner row (only where it is empty) and what differs
 // from what we have on file (never overwritten: it goes to Jordan's card).
 type SocDiff = { fill: Record<string, string>; differ: Array<{ field: string; onFile: string; given: string }> };
@@ -5339,7 +5479,14 @@ const SOC_MSG: Record<string, { es: string; en: string }> = {
   price_needed: { es: "Poned vuestro precio para esa duración: es el que ve el cliente.", en: "Add your price for that length: it is what the customer sees." },
   times_none: { es: "Elegid al menos un hueco.", en: "Choose at least one slot." },
   times_many: { es: `Como mucho ${SOC_MAX_TIMES} huecos de una vez. Quitad alguno, por favor.`, en: `At most ${SOC_MAX_TIMES} slots at once. Please remove some.` },
-  times_invalid: { es: "Ninguna de esas horas se puede guardar: falta menos de una hora, ya ha pasado o no cabe en vuestro horario. Elegid otras, por favor.", en: "None of those times can be saved: they are less than an hour away, already past, or outside your opening hours. Please choose others." },
+  times_invalid: { es: `Ninguna de esas horas se puede guardar: falta menos de una hora, ya ha pasado, está a más de ${REL_STUDIO_HORIZON_DAYS / 7} semanas o no cabe en vuestro horario. Elegid otras, por favor.`, en: `None of those times can be saved: they are less than an hour away, already past, more than ${REL_STUDIO_HORIZON_DAYS / 7} weeks ahead, or outside your opening hours. Please choose others.` },
+  // v217, studio_times (a studio changing its times on its own link).
+  times_link: { es: "Este enlace no sirve para cambiar vuestras horas: puede que ya no sea válido. Escribidnos y os mandamos uno nuevo.", en: "This link cannot change your times: it may no longer be valid. Write to us and we will send you a new one." },
+  times_inactive: { es: "Esta página no está activa.", en: "This page is not active." },
+  times_done: { es: "Hecho. Así quedan vuestras horas.", en: "Done. This is how your times look now." },
+  times_nothing: { es: "No se ha cambiado nada. Abajo tenéis por qué.", en: "Nothing was changed. The reasons are below." },
+  nothing: { es: "No habéis cambiado nada.", en: "You have not changed anything." },
+  remove_many: { es: `Como mucho ${SOC_MAX_REMOVE} horas de una vez. Quitad menos, por favor.`, en: `At most ${SOC_MAX_REMOVE} times at once. Please remove fewer.` },
 };
 const socMsg = (k: string, L: "es" | "en"): string => (SOC_MSG[k] || SOC_MSG.error)[L];
 
@@ -7384,7 +7531,9 @@ function slotsShell(title: string, body: string): string {
 }
 // A day chip: "Hoy", "Mañana", "lun 20".
 const SLOT_CHIP_FMT = new Intl.DateTimeFormat("es-ES", { timeZone: "UTC", weekday: "short", day: "numeric" });
-const slotChip = (ymd: string, i: number): string => i === 0 ? "Hoy" : i === 1 ? "Mañana" : SLOT_CHIP_FMT.format(new Date(ymd + "T12:00:00Z")).replace(/[.,]/g, "");
+// v217: past the first week the month too ("lun 16 nov"), as the days now run 8 weeks.
+const SLOT_CHIP_FMT_M = new Intl.DateTimeFormat("es-ES", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
+const slotChip = (ymd: string, i: number): string => i === 0 ? "Hoy" : i === 1 ? "Mañana" : (i < 7 ? SLOT_CHIP_FMT : SLOT_CHIP_FMT_M).format(new Date(ymd + "T12:00:00Z")).replace(/[.,]/g, "").replace(/\s+/g, " ");
 async function slotsPage(url: URL): Promise<Response> {
   const pid = relClean(url.searchParams.get("slots"));
   const k = String(url.searchParams.get("k") || "");
@@ -7404,7 +7553,9 @@ async function slotsPage(url: URL): Promise<Response> {
   // plainly when customers cannot book them yet (socLiveFor).
   const liveNow = socLiveFor(mode, isTest);
   const nowMs = Date.now();
-  const days = slotDays(nowMs, 7);
+  // v217: today and the next 8 weeks (was 7 days), so a time given on /socios
+  // weeks ahead is listed here and can be removed here too.
+  const days = slotDays(nowMs, REL_STUDIO_HORIZON_DAYS);
   const dq = String(url.searchParams.get("d") || "");
   const day = days.find((x) => x.ymd === dq) || days[0];
   const ymd = day.ymd;
@@ -7657,7 +7808,7 @@ async function slotRejectPage(url: URL): Promise<Response> {
 //   release_slots   { partner_id, slots: [{date, time, minutes?, seats?, price?}], evidence, ignore_hours? }
 //                   Jordan (or a test) releases times for a studio, with the
 //                   studio's own words as evidence. Same checks as the page.
-//   released_list   { partner_id?, all? }   live times (all: every status), next 8 days
+//   released_list   { partner_id?, all? }   live times (all: every status), next 8 weeks (v217; was 8 days)
 //   slot_link       { partner_id }          the studio's signed page; nothing is sent
 //   released_reject { slot_id, note? }      the reject link's effect, within the 15 minutes
 async function releasedOps(payload: any): Promise<Response> {
@@ -7677,7 +7828,7 @@ async function releasedOps(payload: any): Promise<Response> {
     return out({ ok: true, studio: p.business_name, url: await slotsLink(p), is_test: isTest, page_active: isTest || mode === "on", customers_see_it: seen(isTest), mode, note: "Nothing was sent. The link is a bearer link for this studio only: send it to the studio's own WhatsApp or email, with Jordan's yes." });
   }
   if (payload.ops === "released_list") {
-    const until = new Date(Date.now() + 8 * 86400e3).toISOString();
+    const until = new Date(Date.now() + REL_STUDIO_HORIZON_DAYS * 86400e3).toISOString();
     const q = `released_slots?select=id,partner_id,start_at,end_at,seat,status,price_eur,source,evidence,is_test,request_id,reject_until,held_until,partners(business_name)${pid ? `&partner_id=eq.${encodeURIComponent(pid)}` : ""}${payload.all ? "" : "&status=in.(released,held,booked)"}&start_at=lt.${encodeURIComponent(until)}&end_at=gte.${encodeURIComponent(new Date(Date.now() - 86400e3).toISOString())}&order=start_at.asc&limit=300`;
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, { headers: H() });
     const rows = await r.json().catch(() => []);
@@ -7750,13 +7901,18 @@ const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, cent
 const SOCIOS_HELLO_ACK = "Gracias por escribirnos. Lo leemos y os contestamos por aquí.";
 const SOC_STUDIO_CHAT_MS = 2 * 86400e3;
 const SOC_COLS = "id,business_name,slug,status,opted_out_at,whatsapp,phone,email,booking_email,address,neighbourhood,opening_hours,price_from,slots_link_v";
-const SOC_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Rate limits. Review fix (17 Oct): a signed send counts only against its own
 // studio's signed sends (only the studio has that link), so nobody can use up
 // a studio's limit with its public slug or its WhatsApp. Unsigned sends count
 // per sender address, per typed WhatsApp (unsigned only), and against one cap
 // for everyone; with no address at all they share a smaller bucket.
 const SOC_LIMIT_IP_10M = 6, SOC_LIMIT_IP_DAY = 30, SOC_LIMIT_STUDIO_H = 6, SOC_LIMIT_NOIP_10M = 3, SOC_LIMIT_UNSIGNED_H = 30;
+// v217: a studio's changes to its times (studio_times) have the same limit as
+// its signed sign-ups, counted on their own (studio_signups kind times), so
+// a few changes never stop a sign-up and the other way round. Only signed
+// requests ever reach it: anything else is refused before anything is read
+// or stored about it.
+const SOC_LIMIT_TIMES_H = SOC_LIMIT_STUDIO_H;
 // Jordan gets one card per unsigned form, up to this many an hour; after
 // that one "more are waiting" card, and the rest are on his links page.
 const SOC_CARDS_UNSIGNED_H = 5;
@@ -7803,12 +7959,16 @@ async function socStudioChatCard(from: string, text: string, what: string) {
   });
 }
 async function socRows(path: string): Promise<any[]> {
+  return (await socRead(path)) || [];
+}
+// v217: the same read, null when it failed (not an empty answer).
+async function socRead(path: string): Promise<any[] | null> {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: H() });
-    if (!r.ok) { console.log("[socios] read failed", path.split("?")[0], r.status); return []; }
-    const j = await r.json().catch(() => []);
-    return Array.isArray(j) ? j : [];
-  } catch (e) { console.log("[socios] read failed", String(e)); return []; }
+    if (!r.ok) { console.log("[socios] read failed", path.split("?")[0], r.status); return null; }
+    const j = await r.json().catch(() => null);
+    return Array.isArray(j) ? j : null;
+  } catch (e) { console.log("[socios] read failed", String(e)); return null; }
 }
 // A studio by its slug (or its id, for a studio without one). Two rows with
 // one slug: no guess.
@@ -7870,11 +8030,49 @@ async function socLogView(pid: string) {
   socViews.set(pid, Date.now());
   await logEvent("system", "socios_view", { partner_id: pid });
 }
+// v217: a studio's own times for its signed page (socTimesView), whether it
+// has accepted the terms (adding times needs them, as the sign-up does), and
+// the price it last gave for each length (what an added time carries unless
+// it sends another). complete: false when a read failed, so the page can say
+// so instead of showing no times.
+async function socTimesList(partner: any, nowMs: number): Promise<Record<string, unknown>> {
+  const pid = encodeURIComponent(String(partner.id));
+  const days = slotDays(nowMs, REL_STUDIO_HORIZON_DAYS);
+  const until = encodeURIComponent(new Date(relAt(days[days.length - 1].ymd, 1440)).toISOString());
+  const [rows, pats, terms, prices] = await Promise.all([
+    socRead(`released_slots?partner_id=eq.${pid}&status=in.(released,held,booked)&start_at=gte.${encodeURIComponent(new Date(nowMs).toISOString())}&start_at=lt.${until}&order=start_at.asc,seat.asc&select=id,start_at,end_at,seat,status,price_eur,pattern_id&limit=400`),
+    socRead(`released_patterns?partner_id=eq.${pid}&active=is.true&select=id,weekday,start_time,minutes,price_eur,active&limit=100`),
+    socRead(`partner_terms?partner_id=eq.${pid}&select=version&limit=1`),
+    socPricesOnFile(String(partner.id)),
+  ]);
+  return { ...socTimesView(rows || [], pats || [], nowMs), complete: rows !== null && pats !== null, terms_on_file: !!terms && terms.length > 0, price_on_file: prices };
+}
+// The price a studio last typed for each length: its latest applied sign-up
+// form, else the latest time it gave through its own links with a price. Only
+// a price the studio typed, never a listing.
+async function socPricesOnFile(pid: string): Promise<{ "60": number | null; "90": number | null }> {
+  const out: { "60": number | null; "90": number | null } = { "60": null, "90": null };
+  const ok = (v: unknown): number | null => { const n = Number(v); return v !== null && v !== undefined && v !== "" && Number.isFinite(n) && n >= 1 && n <= 500 ? n : null; };
+  for (const s of await socRows(`studio_signups?partner_id=eq.${encodeURIComponent(pid)}&kind=eq.signup&status=eq.applied&order=created_at.desc&select=payload&limit=10`)) {
+    if (out["60"] === null) out["60"] = ok(s?.payload?.studio?.price_60_eur);
+    if (out["90"] === null) out["90"] = ok(s?.payload?.studio?.price_90_eur);
+  }
+  if (out["60"] === null || out["90"] === null) {
+    for (const x of await socRows(`released_slots?partner_id=eq.${encodeURIComponent(pid)}&source=eq.studio_link&price_eur=not.is.null&order=released_at.desc&select=start_at,end_at,price_eur&limit=50`)) {
+      const m = String(Math.round((Date.parse(String(x.end_at)) - Date.parse(String(x.start_at))) / 60e3)) as "60" | "90";
+      if ((m === "60" || m === "90") && out[m] === null) out[m] = ok(x.price_eur);
+    }
+  }
+  return out;
+}
 // GET ?socios=1&s=<slug>[&k=<sig>][&view=1]: what the page prefills. The
 // email and whether a menu is on file only for a signed link. Review fix (17
 // Oct): without a valid signature, only an active studio is prefilled, with
 // what its public listing already shows; a lead or pending studio reads as
 // unknown, so a guessed slug reveals nothing about it.
+// v217: a signed link also gets the studio's own times (times, socTimesList),
+// so the same link that starts a studio also changes its times. Never for an
+// unsigned or wrongly signed link, and never anything about a customer.
 async function socPrefill(url: URL): Promise<Record<string, unknown>> {
   const { partner, signed, sigBad } = await socResolve(url.searchParams.get("s"), url.searchParams.get("k"));
   if (!partner) return { ok: true, status: "unknown" };
@@ -7893,22 +8091,53 @@ async function socPrefill(url: URL): Promise<Record<string, unknown>> {
       price_from: Number(partner.price_from) > 0 ? Number(partner.price_from) : null,
       active: String(partner.status || "") === "active",
     },
+    ...(signed ? { times: await socTimesList(partner, Date.now()) } : {}),
   };
 }
-// Why a time was not saved, as the studio reads it (es) or the page in English.
-const SOC_WHY: Record<string, { es: string; en: string }> = {
-  soon: { es: "falta menos de una hora", en: "less than an hour away" },
-  day: { es: "fuera de los próximos 7 días", en: "outside the next 7 days" },
-  far: { es: "fuera de los próximos 7 días", en: "outside the next 7 days" },
-  format: { es: "no la hemos entendido", en: "we could not read it" },
-  grid: { es: "solo en punto o y media", en: "only on the hour or half past" },
-  closed: { es: "ese día cerráis", en: "you are closed that day" },
-  hours: { es: "fuera de vuestro horario", en: "outside your opening hours" },
-  taken: { es: "ya estaba marcada o acaba de cambiar", en: "already marked or just changed" },
-};
-const socWhyText = (code: string, L: "es" | "en"): string => (SOC_WHY[code] || SOC_WHY.format)[L];
 const SOC_WD = { es: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"], en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] };
 const socWhen = (ms: number, L: "es" | "en", nowMs: number): string => `${relDayWord(ms, nowMs, L)} ${relHm(ms)}`;
+
+// The times part of a save (v217: shared by socApply and a studio's later
+// changes, socTimesSubmit). Dated times through release_slots (source
+// studio_link, p_since: when the page was drawn, so a time removed or
+// rejected since is not put back, the R2 rule of the studio page), weekly
+// times as released_patterns, materialised at once. out: the dated times
+// saved and the ones the database did not take (refused), the weekly times
+// (isNew false: it already had it) and their next dates.
+type SocSaved = { saved: Array<{ startMs: number }>; refused: Array<{ startMs: number }>; weekly: Array<{ dow: number; hm: string; isNew: boolean }>; next: Array<{ startMs: number }> };
+async function socSaveTimes(pid: string, t: { once: SocTimes["once"]; pattern: SocTimes["pattern"] }, minutes: number, price: number | null, evidence: string, drawnAt: number | null, createdFrom: string | null, nowMs: number): Promise<{ ok: boolean; error: string; out: SocSaved }> {
+  const out: SocSaved = { saved: [], refused: [], weekly: [], next: [] };
+  if (t.once.length) {
+    const want = t.once.map((x) => relAt(x.ymd, relToMin(x.hm) as number));
+    const rows = want.map((st) => ({ start_at: new Date(st).toISOString(), end_at: new Date(st + minutes * 60e3).toISOString(), seat: 1, price_eur: price }));
+    const res = await relRpc("release_slots", { p_partner: pid, p_rows: rows, p_source: "studio_link", p_evidence: evidence, p_since: drawnAt ? new Date(drawnAt).toISOString() : null });
+    if (!res.ok) return { ok: false, error: `release_slots: ${res.error}`, out };
+    const got = new Set(res.rows.map((x: any) => Date.parse(String(x.start_at))));
+    for (const st of want) (got.has(st) ? out.saved : out.refused).push({ startMs: st });
+  }
+  if (t.pattern.length) {
+    const have = await socRows(`released_patterns?partner_id=eq.${encodeURIComponent(pid)}&active=is.true&select=id,weekday,start_time,minutes&limit=200`);
+    const key = (d: number, hm: string, m: number) => `${d} ${hm} ${m}`;
+    const known = new Map(have.map((x: any) => [key(Number(x.weekday), String(x.start_time).slice(0, 5), Number(x.minutes)), String(x.id)]));
+    for (const x of t.pattern) {
+      if (known.has(key(x.dow, x.hm, minutes))) { out.weekly.push({ ...x, isNew: false }); continue; }
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/released_patterns`, { method: "POST", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ partner_id: pid, weekday: x.dow, start_time: x.hm, minutes, seats: 1, price_eur: price, created_from: createdFrom }) });
+      // A conflict is the same weekly time saved a moment ago: already there.
+      if (!r.ok && r.status !== 409) return { ok: false, error: `released_patterns: ${r.status}`, out };
+      out.weekly.push({ ...x, isNew: r.ok });
+    }
+    await relRpc("materialise_released_patterns", { p_partner: pid });
+    const live = await socRows(`released_slots?partner_id=eq.${encodeURIComponent(pid)}&status=in.(released,held,booked)&start_at=gte.${encodeURIComponent(new Date(nowMs).toISOString())}&order=start_at.asc&select=start_at,end_at&limit=300`);
+    const wanted = new Set(t.pattern.map((x) => `${x.dow} ${x.hm}`));
+    const seen = new Set<number>();
+    for (const s of live) {
+      const sm = Date.parse(String(s.start_at));
+      const dow = new Date(relAt(relYmd(sm), 720)).getUTCDay();
+      if (Math.round((Date.parse(String(s.end_at)) - sm) / 60e3) === minutes && wanted.has(`${dow} ${relHm(sm)}`) && !seen.has(sm)) { seen.add(sm); out.next.push({ startMs: sm }); }
+    }
+  }
+  return { ok: true, error: "", out };
+}
 
 type SocApplied = {
   filled: string[]; differ: SocDiff["differ"]; replaced: SocUpdate["replaced"]; lostNumber: string; saved: Array<{ startMs: number }>; refused: Array<{ startMs: number }>;
@@ -7961,37 +8190,11 @@ async function socApply(signup: any, partner: any, plan: SocPlan, via: "socios_l
     const trows = await tr.json().catch(() => []);
     result.terms = Array.isArray(trows) && trows.length ? "accepted now" : "already on file";
   } else result.terms = "NOT recorded (an unsigned form for a studio we already had)";
-  if (plan.once.length) {
-    const want = plan.once.map((x) => relAt(x.ymd, relToMin(x.hm) as number));
-    const rows = want.map((st) => ({ start_at: new Date(st).toISOString(), end_at: new Date(st + plan.minutes * 60e3).toISOString(), seat: 1, price_eur: plan.price }));
-    // p_since: when the page was drawn, so a time removed or rejected since
-    // is not put back by this submission (the R2 rule of the studio page).
-    const res = await relRpc("release_slots", { p_partner: pid, p_rows: rows, p_source: "studio_link", p_evidence: `socios signup ${signup.id}`, p_since: plan.drawnAt ? new Date(plan.drawnAt).toISOString() : null });
-    if (!res.ok) return { ok: false, error: `release_slots: ${res.error}`, result };
-    const got = new Set(res.rows.map((x: any) => Date.parse(String(x.start_at))));
-    for (const st of want) (got.has(st) ? result.saved : result.refused).push({ startMs: st });
-  }
-  if (plan.pattern.length) {
-    const have = await socRows(`released_patterns?partner_id=eq.${encodeURIComponent(pid)}&active=is.true&select=id,weekday,start_time,minutes&limit=200`);
-    const key = (d: number, hm: string, m: number) => `${d} ${hm} ${m}`;
-    const known = new Map(have.map((x: any) => [key(Number(x.weekday), String(x.start_time).slice(0, 5), Number(x.minutes)), String(x.id)]));
-    for (const x of plan.pattern) {
-      if (known.has(key(x.dow, x.hm, plan.minutes))) { result.weekly.push({ ...x, isNew: false }); continue; }
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/released_patterns`, { method: "POST", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ partner_id: pid, weekday: x.dow, start_time: x.hm, minutes: plan.minutes, seats: 1, price_eur: plan.price, created_from: signup.id }) });
-      // A conflict is the same weekly time saved a moment ago: already there.
-      if (!r.ok && r.status !== 409) return { ok: false, error: `released_patterns: ${r.status}`, result };
-      result.weekly.push({ ...x, isNew: r.ok });
-    }
-    await relRpc("materialise_released_patterns", { p_partner: pid });
-    const live = await socRows(`released_slots?partner_id=eq.${encodeURIComponent(pid)}&status=in.(released,held,booked)&start_at=gte.${encodeURIComponent(new Date(nowMs).toISOString())}&order=start_at.asc&select=start_at,end_at&limit=300`);
-    const wanted = new Set(plan.pattern.map((x) => `${x.dow} ${x.hm}`));
-    const seen = new Set<number>();
-    for (const s of live) {
-      const sm = Date.parse(String(s.start_at));
-      const dow = new Date(relAt(relYmd(sm), 720)).getUTCDay();
-      if (Math.round((Date.parse(String(s.end_at)) - sm) / 60e3) === plan.minutes && wanted.has(`${dow} ${relHm(sm)}`) && !seen.has(sm)) { seen.add(sm); result.next.push({ startMs: sm }); }
-    }
-  }
+  // v217: the times are saved by socSaveTimes, shared with a studio's later
+  // changes (studio_times).
+  const sv = await socSaveTimes(pid, plan, plan.minutes, plan.price, `socios signup ${signup.id}`, plan.drawnAt, String(signup.id), nowMs);
+  Object.assign(result, sv.out);
+  if (!sv.ok) return { ok: false, error: sv.error, result };
   return { ok: true, error: "", result };
 }
 // Lines for Jordan's cards (English), and the studio's own summary.
@@ -8028,7 +8231,7 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
   const { partner, signed, sigBad } = await socResolve(p?.link_slug, p?.link_sig);
   const waDigits = socPhone(p?.studio?.whatsapp);
   if (signed) {
-    if ((await socCount(`partner_id=eq.${encodeURIComponent(String(partner.id))}&signed=is.true&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_STUDIO_H) return limited;
+    if ((await socCount(`partner_id=eq.${encodeURIComponent(String(partner.id))}&signed=is.true&kind=eq.signup&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_STUDIO_H) return limited;
   } else {
     if (!ipHash) { if ((await socCount(`signed=is.false&ip_hash=is.null&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_NOIP_10M) return limited; }
     else if ((await socCount(`ip_hash=eq.${ipHash}&signed=is.false&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_IP_10M || (await socCount(`ip_hash=eq.${ipHash}&signed=is.false&created_at=gte.${since(86400e3)}`)) >= SOC_LIMIT_IP_DAY) return limited;
@@ -8114,6 +8317,150 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
   }
   return { status: 200, body: { ok: true, status: "pending_review", id: row.id, message: socMsg("pending", L) } };
 }
+// v217: POST ?socios=1 {"ops":"studio_times","payload":{link_slug, link_sig,
+// lang, drawn_at?, minutes?, price_eur?, add?: [{date | weekday, start,
+// weekly}], remove?: [slot ids], end_weekly?: [weekly ids]}}. A studio changes
+// its times on its own signed link, as often as it likes, with no WhatsApp.
+// Only its own signed link: anything else is refused (403) and nothing is
+// stored. In this order:
+//   1. remove: withdraw_released_slot, only a free time of this studio. A
+//      time being booked or booked stays and is said so (could_not_remove);
+//      a booked one is changed with the reject link in the confirmation email.
+//      Another studio's id is never read, so it is "not_found".
+//   2. end_weekly: end_released_pattern (its future free times go; held or
+//      booked ones stay, listed as kept).
+//   3. add: the sign-up's checks and saving (socTimesSplit with the hours on
+//      file, socSaveTimes: release_slots with p_since, released_patterns for
+//      weekly), up to 8 weeks ahead. Adding needs the terms on file (the
+//      sign-up form records them) and a price: the one sent, else the one the
+//      studio last gave for that length, else its menu.
+// Every request is kept in studio_signups (kind times) and counts against
+// the studio's own limit. The answer has what was saved, removed, ended,
+// refused and could not be removed, and the studio's times as they are now
+// (socTimesList). Nothing is sent to the studio or to a customer; Jordan gets
+// an email card when a real studio changed something.
+async function socTimesSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status: number; body: Record<string, unknown> }> {
+  const nowMs = Date.now();
+  const { partner, signed } = await socResolve(p?.link_slug, p?.link_sig);
+  if (!partner || !signed) return { status: 403, body: { ok: false, status: "not_signed", message: socMsg("times_link", L) } };
+  if (socInactive(partner)) return { status: 403, body: { ok: false, status: "inactive", message: socMsg("times_inactive", L) } };
+  const pid = String(partner.id), enc = encodeURIComponent(pid);
+  const since = (ms: number) => encodeURIComponent(new Date(nowMs - ms).toISOString());
+  if ((await socCount(`partner_id=eq.${enc}&kind=eq.times&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_TIMES_H) return { status: 429, body: { ok: false, status: "rate_limited", message: socMsg("rate", L) } };
+  const ipHash = await socIpHash(socClientIp(req));
+  const ua = socLine(req.headers.get("user-agent")).slice(0, 300);
+  // The request as it came, except the link's signature (a bearer key).
+  const base = { kind: "times", signed: true, partner_id: pid, payload: { ...p, link_sig: "(given)" }, ip_hash: ipHash || null, user_agent: ua || null };
+  const ask = socTimesAsk(p, nowMs);
+  if (!ask.ok) {
+    await socInsert({ ...base, status: "rejected", note: `invalid: ${ask.errors.join(", ")}` });
+    return { status: 400, body: { ok: false, status: "invalid", errors: ask.errors, message: socMsg(ask.errors[0], L) } };
+  }
+  const row = await socInsert({ ...base, status: "received" });
+  if (!row) return { status: 500, body: { ok: false, status: "error", message: socMsg("error", L) } };
+  const at = (ms: number) => ({ date: relYmd(ms), time: relHm(ms) });
+  const why = (code: string) => socWhyText(code, L);
+  const removed: any[] = [], couldNot: any[] = [], ended: any[] = [], couldNotEnd: any[] = [], saved: any[] = [], refused: any[] = [];
+  let next: any[] = [];
+  // 1. Remove.
+  for (const id of ask.badRemove) couldNot.push({ id, reason: "not_found", message: why("not_found") });
+  if (ask.remove.length) {
+    const sel = "select=id,start_at,status,pattern_id";
+    const mine = await socRows(`released_slots?partner_id=eq.${enc}&id=in.(${ask.remove.join(",")})&${sel}&limit=${ask.remove.length}`);
+    const byId = new Map(mine.map((x: any) => [String(x.id), x]));
+    for (const id of ask.remove) {
+      let x: any = byId.get(id) || null;
+      if (x && x.status === "released") {
+        const w = await relRpc("withdraw_released_slot", { p_slot: id, p_partner: pid });
+        if (w.ok && w.rows.length) { removed.push({ id, ...at(Date.parse(String(x.start_at))), weekly_id: x.pattern_id || null }); continue; }
+        if (!w.ok) { couldNot.push({ id, ...at(Date.parse(String(x.start_at))), reason: "error", message: why("error") }); continue; }
+        // Taken or changed a moment ago: read it again.
+        x = (await socRows(`released_slots?partner_id=eq.${enc}&id=eq.${id}&${sel}&limit=1`))[0] || null;
+      }
+      const r = socRemoveWhy(x?.status);
+      if (!r) removed.push({ id, ...at(Date.parse(String(x.start_at))), weekly_id: x.pattern_id || null, already: true });
+      else couldNot.push({ id, ...(x && r !== "not_found" ? at(Date.parse(String(x.start_at))) : {}), reason: r, message: why(r) });
+    }
+  }
+  // 2. End weekly times.
+  for (const id of ask.badEnd) couldNotEnd.push({ id, reason: "not_found", message: why("not_found") });
+  if (ask.endWeekly.length) {
+    const pats = await socRows(`released_patterns?partner_id=eq.${enc}&id=in.(${ask.endWeekly.join(",")})&select=id,weekday,start_time,minutes,active&limit=${ask.endWeekly.length}`);
+    const byId = new Map(pats.map((x: any) => [String(x.id), x]));
+    for (const id of ask.endWeekly) {
+      const x: any = byId.get(id);
+      if (!x) { couldNotEnd.push({ id, reason: "not_found", message: why("not_found") }); continue; }
+      const one = { id, weekday: Number(x.weekday), start: String(x.start_time).slice(0, 5), minutes: Number(x.minutes) };
+      if (x.active !== true) { ended.push({ ...one, removed: 0, already: true }); continue; }
+      const r: any = await fetch(`${SUPABASE_URL}/rest/v1/rpc/end_released_pattern`, { method: "POST", headers: H(), body: JSON.stringify({ p_pattern: id, p_partner: pid, p_note: `studio times ${row.id}` }) })
+        .then(async (y) => y.ok ? await y.json().catch(() => null) : null).catch(() => null);
+      if (r && r.ended === true) ended.push({ ...one, removed: Number(r.withdrawn) || 0 });
+      else couldNotEnd.push({ id, reason: "error", message: why("error") });
+    }
+  }
+  // 3. Add.
+  // Dated times read {date, time} and weekly ones {weekday, start}, as in the list.
+  const echo = (weekly: boolean, day: string, hm: string) => weekly
+    ? { weekly: true, weekday: /^\d$/.test(day) ? Number(day) : null, start: hm }
+    : { weekly: false, date: day, time: hm };
+  if (ask.add.length) {
+    const t = socTimesSplit(ask.add, (x) => x?.weekly === true, ask.minutes, slotHours(partner.opening_hours), nowMs);
+    for (const x of t.skipped) refused.push({ ...echo(x.weekly, x.day, x.hm), reason: x.why, message: why(x.why) });
+    const ready = [...t.once.map((x) => echo(false, x.ymd, x.hm)), ...t.pattern.map((x) => echo(true, String(x.dow), x.hm))];
+    const refuseReady = (code: string) => { for (const x of ready) refused.push({ ...x, reason: code, message: why(code) }); };
+    const terms = ready.length ? await socRead(`partner_terms?partner_id=eq.${enc}&select=version&limit=1`) : [];
+    const price = ready.length ? ask.price ?? (await socPricesOnFile(pid))[String(ask.minutes) as "60" | "90"] : null;
+    if (!ready.length) { /* nothing left to save */ }
+    else if (terms === null) refuseReady("error");
+    else if (!terms.length) refuseReady("terms");
+    else if (price === null && !(await socHasMenu(pid))) refuseReady("price_needed");
+    else {
+      const sv = await socSaveTimes(pid, t, ask.minutes, price, `socios times ${row.id}`, ask.drawnAt, String(row.id), nowMs);
+      for (const x of sv.out.saved) saved.push({ weekly: false, ...at(x.startMs), minutes: ask.minutes });
+      for (const x of sv.out.weekly) saved.push({ weekly: true, weekday: x.dow, start: x.hm, minutes: ask.minutes, new: x.isNew });
+      next = sv.out.next.map((x) => at(x.startMs));
+      if (sv.out.refused.length) {
+        const live = await socRows(`released_slots?partner_id=eq.${enc}&status=in.(released,held,booked)&end_at=gt.${encodeURIComponent(new Date(Date.now()).toISOString())}&select=start_at&limit=300`);
+        const starts = new Set(live.map((x: any) => Date.parse(String(x.start_at))));
+        for (const x of sv.out.refused) { const code = socAddMissWhy(x.startMs, starts, live.length); refused.push({ ...echo(false, relYmd(x.startMs), relHm(x.startMs)), reason: code, message: why(code) }); }
+      }
+      if (!sv.ok) {
+        console.log("[socios] studio times not saved", pid, sv.error);
+        const done = new Set([...sv.out.saved, ...sv.out.refused].map((x) => `d ${relYmd(x.startMs)} ${relHm(x.startMs)}`).concat(sv.out.weekly.map((x) => `w ${x.dow} ${x.hm}`)));
+        for (const x of ready as any[]) if (!done.has(x.weekly ? `w ${x.weekday} ${x.start}` : `d ${x.date} ${x.time}`)) refused.push({ ...x, reason: "error", message: why("error") });
+      }
+    }
+  }
+  const mode = await releasedMode();
+  const isTest = socIsTestStudio(partner);
+  const live = socLiveFor(mode, isTest);
+  const times = await socTimesList(partner, Date.now());
+  // A weekly time that ended keeps the times already being booked or booked.
+  for (const e of ended) e.kept = ((times.slots as any[]) || []).filter((x) => x.weekly_id === e.id).map((x) => ({ id: x.id, date: x.date, time: x.time, status: x.status }));
+  const changed = saved.some((x) => !x.weekly || x.new) || removed.some((x) => !x.already) || ended.some((x) => !x.already);
+  const result = { saved, removed, could_not_remove: couldNot, ended_weekly: ended, could_not_end: couldNotEnd, refused, next, live };
+  await socPatch(String(row.id), { status: "applied", applied_at: new Date().toISOString(), result, note: changed ? null : "nothing changed" });
+  await logEvent("system", "socios_times", { partner_id: pid, row: row.id, saved: saved.length, removed: removed.length, ended: ended.length, refused: refused.length, could_not_remove: couldNot.length, test: isTest });
+  if (changed && !isTest) {
+    const name = String(partner.business_name || "The studio");
+    const d = (x: any) => x.weekly ? `every ${SOC_WD.en[x.weekday] ?? "?"} ${x.start}` : `${x.date} ${x.time || x.start}`;
+    await founderCard(`📥 ${name} changed its times on its /socios link`, {
+      badge: "STUDIO CHANGED TIMES", title: `${name} changed its times`,
+      paras: [
+        `Done at once (its own signed link). Customers ${live ? "can book what it added" : `cannot see its times yet (RELEASED is ${mode})`}.`,
+        saved.length ? `Added: ${saved.map((x) => d(x) + (x.weekly && !x.new ? " (already had it)" : "")).join(", ")}.` : "",
+        removed.length ? `Removed: ${removed.map((x) => `${x.date} ${x.time}`).join(", ")}.` : "",
+        ended.length ? `Weekly times ended: ${ended.map((x) => `${SOC_WD.en[x.weekday] ?? "?"} ${x.start}${x.kept.length ? ` (kept, already taken: ${x.kept.map((k: any) => `${k.date} ${k.time} ${k.status}`).join(", ")})` : ""}`).join(", ")}.` : "",
+        couldNot.length ? `Could not remove: ${couldNot.map((x) => `${x.date ? `${x.date} ${x.time}` : x.id} (${x.reason})`).join(", ")}.` : "",
+        refused.length ? `Not saved: ${refused.map((x) => `${d(x)} (${x.reason})`).join(", ")}.` : "",
+      ].filter(Boolean),
+      links: [{ href: await slotsLink(partner), label: "Their times page" }, { href: await socLinksUrl(), label: "All studio links" }],
+      to: ["jordan@massageclub.io"],
+    });
+  }
+  const message = socMsg(saved.length ? (live ? "applied_live" : "applied_wait") : changed ? "times_done" : refused.length || couldNot.length || couldNotEnd.length ? "times_nothing" : "times_done", L);
+  return { status: 200, body: { ok: true, status: "done", id: row.id, live, message, saved, removed, could_not_remove: couldNot, ended_weekly: ended, could_not_end: couldNotEnd, refused, next, times } };
+}
 // What Aprobar will do, in Jordan's words (review fix, 17 Oct: the card used
 // to list only what differed, not what approving fills or records).
 function socApproveEffect(match: any | null, signedApplyFailed: boolean): string {
@@ -8152,7 +8499,8 @@ async function socReviewCard(row: any, plan: SocPlan, match: any | null, why: st
     to: ["jordan@massageclub.io"],
   });
 }
-// The page's endpoint: OPTIONS, GET (prefill) and POST (studio_signup), JSON
+// The page's endpoint: OPTIONS, GET (prefill) and POST (studio_signup, and
+// v217 studio_times), JSON
 // out {ok, status, message}, CORS for book.massageclub.io, massageclub.io and
 // Vercel previews.
 async function sociosApi(req: Request, url: URL): Promise<Response> {
@@ -8171,11 +8519,13 @@ async function sociosApi(req: Request, url: URL): Promise<Response> {
   try { raw = await req.text(); } catch { /* no body */ }
   let body: any = null;
   if (raw && raw.length <= 24000) { try { body = JSON.parse(raw); } catch { body = null; } }
-  const p = body && body.ops === "studio_signup" && body.payload && typeof body.payload === "object" ? body.payload : null;
+  // v217: studio_times, a studio changing its times on its own signed link.
+  const ops = body && typeof body.ops === "string" ? body.ops : "";
+  const p = body && (ops === "studio_signup" || ops === "studio_times") && body.payload && typeof body.payload === "object" ? body.payload : null;
   if (!p) return out({ ok: false, status: "invalid", errors: ["bad"], message: socMsg("bad", "es") }, 400);
   const L: "es" | "en" = p.lang === "en" ? "en" : "es";
   try {
-    const r = await socSubmit(p, req, L);
+    const r = ops === "studio_times" ? await socTimesSubmit(p, req, L) : await socSubmit(p, req, L);
     return out(r.body, r.status);
   } catch (e) {
     console.log("[socios] submit failed", String(e));
@@ -8298,7 +8648,13 @@ async function socLinksPage(url: URL): Promise<Response> {
     const pid = String(e?.meta?.partner_id || "");
     if (pid && !views.has(pid)) views.set(pid, Date.parse(String(e.created_at)));
   }
-  const signups = await socRows(`studio_signups?select=id,partner_id,status,created_at,payload,result&order=created_at.desc&limit=1000`);
+  const signups = await socRows(`studio_signups?kind=eq.signup&select=id,partner_id,status,created_at,payload,result&order=created_at.desc&limit=1000`);
+  // v217: when each studio last changed its times on its own link.
+  const changedAt = new Map<string, number>();
+  for (const s of await socRows(`studio_signups?kind=eq.times&status=eq.applied&select=partner_id,created_at&order=created_at.desc&limit=2000`)) {
+    const pid = String(s.partner_id || "");
+    if (pid && !changedAt.has(pid)) changedAt.set(pid, Date.parse(String(s.created_at)));
+  }
   const lastSignup = new Map<string, any>();
   const reviewNew: any[] = [];
   const review = new Set<string>();
@@ -8331,6 +8687,7 @@ async function socLinksPage(url: URL): Promise<Response> {
       su ? `sent ${ago(Date.parse(String(su.created_at)))} (${String(su.status).replace("_", " ")})` : "nothing sent",
       `${f.live} time${f.live === 1 ? "" : "s"} saved${f.weekly ? `, ${f.weekly} every week` : ""}${f.live || f.weekly ? (bookable ? ", customers can book them" : `, not offered yet (RELEASED ${mode})`) : ""}`,
       f.terms ? `terms ${terms.get(pid)}` : "terms not accepted",
+      ...(changedAt.has(pid) ? [`times changed ${ago(changedAt.get(pid) as number)}`] : []),
     ];
     const pend = f.review ? signups.find((s) => String(s.partner_id) === pid && s.status === "pending_review") : null;
     rows.push({ p, rank, label, link: await socLink(p), bits, review: pend ? await socReviewLink(String(pend.id)) : "", to: socPick(p).replace(/\D/g, ""), bookable, saved: f.live > 0 || f.weekly > 0 });

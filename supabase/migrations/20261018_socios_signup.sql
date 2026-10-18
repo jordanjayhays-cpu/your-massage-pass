@@ -9,6 +9,8 @@
 -- studio's times to wa-bot (ops studio_signup). This file adds what that needs:
 --
 --   studio_signups     every submission, as it came in, with what became of it
+--                      (kind signup: the form; kind times: a studio changing
+--                      its times later on its own signed link, ops studio_times)
 --   partner_terms      the studio's written acceptance of the fee terms, the
 --                      record billing relies on
 --   released_patterns  "every week" times (Tuesday 18:00, 60 min)
@@ -62,6 +64,22 @@ create index if not exists studio_signups_partner on public.studio_signups (part
 create index if not exists studio_signups_ip on public.studio_signups (ip_hash, created_at desc);
 create index if not exists studio_signups_wa on public.studio_signups (whatsapp_digits, created_at desc);
 create index if not exists studio_signups_review on public.studio_signups (created_at desc) where status = 'pending_review';
+
+-- kind (v217, 18 Oct): 'signup' is the page's form, everything above.
+-- 'times' is a studio changing its times on its own signed link, as often as
+-- it likes (wa-bot ops studio_times): always signed, never waiting for
+-- review; 'applied' with what it did in result (saved, removed, refused), or
+-- 'rejected' when the request could not be read. Each kind has its own
+-- per-studio rate limit in wa-bot.
+alter table public.studio_signups add column if not exists kind text not null default 'signup';
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'studio_signups_kind') then
+    alter table public.studio_signups
+      add constraint studio_signups_kind check (kind in ('signup', 'times') and (kind = 'signup' or (signed and status in ('received', 'applied', 'rejected'))));
+  end if;
+end $$;
+create index if not exists studio_signups_partner_kind on public.studio_signups (partner_id, kind, created_at desc);
 
 alter table public.studio_signups enable row level security;
 revoke all on public.studio_signups from public, anon, authenticated;
@@ -147,7 +165,8 @@ create index if not exists released_slots_pattern on public.released_slots (patt
 -- ---------------------------------------------------------------------------
 -- Weekly times become released slots for today and the next 6 days (Madrid
 -- calendar days), through release_slots, so every one of its limits holds:
--- at least 60 minutes ahead, under 8 days, at most 40 rows a call (a pattern
+-- at least 60 minutes ahead, under 8 days here (release_slots itself takes up
+-- to 8 weeks since v217, for times given "just once"), at most 40 rows a call (a pattern
 -- is at most 7 days x 3 rooms = 21), 200 live a studio, test studios marked
 -- from their name, nothing for a studio that opted out or is suspended.
 --

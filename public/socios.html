@@ -33,19 +33,23 @@
   like the one we give to the customer"; every screen as light as go.html's,
   one short question, at most one short line under it, nothing about later
   steps): the invite (what Massage Club is, who the customers are, what it
-  costs; "Cómo funciona" sits in the top bar), then 1 "¿Qué días?" (every
-  weekday, closed ones greyed when we know the hours; the opening hours are
-  one tap away under the list, and come before the times so nothing picked
-  can vanish later), 2 "¿A qué horas?" (go.html's hour cards in one grid;
-  one tap is one start time; the same times for every chosen day, or one
-  day set differently; the length is a small 60 / 90 min choice here,
-  60 by default, since a 90 minute massage changes which start times fit
-  before closing), 3 "¿Todas las semanas?" (every week, or just once on the
-  dates the card names), 4 "Vuestro centro" (name, address, WhatsApp,
-  email), 5 "Último paso" (price, the terms, send), then the ticket. A
-  studio that also does the other length adds it from the ticket ("Añadir
-  horas de 90 min"). Jordan, 18 Oct: "i've only clicked 2 slots it says 4":
-  every count on screen is the times tapped, never times multiplied by days;
+  costs; "Cómo funciona" sits in the top bar), then 1 "¿Qué días esta
+  semana?" (Jordan, 18 Oct: "maybe a calendar function opens up and they can
+  select the days?": a calendar of the next 7 real dates right on the
+  screen, closed ones greyed when we know the hours; those 7 dates are
+  exactly the ones a "just once" save uses; the opening hours are one tap
+  away under it, and come before the times so nothing picked can vanish
+  later), 2 "¿A qué horas?" (go.html's hour cards in one grid; one tap is
+  one start time a customer can take; the same times for every chosen day,
+  or one day set differently), 3 "¿Se repite cada semana?" (Jordan: "this
+  question is confusing": one yes or no about exactly what was just
+  picked; "No, solo esta semana" names the real dates), 4 "Vuestro centro"
+  (name, address, WhatsApp, email), 5 "Último paso" (price, the terms,
+  send), then the ticket. No length is asked (Jordan, 18 Oct: "not sure if
+  the length matters, just times that work for the customers"): every time
+  is sent as a 60 minute one, as before, and the one price asked is the
+  price of a 60 min massage. Jordan, 18 Oct: "i've only clicked 2 slots it
+  says 4": every count on screen is the times tapped, never times multiplied by days;
   the ticket lists each day with its times. The «ocupado» instruction is on
   the ticket only, never mid-flow. "Cómo funciona" and "Ver condiciones"
   open one sheet with how a booking reaches the studio, the example
@@ -59,7 +63,7 @@
   on the invite (one line) and prefills its details from wa-bot (see Prefill
   below).
 
-  A draft (fields, days, times, length, repeat) is kept in localStorage per
+  A draft (fields, dates, times, repeat) is kept in localStorage per
   link, so a reload or WhatsApp's in-app browser coming back does not lose
   anything ("Empezar" then reads "Seguir donde lo dejasteis"). It is cleared
   after a save. The phone's back button and the arrow at the top agree:
@@ -93,8 +97,8 @@
     confirmamos por WhatsApp o email". Approving one for a studio we already
     have saves only its times: its details are not changed and no terms are
     recorded in its name (anyone can type a studio's number here).
-  The price for the chosen length is required, unless it is the studio's own
-  link and we already have its menu (prefill has_menu).
+  The 60 min price is required, unless it is the studio's own link and we
+  already have its menu (prefill has_menu).
   - ok false with a message (a check failed, too many sends): shown under
     the button, nothing else changes.
   Only when the save cannot be reached at all (network, a server error, an
@@ -292,33 +296,36 @@ a.cta,a.chip,a.skip{display:block;text-align:center;text-decoration:none}
 .dock .err:not(:empty){margin:0 0 10px}
 /* A card or link reached from the keyboard scrolls clear of the dock. */
 html:has(.screen.on[data-s="days"]),html:has(.screen.on[data-s="times"]){scroll-padding-bottom:112px}
-/* Two big cards (every week / just once): go.html's tile, a little more padding. */
-.tile.big{padding:20px 16px}
-/* Both cards start at the top (a button centres its content by default) and
-   emoji differ in height: one fixed line keeps the two titles level. */
-.tile.big{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start}
-.tile.big .e{height:38px;line-height:38px}
-/* At 320 the titles ("Cada semana", "Solo una vez") still fit on one line. */
-@media (max-width:340px){.tile.big{padding:18px 12px}.tile.big b{font-size:15.5px}}
-/* Days: go.html's rows (emoji, name). Several can be chosen; a chosen row
-   gets go's ink border and a tick on the right. */
+/* Every week, yes or no: go.html's rows, full width, so each answer reads on
+   one line at 320. */
 .row{width:100%}
 .row > div{flex:1;min-width:0}
-.row .tick{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--ink);visibility:hidden}
-.row .tick::after{content:"\2713";color:#fff;font-size:13px;font-weight:700}
-.row.sel .tick{visibility:visible}
 .row small{display:block}
-.row .r{color:var(--muted);font-size:13.5px;font-weight:700;white-space:nowrap}
-/* A day the opening hours say is closed: shown, not choosable. */
-.row.closed{background:rgba(255,255,255,.5);box-shadow:none}
-.row.closed b{color:var(--muted)}
-.row.closed .e{opacity:.35}
+.row b{white-space:nowrap}
+/* Days: a calendar of the next 7 real dates in go.html's white card (a
+   tile's radius and shadow), one row like a phone's week view. A chosen
+   date is a filled ink circle, today carries a small dot, and a date the
+   opening hours say is closed is greyed with "Cerrado" under it. */
+.cal{background:var(--chip);border-radius:22px;padding:16px 8px 12px;box-shadow:0 6px 18px rgba(80,40,20,.07)}
+.cal .ch{font-weight:700;font-size:16.5px;margin:0 8px 14px}
+.cal .cg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cd{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;padding:2px 0}
+.cd .cw{font-size:12.5px;font-weight:700;color:var(--muted);line-height:1}
+.cd .cn{width:min(40px,calc(100% - 4px));aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font-size:17px;font-weight:700;line-height:1;transition:background .15s,color .15s,transform .12s}
+.cd:active .cn{transform:scale(.92)}
+.cd.sel .cn{background:var(--ink);color:#fff}
+.cd .cm{height:12px;font-size:10px;font-weight:700;line-height:12px;color:var(--muted);white-space:nowrap}
+.cd.today .cm::before{content:"";display:block;width:6px;height:6px;margin:3px auto 0;border-radius:50%;background:var(--clay)}
+.cd.off .cn{color:rgba(38,32,25,.28)}
+.cd.off .cw{opacity:.5}
+/* At 320 "Cerrado" still fits inside its own cell. */
+@media (max-width:340px){.cal{padding-left:4px;padding-right:4px}.cd .cm{font-size:9.5px}}
+/* The chosen days in words, under the calendar. Its line is kept while
+   empty, so the links under it do not jump on the first tap. */
+.picked{min-height:20px;margin:12px 4px 0;font-size:14.5px;font-weight:500;color:var(--muted);text-align:center}
+.picked + .skip{margin-top:6px}
 /* Two quiet links under a list sit together. */
 .skip + .skip{margin-top:2px}
-/* The length on the times screen: two small chips, 60 by default. */
-.durs{display:flex;align-items:center;gap:8px;margin:-4px 0 16px}
-.durs .dl{font-size:14px;color:var(--muted);font-weight:500;margin-right:2px}
-.durs .chip{padding:8px 14px;font-size:14.5px}
 /* An hour half that does not fit before closing, and a time set on some days only. */
 .hr .off{display:block;flex:1;padding:12px 0 8px;font-size:17px;font-weight:700;text-align:center;opacity:.25}
 .hr .off small{display:block;margin-top:2px;font-size:12px;font-weight:500}
@@ -474,13 +481,18 @@ body.noscroll{overflow:hidden}
       <button type="button" class="cta dark" id="startBtn"></button>
     </section>
 
-    <!-- 1 · which days, and the opening hours one tap away (so the times on
-         screen 2 are drawn inside them and nothing picked can vanish later) -->
+    <!-- 1 · which days: a calendar of the next 7 real dates, and the opening
+         hours one tap away (so the times on screen 2 are drawn inside them
+         and nothing picked can vanish later) -->
     <section class="screen" data-s="days" aria-labelledby="h2">
       <div class="kicker" data-t="k2"></div>
       <h2 id="h2" tabindex="-1" data-t="q2"></h2>
       <p class="sub" data-t="s2"></p>
-      <div class="list" id="dayList"></div>
+      <div class="cal">
+        <p class="ch" id="calHead" aria-hidden="true"></p>
+        <div class="cg" id="calGrid" role="group"></div>
+      </div>
+      <p class="picked" id="picked" aria-live="polite"></p>
       <button type="button" class="skip" id="dayQuick" hidden></button>
       <button type="button" class="skip" id="hoursOpen" aria-controls="hoursBox"></button>
       <div class="field" id="hoursBox" style="margin-top:18px" hidden>
@@ -494,12 +506,11 @@ body.noscroll{overflow:hidden}
       </div>
     </section>
 
-    <!-- 2 · which times, and the length (60 by default) -->
+    <!-- 2 · which times (each a 60 minute slot; no length is asked) -->
     <section class="screen" data-s="times" aria-labelledby="h3">
       <div class="kicker" data-t="k3"></div>
       <h2 id="h3" tabindex="-1" data-t="q3"></h2>
       <p class="sub" id="timesSub" aria-live="polite"></p>
-      <div class="durs" id="durPick" role="group" data-aria="durAria"></div>
       <div id="tabsBox" hidden>
         <div class="chips tabs" id="tabs" role="group" data-aria="tabsAria"></div>
       </div>
@@ -513,12 +524,13 @@ body.noscroll{overflow:hidden}
       </div>
     </section>
 
-    <!-- 3 · every week? -->
+    <!-- 3 · does it repeat every week? One yes or no about what was just
+         picked, said in words under the question. -->
     <section class="screen" data-s="repeat" aria-labelledby="h4">
       <div class="kicker" data-t="k4"></div>
       <h2 id="h4" tabindex="-1" data-t="q4"></h2>
       <p class="sub" id="s4"></p>
-      <div class="grid" id="repeats"></div>
+      <div class="list" id="repeats"></div>
     </section>
 
     <!-- 4 · the studio -->
@@ -564,19 +576,16 @@ body.noscroll{overflow:hidden}
       <h2 id="h6" tabindex="-1" data-t="q6"></h2>
       <p class="sub" data-t="s6"></p>
       <form id="f6" novalidate>
-        <div id="prices" role="group" aria-describedby="priceHint priceErr">
+        <!-- One price: every offer to a customer carries one. The times are
+             60 minute slots, so it is the price of a 60 min massage. -->
+        <div id="prices">
           <div class="field" id="fp60">
             <label class="fl" for="p60"><span id="p60Lbl"></span> <em class="opt" id="p60Opt" data-t="opt"></em></label>
             <span class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" data-ph="pricePh" aria-describedby="priceHint priceErr"></span>
           </div>
-          <div class="field" id="fp90">
-            <label class="fl" for="p90"><span id="p90Lbl"></span> <em class="opt" id="p90Opt" data-t="opt"></em></label>
-            <span class="euro"><input type="text" id="p90" inputmode="decimal" autocomplete="off" data-ph="pricePh90" aria-describedby="priceHint priceErr"></span>
-          </div>
         </div>
         <p class="hint" id="priceHint"></p>
         <p class="ferr" id="priceErr" aria-live="polite"></p>
-        <button type="button" class="skip left" id="addOther"></button>
 
         <!-- Only when some picked times no longer fit the hours. -->
         <div id="sumMini"></div>
@@ -636,8 +645,6 @@ body.noscroll{overflow:hidden}
         <div class="msg" id="pvMsg"></div>
       </div>
 
-      <!-- A studio that also does the other length adds it from here. -->
-      <button type="button" class="skip" id="addDur" hidden><span class="q" id="addDurQ"></span><span id="addDurA"></span></button>
       <div class="links" id="doneLinks">
         <button type="button" class="skip" id="more" data-t="more"></button>
         <i aria-hidden="true">·</i>
@@ -779,7 +786,10 @@ const T = {
     start: "Empezar",
     ctaResume: "Seguir donde lo dejasteis",
 
-    k2: "1 de 5", q2: "¿Qué días?", s2: "Tocad los días en que tenéis horas libres.",
+    k2: "1 de 5", q2: "¿Qué días esta semana?", s2: "Tocad los días con horas libres.",
+    calSpan1: "Del {a} al {b} de {m}", calSpan2: "Del {a} de {ma} al {b} de {mb}",
+    calToday: "hoy", calClosed: "cerrado", calNone: "sin horas",
+    runDays: "de {a} a {b}",
     workWeek: "+ De lunes a viernes", allWeek: "+ Todos los días",
     closed: "Cerrado",
     hoursAdd: "+ Vuestro horario (opcional)",
@@ -788,27 +798,28 @@ const T = {
     next: "Siguiente",
 
     k3: "2 de 5", q3: "¿A qué horas?",
-    s3: "Para {d}. Cada hora que toquéis es un cliente.",
-    tabQDay: "Solo para los {d}. Los demás días no cambian.",
-    durLbl: "Citas de", durAria: "Duración de cada cita",
+    s3: "Tocad las horas en que puede empezar un cliente.",
+    tabQDay: "Solo para el {d}. Los demás días no cambian.",
     tabsAria: "Cambiar las horas de un solo día",
     diffLink: "¿Algún día tiene otras horas?",
     differs: "distinto",
     tabAll: "Todos",
     mixKey: "Color claro: solo algunos días. Tocadla para ponerla en todos.",
-    noTimes: "Este día no quedan horas para una cita de {d} min.",
+    noTimes: "Este día ya no quedan horas.",
     noDays: "Primero elegid los días.",
     pickDays: "Elegir los días",
     dropped1: "Esta hora ya no cabe en vuestro horario y no la enviamos: {list}.",
     droppedN: "Estas horas ya no caben en vuestro horario y no las enviamos: {list}.",
+    late1: "Hoy ya es tarde para esta hora y no la enviamos: {list}.",
+    lateN: "Hoy ya es tarde para estas horas y no las enviamos: {list}.",
     next2One: "Seguir con 1 hora", next2N: "Seguir con {n} horas",
     errNone: "Elegid al menos una hora.",
     errMany: "Son demasiadas horas de una vez. Quitad alguna.",
 
-    k4: "3 de 5", q4: "¿Todas las semanas?",
-    s4Times: "A las {t}.", s4Mixed: "Las horas que acabáis de elegir.",
-    rWeekly: "Cada semana", rWeeklyS: "Cada {d}", rWeeklyRun: "De {a} a {b}",
-    rOnce: "Solo una vez", rOnceS: "Los próximos 7 días", rOnceRun: "{a} a {b}",
+    k4: "3 de 5", q4: "¿Se repite cada semana?",
+    s4At: "{d} a las {t}", s4Count: "{d}: {n}", s4Mixed: "Las horas que habéis elegido",
+    rWeekly: "Sí, cada semana",
+    rOnce: "No, solo esta semana", rOnceRun: "{a} a {b}",
 
     k5: "4 de 5", q5: "Vuestro centro",
     s5New: "Para saber a dónde mandar las reservas.",
@@ -839,14 +850,13 @@ const T = {
     errEmailNone: "Falta el email.",
 
     k6: "5 de 5", q6: "Último paso", s6: "Vuestro precio y las condiciones. El cliente os paga en el centro.",
-    fPrice: "Precio de {d} min", pricePh: "45", pricePh90: "65",
+    fPrice: "Precio de un masaje de 60 min", pricePh: "45",
     priceFrom: "Tenemos apuntado: desde {p} €.",
-    addOther: "+ Precio de {d} min (opcional)",
     sumLbl: "Vais a enviar",
     sumNone: "Todavía no habéis elegido ningún hueco.",
     sumDropped: "Vuestros huecos no caben en el nuevo horario. Elegid otros.",
     sum1: "1 hueco de {d} min", sumN: "{n} huecos de {d} min",
-    weekly: "cada semana", once: "solo estos días",
+    weekly: "cada semana", once: "solo esta semana",
     every: "Cada {wd}",
     editTimes: "Cambiar las horas",
     accept: "Acepto estas condiciones:",
@@ -854,19 +864,19 @@ const T = {
     seeTerms: "Ver condiciones",
     errPrice: "Poned el precio normal, por ejemplo 45.",
     errAccept: "Marcad la casilla para enviar.",
-    errPriceNeed: "Falta vuestro precio de {d} min.",
+    errPriceNeed: "Falta vuestro precio.",
     missLbl: "Revisad: {list}.",
-    missPrice: "el precio de {d} min", missAccept: "la casilla de las condiciones",
+    missPrice: "el precio", missAccept: "la casilla de las condiciones",
     save: "Enviar nuestras horas", saving: "Enviando…",
     dup: "Ya nos habéis enviado estas mismas horas.",
 
     tkKick: "Massage Club · Centros",
-    kCentro: "Centro", kDur: "Citas", kPrice: "Precio",
+    kCentro: "Centro", kDur: "Horas libres", kPrice: "Precio",
     s4Saved: "Guardado",
     thanksN: "Gracias, {n}.", thanks0: "Gracias.",
     s4Received: "Recibido",
     receivedN: "Gracias, {n}.", received0: "Lo revisamos y os confirmamos por WhatsApp o email.",
-    durWeekly: "{d} min, cada semana", durOnce: "{d} min, solo una vez",
+    durWeekly: "Cada semana", durOnce: "Solo esta semana",
     nextLive: "Ya se pueden reservar. Cada reserva os llega por WhatsApp y email.",
     nextWait: "Aún no las ofrecemos a clientes. Os avisamos cuando empecemos.",
     manage: "Ver y cambiar vuestras horas",
@@ -874,8 +884,6 @@ const T = {
     nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email. Tenéis 15 minutos para rechazarla.",
     nextC: "¿Se os llena una hora? Escribid «ocupado» y la hora al +34\u00a0612\u00a0474\u00a0827.",
     more: "Añadir más horas", askJordan: "Escribir a Jordan",
-    addDurQ: "¿También hacéis masajes de {d} min?", addDurA: "Añadir horas de {d} min",
-    pricesBoth: "{a}: {pa}, {b}: {pb}",
     s4Fallback: "Falta un paso",
     fbSub: "No hemos podido guardar vuestras horas. Enviádnoslas por WhatsApp.",
     fbWa: "Enviar por WhatsApp",
@@ -957,7 +965,10 @@ const T = {
     start: "Start",
     ctaResume: "Carry on where you left off",
 
-    k2: "1 of 5", q2: "Which days?", s2: "Tap the days you have free times.",
+    k2: "1 of 5", q2: "Which days this week?", s2: "Tap the days with free times.",
+    calSpan1: "{a} to {b} {m}", calSpan2: "{a} {ma} to {b} {mb}",
+    calToday: "today", calClosed: "closed", calNone: "no times",
+    runDays: "{a} to {b}",
     workWeek: "+ Monday to Friday", allWeek: "+ Every day",
     closed: "Closed",
     hoursAdd: "+ Your opening hours (optional)",
@@ -966,27 +977,28 @@ const T = {
     next: "Next",
 
     k3: "2 of 5", q3: "At what times?",
-    s3: "For {d}. Each time you tap is one customer.",
+    s3: "Tap the times a customer can start.",
     tabQDay: "Only for {d}. The other days stay as they are.",
-    durLbl: "Length", durAria: "Length of each booking",
     tabsAria: "Change the times of one day only",
     diffLink: "Does one day have other times?",
     differs: "different",
     tabAll: "All",
     mixKey: "Light colour: only some days. Tap it to set it on all.",
-    noTimes: "No times left this day for a {d} min booking.",
+    noTimes: "No times left on this day.",
     noDays: "First choose the days.",
     pickDays: "Choose the days",
     dropped1: "This time no longer fits your hours, so we won't send it: {list}.",
     droppedN: "These times no longer fit your hours, so we won't send them: {list}.",
+    late1: "It's too late today for this time, so we won't send it: {list}.",
+    lateN: "It's too late today for these times, so we won't send them: {list}.",
     next2One: "Continue with 1 time", next2N: "Continue with {n} times",
     errNone: "Choose at least one time.",
     errMany: "That's too many times at once. Please remove some.",
 
-    k4: "3 of 5", q4: "Every week?",
-    s4Times: "At {t}.", s4Mixed: "The times you just picked.",
-    rWeekly: "Every week", rWeeklyS: "Every {d}", rWeeklyRun: "{a} to {b}",
-    rOnce: "Just once", rOnceS: "The next 7 days", rOnceRun: "{a} to {b}",
+    k4: "3 of 5", q4: "Does it repeat every week?",
+    s4At: "{d} at {t}", s4Count: "{d}: {n}", s4Mixed: "The times you chose",
+    rWeekly: "Yes, every week",
+    rOnce: "No, just this week", rOnceRun: "{a} to {b}",
 
     k5: "4 of 5", q5: "Your studio",
     s5New: "So we know where to send the bookings.",
@@ -1017,14 +1029,13 @@ const T = {
     errEmailNone: "The email is missing.",
 
     k6: "5 of 5", q6: "Last step", s6: "Your price and the terms. The customer pays you at the studio.",
-    fPrice: "{d} min price", pricePh: "45", pricePh90: "65",
+    fPrice: "Price of a 60 min massage", pricePh: "45",
     priceFrom: "We have you down as: from {p} €.",
-    addOther: "+ {d} min price (optional)",
     sumLbl: "You're sending",
     sumNone: "You haven't chosen any slots yet.",
     sumDropped: "Your slots don't fit the new hours. Pick others.",
     sum1: "1 slot, {d} min", sumN: "{n} slots, {d} min",
-    weekly: "every week", once: "these dates only",
+    weekly: "every week", once: "just this week",
     every: "Every {wd}",
     editTimes: "Change the times",
     accept: "I accept these terms:",
@@ -1032,19 +1043,19 @@ const T = {
     seeTerms: "See the terms",
     errPrice: "Put your usual price, for example 45.",
     errAccept: "Tick the box to send.",
-    errPriceNeed: "Your {d} min price is missing.",
+    errPriceNeed: "Your price is missing.",
     missLbl: "Please check: {list}.",
-    missPrice: "the {d} min price", missAccept: "the terms box",
+    missPrice: "the price", missAccept: "the terms box",
     save: "Send our times", saving: "Sending…",
     dup: "You've already sent us these exact times.",
 
     tkKick: "Massage Club · Studios",
-    kCentro: "Studio", kDur: "Bookings", kPrice: "Price",
+    kCentro: "Studio", kDur: "Free times", kPrice: "Price",
     s4Saved: "Saved",
     thanksN: "Thank you, {n}.", thanks0: "Thank you.",
     s4Received: "Received",
     receivedN: "Thank you, {n}.", received0: "We'll check it and confirm by WhatsApp or email.",
-    durWeekly: "{d} min, every week", durOnce: "{d} min, just once",
+    durWeekly: "Every week", durOnce: "Just this week",
     nextLive: "They can be booked now. Each booking reaches you on WhatsApp and by email.",
     nextWait: "We're not offering them to customers yet. We'll tell you when we start.",
     manage: "See and change your times",
@@ -1052,8 +1063,6 @@ const T = {
     nextB: "If a customer takes a time, you get the booking on WhatsApp and by email. You have 15 minutes to turn it down.",
     nextC: "A time filled up? Write \"ocupado\" (taken) and the time to +34\u00a0612\u00a0474\u00a0827.",
     more: "Add more times", askJordan: "Write to Jordan",
-    addDurQ: "Do you also do {d} min massages?", addDurA: "Add {d} min times",
-    pricesBoth: "{a}: {pa}, {b}: {pb}",
     s4Fallback: "One more step",
     fbSub: "We couldn't save your times. Send them to us on WhatsApp.",
     fbWa: "Send on WhatsApp",
@@ -1119,9 +1128,9 @@ const T = {
 
 const SH = { es: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"], en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] };
 const LG = { es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"], en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] };
-// "los lunes", "los sábados": the days a weekly time falls on.
-const LGP = { es: ["domingos", "lunes", "martes", "miércoles", "jueves", "viernes", "sábados"], en: ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"] };
 const MO = { es: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"], en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] };
+// The calendar's header: "Del 18 al 24 de octubre", "18 to 24 October".
+const MOL = { es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"], en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] };
 const WEEK = [1, 2, 3, 4, 5, 6, 0]; // Monday first, as in Spain
 
 const $ = (id) => document.getElementById(id);
@@ -1138,9 +1147,9 @@ const joinList = (a) => a.length > 1 ? a.slice(0, -1).join(", ") + t("and") + a[
 
 // ---------------------------------------------------------------- state
 // The screens, in order, and the address of each in the phone's history.
-// The length is no longer a screen of its own (Jordan, 18 Oct: "this question
-// doesn't make sense"): it is 60 by default, with a small 60 / 90 choice on
-// the times screen.
+// No length is asked any more (Jordan, 18 Oct: "not sure if the length
+// matters, just times that work for the customers"): every time is a 60
+// minute slot, as the default always was, and duration_min stays 60.
 const ORDER = ["hello", "days", "times", "repeat", "centro", "last", "done"];
 const HASH = ["", "#dias", "#horas", "#semana", "#centro", "#datos", "#listo"];
 const DONE = ORDER.length - 1;
@@ -1150,21 +1159,19 @@ const S = {
   partner: null,
   active: false,     // partners.status === 'active': we already work together
   accepted: false,
-  dur: 60, durPicked: false,
+  dur: 60,           // every time is a 60 minute slot (never asked)
   repeat: true, repeatPicked: false,  // every week is the default
-  days: new Set(),   // weekdays 0..6 the studio has free times on
-  selW: {},          // weekday "0".."6" -> Set of start minutes
+  dates: new Set(),  // the calendar dates ("2026-10-20") the studio tapped
+  selW: {},          // weekday "0".."6" -> Set of start minutes (one date each, see calDays)
   tab: "all",        // the time grid: "all" chosen days at once, or one weekday
   showTabs: false,   // the day chips are open ("¿Algún día tiene otras horas?")
   showHours: false,  // the opening hours field is open
-  showOther: false,  // the price of the other length is open
   result: null,      // "saved" | "received" | "fallback" | "preview"
   server: null,      // wa-bot's answer to the last send
   signed: false,     // wa-bot said this link is the studio's own
   last: null,        // what the ticket shows
   lastKey: "",       // the last batch that was sent, so it is never sent twice
   landlineOk: "",    // a landline the studio said, with its own tap, has WhatsApp
-  sent: new Set(),   // the lengths (60, 90) already sent from this page
   saving: false,
   miss: [],          // what the last screen still needs, said by the send button
 };
@@ -1173,8 +1180,9 @@ const S = {
 // A dated time can be booked up to 60 minutes before (release_slots); the
 // page keeps 65, as the studio's times page does.
 const LEAD_MIN = 65;
+const MADRID = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 function madridNow() {
-  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const p = MADRID.formatToParts(new Date());
   const g = (k) => Number((p.find((x) => x.type === k) || {}).value || 0);
   return { y: g("year"), m: g("month"), d: g("day"), min: (g("hour") % 24) * 60 + g("minute") };
 }
@@ -1342,7 +1350,6 @@ const DEFAULT_WIN = [[8 * 60, 22 * 60]]; // as wa-bot REL_DEFAULT_HOURS
 const DAY_WIN = [8 * 60, 22 * 60];
 const hoursFor = (wd) => (HOURS && HOURS.has(wd) ? HOURS.get(wd) : DEFAULT_WIN)
   .map(([o, c]) => [Math.max(o, DAY_WIN[0]), Math.min(c, DAY_WIN[1])]).filter(([o, c]) => c > o);
-const hoursKnown = (wd) => !!(HOURS && HOURS.has(wd));
 
 // ---------------------------------------------------------------- days and times
 function mkDate(i) {
@@ -1357,11 +1364,8 @@ function startsFor(d) {
   for (const [o, c] of hoursFor(d.wd)) for (let m = Math.ceil(o / 30) * 30; m + S.dur <= c; m += 30) if (m >= cut) set.add(m);
   return Array.from(set).sort((a, b) => a - b);
 }
+// A weekday's whole day inside its hours, whatever the date.
 const wkStarts = (wd) => startsFor({ wd, weekly: true });
-// The weekdays the studio can pick: the open ones, Monday first.
-const weekDays = () => WEEK.filter((wd) => hoursFor(wd).length).map((wd) => ({ key: String(wd), wd, weekly: true }));
-// The days chosen on screen 2 that are open.
-const chosenDays = () => WEEK.filter((wd) => S.days.has(wd) && hoursFor(wd).length);
 // How many days ahead a weekly time first happens in Madrid: today only when
 // it is still at least LEAD_MIN away, otherwise the same weekday next week.
 function firstOffset(wd, m) {
@@ -1371,75 +1375,112 @@ function firstOffset(wd, m) {
 }
 // The first date a weekly time happens, in Madrid.
 const firstDate = (wd, m) => mkDate(firstOffset(wd, m)).iso;
-// Chosen times that still fit (hours, length). Others stay remembered but are
-// neither shown nor sent, so 90 then 60 min brings them back.
-// Every week: one entry per weekday. This week only: each weekday time on its
-// next date (today if there is still time, else the same day next week), so
-// a studio says "los lunes a las 10:00" either way and sees the dates after.
+
+// ---------------------------------------------------------------- the calendar
+// The days screen is a calendar of 7 real dates in a row (Jordan, 18 Oct:
+// "maybe a calendar function opens up and they can select the days?"), and
+// those 7 dates are exactly the dates a "just once" save uses. It starts
+// today while today still has a time at least LEAD_MIN ahead inside its
+// hours (the server takes one an hour ahead, release_slots); otherwise
+// today is left out and it runs from tomorrow to the same weekday next week
+// (still under the server's 8 days). So late on a Sunday the last cell is
+// next Sunday, shown with its own date, and a date tapped is never swapped
+// for another one.
+// Each weekday is in the calendar exactly once, which is why the times stay
+// keyed by weekday: "just once" puts a weekday's times on its date here, and
+// "every week" saves the weekday, whose first date (firstDate) is that same
+// date, because today's grid only offers times still ahead.
+let CAL = null;
+function calDays() {
+  const n = madridNow();
+  const key = [n.y, n.m, n.d, n.min].join("-");
+  if (CAL && CAL.key === key && CAL.h === HOURS) return CAL.days;
+  const from = startsFor(mkDate(0)).length ? 0 : 1;
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => mkDate(from + i));
+  CAL = { key, h: HOURS, days };
+  return days;
+}
+// The calendar date a weekday falls on.
+const dateOf = (wd) => calDays().find((d) => d.wd === wd);
+// The start times that date can take: its hours, and today only from LEAD_MIN ahead.
+const dayStarts = (wd) => startsFor(dateOf(wd));
+// A date the studio tapped, by its weekday. A tapped date that is no longer
+// in the calendar (past midnight, or today once its last time has gone) is
+// simply not chosen: it never moves to another date.
+const isChosen = (wd) => S.dates.has(dateOf(wd).iso);
+// The chosen dates that have times, as weekdays, in calendar order.
+const chosenDays = () => calDays().filter((d) => S.dates.has(d.iso) && startsFor(d).length).map((d) => d.wd);
+// Chosen times that still fit. Others stay remembered but are neither shown
+// nor sent, so changing the hours back brings them back.
+// Every week: one entry per weekday, Monday first. Just this week: each
+// weekday's times on its calendar date, in date order.
 function selList() {
   const out = [];
+  const cd = chosenDays();
   if (S.repeat) {
-    for (const d of weekDays()) {
-      if (!S.days.has(d.wd)) continue;
-      const set = S.selW[d.key];
+    for (const wd of WEEK) {
+      if (!cd.includes(wd)) continue;
+      const set = S.selW[String(wd)];
       if (!set || !set.size) continue;
-      const ok = new Set(startsFor(d));
+      const ok = new Set(dayStarts(wd));
       const mins = Array.from(set).filter((m) => ok.has(m)).sort((a, b) => a - b);
-      if (mins.length) out.push({ d, mins });
+      if (mins.length) out.push({ d: { key: String(wd), wd, weekly: true }, mins });
     }
     return out;
   }
-  const byOffset = new Map();
-  for (const wd of chosenDays()) {
-    const set = S.selW[String(wd)];
+  for (const d of calDays()) {
+    if (!cd.includes(d.wd)) continue;
+    const set = S.selW[String(d.wd)];
     if (!set || !set.size) continue;
-    const ok = new Set(wkStarts(wd));
-    for (const m of set) {
-      if (!ok.has(m)) continue;
-      const k = firstOffset(wd, m);
-      (byOffset.get(k) || byOffset.set(k, []).get(k)).push(m);
-    }
-  }
-  return Array.from(byOffset.keys()).sort((a, b) => a - b).map((k) => ({ d: mkDate(k), mins: byOffset.get(k).sort((a, b) => a - b) }));
-}
-const countOf = (list) => list.reduce((a, x) => a + x.mins.length, 0);
-// Times picked on a chosen day that no longer fit (new hours, 90 min), by
-// weekday, Monday first. The same ones selList() leaves out.
-function hiddenByDay() {
-  const out = [];
-  for (const wd of WEEK) {
-    if (!S.days.has(wd)) continue;
-    const s = S.selW[String(wd)];
-    if (!s || !s.size) continue;
-    const ok = new Set(hoursFor(wd).length ? wkStarts(wd) : []);
-    const mins = Array.from(s).filter((m) => !ok.has(m)).sort((a, b) => a - b);
-    if (mins.length) out.push([wd, mins]);
+    const ok = new Set(startsFor(d));
+    const mins = Array.from(set).filter((m) => ok.has(m)).sort((a, b) => a - b);
+    if (mins.length) out.push({ d, mins });
   }
   return out;
 }
-const hiddenCount = () => hiddenByDay().reduce((a, [, mins]) => a + mins.length, 0);
+const countOf = (list) => list.reduce((a, x) => a + x.mins.length, 0);
+// Times picked on a chosen date that no longer fit, in calendar order: the
+// same ones selList() leaves out. "hours": outside the day's hours now (they
+// changed); "late": today, and no longer at least LEAD_MIN ahead.
+function hiddenByDay() {
+  const out = [];
+  for (const d of calDays()) {
+    if (!S.dates.has(d.iso)) continue;
+    const s = S.selW[String(d.wd)];
+    if (!s || !s.size) continue;
+    const ok = new Set(startsFor(d)), fits = new Set(wkStarts(d.wd));
+    const late = [], hours = [];
+    for (const m of Array.from(s).sort((a, b) => a - b)) if (!ok.has(m)) (fits.has(m) ? late : hours).push(m);
+    if (late.length || hours.length) out.push({ wd: d.wd, late, hours });
+  }
+  return out;
+}
 // "Estas horas ya no caben en vuestro horario y no las enviamos: mar y mié
 // 15:00, 16:00; jue 18:00." Days with the same times are named together, and
 // no count is said (one time on two days is one time to the studio).
 function droppedText() {
   const by = hiddenByDay();
-  if (!by.length) return "";
-  const n = new Set([].concat(...by.map(([, mins]) => mins))).size;
-  const groups = [];
-  for (const [wd, mins] of by) {
-    const key = mins.join(",");
-    const g = groups.find((x) => x.key === key);
-    if (g) g.days.push(wd); else groups.push({ key, days: [wd], mins });
-  }
   const nm = (wd) => L === "es" ? SH.es[wd].toLowerCase() : SH.en[wd];
-  const list = groups.map((g) => joinList(g.days.map(nm)) + " " + g.mins.map(hhmm).join(", ")).join("; ");
-  return t(n === 1 ? "dropped1" : "droppedN", { n, list });
+  const say = (why, k1, kN) => {
+    const rows = by.filter((x) => x[why].length);
+    if (!rows.length) return "";
+    const n = new Set([].concat(...rows.map((x) => x[why]))).size;
+    const groups = [];
+    for (const x of rows) {
+      const key = x[why].join(",");
+      const g = groups.find((y) => y.key === key);
+      if (g) g.days.push(x.wd); else groups.push({ key, days: [x.wd], mins: x[why] });
+    }
+    const list = groups.map((g) => joinList(g.days.map(nm)) + " " + g.mins.map(hhmm).join(", ")).join("; ");
+    return t(n === 1 ? k1 : kN, { n, list });
+  };
+  return [say("hours", "dropped1", "droppedN"), say("late", "late1", "lateN")].filter(Boolean).join(" ");
 }
-// Valid picks on one weekday.
+// Valid picks on one weekday's date.
 function countFor(wd) {
   const s = S.selW[String(wd)];
-  if (!s || !s.size || !hoursFor(wd).length) return 0;
-  const ok = new Set(wkStarts(wd));
+  if (!s || !s.size) return 0;
+  const ok = new Set(dayStarts(wd));
   let n = 0;
   for (const m of s) if (ok.has(m)) n++;
   return n;
@@ -1454,8 +1495,8 @@ const timesTapped = (list) => new Set([].concat(...list.map((x) => x.mins))).siz
 // "martes, miércoles y jueves"; more than `full` days: "lun, mar, mié, jue y vie".
 const dayNames = (wds, full) => joinList(wds.map((wd) => wds.length <= full ? LG[L][wd] : (L === "es" ? SH.es[wd].toLowerCase() : SH.en[wd])));
 const timeList = (mins) => joinList(mins.map(hhmm));
-// The weekdays (Monday first) that share one set of times, as the ticket and
-// the "every week?" screen name them: [{ wds: [2, 4], mins: [900, 960] }, ...].
+// The days that share one set of times, in the list's order, as the ticket
+// names them: [{ ds: [d2, d4], mins: [900, 960] }, ...].
 function groupByTimes(list) {
   const groups = [];
   for (const { d, mins } of list) {
@@ -1465,6 +1506,19 @@ function groupByTimes(list) {
   }
   return groups;
 }
+// Chosen days in words, in calendar order: "Martes y jueves", four or more
+// dates in a row as "De lunes a viernes", all seven as "Todos los días".
+function daysWords(wds, capFirst) {
+  if (!wds.length) return "";
+  const at = wds.map((wd) => calDays().findIndex((d) => d.wd === wd));
+  let s;
+  if (wds.length === 7) s = t("allDaysRead");
+  else if (wds.length >= 4 && at.every((v, i) => !i || v === at[i - 1] + 1)) s = t("runDays", { a: LG[L][wds[0]], b: LG[L][wds[wds.length - 1]] });
+  else s = dayNames(wds, 3);
+  return capFirst ? cap(s) : s;
+}
+// One date in words: "martes 20", "Tuesday 20".
+const dateWords = (d) => LG[L][d.wd] + " " + d.dd;
 
 // ---------------------------------------------------------------- phone
 // Stored like every other number: "+<country><number>". A Spanish number typed
@@ -1501,14 +1555,16 @@ const waLink = (text) => "https://wa.me/" + WA_NUM + (text ? "?text=" + encodeUR
 const DKEY_TAIL = (PREVIEW ? "preview:" : "") + (SLUG_OK ? SLUG : "-");
 const DKEY = "socios-draft-v3:" + DKEY_TAIL;
 const DKEY_V2 = "socios-draft-v2:" + DKEY_TAIL; // the 3-step form's draft, read once
-const FIELDS = ["name", "wa", "addr", "email", "hours", "p60", "p90"];
+const FIELDS = ["name", "wa", "addr", "email", "hours", "p60"];
 const setsOut = (o) => Object.fromEntries(Object.entries(o).filter(([, s]) => s.size).map(([k, s]) => [k, Array.from(s)]));
+const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 function saveDraft() {
   try {
+    const today = mkDate(0).iso;
     localStorage.setItem(DKEY, JSON.stringify({
       v: 3, at: Date.now(), f: Object.fromEntries(FIELDS.map((id) => [id, $(id).value])),
-      accepted: S.accepted, dur: S.dur, durPicked: S.durPicked, repeat: S.repeat, repeatPicked: S.repeatPicked,
-      days: Array.from(S.days), selW: setsOut(S.selW), landlineOk: S.landlineOk, showOther: S.showOther,
+      accepted: S.accepted, repeat: S.repeat, repeatPicked: S.repeatPicked,
+      dates: Array.from(S.dates).filter((iso) => iso >= today), selW: setsOut(S.selW), landlineOk: S.landlineOk,
     }));
   } catch (_) { /* no storage: the page still works */ }
 }
@@ -1518,8 +1574,9 @@ function loadDraft() {
   try { d = JSON.parse(localStorage.getItem(DKEY) || "null") || JSON.parse(localStorage.getItem(DKEY_V2) || "null"); } catch (_) { return; }
   if (!d || (d.v !== 3 && d.v !== 2) || !(Date.now() - Number(d.at) < 30 * 864e5)) return;
   for (const id of FIELDS) if (d.f && typeof d.f[id] === "string") $(id).value = d.f[id];
+  // The hours decide whether the calendar starts today (calDays).
+  HOURS = parseHours(val("hours"));
   S.accepted = d.accepted === true;
-  S.dur = d.dur === 90 ? 90 : 60;
   S.repeat = d.repeat !== false;
   S.landlineOk = typeof d.landlineOk === "string" ? d.landlineOk : "";
   const sets = (o, okKey) => {
@@ -1532,20 +1589,22 @@ function loadDraft() {
     return out;
   };
   S.selW = sets(d.selW, (k) => /^[0-6]$/.test(k));
+  const today = mkDate(0).iso;
+  // A draft from before the calendar kept weekdays: each goes on its date in
+  // today's calendar.
+  const onCal = (wds) => new Set(wds.map((wd) => dateOf(wd).iso));
   if (d.v === 3) {
-    S.durPicked = d.durPicked === true;
     S.repeatPicked = d.repeatPicked === true;
-    S.showOther = d.showOther === true;
-    S.days = new Set((Array.isArray(d.days) ? d.days : []).map(Number).filter((x) => Number.isInteger(x) && x >= 0 && x <= 6));
+    if (Array.isArray(d.dates)) S.dates = new Set(d.dates.filter((x) => typeof x === "string" && ISO_RE.test(x) && x >= today));
+    else S.dates = onCal((Array.isArray(d.days) ? d.days : []).map(Number).filter((x) => Number.isInteger(x) && x >= 0 && x <= 6));
   } else {
     // The 3-step form kept dated picks apart; here every pick is a weekday.
-    const today = mkDate(0).iso;
-    for (const [iso, set] of Object.entries(sets(d.selD, (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k >= today))) {
+    for (const [iso, set] of Object.entries(sets(d.selD, (k) => ISO_RE.test(k) && k >= today))) {
       const wd = String(new Date(iso + "T12:00:00Z").getUTCDay());
       for (const m of set) (S.selW[wd] || (S.selW[wd] = new Set())).add(m);
     }
-    S.days = new Set(Object.keys(S.selW).map(Number));
-    S.durPicked = S.repeatPicked = S.days.size > 0;
+    S.dates = onCal(Object.keys(S.selW).map(Number));
+    S.repeatPicked = S.dates.size > 0;
   }
 }
 
@@ -1614,47 +1673,58 @@ function paintContact() {
 }
 
 const setText = (id, s) => { const el = $(id); if (el.textContent !== s) el.textContent = s; };
-// 1 · which days: go.html's rows (📅 and the day's name), several at once. A
-// chosen row gets go's ink border and a tick; the number on the right is how
-// many times are picked on that day. The opening hours are one tap away.
+// 1 · which days: a calendar of the next 7 real dates (calDays), in go.html's
+// white card, several at once. A chosen date is a filled ink circle; today
+// has a small dot. The opening hours are one tap away.
 const GROUPS = { work: [1, 2, 3, 4, 5], all: [1, 2, 3, 4, 5, 6, 0] };
-// The one quick pick under the list: "+ De lunes a viernes", then "+ Todos
+// The one quick pick under the calendar: "+ De lunes a viernes", then "+ Todos
 // los días", then nothing once every open day is chosen.
 function quickGroup(openWd) {
   const work = GROUPS.work.filter((wd) => openWd.includes(wd));
   const all = GROUPS.all.filter((wd) => openWd.includes(wd));
-  const full = (ws) => ws.every((wd) => S.days.has(wd));
+  const full = (ws) => ws.every(isChosen);
   if (work.length && !full(work)) return ["work", "workWeek"];
   if (all.length && !full(all)) return ["all", "allWeek"];
   return null;
 }
+// The open dates: the ones with at least one start time.
+const openDays = () => calDays().filter((d) => startsFor(d).length).map((d) => d.wd);
+// "Del 18 al 24 de octubre", "Del 29 de octubre al 4 de noviembre";
+// "18 to 24 October", "29 October to 4 November".
+function calSpan(a, b) {
+  const m = MOL[L];
+  return a.mm === b.mm ? t("calSpan1", { a: a.dd, b: b.dd, m: m[b.mm] }) : t("calSpan2", { a: a.dd, ma: m[a.mm], b: b.dd, mb: m[b.mm] });
+}
 function renderDays() {
-  const openWd = weekDays().map((d) => d.wd);
+  const cal = calDays();
+  const openWd = openDays();
   const q = quickGroup(openWd);
   $("dayQuick").hidden = !q;
   if (q) { $("dayQuick").dataset.group = q[0]; setText("dayQuick", t(q[1])); }
-  // When we know the hours, the most common window says nothing; only a day
-  // with other hours says them under its name.
-  const keyOf = (wd) => JSON.stringify(hoursFor(wd));
-  const tally = new Map();
-  for (const wd of openWd) if (hoursKnown(wd)) tally.set(keyOf(wd), (tally.get(keyOf(wd)) || 0) + 1);
-  let common = "", most = 0;
-  for (const [k, n] of tally) if (n > most) { most = n; common = k; }
-  // Every weekday is listed. One the hours say is closed is shown greyed and
-  // cannot be chosen; tapping it opens the hours, so a studio that now opens
-  // that day can say so here.
-  $("dayList").innerHTML = WEEK.map((wd) => {
-    const name = esc(cap(LG[L][wd]));
-    if (!openWd.includes(wd)) {
-      return `<button type="button" class="row closed" data-closed="${wd}"><span class="e" aria-hidden="true">📅</span><div><b>${name}</b><small>${esc(t("closed"))}</small></div></button>`;
+  const span = calSpan(cal[0], cal[6]);
+  setText("calHead", span);
+  $("calGrid").setAttribute("aria-label", span);
+  const today = mkDate(0).iso;
+  // A date the hours say is closed is greyed with "Cerrado" under it and
+  // cannot be chosen; tapping it opens the hours, so a studio that opens that
+  // day after all can say so here. (A day open too briefly for one time is
+  // greyed with no word.)
+  $("calGrid").innerHTML = cal.map((d) => {
+    const wd = L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd];
+    const long = L === "es" ? `${LG.es[d.wd]} ${d.dd} de ${MOL.es[d.mm]}` : `${LG.en[d.wd]} ${d.dd} ${MOL.en[d.mm]}`;
+    const inner = (mark) => `<span class="cw" aria-hidden="true">${esc(wd)}</span><span class="cn" aria-hidden="true">${d.dd}</span><span class="cm" aria-hidden="true">${esc(mark)}</span>`;
+    if (!openWd.includes(d.wd)) {
+      const shut = !hoursFor(d.wd).length;
+      return `<button type="button" class="cd off" data-closed="${d.iso}" aria-label="${esc(long + ", " + t(shut ? "calClosed" : "calNone"))}">${inner(shut ? t("closed") : "")}</button>`;
     }
-    const on = S.days.has(wd);
-    const n = on ? countFor(wd) : 0;
-    const sub = hoursKnown(wd) && keyOf(wd) !== common ? cap(spans(hoursFor(wd))) : "";
-    return `<button type="button" class="row${on ? " sel" : ""}" data-wd="${wd}" aria-pressed="${on}"><span class="e" aria-hidden="true">📅</span><div><b>${name}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>${n ? `<span class="r">${esc(n === 1 ? t("n1") : t("nN", { n }))}</span>` : ""}<span class="tick" aria-hidden="true"></span></button>`;
+    const on = S.dates.has(d.iso), isToday = d.iso === today;
+    return `<button type="button" class="cd${on ? " sel" : ""}${isToday ? " today" : ""}" data-iso="${d.iso}" aria-pressed="${on}" aria-label="${esc(long + (isToday ? ", " + t("calToday") : ""))}">${inner("")}</button>`;
   }).join("");
+  // The chosen days in words, under the calendar.
+  const cd = chosenDays();
+  setText("picked", daysWords(cd, true));
   // go.html keeps the same label on a button that is not ready yet.
-  $("daysNext").disabled = !chosenDays().length;
+  $("daysNext").disabled = !cd.length;
   $("daysNext").textContent = t("next");
   paintHoursBox();
 }
@@ -1690,7 +1760,7 @@ function hourCards(starts, stateOf) {
 // set most days share; on a tie, the first day's, as seedDays() copies it.
 function differingDays(cd) {
   const info = cd.map((wd) => {
-    const ok = wkStarts(wd), s = S.selW[String(wd)];
+    const ok = dayStarts(wd), s = S.selW[String(wd)];
     return { wd, ok: new Set(ok), sel: new Set(s ? ok.filter((m) => s.has(m)) : []) };
   });
   const same = (a, b) => { for (const m of a.ok) if (b.ok.has(m) && a.sel.has(m) !== b.sel.has(m)) return false; return true; };
@@ -1701,14 +1771,9 @@ function differingDays(cd) {
 function renderTimes() {
   const cd = chosenDays();
   if (S.tab !== "all" && !cd.includes(S.tab)) S.tab = "all";
-  // The length: 60 by default, 90 one tap away. It sits right above the
-  // hours because it changes which start times fit before closing.
-  $("durPick").innerHTML = `<span class="dl" aria-hidden="true">${esc(t("durLbl"))}</span>`
-    + [60, 90].map((v) => `<button type="button" class="chip${S.dur === v ? " sel" : ""}" data-dur="${v}" aria-pressed="${S.dur === v}">${v} min</button>`).join("");
   let mixed = false;
   if (!cd.length) {
     setText("timesSub", t("noDays"));
-    $("durPick").hidden = true;
     $("tabsBox").hidden = true;
     $("diffLink").hidden = true;
     $("times").innerHTML = `<button type="button" class="cta dark" data-goto="${ST.days}">${esc(t("pickDays"))}</button>`;
@@ -1718,21 +1783,20 @@ function renderTimes() {
     const diff = cd.length > 1 ? differingDays(cd) : new Set();
     // The day chips stay out of the way until a day is set apart.
     const tabs = cd.length > 1 && (S.showTabs || !isAll || diff.size > 0);
-    // Which days these times are for, and what one tap means; while one day
-    // is changed on its own, that the others stay as they are.
-    setText("timesSub", isAll ? t("s3", { d: dayNames(cd, 3) }) : t("tabQDay", { d: LGP[L][S.tab] }));
-    $("durPick").hidden = false;
+    // What one tap means; while one day is changed on its own, that the
+    // others stay as they are.
+    setText("timesSub", isAll ? t("s3") : t("tabQDay", { d: dateWords(dateOf(S.tab)) }));
     $("tabsBox").hidden = !tabs;
     $("diffLink").hidden = cd.length < 2 || tabs;
     if (tabs) {
       $("tabs").innerHTML = `<button type="button" class="chip${isAll ? " sel" : ""}" data-tab="all" aria-pressed="${isAll}">${esc(t("tabAll"))}</button>`
         + cd.map((wd) => {
-          const on = S.tab === wd, n = countFor(wd), d = diff.has(wd);
-          const aria = cap(LG[L][wd]) + (n ? ", " + (n === 1 ? t("n1") : t("nN", { n })) : "") + (d ? ", " + t("differs") : "");
-          return `<button type="button" class="chip${on ? " sel" : ""}" data-tab="${wd}" aria-pressed="${on}" aria-label="${esc(aria)}">${esc(SH[L][wd])}${n ? `<small>${n}</small>` : ""}${d ? `<span class="dot" aria-hidden="true"></span>` : ""}</button>`;
+          const on = S.tab === wd, n = countFor(wd), d = diff.has(wd), dd = dateOf(wd).dd;
+          const aria = cap(dateWords(dateOf(wd))) + (n ? ", " + (n === 1 ? t("n1") : t("nN", { n })) : "") + (d ? ", " + t("differs") : "");
+          return `<button type="button" class="chip${on ? " sel" : ""}" data-tab="${wd}" aria-pressed="${on}" aria-label="${esc(aria)}">${esc(SH[L][wd] + " " + dd)}${n ? `<small>${n}</small>` : ""}${d ? `<span class="dot" aria-hidden="true"></span>` : ""}</button>`;
         }).join("");
     }
-    const startsBy = new Map(days.map((wd) => [wd, wkStarts(wd)]));
+    const startsBy = new Map(days.map((wd) => [wd, dayStarts(wd)]));
     const union = Array.from(new Set([].concat(...startsBy.values()))).sort((a, b) => a - b);
     const stateOf = (m) => {
       const fit = days.filter((wd) => startsBy.get(wd).includes(m));
@@ -1741,7 +1805,7 @@ function renderTimes() {
       if (st === "mixed") mixed = true;
       return st;
     };
-    $("times").innerHTML = hourCards(union, stateOf) || `<p class="note">${esc(t("noTimes", { d: S.dur }))}</p>`;
+    $("times").innerHTML = hourCards(union, stateOf) || `<p class="note">${esc(t("noTimes"))}</p>`;
   }
   setText("mixKey", mixed ? t("mixKey") : "");
   setText("dropNote", droppedText());
@@ -1750,11 +1814,12 @@ function renderTimes() {
   setText("timesNext", n === 0 ? t("next") : n === 1 ? t("next2One") : t("next2N", { n }));
   $("timesNext").disabled = n === 0;
 }
-// 3 · every week, or just once: two big cards, one tap moves on (Jordan, 18
-// Oct: "i dont' understand this"). One plain question about the times just
-// chosen; the weekly card names the weekdays, the once card the real dates
-// the picks fall on (each weekday time on its next date, as selList() sends
-// them), so nobody has to work out what "this week" means on a Saturday.
+// 3 · does it repeat every week? (Jordan, 18 Oct, of "Every week? / At
+// 09:00. / Every week / Just once": "this question is confusing".) One yes
+// or no about exactly what was just picked: under the question, the pick in
+// plain words ("Lunes y martes a las 09:00"); then "Sí, cada semana" and
+// "No, solo esta semana", the No naming the calendar's real dates the
+// times go on, as selList() sends them. One tap moves on.
 // "mar 20, mié 21 y jue 22 oct". Each date holds together on one line.
 function fmtDates(ds) {
   if (!ds.length) return "";
@@ -1762,48 +1827,51 @@ function fmtDates(ds) {
   const nm = (d) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (oneMonth ? "" : "\u00a0" + MO[L][d.mm]);
   return joinList(ds.map(nm)) + (oneMonth ? "\u00a0" + MO[L][ds[0].mm] : "");
 }
-// Four or more dates in a row are said as a span ("Lun 19 a vie 23 oct"),
-// so Monday to Friday does not run to three lines on a half-width card.
-function onceDates() {
-  const offs = new Set();
-  for (const wd of chosenDays()) {
-    const s = S.selW[String(wd)];
-    if (!s) continue;
-    const ok = new Set(wkStarts(wd));
-    for (const m of s) if (ok.has(m)) offs.add(firstOffset(wd, m));
-  }
-  const ds = Array.from(offs).sort((a, b) => a - b).map(mkDate);
-  if (ds.length >= 4 && ds.every((d, i) => !i || d.offset === ds[i - 1].offset + 1)) {
-    const last = ds[ds.length - 1], oneMonth = ds[0].mm === last.mm;
-    const nm = (d, mo) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (mo ? "\u00a0" + MO[L][d.mm] : "");
-    return cap(t("rOnceRun", { a: nm(ds[0], !oneMonth), b: nm(last, true) }));
-  }
-  return cap(fmtDates(ds));
-}
-// Four or more weekdays in a row, Monday first, as a span: "De lunes a viernes".
-function weekRun(wds) {
-  if (wds.length < 4) return null;
-  const at = wds.map((wd) => WEEK.indexOf(wd));
-  return at.every((v, i) => !i || v === at[i - 1] + 1) ? [wds[0], wds[wds.length - 1]] : null;
-}
-// The weekday picks, Monday first, whatever "every week" says.
+// The picks, per chosen date, in calendar order, whatever "every week" says.
 function weekPicks() {
   return chosenDays().map((wd) => {
-    const s = S.selW[String(wd)], ok = new Set(wkStarts(wd));
+    const s = S.selW[String(wd)], ok = new Set(dayStarts(wd));
     return { wd, mins: s ? Array.from(s).filter((m) => ok.has(m)).sort((a, b) => a - b) : [] };
   }).filter((x) => x.mins.length);
 }
+// The dates "No, solo esta semana" saves: the calendar's dates of the picks,
+// as selList() sends them. Four or more in a row are said as a span ("lun 19
+// a vie 23 oct"), so Monday to Friday stays on one line.
+function onceDates() {
+  const ds = weekPicks().map((x) => dateOf(x.wd));
+  if (ds.length >= 4 && ds.every((d, i) => !i || d.offset === ds[i - 1].offset + 1)) {
+    const last = ds[ds.length - 1], oneMonth = ds[0].mm === last.mm;
+    const nm = (d, mo) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (mo ? "\u00a0" + MO[L][d.mm] : "");
+    return t("rOnceRun", { a: nm(ds[0], !oneMonth), b: nm(last, true) });
+  }
+  return fmtDates(ds);
+}
+// The pick in plain words: "Lunes y martes a las 09:00"; days with other
+// times each briefly ("Lunes a las 09:00; martes a las 10:00"); many times
+// on the same days as a count ("De lunes a viernes: 8 horas", the times
+// tapped); anything longer, "Las horas que habéis elegido".
+function pickWords(picks) {
+  if (!picks.length) return "";
+  const groups = [];
+  for (const { wd, mins } of picks) {
+    const key = mins.join(",");
+    const g = groups.find((x) => x.key === key);
+    if (g) g.wds.push(wd); else groups.push({ key, wds: [wd], mins });
+  }
+  const at = (g, i) => t("s4At", { d: daysWords(g.wds, !i), t: timeList(g.mins) });
+  if (groups.length === 1) {
+    const s = at(groups[0], 0), n = groups[0].mins.length;
+    return s.length <= 64 ? s : t("s4Count", { d: daysWords(groups[0].wds, true), n: n === 1 ? t("n1") : t("nN", { n }) });
+  }
+  const s = groups.map(at).join("; ");
+  return groups.length <= 3 && s.length <= 90 ? s : t("s4Mixed");
+}
 function renderRepeat() {
   const picks = weekPicks();
-  const same = picks.length && picks.every((x) => x.mins.join() === picks[0].mins.join());
-  setText("s4", same && picks[0].mins.length <= 6 ? t("s4Times", { t: timeList(picks[0].mins) }) : t("s4Mixed"));
-  const dates = onceDates();
-  const wds = picks.map((x) => x.wd);
-  const run = weekRun(wds);
-  const wSub = !wds.length ? "" : run ? cap(t("rWeeklyRun", { a: LG[L][run[0]], b: LG[L][run[1]] })) : t("rWeeklyS", { d: dayNames(wds, 2) });
-  $("repeats").innerHTML = [["w", "🗓️", "rWeekly", wSub], ["o", "📌", "rOnce", dates || t("rOnceS")]].map(([v, e, k, sub]) => {
+  setText("s4", pickWords(picks));
+  $("repeats").innerHTML = [["w", "🔁", "rWeekly", ""], ["o", "🗓️", "rOnce", onceDates()]].map(([v, e, k, sub]) => {
     const on = S.repeatPicked && S.repeat === (v === "w");
-    return `<button type="button" class="tile big${on ? " sel" : ""}" data-v="${v}" aria-pressed="${on}"><span class="e" aria-hidden="true">${e}</span><b>${esc(t(k))}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</button>`;
+    return `<button type="button" class="row${on ? " sel" : ""}" data-v="${v}" aria-pressed="${on}"><span class="e" aria-hidden="true">${e}</span><div><b>${esc(t(k))}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div></button>`;
   }).join("");
 }
 // 4 · the studio.
@@ -1817,24 +1885,15 @@ function renderCentro() {
   paintWa();
 }
 // 5 · price, terms and send.
-// Every offer to a customer carries a price (review fix, 17 Oct): the price
-// for the chosen length is needed unless this is the studio's own signed link
-// and we already have its menu (wa-bot socValidate, priceKnown).
+// Every offer to a customer carries a price (review fix, 17 Oct): the 60 min
+// price is needed unless this is the studio's own signed link and we already
+// have its menu (wa-bot socValidate, priceKnown).
 const priceNeeded = () => !(S.signed && S.partner && S.partner.has_menu === true);
-// The chosen length's price comes first and has no "(opcional)" when it is
-// needed; the other length's price is optional, one tap away.
+// One price, "Precio de un masaje de 60 min", with "(opcional)" only when it
+// is not needed. No 90 min price is asked any more (no length is asked).
 function paintPriceOpt() {
-  const need = priceNeeded();
-  const other = S.dur === 90 ? 60 : 90;
-  for (const d of [60, 90]) {
-    const mine = d === S.dur;
-    $("p" + d + "Lbl").textContent = t("fPrice", { d });
-    $("p" + d + "Opt").hidden = mine && need;
-    $("fp" + d).style.order = mine ? "0" : "1";
-    $("fp" + d).hidden = !mine && !S.showOther && !val("p" + d);
-  }
-  $("addOther").hidden = !$("fp" + other).hidden;
-  $("addOther").textContent = t("addOther", { d: other });
+  $("p60Lbl").textContent = t("fPrice");
+  $("p60Opt").hidden = priceNeeded();
 }
 // The old ticket recap ("3 huecos de 60 min · cada semana" and a line per
 // day), kept exactly as it was. Nothing on screen uses it now: the ticket
@@ -1850,10 +1909,11 @@ function summaryHTML(list, dur, repeat, withLabel, dropped) {
 }
 function renderLast() {
   paintPriceOpt();
-  // "desde 40 €" is a 60 min price: never shown under a 90 min one.
-  $("priceHint").textContent = S.dur === 60 && S.active && S.partner.price_from ? t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "";
+  // "desde 40 €" is a 60 min price, the one asked here.
+  $("priceHint").textContent = S.active && S.partner.price_from ? t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "";
   // No recap here (go.html has none: the ticket is the recap). Only when some
-  // picked times no longer fit the hours or the length: which, and a way back.
+  // picked times no longer fit the hours, or today it is too late for them:
+  // which, and a way back.
   const drop = droppedText();
   $("sumMini").innerHTML = drop ? `<p class="warn">${esc(drop)}</p><button type="button" class="skip left" data-goto="${ST.times}">${esc(t("editTimes"))}</button>` : "";
   paintMiss();
@@ -1872,16 +1932,16 @@ function renderDone() {
   const rows = [];
   if (name) rows.push(row("🏠", t("kCentro"), esc(name)));
   if (last) {
-    rows.push(row("🕐", t("kDur"), esc(t(last.repeat ? "durWeekly" : "durOnce", { d: last.dur }))));
+    // Whether the times repeat, in the repeat screen's words; then the days
+    // and their times. No length: it is never asked.
+    rows.push(row("🕐", t("kDur"), esc(t(last.repeat ? "durWeekly" : "durOnce"))));
     for (const g of groupByTimes(last.list)) {
-      const when = last.repeat ? dayNames(g.ds.map((d) => d.wd), 3) : fmtDates(g.ds);
-      rows.push(row("📅", cap(when), esc(timeList(g.mins))));
+      const when = last.repeat ? daysWords(g.ds.map((d) => d.wd), true) : cap(fmtDates(g.ds));
+      // go.html's ticket calendar (🗓️ carries no date of its own).
+      rows.push(row("🗓️", when, esc(timeList(g.mins))));
     }
-    // Both prices when both were given (they are both sent).
-    const mine = priceNum(val(last.dur === 90 ? "p90" : "p60")), oth = priceNum(val(last.dur === 90 ? "p60" : "p90"));
-    const od = last.dur === 90 ? 60 : 90;
-    if (mine && oth) rows.push(row("💶", t("kPrice"), esc(t("pricesBoth", { a: last.dur + " min", pa: euro(mine), b: od + " min", pb: euro(oth) }))));
-    else if (mine || oth) rows.push(row("💶", t("kPrice"), esc(mine ? euro(mine) : od + " min: " + euro(oth))));
+    const price = priceNum(val("p60"));
+    if (price) rows.push(row("💶", t("kPrice"), esc(euro(price))));
   }
   $("ticketBody").innerHTML = rows.join("");
   // What happens now, from what wa-bot said and never more, in go.html's
@@ -1904,13 +1964,7 @@ function renderDone() {
   $("rFallback").hidden = r !== "fallback";
   // The message a failed save would send: developer mode only.
   $("rPreview").hidden = !(r === "preview" && DEV);
-  // A studio that also does the other length: one quiet link (Jordan, 18 Oct).
   // In the fallback the green "Enviar por WhatsApp" already goes to Jordan.
-  const other = last && last.dur === 90 ? 60 : 90;
-  $("addDur").hidden = r === "fallback" || !last || S.sent.has(other);
-  setText("addDurQ", t("addDurQ", { d: other }));
-  setText("addDurA", t("addDurA", { d: other }));
-  $("addDur").dataset.d = String(other);
   $("doneLinks").hidden = r === "fallback";
   if (last) {
     const msg = buildMessage(last);
@@ -2070,7 +2124,7 @@ function outOfView(el) {
 function paintMiss() {
   const items = [];
   for (const k of S.miss) {
-    const s = k === "accept" ? t("missAccept") : k === "p60" || k === "p90" ? t("missPrice", { d: k === "p60" ? 60 : 90 }) : "";
+    const s = k === "accept" ? t("missAccept") : k === "p60" ? t("missPrice") : "";
     if (s && !items.includes(s)) items.push(s);
   }
   const show = items.length > 1 || (items.length === 1 && outOfView(missBox(S.miss[0])));
@@ -2083,36 +2137,40 @@ function unmiss(...keys) {
 }
 
 // ---------------------------------------------------------------- 1 · which days
+// A weekday's date in the calendar, on or off. Off forgets that day's times.
 function toggleDay(wd, on) {
-  if (on) S.days.add(wd);
-  else { S.days.delete(wd); delete S.selW[String(wd)]; }
+  const iso = dateOf(wd).iso;
+  if (on) S.dates.add(iso);
+  else { S.dates.delete(iso); delete S.selW[String(wd)]; }
 }
 $("dayQuick").addEventListener("click", (e) => {
   const b = e.target.closest("[data-group]");
   if (!b) return;
-  const open = weekDays().map((d) => d.wd);
+  const open = openDays();
   const ws = GROUPS[b.dataset.group].filter((wd) => open.includes(wd));
-  const on = !ws.every((wd) => S.days.has(wd));
+  const on = !ws.every(isChosen);
   ws.forEach((wd) => toggleDay(wd, on));
   renderDays();
   saveDraft();
 });
-// The opening hours: opened from the link under the list, or by tapping a
-// day the hours say is closed (to change them).
+// The opening hours: opened from the link under the calendar, or by tapping
+// a date the hours say is closed (to change them).
 function openHours() {
   S.showHours = true;
   renderDays();
   focusField("hours");
 }
 $("hoursOpen").addEventListener("click", openHours);
-$("dayList").addEventListener("click", (e) => {
+$("calGrid").addEventListener("click", (e) => {
   if (e.target.closest("[data-closed]")) { openHours(); return; }
-  const b = e.target.closest("[data-wd]");
+  const b = e.target.closest("[data-iso]");
   if (!b) return;
-  const wd = Number(b.dataset.wd);
-  toggleDay(wd, !S.days.has(wd));
+  const iso = b.dataset.iso;
+  // Only a date the calendar shows now (it moves on at midnight).
+  const d = calDays().find((x) => x.iso === iso);
+  if (d) toggleDay(d.wd, !S.dates.has(iso));
   renderDays();
-  const again = $("dayList").querySelector(`[data-wd="${wd}"]`);
+  const again = $("calGrid").querySelector(`[data-iso="${iso}"]`);
   if (again) again.focus({ preventScroll: true });
   saveDraft();
 });
@@ -2125,7 +2183,7 @@ function seedDays() {
   for (const wd of cd) {
     const k = String(wd);
     if (S.selW[k] && S.selW[k].size) continue;
-    const ok = new Set(wkStarts(wd));
+    const ok = new Set(dayStarts(wd));
     const add = Array.from(src).filter((m) => ok.has(m));
     if (add.length) S.selW[k] = new Set(add);
   }
@@ -2139,18 +2197,6 @@ $("daysNext").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------- 2 · which times
-// The length: 60 by default; 90 redraws the hours (fewer fit before closing).
-$("durPick").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-dur]");
-  if (!b) return;
-  S.dur = Number(b.dataset.dur) === 90 ? 90 : 60;
-  S.durPicked = true;
-  setErr(null, "timesErr", "");
-  renderTimes();
-  const again = $("durPick").querySelector(`[data-dur="${S.dur}"]`);
-  if (again) again.focus({ preventScroll: true });
-  saveDraft();
-});
 // "¿Algún día tiene otras horas?": the day chips, to set one day apart.
 $("diffLink").addEventListener("click", () => {
   S.showTabs = true;
@@ -2171,7 +2217,7 @@ $("times").addEventListener("click", (e) => {
   if (!b) return;
   const m = Number(b.dataset.m);
   const days = S.tab === "all" ? chosenDays() : [S.tab];
-  const fit = days.filter((wd) => wkStarts(wd).includes(m));
+  const fit = days.filter((wd) => dayStarts(wd).includes(m));
   const all = fit.every((wd) => S.selW[String(wd)] && S.selW[String(wd)].has(m));
   for (const wd of fit) {
     const k = String(wd);
@@ -2218,7 +2264,7 @@ if ("ResizeObserver" in window) {
   DOCKS.forEach(([dock]) => ro.observe(dock));
 } else DOCKS.forEach(([dock]) => dock.classList.add("stuck"));
 
-// ---------------------------------------------------------------- 3 · every week?
+// ---------------------------------------------------------------- 3 · does it repeat every week?
 $("repeats").addEventListener("click", (e) => {
   const b = e.target.closest("[data-v]");
   if (!b) return;
@@ -2280,34 +2326,26 @@ $("hours").addEventListener("input", () => {
 // ---------------------------------------------------------------- 5 · price, terms, send
 function checkLast() {
   const bad = [];
-  const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
-  const pBad = Number.isNaN(p60) ? "p60" : Number.isNaN(p90) ? "p90" : "";
-  const need = !pBad && priceNeeded() && (S.dur === 90 ? p90 : p60) === null ? (S.dur === 90 ? "p90" : "p60") : "";
-  setErr(null, "priceErr", pBad ? (bad.push(pBad), "errPrice") : need ? (bad.push(need), "errPriceNeed") : "", { d: S.dur });
-  $("p60").setAttribute("aria-invalid", Number.isNaN(p60) || need === "p60" ? "true" : "false");
-  $("p90").setAttribute("aria-invalid", Number.isNaN(p90) || need === "p90" ? "true" : "false");
+  const p60 = priceNum(val("p60"));
+  const pBad = Number.isNaN(p60);
+  const need = !pBad && priceNeeded() && p60 === null;
+  setErr(null, "priceErr", pBad ? (bad.push("p60"), "errPrice") : need ? (bad.push("p60"), "errPriceNeed") : "");
+  $("p60").setAttribute("aria-invalid", pBad || need ? "true" : "false");
   S.accepted = $("accept").checked;
   setErr(null, "acceptErr", S.accepted ? "" : "errAccept");
   $("acceptBox").classList.toggle("bad", !S.accepted);
   if (!S.accepted) bad.push("accept");
   return bad;
 }
-$("addOther").addEventListener("click", () => {
-  S.showOther = true;
-  paintPriceOpt();
-  const id = S.dur === 90 ? "p60" : "p90";
-  $(id).focus();
-  saveDraft();
-});
 $("accept").addEventListener("change", () => {
   S.accepted = $("accept").checked;
   if (S.accepted) { setErr(null, "acceptErr", ""); $("acceptBox").classList.remove("bad"); unmiss("accept"); }
   saveDraft();
 });
-["p60", "p90"].forEach((id) => $(id).addEventListener("input", () => {
-  if ($("priceErr").dataset.k) { setErr(null, "priceErr", ""); $("p60").setAttribute("aria-invalid", "false"); $("p90").setAttribute("aria-invalid", "false"); }
-  unmiss("p60", "p90");
-}));
+$("p60").addEventListener("input", () => {
+  if ($("priceErr").dataset.k) { setErr(null, "priceErr", ""); $("p60").setAttribute("aria-invalid", "false"); }
+  unmiss("p60");
+});
 document.addEventListener("input", (e) => { if (e.target && FIELDS.includes(e.target.id)) saveDraft(); });
 
 function buildPayload(list) {
@@ -2334,7 +2372,8 @@ function buildPayload(list) {
       opening_hours: val("hours") || null,
       opening_hours_read: HOURS ? hoursField(HOURS, "es") : null,
       price_60_eur: priceNum(val("p60")),
-      price_90_eur: priceNum(val("p90")),
+      // No 90 min price is asked any more; the server takes null.
+      price_90_eur: null,
     },
     terms: {
       accepted: true,
@@ -2344,7 +2383,7 @@ function buildPayload(list) {
     },
     availability: {
       tz: "Europe/Madrid",
-      duration_min: S.dur,
+      duration_min: S.dur, // always 60: no length is asked
       repeat_weekly: S.repeat,
       slots: list.flatMap(({ d, mins }) => mins.map((m) => d.weekly
         ? { weekday: d.wd, start: hhmm(m), end: hhmm(m + S.dur), first_date: firstDate(d.wd, m), date: firstDate(d.wd, m) }
@@ -2364,9 +2403,8 @@ function buildMessage(last) {
   if (val("addr")) lines.push(t("msgAddr", { v: val("addr") }));
   if (val("email")) lines.push(t("msgEmail", { v: val("email") }));
   if (val("hours")) lines.push(t("msgHours", { v: val("hours") }));
-  const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
-  const pr = [p60 ? "60 min " + euro(p60) : "", p90 ? "90 min " + euro(p90) : ""].filter(Boolean).join(", ");
-  if (pr) lines.push(t("msgPrice", { v: pr }));
+  const p60 = priceNum(val("p60"));
+  if (p60) lines.push(t("msgPrice", { v: "60 min " + euro(p60) }));
   lines.push(t("msgTerms"));
   return lines.join("\n");
 }
@@ -2428,7 +2466,6 @@ function finish(result, list, key, server) {
   // Sent: the selection is cleared so the phone's back button cannot send the
   // same batch again, and #datos becomes #listo in the history.
   S.lastKey = key;
-  S.sent.add(S.dur);
   S.selW = {};
   clearDraft();
   go(DONE, "replace");
@@ -2436,18 +2473,15 @@ function finish(result, list, key, server) {
 }
 $("f6").addEventListener("submit", (e) => { e.preventDefault(); send($("save")); });
 $("retry").addEventListener("click", () => send($("retry")));
-// More times: the days again, same length. The other length: straight to the
-// times with that length chosen (the days are kept).
-function again(step, dur) {
+// More times: the days again.
+function again(step) {
   setErr(null, "timesErr", "");
-  if (dur) { S.dur = dur; S.durPicked = true; }
   S.repeatPicked = false;
   S.tab = "all";
   S.showTabs = false;
   go(step);
 }
 $("more").addEventListener("click", () => again(ST.days));
-$("addDur").addEventListener("click", () => again(ST.times, Number($("addDur").dataset.d) === 90 ? 90 : 60));
 
 // A short burst in the club's colours, as go.html does on its ticket.
 function confetti() {
