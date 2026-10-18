@@ -29,27 +29,31 @@
   and a ticket at the end. go.html's CSS is copied; what is added below it is
   only what a studio needs that a customer does not.
 
-  Screens: the invite (what Massage Club is, who the customers are, what it
-  costs), then 1 "¿Cuánto dura el masaje?" (60 or 90, one tap; a studio that
-  does both sends the other with "Añadir vuestros huecos de 90 min" on the
-  ticket, and screen 1 then says which length is already in), 2 "¿Qué días
-  tenéis horas libres?" (every weekday, closed ones greyed when we know the
-  hours, and the opening hours field under the list: the hours come before
-  the times, as on the old page, so nothing picked can vanish later), 3 "¿A
-  qué horas?" (go.html's hour cards; one tap is one start time for one
-  customer; the same times for every chosen day, or one day set differently,
-  marked on its chip), 4 "¿Se repiten cada semana?" (every week, or "Solo
-  una vez": each weekday time on its next date, and the card names the
-  dates), 5 "Vuestro centro" (name, address, WhatsApp, email), 6 "Último
-  paso" (price, the terms, send), then the ticket. Duration comes first, as
-  go.html asks "what kind" first, because a 90 minute massage changes which
-  start times fit before closing. "Cómo funciona y lo que cuesta" and "Ver
-  condiciones" open one sheet with how a booking reaches the studio, the
-  example message, the price table, the questions and who we are.
+  Screens (polished 18 Oct, Jordan: "it needs to be aesthetically pleasing
+  like the one we give to the customer"; every screen as light as go.html's,
+  one short question, at most one short line under it, nothing about later
+  steps): the invite (what Massage Club is, who the customers are, what it
+  costs; "Cómo funciona" sits in the top bar), then 1 "¿Qué días?" (every
+  weekday, closed ones greyed when we know the hours; the opening hours are
+  one tap away under the list, and come before the times so nothing picked
+  can vanish later), 2 "¿A qué horas?" (go.html's hour cards in one grid;
+  one tap is one start time; the same times for every chosen day, or one
+  day set differently; the length is a small 60 / 90 min choice here,
+  60 by default, since a 90 minute massage changes which start times fit
+  before closing), 3 "¿Todas las semanas?" (every week, or just once on the
+  dates the card names), 4 "Vuestro centro" (name, address, WhatsApp,
+  email), 5 "Último paso" (price, the terms, send), then the ticket. A
+  studio that also does the other length adds it from the ticket ("Añadir
+  horas de 90 min"). Jordan, 18 Oct: "i've only clicked 2 slots it says 4":
+  every count on screen is the times tapped, never times multiplied by days;
+  the ticket lists each day with its times. The «ocupado» instruction is on
+  the ticket only, never mid-flow. "Cómo funciona" and "Ver condiciones"
+  open one sheet with how a booking reaches the studio, the example
+  message, the price table, the questions and who we are.
 
-  One word for what a studio gives us: "hueco" / "slot" (a start time, one
-  customer). The fallback message says "Horas que os ofrecemos (3 huecos de
-  60 min, cada semana):", which wa-bot's SOCIOS_FALLBACK_RE reads.
+  On screen a studio gives us "horas" / "times" (a start time, one
+  customer). The fallback message still says "Horas que os ofrecemos (3
+  huecos de 60 min, cada semana):", which wa-bot's SOCIOS_FALLBACK_RE reads.
 
   Personal link: /socios?s=<partners.slug>&k=<sig> greets the studio by name
   on the invite (one line) and prefills its details from wa-bot (see Prefill
@@ -57,9 +61,9 @@
 
   A draft (fields, days, times, length, repeat) is kept in localStorage per
   link, so a reload or WhatsApp's in-app browser coming back does not lose
-  anything; the invite says so once, under "Empezar". It is cleared after a
-  save. The phone's back button and the arrow at the top agree: every screen
-  is a history entry (#duracion, #dias, #horas, #semana, #centro, #datos,
+  anything ("Empezar" then reads "Seguir donde lo dejasteis"). It is cleared
+  after a save. The phone's back button and the arrow at the top agree:
+  every screen is a history entry (#dias, #horas, #semana, #centro, #datos,
   #listo), and back steps over a screen there is nothing for any more.
 
   SAVING (wired 18 Oct, wa-bot v216). Live is the default; ?preview=1 sends
@@ -263,56 +267,70 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 h1:focus,h2:focus,h3:focus,.panel:focus{outline:none}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 a.cta,a.chip,a.skip{display:block;text-align:center;text-decoration:none}
-.pv{align-self:center;margin-top:10px;font-size:13px;font-weight:700;color:var(--muted);background:var(--glass);border:1px dashed rgba(38,32,25,.28);border-radius:999px;padding:5px 12px}
-/* The invite keeps go.html's poster and title size; only the greeting is
-   held to one line, so a long studio name never pushes the title into the
-   circles. */
+/* Preview only: a quiet line at the very foot of the page, out of the way of
+   every screen, so the preview looks like what a studio sees. */
+.pv{align-self:center;margin-top:22px;font-size:12px;font-weight:700;color:var(--muted);opacity:.8}
+/* "Cómo funciona" sits in the top bar's empty left slot on the invite. */
+.top .how{flex:none}
+.back.gone{display:none}
+/* The invite keeps go.html's poster and title size. A long studio name on a
+   personal link wraps to a second line instead of being cut. */
 .host span{flex:none}
-.host em{font-style:normal;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.startnote{text-align:center;color:var(--muted);font-size:13.5px;margin-top:12px}
-/* Only on the narrowest phones (320): a smaller title keeps the kicker
-   inside the poster and off the circles. */
-@media (max-width:340px){.poster h1{font-size:34px}}
+.host em{font-style:normal;min-width:0}
 .fact span{display:block}
-/* Two big cards (60 / 90 min, every week / just once): go.html's tile, a
-   little more padding. Only "60 min" and "90 min" use the serif. */
+/* Days and times take several taps before moving on, so on these two screens
+   only, Continue (and the count it carries) stays docked at the foot of the
+   screen. While cards scroll under it, it sits on a cream backdrop that fades
+   upward (.stuck, see paintDocks); at the end of the page it is back in its
+   place under the last link, on the page's own background like go.html's
+   button, so no cream box is left behind. */
+.dock{position:sticky;bottom:0;z-index:3;margin:0 -16px;padding:22px 16px calc(12px + env(safe-area-inset-bottom))}
+.dock::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to bottom,rgba(246,241,234,0),var(--cream) 14px);opacity:0;transition:opacity .18s}
+.dock.stuck::before{opacity:1}
+.dock-end{display:block;height:1px;margin-top:-1px}
+.dock .cta{margin-top:0}
+.dock .err:not(:empty){margin:0 0 10px}
+/* A card or link reached from the keyboard scrolls clear of the dock. */
+html:has(.screen.on[data-s="days"]),html:has(.screen.on[data-s="times"]){scroll-padding-bottom:112px}
+/* Two big cards (every week / just once): go.html's tile, a little more padding. */
 .tile.big{padding:20px 16px}
-.tile b.num{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:800;letter-spacing:-.01em}
-/* Days: several can be chosen, so each row has a round tick. */
+/* Both cards start at the top (a button centres its content by default) and
+   emoji differ in height: one fixed line keeps the two titles level. */
+.tile.big{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start}
+.tile.big .e{height:38px;line-height:38px}
+/* At 320 the titles ("Cada semana", "Solo una vez") still fit on one line. */
+@media (max-width:340px){.tile.big{padding:18px 12px}.tile.big b{font-size:15.5px}}
+/* Days: go.html's rows (emoji, name). Several can be chosen; a chosen row
+   gets go's ink border and a tick on the right. */
 .row{width:100%}
-.row .tick{width:26px;height:26px;border-radius:50%;border:2px solid rgba(38,32,25,.22);flex:none;display:grid;place-items:center;transition:background .15s,border-color .15s}
-.row.sel .tick{background:var(--ink);border-color:var(--ink)}
-.row.sel .tick::after{content:"\2713";color:#fff;font-size:14px;font-weight:700}
+.row > div{flex:1;min-width:0}
+.row .tick{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--ink);visibility:hidden}
+.row .tick::after{content:"\2713";color:#fff;font-size:13px;font-weight:700}
+.row.sel .tick{visibility:visible}
 .row small{display:block}
-.row .r{margin-left:auto;color:var(--muted);font-size:13.5px;font-weight:700;white-space:nowrap}
+.row .r{color:var(--muted);font-size:13.5px;font-weight:700;white-space:nowrap}
 /* A day the opening hours say is closed: shown, not choosable. */
 .row.closed{background:rgba(255,255,255,.5);box-shadow:none}
 .row.closed b{color:var(--muted)}
-.row.closed .tick{border-style:dashed}
-.quick{margin-bottom:12px}
+.row.closed .e{opacity:.35}
+/* Two quiet links under a list sit together. */
+.skip + .skip{margin-top:2px}
+/* The length on the times screen: two small chips, 60 by default. */
+.durs{display:flex;align-items:center;gap:8px;margin:-4px 0 16px}
+.durs .dl{font-size:14px;color:var(--muted);font-weight:500;margin-right:2px}
+.durs .chip{padding:8px 14px;font-size:14.5px}
 /* An hour half that does not fit before closing, and a time set on some days only. */
 .hr .off{display:block;flex:1;padding:12px 0 8px;font-size:17px;font-weight:700;text-align:center;opacity:.25}
 .hr .off small{display:block;margin-top:2px;font-size:12px;font-weight:500}
 .hr button.part{background:#EFE2D6;color:var(--ink)}
 .hr button.part small{color:var(--muted)}
-.tabq{font-size:14px;color:var(--muted);line-height:1.4;margin:0 0 8px 2px}
+.tabs{margin:0 0 14px}
 .tabs .chip{padding:9px 14px}
 .chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--clay);margin-left:6px;vertical-align:2px}
-#dayOpen:empty{display:none}
-#dayOpen{margin:10px 0 0 2px}
+.note:empty{display:none}
 .warn{font-size:14px;color:var(--clay-d);font-weight:700;margin-top:10px}
 .warn:empty{display:none}
-.under{font-size:13.5px;color:var(--muted);line-height:1.4;margin:12px 2px 0}
-.under:empty{display:none}
-/* The button that moves on stays under the thumb on the long screens (days,
-   times, the studio, the last step). A disabled one is solid, never
-   see-through: the cards scroll under it, not through it. */
-.foot{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));z-index:3}
-.foot .cta[disabled]{opacity:1;background:#DDB09B;color:#FFF8F3;box-shadow:none}
-.foot .err{min-height:0;margin:0}
-.foot .err:not(:empty),.fpill:not(:empty){background:#FFFDFB;border-radius:14px;padding:8px 12px;margin-top:14px;box-shadow:0 6px 18px rgba(80,40,20,.10)}
-.fpill{font-size:14px;font-weight:700;text-align:center;color:var(--ink)}
-.fpill:empty{display:none}
+.err:empty{min-height:0;margin:0}
 .hint{font-size:13.5px;color:var(--muted);margin:6px 0 0 4px;line-height:1.4}
 .hint:empty{display:none}
 .ferr{color:#B03A2E;font-size:14px;font-weight:700;margin:6px 0 0 4px}
@@ -326,30 +344,34 @@ a.cta,a.chip,a.skip{display:block;text-align:center;text-decoration:none}
 #prices{display:flex;flex-direction:column}
 #priceHint{margin-top:-6px}
 .skip.left{text-align:left;width:auto;padding:6px 4px;margin-top:4px}
-.sum .skip.left{padding-left:0}
-.sum{background:#fff;border-radius:22px;padding:16px 18px;margin-top:16px;box-shadow:0 6px 18px rgba(80,40,20,.07);font-size:15.5px}
-.sum:empty{display:none}
-.sumlbl{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.sumhead{font-weight:700}
-.sum ul,.kv ul{list-style:none;padding:0;margin-top:6px;display:grid;gap:4px}
-.sum li b,.kv li b{margin-right:6px}
-.sum .hint,.sum .warn{margin-left:0}
-.check{display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:16px;background:#fff;border:2px solid transparent;border-radius:22px;box-shadow:0 6px 18px rgba(80,40,20,.07);cursor:pointer;scroll-margin:20px}
+#sumMini .warn{margin:12px 0 0 4px}
+#sumMini .skip.left{padding-left:4px}
+/* The terms: go.html's quiet consent type, in a card with the tick. */
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:14px 16px;background:#fff;border:2px solid transparent;border-radius:22px;box-shadow:0 6px 18px rgba(80,40,20,.07);cursor:pointer;scroll-margin:20px}
 .check.bad{border-color:#C0392B}
 /* The box to accept: the same round tick as the day rows. */
 .check input{flex:none;width:26px;height:26px;margin:0;-webkit-appearance:none;appearance:none;border-radius:50%;border:2px solid rgba(38,32,25,.22);background:#fff center/14px 14px no-repeat;cursor:pointer;transition:background-color .15s,border-color .15s}
 .check input:checked{background-color:var(--ink);border-color:var(--ink);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M2.5 7.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
 .check.bad input{border-color:#C0392B}
-.check .ttl{display:block;font-weight:700;font-size:16px}
-.check .line{display:block;font-size:15px;line-height:1.45;margin-top:4px}
+.check .ttl{display:block;font-weight:700;font-size:15.5px;margin-top:2px}
+.check .line{display:block;font-size:13.5px;color:var(--muted);line-height:1.45;margin-top:4px}
+.check .tl{display:inline-block;margin-top:6px;font-size:13.5px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 /* "Esto parece un fijo": the studio says which, in two taps. */
 .lchoice{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
 .lchoice .chip{padding:9px 12px;font-size:14px}
-.next{margin:18px 0 6px}
-.next .fact{font-size:15px;font-weight:500;line-height:1.4}
 .srv{background:#fff;border-radius:18px;padding:12px 16px;margin-top:12px;font-size:15px;box-shadow:0 4px 12px rgba(80,40,20,.06)}
 .srv b{display:block;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
 .msg{margin-top:8px;padding:14px;border-radius:18px;background:#fff;font-size:14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+/* The ticket: go.html's, one short value per row. The emoji column never
+   shrinks, and the head's line stays clear of the sage circle. */
+.kv .e{flex:none}
+.kv > div{min-width:0}
+.ticket .head p{max-width:calc(100% - 104px)}
+#nextFine p + p{margin-top:8px}
+.skip .q{display:block;font-weight:500}
+.links{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;column-gap:4px;margin-top:6px}
+.links .skip{width:auto;margin-top:0}
+.links i{font-style:normal;color:var(--muted);opacity:.6}
 .who{display:flex;align-items:center;gap:12px;margin-top:22px}
 .who img{width:44px;height:44px;border-radius:50%;flex:none;box-shadow:0 4px 14px rgba(80,40,20,.10)}
 .who b{display:block}
@@ -427,10 +449,12 @@ body.noscroll{overflow:hidden}
 <div class="app">
   <div class="top">
     <button type="button" class="back" id="back" data-aria="backAria" aria-label="Volver">←</button>
+    <!-- On the invite only, in the back arrow's place: go.html has nothing
+         under its button, so "how it works" lives up here. -->
+    <button type="button" class="lang how" id="howPill" data-sheet="how" data-t="howPill" hidden></button>
     <div class="bar" aria-hidden="true"><b id="bar"></b></div>
     <button type="button" class="lang" id="lang" lang="en" aria-label="Read this page in English">EN</button>
   </div>
-  <p class="pv" id="previewNote" data-t="preview" hidden></p>
 
   <main class="stage" id="stage">
 
@@ -448,65 +472,56 @@ body.noscroll{overflow:hidden}
         <div class="fact"><div class="e" aria-hidden="true">💶</div><div><span data-t="f3"></span><small data-t="f3s"></small></div></div>
       </div>
       <button type="button" class="cta dark" id="startBtn"></button>
-      <p class="startnote" id="startNote"></p>
-      <button type="button" class="skip" data-sheet="how" data-t="howLink"></button>
     </section>
 
-    <!-- 1 · how long -->
-    <section class="screen" data-s="dur" aria-labelledby="h1">
-      <div class="kicker" data-t="k1"></div>
-      <h2 id="h1" tabindex="-1" data-t="q1"></h2>
-      <p class="sub" id="s1"></p>
-      <div class="grid" id="durs"></div>
-    </section>
-
-    <!-- 2 · which days, and the opening hours (so the times on screen 3 are
-         drawn inside them and nothing picked can vanish later) -->
+    <!-- 1 · which days, and the opening hours one tap away (so the times on
+         screen 2 are drawn inside them and nothing picked can vanish later) -->
     <section class="screen" data-s="days" aria-labelledby="h2">
       <div class="kicker" data-t="k2"></div>
       <h2 id="h2" tabindex="-1" data-t="q2"></h2>
       <p class="sub" data-t="s2"></p>
-      <div class="chips quick" id="dayQuick"></div>
       <div class="list" id="dayList"></div>
-      <div class="field" style="margin-top:18px">
+      <button type="button" class="skip" id="dayQuick" hidden></button>
+      <button type="button" class="skip" id="hoursOpen" aria-controls="hoursBox"></button>
+      <div class="field" id="hoursBox" style="margin-top:18px" hidden>
         <label class="fl" for="hours"><span data-t="fHours"></span> <em class="opt" data-t="opt"></em></label>
         <input type="text" id="hours" name="hours" data-ph="fHoursPh" autocomplete="off" aria-describedby="hoursHint hoursDrop">
         <p class="hint" id="hoursHint" aria-live="polite"></p>
         <p class="warn" id="hoursDrop" aria-live="polite"></p>
       </div>
-      <div class="foot"><button type="button" class="cta" id="daysNext"></button></div>
+      <div class="dock">
+        <button type="button" class="cta" id="daysNext"></button>
+      </div>
     </section>
 
-    <!-- 3 · which times -->
+    <!-- 2 · which times, and the length (60 by default) -->
     <section class="screen" data-s="times" aria-labelledby="h3">
       <div class="kicker" data-t="k3"></div>
       <h2 id="h3" tabindex="-1" data-t="q3"></h2>
-      <p class="sub" id="timesSub"></p>
+      <p class="sub" id="timesSub" aria-live="polite"></p>
+      <div class="durs" id="durPick" role="group" data-aria="durAria"></div>
       <div id="tabsBox" hidden>
-        <p class="tabq" id="tabQ"></p>
-        <div class="chips tabs" id="tabs" role="group" aria-labelledby="tabQ"></div>
+        <div class="chips tabs" id="tabs" role="group" data-aria="tabsAria"></div>
       </div>
-      <p class="note" id="dayOpen"></p>
       <div id="times"></div>
-      <p class="under" id="mixKey"></p>
-      <p class="under" id="overlapNote"></p>
+      <p class="note" id="mixKey"></p>
       <p class="warn" id="dropNote" aria-live="polite"></p>
-      <div class="foot">
-        <p class="fpill" id="tabNote" aria-live="polite"></p>
+      <button type="button" class="skip" id="diffLink" data-t="diffLink" hidden></button>
+      <div class="dock">
         <p class="err" id="timesErr" aria-live="assertive"></p>
         <button type="button" class="cta" id="timesNext"></button>
       </div>
     </section>
 
-    <!-- 4 · every week? -->
+    <!-- 3 · every week? -->
     <section class="screen" data-s="repeat" aria-labelledby="h4">
       <div class="kicker" data-t="k4"></div>
       <h2 id="h4" tabindex="-1" data-t="q4"></h2>
-      <p class="sub" data-t="s4"></p>
+      <p class="sub" id="s4"></p>
       <div class="grid" id="repeats"></div>
     </section>
 
-    <!-- 5 · the studio -->
+    <!-- 4 · the studio -->
     <section class="screen" data-s="centro" aria-labelledby="h5">
       <div class="kicker" data-t="k5"></div>
       <h2 id="h5" tabindex="-1" data-t="q5"></h2>
@@ -519,14 +534,12 @@ body.noscroll{overflow:hidden}
         </div>
         <div class="field">
           <label class="fl" for="addr" data-t="fAddr"></label>
-          <input type="text" id="addr" name="addr" autocomplete="street-address" data-ph="fAddrPh" required aria-describedby="addrHint addrErr">
-          <p class="hint" id="addrHint" data-t="fAddrHint"></p>
+          <input type="text" id="addr" name="addr" autocomplete="street-address" data-ph="fAddrPh" required aria-describedby="addrErr">
           <p class="ferr" id="addrErr" aria-live="polite"></p>
         </div>
         <div class="field">
           <label class="fl" for="wa" data-t="fWa"></label>
-          <input type="tel" id="wa" name="wa" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000" required aria-describedby="waHint waWarn waErr">
-          <p class="hint" id="waHint" data-t="fWaHint"></p>
+          <input type="tel" id="wa" name="wa" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000" required aria-describedby="waWarn waErr">
           <p class="warn" id="waWarn" aria-live="polite"></p>
           <p class="ferr" id="waErr" aria-live="polite"></p>
           <div class="lchoice" id="waChoice" hidden>
@@ -536,15 +549,16 @@ body.noscroll{overflow:hidden}
         </div>
         <div class="field">
           <label class="fl" for="email" data-t="fEmail"></label>
-          <input type="email" id="email" name="email" autocomplete="email" inputmode="email" data-ph="fEmailPh" required aria-describedby="emailHint emailErr">
-          <p class="hint" id="emailHint" data-t="fEmailHint"></p>
+          <input type="email" id="email" name="email" autocomplete="email" inputmode="email" data-ph="fEmailPh" required aria-describedby="emailErr emailHint">
           <p class="ferr" id="emailErr" aria-live="polite"></p>
+          <!-- Why the email is needed: said only when it is missing. -->
+          <p class="hint" id="emailHint" data-t="fEmailHint" hidden></p>
         </div>
-        <div class="foot"><button type="submit" class="cta" id="centroNext"></button></div>
+        <button type="submit" class="cta" id="centroNext"></button>
       </form>
     </section>
 
-    <!-- 6 · price, terms, send -->
+    <!-- 5 · price, terms, send -->
     <section class="screen" data-s="last" aria-labelledby="h6">
       <div class="kicker" data-t="k6"></div>
       <h2 id="h6" tabindex="-1" data-t="q6"></h2>
@@ -553,18 +567,19 @@ body.noscroll{overflow:hidden}
         <div id="prices" role="group" aria-describedby="priceHint priceErr">
           <div class="field" id="fp60">
             <label class="fl" for="p60"><span id="p60Lbl"></span> <em class="opt" id="p60Opt" data-t="opt"></em></label>
-            <span class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></span>
+            <span class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" data-ph="pricePh" aria-describedby="priceHint priceErr"></span>
           </div>
           <div class="field" id="fp90">
             <label class="fl" for="p90"><span id="p90Lbl"></span> <em class="opt" id="p90Opt" data-t="opt"></em></label>
-            <span class="euro"><input type="text" id="p90" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></span>
+            <span class="euro"><input type="text" id="p90" inputmode="decimal" autocomplete="off" data-ph="pricePh90" aria-describedby="priceHint priceErr"></span>
           </div>
         </div>
         <p class="hint" id="priceHint"></p>
         <p class="ferr" id="priceErr" aria-live="polite"></p>
         <button type="button" class="skip left" id="addOther"></button>
 
-        <div class="sum" id="sumMini"></div>
+        <!-- Only when some picked times no longer fit the hours. -->
+        <div id="sumMini"></div>
 
         <!-- OPEN for Jordan (pitch kit notes, review 17 Oct): the 5 Sept rule
              has the bot ask every studio for a 10% Massage Club rate on every
@@ -580,20 +595,22 @@ body.noscroll{overflow:hidden}
           <span>
             <span class="ttl" data-t="accept"></span>
             <span class="line" id="acceptLine"></span>
+            <!-- A link, not a button: a label may not hold another control.
+                 The click handler stops it from ticking the box. -->
+            <a class="tl" href="#" data-sheet="price" data-t="seeTerms"></a>
           </span>
         </label>
         <p class="ferr" id="acceptErr" aria-live="polite"></p>
-        <button type="button" class="skip left" data-sheet="price" data-t="seeTerms"></button>
 
-        <div class="foot">
-          <p class="err" id="missErr" aria-live="assertive"></p>
-          <p class="err" id="saveErr" aria-live="assertive"></p>
-          <button type="submit" class="cta" id="save" data-t="save"></button>
-        </div>
+        <p class="err" id="missErr" aria-live="assertive"></p>
+        <p class="err" id="saveErr" aria-live="assertive"></p>
+        <button type="submit" class="cta" id="save" data-t="save"></button>
       </form>
     </section>
 
-    <!-- 7 · the ticket: saved, received, not saved (send it yourselves), or preview -->
+    <!-- 6 · the ticket: saved, received, not saved (send it yourselves), or
+         preview. go.html's shape: the ticket, at most one big button, a few
+         lines of small print, then quiet links. -->
     <section class="screen" data-s="done" aria-labelledby="h7">
       <div class="ticket">
         <div class="head"><i class="o"></i><i class="o2"></i><div class="kicker" style="color:#FFE3D1;position:relative" id="tkKick"></div><h2 id="h7" tabindex="-1"></h2><p id="tkSub"></p></div>
@@ -610,33 +627,26 @@ body.noscroll{overflow:hidden}
         <button type="button" class="skip" id="retry" data-t="fbRetry"></button>
       </div>
 
-      <div id="nextBox" hidden>
-        <div class="label" data-t="nextTitle"></div>
-        <div class="facts next" id="nextList"></div>
-      </div>
-
-      <!-- A studio that does both lengths sends the other one from here. -->
-      <button type="button" class="cta" id="addDur" hidden></button>
       <a class="cta dark" id="manage" target="_blank" rel="noopener" hidden data-t="manage"></a>
+      <div class="fine" id="nextFine"></div>
 
+      <!-- Developer mode only: the message a studio would send if saving failed. -->
       <div id="rPreview" hidden>
         <div class="label" data-t="pvMsgLbl"></div>
         <div class="msg" id="pvMsg"></div>
       </div>
 
-      <button type="button" class="skip" id="more" data-t="more" hidden></button>
-
-      <div class="who">
-        <img src="https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png" width="44" height="44" alt="" decoding="async" loading="lazy">
-        <p><b data-t="contactName"></b><span data-t="contactLine"></span></p>
-      </div>
-      <div class="reach">
-        <a class="wa" id="reachWa" data-wa-contact target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp +34&nbsp;612&nbsp;474&nbsp;827</span></a>
-        <a href="mailto:jordan@massageclub.io"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg><span>jordan@massageclub.io</span></a>
+      <!-- A studio that also does the other length adds it from here. -->
+      <button type="button" class="skip" id="addDur" hidden><span class="q" id="addDurQ"></span><span id="addDurA"></span></button>
+      <div class="links" id="doneLinks">
+        <button type="button" class="skip" id="more" data-t="more"></button>
+        <i aria-hidden="true">·</i>
+        <a class="skip" id="reachWa" data-wa-contact target="_blank" rel="noopener" data-t="askJordan"></a>
       </div>
     </section>
 
   </main>
+  <p class="pv" id="previewNote" data-t="preview" hidden></p>
 </div>
 
 <!-- How it works, what it costs, questions and who we are: one sheet, opened
@@ -667,7 +677,6 @@ body.noscroll{overflow:hidden}
           <p class="when" aria-hidden="true">12:04</p>
         </div>
       </div>
-      <p class="hint" data-t="exNote"></p>
     </figure>
 
     <h3 id="shPrice" tabindex="-1" data-t="priceTitle"></h3>
@@ -693,6 +702,7 @@ body.noscroll{overflow:hidden}
       <details><summary data-t="fq2"></summary><p data-t="fa2"></p></details>
       <details><summary data-t="fq3"></summary><p data-t="fa3"></p></details>
       <details><summary data-t="fq4"></summary><p data-t="fa4"></p></details>
+      <details><summary data-t="fq5"></summary><p data-t="fa5"></p></details>
     </div>
 
     <h3 data-t="contactTitle"></h3>
@@ -754,59 +764,53 @@ const T = {
     langBtn: "EN", langAria: "Read this page in English",
     backAria: "Volver", close: "Cerrar",
     preview: "Vista previa: no se envía nada",
-    startNote: "Unos 2 minutos.", startNoteDraft: "Unos 2 minutos. Podéis terminar luego.",
+    howPill: "Cómo funciona",
 
     kick: "Massage Club · Centros",
-    title: "Clientes para vuestras horas libres.",
-    host: "Os escribe Jordan, de Massage Club",
+    title: "Clientes para horas libres.",
+    host: "Jordan, de Massage Club",
     hostN: "Hola, {n}. Soy Jordan.",
-    f1: "Reservas de masaje en Madrid",
-    f1s: "Para gente que escribe en inglés: más de 100 nos han escrito desde septiembre.",
+    f1: "Más de 100 nos han escrito",
+    f1s: "Desde septiembre, en inglés",
     f2: "Os llega todo en español",
     f2s: "Por WhatsApp y email",
     f3: "Gratis hasta el 30 de noviembre",
-    f3s: "Después, 5\u00a0€\u00a0+\u00a0IVA por cliente nuevo que venga",
+    f3s: "Luego, 5 € + IVA si viene un cliente nuevo",
     start: "Empezar",
     ctaResume: "Seguir donde lo dejasteis",
-    howLink: "Cómo funciona y lo que cuesta",
 
-    k1: "1 de 6", q1: "¿Cuánto dura el masaje?", s1: "¿Hacéis los dos? Elegid uno ahora y el otro al final.",
-    s1Sent: "Ya tenemos vuestros huecos de {a} min. Ahora, los de {b}.",
-    s1SentBoth: "Ya tenemos vuestros huecos de 60 y de 90 min. ¿De cuál queréis añadir más?",
-    d60s: "Una hora", d90s: "Hora y media",
-
-    k2: "2 de 6", q2: "¿Qué días tenéis horas libres?", s2: "Tocad todos los que queráis.",
-    workWeek: "De lunes a viernes", allWeek: "Todos los días",
-    open: "Abierto {s}",
-    closed: "Cerrado, según vuestro horario",
-    n1: "1 hueco", nN: "{n} huecos",
+    k2: "1 de 5", q2: "¿Qué días?", s2: "Tocad los días en que tenéis horas libres.",
+    workWeek: "+ De lunes a viernes", allWeek: "+ Todos los días",
+    closed: "Cerrado",
+    hoursAdd: "+ Vuestro horario (opcional)",
+    hoursIs: "Horario: {h} · Cambiar",
+    n1: "1 hora", nN: "{n} horas",
     next: "Siguiente",
 
-    k3: "3 de 6", q3: "¿A qué horas?",
-    s3: "Tocad a qué hora puede empezar un masaje de {d} min. Cada hora es un cliente.",
-    tabQAll: "Valen para los {d}. ¿Algún día es distinto? Tocadlo:",
+    k3: "2 de 5", q3: "¿A qué horas?",
+    s3: "Para {d}. Cada hora que toquéis es un cliente.",
     tabQDay: "Solo para los {d}. Los demás días no cambian.",
-    forDay: "Para los {d}",
-    tabNote: "Cambiando solo los {d}",
+    durLbl: "Citas de", durAria: "Duración de cada cita",
+    tabsAria: "Cambiar las horas de un solo día",
+    diffLink: "¿Algún día tiene otras horas?",
     differs: "distinto",
     tabAll: "Todos",
-    am: "Por la mañana", pm: "Por la tarde",
-    mixKey: "Color claro: solo algunos días (los que llevan •). Tocadla para ponerla en todos.",
-    overlap: "Si alguien reserva las {t}, dejamos de ofrecer las que se solapan con ella.",
-    noTimes: "Este día no quedan horas para un masaje de {d} min.",
+    mixKey: "Color claro: solo algunos días. Tocadla para ponerla en todos.",
+    noTimes: "Este día no quedan horas para una cita de {d} min.",
     noDays: "Primero elegid los días.",
     pickDays: "Elegir los días",
-    dropped1: "1 hueco ya no cabe en vuestro horario y no lo enviamos: {list}.",
-    droppedN: "{n} huecos ya no caben en vuestro horario y no los enviamos: {list}.",
-    next2One: "Seguir con 1 hueco", next2N: "Seguir con {n} huecos",
-    errNone: "Elegid al menos un hueco.",
-    errMany: "Como mucho 40 huecos de una vez. Quitad alguno.",
+    dropped1: "Esta hora ya no cabe en vuestro horario y no la enviamos: {list}.",
+    droppedN: "Estas horas ya no caben en vuestro horario y no las enviamos: {list}.",
+    next2One: "Seguir con 1 hora", next2N: "Seguir con {n} horas",
+    errNone: "Elegid al menos una hora.",
+    errMany: "Son demasiadas horas de una vez. Quitad alguna.",
 
-    k4: "4 de 6", q4: "¿Se repiten cada semana?", s4: "Si un hueco se os llena, escribid «ocupado» y la hora al WhatsApp +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
-    rWeekly: "Sí, cada semana", rWeeklyS: "Hasta que los quitéis.",
-    rOnce: "Solo una vez", rOnceS: "Los próximos 7 días. No se repiten.", rOnceD: "{d}. No se repiten.",
+    k4: "3 de 5", q4: "¿Todas las semanas?",
+    s4Times: "A las {t}.", s4Mixed: "Las horas que acabáis de elegir.",
+    rWeekly: "Cada semana", rWeeklyS: "Cada {d}", rWeeklyRun: "De {a} a {b}",
+    rOnce: "Solo una vez", rOnceS: "Los próximos 7 días", rOnceRun: "{a} a {b}",
 
-    k5: "5 de 6", q5: "Vuestro centro",
+    k5: "4 de 5", q5: "Vuestro centro",
     s5New: "Para saber a dónde mandar las reservas.",
     s5Known: "¿Está todo bien? Cambiad lo que haga falta.",
     s5Miss1: "Solo falta {a}.", s5MissN: "Solo faltan {a}.",
@@ -814,9 +818,7 @@ const T = {
     fName: "Nombre del centro",
     fAddr: "Dirección o barrio",
     fAddrPh: "Calle y número, o el barrio",
-    fAddrHint: "Para que el cliente sepa llegar.",
     fWa: "WhatsApp para las reservas",
-    fWaHint: "Aquí os llegan las reservas, en español.",
     waLandline: "Esto parece un fijo. ¿Tiene WhatsApp?",
     lYes: "Sí, tiene WhatsApp", lNo: "Cambiar el número",
     fEmail: "Email para las reservas",
@@ -836,9 +838,8 @@ const T = {
     errEmail: "Ese email no parece correcto.",
     errEmailNone: "Falta el email.",
 
-    k6: "6 de 6", q6: "Último paso", s6: "Vuestro precio y las condiciones.",
-    fPrice: "Precio de vuestro masaje de {d} min más pedido",
-    priceHint: "El cliente os lo paga a vosotros, en el centro.",
+    k6: "5 de 5", q6: "Último paso", s6: "Vuestro precio y las condiciones. El cliente os paga en el centro.",
+    fPrice: "Precio de {d} min", pricePh: "45", pricePh90: "65",
     priceFrom: "Tenemos apuntado: desde {p} €.",
     addOther: "+ Precio de {d} min (opcional)",
     sumLbl: "Vais a enviar",
@@ -848,7 +849,6 @@ const T = {
     weekly: "cada semana", once: "solo estos días",
     every: "Cada {wd}",
     editTimes: "Cambiar las horas",
-    sumWa: "Las reservas os llegan por WhatsApp al {v}.",
     accept: "Acepto estas condiciones:",
     termsLine: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
     seeTerms: "Ver condiciones",
@@ -861,31 +861,29 @@ const T = {
     dup: "Ya nos habéis enviado estas mismas horas.",
 
     tkKick: "Massage Club · Centros",
-    kCentro: "Centro", kDur: "Masaje", kTimes: "Huecos", kPrice: "Precio",
+    kCentro: "Centro", kDur: "Citas", kPrice: "Precio",
     s4Saved: "Guardado",
-    thanksN: "Gracias, {n}. Vuestros huecos están guardados.", thanks0: "Gracias. Vuestros huecos están guardados.",
+    thanksN: "Gracias, {n}.", thanks0: "Gracias.",
     s4Received: "Recibido",
-    receivedN: "Gracias, {n}. Lo revisamos y os confirmamos por WhatsApp o email.", received0: "Lo revisamos y os confirmamos por WhatsApp o email.",
-    nextTitle: "Qué pasa ahora",
-    nextLive: "Ya se pueden reservar. Si un cliente reserva uno, os llega por WhatsApp y email. Tenéis 15 minutos para rechazar la reserva.",
-    nextWait: "Aún no los ofrecemos a clientes. Os avisamos cuando empecemos.",
-    nextReview: "Hasta que os lo confirmemos, no los ofrecemos a clientes.",
-    nextWeekly: "Los de cada semana se repiten solos. Podéis quitarlos cuando queráis.",
+    receivedN: "Gracias, {n}.", received0: "Lo revisamos y os confirmamos por WhatsApp o email.",
+    durWeekly: "{d} min, cada semana", durOnce: "{d} min, solo una vez",
+    nextLive: "Ya se pueden reservar. Cada reserva os llega por WhatsApp y email.",
+    nextWait: "Aún no las ofrecemos a clientes. Os avisamos cuando empecemos.",
     manage: "Ver y cambiar vuestras horas",
-    srvNext: "Próximas fechas", srvNot: "No guardados",
+    srvNext: "Próximas fechas", srvNot: "No guardadas",
     nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email. Tenéis 15 minutos para rechazarla.",
-    nextC: "¿Se os llena un hueco por otro lado? Escribid «ocupado» y la hora (por ejemplo «ocupado martes 18:00») al WhatsApp +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
-    more: "Añadir más huecos",
-    addDur: "Añadir vuestros huecos de {d} min",
+    nextC: "¿Se os llena una hora? Escribid «ocupado» y la hora al +34\u00a0612\u00a0474\u00a0827.",
+    more: "Añadir más horas", askJordan: "Escribir a Jordan",
+    addDurQ: "¿También hacéis masajes de {d} min?", addDurA: "Añadir horas de {d} min",
     pricesBoth: "{a}: {pa}, {b}: {pb}",
     s4Fallback: "Falta un paso",
-    fbSub: "No hemos podido guardar vuestros huecos. Enviádnoslos por WhatsApp: el mensaje ya está escrito.",
+    fbSub: "No hemos podido guardar vuestras horas. Enviádnoslas por WhatsApp.",
     fbWa: "Enviar por WhatsApp",
     fbMail: "Enviar por email",
     fbRetry: "Probar a guardar otra vez",
-    fbNote: "Antes de ofrecerlos, os escribimos para confirmarlos.",
+    fbNote: "Antes de ofrecerlas, os escribimos para confirmarlas.",
     s4Preview: "Vista previa",
-    pvSub: "No se ha enviado nada. Con el enlace normal, aquí terminaría el alta.",
+    pvSub: "No se ha enviado nada.",
     pvMsgLbl: "Si el guardado falla, el centro nos envía este mensaje por WhatsApp:",
 
     howTitle: "Así funciona",
@@ -894,9 +892,8 @@ const T = {
     how2t: "Un cliente reserva una.",
     how2: "Hablamos nosotros con él, en inglés.",
     how3t: "Os llega la reserva por WhatsApp y email.",
-    how3: "En español, con su nombre, teléfono y email. Tenéis 15 minutos para rechazarla.",
+    how3: "En español, con su nombre, teléfono y email.",
     exLbl: "Ejemplo de lo que os llega:",
-    exNote: "Nombre, hora, teléfono y email. Y un enlace para rechazarla en 15 minutos.",
     priceTitle: "Lo que cuesta",
     pr1k: "Hasta el 30 de noviembre",
     pr1v: "Gratis",
@@ -915,11 +912,13 @@ const T = {
     fq1: "¿Tenemos que hablar inglés?",
     fa1: "Para las reservas, no. Hablamos nosotros con el cliente. A vosotros os llega todo en español. No os prometemos que el cliente hable español.",
     fq2: "Ya estamos en Treatwell, Booksy o Fresha",
-    fa2: "Seguid con ellos. Solo usamos los huecos que os quedan libres. Si uno se llena, escribid «ocupado» y la hora (por ejemplo «ocupado martes 18:00») al WhatsApp +34\u00a0612\u00a0474\u00a0827 y lo quitamos.",
+    fa2: "Seguid con ellos. Solo usamos las horas que nos dais. Si una se os llena, nos lo decís por WhatsApp y la quitamos.",
     fq3: "¿Y si el cliente no viene?",
     fa3: "No pagáis nada. Solo cobramos si el cliente viene de verdad.",
     fq4: "¿Y si alguien pide otra cosa?",
     fa4: "Solo hacemos masaje profesional. A quien pide otra cosa le decimos que no.",
+    fq5: "¿Y si dos horas se solapan?",
+    fa5: "Si un cliente reserva una, dejamos de ofrecer las que se solapan con ella.",
     contactTitle: "Quiénes somos",
     contactName: "Jordan, de Massage Club",
     contactLine: "Llevo Massage Club desde Madrid. ¿Dudas? Escribidme.",
@@ -943,59 +942,53 @@ const T = {
     langBtn: "ES", langAria: "Leer esta página en español",
     backAria: "Back", close: "Close",
     preview: "Preview: nothing is sent",
-    startNote: "About 2 minutes.", startNoteDraft: "About 2 minutes. You can finish later.",
+    howPill: "How it works",
 
     kick: "Massage Club · Studios",
-    title: "Customers for your free times.",
-    host: "From Jordan, at Massage Club",
+    title: "Customers for free slots.",
+    host: "Jordan, from Massage Club",
     hostN: "Hi, {n}. I'm Jordan.",
-    f1: "Massage bookings in Madrid",
-    f1s: "For people who write in English: more than 100 have written to us since September.",
+    f1: "More than 100 have written to us",
+    f1s: "Since September, in English",
     f2: "You get everything in Spanish",
     f2s: "On WhatsApp and by email",
     f3: "No charge until 30 November",
-    f3s: "Then 5\u00a0€\u00a0+\u00a0VAT per new customer who comes",
+    f3s: "Then 5 € + VAT if a new customer comes",
     start: "Start",
     ctaResume: "Carry on where you left off",
-    howLink: "How it works and what it costs",
 
-    k1: "1 of 6", q1: "How long is the massage?", s1: "Do both? Pick one now and the other at the end.",
-    s1Sent: "We have your {a} min slots. Now the {b} min ones.",
-    s1SentBoth: "We have your 60 and 90 min slots. Which do you want to add more of?",
-    d60s: "One hour", d90s: "An hour and a half",
-
-    k2: "2 of 6", q2: "Which days do you have free times?", s2: "Tap as many as you like.",
-    workWeek: "Monday to Friday", allWeek: "Every day",
-    open: "Open {s}",
-    closed: "Closed, going by your hours",
-    n1: "1 slot", nN: "{n} slots",
+    k2: "1 of 5", q2: "Which days?", s2: "Tap the days you have free times.",
+    workWeek: "+ Monday to Friday", allWeek: "+ Every day",
+    closed: "Closed",
+    hoursAdd: "+ Your opening hours (optional)",
+    hoursIs: "Hours: {h} · Change",
+    n1: "1 time", nN: "{n} times",
     next: "Next",
 
-    k3: "3 of 6", q3: "At what times?",
-    s3: "Tap the times a {d} min massage can start. Each time is one customer.",
-    tabQAll: "They apply to {d}. Is one day different? Tap it:",
+    k3: "2 of 5", q3: "At what times?",
+    s3: "For {d}. Each time you tap is one customer.",
     tabQDay: "Only for {d}. The other days stay as they are.",
-    forDay: "For {d}",
-    tabNote: "Changing {d} only",
+    durLbl: "Length", durAria: "Length of each booking",
+    tabsAria: "Change the times of one day only",
+    diffLink: "Does one day have other times?",
     differs: "different",
     tabAll: "All",
-    am: "In the morning", pm: "In the afternoon",
-    mixKey: "Light colour: only some days (the ones with •). Tap it to set it on all.",
-    overlap: "If someone books {t}, we stop offering the times that overlap it.",
-    noTimes: "No times left this day for a {d} min massage.",
+    mixKey: "Light colour: only some days. Tap it to set it on all.",
+    noTimes: "No times left this day for a {d} min booking.",
     noDays: "First choose the days.",
     pickDays: "Choose the days",
-    dropped1: "1 slot no longer fits your hours, so we won't send it: {list}.",
-    droppedN: "{n} slots no longer fit your hours, so we won't send them: {list}.",
-    next2One: "Continue with 1 slot", next2N: "Continue with {n} slots",
-    errNone: "Choose at least one slot.",
-    errMany: "At most 40 slots at once. Please remove some.",
+    dropped1: "This time no longer fits your hours, so we won't send it: {list}.",
+    droppedN: "These times no longer fit your hours, so we won't send them: {list}.",
+    next2One: "Continue with 1 time", next2N: "Continue with {n} times",
+    errNone: "Choose at least one time.",
+    errMany: "That's too many times at once. Please remove some.",
 
-    k4: "4 of 6", q4: "Do they repeat every week?", s4: "If a slot fills up, write \"ocupado\" (taken) and the time to WhatsApp +34\u00a0612\u00a0474\u00a0827 and we remove it.",
-    rWeekly: "Yes, every week", rWeeklyS: "Until you remove them.",
-    rOnce: "Just once", rOnceS: "The next 7 days. They don't repeat.", rOnceD: "{d}. They don't repeat.",
+    k4: "3 of 5", q4: "Every week?",
+    s4Times: "At {t}.", s4Mixed: "The times you just picked.",
+    rWeekly: "Every week", rWeeklyS: "Every {d}", rWeeklyRun: "{a} to {b}",
+    rOnce: "Just once", rOnceS: "The next 7 days", rOnceRun: "{a} to {b}",
 
-    k5: "5 of 6", q5: "Your studio",
+    k5: "4 of 5", q5: "Your studio",
     s5New: "So we know where to send the bookings.",
     s5Known: "Is it all right? Change whatever you need.",
     s5Miss1: "Only {a} is missing.", s5MissN: "Only {a} are missing.",
@@ -1003,9 +996,7 @@ const T = {
     fName: "Studio name",
     fAddr: "Address or neighbourhood",
     fAddrPh: "Street and number, or the neighbourhood",
-    fAddrHint: "So the customer can find you.",
     fWa: "WhatsApp for bookings",
-    fWaHint: "Bookings reach you here, in Spanish.",
     waLandline: "This looks like a landline. Does it have WhatsApp?",
     lYes: "Yes, it has WhatsApp", lNo: "Change the number",
     fEmail: "Email for bookings",
@@ -1025,9 +1016,8 @@ const T = {
     errEmail: "That email doesn't look right.",
     errEmailNone: "The email is missing.",
 
-    k6: "6 of 6", q6: "Last step", s6: "Your price and the terms.",
-    fPrice: "Price of your most-booked {d} min massage",
-    priceHint: "The customer pays it to you, at the studio.",
+    k6: "5 of 5", q6: "Last step", s6: "Your price and the terms. The customer pays you at the studio.",
+    fPrice: "{d} min price", pricePh: "45", pricePh90: "65",
     priceFrom: "We have you down as: from {p} €.",
     addOther: "+ {d} min price (optional)",
     sumLbl: "You're sending",
@@ -1037,7 +1027,6 @@ const T = {
     weekly: "every week", once: "these dates only",
     every: "Every {wd}",
     editTimes: "Change the times",
-    sumWa: "Bookings reach you on WhatsApp at {v}.",
     accept: "I accept these terms:",
     termsLine: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
     seeTerms: "See the terms",
@@ -1050,31 +1039,29 @@ const T = {
     dup: "You've already sent us these exact times.",
 
     tkKick: "Massage Club · Studios",
-    kCentro: "Studio", kDur: "Massage", kTimes: "Slots", kPrice: "Price",
+    kCentro: "Studio", kDur: "Bookings", kPrice: "Price",
     s4Saved: "Saved",
-    thanksN: "Thank you, {n}. Your slots are saved.", thanks0: "Thank you. Your slots are saved.",
+    thanksN: "Thank you, {n}.", thanks0: "Thank you.",
     s4Received: "Received",
-    receivedN: "Thank you, {n}. We'll check it and confirm by WhatsApp or email.", received0: "We'll check it and confirm by WhatsApp or email.",
-    nextTitle: "What happens now",
-    nextLive: "They can be booked now. If a customer books one, you get it on WhatsApp and by email. You have 15 minutes to turn the booking down.",
+    receivedN: "Thank you, {n}.", received0: "We'll check it and confirm by WhatsApp or email.",
+    durWeekly: "{d} min, every week", durOnce: "{d} min, just once",
+    nextLive: "They can be booked now. Each booking reaches you on WhatsApp and by email.",
     nextWait: "We're not offering them to customers yet. We'll tell you when we start.",
-    nextReview: "Until we confirm, we don't offer them to customers.",
-    nextWeekly: "The weekly ones repeat by themselves. You can remove them whenever you like.",
     manage: "See and change your times",
     srvNext: "Next dates", srvNot: "Not saved",
     nextB: "If a customer takes a time, you get the booking on WhatsApp and by email. You have 15 minutes to turn it down.",
-    nextC: "Did a slot fill up some other way? Write \"ocupado\" (taken) and the time, for example \"ocupado martes 18:00\", to WhatsApp +34\u00a0612\u00a0474\u00a0827 and we remove it.",
-    more: "Add more slots",
-    addDur: "Add your {d} min slots",
+    nextC: "A time filled up? Write \"ocupado\" (taken) and the time to +34\u00a0612\u00a0474\u00a0827.",
+    more: "Add more times", askJordan: "Write to Jordan",
+    addDurQ: "Do you also do {d} min massages?", addDurA: "Add {d} min times",
     pricesBoth: "{a}: {pa}, {b}: {pb}",
     s4Fallback: "One more step",
-    fbSub: "We couldn't save your slots. Send them to us on WhatsApp: the message is already written.",
+    fbSub: "We couldn't save your times. Send them to us on WhatsApp.",
     fbWa: "Send on WhatsApp",
     fbMail: "Send by email",
     fbRetry: "Try saving again",
     fbNote: "Before we offer them, we write to you to confirm.",
     s4Preview: "Preview",
-    pvSub: "Nothing was sent. With the normal link, sign-up would end here.",
+    pvSub: "Nothing was sent.",
     pvMsgLbl: "If saving fails, the studio sends us this message on WhatsApp:",
 
     howTitle: "How it works",
@@ -1083,9 +1070,8 @@ const T = {
     how2t: "A customer books one.",
     how2: "We talk to them, in English.",
     how3t: "The booking reaches you on WhatsApp and by email.",
-    how3: "In Spanish, with their name, phone and email. You have 15 minutes to turn it down.",
+    how3: "In Spanish, with their name, phone and email.",
     exLbl: "Example. It reaches you in Spanish:",
-    exNote: "Name, time, phone and email. Plus a link to turn it down within 15 minutes.",
     priceTitle: "What it costs",
     pr1k: "Until 30 November",
     pr1v: "No charge",
@@ -1104,11 +1090,13 @@ const T = {
     fq1: "Do we have to speak English?",
     fa1: "Not for the bookings. We talk to the customer, and you get everything in Spanish. We can't promise the customer speaks Spanish.",
     fq2: "We're already on Treatwell, Booksy or Fresha",
-    fa2: "Keep them. We only use the slots you have left free. If one fills up, write \"ocupado\" (taken) and the time, for example \"ocupado martes 18:00\", to WhatsApp +34\u00a0612\u00a0474\u00a0827 and we remove it.",
+    fa2: "Keep them. We only use the times you give us. If one fills up, tell us on WhatsApp and we remove it.",
     fq3: "What if the customer doesn't come?",
     fa3: "You pay nothing. We only charge if the customer really comes.",
     fq4: "What if someone asks for something else?",
     fa4: "Professional massage only. Anyone asking for something else gets a no.",
+    fq5: "What if two times overlap?",
+    fa5: "If a customer books one, we stop offering the ones that overlap it.",
     contactTitle: "Who we are",
     contactName: "Jordan, from Massage Club",
     contactLine: "I run Massage Club from Madrid. Questions? Write to me.",
@@ -1150,9 +1138,13 @@ const joinList = (a) => a.length > 1 ? a.slice(0, -1).join(", ") + t("and") + a[
 
 // ---------------------------------------------------------------- state
 // The screens, in order, and the address of each in the phone's history.
-const ORDER = ["hello", "dur", "days", "times", "repeat", "centro", "last", "done"];
-const HASH = ["", "#duracion", "#dias", "#horas", "#semana", "#centro", "#datos", "#listo"];
+// The length is no longer a screen of its own (Jordan, 18 Oct: "this question
+// doesn't make sense"): it is 60 by default, with a small 60 / 90 choice on
+// the times screen.
+const ORDER = ["hello", "days", "times", "repeat", "centro", "last", "done"];
+const HASH = ["", "#dias", "#horas", "#semana", "#centro", "#datos", "#listo"];
 const DONE = ORDER.length - 1;
+const ST = { days: 1, times: 2, repeat: 3, centro: 4, last: 5 };
 const S = {
   step: 0,
   partner: null,
@@ -1163,6 +1155,8 @@ const S = {
   days: new Set(),   // weekdays 0..6 the studio has free times on
   selW: {},          // weekday "0".."6" -> Set of start minutes
   tab: "all",        // the time grid: "all" chosen days at once, or one weekday
+  showTabs: false,   // the day chips are open ("¿Algún día tiene otras horas?")
+  showHours: false,  // the opening hours field is open
   showOther: false,  // the price of the other length is open
   result: null,      // "saved" | "received" | "fallback" | "preview"
   server: null,      // wa-bot's answer to the last send
@@ -1424,12 +1418,13 @@ function hiddenByDay() {
   return out;
 }
 const hiddenCount = () => hiddenByDay().reduce((a, [, mins]) => a + mins.length, 0);
-// "3 huecos ya no caben en vuestro horario y no los enviamos: mar y mié
-// 15:00, 16:00; jue 18:00." Days with the same times are named together.
+// "Estas horas ya no caben en vuestro horario y no las enviamos: mar y mié
+// 15:00, 16:00; jue 18:00." Days with the same times are named together, and
+// no count is said (one time on two days is one time to the studio).
 function droppedText() {
   const by = hiddenByDay();
-  const n = by.reduce((a, [, mins]) => a + mins.length, 0);
-  if (!n) return "";
+  if (!by.length) return "";
+  const n = new Set([].concat(...by.map(([, mins]) => mins))).size;
   const groups = [];
   for (const [wd, mins] of by) {
     const key = mins.join(",");
@@ -1452,6 +1447,24 @@ function countFor(wd) {
 const dayLabel = (d) => d.weekly ? cap(t("every", { wd: LG[L][d.wd] })) : SH[L][d.wd] + " " + d.dd + " " + MO[L][d.mm];
 const hasPicks = () => Object.values(S.selW).some((s) => s.size);
 const hourIcon = (h) => (h < 13 ? "🌅" : h < 18 ? "☀️" : "🌙");
+// What a studio tapped, counted the way it tapped it (Jordan, 18 Oct: "i've
+// only clicked 2 slots it says 4"): 08:30 and 12:30 on Thursday and Saturday
+// are 2 times, never 4. Sends and limits still count every day's time.
+const timesTapped = (list) => new Set([].concat(...list.map((x) => x.mins))).size;
+// "martes, miércoles y jueves"; more than `full` days: "lun, mar, mié, jue y vie".
+const dayNames = (wds, full) => joinList(wds.map((wd) => wds.length <= full ? LG[L][wd] : (L === "es" ? SH.es[wd].toLowerCase() : SH.en[wd])));
+const timeList = (mins) => joinList(mins.map(hhmm));
+// The weekdays (Monday first) that share one set of times, as the ticket and
+// the "every week?" screen name them: [{ wds: [2, 4], mins: [900, 960] }, ...].
+function groupByTimes(list) {
+  const groups = [];
+  for (const { d, mins } of list) {
+    const key = mins.join(",");
+    const g = groups.find((x) => x.key === key);
+    if (g) g.ds.push(d); else groups.push({ key, ds: [d], mins });
+  }
+  return groups;
+}
 
 // ---------------------------------------------------------------- phone
 // Stored like every other number: "+<country><number>". A Spanish number typed
@@ -1485,13 +1498,10 @@ const waLink = (text) => "https://wa.me/" + WA_NUM + (text ? "?text=" + encodeUR
 
 // ---------------------------------------------------------------- draft
 // Per link, in this browser only. Wrapped: storage can be missing or blocked.
-// The page only says "you can finish later" when storage works.
 const DKEY_TAIL = (PREVIEW ? "preview:" : "") + (SLUG_OK ? SLUG : "-");
 const DKEY = "socios-draft-v3:" + DKEY_TAIL;
 const DKEY_V2 = "socios-draft-v2:" + DKEY_TAIL; // the 3-step form's draft, read once
 const FIELDS = ["name", "wa", "addr", "email", "hours", "p60", "p90"];
-let DRAFT_OK = false;
-try { localStorage.setItem("socios-probe", "1"); localStorage.removeItem("socios-probe"); DRAFT_OK = true; } catch (_) { DRAFT_OK = false; }
 const setsOut = (o) => Object.fromEntries(Object.entries(o).filter(([, s]) => s.size).map(([k, s]) => [k, Array.from(s)]));
 function saveDraft() {
   try {
@@ -1566,8 +1576,6 @@ function paintDynamic() {
   // A personal link greets the studio by name on the invite, on one line.
   $("host").textContent = name ? t("hostN", { n: name }) : t("host");
   $("startBtn").textContent = ctaLabel();
-  // "You can finish later" is said once, here, and only when it is true.
-  $("startNote").textContent = t(DRAFT_OK ? "startNoteDraft" : "startNote");
   $("previewNote").hidden = !PREVIEW;
   paintContact();
   paintAll();
@@ -1575,7 +1583,6 @@ function paintDynamic() {
   document.querySelectorAll("[data-k]").forEach((el) => { if (el.textContent && el.dataset.k) el.textContent = t(el.dataset.k, { d: S.dur }); });
 }
 function paintAll() {
-  renderDur();
   renderDays();
   renderTimes();
   renderRepeat();
@@ -1606,48 +1613,64 @@ function paintContact() {
   document.querySelectorAll("[data-wa-contact]").forEach((a) => { a.href = waLink(hello); });
 }
 
-// 1 · how long: two big cards, one tap moves on.
-// After a send, the sub says which length is already in, so a studio that
-// does both knows what is left.
-function renderDur() {
-  const other = (d) => (d === 60 ? 90 : 60);
-  const sent = [60, 90].filter((d) => S.sent.has(d));
-  $("s1").textContent = sent.length === 2 ? t("s1SentBoth") : sent.length === 1 ? t("s1Sent", { a: sent[0], b: other(sent[0]) }) : t("s1");
-  $("durs").innerHTML = [60, 90].map((v) => {
-    const on = S.durPicked && S.dur === v;
-    return `<button type="button" class="tile big${on ? " sel" : ""}" data-v="${v}" aria-pressed="${on}"><span class="e" aria-hidden="true">${v === 60 ? "🕐" : "🕜"}</span><b class="num">${v} min</b><small>${esc(t(v === 60 ? "d60s" : "d90s"))}</small></button>`;
-  }).join("");
-}
-// 2 · which days: go.html's rows, several at once.
+const setText = (id, s) => { const el = $(id); if (el.textContent !== s) el.textContent = s; };
+// 1 · which days: go.html's rows (📅 and the day's name), several at once. A
+// chosen row gets go's ink border and a tick; the number on the right is how
+// many times are picked on that day. The opening hours are one tap away.
 const GROUPS = { work: [1, 2, 3, 4, 5], all: [1, 2, 3, 4, 5, 6, 0] };
+// The one quick pick under the list: "+ De lunes a viernes", then "+ Todos
+// los días", then nothing once every open day is chosen.
+function quickGroup(openWd) {
+  const work = GROUPS.work.filter((wd) => openWd.includes(wd));
+  const all = GROUPS.all.filter((wd) => openWd.includes(wd));
+  const full = (ws) => ws.every((wd) => S.days.has(wd));
+  if (work.length && !full(work)) return ["work", "workWeek"];
+  if (all.length && !full(all)) return ["all", "allWeek"];
+  return null;
+}
 function renderDays() {
-  const open = weekDays();
-  const openWd = open.map((d) => d.wd);
-  $("dayQuick").innerHTML = [["work", "workWeek"], ["all", "allWeek"]].map(([g, k]) => {
-    const ws = GROUPS[g].filter((wd) => openWd.includes(wd));
-    if (!ws.length || (g === "work" && ws.length === openWd.length)) return "";
-    const on = ws.every((wd) => S.days.has(wd));
-    return `<button type="button" class="chip${on ? " sel" : ""}" data-group="${g}" aria-pressed="${on}">${esc(t(k))}</button>`;
-  }).join("");
+  const openWd = weekDays().map((d) => d.wd);
+  const q = quickGroup(openWd);
+  $("dayQuick").hidden = !q;
+  if (q) { $("dayQuick").dataset.group = q[0]; setText("dayQuick", t(q[1])); }
+  // When we know the hours, the most common window says nothing; only a day
+  // with other hours says them under its name.
+  const keyOf = (wd) => JSON.stringify(hoursFor(wd));
+  const tally = new Map();
+  for (const wd of openWd) if (hoursKnown(wd)) tally.set(keyOf(wd), (tally.get(keyOf(wd)) || 0) + 1);
+  let common = "", most = 0;
+  for (const [k, n] of tally) if (n > most) { most = n; common = k; }
   // Every weekday is listed. One the hours say is closed is shown greyed and
-  // cannot be chosen; tapping it goes to the hours field just below, so a
-  // studio that now opens that day can say so here.
+  // cannot be chosen; tapping it opens the hours, so a studio that now opens
+  // that day can say so here.
   $("dayList").innerHTML = WEEK.map((wd) => {
+    const name = esc(cap(LG[L][wd]));
     if (!openWd.includes(wd)) {
-      return `<button type="button" class="row closed" data-closed="${wd}"><span class="tick" aria-hidden="true"></span><div><b>${esc(cap(LG[L][wd]))}</b><small>${esc(t("closed"))}</small></div></button>`;
+      return `<button type="button" class="row closed" data-closed="${wd}"><span class="e" aria-hidden="true">📅</span><div><b>${name}</b><small>${esc(t("closed"))}</small></div></button>`;
     }
     const on = S.days.has(wd);
     const n = on ? countFor(wd) : 0;
-    const sub = hoursKnown(wd) ? t("open", { s: spans(hoursFor(wd)) }) : "";
-    return `<button type="button" class="row${on ? " sel" : ""}" data-wd="${wd}" aria-pressed="${on}"><span class="tick" aria-hidden="true"></span><div><b>${esc(cap(LG[L][wd]))}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>${n ? `<span class="r">${esc(n === 1 ? t("n1") : t("nN", { n }))}</span>` : ""}</button>`;
+    const sub = hoursKnown(wd) && keyOf(wd) !== common ? cap(spans(hoursFor(wd))) : "";
+    return `<button type="button" class="row${on ? " sel" : ""}" data-wd="${wd}" aria-pressed="${on}"><span class="e" aria-hidden="true">📅</span><div><b>${name}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>${n ? `<span class="r">${esc(n === 1 ? t("n1") : t("nN", { n }))}</span>` : ""}<span class="tick" aria-hidden="true"></span></button>`;
   }).join("");
   // go.html keeps the same label on a button that is not ready yet.
   $("daysNext").disabled = !chosenDays().length;
   $("daysNext").textContent = t("next");
+  paintHoursBox();
+}
+// The opening hours: a quiet link ("+ Vuestro horario (opcional)", or the
+// hours we have, "Horario: Lun-Vie 10:00-20:00 · Cambiar") that opens the
+// field. It opens by itself when the hours we have cannot be read.
+function paintHoursBox() {
+  if (val("hours") && !HOURS) S.showHours = true;
+  $("hoursBox").hidden = !S.showHours;
+  $("hoursOpen").hidden = S.showHours;
+  $("hoursOpen").setAttribute("aria-expanded", String(S.showHours));
+  setText("hoursOpen", HOURS ? t("hoursIs", { h: hoursField(HOURS, L) }) : t("hoursAdd"));
   paintHoursHint();
 }
-// 3 · which times: go.html's hour cards. "Todos" sets a time on every chosen
-// day it fits; a day chip sets that day alone.
+// 2 · which times: go.html's hour cards, in one grid. "Todos" sets a time on
+// every chosen day it fits; a day chip sets that day alone.
 function hourCards(starts, stateOf) {
   const set = new Set(starts);
   const hrs = Array.from(new Set(starts.map((m) => Math.floor(m / 60)))).sort((a, b) => a - b);
@@ -1660,8 +1683,7 @@ function hourCards(starts, stateOf) {
     const top = set.has(m0) ? btn(m0, "h0", `${hhmm(m0)}<small aria-hidden="true">${hourIcon(h)}</small>`) : `<span class="off" aria-hidden="true">${hhmm(m0)}<small>${hourIcon(h)}</small></span>`;
     return `<div class="hr">${top}${set.has(m3) ? btn(m3, "h30", hhmm(m3)) : ""}</div>`;
   };
-  const group = (list, k) => list.length ? `<div class="label" aria-hidden="true">${esc(t(k))}</div><div class="hours" role="group" aria-label="${esc(t(k))}">${list.map(card).join("")}</div>` : "";
-  return group(hrs.filter((h) => h < 14), "am") + group(hrs.filter((h) => h >= 14), "pm");
+  return hrs.length ? `<div class="hours" role="group" aria-label="${esc(t("q3"))}">${hrs.map(card).join("")}</div>` : "";
 }
 // The chosen days whose times differ from the others' (compared only where
 // both are open), so a day set apart shows on its chip. The reference is the
@@ -1676,38 +1698,40 @@ function differingDays(cd) {
   for (const a of info) { const n = info.filter((b) => same(a, b)).length; if (n > best) { best = n; ref = a; } }
   return new Set(info.filter((a) => !same(a, ref)).map((a) => a.wd));
 }
-const setText = (id, s) => { const el = $(id); if (el.textContent !== s) el.textContent = s; };
 function renderTimes() {
   const cd = chosenDays();
   if (S.tab !== "all" && !cd.includes(S.tab)) S.tab = "all";
-  let mixed = false, example = 0;
+  // The length: 60 by default, 90 one tap away. It sits right above the
+  // hours because it changes which start times fit before closing.
+  $("durPick").innerHTML = `<span class="dl" aria-hidden="true">${esc(t("durLbl"))}</span>`
+    + [60, 90].map((v) => `<button type="button" class="chip${S.dur === v ? " sel" : ""}" data-dur="${v}" aria-pressed="${S.dur === v}">${v} min</button>`).join("");
+  let mixed = false;
   if (!cd.length) {
     setText("timesSub", t("noDays"));
+    $("durPick").hidden = true;
     $("tabsBox").hidden = true;
-    setText("dayOpen", "");
-    setText("tabNote", "");
-    $("times").innerHTML = `<button type="button" class="cta dark" data-goto="2">${esc(t("pickDays"))}</button>`;
+    $("diffLink").hidden = true;
+    $("times").innerHTML = `<button type="button" class="cta dark" data-goto="${ST.days}">${esc(t("pickDays"))}</button>`;
   } else {
     const isAll = S.tab === "all";
     const days = isAll ? cd : [S.tab];
-    // What one tap means: a start time, one customer each.
-    setText("timesSub", t("s3", { d: S.dur }));
-    $("tabsBox").hidden = cd.length < 2;
-    setText("tabQ", isAll ? t("tabQAll", { d: joinList(cd.map((wd) => LGP[L][wd])) }) : t("tabQDay", { d: LGP[L][S.tab] }));
     const diff = cd.length > 1 ? differingDays(cd) : new Set();
-    $("tabs").innerHTML = `<button type="button" class="chip${isAll ? " sel" : ""}" data-tab="all" aria-pressed="${isAll}">${esc(t("tabAll"))}</button>`
-      + cd.map((wd) => {
-        const on = S.tab === wd, n = countFor(wd), d = diff.has(wd);
-        const aria = cap(LG[L][wd]) + (n ? ", " + (n === 1 ? t("n1") : t("nN", { n })) : "") + (d ? ", " + t("differs") : "");
-        return `<button type="button" class="chip${on ? " sel" : ""}" data-tab="${wd}" aria-pressed="${on}" aria-label="${esc(aria)}">${esc(SH[L][wd])}${n ? `<small>${n}</small>` : ""}${d ? `<span class="dot" aria-hidden="true"></span>` : ""}</button>`;
-      }).join("");
-    // One chosen day: say which; one day on its own: its opening hours.
-    const parts = [];
-    if (cd.length === 1) parts.push(t("forDay", { d: LGP[L][cd[0]] }));
-    if (days.length === 1 && hoursKnown(days[0])) parts.push(t("open", { s: spans(hoursFor(days[0])) }));
-    setText("dayOpen", parts.join(" · "));
-    // While one day is being changed on its own, it says so beside the button.
-    setText("tabNote", isAll ? "" : t("tabNote", { d: LGP[L][S.tab] }));
+    // The day chips stay out of the way until a day is set apart.
+    const tabs = cd.length > 1 && (S.showTabs || !isAll || diff.size > 0);
+    // Which days these times are for, and what one tap means; while one day
+    // is changed on its own, that the others stay as they are.
+    setText("timesSub", isAll ? t("s3", { d: dayNames(cd, 3) }) : t("tabQDay", { d: LGP[L][S.tab] }));
+    $("durPick").hidden = false;
+    $("tabsBox").hidden = !tabs;
+    $("diffLink").hidden = cd.length < 2 || tabs;
+    if (tabs) {
+      $("tabs").innerHTML = `<button type="button" class="chip${isAll ? " sel" : ""}" data-tab="all" aria-pressed="${isAll}">${esc(t("tabAll"))}</button>`
+        + cd.map((wd) => {
+          const on = S.tab === wd, n = countFor(wd), d = diff.has(wd);
+          const aria = cap(LG[L][wd]) + (n ? ", " + (n === 1 ? t("n1") : t("nN", { n })) : "") + (d ? ", " + t("differs") : "");
+          return `<button type="button" class="chip${on ? " sel" : ""}" data-tab="${wd}" aria-pressed="${on}" aria-label="${esc(aria)}">${esc(SH[L][wd])}${n ? `<small>${n}</small>` : ""}${d ? `<span class="dot" aria-hidden="true"></span>` : ""}</button>`;
+        }).join("");
+    }
     const startsBy = new Map(days.map((wd) => [wd, wkStarts(wd)]));
     const union = Array.from(new Set([].concat(...startsBy.values()))).sort((a, b) => a - b);
     const stateOf = (m) => {
@@ -1715,23 +1739,31 @@ function renderTimes() {
       const n = fit.filter((wd) => S.selW[String(wd)] && S.selW[String(wd)].has(m)).length;
       const st = n === 0 ? false : n === fit.length ? true : "mixed";
       if (st === "mixed") mixed = true;
-      if (st && !example) example = m;
       return st;
     };
     $("times").innerHTML = hourCards(union, stateOf) || `<p class="note">${esc(t("noTimes", { d: S.dur }))}</p>`;
-    if (!example) example = union.includes(15 * 60) ? 15 * 60 : union[0] || 15 * 60;
   }
   setText("mixKey", mixed ? t("mixKey") : "");
-  setText("overlapNote", cd.length ? t("overlap", { t: hhmm(example) }) : "");
   setText("dropNote", droppedText());
-  const n = countOf(selList());
+  // The times tapped, not times multiplied by days.
+  const n = timesTapped(selList());
   setText("timesNext", n === 0 ? t("next") : n === 1 ? t("next2One") : t("next2N", { n }));
   $("timesNext").disabled = n === 0;
 }
-// 4 · every week, or only the next 7 days: two big cards, one tap moves on.
-// "Just once" names the real dates the picks fall on (each weekday time on
-// its next date, as selList() sends them), so nobody has to work out what
-// "this week" means on a Saturday.
+// 3 · every week, or just once: two big cards, one tap moves on (Jordan, 18
+// Oct: "i dont' understand this"). One plain question about the times just
+// chosen; the weekly card names the weekdays, the once card the real dates
+// the picks fall on (each weekday time on its next date, as selList() sends
+// them), so nobody has to work out what "this week" means on a Saturday.
+// "mar 20, mié 21 y jue 22 oct". Each date holds together on one line.
+function fmtDates(ds) {
+  if (!ds.length) return "";
+  const oneMonth = ds.every((d) => d.mm === ds[0].mm);
+  const nm = (d) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (oneMonth ? "" : "\u00a0" + MO[L][d.mm]);
+  return joinList(ds.map(nm)) + (oneMonth ? "\u00a0" + MO[L][ds[0].mm] : "");
+}
+// Four or more dates in a row are said as a span ("Lun 19 a vie 23 oct"),
+// so Monday to Friday does not run to three lines on a half-width card.
 function onceDates() {
   const offs = new Set();
   for (const wd of chosenDays()) {
@@ -1741,19 +1773,40 @@ function onceDates() {
     for (const m of s) if (ok.has(m)) offs.add(firstOffset(wd, m));
   }
   const ds = Array.from(offs).sort((a, b) => a - b).map(mkDate);
-  if (!ds.length) return "";
-  const oneMonth = ds.every((d) => d.mm === ds[0].mm);
-  const nm = (d) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + " " + d.dd + (oneMonth ? "" : " " + MO[L][d.mm]);
-  return cap(joinList(ds.map(nm)) + (oneMonth ? " " + MO[L][ds[0].mm] : ""));
+  if (ds.length >= 4 && ds.every((d, i) => !i || d.offset === ds[i - 1].offset + 1)) {
+    const last = ds[ds.length - 1], oneMonth = ds[0].mm === last.mm;
+    const nm = (d, mo) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (mo ? "\u00a0" + MO[L][d.mm] : "");
+    return cap(t("rOnceRun", { a: nm(ds[0], !oneMonth), b: nm(last, true) }));
+  }
+  return cap(fmtDates(ds));
+}
+// Four or more weekdays in a row, Monday first, as a span: "De lunes a viernes".
+function weekRun(wds) {
+  if (wds.length < 4) return null;
+  const at = wds.map((wd) => WEEK.indexOf(wd));
+  return at.every((v, i) => !i || v === at[i - 1] + 1) ? [wds[0], wds[wds.length - 1]] : null;
+}
+// The weekday picks, Monday first, whatever "every week" says.
+function weekPicks() {
+  return chosenDays().map((wd) => {
+    const s = S.selW[String(wd)], ok = new Set(wkStarts(wd));
+    return { wd, mins: s ? Array.from(s).filter((m) => ok.has(m)).sort((a, b) => a - b) : [] };
+  }).filter((x) => x.mins.length);
 }
 function renderRepeat() {
+  const picks = weekPicks();
+  const same = picks.length && picks.every((x) => x.mins.join() === picks[0].mins.join());
+  setText("s4", same && picks[0].mins.length <= 6 ? t("s4Times", { t: timeList(picks[0].mins) }) : t("s4Mixed"));
   const dates = onceDates();
-  $("repeats").innerHTML = [["w", "🔁", "rWeekly", t("rWeeklyS")], ["o", "1️⃣", "rOnce", dates ? t("rOnceD", { d: dates }) : t("rOnceS")]].map(([v, e, k, sub]) => {
+  const wds = picks.map((x) => x.wd);
+  const run = weekRun(wds);
+  const wSub = !wds.length ? "" : run ? cap(t("rWeeklyRun", { a: LG[L][run[0]], b: LG[L][run[1]] })) : t("rWeeklyS", { d: dayNames(wds, 2) });
+  $("repeats").innerHTML = [["w", "🗓️", "rWeekly", wSub], ["o", "📌", "rOnce", dates || t("rOnceS")]].map(([v, e, k, sub]) => {
     const on = S.repeatPicked && S.repeat === (v === "w");
-    return `<button type="button" class="tile big${on ? " sel" : ""}" data-v="${v}" aria-pressed="${on}"><span class="e" aria-hidden="true">${e}</span><b>${esc(t(k))}</b><small>${esc(sub)}</small></button>`;
+    return `<button type="button" class="tile big${on ? " sel" : ""}" data-v="${v}" aria-pressed="${on}"><span class="e" aria-hidden="true">${e}</span><b>${esc(t(k))}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</button>`;
   }).join("");
 }
-// 5 · the studio.
+// 4 · the studio.
 // On a personal link the details come filled in. "Is it all right?" only
 // when all four are there; otherwise the sub says what is still missing.
 function renderCentro() {
@@ -1763,7 +1816,7 @@ function renderCentro() {
   setText("centroNext", known ? t("next5Known") : t("next5"));
   paintWa();
 }
-// 6 · price, terms and send.
+// 5 · price, terms and send.
 // Every offer to a customer carries a price (review fix, 17 Oct): the price
 // for the chosen length is needed unless this is the studio's own signed link
 // and we already have its menu (wa-bot socValidate, priceKnown).
@@ -1783,6 +1836,9 @@ function paintPriceOpt() {
   $("addOther").hidden = !$("fp" + other).hidden;
   $("addOther").textContent = t("addOther", { d: other });
 }
+// The old ticket recap ("3 huecos de 60 min · cada semana" and a line per
+// day), kept exactly as it was. Nothing on screen uses it now: the ticket
+// lists each day with its times instead (renderDone, Jordan 18 Oct).
 function summaryHTML(list, dur, repeat, withLabel, dropped) {
   const lbl = withLabel ? `<p class="sumlbl">${esc(t("sumLbl"))}</p>` : "";
   // Times that no longer fit are not "never chosen": say so.
@@ -1795,30 +1851,32 @@ function summaryHTML(list, dur, repeat, withLabel, dropped) {
 function renderLast() {
   paintPriceOpt();
   // "desde 40 €" is a 60 min price: never shown under a 90 min one.
-  $("priceHint").textContent = t("priceHint") + (S.dur === 60 && S.active && S.partner.price_from ? " " + t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "");
-  // Only a studio's own signed link saves its booking WhatsApp at once
-  // (wa-bot socSignedUpdate); an unsigned form waits for Jordan.
-  const wa = val("wa") && S.signed ? `<p class="hint">${esc(t("sumWa", { v: pretty(val("wa")) }))}</p>` : "";
-  const hid = hiddenCount();
-  const drop = hid ? `<p class="warn">${esc(droppedText())}</p>` : "";
-  $("sumMini").innerHTML = summaryHTML(selList(), S.dur, S.repeat, true, hid > 0) + drop + wa + `<button type="button" class="skip left" data-goto="3">${esc(t("editTimes"))}</button>`;
+  $("priceHint").textContent = S.dur === 60 && S.active && S.partner.price_from ? t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "";
+  // No recap here (go.html has none: the ticket is the recap). Only when some
+  // picked times no longer fit the hours or the length: which, and a way back.
+  const drop = droppedText();
+  $("sumMini").innerHTML = drop ? `<p class="warn">${esc(drop)}</p><button type="button" class="skip left" data-goto="${ST.times}">${esc(t("editTimes"))}</button>` : "";
   paintMiss();
 }
-// The ticket.
+// The ticket, in go.html's shape: one short value per row. Each day with its
+// times (days with the same times together), never a total.
 function renderDone() {
   const r = S.result, last = S.last, srv = S.server || {};
   const name = val("name");
   $("tkKick").textContent = t("tkKick");
   $("h7").textContent = r === "saved" ? t("s4Saved") : r === "received" ? t("s4Received") : r === "fallback" ? t("s4Fallback") : t("s4Preview");
   $("tkSub").textContent = r === "saved" ? (name ? t("thanksN", { n: name }) : t("thanks0"))
-    : r === "received" ? (name ? t("receivedN", { n: name }) : t("received0"))
+    : r === "received" ? (name ? t("receivedN", { n: name }) : t("thanks0"))
     : r === "fallback" ? t("fbSub") : t("pvSub");
   const row = (e, k, html) => `<div class="kv"><span class="e" aria-hidden="true">${e}</span><div><small>${esc(k)}</small>${html}</div></div>`;
   const rows = [];
   if (name) rows.push(row("🏠", t("kCentro"), esc(name)));
   if (last) {
-    rows.push(row("⏱️", t("kDur"), esc(last.dur + " min")));
-    if (last.list.length) rows.push(row(last.repeat ? "🔁" : "🗓️", t("kTimes"), summaryHTML(last.list, last.dur, last.repeat, false)));
+    rows.push(row("🕐", t("kDur"), esc(t(last.repeat ? "durWeekly" : "durOnce", { d: last.dur }))));
+    for (const g of groupByTimes(last.list)) {
+      const when = last.repeat ? dayNames(g.ds.map((d) => d.wd), 3) : fmtDates(g.ds);
+      rows.push(row("📅", cap(when), esc(timeList(g.mins))));
+    }
     // Both prices when both were given (they are both sent).
     const mine = priceNum(val(last.dur === 90 ? "p90" : "p60")), oth = priceNum(val(last.dur === 90 ? "p60" : "p90"));
     const od = last.dur === 90 ? 60 : 90;
@@ -1826,16 +1884,16 @@ function renderDone() {
     else if (mine || oth) rows.push(row("💶", t("kPrice"), esc(mine ? euro(mine) : od + " min: " + euro(oth))));
   }
   $("ticketBody").innerHTML = rows.join("");
-  // What happens now: from what wa-bot said, never more than it said.
-  const weekly = !!(last && last.repeat);
-  const items = r === "saved"
-    ? [[srv.live ? "📲" : "⏳", t(srv.live ? "nextLive" : "nextWait")], weekly && srv.manage_url ? ["🔁", t("nextWeekly")] : null, ["✋", t("nextC")]]
-    : r === "received" ? [["👀", t("nextReview")], ["📲", t("nextB")], ["✋", t("nextC")]]
-    : r === "preview" ? [["📲", t("nextB")], ["✋", t("nextC")]] : [];
-  $("nextList").innerHTML = items.filter(Boolean).map(([e, x]) => `<div class="fact"><div class="e" aria-hidden="true">${e}</div><div>${esc(x)}</div></div>`).join("");
-  $("nextBox").hidden = !items.length;
+  // What happens now, from what wa-bot said and never more, in go.html's
+  // small print. «ocupado» is said here and nowhere in the flow.
+  const fine = r === "saved" ? [t(srv.live ? "nextLive" : "nextWait"), t("nextC")]
+    : r === "received" ? [t("received0"), t("nextB")]
+    : r === "preview" ? [t("nextB"), t("nextC")] : [];
+  $("nextFine").innerHTML = fine.map((x) => `<p>${esc(x)}</p>`).join("");
+  $("nextFine").hidden = !fine.length;
   // The dates the weekly times fall on now, and anything not saved, as wa-bot
   // listed them (already in the page's language).
+  const weekly = !!(last && last.repeat);
   const lines = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => typeof x === "string").slice(0, 20).map(esc).join("<br>");
   const nx = r === "saved" && weekly ? lines(srv.next) : "";
   const ns = r === "saved" ? lines(srv.not_saved) : "";
@@ -1844,17 +1902,16 @@ function renderDone() {
   $("manage").hidden = !manage;
   if (manage) $("manage").href = manage;
   $("rFallback").hidden = r !== "fallback";
-  $("rPreview").hidden = r !== "preview";
-  // The green "Enviar por WhatsApp" already goes to this number.
-  $("reachWa").hidden = r === "fallback";
-  // A studio that does both lengths: the other one is the next step, said
-  // as a full button. Once both are in, only "more slots" is left.
+  // The message a failed save would send: developer mode only.
+  $("rPreview").hidden = !(r === "preview" && DEV);
+  // A studio that also does the other length: one quiet link (Jordan, 18 Oct).
+  // In the fallback the green "Enviar por WhatsApp" already goes to Jordan.
   const other = last && last.dur === 90 ? 60 : 90;
-  const addDur = r !== "fallback" && !!last && !S.sent.has(other);
-  $("addDur").hidden = !addDur;
-  $("addDur").textContent = t("addDur", { d: other });
+  $("addDur").hidden = r === "fallback" || !last || S.sent.has(other);
+  setText("addDurQ", t("addDurQ", { d: other }));
+  setText("addDurA", t("addDurA", { d: other }));
   $("addDur").dataset.d = String(other);
-  $("more").hidden = r === "fallback";
+  $("doneLinks").hidden = r === "fallback";
   if (last) {
     const msg = buildMessage(last);
     $("fbWa").href = waLink(msg);
@@ -1873,11 +1930,10 @@ const centroValid = () => DEV || !!val("name") && !!val("addr") && waDigitsOk() 
 function reach(i) {
   if (DEV) return i;
   if (i === DONE) return S.result ? DONE : reach(DONE - 1);
-  if (i >= 2 && !S.durPicked) return 1;
-  if (i >= 3 && !chosenDays().length) return 2;
-  if (i >= 4 && !selList().length) return 3;
-  if (i >= 5 && !S.repeatPicked) return 4;
-  if (i >= 6 && !centroValid()) return 5;
+  if (i >= ST.times && !chosenDays().length) return ST.days;
+  if (i >= ST.repeat && !selList().length) return ST.times;
+  if (i >= ST.centro && !S.repeatPicked) return ST.repeat;
+  if (i >= ST.last && !centroValid()) return ST.centro;
   return i;
 }
 function go(step, mode = "push") {
@@ -1890,7 +1946,7 @@ function go(step, mode = "push") {
   if (mode === "push") history.pushState({ step, prev }, "", here(step));
   else if (mode === "replace") history.replaceState({ step, prev: (history.state && typeof history.state.prev === "number") ? history.state.prev : -1 }, "", here(step));
   S.step = step;
-  if (step !== 3) setErr(null, "timesErr", "");
+  if (step !== ST.times) setErr(null, "timesErr", "");
   document.querySelectorAll(".screen").forEach((el) => {
     const on = el.dataset.s === ORDER[step];
     el.classList.toggle("on", on);
@@ -1898,6 +1954,9 @@ function go(step, mode = "push") {
   });
   $("bar").style.width = `${Math.round((step / DONE) * 100)}%`;
   $("back").classList.toggle("on", step > 0 && step < DONE);
+  // On the invite, "Cómo funciona" takes the back arrow's place.
+  $("back").classList.toggle("gone", step === 0);
+  $("howPill").hidden = step !== 0;
   paintAll();
   window.scrollTo(0, 0);
   const h = document.querySelector(`.screen[data-s="${ORDER[step]}"] h1, .screen[data-s="${ORDER[step]}"] h2`);
@@ -1919,7 +1978,7 @@ function back(target) {
   else go(target);
 }
 // The invite's button: a studio coming back to a draft goes as far as it got.
-function start() { go(hasPicks() ? DONE - 1 : 1); }
+function start() { go(hasPicks() ? ST.last : ST.days); }
 
 // ---------------------------------------------------------------- the sheet
 let sheetFrom = null;
@@ -2004,7 +2063,7 @@ function focusField(id) {
 // error already sits under it otherwise).
 const missBox = (k) => k === "accept" ? $("acceptBox") : $(k) ? $(k).closest(".field") : null;
 function outOfView(el) {
-  if (!el || S.step !== 6) return false;
+  if (!el || S.step !== ST.last) return false;
   const r = el.getBoundingClientRect();
   return r.bottom < 0 || r.top > window.innerHeight;
 }
@@ -2023,17 +2082,7 @@ function unmiss(...keys) {
   paintMiss();
 }
 
-// ---------------------------------------------------------------- 1 · how long
-$("durs").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-v]");
-  if (!b) return;
-  S.dur = Number(b.dataset.v) === 90 ? 90 : 60;
-  S.durPicked = true;
-  saveDraft();
-  advance(2);
-});
-
-// ---------------------------------------------------------------- 2 · which days
+// ---------------------------------------------------------------- 1 · which days
 function toggleDay(wd, on) {
   if (on) S.days.add(wd);
   else { S.days.delete(wd); delete S.selW[String(wd)]; }
@@ -2048,9 +2097,16 @@ $("dayQuick").addEventListener("click", (e) => {
   renderDays();
   saveDraft();
 });
+// The opening hours: opened from the link under the list, or by tapping a
+// day the hours say is closed (to change them).
+function openHours() {
+  S.showHours = true;
+  renderDays();
+  focusField("hours");
+}
+$("hoursOpen").addEventListener("click", openHours);
 $("dayList").addEventListener("click", (e) => {
-  // A day the hours say is closed: the hours field, to change them.
-  if (e.target.closest("[data-closed]")) { focusField("hours"); return; }
+  if (e.target.closest("[data-closed]")) { openHours(); return; }
   const b = e.target.closest("[data-wd]");
   if (!b) return;
   const wd = Number(b.dataset.wd);
@@ -2079,10 +2135,29 @@ $("daysNext").addEventListener("click", () => {
   seedDays();
   S.tab = "all";
   saveDraft();
-  go(3);
+  go(ST.times);
 });
 
-// ---------------------------------------------------------------- 3 · which times
+// ---------------------------------------------------------------- 2 · which times
+// The length: 60 by default; 90 redraws the hours (fewer fit before closing).
+$("durPick").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-dur]");
+  if (!b) return;
+  S.dur = Number(b.dataset.dur) === 90 ? 90 : 60;
+  S.durPicked = true;
+  setErr(null, "timesErr", "");
+  renderTimes();
+  const again = $("durPick").querySelector(`[data-dur="${S.dur}"]`);
+  if (again) again.focus({ preventScroll: true });
+  saveDraft();
+});
+// "¿Algún día tiene otras horas?": the day chips, to set one day apart.
+$("diffLink").addEventListener("click", () => {
+  S.showTabs = true;
+  renderTimes();
+  const first = $("tabs").querySelector("[data-tab]:not([data-tab=all])");
+  if (first) first.focus({ preventScroll: true });
+});
 $("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("[data-tab]");
   if (!b) return;
@@ -2115,20 +2190,45 @@ $("times").addEventListener("click", (e) => {
 $("timesNext").addEventListener("click", () => {
   if (!selList().length) { setErr(null, "timesErr", "errNone"); return; }
   if (countOf(selList()) > MAX_TIMES) { setErr(null, "timesErr", "errMany"); return; }
-  go(4);
+  go(ST.repeat);
 });
+// The docked Continue on days and times: its cream backdrop shows only while
+// content runs on below the screen, that is while the line just after the
+// dock's own place is below the bottom edge. A hidden screen has no box, so
+// it never counts. Checked on scroll, on resize, when a screen appears (the
+// dock's size changes) and when the content grows or shrinks.
+const DOCKS = Array.from(document.querySelectorAll(".dock")).map((dock) => {
+  const end = document.createElement("i");
+  end.className = "dock-end";
+  end.setAttribute("aria-hidden", "true");
+  dock.after(end);
+  return [dock, end];
+});
+function paintDocks() {
+  for (const [dock, end] of DOCKS) {
+    const r = end.getBoundingClientRect();
+    dock.classList.toggle("stuck", r.height > 0 && r.top >= innerHeight - 1);
+  }
+}
+addEventListener("scroll", paintDocks, { passive: true });
+addEventListener("resize", paintDocks);
+if ("ResizeObserver" in window) {
+  const ro = new ResizeObserver(paintDocks);
+  ro.observe($("stage"));
+  DOCKS.forEach(([dock]) => ro.observe(dock));
+} else DOCKS.forEach(([dock]) => dock.classList.add("stuck"));
 
-// ---------------------------------------------------------------- 4 · every week?
+// ---------------------------------------------------------------- 3 · every week?
 $("repeats").addEventListener("click", (e) => {
   const b = e.target.closest("[data-v]");
   if (!b) return;
   S.repeat = b.dataset.v === "w";
   S.repeatPicked = true;
   saveDraft();
-  advance(5);
+  advance(ST.centro);
 });
 
-// ---------------------------------------------------------------- 5 · the studio
+// ---------------------------------------------------------------- 4 · the studio
 function checkCentro() {
   const bad = [];
   setErr("name", "nameErr", val("name") ? "" : (bad.push("name"), "errName"));
@@ -2145,14 +2245,17 @@ function checkCentro() {
   // Required: the email always carries the client's phone and the reject link.
   const em = val("email");
   setErr("email", "emailErr", !em ? (bad.push("email"), "errEmailNone") : EMAIL_RE.test(em) ? "" : (bad.push("email"), "errEmail"));
+  paintEmailHint();
   return bad;
 }
+// Why the email is needed, said only while it is missing.
+const paintEmailHint = () => { $("emailHint").hidden = $("emailErr").dataset.k !== "errEmailNone"; };
 $("f5").addEventListener("submit", (e) => {
   e.preventDefault();
   const bad = DEV ? [] : checkCentro();
   saveDraft();
   if (bad.length) { focusField(bad[0]); return; }
-  go(6);
+  go(ST.last);
 });
 $("wa").addEventListener("input", () => { if ($("waErr").dataset.k) setErr("wa", "waErr", ""); paintWa(); });
 $("waYes").addEventListener("click", () => {
@@ -2165,16 +2268,16 @@ $("waYes").addEventListener("click", () => {
 $("waChange").addEventListener("click", () => { focusField("wa"); try { $("wa").select(); } catch (_) {} });
 $("name").addEventListener("input", () => { if ($("nameErr").dataset.k && val("name")) setErr("name", "nameErr", ""); });
 $("addr").addEventListener("input", () => { if ($("addrErr").dataset.k && val("addr")) setErr("addr", "addrErr", ""); });
-$("email").addEventListener("input", () => { if ($("emailErr").dataset.k) setErr("email", "emailErr", ""); });
+$("email").addEventListener("input", () => { if ($("emailErr").dataset.k) { setErr("email", "emailErr", ""); paintEmailHint(); } });
 $("name").addEventListener("input", paintContact);
-// The hours sit under the days (screen 2): typing them shows at once which
-// days are open, and the times on screen 3 are then drawn inside them.
+// The hours sit under the days (screen 1): typing them shows at once which
+// days are open, and the times on screen 2 are then drawn inside them.
 $("hours").addEventListener("input", () => {
   HOURS = parseHours(val("hours"));
   renderDays();
 });
 
-// ---------------------------------------------------------------- 6 · price, terms, send
+// ---------------------------------------------------------------- 5 · price, terms, send
 function checkLast() {
   const bad = [];
   const p60 = priceNum(val("p60")), p90 = priceNum(val("p90"));
@@ -2271,10 +2374,10 @@ function buildMessage(last) {
 async function send(btn) {
   if (S.saving) return;
   setErr(null, "saveErr", "");
-  if (!centroValid()) { go(5); const b = checkCentro(); if (b.length) focusField(b[0]); return; }
+  if (!centroValid()) { go(ST.centro); const b = checkCentro(); if (b.length) focusField(b[0]); return; }
   const list = selList();
-  if (!list.length) { go(3); setErr(null, "timesErr", "errNone"); return; }
-  if (countOf(list) > MAX_TIMES) { go(3); setErr(null, "timesErr", "errMany"); return; }
+  if (!list.length) { go(ST.times); setErr(null, "timesErr", "errNone"); return; }
+  if (countOf(list) > MAX_TIMES) { go(ST.times); setErr(null, "timesErr", "errMany"); return; }
   const bad = checkLast();
   S.miss = bad;
   if (bad.length) { focusField(bad[0]); paintMiss(); return; }
@@ -2309,7 +2412,7 @@ async function send(btn) {
   S.saving = false;
   btn.disabled = false; btn.textContent = label;
   if (kind === "refused") {
-    if (S.step !== 6) go(6);
+    if (S.step !== ST.last) go(ST.last);
     const el = $("saveErr");
     el.dataset.k = "";
     el.textContent = j.message;
@@ -2333,11 +2436,18 @@ function finish(result, list, key, server) {
 }
 $("f6").addEventListener("submit", (e) => { e.preventDefault(); send($("save")); });
 $("retry").addEventListener("click", () => send($("retry")));
-// The other length, or more times: start again from the length, with no
-// length outlined, and the sub saying which one is already in.
-function again() { setErr(null, "timesErr", ""); S.durPicked = false; S.repeatPicked = false; go(1); }
-$("more").addEventListener("click", again);
-$("addDur").addEventListener("click", again);
+// More times: the days again, same length. The other length: straight to the
+// times with that length chosen (the days are kept).
+function again(step, dur) {
+  setErr(null, "timesErr", "");
+  if (dur) { S.dur = dur; S.durPicked = true; }
+  S.repeatPicked = false;
+  S.tab = "all";
+  S.showTabs = false;
+  go(step);
+}
+$("more").addEventListener("click", () => again(ST.days));
+$("addDur").addEventListener("click", () => again(ST.times, Number($("addDur").dataset.d) === 90 ? 90 : 60));
 
 // A short burst in the club's colours, as go.html does on its ticket.
 function confetti() {
@@ -2433,7 +2543,7 @@ if (DEV) {
   const bar = document.createElement("div");
   bar.className = "devbar";
   bar.innerHTML = "<b>DEV</b>";
-  const jumps = [["Inicio", 0], ["1 Duración", 1], ["2 Días", 2], ["3 Horas", 3], ["4 Semana", 4], ["5 Centro", 5], ["6 Último", 6],
+  const jumps = [["Inicio", 0], ["1 Días", ST.days], ["2 Horas", ST.times], ["3 Semana", ST.repeat], ["4 Centro", ST.centro], ["5 Último", ST.last],
     ["Fin: vista previa", "preview"], ["Fin: guardado", "saved"], ["Fin: recibido", "received"], ["Fin: falta un paso", "fallback"]];
   jumps.forEach(([label, n]) => {
     const b = document.createElement("button");
