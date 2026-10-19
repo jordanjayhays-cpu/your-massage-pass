@@ -2659,7 +2659,7 @@ for (const [msg, want, note] of [
   const ver = (html.match(/const TERMS_VERSION = "([^"]+)";/) || [])[1];
   check("socios terms", "page version is one the server knows", !!R.SOCIOS_TERMS[ver], true, "an unknown version is refused");
   for (const L of ["es", "en"]) check("socios terms", `${L} text word for word`, R.SOCIOS_TERMS[ver][L], termsLine(L), "the written agreement billing relies on");
-  check("socios terms", "the fee is 5 EUR + IVA from 1 Dec, free to 30 Nov (CLAUDE.md, 17 Oct)", /Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € \+ IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas/.test(R.SOCIOS_TERMS[ver].es), true, "never quote another figure");
+  check("socios terms", "the fee is 5 EUR + IVA from 1 Jan 2027, free to 31 Dec 2026 (CLAUDE.md, 19 Oct)", /Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € \+ IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas/.test(R.SOCIOS_TERMS[ver].es), true, "never quote another figure");
 
   // The page's origins.
   for (const [o, want] of [["https://book.massageclub.io", true], ["https://massageclub.io", true], ["https://your-massage-pass-git-main.vercel.app", true], ["https://www.massageclub.io", false], ["http://book.massageclub.io", false], ["https://book.massageclub.io.evil.com", false], ["https://evil.com/?https://book.massageclub.io", false], ["", false], ["https://a.b.vercel.app", false], ["https://your-massage-pass.vercel.app", true], ["https://your-massage-pass-o5fo.vercel.app", true], ["https://evil-app.vercel.app", false], ["https://evil.vercel.app", false], ["https://notyour-massage-pass.vercel.app", false]]) {

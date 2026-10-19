@@ -56,7 +56,7 @@ Funnel, last 60 days: 127 people wrote on WhatsApp → 78 requests → 42 sent t
 
 ## Decisions waiting on Jordan
 
-1. **Fee level. DECIDED 17 Oct (Jordan: "Let's do 5 euros I think it's more fair at first").** Free pilot to 30 November. From 1 December the studio pays 5 EUR + IVA (6,05 EUR on the invoice) for a new customer's first visit that actually happened, and nothing for that customer's later visits at the same studio. No monthly fee. Migration `20261017_first_visit_fee.sql`: `billing_settings.default_fee_eur` 5, `billing_settings.fees_from` 2026-12-01, the ledger marks `first_visit`, and invoices bill only lines with a fee. "At first": the level is meant to be reviewed once studios have seen real customers.
+1. **Fee level. DECIDED 17 Oct (Jordan: "Let's do 5 euros I think it's more fair at first").** Free pilot to 31 December. From 1 January 2027 the studio pays 5 EUR + IVA (6,05 EUR on the invoice) for a new customer's first visit that actually happened, and nothing for that customer's later visits at the same studio. No monthly fee. Migration `20261017_first_visit_fee.sql`: `billing_settings.default_fee_eur` 5, `billing_settings.fees_from` 2026-12-01, the ledger marks `first_visit`, and invoices bill only lines with a fee. "At first": the level is meant to be reviewed once studios have seen real customers.
 2. **Stop the 10% / best-offer auction** (Trap 1) in favour of studio-set prices plus the referral fee. This changes the 5 Sept standing rule.
 3. **Niche:** English speakers only in the ads, or serve Spanish speakers too.
 4. **Issuer details for invoices:** legal name, tax ID, address, IBAN, and the correct IVA treatment. Check with a gestor, especially if the issuing entity is not Spanish. Fill these into `billing_settings`.

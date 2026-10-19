@@ -11,12 +11,12 @@ These are drafts for Jordan only. Nothing has been sent.
 ### Safe
 
 **ES**
-> Hola, buenas, os escribo de Massage Club. Nos escriben en inglés extranjeros, estudiantes de fuera y turistas que buscan un masaje. Si nos pasáis algún hueco que de verdad tengáis libre, se lo ofrecemos a vuestro precio y, si alguien lo coge, os llega la reserva confirmada por escrito, en español. Gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato. ¿Os interesa?
+> Hola, buenas, os escribo de Massage Club. Nos escriben en inglés extranjeros, estudiantes de fuera y turistas que buscan un masaje. Si nos pasáis algún hueco que de verdad tengáis libre, se lo ofrecemos a vuestro precio y, si alguien lo coge, os llega la reserva confirmada por escrito, en español. Gratis hasta el 31 de diciembre. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato. ¿Os interesa?
 >
 > Jordan, de Massage Club
 
 **EN**
-> Hi there, I'm writing from Massage Club. Foreigners, students from abroad and tourists looking for a massage write to us in English. If you send us any slot that is really free, we offer it to them at your price and, if someone takes it, the booking reaches you confirmed in writing, in Spanish. Free until 30 November. From 1 December, 5 € + VAT for each new customer's first visit, only if they come. No monthly fee, no contract. Interested?
+> Hi there, I'm writing from Massage Club. Foreigners, students from abroad and tourists looking for a massage write to us in English. If you send us any slot that is really free, we offer it to them at your price and, if someone takes it, the booking reaches you confirmed in writing, in Spanish. Free until 31 December. From 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come. No monthly fee, no contract. Interested?
 >
 > Jordan, from Massage Club
 
@@ -25,12 +25,12 @@ These are drafts for Jordan only. Nothing has been sent.
 ### Bold
 
 **ES**
-> Hola, buenas, os escribo de Massage Club. Con nosotros, un cliente nuevo os cuesta 5 € + IVA, a partir del 1 de diciembre y solo si viene. Hasta entonces, gratis. Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo. Nos escriben en inglés extranjeros, estudiantes de fuera y turistas que buscan un masaje. ¿Nos pasáis un hueco libre? Se lo ofrecemos a vuestro precio. Si alguien lo coge, os llega confirmado por escrito. Sin cuota ni contrato.
+> Hola, buenas, os escribo de Massage Club. Con nosotros, un cliente nuevo os cuesta 5 € + IVA, a partir del 1 de enero de 2027 y solo si viene. Hasta entonces, gratis. Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo. Nos escriben en inglés extranjeros, estudiantes de fuera y turistas que buscan un masaje. ¿Nos pasáis un hueco libre? Se lo ofrecemos a vuestro precio. Si alguien lo coge, os llega confirmado por escrito. Sin cuota ni contrato.
 >
 > Jordan, de Massage Club
 
 **EN**
-> Hi there, I'm writing from Massage Club. With us, a new customer costs you 5 € + VAT, from 1 December and only if they come. Until then, it's free. Treatwell Spain charges 25% + VAT of a new client's first booking. Foreigners, students from abroad and tourists looking for a massage write to us in English. Could you send us a free slot? We offer it at your price. If someone takes it, it reaches you confirmed in writing. No monthly fee, no contract.
+> Hi there, I'm writing from Massage Club. With us, a new customer costs you 5 € + VAT, from 1 January 2027 and only if they come. Until then, it's free. Treatwell Spain charges 25% + VAT of a new client's first booking. Foreigners, students from abroad and tourists looking for a massage write to us in English. Could you send us a free slot? We offer it at your price. If someone takes it, it reaches you confirmed in writing. No monthly fee, no contract.
 >
 > Jordan, from Massage Club
 
@@ -43,7 +43,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > Nos escriben en inglés extranjeros y turistas que buscan un masaje. Si nos pasáis ese hueco, se lo ofrecemos a vuestro precio; si alguien lo coge, os llega confirmado por escrito y en español.
 >
-> Gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.
+> Gratis hasta el 31 de diciembre. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.
 >
 > ¿Probamos con un hueco?
 >
@@ -54,7 +54,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > Foreigners and tourists looking for a massage write to us in English. If you send us that slot, we offer it to them at your price; if someone takes it, it reaches you confirmed in writing and in Spanish.
 >
-> Free until 30 November. From 1 December, 5 € + VAT for each new customer's first visit, only if they come. No monthly fee, no contract.
+> Free until 31 December. From 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come. No monthly fee, no contract.
 >
 > Shall we try with one slot?
 >
@@ -81,7 +81,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > *(Let them answer.)*
 >
-> Nos escriben en inglés extranjeros, estudiantes y turistas que buscan un masaje. Si nos pasáis ese hueco, lo ofrecemos a vuestro precio y, si alguien lo coge, os llega la reserva confirmada por escrito, en español. Hasta el 30 de noviembre, gratis. A partir del 1 de diciembre, 5 euros más IVA por la primera visita de cada cliente nuevo, y solo si viene. Sin cuota ni contrato. Os dejo esta hoja.
+> Nos escriben en inglés extranjeros, estudiantes y turistas que buscan un masaje. Si nos pasáis ese hueco, lo ofrecemos a vuestro precio y, si alguien lo coge, os llega la reserva confirmada por escrito, en español. Hasta el 31 de diciembre, gratis. A partir del 1 de enero de 2027, 5 euros más IVA por la primera visita de cada cliente nuevo, y solo si viene. Sin cuota ni contrato. Os dejo esta hoja.
 >
 > *(Point at the blank line at the bottom of the one-pager.)*
 
@@ -90,7 +90,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > *(Let them answer.)*
 >
-> Foreigners, students and tourists looking for a massage write to us in English. If you send us that slot, we offer it at your price and, if someone takes it, the booking reaches you confirmed in writing, in Spanish. Until 30 November, it's free. From 1 December, 5 euros plus VAT for each new customer's first visit, and only if they come. No monthly fee, no contract. I'll leave you this sheet.
+> Foreigners, students and tourists looking for a massage write to us in English. If you send us that slot, we offer it at your price and, if someone takes it, the booking reaches you confirmed in writing, in Spanish. Until 31 December, it's free. From 1 January 2027, 5 euros plus VAT for each new customer's first visit, and only if they come. No monthly fee, no contract. I'll leave you this sheet.
 >
 > *(Point at the blank line at the bottom of the one-pager.)*
 
@@ -101,7 +101,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > Nos escriben en inglés extranjeros y turistas que buscan un masaje. Si nos pasáis ese hueco, se lo ofrecemos a vuestro precio; si alguien lo coge, os llega confirmado por escrito y en español.
 >
-> Gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.
+> Gratis hasta el 31 de diciembre. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene. Sin cuota ni contrato.
 >
 > ¿Probamos con un hueco?
 >
@@ -112,7 +112,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > Foreigners and tourists looking for a massage write to us in English. If you send us that slot, we offer it to them at your price; if someone takes it, it reaches you confirmed in writing and in Spanish.
 >
-> Free until 30 November. From 1 December, 5 € + VAT for each new customer's first visit, only if they come. No monthly fee, no contract.
+> Free until 31 December. From 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come. No monthly fee, no contract.
 >
 > Shall we try with one slot?
 >
@@ -123,10 +123,10 @@ These are drafts for Jordan only. Nothing has been sent.
 *Send this only to a studio that saw the "sin comisión" (no commission) wording. Check that for each of the four first.*
 
 **ES**
-> Hola, soy Jordan, de Massage Club. Os lo digo claro: os dijimos que no cobrábamos comisión, y eso cambia. Hasta el 30 de noviembre sigue siendo gratis. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene; por sus siguientes visitas, nada. Sin cuota. ¿Nos pasaríais algún hueco libre? Si alguien lo coge, os llega confirmado por escrito.
+> Hola, soy Jordan, de Massage Club. Os lo digo claro: os dijimos que no cobrábamos comisión, y eso cambia. Hasta el 31 de diciembre sigue siendo gratis. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene; por sus siguientes visitas, nada. Sin cuota. ¿Nos pasaríais algún hueco libre? Si alguien lo coge, os llega confirmado por escrito.
 
 **EN**
-> Hi, it's Jordan, from Massage Club. I'll say it plainly: we told you we didn't charge commission, and that is changing. Until 30 November it stays free. From 1 December, 5 € + VAT for each new customer's first visit, only if they come; nothing for their later visits. No monthly fee. Would you send us any free slots? If someone takes one, it reaches you confirmed in writing.
+> Hi, it's Jordan, from Massage Club. I'll say it plainly: we told you we didn't charge commission, and that is changing. Until 31 December it stays free. From 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come; nothing for their later visits. No monthly fee. Would you send us any free slots? If someone takes one, it reaches you confirmed in writing.
 
 ### 4. Email (body 148 words)
 
@@ -140,7 +140,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > Desde septiembre nos han escrito más de 100 personas, en inglés, buscando un masaje: extranjeros que viven en Madrid, estudiantes de fuera y turistas. No os prometemos un número de clientes.
 >
-> Lo que cuesta: hasta el 30 de noviembre, nada. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y nada por sus siguientes visitas. Sin cuota ni contrato.
+> Lo que cuesta: hasta el 31 de diciembre, nada. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y nada por sus siguientes visitas. Sin cuota ni contrato.
 >
 > Lo que os pedimos: los huecos que de verdad tengáis libres, por WhatsApp. Si alguien coge uno, os llega la reserva confirmada por escrito, en español, con nombre, teléfono y email. Tenéis 15 minutos para rechazarla si algo ha cambiado. El cliente os paga a vuestro precio y, si vuelve, es vuestro.
 >
@@ -158,7 +158,7 @@ These are drafts for Jordan only. Nothing has been sent.
 >
 > Since September more than 100 people have written to us in English looking for a massage: foreigners living in Madrid, students from abroad and tourists. We don't promise you a number of customers.
 >
-> What it costs: until 30 November, nothing. From 1 December, 5 € + VAT for each new customer's first visit, only if they come, and nothing for their later visits. No monthly fee, no contract.
+> What it costs: until 31 December, nothing. From 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come, and nothing for their later visits. No monthly fee, no contract.
 >
 > What we ask of you: the slots that are really free, by WhatsApp. If someone takes one, the booking reaches you confirmed in writing, in Spanish, with name, phone and email. You have 15 minutes to turn it down if something has changed. The customer pays you at your price and, if they come back, they're yours.
 >
@@ -174,7 +174,7 @@ These are drafts for Jordan only. Nothing has been sent.
 
 **Pasadnos ese hueco y se lo ofrecemos a gente que nos escribe en inglés buscando un masaje en Madrid: extranjeros que viven aquí, estudiantes de fuera y turistas. Si nadie lo coge, no os cuesta nada.**
 
-- **Solo pagáis si viene un cliente nuevo.** Gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo. Por sus siguientes visitas, nada.
+- **Solo pagáis si viene un cliente nuevo.** Gratis hasta el 31 de diciembre. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo. Por sus siguientes visitas, nada.
 - **Todo por escrito y en español.** Nosotros hablamos con el cliente en inglés; a vosotros os llega la reserva confirmada por WhatsApp, con nombre, teléfono y email.
 - **Vuestro precio, vuestro cliente.** El cliente os paga a vosotros, a vuestro precio. Si vuelve, es vuestro y no nos debéis nada.
 - **Solo masaje profesional.** A quien pide otra cosa le decimos que no y no le contestamos más.
@@ -186,9 +186,9 @@ These are drafts for Jordan only. Nothing has been sent.
 3. Si coge uno, os llega al momento un WhatsApp con la reserva confirmada. Tenéis 15 minutos para rechazarla si algo ha cambiado.
 4. Si un hueco se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos.
 
-> **Lo que cuesta: gratis hasta el 30 de noviembre. A partir del 1 de diciembre, 5 € + IVA por cliente nuevo, no un 25 %.**
-> - Gratis hasta el 30 de noviembre de 2026.
-> - A partir del 1 de diciembre de 2026: 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.
+> **Lo que cuesta: gratis hasta el 31 de diciembre. A partir del 1 de enero de 2027, 5 € + IVA por cliente nuevo, no un 25 %.**
+> - Gratis hasta el 31 de diciembre de 2026.
+> - A partir del 1 de enero de 2027: 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.
 > - Por sus siguientes visitas: 0 €.
 > - Sin cuota mensual. Sin contrato. Lo dejáis cuando queráis.
 > - Para comparar: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo (unos 17 € + IVA en un masaje de 68 €). Fresha cobra el 20 % por los clientes nuevos que trae.
@@ -204,7 +204,7 @@ Apuntadla aquí y mandadnos una foto por WhatsApp.
 
 **Send us that slot and we offer it to people who write to us in English looking for a massage in Madrid: foreigners who live here, students from abroad and tourists. If nobody takes it, it costs you nothing.**
 
-- **You only pay when a new customer comes.** Free until 30 November. From 1 December, 5 € + VAT for each new customer's first visit. Nothing for their later visits.
+- **You only pay when a new customer comes.** Free until 31 December. From 1 January 2027, 5 € + VAT for each new customer's first visit. Nothing for their later visits.
 - **Everything in writing and in Spanish.** We talk to the customer in English; you get the booking confirmed on WhatsApp, with name, phone and email.
 - **Your price, your customer.** The customer pays you, at your price. If they come back, they're yours and you owe us nothing.
 - **Professional massage only.** Anyone asking for something else gets a no and no further replies.
@@ -216,9 +216,9 @@ Apuntadla aquí y mandadnos una foto por WhatsApp.
 3. If they take one, you immediately get a WhatsApp with the booking confirmed. You have 15 minutes to turn it down if something has changed.
 4. If a slot fills up elsewhere first, write "ocupado" (taken) and we remove it.
 
-> **What it costs: free until 30 November. From 1 December, 5 € + VAT per new customer, not 25%.**
-> - Free until 30 November 2026.
-> - From 1 December 2026: 5 € + VAT for each new customer's first visit, only if they come.
+> **What it costs: free until 31 December. From 1 January 2027, 5 € + VAT per new customer, not 25%.**
+> - Free until 31 December 2026.
+> - From 1 January 2027: 5 € + VAT for each new customer's first visit, only if they come.
 > - Their later visits: 0 €.
 > - No monthly fee. No contract. Stop whenever you like.
 > - For comparison: Treatwell Spain charges 25% + VAT of a new client's first booking (about 17 € + VAT on a 68 € massage). Fresha charges 20% on the new clients it brings.
@@ -231,20 +231,20 @@ Write it here and send us a photo on WhatsApp.
 ### 6. Five objections
 
 **1. "Ya estamos en Treatwell, Booksy o Fresha"** (We're already on Treatwell, Booksy or Fresha)
-- **ES:** Perfecto, podéis seguir con ellos: no tenéis que dejar nada. Somos otro canal, solo para los huecos que se os quedan libres, y si uno se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos. El coste sí cambia: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo, y Fresha el 20 % por los clientes nuevos que trae. Nosotros, a partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.
-- **EN:** Great, you can keep using them: you don't have to leave anything. We're one more channel, only for the slots that stay free, and if one fills up elsewhere first, write "ocupado" (taken) and we remove it. The cost is what differs: Treatwell Spain charges 25% + VAT of a new client's first booking, and Fresha 20% on the new clients it brings. We charge, from 1 December, 5 € + VAT for each new customer's first visit, only if they come.
+- **ES:** Perfecto, podéis seguir con ellos: no tenéis que dejar nada. Somos otro canal, solo para los huecos que se os quedan libres, y si uno se os llena antes por otro lado, escribidnos «ocupado» y lo quitamos. El coste sí cambia: Treatwell España cobra el 25 % + IVA de la primera reserva de un cliente nuevo, y Fresha el 20 % por los clientes nuevos que trae. Nosotros, a partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene.
+- **EN:** Great, you can keep using them: you don't have to leave anything. We're one more channel, only for the slots that stay free, and if one fills up elsewhere first, write "ocupado" (taken) and we remove it. The cost is what differs: Treatwell Spain charges 25% + VAT of a new client's first booking, and Fresha 20% on the new clients it brings. We charge, from 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come.
 
 **2. "No tenemos huecos libres"** (We have no free slots)
 - **ES:** Pues enhorabuena, y no os pedimos nada. Si alguna semana se os queda un hueco libre, aunque sea por una cancelación, pasádnoslo por WhatsApp. Si nadie lo coge, no os cuesta nada.
 - **EN:** Well, congratulations, and we're not asking you for anything. If a slot does come free some week, even from a cancellation, send it to us on WhatsApp. If nobody takes it, it costs you nothing.
 
 **3. "¿Y si el cliente no viene?"** (What if the customer doesn't show up?)
-- **ES:** Entonces no pagáis nada: solo os cobramos la primera visita de un cliente nuevo, y solo si viene de verdad. Hasta el 30 de noviembre, ni eso. Además, desde el primer momento tenéis por escrito su nombre, teléfono y email.
-- **EN:** Then you pay nothing: we only charge you for a new customer's first visit, and only if they actually come. Until 30 November, not even that. You also have their name, phone and email in writing from the very start.
+- **ES:** Entonces no pagáis nada: solo os cobramos la primera visita de un cliente nuevo, y solo si viene de verdad. Hasta el 31 de diciembre, ni eso. Además, desde el primer momento tenéis por escrito su nombre, teléfono y email.
+- **EN:** Then you pay nothing: we only charge you for a new customer's first visit, and only if they actually come. Until 31 December, not even that. You also have their name, phone and email in writing from the very start.
 
 **4. "¿Cuánto cobráis exactamente?"** (How much do you charge, exactly?)
-- **ES:** Hasta el 30 de noviembre, nada. A partir del 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota mensual ni contrato, y lo dejáis cuando queráis. El cliente os paga a vosotros, a vuestro precio.
-- **EN:** Until 30 November, nothing. From 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract, and you can stop whenever you like. The customer pays you, at your price.
+- **ES:** Hasta el 31 de diciembre, nada. A partir del 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota mensual ni contrato, y lo dejáis cuando queráis. El cliente os paga a vosotros, a vuestro precio.
+- **EN:** Until 31 December, nothing. From 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract, and you can stop whenever you like. The customer pays you, at your price.
 
 **5. "¿Tenemos que hablar inglés?"** (Do we have to speak English?)
 - **ES:** Para la reserva, no. Nosotros hablamos con el cliente en inglés y a vosotros os lo pasamos todo por escrito y en español: hora, nombre, teléfono y email. No os prometemos que el cliente hable español, pero la reserva os llega clara y confirmada.
@@ -267,7 +267,7 @@ Write it here and send us a photo on WhatsApp.
 
 **1. A studio that was told "sin comisión" (no commission) feels tricked.**
 How the kit prevents it:
-- Every piece gives the fee in its first message, always as "5 € + IVA" (5 € + VAT; spoken aloud as "5 euros más IVA"), always with "a partir del 1 de diciembre" (from 1 December) and "solo si viene" (only if they come).
+- Every piece gives the fee in its first message, always as "5 € + IVA" (5 € + VAT; spoken aloud as "5 euros más IVA"), always with "a partir del 1 de enero de 2027" (from 1 January 2027) and "solo si viene" (only if they come).
 - No headline shows the fee without IVA (VAT) or without the start date.
 - The warm message says "os dijimos que no cobrábamos comisión, y eso cambia" (we told you we didn't charge commission, and that is changing) in its second sentence, before it asks for anything.
 

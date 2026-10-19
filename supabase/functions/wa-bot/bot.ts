@@ -5066,9 +5066,9 @@ function relHueco(messageText: unknown): string | null {
 // them equal). What the studio ticked is stored from here, never from the
 // request, so a changed request can never store other terms.
 const SOCIOS_TERMS: Record<string, { es: string; en: string }> = {
-  "2026-10-17": {
-    es: "Gratis hasta el 30 de noviembre de 2026; desde el 1 de diciembre, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
-    en: "Free until 30 November 2026; from 1 December, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
+  "2026-10-19": {
+    es: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
+    en: "Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
   },
 };
 // A personal link's signature: HMAC-SHA256 under "<ops key>:socios" over
