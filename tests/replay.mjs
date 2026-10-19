@@ -2685,12 +2685,12 @@ for (const [msg, want, note] of [
   const P = (o = {}) => ({
     lang: "es", drawn_at: now - 5 * 60e3,
     studio: { business_name: "Calma", whatsapp: "+34 600 111 222", address: "Calle Mayor 1", email: "hola@calma.es", opening_hours: "Lun-Vie 10-20", opening_hours_read: "Lun-Vie 10:00-20:00", price_60_eur: 50, price_90_eur: null, ...(o.studio || {}) },
-    terms: { accepted: true, version: "2026-10-17", text: R.SOCIOS_TERMS["2026-10-17"].es, ...(o.terms || {}) },
+    terms: { accepted: true, version: "2026-10-19", text: R.SOCIOS_TERMS["2026-10-19"].es, ...(o.terms || {}) },
     availability: { duration_min: 60, repeat_weekly: false, slots: [{ date: "2026-10-22", start: "18:00" }], ...(o.availability || {}) },
   });
   const V = (o, stored = null, at = now) => R.socValidate(P(o), at, stored);
   let v = V({});
-  check("socios checks", "a good dated time", [v.ok, v.plan.once, v.plan.price, v.plan.terms.text, v.plan.drawnAt], [true, [{ ymd: "2026-10-22", hm: "18:00" }], 50, R.SOCIOS_TERMS["2026-10-17"].es, now - 5 * 60e3], "");
+  check("socios checks", "a good dated time", [v.ok, v.plan.once, v.plan.price, v.plan.terms.text, v.plan.drawnAt], [true, [{ ymd: "2026-10-22", hm: "18:00" }], 50, R.SOCIOS_TERMS["2026-10-19"].es, now - 5 * 60e3], "");
   for (const [o, err, note] of [
     [{ studio: { email: "" } }, "email_missing", "released times need an email (R7)"],
     [{ studio: { email: "hola@calma" } }, "email", ""],
@@ -2742,8 +2742,8 @@ for (const [msg, want, note] of [
   // Terms: exactly our sentence for that version and language, or refused.
   v = V({ terms: { text: "0 € para siempre" } });
   check("socios checks", "a changed terms text is refused (review fix)", [v.ok, v.errors], [false, ["terms_text"]], "partner_terms only ever holds what the studio saw");
-  check("socios checks", "English page, English terms", V({ terms: { lang: "en", text: R.SOCIOS_TERMS["2026-10-17"].en } }).plan.terms.text, R.SOCIOS_TERMS["2026-10-17"].en, "");
-  check("socios checks", "the same sentence with extra spaces still counts", V({ terms: { text: "  " + R.SOCIOS_TERMS["2026-10-17"].es.replace(/ /g, "  ") + " " } }).ok, true, "socLine collapses spaces");
+  check("socios checks", "English page, English terms", V({ terms: { lang: "en", text: R.SOCIOS_TERMS["2026-10-19"].en } }).plan.terms.text, R.SOCIOS_TERMS["2026-10-19"].en, "");
+  check("socios checks", "the same sentence with extra spaces still counts", V({ terms: { text: "  " + R.SOCIOS_TERMS["2026-10-19"].es.replace(/ /g, "  ") + " " } }).ok, true, "socLine collapses spaces");
   // Price (review fix): optional only when the studio's own link and a menu on file.
   check("socios checks", "no price, menu on file (priceKnown): accepted", [R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).ok, R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).plan.price], [true, null], "the listed price is quoted");
   // Hours (review fixes): the hard 08:00 to 22:00 window; on file first unless it is the studio's own link.
@@ -2989,7 +2989,7 @@ for (const [msg, want, note] of [
   const P = (slots, weekly = false) => ({
     lang: "es", drawn_at: now - 60e3,
     studio: { business_name: "Calma", whatsapp: "+34 600 111 222", address: "Calle Mayor 1", email: "hola@calma.es", opening_hours: "Lun-Sáb 10-20", opening_hours_read: "Lun-Sáb 10:00-20:00", price_60_eur: 50 },
-    terms: { accepted: true, version: "2026-10-17", text: R.SOCIOS_TERMS["2026-10-17"].es },
+    terms: { accepted: true, version: "2026-10-19", text: R.SOCIOS_TERMS["2026-10-19"].es },
     availability: { duration_min: 60, repeat_weekly: weekly, slots },
   });
   let v = R.socValidate(P([{ date: "2026-12-09", start: "18:00" }, { date: "2026-12-23", start: "18:00" }]), now);
