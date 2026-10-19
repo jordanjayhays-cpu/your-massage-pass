@@ -1852,7 +1852,7 @@ async function invoicePage(url: URL): Promise<Response> {
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;font-size:13px;">
 <div><b>Emisor</b><br>${esc(st.issuer_name)}<br>${esc(st.issuer_tax_id)}<br>${esc(st.issuer_address)}<br>${esc(st.issuer_email)}</div>
 <div><b>Cliente</b><br>${esc(p.billing_name || p.business_name || "")}<br>${esc(p.billing_tax_id || "")}<br>${esc(p.billing_address || p.address || "")}</div></div>
-<p style="margin:18px 0 6px;"><b>Concepto:</b> comisión por la primera visita de los clientes nuevos que Massage Club os envió en ${MONTHS_ES[per.getUTCMonth()]} de ${per.getUTCFullYear()} y que vinieron a su cita. Las siguientes visitas de esos clientes no se cobran.</p>
+<p style="margin:18px 0 6px;"><b>Concepto:</b> comisión por cada visita que Massage Club os reservó en ${MONTHS_ES[per.getUTCMonth()]} de ${per.getUTCFullYear()} y a la que el cliente vino.</p>
 <table style="width:100%;border-collapse:collapse;font-size:13px;">${lines}</table>
 <table style="width:100%;margin-top:12px;font-size:14px;"><tr><td>Base imponible</td><td style="text-align:right;">${eur2Es(inv.subtotal)}</td></tr><tr><td>IVA (${Number(inv.vat_rate)}%)</td><td style="text-align:right;">${eur2Es(inv.vat)}</td></tr><tr><td style="padding-top:6px;"><b>Total</b></td><td style="text-align:right;padding-top:6px;"><b>${eur2Es(inv.total)}</b></td></tr></table>
 <p style="margin:18px 0 0;font-size:13px;color:${C.muted};">Pago por transferencia a ${esc(st.iban)}, indicando ${esc(inv.number || "")} en el concepto. Gracias por trabajar con nosotros.</p></div>`;
@@ -1874,7 +1874,7 @@ async function billingPage(url: URL): Promise<Response> {
     const b = Number(url.searchParams.get("b") || 0);
     if (b) {
       await patch("bookings", `id=eq.${b}&invoice_id=is.null`, act === "done" ? { completed_at: new Date().toISOString(), completed_source: "founder", no_show_at: null } : { no_show_at: new Date().toISOString(), completed_at: null });
-      note = act === "done" ? `Booking ${b} marked as happened. If it is a new customer's first visit from ${st.fees_from || "the fee start date"}, it goes on the next invoice; otherwise it is free.` : `Booking ${b} marked as a no-show. No fee.`;
+      note = act === "done" ? `Booking ${b} marked as happened. If it was on or after ${st.fees_from || "the fee start date"}, it goes on the next invoice; before that it is free.` : `Booking ${b} marked as a no-show. No fee.`;
     }
   } else if (act === "generate") {
     const m = String(url.searchParams.get("m") || "");
@@ -1908,7 +1908,7 @@ async function billingPage(url: URL): Promise<Response> {
         // Spanish, "12,10 €", "os enviamos" said once.
         const n = (inv.lines || []).length;
         const subject = `Factura ${inv.number} de Massage Club, ${month}`;
-        const text = `Hola${p.business_name ? `, equipo de ${p.business_name}:` : ","}\n\nSoy Jordan, de Massage Club, un servicio de reservas de masajes en Madrid. Os paso la factura ${inv.number} de ${month}: ${n === 1 ? "la primera visita de un cliente nuevo" : `la primera visita de ${n} clientes nuevos`}, ${eur2Es(inv.total)} con IVA incluido.\n\nPodéis verla aquí: ${invoiceUrl(inv)}\n\n${inv.due_on ? `Se paga por transferencia antes del ${fechaLargaEs(inv.due_on, false)}.` : "Se paga por transferencia."} Si tenéis cualquier duda, contestad a este correo.\n\nUn saludo,\nJordan, de Massage Club`;
+        const text = `Hola${p.business_name ? `, equipo de ${p.business_name}:` : ","}\n\nSoy Jordan, de Massage Club, un servicio de reservas de masajes en Madrid. Os paso la factura ${inv.number} de ${month}: ${n === 1 ? "una visita que os reservamos y a la que vino el cliente" : `${n} visitas que os reservamos y a las que vinieron los clientes`}, ${eur2Es(inv.total)} con IVA incluido.\n\nPodéis verla aquí: ${invoiceUrl(inv)}\n\n${inv.due_on ? `Se paga por transferencia antes del ${fechaLargaEs(inv.due_on, false)}.` : "Se paga por transferencia."} Si tenéis cualquier duda, contestad a este correo.\n\nUn saludo,\nJordan, de Massage Club`;
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, text }),
@@ -1931,9 +1931,11 @@ async function billingPage(url: URL): Promise<Response> {
   const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
   const pill = (a: string) => a === "completed" ? `<span class="pill ok">HAPPENED</span>` : a === "to_confirm" ? `<span class="pill wait">TO CONFIRM</span>` : a === "upcoming" ? `<span class="pill mute">UPCOMING</span>` : `<span class="pill warn">${esc(a.replace("_", " ").toUpperCase())}</span>`;
   const btn = (href: string, label: string, strong = false) => `<a href="${esc(href)}" style="display:inline-block;text-decoration:none;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px;margin:6px 6px 0 0;${strong ? `background:${C.clay};color:#fff;` : `background:#fff;color:${C.ink};border:1px solid ${C.dash};`}">${label}</a>`;
-  // v213: pilot-period and repeat visits carry no fee and are never invoiced.
+  // v213: pilot-period visits (before fees_from) carry no fee and are never
+  // invoiced. Since 19 Oct every visit we book after fees_from has a fee,
+  // first or repeat (mc_booking_ledger), so a repeat is no longer a reason.
   const owed = (Array.isArray(ledger) ? ledger : []).filter((l) => l.attendance === "completed" && !l.invoice_id && Number(l.fee || 0) > 0);
-  const freeWhy = (l: any) => Number(l.fee || 0) > 0 ? "" : st.fees_from && l.start_at && ISO_MADRID.format(new Date(l.start_at)) < String(st.fees_from) ? " (pilot, free)" : l.first_visit === false ? " (repeat visit, free)" : "";
+  const freeWhy = (l: any) => Number(l.fee || 0) > 0 ? "" : st.fees_from && l.start_at && ISO_MADRID.format(new Date(l.start_at)) < String(st.fees_from) ? " (pilot, free)" : "";
   const owedSum = owed.reduce((a, l) => a + Number(l.fee || 0), 0);
   const fmtWhen = (iso: string) => iso ? new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "";
   const ledgerCards = (Array.isArray(ledger) ? ledger : []).map((l) => `<div class="card"><div class="h"><span class="n">${esc(l.business_name || "")}</span>${pill(String(l.attendance))}</div>
@@ -1942,10 +1944,10 @@ ${!l.invoice_id && (l.attendance === "to_confirm" || l.attendance === "completed
   const invCards = (Array.isArray(invoices) ? invoices : []).map((v) => `<div class="card"><div class="h"><span class="n">${esc(v.number || "")} · ${esc(v.partners?.business_name || "")}</span><span class="pill ${v.status === "paid" ? "ok" : v.status === "sent" ? "wait" : v.status === "void" ? "mute" : "warn"}">${esc(String(v.status).toUpperCase())}</span></div>
 <div class="m">${esc(v.period_start)} to ${esc(v.period_end)} · ${(v.lines || []).length} booking${(v.lines || []).length === 1 ? "" : "s"} · <b>${eur2(v.total)}</b> incl. IVA${v.sent_to ? ` · sent to ${esc(v.sent_to)}` : ""}</div>
 <div>${btn(invoiceUrl(v), "View")}${v.status === "draft" ? btn(`${base}&do=send&i=${v.id}`, "Approve and send", true) + btn(`${base}&do=void&i=${v.id}`, "Delete draft") : ""}${v.status === "sent" ? btn(`${base}&do=paid&i=${v.id}`, "Mark paid", true) : ""}</div></div>`).join("");
-  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Billing</h1><div class="sub">Studios pay ${eur2(st.default_fee_eur)} + IVA ${Number(st.vat_rate || 0)}% for a new customer's first visit that happened${st.fees_from ? `, from ${esc(String(st.fees_from))}` : ""}. Repeat visits are free.</div></div><a class="back" href="${esc(await inboxUrl())}">All chats</a></div>`;
+  const top = `<div class="top"><img src="${LOGO_URL}" alt=""><div class="t"><div class="brand">MASSAGE CLUB</div><h1>Billing</h1><div class="sub">Studios pay ${eur2(st.default_fee_eur)} + IVA ${Number(st.vat_rate || 0)}% for every visit we book that happened, first or repeat${st.fees_from ? `, from ${esc(String(st.fees_from))}` : ""}. A customer who books a studio directly, without us, costs it nothing.</div></div><a class="back" href="${esc(await inboxUrl())}">All chats</a></div>`;
   const body = `${note ? `<div class="note ${noteErr ? "err" : "done"}">${esc(note)}</div>` : ""}
 ${unfilled.length ? `<div class="note err">Invoices cannot be sent until your details are filled in: ${esc(unfilled.join(", "))} (Supabase, table billing_settings). Drafts still get made.</div>` : ""}
-<div class="card"><div class="h"><span class="n">Not yet invoiced</span><b>${eur2(owedSum)}</b></div><div class="m">${owed.length} first visit${owed.length === 1 ? "" : "s"} that happened, with a fee. Drafts are made automatically on the 1st of each month for the month before.</div><div>${btn(`${base}&do=generate&m=${lastMonth}`, "Make last month's drafts now")}${btn(`${base}&do=generate&m=${now.toISOString().slice(0, 8)}01`, "Make this month's drafts")}</div></div>
+<div class="card"><div class="h"><span class="n">Not yet invoiced</span><b>${eur2(owedSum)}</b></div><div class="m">${owed.length} visit${owed.length === 1 ? "" : "s"} that happened, with a fee. Drafts are made automatically on the 1st of each month for the month before.</div><div>${btn(`${base}&do=generate&m=${lastMonth}`, "Make last month's drafts now")}${btn(`${base}&do=generate&m=${now.toISOString().slice(0, 8)}01`, "Make this month's drafts")}</div></div>
 <div class="sec">INVOICES</div>${invCards || `<p class="empty">No invoices yet.</p>`}
 <div class="sec">BOOKINGS</div>${ledgerCards || `<p class="empty">No bookings yet.</p>`}
 <p class="empty"><a href="${esc(base)}">Refresh</a></p>`;
@@ -5067,8 +5069,8 @@ function relHueco(messageText: unknown): string | null {
 // request, so a changed request can never store other terms.
 const SOCIOS_TERMS: Record<string, { es: string; en: string }> = {
   "2026-10-19": {
-    es: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por la primera visita de cada cliente nuevo, solo si viene, y 0 € por sus siguientes visitas. Sin cuota ni contrato.",
-    en: "Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each new customer's first visit, only if they come, and 0 € for their later visits. No monthly fee, no contract.",
+    es: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota ni contrato.",
+    en: "Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each visit we book for you, only if the customer comes. If a customer books you directly, without us, 0 €. No monthly fee, no contract.",
   },
 };
 // A personal link's signature: HMAC-SHA256 under "<ops key>:socios" over

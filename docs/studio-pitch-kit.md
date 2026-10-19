@@ -178,7 +178,7 @@ These are drafts for Jordan only. Nothing has been sent.
 
 - **Solo pagáis por las visitas que os reservamos nosotros, y solo si el cliente viene.** Gratis hasta el 31 de diciembre de 2026. Si un cliente os reserva directamente, sin nosotros, 0 €.
 - **Todo por escrito y en español.** Nosotros hablamos con el cliente en inglés; a vosotros os llega la reserva confirmada por WhatsApp, con nombre, teléfono y email.
-- **Vuestro precio, vuestro cliente.** El cliente os paga a vosotros, a vuestro precio. Si vuelve directamente a vosotros, no nos debéis nada.
+- **Vuestro precio.** El cliente os paga a vosotros, a vuestro precio. Si vuelve directamente a vosotros, no nos debéis nada.
 - **Solo masaje profesional.** A quien pide otra cosa le decimos que no y no le contestamos más.
 - **Nada que aprender.** Sin app, sin contraseñas, nada que instalar.
 
@@ -208,7 +208,7 @@ Apuntadla aquí y mandadnos una foto por WhatsApp.
 
 - **You only pay for the visits we book for you, and only if the customer comes.** Free until 31 December 2026. If a customer books you directly, without us, 0 €.
 - **Everything in writing and in Spanish.** We talk to the customer in English; you get the booking confirmed on WhatsApp, with name, phone and email.
-- **Your price, your customer.** The customer pays you, at your price. If they come back to you directly, you owe us nothing.
+- **Your price.** The customer pays you, at your price. If they come back to you directly, you owe us nothing.
 - **Professional massage only.** Anyone asking for something else gets a no and no further replies.
 - **Nothing to learn.** No app, no passwords, nothing to install.
 
@@ -245,8 +245,8 @@ Write it here and send us a photo on WhatsApp.
 - **EN:** Then you pay nothing: we only charge you for the visits we book for you, and only if the customer actually comes. Until 31 December 2026, not even that. You also have their name, phone and email in writing from the very start.
 
 **4. "¿Cuánto cobráis exactamente?"** (How much do you charge, exactly?)
-- **ES:** Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota ni contrato. Os lo digo claro: si el cliente vuelve y nos pide la cita otra vez a nosotros, esa visita también cuesta 5 € + IVA, porque la reserva la hacemos nosotros y seguimos mandándole ofertas con vuestros huecos para que vuelva. Si vuelve directamente a vosotros, no nos debéis nada. Para comparar: Airbnb Services y Spalopia se quedan el 15 % de cada visita (7,50 € en un masaje de 50 €), y Treatwell España el 25 % + IVA de la primera reserva de un cliente nuevo de su marketplace (12,50 € + IVA en un masaje de 50 €). El cliente os paga a vosotros, a vuestro precio, y lo dejáis cuando queráis.
-- **EN:** Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each visit we book for you, only if the customer comes. If a customer books you directly, without us, 0 €. No monthly fee, no contract. To be plain about it: if the customer comes back and asks us for the appointment again, that visit also costs 5 € + VAT, because we make the booking and we keep sending them offers with your slots so they come back. If they come back to you directly, you owe us nothing. For comparison: Airbnb Services and Spalopia keep 15% of every visit (7,50 € on a 50 € massage), and Treatwell Spain 25% + VAT of a new client's first marketplace booking (12,50 € + VAT on a 50 € massage). The customer pays you, at your price, and you can stop whenever you like.
+- **ES:** Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota ni contrato. Os lo digo claro: si el cliente vuelve y nos pide la cita otra vez a nosotros, esa visita también cuesta 5 € + IVA, porque esa reserva también la hacemos nosotros. Si vuelve directamente a vosotros, no nos debéis nada. Para comparar: Airbnb Services y Spalopia se quedan el 15 % de cada visita (7,50 € en un masaje de 50 €), y Treatwell España el 25 % + IVA de la primera reserva de un cliente nuevo de su marketplace (12,50 € + IVA en un masaje de 50 €). El cliente os paga a vosotros, a vuestro precio, y lo dejáis cuando queráis.
+- **EN:** Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each visit we book for you, only if the customer comes. If a customer books you directly, without us, 0 €. No monthly fee, no contract. To be plain about it: if the customer comes back and asks us for the appointment again, that visit also costs 5 € + VAT, because we make that booking too. If they come back to you directly, you owe us nothing. For comparison: Airbnb Services and Spalopia keep 15% of every visit (7,50 € on a 50 € massage), and Treatwell Spain 25% + VAT of a new client's first marketplace booking (12,50 € + VAT on a 50 € massage). The customer pays you, at your price, and you can stop whenever you like.
 
 **5. "¿Tenemos que hablar inglés?"** (Do we have to speak English?)
 - **ES:** Para la reserva, no. Nosotros hablamos con el cliente en inglés y a vosotros os lo pasamos todo por escrito y en español: hora, nombre, teléfono y email. No os prometemos que el cliente hable español, pero la reserva os llega clara y confirmada.
