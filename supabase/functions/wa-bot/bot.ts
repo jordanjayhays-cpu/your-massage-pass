@@ -7889,7 +7889,7 @@ const SOCIOS_PAGE = "https://book.massageclub.io/socios";
 // The page's fallback message (its msgHello, then its msgTimes block) and the
 // one answer to it. The page's other WhatsApp links open with the same hello
 // but no times block: those are ordinary studio messages.
-const SOCIOS_FALLBACK_RE = /^\s*(?:Hola, Massage Club\. Somos [^\n]{1,160}, centro de masaje\.\s*\n\s*Horas que os ofrecemos \(|Hello, Massage Club\. We are [^\n]{1,160}, a massage studio\.\s*\n\s*Times we offer you \()/;
+const SOCIOS_FALLBACK_RE = /^\s*(?:Hola, Massage Club\. Somos [^\n]{1,160}, centro de masaje\.\s*\n\s*Horas que os ofrecemos \(|Hello, Massage Club\. We are [^\n]{1,160}, a massage (?:centre|studio)\.\s*\n\s*Times we offer you \()/;
 const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos por aquí.";
 // Review fix (17 Oct): the page's other WhatsApp buttons (the result screen's
 // "Escribirnos por WhatsApp" and the footer) open with its hello and no times
@@ -7898,7 +7898,7 @@ const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos po
 // that number writes in the next 2 days, never enters the customer flow: the
 // studio gets one acknowledgement and Jordan a studio card. From a partner's
 // number it stays an ordinary studio message.
-const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, centro de masaje|un centro de masaje)\.|Hello, Massage Club\. We are (?:[^\n]{1,160}, a massage studio|a massage studio)\.)/;
+const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, centro de masaje|un centro de masaje)\.|Hello, Massage Club\. We are (?:[^\n]{1,160}, a massage (?:centre|studio)|a massage (?:centre|studio))\.)/;
 // "Thanks for writing to us. We will read it and answer you here."
 const SOCIOS_HELLO_ACK = "Gracias por escribirnos. Lo leemos y os contestamos por aquí.";
 const SOC_STUDIO_CHAT_MS = 2 * 86400e3;
