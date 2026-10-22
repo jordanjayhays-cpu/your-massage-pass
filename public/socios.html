@@ -39,7 +39,7 @@
   screen, closed ones greyed when we know the hours; those 7 dates are
   exactly the ones a "just once" save uses; the opening hours are one tap
   away under it, and come before the times so nothing picked can vanish
-  later), 2 "¿A qué horas?" (go.html's hour cards in one grid; one tap is
+  later), 2 "¿A qué horas os mandamos clientes?" (go.html's hour cards in one grid; one tap is
   one start time a customer can take; the same times for every chosen day,
   or one day set differently), 3 "¿Se repite cada semana?" (Jordan: "this
   question is confusing": one yes or no about exactly what was just
@@ -802,8 +802,8 @@ const T = {
     n1: "1 hora", nN: "{n} horas",
     next: "Siguiente",
 
-    k3: "2 de 5", q3: "¿A qué horas?",
-    s3: "Tocad las horas en que puede empezar un cliente.",
+    k3: "2 de 5", q3: "¿A qué horas os mandamos clientes?",
+    s3: "{w}. Tocad las horas en que puede empezar un cliente.",
     tabQDay: "Solo para el {d}. Los demás días no cambian.",
     tabsAria: "Cambiar las horas de un solo día",
     diffLink: "¿Algún día tiene otras horas?",
@@ -981,8 +981,8 @@ const T = {
     n1: "1 time", nN: "{n} times",
     next: "Next",
 
-    k3: "2 of 5", q3: "At what times?",
-    s3: "Tap the times a customer can start.",
+    k3: "2 of 5", q3: "What times should we send you customers?",
+    s3: "{w}. Tap the times a customer can start.",
     tabQDay: "Only for {d}. The other days stay as they are.",
     tabsAria: "Change the times of one day only",
     diffLink: "Does one day have other times?",
@@ -1831,7 +1831,10 @@ function renderTimes() {
     const tabs = cd.length > 1 && (S.showTabs || !isAll || diff.size > 0);
     // What one tap means; while one day is changed on its own, that the
     // others stay as they are.
-    setText("timesSub", isAll ? t("s3") : t("tabQDay", { d: dateWords(dateOf(S.tab)) }));
+    // The week under the question, as on the days screen (Jordan, 22 Oct:
+    // "At what times of the week of XYZ to XYZ...").
+    const wk = calDays();
+    setText("timesSub", isAll ? t("s3", { w: calSpan(wk[0], wk[6]) }) : t("tabQDay", { d: dateWords(dateOf(S.tab)) }));
     $("tabsBox").hidden = !tabs;
     $("diffLink").hidden = cd.length < 2 || tabs;
     if (tabs) {
