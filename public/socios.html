@@ -779,11 +779,11 @@ const T = {
     howPill: "Cómo funciona",
 
     kick: "Massage Club · Centros",
-    title: "Clientes para horas libres.",
-    host: "Jordan, de Massage Club",
-    hostN: "Hola, {n}. Soy Jordan.",
-    f1: "Más de 100 nos han escrito",
-    f1s: "Desde septiembre, en inglés",
+    title: "Clientes nuevos, a vuestras horas.",
+    host: "Hola, somos Massage Club.",
+    hostN: "Hola, {n}. Somos Massage Club.",
+    f1: "Más de 100 clientes nos han escrito",
+    f1s: "Desde septiembre",
     f2: "Os llega todo en español",
     f2s: "Por WhatsApp y email",
     f3: "Gratis hasta el 31 de diciembre",
@@ -958,11 +958,11 @@ const T = {
     howPill: "How it works",
 
     kick: "Massage Club · Studios",
-    title: "Customers for free slots.",
-    host: "Jordan, from Massage Club",
-    hostN: "Hi, {n}. I'm Jordan.",
-    f1: "More than 100 have written to us",
-    f1s: "Since September, in English",
+    title: "New customers, at your times.",
+    host: "Hi, we're Massage Club.",
+    hostN: "Hi, {n}. We're Massage Club.",
+    f1: "More than 100 customers have written to us",
+    f1s: "Since September",
     f2: "You get everything in Spanish",
     f2s: "On WhatsApp and by email",
     f3: "No charge until 31 December",
@@ -1635,8 +1635,30 @@ function paintTerms() {
   $("acceptLine").textContent = T[L].termsLine.replace(/(\d) € \+ (IVA|VAT)/g, "$1\u00a0€\u00a0+\u00a0$2").replace(/(\d) €/g, "$1\u00a0€");
 }
 const ctaLabel = () => hasPicks() ? t("ctaResume") : t("start");
+// The greeting uses the studio's short name (Jordan, 22 Oct: "just Calma"):
+// trailing generic words and anything after " - " go, so "Calma Madrid Spa"
+// is "Calma" and "Baan Bua Thai Massage Madrid" is "Baan Bua". A name that
+// is itself generic ("Private Spa", "Templo del Masaje") stays whole.
+const SN_GENERIC = /^(spa|massage|massages|masaje|masajes|thai|tailand[eé]s|centro|center|wellness|studio|estudio|relax|beauty|belleza|bienestar|oriental|salud|madrid|de|del|y|and|&)$/i;
+const SN_LINK = /^(de|del|y|and|&)$/i;
+function shortName(full) {
+  const seg = String(full || "").split(/\s[-\u2013|\u00b7]\s|[,(|]/)[0].trim();
+  const w = seg.split(/\s+/).filter(Boolean);
+  let n = w.length;
+  while (n > 1 && SN_GENERIC.test(w[n - 1])) {
+    if (SN_LINK.test(w[n - 2] || "") && !SN_GENERIC.test(w[n - 3] || "x")) break;
+    n--;
+  }
+  let out = w.slice(0, n);
+  if (SN_LINK.test(out[out.length - 1] || "")) out = w;
+  if (out.length === 1 && /^spa$/i.test(w[1] || "")) out = w.slice(0, 2);
+  if (/^(the|el|la|los|las)$/i.test(out[0] || "") && out.length <= 2) out = w;
+  let s = out.join(" ");
+  if (s.length > 22) s = out.slice(0, 3).join(" ");
+  return s || seg;
+}
 function paintDynamic() {
-  const name = S.partner ? S.partner.business_name : "";
+  const name = S.partner ? shortName(S.partner.business_name) : "";
   // A personal link greets the studio by name on the invite, on one line.
   $("host").textContent = name ? t("hostN", { n: name }) : t("host");
   $("startBtn").textContent = ctaLabel();
