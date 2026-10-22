@@ -23,7 +23,7 @@ export default function ClaimShortLink() {
       if (err || !data?.claim_token) {
         // RLS only exposes pending partners to anon, so an already-claimed
         // studio resolves to "not found" here.
-        setError("This link is invalid or the studio has already been claimed. If that's you, log in at massageclub → Partner login.");
+        setError("This link is invalid or the centre has already been claimed. If that's you, log in at massageclub → Partner login.");
         return;
       }
       navigate(`/studio-setup?claim=${data.claim_token}`, { replace: true });

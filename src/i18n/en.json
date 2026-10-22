@@ -726,9 +726,9 @@
       "signInTab": "Sign In",
       "registerTab": "List My Centre",
       "businessNameLabel": "Business Name",
-      "businessNamePlaceholder": "e.g. Wellness Center Madrid",
+      "businessNamePlaceholder": "e.g. Wellness Centre Madrid",
       "emailLabel": "Email",
-      "emailPlaceholder": "spa@example.com",
+      "emailPlaceholder": "hello@yourcentre.com",
       "passwordLabel": "Password",
       "pleaseWait": "Please wait…",
       "createAccount": "Create Account",
@@ -759,7 +759,7 @@
       }
     },
     "resetPassword": {
-      "emailPlaceholder": "spa@example.com"
+      "emailPlaceholder": "hello@yourcentre.com"
     },
     "onboarding": {
       "backToHome": "Back to home",
@@ -842,7 +842,7 @@
       "errAtLeastOneTherapist": "Add at least one therapist",
       "errEmailPassword": "Enter your email and password to go live",
       "errPasswordShort": "Password must be at least 6 characters",
-      "savedAtMadridCenter": "We've placed your centre roughly on the Madrid map. Tap “Find my location” later to fine-tune the pin.",
+      "savedAtMadridCenter": "We've placed your centre roughly on the Madrid map. Tap “Find my location on the map” later to fine-tune the pin.",
       "errConfirmEmail": "Account created — confirm your email then sign in. (Tip: disable “Confirm email” in Supabase → Authentication to go live instantly.)",
       "errSaveStudio": "Could not save your centre: {{message}}",
       "errSaveHours": "Could not save opening hours: {{message}}",
@@ -1209,7 +1209,7 @@
       "step2ReviewTitle": "Review centre details",
       "step2Title": "Centre details",
       "step2ReviewHelper": "Everything is pre-filled from the page we built for you. Edit anything that's wrong.",
-      "studioNameLabel": "Centre Name",
+      "studioNameLabel": "Centre name",
       "addressLabel": "Address",
       "addressPlaceholder": "Calle Gran Vía 15, Madrid",
       "addressHelper": "Shown to customers on their booking confirmation.",

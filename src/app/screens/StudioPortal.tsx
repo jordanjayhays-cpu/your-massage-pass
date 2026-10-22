@@ -147,7 +147,7 @@ export default function StudioPortal() {
                 <ArrowLeft className="h-4 w-4" />
               </button>
               <div>
-                <p className="text-xs text-muted-foreground">Studio Portal</p>
+                <p className="text-xs text-muted-foreground">Partner Portal</p>
                 <h1 className="font-display text-xl font-bold">{partner?.business_name}</h1>
               </div>
             </div>
@@ -280,7 +280,7 @@ export default function StudioPortal() {
             <Card className="bg-card border-border">
               <CardContent className="p-5 space-y-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="font-display text-base font-bold">Studio Profile</h2>
+                  <h2 className="font-display text-base font-bold">Centre Profile</h2>
                   {!editingProfile ? (
                     <Button size="sm" variant="outline" onClick={() => setEditingProfile(true)}>Edit</Button>
                   ) : (
@@ -293,7 +293,7 @@ export default function StudioPortal() {
                 {editingProfile ? (
                   <div className="space-y-3">
                     {[
-                      { key: "business_name", label: "Studio Name", icon: MapPin },
+                      { key: "business_name", label: "Centre name", icon: MapPin },
                       { key: "address", label: "Address", icon: MapPin },
                       { key: "phone", label: "Phone", icon: Phone },
                       { key: "website", label: "Website", icon: Globe },

@@ -75,7 +75,7 @@ const QUESTIONS: Q[] = [
   {
     type: "choice",
     key: "would_list",
-    question: "¿Listarías tu estudio gratis y sin comisión en una web para extranjeros y turistas?",
+    question: "¿Listarías tu centro gratis y sin comisión en una web para extranjeros y turistas?",
     options: [
       { value: "yes", label: "Sí" },
       { value: "maybe", label: "Quizás" },
@@ -181,8 +181,8 @@ export default function SurveyStudios() {
     <div style={shellStyle}>
       <link href={FONT_CSS} rel="stylesheet" />
       <div className="max-w-xl mx-auto px-5 py-10">
-        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">Estudios de masaje · Madrid</p>
-        <h1 style={serif} className="text-4xl leading-[1.05] mb-2">Ayúdanos a construir algo útil para tu estudio.</h1>
+        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">Centros de masaje · Madrid</p>
+        <h1 style={serif} className="text-4xl leading-[1.05] mb-2">Ayúdanos a construir algo útil para tu centro.</h1>
         <p className="text-[#7A7068] mb-6">Menos de 90 segundos. Sin compromiso.</p>
 
         <div className="h-1.5 rounded-full bg-[#E5DDD3] mb-8 overflow-hidden">
@@ -252,12 +252,12 @@ export default function SurveyStudios() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Nombre del estudio</label>
+              <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Nombre del centro</label>
               <input
                 type="text"
                 value={studio}
                 onChange={(e) => setStudio(e.target.value)}
-                placeholder="Studio X"
+                placeholder="Centro X"
                 className="w-full h-12 rounded-xl bg-white border border-[#E5DDD3] px-4 placeholder:text-[#9E9387]"
               />
             </div>

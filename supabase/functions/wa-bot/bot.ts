@@ -5466,7 +5466,7 @@ const SOC_MSG: Record<string, { es: string; en: string }> = {
   rate: { es: "Habéis enviado varias veces seguidas. Esperad unos minutos y probad otra vez.", en: "You have sent this several times in a row. Wait a few minutes and try again." },
   error: { es: "No se ha podido guardar. Probad otra vez en un momento.", en: "It could not be saved. Try again in a moment." },
   bad: { es: "No hemos podido leer el formulario. Recargad la página y probad otra vez.", en: "We could not read the form. Reload the page and try again." },
-  name: { es: "Falta el nombre del centro.", en: "The studio name is missing." },
+  name: { es: "Falta el nombre del centro.", en: "The centre name is missing." },
   wa: { es: "Ese WhatsApp no parece correcto.", en: "That WhatsApp number does not look right." },
   address: { es: "Falta la dirección o el barrio.", en: "The address or neighbourhood is missing." },
   email_missing: { es: "Falta el email.", en: "The email is missing." },
@@ -7107,7 +7107,7 @@ function notePage(url: URL): Response {
   }
   if (n === "studio_taken") {
     // v212: "justo antes" and "tan rápido" were said whatever the timing.
-    return pageOut(url, simpleCard("Ya está cubierta", "Este cliente ya ha reservado en otro centro, así que no tenéis que guardarle nada. Gracias por contestar.\n\nThis client has already booked with another studio, so there is nothing to hold. Thanks for replying.", ""));
+    return pageOut(url, simpleCard("Ya está cubierta", "Este cliente ya ha reservado en otro centro, así que no tenéis que guardarle nada. Gracias por contestar.\n\nThis client has already booked with another centre, so there is nothing to hold. Thanks for replying.", ""));
   }
   return pageOut(url, simpleCard("Massage Club", "", ""));
 }

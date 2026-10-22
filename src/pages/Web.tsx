@@ -81,7 +81,7 @@ export default function Web() {
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#56433a]">
             <a href="#studios" className="hover:text-[#99420d]">Studios</a>
             <a href="#how" className="hover:text-[#99420d]">How it works</a>
-            <a href="#partners" className="hover:text-[#99420d]">For studios</a>
+            <a href="#partners" className="hover:text-[#99420d]">For massage centres</a>
           </nav>
           <div className="flex items-center gap-3">
             <Link to="/app" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
@@ -239,9 +239,9 @@ export default function Web() {
         <div className="rounded-[40px] bg-gradient-to-br from-[#99420d] to-[#b95925] text-white p-10 lg:p-16 grid lg:grid-cols-2 gap-10 items-center overflow-hidden relative">
           <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
           <div className="relative">
-            <span className="text-xs tracking-[0.15em] uppercase text-[#ffdbcc] font-semibold">For studios</span>
+            <span className="text-xs tracking-[0.15em] uppercase text-[#ffdbcc] font-semibold">For massage centres</span>
             <h2 className="text-3xl lg:text-5xl mt-3 mb-4" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-              List your studio in minutes.
+              List your centre in minutes.
             </h2>
             <p className="text-white/85 text-lg mb-8 max-w-md">
               Get discovered by clients looking for a great massage in Madrid. Manage bookings, calendar and clients
@@ -267,7 +267,7 @@ export default function Web() {
               "Real-time calendar sync with Google",
               "Branded booking link for WhatsApp & Maps",
               "Client profiles, health notes & preferences",
-              "No setup fees · Free to list your studio",
+              "No setup fees · Free to list your centre",
             ].map((b) => (
               <li key={b} className="flex items-start gap-3 text-white/95">
                 <span className="mt-1 w-6 h-6 rounded-full bg-white/15 flex items-center justify-center text-sm">✓</span>
@@ -296,7 +296,7 @@ export default function Web() {
             </ul>
           </div>
           <div>
-            <div className="font-medium text-[#1f1b19] mb-3">For studios</div>
+            <div className="font-medium text-[#1f1b19] mb-3">For massage centres</div>
             <ul className="space-y-2">
               <li><Link to="/partner/onboarding" className="hover:text-[#99420d]">Become a partner</Link></li>
               <li><Link to="/partner/login" className="hover:text-[#99420d]">Partner login</Link></li>
