@@ -86,6 +86,11 @@ const SUPPORT = ["support@massageclub.io"];
 const JORDAN = ["jordan@massageclub.io", "jordanjayhays@gmail.com"]; // v39: "wants a person" must reach the Gmail too (Jordan, 5 Sept)
 const LOGO_URL = "https://jglftdstrowwckwqmpue.supabase.co/storage/v1/object/public/branding/mc-avatar-cream.png";
 let OPS_KEY = Deno.env.get("MC_OPS_KEY") || "";
+// Signs the links studios hold (socios, free times, reject, review). Its own
+// long random key, set in the loader (Jordan, 23 Oct go-live): the ops key is
+// short, and a forwarded studio link must not be a way to guess it. Empty
+// means no such link is ever valid.
+let SIGN_KEY = Deno.env.get("MC_SIGN_KEY") || "";
 // v124 (25 Sept): the day-before reminder ships OFF. It is a new automated
 // message to a customer, and Jordan's standing rule is that those are his call,
 // not mine. The detection, the schedule and the founder card all run either way
@@ -5069,17 +5074,17 @@ function relHueco(messageText: unknown): string | null {
 // request, so a changed request can never store other terms.
 const SOCIOS_TERMS: Record<string, { es: string; en: string }> = {
   "2026-10-19": {
-    es: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota ni contrato.",
+    es: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota mensual ni contrato.",
     en: "Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each visit we book for you, only if the customer comes. If a customer books you directly, without us, 0 €. No monthly fee, no contract.",
   },
 };
-// A personal link's signature: HMAC-SHA256 under "<ops key>:socios" over
+// A personal link's signature: HMAC-SHA256 under "<sign key>:socios" over
 // "<partner id>:<slots_link_v>", first 12 bytes in hex. The same construction
 // as relSig (v215), which signs the free-times page over the same value with
 // kind "slots", so bumping partners.slots_link_v revokes both links.
-async function relHmac(opsKey: string, kind: string, value: string): Promise<string> {
-  if (!opsKey) return "";
-  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(opsKey + ":" + kind), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+async function relHmac(signKey: string, kind: string, value: string): Promise<string> {
+  if (!signKey) return "";
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(signKey + ":" + kind), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(value)));
   return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -7125,10 +7130,10 @@ async function releasedMode(): Promise<RelMode> {
 }
 // Signed links, like offerSig: the studio's free-times page over (partner id,
 // slots_link_v), so bumping slots_link_v revokes it; and one reject link per
-// booked slot. Without an ops key nothing is ever valid.
+// booked slot. Without a sign key nothing is ever valid.
 async function relSig(kind: string, value: string): Promise<string> {
-  if (!OPS_KEY) return "";
-  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(OPS_KEY + ":" + kind), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  if (!SIGN_KEY) return "";
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(SIGN_KEY + ":" + kind), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(value)));
   return [...mac.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -7939,7 +7944,7 @@ async function socHasMenu(pid: string): Promise<boolean> {
 // page (relSig, over partner id and slots_link_v), so bumping slots_link_v
 // revokes both links at once.
 async function socSig(p: { id: string; slots_link_v?: unknown }): Promise<string> {
-  return await relHmac(OPS_KEY, "socios", socSigValue(p));
+  return await relHmac(SIGN_KEY, "socios", socSigValue(p));
 }
 async function socLink(p: { id: string; slug?: unknown; slots_link_v?: unknown }): Promise<string> {
   return `${SOCIOS_PAGE}?s=${encodeURIComponent(String(p.slug || p.id))}&k=${await socSig(p)}`;
@@ -7987,7 +7992,7 @@ async function socResolve(s: unknown, k: unknown): Promise<{ partner: any | null
   const partner = await socPartner(s);
   const key = String(k ?? "").trim();
   if (!partner || !key) return { partner, signed: false, sigBad: !!partner && !!key };
-  const ok = !!OPS_KEY && /^[0-9a-f]{24}$/.test(key) && key === await socSig(partner);
+  const ok = !!SIGN_KEY && /^[0-9a-f]{24}$/.test(key) && key === await socSig(partner);
   return { partner, signed: ok, sigBad: !ok };
 }
 const socInactive = (p: any): boolean => !!p && (!!p.opted_out_at || ["suspended", "archived"].includes(String(p.status || "")));
@@ -8548,7 +8553,7 @@ const pillForm = (fields: Record<string, string>, label: string, primary: boolea
 async function socReviewPage(url: URL): Promise<Response> {
   const id = relClean(url.searchParams.get("socios_ok"));
   const sig = String(url.searchParams.get("sig") || "");
-  if (!id || !OPS_KEY || sig !== await relSig("socios-review", id)) return pageOut(url, simpleCard("This link is not valid", "", ""), 403);
+  if (!id || !SIGN_KEY || sig !== await relSig("socios-review", id)) return pageOut(url, simpleCard("This link is not valid", "", ""), 403);
   const row = (await socRows(`studio_signups?id=eq.${encodeURIComponent(id)}&select=*&limit=1`))[0] || null;
   if (!row) return pageOut(url, simpleCard("Not found", "This sign-up no longer exists.", ""), 404);
   const p = row.payload || {};
@@ -9905,7 +9910,7 @@ const handler = async (req: Request) => {
   return res;
 };
 
-export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; aiKey?: string; confirmLaterReminders?: boolean; bookingFlowId?: string; offerChase?: boolean } = {}) {
+export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: string; signKey?: string; aiKey?: string; confirmLaterReminders?: boolean; bookingFlowId?: string; offerChase?: boolean } = {}) {
   if (cfg.bookingFlowId) BOOKING_FLOW_ID = cfg.bookingFlowId;
   if (cfg.confirmLaterReminders) CONFIRM_LATER_REMINDERS = true;
   if (cfg.offerChase === false) OFFER_CHASE = false;
@@ -9913,6 +9918,7 @@ export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: stri
   if (cfg.waToken) WA_TOKEN = cfg.waToken;
   if (cfg.resendKey) RESEND_API_KEY = cfg.resendKey;
   if (cfg.opsKey) OPS_KEY = cfg.opsKey;
+  if (cfg.signKey) SIGN_KEY = cfg.signKey;
   Deno.serve(handler);
 }
 // v54: what a studio hears when it answers a request that is no longer open.
