@@ -7552,7 +7552,7 @@ async function slotsPage(url: URL): Promise<Response> {
   const isTest = REL_TEST_STUDIO_RE.test(studio);
   const mode = await releasedMode();
   // This page is not active. (A studio that opted out or is suspended: no promise of anything.)
-  if (p.opted_out_at || p.status === "suspended") {
+  if (p.opted_out_at || p.status === "suspended" || p.status === "archived") {
     return pageOut(url, slotsShell("Massage Club", `<h1>Esta página no está activa</h1>`));
   }
   // v216 (Jordan, 18 Oct: studios may load times before customers can see

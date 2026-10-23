@@ -13,6 +13,10 @@
 --
 -- Safe to apply more than once.
 
+-- Go-live review (23 Oct): this file locks partners and request_dispatch;
+-- give up after 3 s instead of queueing behind live traffic (apply again).
+set local lock_timeout = '3s';
+
 create table if not exists public.released_slots (
   id              uuid primary key default gen_random_uuid(),
   partner_id      uuid not null references public.partners(id) on delete cascade,
@@ -150,7 +154,7 @@ begin
   end if;
   select business_name into v_name
     from partners
-   where id = p_partner and opted_out_at is null and coalesce(status, '') <> 'suspended';
+   where id = p_partner and opted_out_at is null and coalesce(status, '') not in ('suspended', 'archived');
   if not found then
     raise exception 'release_slots: no such studio, or it has opted out or is suspended';
   end if;
@@ -470,7 +474,7 @@ as $$
       join partners p on p.id = l.partner_id
       left join centre c on true
      where l.mins = coalesce(p_minutes, 60)
-       and p.opted_out_at is null and coalesce(p.status, '') <> 'suspended'
+       and p.opted_out_at is null and coalesce(p.status, '') not in ('suspended', 'archived')
        -- Review (17 Oct): an email address is required. The confirmation's
        -- email is the one channel sure to carry the client's phone and the
        -- 15 minute reject link: outside the studio's 24 hour WhatsApp window

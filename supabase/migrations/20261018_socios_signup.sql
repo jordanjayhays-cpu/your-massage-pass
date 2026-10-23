@@ -39,6 +39,9 @@
 --                   real studio, a studio that opted out, or the apply failed)
 --   rejected        Jordan said no; nothing was saved
 -- ---------------------------------------------------------------------------
+-- Go-live review (23 Oct): give up on a lock after 3 s (apply again).
+set local lock_timeout = '3s';
+
 create table if not exists public.studio_signups (
   id               uuid primary key default gen_random_uuid(),
   partner_id       uuid references public.partners(id) on delete set null,
