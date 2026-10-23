@@ -82,21 +82,25 @@
     that keep themselves filled for the next 7 days. Customers see them only
     when app_secrets RELEASED allows (the answer says, as "live"). On its
     own link the studio is the source of truth for where bookings reach it
-    (review fix, 17 Oct): the booking WhatsApp, the email and the hours it
-    gives replace ours (the old ones go on Jordan's card); a different
-    address is only noted. Times are checked against the hours it gives,
-    never outside 08:00 to 22:00. The terms the studio ticked are stored as
-    its written acceptance (partner_terms), and only when the page sent them
-    word for word as wa-bot has them for that version. That is why termsLine
-    is shown in full beside the checkbox and never shortened: the words the
-    studio sees are the words billing relies on.
+    (review fix, 17 Oct): the hours it gives replace ours (the old ones go on
+    Jordan's card), empty fields are filled, and a different address is only
+    noted. Review (23 Oct): a different booking WhatsApp or email is not
+    used until Jordan approves it (links get forwarded), and a WhatsApp that
+    is another studio's or a customer's is never used. Times are checked
+    against the hours it gives, never outside 08:00 to 22:00. The terms the
+    studio ticked are stored as its written acceptance (partner_terms), and
+    only when the page sent them word for word as wa-bot has them for that
+    version. That is why termsLine is shown in full beside the checkbox and
+    never shortened: the words the studio sees are the words billing relies
+    on.
     Screen: "Guardado", with a link to the studio's own times page.
   - status "pending_review": no link signature (the plain /socios, or a
     /socios?s=<slug> anyone can type). Nothing is saved or offered; Jordan
     gets a card with Aprobar / Rechazar. Screen: "Recibido, lo revisamos y os
-    confirmamos por WhatsApp o email". Approving one for a studio we already
-    have saves only its times: its details are not changed and no terms are
-    recorded in its name (anyone can type a studio's number here).
+    confirmamos por WhatsApp o email". One for a studio we already have
+    cannot be approved at all (review, 23 Oct: anyone can type a studio's
+    number here, and released times are booked at once): Jordan sends that
+    studio its own link instead.
   The 60 min price is required, unless it is the studio's own link and we
   already have its menu (prefill has_menu).
   - ok false with a message (a check failed, too many sends): shown under
