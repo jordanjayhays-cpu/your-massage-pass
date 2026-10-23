@@ -70,7 +70,7 @@
   link, so a reload or WhatsApp's in-app browser coming back does not lose
   anything ("Empezar" then reads "Seguir donde lo dejasteis"). It is cleared
   after a save. The phone's back button and the arrow at the top agree:
-  every screen is a history entry (#dias, #horas, #semana, #centro, #datos,
+  every screen is a history entry (#dias, #horas, #semana, #negocio, #datos,
   #listo), and back steps over a screen there is nothing for any more.
 
   SAVING (wired 18 Oct, wa-bot v216). Live is the default; ?preview=1 sends
@@ -717,7 +717,7 @@ body.noscroll{overflow:hidden}
       <div class="chat">
         <div class="bubble" lang="es">
           <p class="from">Massage Club</p>
-          <p>Hola, nueva reserva en una de las horas que nos disteis: Ana, hoy a las 18:00, masaje relajante de 60&nbsp;min. Paga directamente en el centro. Habla inglés. Su teléfono es +34&nbsp;600&nbsp;000&nbsp;000 y su email, ana@ejemplo.com. Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: <span class="lnk">enlace</span></p>
+          <p>Hola, nueva reserva en una de las horas que nos disteis: Ana, hoy a las 18:00, masaje relajante de 60&nbsp;min. Paga directamente. Habla inglés. Su teléfono es +34&nbsp;600&nbsp;000&nbsp;000 y su email, ana@ejemplo.com. Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: <span class="lnk">enlace</span></p>
           <p class="when" aria-hidden="true">12:04</p>
         </div>
       </div>
@@ -896,7 +896,7 @@ const T = {
     fPriceOther: "Otro precio",
     priceLater: "Lo pongo más tarde",
     priceLaterNote: "Vale, os lo pedimos más tarde. Hasta entonces, estas horas no se ofrecen a clientes.",
-    priceLaterMenu: "Vale. Mientras, usamos el precio que ya tenemos apuntado.",
+    priceLaterMenu: "Vale. Mientras tanto, usamos el precio que ya tenemos apuntado.",
     priceFrom: "Tenemos apuntado: desde {p} €.",
     sumLbl: "Vais a enviar",
     sumNone: "Todavía no habéis elegido ningún hueco.",
@@ -1204,7 +1204,7 @@ const joinList = (a) => a.length > 1 ? a.slice(0, -1).join(", ") + t("and") + a[
 // matters, just times that work for the customers"): every time is a 60
 // minute slot, as the default always was, and duration_min stays 60.
 const ORDER = ["hello", "days", "times", "repeat", "centro", "last", "done"];
-const HASH = ["", "#dias", "#horas", "#semana", "#centro", "#datos", "#listo"];
+const HASH = ["", "#dias", "#horas", "#semana", "#negocio", "#datos", "#listo"];
 const DONE = ORDER.length - 1;
 const ST = { days: 1, times: 2, repeat: 3, centro: 4, last: 5 };
 const S = {
@@ -2153,7 +2153,8 @@ function renderDone() {
 }
 
 // ---------------------------------------------------------------- navigation
-const stepFromHash = () => Math.max(0, HASH.indexOf(location.hash));
+// "#centro" was step 4's address until 23 Oct; an old history entry still lands there.
+const stepFromHash = () => Math.max(0, HASH.indexOf(location.hash === "#centro" ? "#negocio" : location.hash));
 const here = (step) => location.pathname + location.search + HASH[step];
 const centroValid = () => DEV || !!val("name") && !!val("addr") && waDigitsOk() && (!isLandline(intl(val("wa"))) || S.landlineOk === intl(val("wa"))) && EMAIL_RE.test(val("email"));
 // The furthest screen up to i that can be shown with what we have: a reload
@@ -2248,7 +2249,7 @@ window.addEventListener("popstate", () => {
   if (!$("sheet").hidden) { closeSheet(true); if (stepFromHash() === S.step) return; }
   const want = stepFromHash();
   // Going back onto a screen there is nothing for any more (after a send the
-  // picks are cleared, so #centro and #semana would both show ¿A qué horas?):
+  // picks are cleared, so #negocio and #semana would both show ¿A qué horas?):
   // step over it, so one tap of the phone's back button is one screen. Only
   // over entries this page pushed (prev >= 0), never off the page.
   const st = history.state || {};
@@ -2583,7 +2584,7 @@ function buildPayload(list) {
     },
   };
 }
-const batchKey = (p) => JSON.stringify([p.studio.whatsapp, p.availability.duration_min, p.availability.repeat_weekly, p.availability.slots.map((s) => [p.availability.repeat_weekly ? s.weekday : s.date, s.start])]);
+const batchKey = (p) => JSON.stringify([p.price_60_eur, p.price_later, p.studio.whatsapp, p.availability.duration_min, p.availability.repeat_weekly, p.availability.slots.map((s) => [p.availability.repeat_weekly ? s.weekday : s.date, s.start])]);
 // The text a studio sends us itself when the save does not work.
 function buildMessage(last) {
   const lines = [t("msgHello", { n: val("name") || "?" }), ""];

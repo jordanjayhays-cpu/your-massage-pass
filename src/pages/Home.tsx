@@ -98,7 +98,7 @@ export default function Home() {
               to="/partner"
               className="hidden sm:inline-flex h-9 px-4 rounded-full border border-border/80 text-foreground text-[11px] font-bold tracking-[0.12em] uppercase hover:bg-accent transition items-center"
             >
-              For massage centres
+              For massage businesses
             </Link>
             <Link
               to="/app"

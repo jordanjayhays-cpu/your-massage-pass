@@ -3878,7 +3878,7 @@ for (const [msg, want, note] of [
   p = page({ menu: true });
   check(G, "page: own link with a menu on file: nothing chosen is fine, as before", [p.checkLast(), p.buildPayload(list).studio.price_60_eur], [[], null], "the menu is quoted (priceKnown)");
   p.setPrice("later");
-  check(G, "page: own link with a menu: «Lo pongo más tarde» says the price on file is used", p.$("priceLaterNote").textContent, "Vale. Mientras, usamos el precio que ya tenemos apuntado.", "");
+  check(G, "page: own link with a menu: «Lo pongo más tarde» says the price on file is used", p.$("priceLaterNote").textContent, "Vale. Mientras tanto, usamos el precio que ya tenemos apuntado.", "");
   // What the vm does not run: the wiring, the draft and the ticket.
   check(G, "page: the three choices are wired", /\$\("priceChips"\)\.addEventListener\("click", \(e\) => \{\s*const b = e\.target\.closest\("\[data-price\]"\);\s*if \(b\) setPrice\("pick", Number\(b\.dataset\.price\)\);\s*\}\);/.test(html) && /\$\("priceLater"\)\.addEventListener\("click", \(\) => setPrice\("later"\)\);/.test(html) && /\$\("p60"\)\.addEventListener\("input", \(\) => setPrice\("typed"\)\);/.test(html), true, "");
   check(G, "page: the choice is kept in the draft, only a listed price", /pricePick: S\.pricePick, priceLater: S\.priceLater,/.test(html) && /S\.priceLater = d\.priceLater === true;\s*S\.pricePick = !S\.priceLater && PRICE_CHIPS\.includes\(Number\(d\.pricePick\)\) \? Number\(d\.pricePick\) : null;/.test(html), true, "");
@@ -3980,6 +3980,47 @@ for (const [msg, want, note] of [
   check(G, "server: socApply stores the price as given, menu or pending", /terms: "", price: socPriceState\(plan\) \};/.test(fnOf(botSrc, "\nasync function socApply(")), true, "studio_signups.result.price");
   check(G, "server: the approve page says it too, and the draft Jordan sends asks for the price", /const noPrice = res\.result\.price === "pending";/.test(rp) && /\$\{socSeenEn\(live, mode, noPrice, plan\.minutes\)\}/.test(rp) && /\$\{noPrice \? `\\n\\nPara ofrecerlas a clientes nos falta vuestro precio: ¿cuánto cobráis por un masaje de \$\{plan\.minutes\} minutos\?` : ""\}/.test(rp) && /\$\{noPrice \? `\\n\\nTo offer them to customers we still need your price: how much do you charge for a \$\{plan\.minutes\}-minute massage\?` : ""\}/.test(rp), true, "a draft in his own WhatsApp; nothing is sent by us");
   check(G, "server: a studio's later changes on its link still need a price (unchanged)", /else if \(price === null && !\(await socHasMenu\(pid\)\)\) refuseReady\("price_needed"\);/.test(fnOf(botSrc, "\nasync function socTimesSubmit(")), true, "studio_times is not wired to the page yet");
+}
+
+// ---------------------------------------------------------------------------
+// Jordan, 23 Oct: stop calling the business «centro» / "centre". It is
+// «negocio» in Spanish and "business" in English everywhere a business owner
+// reads it: the partner portal (src/i18n es.json and en.json, partner.* and
+// the owner links on the customer pages) and the hardcoded portal, survey,
+// claim and invite strings. Customer copy keeps «Pago en el centro», the
+// Madrid district stays "Centro", and partner.dashboard.ourStudio stays: it
+// is only the fallback name in the subject of an email the business sends
+// its own customer («Tu reserva en nuestro centro»), which customers read.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const G = "business wording (portal)";
+  const read = (f) => fs.readFileSync(path.join(here, "..", f), "utf8");
+  const es = JSON.parse(read("src/i18n/es.json"));
+  const en = JSON.parse(read("src/i18n/en.json"));
+  const flat = (o, p = "", out = {}) => { for (const [k, v] of Object.entries(o)) { const q = p ? `${p}.${k}` : k; if (typeof v === "string") out[q] = v; else if (v && typeof v === "object") flat(v, q, out); } return out; };
+  const ES = flat(es), EN = flat(en);
+  const ownerApp = ["app.massageList.switchToPartner", "app.massageList.studioCta", "app.login.actions.forStudios", "app.login.actions.ownStudio", "app.login.studioCard.label", "app.login.studioCard.title", "app.partnerAuth.resetHelp", "app.studioHours.staffTitle"];
+  const ownerKeys = (F) => Object.keys(F).filter((k) => (k.startsWith("partner.") && k !== "partner.dashboard.ourStudio") || ownerApp.includes(k));
+  check(G, "es: no «centro» left in what a business owner reads", ownerKeys(ES).filter((k) => /\bcentros?\b/i.test(ES[k])), [], "");
+  check(G, "en: no \"centre\" left in what a business owner reads", ownerKeys(EN).filter((k) => /\bcent(re|er)s?\b/i.test(EN[k])), [], "");
+  check(G, "es: the new words, masculine like «centro»", ["partner.login.businessNameLabel", "partner.onboarding.stepStudio", "partner.onboarding.atMyStudio", "app.login.actions.forStudios", "app.massageList.studioCta", "partner.studioSetup.doneDescInvite"].map((k) => ES[k]),
+    ["Nombre del negocio", "Negocio", "En mi negocio", "Para negocios", "¿Tienes un negocio de masajes? Aparece gratis en Massage Club →", "Tu negocio ya es visible para miles de clientes en Madrid."], "");
+  check(G, "en: the new words", ["partner.login.registerTab", "partner.onboarding.stepStudio", "app.login.actions.forStudios", "app.massageList.switchToPartner", "partner.studioSetup.claimBadgeLabel"].map((k) => EN[k]),
+    ["List My Business", "Business", "For massage businesses", "Your business dashboard →", "Claim Your Business"], "");
+  check(G, "es: no feminine article in front of «negocio»", Object.entries(ES).filter(([, v]) => /\b(la|las|una|unas|esta|nuestra|vuestra|otra)\s+negocios?\b/i.test(v)).map(([k]) => k), [], "");
+  check(G, "no em or en dash in any string that now says negocio / business", [...Object.entries(ES).filter(([, v]) => /negocio/i.test(v)), ...Object.entries(EN).filter(([, v]) => /\bbusiness/i.test(v))].filter(([, v]) => /[–—]/.test(v)).map(([k]) => k), [], "CLAUDE.md");
+  check(G, "customer copy keeps «centro» (unchanged)", ["app.shopDetail.pay_at_studio", "app.login.hero.payAtStudio", "app.payment.main.totals.footer", "partner.dashboard.ourStudio"].map((k) => ES[k]),
+    ["Pago en el centro", "Paga en el centro", "El masaje se paga directamente en el centro al llegar.", "nuestro centro"], "customers read these");
+  const ownerTsx = ["src/app/screens/StudioPortal.tsx", "src/app/screens/ClaimShortLink.tsx", "src/app/screens/AdminInviteStudio.tsx", "src/app/screens/SurveyStudios.tsx", "src/pages/Home.tsx", "src/pages/guides/GuideLayout.tsx", "src/pages/Web.tsx"];
+  check(G, "hardcoded portal, survey, claim, invite and owner-link strings: no centre / centro", ownerTsx.filter((f) => /\bcentr(e|es|o|os)\b/i.test(read(f))), [], "");
+  const idx = read("src/pages/Index.tsx");
+  check(G, "Index.tsx: owner links say business; \"Centro\" is only the district", [(idx.match(/\bcentr(e|es|o|os)\b/gi) || []).length, /district: "Centro"/.test(idx), /List your business<\/a>/.test(idx), /For Massage Businesses<\/a>/.test(idx), /Massage business\?<\/span>/.test(idx)], [1, true, true, true, true], "");
+  const survey = read("src/app/screens/SurveyStudios.tsx");
+  check(G, "SurveyStudios.tsx (Spanish survey for businesses)", [/>Negocios de masajes · Madrid</.test(survey), /algo útil para tu negocio\./.test(survey), /block">Nombre del negocio</.test(survey), /¿Listarías tu negocio gratis/.test(survey)], [true, true, true, true], "");
 }
 
 // ---------------------------------------------------------------------------

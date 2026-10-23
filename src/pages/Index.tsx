@@ -131,7 +131,7 @@ const Index = () => {
             <a href="#estudios" className="hover:text-accent transition-colors">{t("nav.studios")}</a>
             <a href="#como-funciona" className="hover:text-accent transition-colors">{t("nav.how")}</a>
             <a href="#faq" className="hover:text-accent transition-colors">{t("nav.faq")}</a>
-            <a href="/partner/onboarding" className="text-accent hover:text-accent/80 transition-colors font-semibold">List your centre</a>
+            <a href="/partner/onboarding" className="text-accent hover:text-accent/80 transition-colors font-semibold">List your business</a>
           </nav>
           <div className="flex items-center gap-2">
             <LanguageToggle />
@@ -139,7 +139,7 @@ const Index = () => {
               <a href="/app">Open app</a>
             </Button>
             <Button asChild variant="outline" size="sm" className="border-accent/60 bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
-              <a href="/partner/onboarding">For Massage Centres</a>
+              <a href="/partner/onboarding">For Massage Businesses</a>
             </Button>
             <Button asChild variant="secondary" size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-gold">
               <a href="#join">{t("nav.join")}</a>
@@ -167,10 +167,10 @@ const Index = () => {
               size="lg"
               className="mb-5 h-auto min-h-14 w-full max-w-md justify-start gap-3 bg-accent px-5 py-3 text-left text-accent-foreground shadow-gold hover:bg-accent/90 sm:w-auto"
             >
-              <a href="/partner/onboarding" aria-label="Open massage centre partner onboarding form">
+              <a href="/partner/onboarding" aria-label="Open massage business partner onboarding form">
                 <Store className="h-5 w-5 shrink-0" />
                 <span className="flex flex-col leading-tight">
-                  <span className="text-sm font-bold">Massage centre?</span>
+                  <span className="text-sm font-bold">Massage business?</span>
                   <span className="text-xs font-medium opacity-90">Open the partner onboarding form →</span>
                 </span>
               </a>
