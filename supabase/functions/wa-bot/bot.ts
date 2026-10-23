@@ -5048,6 +5048,17 @@ function relHueco(messageText: unknown): string | null {
   const m = String(messageText ?? "").match(/\| Hueco: ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
   return m ? m[1].toLowerCase() : null;
 }
+// Review (23 Oct, go-live): a button on a studio page (the reject page's «No
+// podemos atenderle», the times page's Quitar) carries the moment the page
+// was drawn, and acts only while that is recent: under maxMs old and not
+// more than a minute ahead of us. A link opened on its own, or an old tab
+// a phone restores, has none or a stale one, so it only shows the page.
+function relPageFresh(t: unknown, nowMs: number, maxMs: number): boolean {
+  const n = Number(t || 0);
+  return Number.isFinite(n) && n > 0 && nowMs - n < maxMs && n <= nowMs + 60e3;
+}
+const REL_REJECT_FRESH_MS = 20 * 60e3;
+const REL_SLOTS_FRESH_MS = 6 * 3600e3;
 // ---- v215 released slots: pure helpers (end) ----
 
 // ---- v216 socios: pure helpers (start) ----
@@ -5579,6 +5590,9 @@ const SOC_MSG: Record<string, { es: string; en: string }> = {
   applied_wait: { es: "Guardado. Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos.", en: "Saved. We are not offering them to customers yet: we will let you know as soon as we start." },
   pending: { es: "Recibido, lo revisamos y os confirmamos por WhatsApp o email.", en: "Received, we will check it and confirm by WhatsApp or email." },
   rate: { es: "Habéis enviado varias veces seguidas. Esperad unos minutos y probad otra vez.", en: "You have sent this several times in a row. Wait a few minutes and try again." },
+  // Go-live review (23 Oct): the cap for everyone (503). The page shows the
+  // WhatsApp and email fallback instead; this is for anything else reading it.
+  busy: { es: "Ahora mismo nos llegan muchos formularios y no podemos guardar el vuestro. Enviadnos vuestras horas por WhatsApp o por email.", en: "We are getting a lot of forms right now and cannot save yours. Send us your times by WhatsApp or email." },
   error: { es: "No se ha podido guardar. Probad otra vez en un momento.", en: "It could not be saved. Try again in a moment." },
   bad: { es: "No hemos podido leer el formulario. Recargad la página y probad otra vez.", en: "We could not read the form. Reload the page and try again." },
   name: { es: "Falta el nombre del centro.", en: "The centre name is missing." },
@@ -5632,8 +5646,12 @@ const OCU_DATE_RE = new RegExp(`\\b(\\d{1,2})\\s+(?:de\\s+)?(${OCU_MONTH_ALT})\\
 // hours), or "del" and a number with no month after it ("el 10 del 12",
 // "la del 24"). OCU_MONTH_LEFT_RE, once the date read is taken out: a month
 // word still there ("dic 10", "diciembre 10", "en diciembre", "10 december").
-const OCU_ODD_DATE_RE = new RegExp(`(?<![\\d:.])(?:0?[1-9]|[12]\\d|3[01])-(?:0?[1-9]|1[0-2])(?![\\d:.])|\\bdel\\s+\\d{1,2}\\b(?!\\s*(?::|\\.|h\\b|hs\\b|horas\\b|\\/|(?:de\\s+)?(?:${OCU_MONTH_ALT})\\b))`);
-const OCU_MONTH_LEFT_RE = new RegExp(`\\b(?:${OCU_MONTH_ALT}|jan(?:uary)?|february|march|apr(?:il)?|june|july|aug(?:ust)?|september|october|november|dec(?:ember)?)\\b`);
+// Review (23 Oct, re-verify): also a day and month with a dot ("24.10"; never
+// a time on the half-hour grid) or "de" and a number ("el 25 de 11" was 25
+// Oct, "el 23 de 10" 23 Oct at 10:00), and "mes" or "semana" left ("el 10
+// de este mes", "el día 10 mes 12", "el jueves de la otra semana").
+const OCU_ODD_DATE_RE = new RegExp(`(?<![\\d:.])(?:0?[1-9]|[12]\\d|3[01])[-.](?:0?[1-9]|1[0-2])(?![\\d:.])|\\bdel\\s+\\d{1,2}\\b(?!\\s*(?::|\\.|h\\b|hs\\b|horas\\b|\\/|(?:de\\s+)?(?:${OCU_MONTH_ALT})\\b))|\\b\\d{1,2}\\s+de\\s+\\d{1,2}\\b(?!\\s*(?::|\\.\\d|h\\b|hs\\b|horas\\b))`);
+const OCU_MONTH_LEFT_RE = new RegExp(`\\b(?:${OCU_MONTH_ALT}|jan(?:uary)?|february|march|apr(?:il)?|june|july|aug(?:ust)?|september|october|november|dec(?:ember)?|mes(?:es)?|semanas?)\\b`);
 // Review fix (17 Oct): a counter-offer or a change is an answer, never a
 // withdrawal: "No, a las 18 está ocupado, podemos a las 19" read as "remove
 // 18:00". So is anything naming two different hours.
@@ -5657,6 +5675,7 @@ function ocupadoIntent(text: unknown, nowMs: number): OcuIntent | null {
   let pm: boolean | null = null;
   if (/\b(?:por|de) la manana\b|\besta manana\b/.test(s)) { pm = false; if (/\besta manana\b/.test(s)) off = 0; s = s.replace(/\b(?:por|de|esta) la manana\b|\besta manana\b/g, " "); }
   if (/\b(?:por|de) la (?:tarde|noche)\b|\besta (?:tarde|noche)\b/.test(s)) { pm = true; if (/\besta (?:tarde|noche)\b/.test(s)) off = 0; }
+  const todayToo = off === 0 || /\bhoy\b/.test(s);
   if (/\bpasado manana\b/.test(s)) { off = 2; s = s.replace(/\bpasado manana\b/g, " "); }
   else if (/\bmanana\b/.test(s)) off = 1;
   else if (/\bhoy\b/.test(s)) off = 0;
@@ -5692,22 +5711,33 @@ function ocupadoIntent(text: unknown, nowMs: number): OcuIntent | null {
       s = s.replace(hit, " ");
     }
   }
+  // Review (23 Oct, re-verify): today and another day ("hoy y mañana", "esta
+  // tarde, el jueves"), two weekdays, or a weekday that is not the day read
+  // ("mañana jueves" written after midnight on Thursday): -1.
+  const wds = OCU_DAYS.filter((d) => new RegExp(`\\b${d}\\b`).test(s));
+  if (off !== null && off >= 0 && ((todayToo && off !== 0) || wds.length > 1 || (wds.length === 1 && OCU_DAYS.indexOf(wds[0]) !== days[off].dow))) off = -1;
   if (OCU_MONTH_LEFT_RE.test(s)) return null;
   if (off !== null && off < 0) return null;
   // The time.
-  let h: number | null = null, mi = 0;
+  let h: number | null = null, mi = 0, took = "";
   // "las 2 salas" is two rooms, not 02:00.
   const COUNT = "(?!\\s*(?:salas?|camillas?|personas?|clientes?|huecos?)\\b)";
   const m1 = s.match(/\b([01]?\d|2[0-3])[:.h]([0-5]\d)\b/);
   const m2 = s.match(new RegExp(`\\b(?:a las|las|a la)\\s+([01]?\\d|2[0-3])\\b${COUNT}(?:\\s*(?:h|hs|horas)\\b)?(?:\\s+y\\s+(media|cuarto))?`));
   const m3 = s.match(/\b([01]?\d|2[0-3])\s*(?:h|hs|horas)\b(?:\s+y\s+(media|cuarto))?/);
-  if (m1) { h = parseInt(m1[1], 10); mi = parseInt(m1[2], 10); }
-  else if (m2) { h = parseInt(m2[1], 10); mi = m2[2] === "media" ? 30 : m2[2] === "cuarto" ? 15 : 0; }
-  else if (m3) { h = parseInt(m3[1], 10); mi = m3[2] === "media" ? 30 : m3[2] === "cuarto" ? 15 : 0; }
+  if (m1) { h = parseInt(m1[1], 10); mi = parseInt(m1[2], 10); took = m1[0]; }
+  else if (m2) { h = parseInt(m2[1], 10); mi = m2[2] === "media" ? 30 : m2[2] === "cuarto" ? 15 : 0; took = m2[0]; }
+  else if (m3) { h = parseInt(m3[1], 10); mi = m3[2] === "media" ? 30 : m3[2] === "cuarto" ? 15 : 0; took = m3[0]; }
   else {
     const bare = s.match(new RegExp(`(?:^|\\s)(\\d{1,2})(?=\\s|$)${COUNT}`));
-    if (bare && !/\b(?:el|dia)\s+$/.test(s.slice(0, bare.index! + 1))) { const n = parseInt(bare[1], 10); if (n >= 8 && n <= 22) h = n; }
+    if (bare && !/\b(?:el|dia)\s+$/.test(s.slice(0, bare.index! + 1))) { const n = parseInt(bare[1], 10); if (n >= 8 && n <= 22) { h = n; took = bare[0]; } }
   }
+  // Review (23 Oct, re-verify): a number still there once the day and the
+  // time read are taken out (not a count such as "2 salas", not a year) is a
+  // day or a time not read: "el 10 y el 11", "10, 11 dic", "ocupado 10 a
+  // las 18", "mañana el 10", "ocupado 7", "18:30h". Null, never another
+  // day's or hour's time.
+  if (/\d/.test((took ? s.replace(took, " ") : s).replace(OCU_HOURS_RE, " ").replace(/\b\d+\s*(?:salas?|camillas?|personas?|clientes?|huecos?)\b/g, " ").replace(/\b20\d\d\b/g, " "))) return null;
   // Mainly «ocupado»: what is left once the time, the day and the ways of
   // saying it are taken out is at most one word.
   const words = s.replace(/\b\d{1,2}[:.h]\d{2}\b/g, " ").split(/[^a-z0-9ñ]+/).filter(Boolean);
@@ -7642,16 +7672,20 @@ async function releasedEmailFollowUp(req: any, email: string): Promise<boolean> 
 
 // The studio's free-times page, rendered here and shown through the
 // book.massageclub.io/bot.html shell (pageOut with fmt=json), like the offer
-// and invoice pages. Every change is a GET the page's own form or links make,
-// so a mail scanner opening the emailed link changes nothing, and each one is
+// and invoice pages. Every change is a GET the page's own forms make, so a
+// mail scanner opening the emailed link changes nothing, and each one is
 // safe to repeat (release_slots skips a time already live, or one changed in
 // any way since the page was drawn, review 17 Oct; a withdraw only touches a
-// free time). The shell strips scripts, so the page works without
-// any. It sits in a fixed scroll box, because the shell scrolls every page
-// that has no reply form to the bottom.
+// free time). Review (23 Oct, go-live): Quitar is a form too, not a link, so
+// a scanner that follows the links on the rendered page cannot remove a
+// time either, and a remove needs at (the moment the page was drawn) under
+// 6 hours old, as a save does. The shell strips scripts, so the page works
+// without any. It sits in a fixed scroll box, because the shell scrolls every
+// page that has no reply form to the bottom.
 //   ?slots=<partner id>&k=<sig>[&d=YYYY-MM-DD][&m=60]
 //   ...&do=add&t=18:00&t=18:30&n=<rooms>&p=<price>&at=<render ms>
-//   ...&do=del&id=<slot ids>
+//   ...&do=del&id=<slot ids>&at=<render ms>
+//   ...&do=delp&pid=<weekly time id>&at=<render ms>
 const SLOTS_CSS = `.mcs{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:${C.page}}
 .mcs main{max-width:520px;margin:0 auto;padding:20px 16px 48px;font-family:${SANS};color:${C.ink};box-sizing:border-box}
 .mcs *{box-sizing:border-box}
@@ -7686,7 +7720,8 @@ const SLOTS_CSS = `.mcs{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-
 .mcs .list{background:#fff;border-radius:16px;border:1px solid ${C.line}}
 .mcs .li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid ${C.line};font-size:14px;line-height:1.4}
 .mcs .li:first-child{border-top:0}
-.mcs .li a{color:#9A3B1E;font-weight:700;text-decoration:none;white-space:nowrap}
+.mcs .li form{margin:0}
+.mcs .li button{border:0;background:none;padding:4px 0;color:#9A3B1E;font:700 14px ${SANS};white-space:nowrap;cursor:pointer}
 .mcs .li .m{color:${C.muted};font-size:12.5px}
 .mcs .foot{color:${C.muted};font-size:13px;line-height:1.55;margin-top:22px}
 @media (max-width:359px){.mcs .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}`;
@@ -7773,6 +7808,12 @@ async function slotsPage(url: URL): Promise<Response> {
         }
       }
     }
+  } else if ((act === "del" || act === "delp") && !relPageFresh(url.searchParams.get("at"), nowMs, REL_SLOTS_FRESH_MS)) {
+    // Review (23 Oct, go-live): a Quitar with no at, or one from a page drawn
+    // over 6 hours ago (a link followed on its own, an old tab), removes
+    // nothing. This page had been open for a long time. Please press Quitar
+    // again.
+    note = "Esta página llevaba mucho rato abierta. Volved a pulsar Quitar, por favor."; noteErr = true;
   } else if (act === "del") {
     const ids = String(url.searchParams.get("id") || "").split(",").map(relClean).filter(Boolean).slice(0, 20);
     for (const id of ids) await relRpc("withdraw_released_slot", { p_slot: id, p_partner: p.id });
@@ -7781,7 +7822,8 @@ async function slotsPage(url: URL): Promise<Response> {
     const gone = Array.isArray(st) && st.length > 0 && st.every((x: any) => ["withdrawn", "expired"].includes(String(x.status)));
     // Removed. It can no longer be booked. / It could not be removed: a client is booking it right now or it is already booked.
     note = gone ? "Quitada. Ya no se puede reservar." : "No se ha podido quitar: un cliente la está reservando ahora mismo o ya está reservada.";
-    noteErr = !gone;  } else if (act === "delp") {
+    noteErr = !gone;
+  } else if (act === "delp") {
     // v216: Quitar on an "every week" time: the weekly time ends and its future
     // free times are withdrawn (end_released_pattern); held or booked ones stay.
     const pat = relClean(url.searchParams.get("pid"));
@@ -7814,6 +7856,9 @@ async function slotsPage(url: URL): Promise<Response> {
     byStart.set(key, a);
   }
   const link = (d: string, m: number) => `${base}&d=${d}&m=${m}`;
+  // Review (23 Oct, go-live): Quitar (Remove) is a small GET form per row
+  // with the moment the page was drawn (at), as Guardar is, never a link.
+  const quitar = (fields: Record<string, string>) => `<form method="get" action="">${Object.entries({ slots: String(p.id), k, d: ymd, m: String(minutes), ...fields, at: String(nowMs) }).map(([n, v]) => `<input type="hidden" name="${escAttr(n)}" value="${escAttr(v)}">`).join("")}<button type="submit">Quitar</button></form>`;
   const dayChips = days.map((x, i) => {
     const shut = !!hours && slotWindows(hours, x.dow).length === 0;
     const n = [...byStart.values()].filter((a) => a.ymd === x.ymd).length;
@@ -7855,7 +7900,7 @@ async function slotsPage(url: URL): Promise<Response> {
   const patHtml = pats.map((x: any) => {
     const wd = WD_ES[Number(x.weekday)] || "";
     // "Martes · 18:00 · 60 min · 45 €" / "Cada semana" (Every week) / Quitar (Remove)
-    return `<div class="li"><div><div>${esc(wd.charAt(0).toUpperCase() + wd.slice(1))} · ${esc(String(x.start_time).slice(0, 5))} · ${Number(x.minutes)} min${Number(x.price_eur) > 0 ? ` · ${eurEs(Number(x.price_eur))}` : ""}</div><div class="m">Cada semana</div></div><a href="${escAttr(`${link(ymd, minutes)}&do=delp&pid=${x.id}`)}">Quitar</a></div>`;
+    return `<div class="li"><div><div>${esc(wd.charAt(0).toUpperCase() + wd.slice(1))} · ${esc(String(x.start_time).slice(0, 5))} · ${Number(x.minutes)} min${Number(x.price_eur) > 0 ? ` · ${eurEs(Number(x.price_eur))}` : ""}</div><div class="m">Cada semana</div></div>${quitar({ do: "delp", pid: String(x.id) })}</div>`;
   }).join("");
   const listHtml = [...byStart.values()].sort((a, b) => a.startMs - b.startMs).map((a) => {
     const dayIdx = days.findIndex((x) => x.ymd === a.ymd);
@@ -7867,7 +7912,7 @@ async function slotsPage(url: URL): Promise<Response> {
     if (a.booked.length) parts.push(`Reservada: ${a.booked.join(", ")}`); // Booked: Ana
     if (a.held) parts.push("Un cliente la está reservando"); // A client is booking it
     if (a.free.length) parts.push(rooms > 1 ? `${a.free.length} libre${a.free.length === 1 ? "" : "s"}` : "Libre"); // Free
-    const del = a.free.length ? `<a href="${escAttr(`${link(ymd, minutes)}&do=del&id=${a.free.join(",")}`)}">Quitar</a>` : ""; // Remove
+    const del = a.free.length ? quitar({ do: "del", id: a.free.join(",") }) : ""; // Remove
     return `<div class="li"><div><div>${esc(when)}</div><div class="m">${esc(parts.join(" · "))}</div></div>${del}</div>`;
   }).join("");
   const body = `<h1>Horas libres</h1><div class="who">${esc(studio)}</div>
@@ -7898,6 +7943,11 @@ ${patHtml ? `<div class="lbl">Cada semana</div><div class="list">${patHtml}</div
 }
 // The studio's 15 minute reject link, from its confirmation. GET shows the
 // booking; only the button on the page (a=no) rejects it.
+// Review (23 Oct, go-live): the button is a form submit, not a link (as
+// socReviewPage's are), so a scanner that follows the links on the rendered
+// page cannot cancel a booking and message the customer; and a=no acts only
+// with the t the page was drawn with, under 20 minutes old (the 15 minutes
+// and some slack). A stale or missing t shows the page again.
 // Review (17 Oct): a booking the customer has cancelled (or Jordan closed) is
 // withdrawn here at once and shows as no longer active; and when the reject
 // finds nothing (two presses at once, a slow network), the slot is read again
@@ -7947,7 +7997,9 @@ async function slotRejectPage(url: URL): Promise<Response> {
       studioName: pc.business_name,
     });
   };
-  if (String(url.searchParams.get("a") || "") === "no") {
+  // «No podemos atenderle» (We can't see them), carrying the moment the page was drawn.
+  const button = () => pillForm({ slotr: id, sig, a: "no", t: String(Date.now()) }, "No podemos atenderle", false);
+  if (String(url.searchParams.get("a") || "") === "no" && relPageFresh(url.searchParams.get("t"), Date.now(), REL_REJECT_FRESH_MS)) {
     const row = open ? await relRpcOne("reject_released_slot", { p_slot: id, p_note: "studio reject link" }) : null;
     if (row) {
       const told = await releasedRejected(row, "studio reject link");
@@ -7960,14 +8012,14 @@ async function slotRejectPage(url: URL): Promise<Response> {
     if (now2?.status === "rejected") return pageOut(url, already());
     if (now2?.status === "booked" && Date.now() > Date.parse(String(now2.reject_until))) { await lateCard(); return pageOut(url, late()); }
     // It could not be cancelled just now. Please try again in a moment.
-    if (now2?.status === "booked") return pageOut(url, simpleCard("No se ha podido anular", "Probad otra vez en un momento, por favor.", pillLink(`${await slotRejectLink(id)}&a=no`, "No podemos atenderle", false)));
+    if (now2?.status === "booked") return pageOut(url, simpleCard("No se ha podido anular", "Probad otra vez en un momento, por favor.", button()));
     return pageOut(url, inactive());
   }
   if (!open) return pageOut(url, late());
   // Ana's booking. Today at 18:00, relaxing massage of 60 min. If you cannot see them, reject it before 18:17. If you can, there is nothing to do.
   const body = `${when.charAt(0).toUpperCase() + when.slice(1)}, ${svc} de ${mins} min.\n\nSi no podéis atenderle, rechazadla antes de las ${relHm(until)}. Si podéis, no hace falta hacer nada.`;
   // Button: "No podemos atenderle" (We can't see them).
-  return pageOut(url, simpleCard(`Reserva de ${first}`, body, pillLink(`${await slotRejectLink(id)}&a=no`, "No podemos atenderle", false)));
+  return pageOut(url, simpleCard(`Reserva de ${first}`, body, button()));
 }
 // Ops (key-guarded, like studio_offer):
 //   release_slots   { partner_id, slots: [{date, time, minutes?, seats?, price?}], evidence, ignore_hours? }
@@ -8425,6 +8477,7 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
   const ua = socLine(req.headers.get("user-agent")).slice(0, 300);
   const since = (ms: number) => encodeURIComponent(new Date(nowMs - ms).toISOString());
   const limited = { status: 429, body: { ok: false, status: "rate_limited", message: socMsg("rate", L) } };
+  const busy = { status: 503, body: { ok: false, status: "busy", message: socMsg("busy", L) } };
   const { partner, signed, sigBad } = await socResolve(p?.link_slug, p?.link_sig);
   const waDigits = socPhone(p?.studio?.whatsapp);
   if (signed) {
@@ -8433,7 +8486,14 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
     if (!ipHash) { if ((await socCount(`signed=is.false&ip_hash=is.null&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_NOIP_10M) return limited; }
     else if ((await socCount(`ip_hash=eq.${ipHash}&signed=is.false&created_at=gte.${since(10 * 60e3)}`)) >= SOC_LIMIT_IP_10M || (await socCount(`ip_hash=eq.${ipHash}&signed=is.false&created_at=gte.${since(86400e3)}`)) >= SOC_LIMIT_IP_DAY) return limited;
     if (waDigits && (await socCount(`whatsapp_digits=eq.${waDigits}&signed=is.false&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_STUDIO_H) return limited;
-    if ((await socCount(`signed=is.false&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_UNSIGNED_H) return limited;
+    // Go-live review (23 Oct): the cap for everyone counts only forms that
+    // passed the checks and that Jordan has not rejected (junk stored as
+    // rejected still counts per address and per WhatsApp above), so junk
+    // posts cannot lock real studios out.
+    // When it is what refuses, the answer is 503 "busy", which the page
+    // turns into the WhatsApp and email fallback, never "wait a few
+    // minutes": the studio's times still reach us.
+    if ((await socCount(`signed=is.false&status=neq.rejected&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_UNSIGNED_H) return busy;
   }
   // Signed: the studio's own hours come first (they are saved on its row),
   // and a studio with a menu on file may leave the price blank. Unsigned: the
@@ -8505,7 +8565,11 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
   // Review fix (17 Oct): unsigned forms cannot flood Jordan's inbox. Up to
   // SOC_CARDS_UNSIGNED_H cards an hour, then one "more are waiting" card; the
   // rest wait on his links page (NEW STUDIOS and each studio's Review link).
-  const cardsH = signed ? 0 : await socCount(`signed=is.false&status=eq.pending_review&created_at=gte.${since(3600e3)}&id=neq.${encodeURIComponent(String(row.id))}`);
+  // Go-live review (23 Oct): only forms that came in before this one count,
+  // including ones not yet marked pending_review, so a burst sent at once
+  // cannot all count themselves among the first five.
+  const before = row.created_at ? `created_at=lt.${encodeURIComponent(String(row.created_at))}` : `id=neq.${encodeURIComponent(String(row.id))}`;
+  const cardsH = signed ? 0 : await socCount(`signed=is.false&status=in.(received,pending_review)&created_at=gte.${since(3600e3)}&${before}`);
   if (cardsH < SOC_CARDS_UNSIGNED_H) await socReviewCard(row, plan, match, why, canApprove, byPhoneOther);
   else if (cardsH === SOC_CARDS_UNSIGNED_H) {
     await founderCard(`📝 More /socios forms are waiting for your review`, {

@@ -1366,6 +1366,11 @@ function mkDate(i) {
   const dt = new Date(Date.UTC(n.y, n.m - 1, n.d) + i * 864e5);
   return { key: dt.toISOString().slice(0, 10), iso: dt.toISOString().slice(0, 10), wd: dt.getUTCDay(), offset: i, dd: dt.getUTCDate(), mm: dt.getUTCMonth(), weekly: false };
 }
+const isoWd = (iso) => new Date(iso + "T12:00:00Z").getUTCDay();
+// The studio has answered "No, solo esta semana" for these picks. Until it
+// answers (again() asks afresh after a send), they are read as every week,
+// the default, whatever S.repeat still holds.
+const onceOnly = () => S.repeatPicked && !S.repeat;
 function startsFor(d) {
   // Every week: the whole day, from the next one on. A date: from now + notice.
   const cut = !d.weekly && d.offset === 0 ? madridNow().min + LEAD_MIN : -1;
@@ -1393,45 +1398,70 @@ const firstDate = (wd, m) => mkDate(firstOffset(wd, m)).iso;
 // hours (the server takes one an hour ahead, release_slots); otherwise
 // today is left out and it runs from tomorrow to the same weekday next week
 // (still under the server's 8 days). So late on a Sunday the last cell is
-// next Sunday, shown with its own date, and a date tapped is never swapped
-// for another one.
+// next Sunday, shown with its own date, and a date tapped "just once" is
+// never swapped for another one.
 // Each weekday is in the calendar exactly once, which is why the times stay
 // keyed by weekday: "just once" puts a weekday's times on its date here, and
-// "every week" saves the weekday, whose first date (firstDate) is that same
-// date, because today's grid only offers times still ahead.
+// "every week" saves the weekday from its first date (firstDate): that same
+// date, or a week on for a time today that is already too close.
+// Review (23 Oct): the calendar moves on while the page is open (today's
+// last time comes under LEAD_MIN, or new hours open or close today), and a
+// tapped date it no longer shows used to drop out with its times and no
+// word. keepPicks() now carries it; `once` is in the cache so a change of
+// answer carries too.
 let CAL = null;
 function calDays() {
   const n = madridNow();
-  const key = [n.y, n.m, n.d, n.min].join("-");
-  if (CAL && CAL.key === key && CAL.h === HOURS) return CAL.days;
+  const key = [n.y, n.m, n.d, n.min].join("-"), once = onceOnly();
+  if (CAL && CAL.key === key && CAL.h === HOURS && CAL.once === once) return CAL.days;
   const from = startsFor(mkDate(0)).length ? 0 : 1;
   const days = [0, 1, 2, 3, 4, 5, 6].map((i) => mkDate(from + i));
-  CAL = { key, h: HOURS, days };
+  CAL = { key, h: HOURS, once, days };
+  if (!once) keepPicks(days);
   return days;
+}
+// Every week: a tapped date outside the calendar moves to its weekday's date
+// in it, as the weekday is what gets saved (and firstDate sends that date or
+// the next). Just this week a date is never swapped for another: it stays
+// in S.dates, is not sent, and hiddenByDay() says its times are not sent.
+function keepPicks(days) {
+  let moved = false;
+  for (const iso of Array.from(S.dates)) {
+    if (iso >= days[0].iso && iso <= days[6].iso) continue;
+    S.dates.delete(iso);
+    S.dates.add(days.find((d) => d.wd === isoWd(iso)).iso);
+    moved = true;
+  }
+  if (moved) saveDraft();
 }
 // The calendar date a weekday falls on.
 const dateOf = (wd) => calDays().find((d) => d.wd === wd);
 // The start times that date can take: its hours, and today only from LEAD_MIN ahead.
 const dayStarts = (wd) => startsFor(dateOf(wd));
-// A date the studio tapped, by its weekday. A tapped date that is no longer
-// in the calendar (past midnight, or today once its last time has gone) is
-// simply not chosen: it never moves to another date.
+// The times grid (review, 23 Oct): every week takes the whole day, from the
+// next one on, so "cada viernes a las 10:00" can be given on a Friday
+// afternoon; only once the studio has said "solo esta semana" does today's
+// date lose the times under LEAD_MIN away.
+const gridStarts = (wd) => onceOnly() ? dayStarts(wd) : wkStarts(wd);
+// A date the studio tapped, by its weekday (one a calendar that moved on no
+// longer shows: see keepPicks).
 const isChosen = (wd) => S.dates.has(dateOf(wd).iso);
 // The chosen dates that have times, as weekdays, in calendar order.
 const chosenDays = () => calDays().filter((d) => S.dates.has(d.iso) && startsFor(d).length).map((d) => d.wd);
 // Chosen times that still fit. Others stay remembered but are neither shown
 // nor sent, so changing the hours back brings them back.
-// Every week: one entry per weekday, Monday first. Just this week: each
-// weekday's times on its calendar date, in date order.
+// Every week: one entry per weekday, Monday first, its whole day (review,
+// 23 Oct: today's cut-off dropped "every Friday 10:00" on a Friday). Just
+// this week: each weekday's times on its calendar date, in date order.
 function selList() {
   const out = [];
   const cd = chosenDays();
-  if (S.repeat) {
+  if (!onceOnly()) {
     for (const wd of WEEK) {
       if (!cd.includes(wd)) continue;
       const set = S.selW[String(wd)];
       if (!set || !set.size) continue;
-      const ok = new Set(dayStarts(wd));
+      const ok = new Set(wkStarts(wd));
       const mins = Array.from(set).filter((m) => ok.has(m)).sort((a, b) => a - b);
       if (mins.length) out.push({ d: { key: String(wd), wd, weekly: true }, mins });
     }
@@ -1448,19 +1478,25 @@ function selList() {
   return out;
 }
 const countOf = (list) => list.reduce((a, x) => a + x.mins.length, 0);
-// Times picked on a chosen date that no longer fit, in calendar order: the
-// same ones selList() leaves out. "hours": outside the day's hours now (they
-// changed); "late": today, and no longer at least LEAD_MIN ahead.
+// Times picked on a tapped date that are not sent, in date order: the same
+// ones selList() leaves out. "hours": outside the day's hours now (they
+// changed); "late", just this week only (review, 23 Oct): today, and no
+// longer at least LEAD_MIN ahead, or on a date the calendar has moved past
+// (keepPicks). A date it no longer shows because new hours moved it back to
+// start today is "hours". Every week has no "late": it starts next week.
 function hiddenByDay() {
   const out = [];
-  for (const d of calDays()) {
-    if (!S.dates.has(d.iso)) continue;
-    const s = S.selW[String(d.wd)];
+  const cal = calDays(), once = onceOnly();
+  for (const iso of Array.from(S.dates).sort()) {
+    const d = cal.find((x) => x.iso === iso), wd = d ? d.wd : isoWd(iso);
+    const s = S.selW[String(wd)];
     if (!s || !s.size) continue;
-    const ok = new Set(startsFor(d)), fits = new Set(wkStarts(d.wd));
+    const fits = new Set(wkStarts(wd));
+    const ok = !d ? new Set() : once ? new Set(startsFor(d)) : fits;
+    const lateSet = d || iso < cal[0].iso ? fits : new Set();
     const late = [], hours = [];
-    for (const m of Array.from(s).sort((a, b) => a - b)) if (!ok.has(m)) (fits.has(m) ? late : hours).push(m);
-    if (late.length || hours.length) out.push({ wd: d.wd, late, hours });
+    for (const m of Array.from(s).sort((a, b) => a - b)) if (!ok.has(m)) (lateSet.has(m) ? late : hours).push(m);
+    if (late.length || hours.length) out.push({ wd, late, hours });
   }
   return out;
 }
@@ -1485,11 +1521,11 @@ function droppedText() {
   };
   return [say("hours", "dropped1", "droppedN"), say("late", "late1", "lateN")].filter(Boolean).join(" ");
 }
-// Valid picks on one weekday's date.
+// Valid picks on one weekday's date, as the grid shows them.
 function countFor(wd) {
   const s = S.selW[String(wd)];
   if (!s || !s.size) return 0;
-  const ok = new Set(dayStarts(wd));
+  const ok = new Set(gridStarts(wd));
   let n = 0;
   for (const m of s) if (ok.has(m)) n++;
   return n;
@@ -1810,7 +1846,7 @@ function hourCards(starts, stateOf) {
 // set most days share; on a tie, the first day's, as seedDays() copies it.
 function differingDays(cd) {
   const info = cd.map((wd) => {
-    const ok = dayStarts(wd), s = S.selW[String(wd)];
+    const ok = gridStarts(wd), s = S.selW[String(wd)];
     return { wd, ok: new Set(ok), sel: new Set(s ? ok.filter((m) => s.has(m)) : []) };
   });
   const same = (a, b) => { for (const m of a.ok) if (b.ok.has(m) && a.sel.has(m) !== b.sel.has(m)) return false; return true; };
@@ -1849,7 +1885,7 @@ function renderTimes() {
           return `<button type="button" class="chip${on ? " sel" : ""}" data-tab="${wd}" aria-pressed="${on}" aria-label="${esc(aria)}">${esc(SH[L][wd] + " " + dd)}${n ? `<small>${n}</small>` : ""}${d ? `<span class="dot" aria-hidden="true"></span>` : ""}</button>`;
         }).join("");
     }
-    const startsBy = new Map(days.map((wd) => [wd, dayStarts(wd)]));
+    const startsBy = new Map(days.map((wd) => [wd, gridStarts(wd)]));
     const union = Array.from(new Set([].concat(...startsBy.values()))).sort((a, b) => a - b);
     const stateOf = (m) => {
       const fit = days.filter((wd) => startsBy.get(wd).includes(m));
@@ -1880,18 +1916,20 @@ function fmtDates(ds) {
   const nm = (d) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (oneMonth ? "" : "\u00a0" + MO[L][d.mm]);
   return joinList(ds.map(nm)) + (oneMonth ? "\u00a0" + MO[L][ds[0].mm] : "");
 }
-// The picks, per chosen date, in calendar order, whatever "every week" says.
-function weekPicks() {
+// The picks, per chosen date, in calendar order, whatever "every week" says:
+// all that fit the day's hours, or (`starts`) what one answer keeps.
+function weekPicks(starts = wkStarts) {
   return chosenDays().map((wd) => {
-    const s = S.selW[String(wd)], ok = new Set(dayStarts(wd));
+    const s = S.selW[String(wd)], ok = new Set(starts(wd));
     return { wd, mins: s ? Array.from(s).filter((m) => ok.has(m)).sort((a, b) => a - b) : [] };
   }).filter((x) => x.mins.length);
 }
 // The dates "No, solo esta semana" saves: the calendar's dates of the picks,
-// as selList() sends them. Four or more in a row are said as a span ("lun 19
-// a vie 23 oct"), so Monday to Friday stays on one line.
+// as selList() sends them, so not today's for a time under LEAD_MIN away
+// (review, 23 Oct). Four or more in a row are said as a span ("lun 19 a vie
+// 23 oct"), so Monday to Friday stays on one line.
 function onceDates() {
-  const ds = weekPicks().map((x) => dateOf(x.wd));
+  const ds = weekPicks(dayStarts).map((x) => dateOf(x.wd));
   if (ds.length >= 4 && ds.every((d, i) => !i || d.offset === ds[i - 1].offset + 1)) {
     const last = ds[ds.length - 1], oneMonth = ds[0].mm === last.mm;
     const nm = (d, mo) => (L === "es" ? SH.es[d.wd].toLowerCase() : SH.en[d.wd]) + "\u00a0" + d.dd + (mo ? "\u00a0" + MO[L][d.mm] : "");
@@ -2191,8 +2229,11 @@ function unmiss(...keys) {
 
 // ---------------------------------------------------------------- 1 · which days
 // A weekday's date in the calendar, on or off. Off forgets that day's times.
+// A weekday has one date: a tap drops any other date of it kept just this
+// week (keepPicks), and on, its times go on the date tapped now.
 function toggleDay(wd, on) {
   const iso = dateOf(wd).iso;
+  for (const x of Array.from(S.dates)) if (x !== iso && isoWd(x) === wd) S.dates.delete(x);
   if (on) S.dates.add(iso);
   else { S.dates.delete(iso); delete S.selW[String(wd)]; }
 }
@@ -2236,7 +2277,7 @@ function seedDays() {
   for (const wd of cd) {
     const k = String(wd);
     if (S.selW[k] && S.selW[k].size) continue;
-    const ok = new Set(dayStarts(wd));
+    const ok = new Set(gridStarts(wd));
     const add = Array.from(src).filter((m) => ok.has(m));
     if (add.length) S.selW[k] = new Set(add);
   }
@@ -2270,7 +2311,7 @@ $("times").addEventListener("click", (e) => {
   if (!b) return;
   const m = Number(b.dataset.m);
   const days = S.tab === "all" ? chosenDays() : [S.tab];
-  const fit = days.filter((wd) => dayStarts(wd).includes(m));
+  const fit = days.filter((wd) => gridStarts(wd).includes(m));
   const all = fit.every((wd) => S.selW[String(wd)] && S.selW[String(wd)].has(m));
   for (const wd of fit) {
     const k = String(wd);
@@ -2488,9 +2529,9 @@ async function send(btn) {
   const label = btn.textContent;
   btn.disabled = true; btn.textContent = t("saving");
   // "applied" or "pending_review": kept. ok false with a message (a check, the
-  // rate limit): said under the button, nothing else changes. Anything else
-  // (no network, a server error, an answer that is not JSON) is the WhatsApp
-  // and email fallback, so the times are never lost.
+  // rate limit for this sender): said under the button, nothing else changes.
+  // Anything else (no network, a server error, "busy", an answer that is not
+  // JSON) is the WhatsApp and email fallback, so the times are never lost.
   let kind = "fallback", j = null;
   try {
     const ctl = "AbortController" in window ? new AbortController() : null;
@@ -2500,6 +2541,9 @@ async function send(btn) {
     j = await r.json().catch(() => null);
     // Saved only when the server says so in JSON. A plain "OK" is not a save.
     if (r.ok && j && j.ok === true && (j.status === "applied" || j.status === "pending_review")) kind = j.status;
+    // Go-live review (23 Oct): "busy" (503, too many forms from everyone this
+    // hour) is the WhatsApp and email fallback, never "wait a few minutes".
+    else if (r.status === 503 || (j && j.status === "busy")) kind = "fallback";
     else if (r.status >= 400 && r.status < 500 && j && j.ok === false && typeof j.message === "string" && j.message) kind = "refused";
   } catch (_) { kind = "fallback"; }
   S.saving = false;

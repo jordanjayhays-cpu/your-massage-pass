@@ -3043,6 +3043,43 @@ for (const [msg, want, note] of [
   const pickFri = (t) => { const i = R.ocupadoIntent(t, fri); if (!i) return null; const p = R.ocupadoPick(i, vRows, fri); return [p.kind, p.group ? `${p.group.ymd} ${p.group.hm} free=${p.group.free.join("+")}` : null]; };
   check("ocupado pick unread dates", "the verifier's probe: nothing is taken off for a date not read", ["ocupado dic 10 a las 18", "ocupado diciembre 10 a las 18", "ocupado en diciembre a las 18", "ocupado 10-12 a las 18", "ocupado el 10-12 a las 18", "ocupado el 10 del 12 a las 18", "ocupado el dia 10 del 12", "ocupado el jueves 10"].map(pickFri), [null, null, null, null, null, null, null, null], "today's path, which never withdraws");
   check("ocupado pick unread dates", "the dates still read take off that day's time only", ["ocupado el 10 de diciembre a las 18", "ocupado el 10/12 a las 18", "ocupado el jueves 10 a las 18", "ocupado el 10 de noviembre a las 18", "ocupado el jueves a las 10"].map(pickFri), [["withdraw", "2026-12-10 18:00 free=d10"], ["withdraw", "2026-12-10 18:00 free=d10"], ["withdraw", "2026-12-10 18:00 free=d10"], ["withdraw", "2026-11-10 18:00 free=n10"], ["withdraw", "2026-10-29 10:00 free=t10"]], "");
+  // Review (23 Oct, re-verify): more ways of naming a day the refix still read
+  // as another day: a dot or "de" and a number for the month, "mes" or
+  // "semana", two days, a weekday that is not the day read, and a number
+  // left over once the day and time are read. Same probe, Fri 23 Oct 12:00.
+  for (const [t, want, note] of [
+    ["ocupado el 24.10 a las 18", null, "a dot date: was any 18:00 in the next days"],
+    ["ocupado 24.10 18:00", null, ""],
+    ["ocupado el 23.10", null, "was 23:10"],
+    ["ocupado el 25 de 11 a las 18", null, "was 25 Oct"],
+    ["ocupado el 23 de 10", null, "was 23 Oct at 10:00, the month taken as the hour"],
+    ["ocupado 10 de 12 a las 18", null, "was any 18:00"],
+    ["ocupado el 10 de este mes", null, "was any time in the next 24 h"],
+    ["ocupado el dia 10 mes 12", null, "was 12:00 on any day"],
+    ["ocupado el jueves de la otra semana a las 18", null, "was Thu 29 Oct"],
+    ["ocupado el 10 y el 11 a las 18", null, "two days: was any 18:00"],
+    ["ocupado el 10 y 11 de diciembre a las 18", null, "two days: was any 18:00"],
+    ["ocupado 10, 11 dic 18:00", null, ""],
+    ["ocupado 10 a las 18", null, "a number not read: was any 18:00"],
+    ["ocupado mañana el 10 a las 18", null, "two days: was tomorrow"],
+    ["ocupado hoy y mañana a las 18", null, "two days: was tomorrow"],
+    ["ocupado hoy, mañana no", null, "was tomorrow"],
+    ["ocupado esta tarde el jueves", null, "was Thu 29 Oct"],
+    ["ocupado el lunes y el martes a las 18", null, "two weekdays: was Monday"],
+    ["ocupado mañana jueves a las 18", null, "tomorrow is Saturday: was Saturday"],
+    ["ocupado 7", null, "was the only time in the next 24 h"],
+    ["ocupado 18:30h", null, "was the only time in the next 24 h"],
+    ["ocupado a las 18 sala 2", null, "was the only time in the next 24 h"],
+    ["ocupado a las 18 y 30", null, "was 18:00"],
+    ["ocupado 1800", null, ""],
+    ["ocupado el 10 de diciembre de 2026 a las 18", { ymd: "2026-12-10", mins: [1080] }, "a year is not a day"],
+    ["ocupado 18:00 2 salas", { ymd: null, mins: [1080] }, "a count is not a day"],
+    ["ocupado hoy viernes a las 18", { ymd: "2026-10-23", mins: [1080] }, "today is Friday"],
+    ["ocupado mañana sábado a las 18", { ymd: "2026-10-24", mins: [1080] }, ""],
+    ["ocupado esta tarde a las 6", { ymd: "2026-10-23", mins: [1080] }, ""],
+  ]) check("ocupado intent unread dates (re-verify)", t, R.ocupadoIntent(t, fri), want, note);
+  check("ocupado intent unread dates (re-verify)", "«mañana jueves» on a Wednesday is Thursday", R.ocupadoIntent("ocupado mañana jueves a las 18", D(10, 28, 12)), { ymd: "2026-10-29", mins: [1080] }, "");
+  check("ocupado pick unread dates (re-verify)", "nothing is taken off for a day not read", ["ocupado el 24.10 a las 18", "ocupado el 25 de 11 a las 18", "ocupado el 23 de 10", "ocupado el 10 de este mes", "ocupado el 10 y el 11 a las 18", "ocupado 10 a las 18", "ocupado hoy y mañana a las 18", "ocupado mañana jueves a las 18", "ocupado 18:30h", "ocupado a las 18 sala 2"].map(pickFri), [null, null, null, null, null, null, null, null, null, null], "today's path, which never withdraws");
 
   // Jordan's links page order, and the share text.
   const F = (o) => R.socFunnelRank({ review: false, viewed: false, submitted: false, live: 0, weekly: 0, terms: false, ...o }).rank;
@@ -3081,7 +3118,7 @@ for (const [msg, want, note] of [
   check("hook", "terms recorded only on the studio's own link or for a new studio (review fix)", /if \(own \|\| created\) \{\s*const tr = await fetch\(`\$\{SUPABASE_URL\}\/rest\/v1\/partner_terms/.test(botSrc), true, "an unsigned form never records terms in an existing studio's name");
   check("hook", "a signed send counts only against its own signed sends (review fix)", /if \(signed\) \{\s*if \(\(await socCount\(`partner_id=eq\.\$\{encodeURIComponent\(String\(partner\.id\)\)\}&signed=is\.true&/.test(botSrc) && /partner_id: signed \? partner\.id : null, status: "rejected"/.test(botSrc), true, "a public slug can no longer lock a studio out");
   check("hook", "the sender address is cf-connecting-ip, else the last X-Forwarded-For entry (review fix)", /const cf = \(req\.headers\.get\("cf-connecting-ip"\) \|\| ""\)\.trim\(\);\s*if \(cf\) return cf;[\s\S]{0,200}return xff\[xff\.length - 1\];/.test(botSrc) && !/x-forwarded-for"\) \|\| ""\)\.split\(","\)\[0\]/.test(botSrc), true, "the first entry is whatever the client sent");
-  check("hook", "one cap for every unsigned send, and a card limit for Jordan", /signed=is\.false&created_at=gte\.\$\{since\(3600e3\)\}`\)\) >= SOC_LIMIT_UNSIGNED_H\) return limited;/.test(botSrc) && /if \(cardsH < SOC_CARDS_UNSIGNED_H\) await socReviewCard/.test(botSrc), true, "");
+  check("hook", "one cap for every unsigned send, and a card limit for Jordan", /signed=is\.false&status=neq\.rejected&created_at=gte\.\$\{since\(3600e3\)\}`\)\) >= SOC_LIMIT_UNSIGNED_H\) return busy;/.test(botSrc) && /if \(cardsH < SOC_CARDS_UNSIGNED_H\) await socReviewCard/.test(botSrc), true, "go-live review (23 Oct): the cap counts forms that passed the checks and answers busy (503); run below");
   check("hook", "Aprobar and Rechazar are form submits, not links (review nit)", /const yes = pillForm\(f\("yes"\)/.test(botSrc) && /const no = pillForm\(f\("no"\)/.test(botSrc) && !/pillLink\(`\$\{base\}&a=yes/.test(botSrc), true, "a link follower cannot approve");
   // Go-live review (23 Oct): an unsigned form never releases times for a
   // studio we already have, and the approve card says plainly what approving
@@ -3139,7 +3176,7 @@ for (const [msg, want, note] of [
 
   // socios.html: what it sends and when.
   check("socios page", "preview sends nothing", /if \(PREVIEW\) \{[\s\S]{0,400}return finish\("preview", list, key\);\s*\}\s*S\.saving = true;/.test(html), true, "");
-  check("socios page", "the fallback only when the save cannot be reached", /if \(r\.ok && j && j\.ok === true && \(j\.status === "applied" \|\| j\.status === "pending_review"\)\) kind = j\.status;\s*else if \(r\.status >= 400 && r\.status < 500 && j && j\.ok === false && typeof j\.message === "string" && j\.message\) kind = "refused";/.test(html), true, "a refusal is said under the button");
+  check("socios page", "the fallback only when the save cannot be reached, or the server is busy", /if \(r\.ok && j && j\.ok === true && \(j\.status === "applied" \|\| j\.status === "pending_review"\)\) kind = j\.status;\s*(?:\/\/[^\n]*\n\s*)*else if \(r\.status === 503 \|\| \(j && j\.status === "busy"\)\) kind = "fallback";\s*else if \(r\.status >= 400 && r\.status < 500 && j && j\.ok === false && typeof j\.message === "string" && j\.message\) kind = "refused";/.test(html), true, "a refusal is said under the button; busy (go-live review, 23 Oct) is the WhatsApp and email fallback; run below");
   check("socios page", "email required, with its reason", /id="email"[^>]*required/.test(html) && /errEmailNone/.test(html) && /fEmailHint: "Cada reserva os llega también por email/.test(html), true, "R7");
   check("socios page", "sends the link signature and when it was drawn", /link_sig: SIG_OK \? SIG : null,\s*drawn_at: DRAWN_AT,/.test(html), true, "");
   check("socios page", "the view is logged only for a signed link and never in preview", /\(SIG_OK \? "&k=" \+ SIG \+ \(PREVIEW \? "" : "&view=1"\) : ""\)/.test(html), true, "");
@@ -3285,6 +3322,371 @@ for (const [msg, want, note] of [
   check("v217 hook", "the links page counts sign-ups only", /studio_signups\?kind=eq\.signup&select=id,partner_id,status,created_at,payload,result/.test(botSrc), true, "a change of times is not a form to review");
   check("v217 migration", "studio_signups.kind, signed only for times", /add column if not exists kind text not null default 'signup';/.test(socSql) && /check \(kind in \('signup', 'times'\) and \(kind = 'signup' or \(signed and status in \('received', 'applied', 'rejected'\)\)\)\)/.test(socSql), true, "safe to apply more than once");
   check("v217 copy", "no em or en dashes in the new code", /[–—]/.test(sub + fn("async function socTimesList(") + fn("async function socPricesOnFile(") + fn("async function socSaveTimes(")), false, "");
+}
+
+// ---------------------------------------------------------------------------
+// Review (23 Oct, before links): /socios drew the "every week" grid with
+// today's cut-off, so a studio on a Friday afternoon could not give "every
+// Friday 10:00" and was told it was too late for it; and a date tapped today
+// dropped out with its times, and no word, once the calendar moved on. The
+// page's own calendar code runs here in a vm with the clock faked: from
+// `const LEAD_MIN = 65;` to the phone section, with weekPicks, fmtDates,
+// onceDates and toggleDay, and the page's Spanish copy. Hours every day
+// 10:00 to 21:00; Friday 23 Oct 2026, Madrid on CEST (UTC+2).
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const vm = await import("node:vm");
+  const { fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const html = fs.readFileSync(path.join(here, "../public/socios.html"), "utf8");
+  const a = html.indexOf("const LEAD_MIN = 65;");
+  const b = html.indexOf("// ---------------------------------------------------------------- phone");
+  const t0 = html.indexOf("\nconst T = {"), t1 = html.indexOf("\nconst $ = (id)");
+  const fnSrc = (name) => { const i = html.indexOf(`\nfunction ${name}(`); return i < 0 ? "" : html.slice(i, html.indexOf("\n}\n", i) + 3); };
+  const line = (re) => (html.match(re) || [""])[0];
+  const helpers = [line(/\nconst t = \(k, vars\) => \{[\s\S]*?\n\};\n/), line(/\nconst cap = .*\n/), line(/\nconst joinList = .*\n/)];
+  const fns = ["weekPicks", "fmtDates", "onceDates", "toggleDay"].map(fnSrc);
+  if (a < 0 || b < a || t0 < 0 || t1 < t0 || helpers.some((x) => !x) || fns.some((x) => !x)) throw new Error("socios.html: the calendar code or its markers are missing");
+  const code = html.slice(t0, t1) + helpers.join("") + html.slice(a, b) + fns.join("")
+    + "\n;globalThis.__page = { calDays, selList, hiddenByDay, droppedText, firstDate, gridStarts, chosenDays, countFor, weekPicks, onceDates, toggleDay, setHours: (h) => { HOURS = h; } };";
+  const RealDate = Date;
+  const ALL = new Map([0, 1, 2, 3, 4, 5, 6].map((d) => [d, [[600, 1260]]]));
+  const NO_FRI = new Map([0, 1, 2, 3, 4, 6].map((d) => [d, [[600, 1260]]]).concat([[5, []]]));
+  const FRI_AM = new Map([0, 1, 2, 3, 4, 6].map((d) => [d, [[600, 1260]]]).concat([[5, [[600, 780]]]]));
+  // One open page: its clock moves with at(), its draft saves are counted.
+  const page = (utc, hours = ALL) => {
+    const clock = { t: RealDate.parse(utc) };
+    class FakeDate extends RealDate { constructor(...x) { if (x.length) super(...x); else super(clock.t); } static now() { return clock.t; } }
+    const ctx = { Date: FakeDate, Intl, Math, Number, String, Array, Set, Map, JSON, Object, L: "es", saves: 0,
+      S: { dur: 60, repeat: true, repeatPicked: false, dates: new Set(), selW: {} } };
+    ctx.saveDraft = () => { ctx.saves++; };
+    vm.createContext(ctx);
+    vm.runInContext(code, ctx);
+    ctx.__page.setHours(hours);
+    return Object.assign(ctx.__page, { S: ctx.S, ctx, at: (u) => { clock.t = RealDate.parse(u); } });
+  };
+  const sel = (p) => p.selList().map((x) => [x.d.weekly ? x.d.wd : x.d.iso, x.mins]);
+  const dates = (p) => Array.from(p.S.dates).sort();
+  const once = (p) => { p.S.repeat = false; p.S.repeatPicked = true; };
+
+  // 1. Friday 12:00: every Friday at 10:00 and 18:00.
+  let p = page("2026-10-23T10:00:00Z");
+  p.S.dates.add("2026-10-23"); p.S.selW["5"] = new Set([600, 1080]);
+  check("socios page weekly grid", "Fri 12:00: the calendar starts today", p.calDays()[0].iso, "2026-10-23", "");
+  check("socios page weekly grid", "Fri 12:00, not answered yet: the grid offers the whole Friday", [p.gridStarts(5)[0], p.countFor(5)], [600, 2], "was 13:30 on, today's cut-off");
+  check("socios page weekly grid", "every Friday 10:00 and 18:00 are both sent", sel(p), [[5, [600, 1080]]], "was [[5,[1080]]]: 10:00 lost");
+  check("socios page weekly grid", "first dates: 10:00 from next Friday, 18:00 from today", [p.firstDate(5, 600), p.firstDate(5, 1080)], ["2026-10-30", "2026-10-23"], "buildPayload's first_date");
+  check("socios page weekly grid", "no \"too late today\" note for a weekly time", [p.hiddenByDay(), p.droppedText()], [[], ""], "was \"Hoy ya es tarde para esta hora y no la enviamos: vie 10:00.\"");
+  check("socios page weekly grid", "the repeat question names both; \"solo esta semana\" names today's date for 18:00", [p.weekPicks(), p.onceDates()], [[{ wd: 5, mins: [600, 1080] }], "vie\u00a023\u00a0oct"], "");
+  p.S.repeatPicked = true;
+  check("socios page weekly grid", "\"Sí, cada semana\": the same", sel(p), [[5, [600, 1080]]], "");
+  once(p);
+  check("socios page weekly grid", "\"No, solo esta semana\": the grid from 13:30, 10:00 not sent, and said", [p.gridStarts(5)[0], p.countFor(5), sel(p), p.droppedText()], [810, 1, [["2026-10-23", [1080]]], "Hoy ya es tarde para esta hora y no la enviamos: vie 10:00."], "a dated time still needs LEAD_MIN");
+  p.S.repeatPicked = false;
+  check("socios page weekly grid", "more times after a once send: read as weekly again until answered", [p.gridStarts(5)[0], sel(p), p.droppedText()], [600, [[5, [600, 1080]]], ""], "again() leaves S.repeat false");
+
+  // 2. The calendar moves on: Friday 20:00 tapped at 18:50; at 18:56 today
+  // has no time 65 minutes ahead and the calendar runs Sat 24 to Fri 30.
+  p = page("2026-10-23T16:50:00Z");
+  p.S.dates.add("2026-10-23"); p.S.selW["5"] = new Set([1200]);
+  check("socios page calendar moves", "18:50: today, every Friday 20:00", [p.calDays()[0].iso, sel(p)], ["2026-10-23", [[5, [1200]]]], "");
+  p.at("2026-10-23T16:56:00Z");
+  check("socios page calendar moves", "18:56, every week: the pick moves to Fri 30 and is still sent", [p.calDays()[0].iso, dates(p), p.chosenDays(), sel(p), p.firstDate(5, 1200), p.droppedText(), p.ctx.saves], ["2026-10-24", ["2026-10-30"], [5], [[5, [1200]]], "2026-10-30", "", 1], "was selList [] with no note");
+  p = page("2026-10-23T16:50:00Z");
+  p.S.dates.add("2026-10-23"); p.S.dates.add("2026-10-24"); p.S.selW["5"] = new Set([1200]); p.S.selW["6"] = new Set([720]);
+  once(p);
+  check("socios page calendar moves", "18:50, just this week: Fri 23 20:00 and Sat 24 12:00", [sel(p), p.onceDates()], [[["2026-10-23", [1200]], ["2026-10-24", [720]]], "vie\u00a023 y sáb\u00a024\u00a0oct"], "");
+  p.at("2026-10-23T16:56:00Z");
+  check("socios page calendar moves", "18:56, just this week: Fri 23 not sent and said, never moved to Fri 30", [sel(p), p.droppedText(), dates(p), p.onceDates(), p.ctx.saves], [[["2026-10-24", [720]]], "Hoy ya es tarde para esta hora y no la enviamos: vie 20:00.", ["2026-10-23", "2026-10-24"], "sáb\u00a024\u00a0oct", 0], "was dropped with no note, the send going ahead without it");
+  p.S.repeat = true;
+  check("socios page calendar moves", "answer changed to every week: Friday 20:00 is back, from Fri 30", [sel(p), dates(p), p.droppedText()], [[[5, [1200]], [6, [720]]], ["2026-10-24", "2026-10-30"], ""], "`once` is in the calendar cache");
+  p = page("2026-10-23T16:56:00Z");
+  p.S.dates.add("2026-10-23"); p.S.selW["5"] = new Set([1200]);
+  once(p);
+  check("socios page calendar moves", "just this week, Friday the only day: nothing to send, and said", [sel(p), p.droppedText()], [[], "Hoy ya es tarde para esta hora y no la enviamos: vie 20:00."], "reach() goes back to the times with the note");
+  p.toggleDay(5, true);
+  check("socios page calendar moves", "tapping Fri 30: its times go there, the note goes", [sel(p), dates(p), p.droppedText()], [[["2026-10-30", [1200]]], ["2026-10-30"], ""], "a weekday has one date");
+  p.toggleDay(5, false);
+  check("socios page calendar moves", "tapping it off: the day and its times go", [dates(p), "5" in p.S.selW, p.droppedText()], [[], false, ""], "");
+
+  // 3. New hours move the calendar both ways (Friday 12:00).
+  p = page("2026-10-23T10:00:00Z");
+  p.S.dates.add("2026-10-23"); p.S.selW["5"] = new Set([1080]);
+  p.setHours(NO_FRI);
+  check("socios page calendar moves", "every week, Friday now closed: on Fri 30, not sent, and said", [p.calDays()[0].iso, dates(p), sel(p), p.droppedText()], ["2026-10-24", ["2026-10-30"], [], "Esta hora ya no cabe en vuestro horario y no la enviamos: vie 18:00."], "");
+  p.setHours(ALL);
+  check("socios page calendar moves", "every week, Friday open again: back on Fri 23", [p.calDays()[0].iso, dates(p), sel(p)], ["2026-10-23", ["2026-10-23"], [[5, [1080]]]], "");
+  p = page("2026-10-23T10:00:00Z", FRI_AM);
+  p.S.dates.add("2026-10-30"); p.S.selW["5"] = new Set([720]);
+  once(p);
+  check("socios page calendar moves", "just this week, Fridays 10:00 to 13:00 (none left today): Fri 30 12:00", [p.calDays()[0].iso, sel(p)], ["2026-10-24", [["2026-10-30", [720]]]], "");
+  p.setHours(ALL);
+  check("socios page calendar moves", "just this week, Friday open to 21:00 so the calendar ends Thu 29: Fri 30 not sent, and said", [p.calDays()[6].iso, sel(p), dates(p), p.droppedText()], ["2026-10-29", [], ["2026-10-30"], "Esta hora ya no cabe en vuestro horario y no la enviamos: vie 12:00."], "never moved to today");
+
+  // 4. The clock change and a month boundary.
+  check("socios page calendar moves", "Sat 24 Oct 23:30 CEST: Sun 25 to Sat 31", page("2026-10-24T21:30:00Z").calDays().map((d) => d.iso), ["2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31"], "");
+  check("socios page calendar moves", "Thu 29 Oct 20:30 CET: Fri 30 Oct to Thu 5 Nov", page("2026-10-29T19:30:00Z").calDays().map((d) => d.iso), ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"], "");
+
+  // 5. Every place the grid is drawn or tapped uses the same starts.
+  check("socios page weekly grid", "grid, chips, differing days, seeding and taps all use gridStarts", [
+    /const startsBy = new Map\(days\.map\(\(wd\) => \[wd, gridStarts\(wd\)\]\)\);/.test(html),
+    /function countFor\(wd\) \{[^}]*new Set\(gridStarts\(wd\)\)/.test(html),
+    /const ok = gridStarts\(wd\), s = S\.selW\[String\(wd\)\];/.test(html),
+    /if \(S\.selW\[k\] && S\.selW\[k\]\.size\) continue;\s*const ok = new Set\(gridStarts\(wd\)\);/.test(html),
+    /const fit = days\.filter\(\(wd\) => gridStarts\(wd\)\.includes\(m\)\);/.test(html),
+    (html.match(/\bdayStarts\b/g) || []).length,
+  ], [true, true, true, true, true, 3], "dayStarts: its definition, the once grid and onceDates");
+}
+
+// ---------------------------------------------------------------------------
+// Go-live review (23 Oct), before any studio gets a link: the reject page's
+// «No podemos atenderle» and the times page's Quitar were plain GET links on
+// the rendered page. A mail scanner that runs bot.html and follows the links
+// on a page could cancel a confirmed booking (and the customer was messaged
+// at once) or remove a studio's free times and end its weekly ones. They are
+// now GET forms carrying the moment the page was drawn (t on the reject page,
+// at on the times page, where t is already the times picked), and the server
+// acts only on a fresh one: under 20 minutes for a reject, 6 hours for a
+// remove. relPageFresh is lifted with the v215 block; pillForm and the times
+// page's quitar are lifted on their own and rendered, and the form they draw
+// is submitted the way a browser would.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const a = botSrc.indexOf("// ---- v215 released slots: pure helpers (start) ----");
+  const b = botSrc.indexOf("// ---- v215 released slots: pure helpers (end) ----");
+  if (a < 0 || b < a) throw new Error("bot.ts: the v215 released-slot helper markers are missing");
+  const names = ["relPageFresh", "REL_REJECT_FRESH_MS", "REL_SLOTS_FRESH_MS"];
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const js = `import { madridInstant, madridMidnight, stripAcc, euro } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-forms-"));
+  const file = path.join(dir, "forms.mjs");
+  fs.writeFileSync(file, js);
+  const R = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+
+  // Freshness. Now: Friday 23 Oct 2026, 12:00 Madrid (10:00 UTC).
+  const now = Date.UTC(2026, 9, 23, 10, 0);
+  const min = 60e3, hr = 3600e3;
+  const rej = (t) => R.relPageFresh(t, now, R.REL_REJECT_FRESH_MS);
+  const slo = (t) => R.relPageFresh(t, now, R.REL_SLOTS_FRESH_MS);
+  check("studio page forms", "reject: drawn 1, 14 and 19 minutes ago acts; 20 minutes, 3 hours ago does not", [rej(String(now - min)), rej(String(now - 14 * min)), rej(String(now - 19 * min)), rej(String(now - 20 * min)), rej(String(now - 3 * hr))], [true, true, true, false, false], "the 15 minutes and some slack");
+  check("studio page forms", "reject: no t, an empty, zero, junk or far-future t does not act", [rej(null), rej(undefined), rej(""), rej("0"), rej("abc"), rej(String(now + 2 * min)), rej(String(now + 30e3))], [false, false, false, false, false, false, true], "the old bare link had no t; a phone clock a few seconds ahead still works");
+  check("studio page forms", "remove: drawn 5 minutes and 5 h 59 ago acts; 6 hours, a day ago, or no at does not", [slo(String(now - 5 * min)), slo(String(now - 6 * hr + min)), slo(String(now - 6 * hr)), slo(String(now - 24 * hr)), slo(null)], [true, true, false, false, false], "as Guardar's at");
+
+  // pillForm and quitar, rendered, then submitted as a browser would: the
+  // hidden fields become the whole query string of bot.html.
+  const lineAt = (start) => { const i = botSrc.indexOf(start); return i < 0 ? "" : botSrc.slice(i, botSrc.indexOf("\n", i)); };
+  const pf0 = botSrc.indexOf("const pillForm = (");
+  const pfSrc = pf0 < 0 ? "" : botSrc.slice(pf0, botSrc.indexOf("</form>`;\n", pf0) + 9);
+  const lifted = [lineAt("const C = {"), lineAt("const SANS = "), lineAt("const esc = "), lineAt("const escAttr = "), pfSrc, lineAt("  const quitar = (")].join("\n");
+  const P = new Function("p", "k", "ymd", "minutes", "nowMs", `${stripTypeScriptTypes(lifted)}\nreturn { pillForm, quitar };`)({ id: "11111111-2222-3333-4444-555555555555" }, "abc123sig", "2026-10-24", 90, now);
+  const unq = (s) => s.replace(/&quot;/g, "\"").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  const submit = (html) => { const q = new URLSearchParams(); for (const m of html.matchAll(/<input type="hidden" name="([^"]*)" value="([^"]*)">/g)) q.append(unq(m[1]), unq(m[2])); return q; };
+  const isForm = (html) => /^<form method="get" action=""[^>]*>/.test(html) && /<button type="submit"[^>]*>[^<]*<\/button><\/form>$/.test(html) && !/<a\b|href=/.test(html);
+  const rb = P.pillForm({ slotr: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", sig: "s1g", a: "no", t: String(now) }, "No podemos atenderle", false);
+  const rq = submit(rb);
+  check("studio page forms", "the reject button is a form, and pressing it sends slotr, sig, a=no and t", [isForm(rb), [...rq.keys()], rq.get("a"), rej(rq.get("t"))], [true, ["slotr", "sig", "a", "t"], "no", true], "a link follower never sees a=no");
+  const qd = P.quitar({ do: "del", id: "id1,id2" });
+  const qq = submit(qd);
+  check("studio page forms", "a free time's Quitar is a form; pressing it sends the page's own link, the day, the length, do=del, the ids and at", [isForm(qd), Object.fromEntries(qq)], [true, { slots: "11111111-2222-3333-4444-555555555555", k: "abc123sig", d: "2026-10-24", m: "90", do: "del", id: "id1,id2", at: String(now) }], "the same fields the old link carried, plus at");
+  const qp = P.quitar({ do: "delp", pid: "pat-1" });
+  const pq = submit(qp);
+  check("studio page forms", "a weekly time's Quitar is a form with do=delp, pid and at", [isForm(qp), pq.get("do"), pq.get("pid"), pq.get("at"), slo(pq.get("at"))], [true, "delp", "pat-1", String(now), true], "");
+  check("studio page forms", "at is always the page's own, after the fields", submit(P.quitar({ do: "del", id: "x", at: "1" })).get("at"), String(now), "");
+  check("studio page forms", "Quitar is drawn as text, not a big pill", /\n\.mcs \.li form\{margin:0\}\n\.mcs \.li button\{border:0;background:none;[^}]*color:#9A3B1E;/.test(botSrc) && !/\.mcs \.li a\{/.test(botSrc), true, "the list rows keep their layout");
+
+  // Hooks: the pages use them, and nothing acts before the fresh check.
+  const fnSrc = (head) => { const i = botSrc.indexOf(head); return i < 0 ? "" : botSrc.slice(i, botSrc.indexOf("\n}\n", i)); };
+  const rj = fnSrc("async function slotRejectPage(url: URL)");
+  const sp = fnSrc("async function slotsPage(url: URL)");
+  const rjGate = rj.indexOf(`if (String(url.searchParams.get("a") || "") === "no" && relPageFresh(url.searchParams.get("t"), Date.now(), REL_REJECT_FRESH_MS)) {`);
+  check("hook", "the reject page draws «No podemos atenderle» with pillForm and t, never a link (go-live review)", [
+    /const button = \(\) => pillForm\(\{ slotr: id, sig, a: "no", t: String\(Date\.now\(\)\) \}, "No podemos atenderle", false\);/.test(rj),
+    (rj.match(/\bbutton\(\)/g) || []).length,
+    /pillLink\(/.test(rj),
+    /slotRejectLink\([^)]*\)\}&a=no/.test(botSrc),
+  ], [true, 2, false, false], "both the booking card and the try-again card");
+  check("hook", "a=no rejects only with a fresh t; the reject and the customer message sit inside that check", [
+    rjGate > 0,
+    rjGate < rj.indexOf("reject_released_slot") && (rj.match(/reject_released_slot/g) || []).length === 1,
+    rjGate < rj.indexOf("releasedRejected(") && (rj.match(/releasedRejected\(/g) || []).length === 1,
+    rjGate < rj.indexOf("await lateCard()") && (rj.match(/await lateCard\(\)/g) || []).length === 1,
+  ], [true, true, true, true], "a stale or missing t shows the page again");
+  const spGate = sp.indexOf(`} else if ((act === "del" || act === "delp") && !relPageFresh(url.searchParams.get("at"), nowMs, REL_SLOTS_FRESH_MS)) {`);
+  check("hook", "the times page draws Quitar with quitar(), never a link", [
+    /\$\{quitar\(\{ do: "delp", pid: String\(x\.id\) \}\)\}/.test(sp),
+    /const del = a\.free\.length \? quitar\(\{ do: "del", id: a\.free\.join\(","\) \}\) : "";/.test(sp),
+    /do=del/.test(sp),
+    /<a [^>]*>Quitar<\/a>/.test(sp),
+  ], [true, true, false, false], "");
+  check("hook", "do=del and do=delp act only with a fresh at; nothing is withdrawn or ended before that check", [
+    spGate > 0,
+    spGate < sp.indexOf(`} else if (act === "del") {`) && spGate < sp.indexOf(`} else if (act === "delp") {`),
+    spGate < sp.indexOf("withdraw_released_slot") && (sp.match(/withdraw_released_slot/g) || []).length === 1,
+    spGate < sp.indexOf("rpc/end_released_pattern") && (sp.match(/rpc\/end_released_pattern/g) || []).length === 1,
+    /note = "Esta página llevaba mucho rato abierta\. Volved a pulsar Quitar, por favor\."; noteErr = true;/.test(sp),
+  ], [true, true, true, true, true], "an old tab or a link followed on its own removes nothing");
+  check("hook", "no em or en dashes in the forms' code and copy", /[–—]/.test(rj + sp + pfSrc), false, "");
+}
+
+// ---------------------------------------------------------------------------
+// Go-live review (23 Oct), before any studio gets a link: /socios rate
+// limits. The cap for everyone on unsigned forms (30 an hour) counted junk
+// stored as rejected, so about 30 junk posts an hour from a few addresses
+// locked every new studio out, and the page then said only "wait a few
+// minutes", so the studio's times were lost. The cap now counts only forms
+// that passed the checks (and that Jordan has not rejected) and answers 503
+// "busy", which the page turns into the WhatsApp and email fallback.
+// Jordan's review cards count only the forms that came in before this one,
+// marked pending_review or not yet, so a burst sent at once gives five cards
+// and one "more are waiting", whatever order they finish in. socSubmit runs
+// here with studio_signups in memory and the PostgREST filters it sends
+// parsed as the server parses them (a "+" left unencoded in a timestamp
+// reads as a space); the page's send() runs in a vm against a faked fetch.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const vm = await import("node:vm");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const html = fs.readFileSync(path.join(here, "../public/socios.html"), "utf8");
+  const fnOf = (src, head) => { const i = src.indexOf(head); return i < 0 ? "" : src.slice(i, src.indexOf("\n}\n", i) + 3); };
+  const subSrc = fnOf(botSrc, "\nasync function socSubmit(");
+  const limSrc = (botSrc.match(/\nconst SOC_LIMIT_IP_10M = [^\n]*\n/) || [""])[0] + (botSrc.match(/\nconst SOC_CARDS_UNSIGNED_H = \d+;\n/) || [""])[0];
+  const m0 = botSrc.indexOf("\nconst SOC_MSG: Record"), m1 = botSrc.indexOf("\nconst socMsg = ");
+  const msgSrc = m0 < 0 || m1 < m0 ? "" : botSrc.slice(m0, botSrc.indexOf("\n", m1 + 1) + 1);
+  const sendSrc = fnOf(html, "\nasync function send(btn) {");
+  if (!subSrc || !limSrc.includes("SOC_CARDS_UNSIGNED_H") || !msgSrc || !sendSrc) throw new Error("socSubmit, the /socios limits or messages, or the page's send() are missing");
+  const limits = new Function(`${stripTypeScriptTypes(limSrc)}\nreturn { SOC_LIMIT_IP_10M, SOC_LIMIT_IP_DAY, SOC_LIMIT_STUDIO_H, SOC_LIMIT_NOIP_10M, SOC_LIMIT_UNSIGNED_H, SOC_CARDS_UNSIGNED_H };`)();
+  const socMsg = new Function("SOC_MAX_TIMES", "REL_STUDIO_HORIZON_DAYS", "SOC_MAX_REMOVE", `${stripTypeScriptTypes(msgSrc)}\nreturn socMsg;`)(40, 56, 20);
+  const G = "socios rate limits";
+
+  // One database: studio_signups rows, Jordan's cards, and socSubmit wired to them.
+  const world = (o = {}) => {
+    const rows = [], cards = [], more = [];
+    const t0 = Date.now();
+    let seq = 0;
+    // As PostgREST returns a timestamptz: microseconds and +00:00.
+    const stamp = (ms) => new Date(ms).toISOString().replace("Z", "123+00:00");
+    const add = (r, ago = 0) => { seq++; const row = { id: `row-${seq}`, kind: "signup", signed: false, partner_id: null, ip_hash: null, whatsapp_digits: null, created_at: stamp(t0 - ago + seq), ...r }; rows.push(row); return row; };
+    const cmp = (x, v) => { const dot = v.indexOf("."), op = v.slice(0, dot), val = v.slice(dot + 1), t = (s) => Date.parse(s);
+      if (op === "eq") return String(x) === val;
+      if (op === "neq") return x != null && String(x) !== val;
+      if (op === "is") return val === "null" ? x == null : x === (val === "true");
+      if (op === "in") return val.replace(/^\(|\)$/g, "").split(",").includes(String(x));
+      if (op === "gte") return t(x) >= t(val);
+      if (op === "lt") return t(x) < t(val);
+      throw new Error(`filter not faked: ${v}`); };
+    const count = (q) => rows.filter((r) => [...new URLSearchParams(q)].every(([k, v]) => k === "select" || k === "limit" || cmp(r[k], v))).length;
+    const deps = {
+      ...limits, socMsg,
+      socIpHash: async (ip) => ip ? `h-${ip}` : "",
+      socClientIp: (req) => req.ip,
+      socLine: (s) => String(s || ""),
+      socPhone: (x) => String(x || "").replace(/\D/g, ""),
+      socResolve: async (slug) => slug === "calma" ? { partner: { id: "p-calma", business_name: "Calma", opening_hours: null, inactive: true }, signed: true, sigBad: false } : { partner: null, signed: false, sigBad: false },
+      socCount: async (q) => Math.min(count(q), 100),
+      socValidate: (p) => p.junk ? { ok: false, errors: ["name"] } : { ok: true, plan: { studio: { wa: "", email: "hola@calma.es", name: p.name } } },
+      socHasMenu: async () => false,
+      socInsert: async (r) => ({ ...add(r) }),
+      socPatch: async (id, patch) => { const ms = o.patchDelay ? o.patchDelay(id) : 0; if (ms) await new Promise((res) => setTimeout(res, ms)); const r = rows.find((x) => x.id === id); Object.assign(r, patch); return { ...r }; },
+      findPartnerByNumber: async () => null,
+      socPartner: async () => null,
+      socInactive: (p) => !!p?.inactive,
+      socReviewCard: async (row) => { cards.push(row.id); },
+      founderCard: async (subject) => { more.push(subject); },
+      socLinksUrl: async () => "https://book.massageclub.io/links",
+    };
+    const socSubmit = new Function(...Object.keys(deps), `${stripTypeScriptTypes(subSrc)}\nreturn socSubmit;`)(...Object.values(deps));
+    const submit = (p, ip) => socSubmit(p, { ip, headers: { get: () => "" } }, "es");
+    return { rows, cards, more, add, submit };
+  };
+  const form = (name, wa) => ({ name, studio: { whatsapp: wa } });
+
+  // 1. A junk flood no longer locks a real studio out.
+  let w = world();
+  const junk = [];
+  for (let i = 0; i < 50; i++) junk.push(await w.submit({ junk: true, studio: { whatsapp: "" } }, `203.0.113.${i % 10}`));
+  check(G, "50 junk posts from 10 addresses in an hour: each refused as invalid and kept as rejected", [junk.every((r) => r.status === 400 && r.body.status === "invalid"), w.rows.filter((r) => r.status === "rejected").length], [true, 50], "5 each, under the 6 per address in 10 minutes");
+  const real = await w.submit(form("Calma", "34600111222"), "192.0.2.7");
+  check(G, "then a real studio's form is received and Jordan gets its card", [real.status, real.body.status, w.cards.length], [200, "pending_review", 1], "was 429 \"wait a few minutes\": the cap counted the junk");
+
+  // 2. The cap for everyone is busy (503), and the page's fallback.
+  w = world();
+  for (let i = 0; i < limits.SOC_LIMIT_UNSIGNED_H; i++) w.add({ status: i < 25 ? "pending_review" : "applied", ip_hash: `h-198.51.100.${i}`, whatsapp_digits: `3460000${String(i).padStart(4, "0")}` }, (50 - i) * 60e3);
+  let n0 = w.rows.length;
+  const busy = await w.submit(form("Calma", "34600111222"), "192.0.2.7");
+  check(G, "30 forms that passed the checks in the last hour: the next is busy (503), nothing stored, no card", [busy.status, busy.body.ok, busy.body.status, w.rows.length - n0, w.cards.length + w.more.length], [503, false, "busy", 0, 0], "");
+  check(G, "busy says WhatsApp or email, vosotros, no dashes", [busy.body.message, socMsg("busy", "en"), /[–—]/.test(socMsg("busy", "es") + socMsg("busy", "en"))], ["Ahora mismo nos llegan muchos formularios y no podemos guardar el vuestro. Enviadnos vuestras horas por WhatsApp o por email.", "We are getting a lot of forms right now and cannot save yours. Send us your times by WhatsApp or email.", false], "\"We are getting a lot of forms right now and cannot save yours. Send us your times by WhatsApp or email.\"");
+  for (const r of w.rows.slice(0, 5)) r.status = "rejected";
+  const after = await w.submit(form("Calma", "34600111222"), "192.0.2.7");
+  check(G, "Jordan rejects five of them: the next real studio gets through", [after.status, after.body.status], [200, "pending_review"], "a rejected row never counts against everyone");
+  n0 = w.rows.length;
+  const signed = await w.submit({ name: "Calma", link_slug: "calma", studio: { whatsapp: "34600111222" } }, "192.0.2.7");
+  for (let i = 0; i < 5; i++) w.add({ status: "pending_review", ip_hash: `h-198.51.101.${i}` });
+  const signed2 = await w.submit({ name: "Calma", link_slug: "calma", studio: { whatsapp: "34600111222" } }, "192.0.2.7");
+  check(G, "with the cap for everyone full, a studio's own link is still taken and carded", [signed.status, signed.body.status, signed2.status, signed2.body.status, w.rows.length - n0], [200, "pending_review", 200, "pending_review", 7], "it counts only its own signed sends");
+
+  // 3. The limits for one sender are unchanged, and still "wait a few minutes".
+  w = world();
+  const seven = [];
+  for (let i = 0; i < 7; i++) seven.push(await w.submit(form(`Centro ${i}`, `3460011122${i}`), "192.0.2.8"));
+  check(G, "one address, a 7th form in 10 minutes: 429 rate_limited with \"wait a few minutes\"", [seven.map((r) => r.status), seven[6].body.status, seven[6].body.message], [[200, 200, 200, 200, 200, 200, 429], "rate_limited", "Habéis enviado varias veces seguidas. Esperad unos minutos y probad otra vez."], "\"You have sent this several times in a row. Wait a few minutes and try again.\"");
+  check(G, "and Jordan got 5 cards and one \"more are waiting\"", [w.cards.length, w.more.length], [5, 1], "");
+
+  // 4. Bursts sent at once: the first five in get the cards.
+  const ids = (k) => Array.from({ length: k }, (_, i) => `row-${i + 1}`);
+  const burst = async (o) => {
+    const b = world(o);
+    const res = await Promise.all(Array.from({ length: 8 }, (_, i) => b.submit(form(`Centro ${i}`, `346002000${i}`), `198.51.100.${i}`)));
+    return [res.map((r) => r.body.status), [...b.cards].sort(), b.more.length];
+  };
+  const all8 = Array(8).fill("pending_review");
+  check(G, "8 forms at once: all received, cards for the first 5 in, one \"more are waiting\", none after", await burst(), [all8, ids(5), 1], "each counted the 7 others, so Jordan got no card at all; created_at sent unencoded would read as no earlier forms and card all 8");
+  check(G, "the same burst with the earliest forms marked pending_review last: the same", await burst({ patchDelay: (id) => 5 * (9 - Number(id.split("-")[1])) }), [all8, ids(5), 1], "a form not yet marked counts too: counting pending_review only gave all 8 a card");
+
+  // 5. The page: busy is the WhatsApp and email fallback.
+  const pageSend = async (respond) => {
+    const said = { dataset: { k: "x" }, textContent: "" };
+    const done = [];
+    const ctx = {
+      S: { saving: false, step: "last", lastKey: null, miss: [] }, ST: { centro: "centro", times: "times", last: "last" }, PREVIEW: false, MAX_TIMES: 40, SAVE_URL: "https://example.test/save",
+      setErr: () => {}, centroValid: () => true, checkCentro: () => [], focusField: () => {}, selList: () => [{ d: { wd: 5 }, mins: [1080] }], countOf: (l) => l.length,
+      checkLast: () => [], paintMiss: () => {}, buildPayload: () => ({ lang: "es" }), batchKey: () => "k1", t: (k) => k, go: () => {},
+      finish: (result, list, key, server) => { done.push([result, server ? server.status : null]); },
+      $: (id) => id === "saveErr" ? said : null,
+      window: { AbortController }, AbortController, setTimeout, clearTimeout, JSON, console,
+      fetch: async () => respond(),
+    };
+    vm.createContext(ctx);
+    vm.runInContext(sendSrc, ctx);
+    await ctx.send({ textContent: "Enviar", disabled: false });
+    return [done, said.textContent];
+  };
+  const answer = (status, body) => () => ({ ok: status >= 200 && status < 300, status, json: () => body === undefined ? Promise.reject(new SyntaxError("not JSON")) : Promise.resolve(body) });
+  check(G, "page: 503 busy goes to the WhatsApp and email fallback, nothing said under the button", await pageSend(answer(503, { ok: false, status: "busy", message: socMsg("busy", "es") })), [[["fallback", null]], ""], "was \"wait a few minutes\" when the cap was a 429");
+  check(G, "page: busy with any code is the fallback too", await pageSend(answer(429, { ok: false, status: "busy", message: socMsg("busy", "es") })), [[["fallback", null]], ""], "");
+  check(G, "page: a 503 that is not JSON is the fallback", await pageSend(answer(503)), [[["fallback", null]], ""], "");
+  check(G, "page: 429 rate_limited is said under the button, nothing else changes", await pageSend(answer(429, { ok: false, status: "rate_limited", message: socMsg("rate", "es") })), [[], "Habéis enviado varias veces seguidas. Esperad unos minutos y probad otra vez."], "");
+  check(G, "page: received and saved are kept; a 500 or no network is the fallback", [
+    await pageSend(answer(200, { ok: true, status: "pending_review", message: socMsg("pending", "es") })),
+    await pageSend(answer(200, { ok: true, status: "applied", message: socMsg("applied_wait", "es") })),
+    await pageSend(answer(500, { ok: false, status: "error", message: socMsg("error", "es") })),
+    await pageSend(() => { throw new TypeError("Failed to fetch"); }),
+  ], [[[["received", "pending_review"]], ""], [[["saved", "applied"]], ""], [[["fallback", null]], ""], [[["fallback", null]], ""]], "");
 }
 
 // ---------------------------------------------------------------------------
