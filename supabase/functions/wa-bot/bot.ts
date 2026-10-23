@@ -5208,6 +5208,9 @@ type SocPlan = {
   pattern: Array<{ dow: number; hm: string }>;
   skipped: SocTimes["skipped"];
   price: number | null;
+  // Jordan, 23 Oct: no price for the chosen length and no menu on file, so
+  // customers cannot see these times until Jordan has one (socValidate).
+  pricePending: boolean;
   terms: { version: string; lang: "es" | "en"; text: string };
   drawnAt: number | null;
 };
@@ -5220,9 +5223,16 @@ type SocPlan = {
 // text), because those hours are then saved on its row; otherwise what we
 // have on file comes first and what was typed only counts when the file has
 // none. Unknown is 08:00 to 22:00, and nothing is ever outside 08:00 to 22:00.
-// Price (review fix): every offer to a customer carries a price, so the price
-// for the chosen length is required unless the studio already has one listed
-// (priceKnown: a signed link for a studio with a menu on file).
+// Price: every offer to a customer carries a price (review fix, 17 Oct), but
+// a form without one is no longer refused (Jordan, 23 Oct, on the page's last
+// step: "this makes 0 sense, we need an easy way for them to plug in their
+// prices, or at least skip this step and send them a form later"). The page
+// offers «Lo pongo más tarde» ("I'll add it later"); the times are saved with
+// no price, and released_offers never offers a time with neither a typed
+// price nor a menu price, so customers cannot see them until one exists.
+// pricePending says so: no price for the chosen length and no menu on file
+// (priceKnown: a signed link for a studio with a menu). A price that IS typed
+// is still checked (1 to 500).
 // Terms (review fix): the sentence sent must be exactly the one we have for
 // that version and language, or nothing is accepted (terms_text).
 function socValidate(p: any, nowMs: number, storedHours: unknown = null, o: { typedFirst?: boolean; priceKnown?: boolean } = {}): { ok: boolean; errors: string[]; plan: SocPlan | null } {
@@ -5257,7 +5267,6 @@ function socValidate(p: any, nowMs: number, storedHours: unknown = null, o: { ty
   const tl: "es" | "en" = String(tm.lang || lang) === "en" ? "en" : "es";
   if (tm.accepted !== true || !known) errors.push("terms");
   else if (socLine(tm.text) !== known[tl]) errors.push("terms_text");
-  if ((minutes === 90 ? p90 : p60) === null && !o.priceKnown && (minutes === 60 || minutes === 90)) errors.push("price_needed");
   const weekly = av.repeat_weekly === true;
   const list = Array.isArray(av.slots) ? av.slots : [];
   if (!list.length) errors.push("times_none");
@@ -5270,13 +5279,14 @@ function socValidate(p: any, nowMs: number, storedHours: unknown = null, o: { ty
   if (!once.length && !pattern.length) return { ok: false, errors: ["times_invalid"], plan: null };
   const drawn = Number(p?.drawn_at);
   const drawnAt = Number.isFinite(drawn) && drawn <= nowMs + 60e3 && drawn >= nowMs - 24 * 3600e3 ? Math.min(drawn, nowMs) : null;
+  const price = minutes === 90 ? p90 : p60;
   return {
     ok: true,
     errors: [],
     plan: {
       lang, minutes, weekly, once, pattern, skipped, drawnAt,
       studio: { name, wa, address, email, hoursRaw, hoursRead, p60, p90 },
-      price: minutes === 90 ? p90 : p60,
+      price, pricePending: price === null && !o.priceKnown,
       terms: { version, lang: tl, text: known[tl] },
     },
   };
@@ -5588,6 +5598,9 @@ function socSlug(name: string): string {
 const SOC_MSG: Record<string, { es: string; en: string }> = {
   applied_live: { es: "Guardado. Ya se pueden reservar.", en: "Saved. They can be booked now." },
   applied_wait: { es: "Guardado. Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos.", en: "Saved. We are not offering them to customers yet: we will let you know as soon as we start." },
+  // Jordan, 23 Oct: saved with «Lo pongo más tarde» and no menu on file, so
+  // no customer sees them until we have the price (released_offers).
+  applied_price: { es: "Guardado. Las ofrecemos a clientes en cuanto tengamos vuestro precio.", en: "Saved. We will offer them to customers as soon as we have your price." },
   pending: { es: "Recibido, lo revisamos y os confirmamos por WhatsApp o email.", en: "Received, we will check it and confirm by WhatsApp or email." },
   rate: { es: "Habéis enviado varias veces seguidas. Esperad unos minutos y probad otra vez.", en: "You have sent this several times in a row. Wait a few minutes and try again." },
   // Go-live review (23 Oct): the cap for everyone (503). The page shows the
@@ -5595,7 +5608,9 @@ const SOC_MSG: Record<string, { es: string; en: string }> = {
   busy: { es: "Ahora mismo nos llegan muchos formularios y no podemos guardar el vuestro. Enviadnos vuestras horas por WhatsApp o por email.", en: "We are getting a lot of forms right now and cannot save yours. Send us your times by WhatsApp or email." },
   error: { es: "No se ha podido guardar. Probad otra vez en un momento.", en: "It could not be saved. Try again in a moment." },
   bad: { es: "No hemos podido leer el formulario. Recargad la página y probad otra vez.", en: "We could not read the form. Reload the page and try again." },
-  name: { es: "Falta el nombre del centro.", en: "The centre name is missing." },
+  // Jordan, 23 Oct: «negocio» / "business", never «centro» / "centre", for
+  // the business on anything the page or its pages show it.
+  name: { es: "Falta el nombre del negocio.", en: "The business name is missing." },
   wa: { es: "Ese WhatsApp no parece correcto.", en: "That WhatsApp number does not look right." },
   address: { es: "Falta la dirección o el barrio.", en: "The address or neighbourhood is missing." },
   email_missing: { es: "Falta el email.", en: "The email is missing." },
@@ -5606,8 +5621,6 @@ const SOC_MSG: Record<string, { es: string; en: string }> = {
   terms: { es: "Para enviar, marcad «Acepto las condiciones».", en: "To send, tick \"I accept the terms\"." },
   // Review fix (17 Oct): the terms sent are not the ones we have for that version.
   terms_text: { es: "Las condiciones de esta página han cambiado. Recargad la página, leedlas y volved a enviarlo.", en: "The terms on this page have changed. Reload the page, read them and send it again." },
-  // Review fix (17 Oct): every offer to a customer carries a price.
-  price_needed: { es: "Poned vuestro precio para esa duración: es el que ve el cliente.", en: "Add your price for that length: it is what the customer sees." },
   times_none: { es: "Elegid al menos un hueco.", en: "Choose at least one slot." },
   times_many: { es: `Como mucho ${SOC_MAX_TIMES} huecos de una vez. Quitad alguno, por favor.`, en: `At most ${SOC_MAX_TIMES} slots at once. Please remove some.` },
   times_invalid: { es: `Ninguna de esas horas se puede guardar: falta menos de una hora, ya ha pasado, está a más de ${REL_STUDIO_HORIZON_DAYS / 7} semanas o no cabe en vuestro horario. Elegid otras, por favor.`, en: `None of those times can be saved: they are less than an hour away, already past, more than ${REL_STUDIO_HORIZON_DAYS / 7} weeks ahead, or outside your opening hours. Please choose others.` },
@@ -5864,6 +5877,36 @@ function socFunnelRank(f: SocFunnel): { rank: number; label: string } {
 // sit empty for you? <link> Jordan, from Massage Club"
 const SOC_PITCH_ES = "Hola, os escribo de Massage Club. ¿A qué hora se os suele quedar una sala vacía?";
 const socShareText = (link: string): string => `${SOC_PITCH_ES}\n\n${link}\n\nJordan, de Massage Club`;
+// ---- A sign-up saved without a price (Jordan, 23 Oct) ----
+// The page's last step asks only "¿Cuánto cobráis por un masaje de 60
+// minutos?", with prices to tap, another amount, or «Lo pongo más tarde»
+// ("I'll add it later"). A form without a price is saved (socValidate,
+// pricePending); its times wait for one, because released_offers never
+// offers a time with neither a typed price nor a menu price. Jordan's cards
+// say so, and give him a draft in his own WhatsApp asking the studio for it.
+// Nothing is sent to the studio by us.
+// What a saved sign-up's result says of its price (SocApplied.price):
+// "given" (typed or tapped on the page), "menu" (none, the menu on file is
+// quoted) or "pending" (none at all).
+const socPriceState = (plan: { price: number | null; pricePending: boolean }): "given" | "menu" | "pending" =>
+  plan.price !== null ? "given" : plan.pricePending ? "pending" : "menu";
+// The price line in the studio's details on Jordan's cards.
+function socPriceEn(s: { p60: number | null; p90: number | null }, pending: boolean): string {
+  if (pending) return "Price: not given yet, ask for it (customers cannot see these times until there is one)";
+  const given = [s.p60 ? `60 min ${s.p60} EUR` : "", s.p90 ? `90 min ${s.p90} EUR` : ""].filter(Boolean).join(", ");
+  return `Prices: ${given || "not given (their menu on file is used)"}`;
+}
+// What customers can see of the times just saved, for Jordan's cards.
+function socSeenEn(live: boolean, mode: string, pending: boolean, minutes = 60): string {
+  if (!pending) return `Customers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode})`}.`;
+  return `Price: not given yet, ask for it. Customers cannot see these times until there is one: released_offers never offers a time without a price (typed on the page or on their menu)${live ? "" : `, and RELEASED is ${mode} too`}. When they tell you their ${minutes} min price, set it on these times (price_eur on released_slots and released_patterns) or add it to their menu (partner_services).`;
+}
+// The question Jordan can send from his own WhatsApp (a draft he edits).
+// English: "Hi, this is Jordan from Massage Club. Thank you for your times.
+// To offer them to customers we still need your price: how much do you
+// charge for a 60-minute massage?"
+const socPriceAskEs = (minutes = 60): string => `Hola, soy Jordan, de Massage Club. Gracias por vuestras horas. Para ofrecerlas a clientes nos falta vuestro precio: ¿cuánto cobráis por un masaje de ${minutes} minutos?`;
+const socPriceAskEn = (minutes = 60): string => `Hi, this is Jordan from Massage Club. Thank you for your times. To offer them to customers we still need your price: how much do you charge for a ${minutes}-minute massage?`;
 // ---- v216 socios: pure helpers (end) ----
 
 // v203: says what became of the offer ("whatsapp", "email", "none", or why it
@@ -7300,7 +7343,8 @@ function notePage(url: URL): Response {
   }
   if (n === "studio_taken") {
     // v212: "justo antes" and "tan rápido" were said whatever the timing.
-    return pageOut(url, simpleCard("Ya está cubierta", "Este cliente ya ha reservado en otro centro, así que no tenéis que guardarle nada. Gracias por contestar.\n\nThis client has already booked with another centre, so there is nothing to hold. Thanks for replying.", ""));
+    // Jordan, 23 Oct: «otro negocio» / "another business", not «otro centro».
+    return pageOut(url, simpleCard("Ya está cubierta", "Este cliente ya ha reservado en otro negocio, así que no tenéis que guardarle nada. Gracias por contestar.\n\nThis client has already booked with another business, so there is nothing to hold. Thanks for replying.", ""));
   }
   return pageOut(url, simpleCard("Massage Club", "", ""));
 }
@@ -7925,7 +7969,7 @@ ${note ? `<div class="note ${noteErr ? "err" : "ok"}">${esc(note)}</div>` : ""}
 <div class="lbl">Horas de inicio</div>${gridHtml}
 <div class="lbl">Vuestras horas para Massage Club</div>${listHtml ? `<div class="list">${listHtml}</div>` : `<p class="empty">Todavía no hay ninguna hora marcada.</p>` /* No times marked yet. */}
 ${patHtml ? `<div class="lbl">Cada semana</div><div class="list">${patHtml}</div>` : ""}
-<p class="foot">Una hora se puede reservar hasta 60 minutos antes. Si deja de estar libre, quitadla aquí mientras nadie la haya reservado. Este enlace es solo para vuestro centro, no lo compartáis.</p>`;
+<p class="foot">Una hora se puede reservar hasta 60 minutos antes. Si deja de estar libre, quitadla aquí mientras nadie la haya reservado. Este enlace es solo para vuestro negocio, no lo compartáis.</p>`;
   // Page copy in English, for Jordan: "Free times. Mark the times you can see a
   // Massage Club client. Anything you mark can be booked straight away: you
   // get the written confirmation with their name and phone (and their email,
@@ -7938,7 +7982,7 @@ ${patHtml ? `<div class="lbl">Cada semana</div><div class="list">${patHtml}</div
   // client (optional), Save times, Your times for Massage Club, Remove. Footer: "A
   // time can be booked up to 60 minutes before. If it stops being free,
   // remove it here while nobody has booked it. This link is only for your
-  // studio, do not share it."
+  // business, do not share it." (Jordan, 23 Oct: «negocio», not «centro».)
   return pageOut(url, slotsShell(`Horas libres · ${studio}`, body));
 }
 // The studio's 15 minute reject link, from its confirmation. GET shows the
@@ -8104,7 +8148,12 @@ const SOCIOS_PAGE = "https://book.massageclub.io/socios";
 // The page's fallback message (its msgHello, then its msgTimes block) and the
 // one answer to it. The page's other WhatsApp links open with the same hello
 // but no times block: those are ordinary studio messages.
-const SOCIOS_FALLBACK_RE = /^\s*(?:Hola, Massage Club\. Somos [^\n]{1,160}, centro de masaje\.\s*\n\s*Horas que os ofrecemos \(|Hello, Massage Club\. We are [^\n]{1,160}, a massage (?:centre|studio)\.\s*\n\s*Times we offer you \()/;
+// Jordan, 23 Oct: the page now says «Somos <name>, un negocio de masajes.» /
+// "We are <name>, a massage business." Both regexes still read every older
+// hello («centro de masaje», "a massage centre", "a massage studio"): a page
+// left open, or a message typed from an old one, must not reach the
+// customer flow.
+const SOCIOS_FALLBACK_RE = /^\s*(?:Hola, Massage Club\. Somos [^\n]{1,160}, (?:un )?(?:negocio|centro) de masajes?\.\s*\n\s*Horas que os ofrecemos \(|Hello, Massage Club\. We are [^\n]{1,160}, a massage (?:business|centre|studio)\.\s*\n\s*Times we offer you \()/;
 const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos por aquí.";
 // Review fix (17 Oct): the page's other WhatsApp buttons (the result screen's
 // "Escribirnos por WhatsApp" and the footer) open with its hello and no times
@@ -8113,7 +8162,7 @@ const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos po
 // that number writes in the next 2 days, never enters the customer flow: the
 // studio gets one acknowledgement and Jordan a studio card. From a partner's
 // number it stays an ordinary studio message.
-const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, centro de masaje|un centro de masaje)\.|Hello, Massage Club\. We are (?:[^\n]{1,160}, a massage (?:centre|studio)|a massage (?:centre|studio))\.)/;
+const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, (?:un )?(?:negocio|centro) de masajes?|un (?:negocio|centro) de masajes?)\.|Hello, Massage Club\. We are (?:[^\n]{1,160}, a massage (?:business|centre|studio)|a massage (?:business|centre|studio))\.)/;
 // "Thanks for writing to us. We will read it and answer you here."
 const SOCIOS_HELLO_ACK = "Gracias por escribirnos. Lo leemos y os contestamos por aquí.";
 const SOC_STUDIO_CHAT_MS = 2 * 86400e3;
@@ -8376,6 +8425,10 @@ async function socSaveTimes(pid: string, t: { once: SocTimes["once"]; pattern: S
 type SocApplied = {
   filled: string[]; differ: SocDiff["differ"]; replaced: SocUpdate["replaced"]; saved: Array<{ startMs: number }>; refused: Array<{ startMs: number }>;
   skipped: SocPlan["skipped"]; weekly: Array<{ dow: number; hm: string; isNew: boolean }>; next: Array<{ startMs: number }>; terms: string; live?: boolean;
+  // Jordan, 23 Oct: "given" (typed on the page), "menu" (none typed, the
+  // menu on file is quoted) or "pending" (none at all: the times are saved,
+  // no customer sees them until Jordan has the price).
+  price?: "given" | "menu" | "pending";
   // Review (23 Oct): a new booking WhatsApp or email from its own link, until
   // Jordan decides (waiting, then approved or rejected).
   proposed?: SocProposed & { status: "waiting" | "approved" | "rejected"; decided_at?: string; note?: string };
@@ -8400,7 +8453,7 @@ type SocApplied = {
 async function socApply(signup: any, partner: any, plan: SocPlan, via: "socios_link" | "socios_review", created = false): Promise<{ ok: boolean; error: string; result: SocApplied }> {
   const nowMs = Date.now();
   const pid = String(partner.id);
-  const result: SocApplied = { filled: [], differ: [], replaced: [], saved: [], refused: [], skipped: plan.skipped, weekly: [], next: [], terms: "" };
+  const result: SocApplied = { filled: [], differ: [], replaced: [], saved: [], refused: [], skipped: plan.skipped, weekly: [], next: [], terms: "", price: socPriceState(plan) };
   const own = via === "socios_link";
   if (own && !socIsTestStudio(partner)) {
     const up = socSignedUpdate(partner, plan.studio);
@@ -8467,7 +8520,7 @@ function socAppliedEn(r: SocApplied, nowMs: number): string[] {
 }
 function socStudioEn(plan: SocPlan): string[] {
   const s = plan.studio;
-  return [`WhatsApp: +${s.wa}`, `Email: ${s.email}`, `Address: ${s.address}`, `Opening hours: ${s.hoursRaw || "not given"}${s.hoursRead && s.hoursRead !== s.hoursRaw ? ` (read as ${s.hoursRead})` : ""}`, `Prices: ${[s.p60 ? `60 min ${s.p60} EUR` : "", s.p90 ? `90 min ${s.p90} EUR` : ""].filter(Boolean).join(", ") || "not given (their menu on file is used)"}`, `Terms ${plan.terms.version} ticked, word for word as we have them`];
+  return [`WhatsApp: +${s.wa}`, `Email: ${s.email}`, `Address: ${s.address}`, `Opening hours: ${s.hoursRaw || "not given"}${s.hoursRead && s.hoursRead !== s.hoursRaw ? ` (read as ${s.hoursRead})` : ""}`, socPriceEn(s, plan.pricePending), `Terms ${plan.terms.version} ticked, word for word as we have them`];
 }
 
 // POST ?socios=1 {"ops":"studio_signup","payload":{...}} from the page.
@@ -8495,9 +8548,10 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
     // minutes": the studio's times still reach us.
     if ((await socCount(`signed=is.false&status=neq.rejected&created_at=gte.${since(3600e3)}`)) >= SOC_LIMIT_UNSIGNED_H) return busy;
   }
-  // Signed: the studio's own hours come first (they are saved on its row),
-  // and a studio with a menu on file may leave the price blank. Unsigned: the
-  // hours on file come first, and the price is always needed.
+  // Signed: the studio's own hours come first (they are saved on its row).
+  // Unsigned: the hours on file come first. The price may be left for later
+  // either way (Jordan, 23 Oct): a signed studio with a menu on file is
+  // quoted its menu; anyone else's times wait for a price (pricePending).
   const v = socValidate(p, nowMs, partner?.opening_hours ?? null, { typedFirst: signed, priceKnown: signed && await socHasMenu(String(partner.id)) });
   // The payload as it came, except the link's signature (a bearer key for
   // that studio's page): whether it was valid is the signed column.
@@ -8532,18 +8586,30 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
       await logEvent("system", "socios_applied", { partner_id: partner.id, signup: row.id, saved: res.result.saved.length, weekly: res.result.weekly.length, test: isTest, contacts_proposed: !!res.result.proposed });
       // Review (23 Oct): a new booking WhatsApp or email waits for Aprobar here.
       const contacts = res.result.proposed?.status === "waiting";
-      await founderCard(`📥 ${name} gave ${n} time${n === 1 ? "" : "s"} on its /socios link${contacts ? ": new booking contact needs your OK" : ""}`, {
-        badge: contacts ? "NEW BOOKING CONTACT TO REVIEW" : "STUDIO GAVE TIMES", title: `${name} signed up on its own link`,
-        paras: [`Applied at once (signed link). Customers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode}); the studio was told we will let them know when we start`}.`, ...socAppliedEn(res.result, nowMs),
+      // Jordan, 23 Oct: saved without a price (and no menu on file), so no
+      // customer sees these times until he has one. The card says so first,
+      // with a draft asking the studio for it from his own WhatsApp.
+      const noPrice = res.result.price === "pending";
+      const askTo = noPrice ? socPick(partner).replace(/\D/g, "") : "";
+      const told = !live ? " The studio was told we will let them know when we start." : noPrice ? " The studio was told we will offer them as soon as we have their price." : "";
+      await founderCard(`📥 ${name} gave ${n} time${n === 1 ? "" : "s"} on its /socios link${contacts ? ": new booking contact needs your OK" : ""}${noPrice ? `${contacts ? ";" : ":"} price not given yet, ask for it` : ""}`, {
+        badge: contacts ? "NEW BOOKING CONTACT TO REVIEW" : noPrice ? "STUDIO GAVE TIMES, NO PRICE YET" : "STUDIO GAVE TIMES", title: `${name} signed up on its own link`,
+        paras: [`Applied at once (signed link). ${socSeenEn(live, mode, noPrice, plan.minutes)}${told}`, ...socAppliedEn(res.result, nowMs),
+          noPrice ? `The draft on the button below, from your own WhatsApp: "${socPriceAskEs(plan.minutes)}" (English: "${socPriceAskEn(plan.minutes)}")` : "",
           contacts ? "Studio links get forwarded, so whoever holds one could send their bookings, with each customer's name, phone and email, somewhere else. Check with the studio on the number we have before you approve." : ""],
         after: socStudioEn(plan),
-        links: [...(contacts ? [{ href: await socReviewLink(String(row.id), "yes"), label: "Review the new contact", primary: true }] : []), { href: manage, label: "Their times page" }, { href: await socLinksUrl(), label: "All studio links" }],
+        links: [...(contacts ? [{ href: await socReviewLink(String(row.id), "yes"), label: "Review the new contact", primary: true }] : []),
+          ...(noPrice ? [{ href: `https://wa.me/${askTo}?text=${encodeURIComponent(socPriceAskEs(plan.minutes))}`, label: askTo ? "Ask them for their price (my WhatsApp)" : "Ask them for their price (no WhatsApp on file)", primary: !contacts }] : []),
+          { href: manage, label: "Their times page" }, { href: await socLinksUrl(), label: "All studio links" }],
         to: ["jordan@massageclub.io"],
       });
       return {
         status: 200,
         body: {
-          ok: true, status: "applied", id: row.id, live, message: socMsg(live ? "applied_live" : "applied_wait", L),
+          ok: true, status: "applied", id: row.id, live, message: socMsg(!live ? "applied_wait" : noPrice ? "applied_price" : "applied_live", L),
+          // Jordan, 23 Oct: the page says "as soon as we have your price"
+          // instead of "they can be booked now".
+          price_pending: noPrice,
           saved: res.result.saved.map((x) => socWhen(x.startMs, L, nowMs)),
           weekly: res.result.weekly.map((x) => `${SOC_WD[L][x.dow]} ${x.hm}`),
           next: res.result.next.map((x) => socWhen(x.startMs, L, nowMs)),
@@ -8981,8 +9047,10 @@ async function socReviewPage(url: URL): Promise<Response> {
     // A studio we already had (an unsigned form) also gets its own link, so
     // its details and the terms can be confirmed as its own.
     const ownLink = !own && !created ? await socLink(partner) : "";
-    const es = `Hola, soy Jordan, de Massage Club. Ya tenemos vuestras horas guardadas.${live ? "" : " Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos."} Podéis verlas y cambiarlas aquí: ${manage}${ownLink ? `\n\nPara confirmar vuestros datos y las condiciones, usad vuestro enlace: ${ownLink}` : ""}\n\nSi una hora se os llena por otro lado, escribid «ocupado» por aquí y la quitamos.`;
-    const en = `Hi, this is Jordan from Massage Club. We have saved your times.${live ? "" : " We are not offering them to customers yet: we will let you know as soon as we start."} You can see and change them here: ${manage}${ownLink ? ` To confirm your details and the terms, use your own link: ${ownLink}` : ""}\n\nIf a time fills up elsewhere, write "ocupado" here and we remove it.`;
+    // Jordan, 23 Oct: sent without a price, so the draft asks for it too.
+    const noPrice = res.result.price === "pending";
+    const es = `Hola, soy Jordan, de Massage Club. Ya tenemos vuestras horas guardadas.${live ? "" : " Todavía no las ofrecemos a clientes: os avisamos en cuanto empecemos."} Podéis verlas y cambiarlas aquí: ${manage}${ownLink ? `\n\nPara confirmar vuestros datos y las condiciones, usad vuestro enlace: ${ownLink}` : ""}${noPrice ? `\n\nPara ofrecerlas a clientes nos falta vuestro precio: ¿cuánto cobráis por un masaje de ${plan.minutes} minutos?` : ""}\n\nSi una hora se os llena por otro lado, escribid «ocupado» por aquí y la quitamos.`;
+    const en = `Hi, this is Jordan from Massage Club. We have saved your times.${live ? "" : " We are not offering them to customers yet: we will let you know as soon as we start."} You can see and change them here: ${manage}${ownLink ? ` To confirm your details and the terms, use your own link: ${ownLink}` : ""}${noPrice ? `\n\nTo offer them to customers we still need your price: how much do you charge for a ${plan.minutes}-minute massage?` : ""}\n\nIf a time fills up elsewhere, write "ocupado" here and we remove it.`;
     const to = socPick(partner).replace(/\D/g, "");
     const mail = String(partner.booking_email || partner.email || plan.studio.email || "");
     const extra = (to ? pillLink(`https://wa.me/${to}?text=${encodeURIComponent(es)}`, "Tell them on my WhatsApp", true) : "")
@@ -8990,7 +9058,7 @@ async function socReviewPage(url: URL): Promise<Response> {
       // Review (23 Oct): their new booking WhatsApp or email needs its own OK.
       + (res.result.proposed?.status === "waiting" ? pillLink(escAttr(await socReviewLink(id)), "Review their new booking contact", false) : "");
     const where = created ? (partner.neighbourhood ? `\nNeighbourhood ${partner.neighbourhood} (from the address). No map position yet: until you add latitude and longitude it is only offered to customers who name ${partner.neighbourhood}.` : "\nNo neighbourhood could be read from the address and there is no map position: until you add them it is only offered to customers who give no area.") : "";
-    return done("Approved and saved", `${partner.business_name}${created ? " (new studio, status pending)" : ""}${where}\n\n${socAppliedEn(res.result, nowMs).join("\n")}\nCustomers ${live ? "can book these now" : `cannot see them yet (RELEASED is ${mode})`}.\n\nNothing was sent to the studio. The draft below opens in your own WhatsApp:\n\n${es}\n\n(English: ${en})`, extra, "ok");
+    return done("Approved and saved", `${partner.business_name}${created ? " (new studio, status pending)" : ""}${where}\n\n${socAppliedEn(res.result, nowMs).join("\n")}\n${socSeenEn(live, mode, noPrice, plan.minutes)}\n\nNothing was sent to the studio. The draft below opens in your own WhatsApp:\n\n${es}\n\n(English: ${en})`, extra, "ok");
   }
   // The confirm page (also what a stale button shows).
   const want = String(url.searchParams.get("want") || "");
@@ -11063,8 +11131,9 @@ const handleInner = async (req: Request) => {
     }
 
     // v216: the message the /socios page prefills when its save cannot be
-    // reached ("Hola, Massage Club. Somos <name>, centro de masaje." and the
-    // times). From any number: never the customer flow, never an answer to a
+    // reached ("Hola, Massage Club. Somos <name>, un negocio de masajes.", or
+    // an older page's "centro de masaje", and the times). From any
+    // number: never the customer flow, never an answer to a
     // booking ask. The studio is thanked once, Jordan gets it on a card.
     if (text && SOCIOS_FALLBACK_RE.test(text)) {
       quietThisTurn = true;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Centros socios · Massage Club</title>
+<title>Negocios asociados · Massage Club</title>
 <meta name="description" content="Massage Club es un servicio de reservas en Madrid. Os mandamos clientes nuevos, que escriben en inglés, para vuestras horas libres. Gratis hasta el 31 de diciembre de 2026. Después, 5 € + IVA por cada visita que os reservemos, solo si el cliente viene. Sin cuota mensual ni contrato.">
 <meta name="theme-color" content="#B85C38">
 <meta name="color-scheme" content="light">
@@ -33,9 +33,10 @@
   like the one we give to the customer"; every screen as light as go.html's,
   one short question, at most one short line under it, nothing about later
   steps): the invite (what Massage Club is, who the customers are, what it
-  costs; "Cómo funciona" sits in the top bar), then 1 "¿Qué días esta
-  semana?" (Jordan, 18 Oct: "maybe a calendar function opens up and they can
-  select the days?": a calendar of the next 7 real dates right on the
+  costs; "Cómo funciona" sits in the top bar), then 1 "¿Qué días de esta
+  semana tenéis hueco para más clientes?" (Jordan's words, 23 Oct; it was
+  "¿Qué días esta semana?". Jordan, 18 Oct: "maybe a calendar function
+  opens up and they can select the days?": a calendar of the next 7 real dates right on the
   screen, closed ones greyed when we know the hours; those 7 dates are
   exactly the ones a "just once" save uses; the opening hours are one tap
   away under it, and come before the times so nothing picked can vanish
@@ -43,9 +44,11 @@
   one start time a customer can take; the same times for every chosen day,
   or one day set differently), 3 "¿Se repite cada semana?" (Jordan: "this
   question is confusing": one yes or no about exactly what was just
-  picked; "No, solo esta semana" names the real dates), 4 "Vuestro centro"
-  (name, address, WhatsApp, email), 5 "Último paso" (price, the terms,
-  send), then the ticket. No length is asked (Jordan, 18 Oct: "not sure if
+  picked; "No, solo esta semana" names the real dates), 4 "Vuestro negocio"
+  (name, address, WhatsApp, email), 5 "¿Cuánto cobráis por un masaje de 60
+  minutos?" (Jordan, 23 Oct; it was "Último paso / Vuestro precio y las
+  condiciones", which "makes 0 sense": prices to tap, another amount, or
+  «Lo pongo más tarde»; then the terms, send), then the ticket. No length is asked (Jordan, 18 Oct: "not sure if
   the length matters, just times that work for the customers"): every time
   is sent as a 60 minute one, as before, and the one price asked is the
   price of a 60 min massage. Jordan, 18 Oct: "i've only clicked 2 slots it
@@ -101,8 +104,15 @@
     cannot be approved at all (review, 23 Oct: anyone can type a studio's
     number here, and released times are booked at once): Jordan sends that
     studio its own link instead.
-  The 60 min price is required, unless it is the studio's own link and we
-  already have its menu (prefill has_menu).
+  The 60 min price may be left for later (Jordan, 23 Oct: "or at least skip
+  this step and send them a form later"): the studio taps a price, types
+  another, or taps «Lo pongo más tarde». A save without a price is kept
+  either way (applied or pending_review); wa-bot marks the price pending
+  (result.price "pending", answer price_pending) unless it is the studio's
+  own link with its menu on file (prefill has_menu), Jordan's card says
+  "Price: not given yet, ask for it", and the ticket says we will ask for
+  it. Until there is a price no customer sees those times: released_offers
+  never offers a time with neither a typed price nor a menu price.
   - ok false with a message (a check failed, too many sends): shown under
     the button, nothing else changes.
   Only when the save cannot be reached at all (network, a server error, an
@@ -110,9 +120,10 @@
   sends the same times by WhatsApp to +34 612 474 827 (text prefilled) or by
   email to jordan@massageclub.io, so the times are never lost and the page
   never says "Guardado" when nothing was kept.
-  The fallback WhatsApp text starts "Hola, Massage Club. Somos <name>,
-  centro de masaje." and then "Horas que os ofrecemos (". wa-bot v216 reads
-  that first, from any number (SOCIOS_FALLBACK_RE):
+  The fallback WhatsApp text starts "Hola, Massage Club. Somos <name>, un
+  negocio de masajes." and then "Horas que os ofrecemos (". wa-bot v216 reads
+  that first, from any number (SOCIOS_FALLBACK_RE, which still reads the
+  older "centro de masaje" / "a massage centre" / "a massage studio" too):
   the studio gets "Recibido, gracias. Lo revisamos y os confirmamos por
   aquí." and Jordan a card with the message. It never enters the customer
   flow and is never read as an answer to a booking ask.
@@ -125,7 +136,7 @@
   select below.
 
   The page's other WhatsApp buttons open with "Hola, Massage Club. Somos
-  <name>, centro de masaje." and no times. From a number that is not a
+  <name>, un negocio de masajes." and no times. From a number that is not a
   partner, wa-bot answers once ("Gracias por escribirnos. Lo leemos y os
   contestamos por aquí.") and sends Jordan a studio card; that number stays
   out of the customer flow for 2 days.
@@ -355,8 +366,17 @@ html:has(.screen.on[data-s="days"]),html:has(.screen.on[data-s="times"]){scroll-
 .euro{position:relative;display:block}
 .euro input{padding-right:42px}
 .euro::after{content:"\20AC";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;pointer-events:none}
-#prices{display:flex;flex-direction:column}
-#priceHint{margin-top:-6px}
+/* The price (Jordan, 23 Oct): eight prices to tap, four to a row, another
+   amount in a small field beside its label, then «Lo pongo más tarde» as a
+   full-width chip. One choice: the chosen one has the ink border. */
+.pchips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pchips .chip{padding:13px 0;text-align:center;font-size:16px;font-weight:700;white-space:nowrap}
+.pother{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 0}
+.pother .fl{margin:0 0 0 4px;font-size:15px;font-weight:500;color:var(--ink)}
+.pother .euro{flex:none;width:132px}
+.pother input{padding:12px 42px 12px 16px}
+.plater{display:block;width:100%;margin-top:12px;text-align:center}
+#prices:focus{outline:none}
 .skip.left{text-align:left;width:auto;padding:6px 4px;margin-top:4px}
 #sumMini .warn{margin:12px 0 0 4px}
 #sumMini .skip.left{padding-left:4px}
@@ -577,19 +597,29 @@ body.noscroll{overflow:hidden}
       </form>
     </section>
 
-    <!-- 5 · price, terms, send -->
+    <!-- 5 · the price, the terms, send -->
     <section class="screen" data-s="last" aria-labelledby="h6">
       <div class="kicker" data-t="k6"></div>
       <h2 id="h6" tabindex="-1" data-t="q6"></h2>
       <p class="sub" data-t="s6"></p>
       <form id="f6" novalidate>
-        <!-- One price: every offer to a customer carries one. The times are
-             60 minute slots, so it is the price of a 60 min massage. -->
-        <div id="prices">
-          <div class="field" id="fp60">
-            <label class="fl" for="p60"><span id="p60Lbl"></span> <em class="opt" id="p60Opt" data-t="opt"></em></label>
-            <span class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" data-ph="pricePh" aria-describedby="priceHint priceErr"></span>
+        <!-- Jordan, 23 Oct, on "Last step / Your price and the terms. The
+             customer pays you at your centre. / Price of a 60 min massage":
+             "this makes 0 sense, we need an easy way for them to plug in
+             their prices, or at least skip this step and send them a form
+             later". So the screen asks one thing, the price of a 60 min
+             massage (every time is a 60 minute slot): a price to tap, another
+             amount in a small field, or «Lo pongo más tarde». The three are
+             one choice. Without a price the times are still saved, and wait
+             for one before any customer sees them (wa-bot pricePending). -->
+        <div id="prices" tabindex="-1">
+          <div class="pchips" id="priceChips" role="group" aria-labelledby="h6"></div>
+          <div class="field pother" id="fp60">
+            <label class="fl" for="p60" data-t="fPriceOther"></label>
+            <span class="euro"><input type="text" id="p60" inputmode="decimal" autocomplete="off" aria-describedby="priceHint priceErr"></span>
           </div>
+          <button type="button" class="chip plater" id="priceLater" aria-pressed="false" aria-describedby="priceLaterNote" data-t="priceLater"></button>
+          <p class="hint" id="priceLaterNote" aria-live="polite"></p>
         </div>
         <p class="hint" id="priceHint"></p>
         <p class="ferr" id="priceErr" aria-live="polite"></p>
@@ -774,15 +804,19 @@ let L = String(q.get("lang") || "es").toLowerCase().startsWith("en") ? "en" : "e
 // and by tests/replay.mjs: never change it here alone.
 // msgHello, msgTimes, contactHello and contactHello0 are read by wa-bot
 // (SOCIOS_FALLBACK_RE, SOCIOS_HELLO_RE): keep their openings.
+// Jordan, 23 Oct: the business is a «negocio» / "business", never a
+// «centro» / "centre" (Centro is also a Madrid district). Where naming the
+// place reads badly, say it without it: «El cliente os paga directamente».
+// The booking example in the sheet stays word for word as wa-bot sends it.
 const T = {
   es: {
-    docTitle: "Centros socios · Massage Club",
+    docTitle: "Negocios asociados · Massage Club",
     langBtn: "EN", langAria: "Read this page in English",
     backAria: "Volver", close: "Cerrar",
     preview: "Vista previa: no se envía nada",
     howPill: "Cómo funciona",
 
-    kick: "Massage Club · Centros",
+    kick: "Massage Club · Negocios",
     title: "Clientes nuevos, a vuestras horas.",
     host: "Hola, somos Massage Club.",
     hostN: "Hola, {n}. Somos Massage Club.",
@@ -795,7 +829,7 @@ const T = {
     start: "Empezar",
     ctaResume: "Seguir donde lo dejasteis",
 
-    k2: "1 de 5", q2: "¿Qué días esta semana?", s2: "Tocad los días con horas libres.",
+    k2: "1 de 5", q2: "¿Qué días de esta semana tenéis hueco para más clientes?", s2: "Tocad los días con horas libres.",
     calSpan1: "Del {a} al {b} de {m}", calSpan2: "Del {a} de {ma} al {b} de {mb}",
     calToday: "hoy", calClosed: "cerrado", calNone: "sin horas",
     runDays: "de {a} a {b}",
@@ -830,19 +864,19 @@ const T = {
     rWeekly: "Sí, cada semana",
     rOnce: "No, solo esta semana", rOnceRun: "{a} a {b}",
 
-    k5: "4 de 5", q5: "Vuestro centro",
+    k5: "4 de 5", q5: "Vuestro negocio",
     s5New: "Para saber a dónde mandar las reservas.",
     s5Known: "¿Está todo bien? Cambiad lo que haga falta.",
     s5Miss1: "Solo falta {a}.", s5MissN: "Solo faltan {a}.",
     mName: "el nombre", mAddr: "la dirección", mWa: "vuestro WhatsApp", mEmail: "el email",
-    fName: "Nombre del centro",
+    fName: "Nombre del negocio",
     fAddr: "Dirección o barrio",
     fAddrPh: "Calle y número, o el barrio",
     fWa: "WhatsApp para las reservas",
     waLandline: "Esto parece un fijo. ¿Tiene WhatsApp?",
     lYes: "Sí, tiene WhatsApp", lNo: "Cambiar el número",
     fEmail: "Email para las reservas",
-    fEmailPh: "hola@vuestrocentro.es",
+    fEmailPh: "hola@vuestronegocio.es",
     fEmailHint: "Cada reserva os llega también por email.",
     fHours: "Vuestro horario",
     opt: "(opcional)",
@@ -851,15 +885,18 @@ const T = {
     hoursHintOk: "Entendido: {h}.",
     hoursHintBad: "No lo entendemos del todo. Probad así: Lun-Vie 10-20, Sáb 10-14.",
     next5: "Siguiente", next5Known: "Sí, está bien. Seguir",
-    errName: "Falta el nombre del centro.",
+    errName: "Falta el nombre del negocio.",
     errAddr: "Falta la dirección o el barrio.",
     errWa: "Falta el WhatsApp para las reservas.",
     errWaLandline: "Parece un fijo. Si tiene WhatsApp, tocad «Sí, tiene WhatsApp». Si no, poned un móvil.",
     errEmail: "Ese email no parece correcto.",
     errEmailNone: "Falta el email.",
 
-    k6: "5 de 5", q6: "Último paso", s6: "Vuestro precio y las condiciones. El cliente os paga en el centro.",
-    fPrice: "Precio de un masaje de 60 min", pricePh: "45",
+    k6: "5 de 5", q6: "¿Cuánto cobráis por un masaje de 60 minutos?", s6: "Es lo que ve el cliente. Os paga directamente a vosotros.",
+    fPriceOther: "Otro precio",
+    priceLater: "Lo pongo más tarde",
+    priceLaterNote: "Vale, os lo pedimos más tarde. Hasta entonces, estas horas no se ofrecen a clientes.",
+    priceLaterMenu: "Vale. Mientras, usamos el precio que ya tenemos apuntado.",
     priceFrom: "Tenemos apuntado: desde {p} €.",
     sumLbl: "Vais a enviar",
     sumNone: "Todavía no habéis elegido ningún hueco.",
@@ -871,16 +908,16 @@ const T = {
     accept: "Acepto estas condiciones:",
     termsLine: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota mensual ni contrato.",
     seeTerms: "Ver condiciones",
-    errPrice: "Poned el precio normal, por ejemplo 45.",
+    errPrice: "Poned solo el número, entre 1 y 500. Por ejemplo, 75.",
     errAccept: "Marcad la casilla para enviar.",
-    errPriceNeed: "Falta vuestro precio.",
+    errPriceNeed: "Tocad vuestro precio o «Lo pongo más tarde».",
     missLbl: "Revisad: {list}.",
     missPrice: "el precio", missAccept: "la casilla de las condiciones",
     save: "Enviar nuestras horas", saving: "Enviando…",
     dup: "Ya nos habéis enviado estas mismas horas.",
 
-    tkKick: "Massage Club · Centros",
-    kCentro: "Centro", kDur: "Horas libres", kPrice: "Precio",
+    tkKick: "Massage Club · Negocios",
+    kCentro: "Negocio", kDur: "Horas libres", kPrice: "Precio", tkPriceLater: "Os lo pedimos más tarde",
     s4Saved: "Guardado",
     thanksN: "Gracias, {n}.", thanks0: "Gracias.",
     s4Received: "Recibido",
@@ -888,6 +925,7 @@ const T = {
     durWeekly: "Cada semana", durOnce: "Solo esta semana",
     nextLive: "Ya se pueden reservar. Cada reserva os llega por WhatsApp y email.",
     nextWait: "Aún no las ofrecemos a clientes. Os avisamos cuando empecemos.",
+    nextPrice: "Las ofrecemos a clientes en cuanto tengamos vuestro precio.",
     manage: "Ver y cambiar vuestras horas",
     srvNext: "Próximas fechas", srvNot: "No guardadas",
     nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email. Tenéis 15 minutos para rechazarla.",
@@ -901,7 +939,7 @@ const T = {
     fbNote: "Antes de ofrecerlas, os escribimos para confirmarlas.",
     s4Preview: "Vista previa",
     pvSub: "No se ha enviado nada.",
-    pvMsgLbl: "Si el guardado falla, el centro nos envía este mensaje por WhatsApp:",
+    pvMsgLbl: "Si el guardado falla, nos enviáis este mensaje por WhatsApp:",
 
     howTitle: "Así funciona",
     how1t: "Nos decís qué horas tenéis libres.",
@@ -920,7 +958,7 @@ const T = {
     pr3k: "Si un cliente os reserva directamente, sin nosotros",
     pr4k: "Pago fijo al mes",
     pr4s: "Sin contrato. Lo dejáis cuando queráis.",
-    payLine: "El cliente os paga a vosotros, en el centro, a vuestro precio.",
+    payLine: "El cliente os paga directamente a vosotros, a vuestro precio.",
     cmpCap: "Por la primera visita de un cliente nuevo, en un masaje de 68\u00a0€:",
     cmpThem: "unos 17\u00a0€ + IVA",
     cmpUs: "5\u00a0€ + IVA",
@@ -941,27 +979,28 @@ const T = {
     contactLine: "Llevo Massage Club desde Madrid. ¿Dudas? Escribidme.",
     seeUs: "Así nos ven los clientes:",
 
-    msgHello: "Hola, Massage Club. Somos {n}, centro de masaje.",
+    msgHello: "Hola, Massage Club. Somos {n}, un negocio de masajes.",
     msgTimes: "Horas que os ofrecemos ({s}):",
     msgWa: "WhatsApp para las reservas: {v}",
     msgAddr: "Dirección: {v}",
     msgEmail: "Email: {v}",
     msgHours: "Horario: {v}",
     msgPrice: "Precio: {v}",
+    msgPriceLater: "Precio: os lo enviamos más tarde.",
     msgTerms: "Aceptamos las condiciones: gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € + IVA por cada visita que nos reservéis, solo si el cliente viene.",
     mailSubject: "Horas para Massage Club: {n}",
-    contactHello: "Hola, Massage Club. Somos {n}, centro de masaje. ",
-    contactHello0: "Hola, Massage Club. Somos un centro de masaje. ",
+    contactHello: "Hola, Massage Club. Somos {n}, un negocio de masajes. ",
+    contactHello0: "Hola, Massage Club. Somos un negocio de masajes. ",
     allDays: "Todos los días", allDaysRead: "todos los días", closedRead: "cerrado: {d}", and: " y ",
   },
   en: {
-    docTitle: "Partner centres · Massage Club",
+    docTitle: "Partner businesses · Massage Club",
     langBtn: "ES", langAria: "Leer esta página en español",
     backAria: "Back", close: "Close",
     preview: "Preview: nothing is sent",
     howPill: "How it works",
 
-    kick: "Massage Club · Centres",
+    kick: "Massage Club · Businesses",
     title: "New customers, at your times.",
     host: "Hi, we're Massage Club.",
     hostN: "Hi, {n}. We're Massage Club.",
@@ -974,7 +1013,7 @@ const T = {
     start: "Start",
     ctaResume: "Carry on where you left off",
 
-    k2: "1 of 5", q2: "Which days this week?", s2: "Tap the days with free times.",
+    k2: "1 of 5", q2: "Which days this week are you free to take on more customers?", s2: "Tap the days with free times.",
     calSpan1: "{a} to {b} {m}", calSpan2: "{a} {ma} to {b} {mb}",
     calToday: "today", calClosed: "closed", calNone: "no times",
     runDays: "{a} to {b}",
@@ -1009,19 +1048,19 @@ const T = {
     rWeekly: "Yes, every week",
     rOnce: "No, just this week", rOnceRun: "{a} to {b}",
 
-    k5: "4 of 5", q5: "Your centre",
+    k5: "4 of 5", q5: "Your business",
     s5New: "So we know where to send the bookings.",
     s5Known: "Is it all right? Change whatever you need.",
     s5Miss1: "Only {a} is missing.", s5MissN: "Only {a} are missing.",
     mName: "the name", mAddr: "the address", mWa: "your WhatsApp", mEmail: "the email",
-    fName: "Centre name",
+    fName: "Business name",
     fAddr: "Address or neighbourhood",
     fAddrPh: "Street and number, or the neighbourhood",
     fWa: "WhatsApp for bookings",
     waLandline: "This looks like a landline. Does it have WhatsApp?",
     lYes: "Yes, it has WhatsApp", lNo: "Change the number",
     fEmail: "Email for bookings",
-    fEmailPh: "hello@yourcentre.com",
+    fEmailPh: "hello@yourbusiness.com",
     fEmailHint: "Every booking reaches you by email too.",
     fHours: "Your opening hours",
     opt: "(optional)",
@@ -1030,15 +1069,18 @@ const T = {
     hoursHintOk: "Got it: {h}.",
     hoursHintBad: "We can't quite read that. Try: Mon-Fri 10-20, Sat 10-14.",
     next5: "Next", next5Known: "Yes, that's right. Continue",
-    errName: "The centre name is missing.",
+    errName: "The business name is missing.",
     errAddr: "The address or neighbourhood is missing.",
     errWa: "The WhatsApp for bookings is missing.",
     errWaLandline: "This looks like a landline. If it has WhatsApp, tap \"Yes, it has WhatsApp\". If not, enter a mobile.",
     errEmail: "That email doesn't look right.",
     errEmailNone: "The email is missing.",
 
-    k6: "5 of 5", q6: "Last step", s6: "Your price and the terms. The customer pays you at your centre.",
-    fPrice: "Price of a 60 min massage", pricePh: "45",
+    k6: "5 of 5", q6: "How much do you charge for a 60-minute massage?", s6: "It's what the customer sees. They pay you directly.",
+    fPriceOther: "Other price",
+    priceLater: "I'll add it later",
+    priceLaterNote: "Fine, we'll ask you for it later. Until then, these times aren't offered to customers.",
+    priceLaterMenu: "Fine. Until then we use the price we already have for you.",
     priceFrom: "We have you down as: from {p} €.",
     sumLbl: "You're sending",
     sumNone: "You haven't chosen any slots yet.",
@@ -1050,16 +1092,16 @@ const T = {
     accept: "I accept these terms:",
     termsLine: "Free until 31 December 2026; from 1 January 2027, 5 € + VAT for each visit we book for you, only if the customer comes. If a customer books you directly, without us, 0 €. No monthly fee, no contract.",
     seeTerms: "See the terms",
-    errPrice: "Put your usual price, for example 45.",
+    errPrice: "Just the number, between 1 and 500. For example, 75.",
     errAccept: "Tick the box to send.",
-    errPriceNeed: "Your price is missing.",
+    errPriceNeed: "Tap your price, or \"I'll add it later\".",
     missLbl: "Please check: {list}.",
     missPrice: "the price", missAccept: "the terms box",
     save: "Send our times", saving: "Sending…",
     dup: "You've already sent us these exact times.",
 
-    tkKick: "Massage Club · Centres",
-    kCentro: "Centre", kDur: "Free times", kPrice: "Price",
+    tkKick: "Massage Club · Businesses",
+    kCentro: "Business", kDur: "Free times", kPrice: "Price", tkPriceLater: "We'll ask you for it later",
     s4Saved: "Saved",
     thanksN: "Thank you, {n}.", thanks0: "Thank you.",
     s4Received: "Received",
@@ -1067,6 +1109,7 @@ const T = {
     durWeekly: "Every week", durOnce: "Just this week",
     nextLive: "They can be booked now. Each booking reaches you on WhatsApp and by email.",
     nextWait: "We're not offering them to customers yet. We'll tell you when we start.",
+    nextPrice: "We'll offer them to customers as soon as we have your price.",
     manage: "See and change your times",
     srvNext: "Next dates", srvNot: "Not saved",
     nextB: "If a customer takes a time, you get the booking on WhatsApp and by email. You have 15 minutes to turn it down.",
@@ -1080,7 +1123,7 @@ const T = {
     fbNote: "Before we offer them, we write to you to confirm.",
     s4Preview: "Preview",
     pvSub: "Nothing was sent.",
-    pvMsgLbl: "If saving fails, the centre sends us this message on WhatsApp:",
+    pvMsgLbl: "If saving fails, you send us this message on WhatsApp:",
 
     howTitle: "How it works",
     how1t: "You tell us which times you have free.",
@@ -1099,7 +1142,7 @@ const T = {
     pr3k: "If a customer books you directly, without us",
     pr4k: "Fixed payment each month",
     pr4s: "No contract. Stop whenever you like.",
-    payLine: "The customer pays you at your centre, at your price.",
+    payLine: "The customer pays you directly, at your price.",
     cmpCap: "For a new customer's first visit, on a 68\u00a0€ massage:",
     cmpThem: "about 17\u00a0€ + VAT",
     cmpUs: "5\u00a0€ + VAT",
@@ -1120,17 +1163,18 @@ const T = {
     contactLine: "I run Massage Club from Madrid. Questions? Write to me.",
     seeUs: "How customers see us:",
 
-    msgHello: "Hello, Massage Club. We are {n}, a massage centre.",
+    msgHello: "Hello, Massage Club. We are {n}, a massage business.",
     msgTimes: "Times we offer you ({s}):",
     msgWa: "WhatsApp for bookings: {v}",
     msgAddr: "Address: {v}",
     msgEmail: "Email: {v}",
     msgHours: "Opening hours: {v}",
     msgPrice: "Price: {v}",
+    msgPriceLater: "Price: we'll send it to you later.",
     msgTerms: "We accept the terms: free until 31 December 2026; from 1 January 2027, 5 € + VAT for each visit you book for us, only if the customer comes.",
     mailSubject: "Times for Massage Club: {n}",
-    contactHello: "Hello, Massage Club. We are {n}, a massage centre. ",
-    contactHello0: "Hello, Massage Club. We are a massage centre. ",
+    contactHello: "Hello, Massage Club. We are {n}, a massage business. ",
+    contactHello0: "Hello, Massage Club. We are a massage business. ",
     allDays: "Daily", allDaysRead: "every day", closedRead: "closed: {d}", and: " and ",
   },
 };
@@ -1181,6 +1225,8 @@ const S = {
   last: null,        // what the ticket shows
   lastKey: "",       // the last batch that was sent, so it is never sent twice
   landlineOk: "",    // a landline the studio said, with its own tap, has WhatsApp
+  pricePick: null,   // the price tapped (one of PRICE_CHIPS), or null
+  priceLater: false, // «Lo pongo más tarde» tapped (Jordan, 23 Oct)
   saving: false,
   miss: [],          // what the last screen still needs, said by the send button
 };
@@ -1584,14 +1630,18 @@ const isLandline = (p) => /^\+34[89]\d{8}$/.test(p);
 const waDigitsOk = () => intl(val("wa")).replace(/\D/g, "").length >= 9;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 // "45", "45 €", "45 euros", "45,50": the number. A range ("40-50") or words
-// ("desde 40") are not a price: NaN, and the page asks for the usual one.
+// ("desde 40") are not a price: NaN, and the page asks for just the number.
+// 1 to 500, the range wa-bot accepts (socValidate), so the page says it
+// before sending instead of the server refusing it after.
 const priceNum = (v) => {
   const s = String(v || "").toLowerCase().replace(/€|euros?|eur/g, "").replace(/\s/g, "").replace(",", ".");
   if (!s) return null;
   if (!/^\d+(?:\.\d{1,2})?$/.test(s)) return NaN;
   const n = Number(s);
-  return Number.isFinite(n) && n > 0 && n < 1000 ? Math.round(n * 100) / 100 : NaN;
+  return Number.isFinite(n) && n >= 1 && n <= 500 ? Math.round(n * 100) / 100 : NaN;
 };
+// The prices a studio taps on the last step (Jordan, 23 Oct).
+const PRICE_CHIPS = [40, 45, 50, 55, 60, 65, 70, 80];
 const euro = (n) => String(n).replace(".", L === "es" ? "," : ".") + " €";
 const waLink = (text) => "https://wa.me/" + WA_NUM + (text ? "?text=" + encodeURIComponent(text) : "");
 
@@ -1610,6 +1660,7 @@ function saveDraft() {
       v: 3, at: Date.now(), f: Object.fromEntries(FIELDS.map((id) => [id, $(id).value])),
       accepted: S.accepted, repeat: S.repeat, repeatPicked: S.repeatPicked,
       dates: Array.from(S.dates).filter((iso) => iso >= today), selW: setsOut(S.selW), landlineOk: S.landlineOk,
+      pricePick: S.pricePick, priceLater: S.priceLater,
     }));
   } catch (_) { /* no storage: the page still works */ }
 }
@@ -1624,6 +1675,8 @@ function loadDraft() {
   S.accepted = d.accepted === true;
   S.repeat = d.repeat !== false;
   S.landlineOk = typeof d.landlineOk === "string" ? d.landlineOk : "";
+  S.priceLater = d.priceLater === true;
+  S.pricePick = !S.priceLater && PRICE_CHIPS.includes(Number(d.pricePick)) ? Number(d.pricePick) : null;
   const sets = (o, okKey) => {
     const out = {};
     for (const [k, arr] of Object.entries(o || {})) {
@@ -1975,16 +2028,47 @@ function renderCentro() {
   setText("centroNext", known ? t("next5Known") : t("next5"));
   paintWa();
 }
-// 5 · price, terms and send.
-// Every offer to a customer carries a price (review fix, 17 Oct): the 60 min
-// price is needed unless this is the studio's own signed link and we already
-// have its menu (wa-bot socValidate, priceKnown).
+// 5 · the price, the terms and send.
+// Jordan, 23 Oct: one question, "¿Cuánto cobráis por un masaje de 60
+// minutos?" (no length is asked, every time is a 60 minute slot): a price to
+// tap (PRICE_CHIPS), another amount in the small field (p60, read by priceNum
+// as before), or «Lo pongo más tarde». The three are one choice: picking one
+// clears the others. Every offer to a customer carries a price (review fix,
+// 17 Oct), so without one the times are saved but wait for it (wa-bot
+// pricePending); a studio's own signed link with its menu on file is quoted
+// its menu (priceKnown), so for it nothing chosen is fine.
 const priceNeeded = () => !(S.signed && S.partner && S.partner.has_menu === true);
-// One price, "Precio de un masaje de 60 min", with "(opcional)" only when it
-// is not needed. No 90 min price is asked any more (no length is asked).
-function paintPriceOpt() {
-  $("p60Lbl").textContent = t("fPrice");
-  $("p60Opt").hidden = priceNeeded();
+// What the studio chose: later, and the price (a number; null when nothing
+// is chosen or it is for later; NaN for another amount that is not a price).
+function priceNow() {
+  if (S.priceLater) return { later: true, price: null };
+  if (PRICE_CHIPS.includes(S.pricePick)) return { later: false, price: S.pricePick };
+  return { later: false, price: priceNum(val("p60")) };
+}
+// kind: "pick" (a price tapped, v), "later", or "typed" (another amount).
+function setPrice(kind, v) {
+  S.pricePick = kind === "pick" && PRICE_CHIPS.includes(v) ? v : null;
+  S.priceLater = kind === "later";
+  if (kind !== "typed") $("p60").value = "";
+  if ($("priceErr").dataset.k) setErr(null, "priceErr", "");
+  $("p60").setAttribute("aria-invalid", "false");
+  unmiss("p60", "prices");
+  paintPrice();
+  saveDraft();
+}
+// The prices are drawn once and only their state changes, so a tapped one
+// keeps its focus.
+function paintPrice() {
+  const box = $("priceChips");
+  if (!box.children.length) box.innerHTML = PRICE_CHIPS.map((p) => `<button type="button" class="chip" data-price="${p}" aria-pressed="false">${p} €</button>`).join("");
+  for (const b of Array.from(box.children)) {
+    const on = S.pricePick === Number(b.dataset.price);
+    b.classList.toggle("sel", on);
+    b.setAttribute("aria-pressed", String(on));
+  }
+  $("priceLater").classList.toggle("sel", S.priceLater);
+  $("priceLater").setAttribute("aria-pressed", String(S.priceLater));
+  $("priceLaterNote").textContent = S.priceLater ? t(priceNeeded() ? "priceLaterNote" : "priceLaterMenu") : "";
 }
 // The old ticket recap ("3 huecos de 60 min · cada semana" and a line per
 // day), kept exactly as it was. Nothing on screen uses it now: the ticket
@@ -1999,7 +2083,7 @@ function summaryHTML(list, dur, repeat, withLabel, dropped) {
   return `${lbl}<p class="sumhead">${esc(head)}</p><ul>${rows}</ul>`;
 }
 function renderLast() {
-  paintPriceOpt();
+  paintPrice();
   // "desde 40 €" is a 60 min price, the one asked here.
   $("priceHint").textContent = S.active && S.partner.price_from ? t("priceFrom", { p: String(Number(S.partner.price_from)).replace(".", L === "es" ? "," : ".") }) : "";
   // No recap here (go.html has none: the ticket is the recap). Only when some
@@ -2031,13 +2115,16 @@ function renderDone() {
       // go.html's ticket calendar (🗓️ carries no date of its own).
       rows.push(row("🗓️", when, esc(timeList(g.mins))));
     }
-    const price = priceNum(val("p60"));
-    if (price) rows.push(row("💶", t("kPrice"), esc(euro(price))));
+    const pr = priceNow();
+    if (Number.isFinite(pr.price)) rows.push(row("💶", t("kPrice"), esc(euro(pr.price))));
+    // «Lo pongo más tarde» (Jordan, 23 Oct); with a menu on file it is used.
+    else if (pr.later && priceNeeded()) rows.push(row("💶", t("kPrice"), esc(t("tkPriceLater"))));
   }
   $("ticketBody").innerHTML = rows.join("");
   // What happens now, from what wa-bot said and never more, in go.html's
   // small print. «ocupado» is said here and nowhere in the flow.
-  const fine = r === "saved" ? [t(srv.live ? "nextLive" : "nextWait"), t("nextC")]
+  // Saved without a price (wa-bot price_pending): not "ya se pueden reservar".
+  const fine = r === "saved" ? [t(!srv.live ? "nextWait" : srv.price_pending ? "nextPrice" : "nextLive"), t("nextC")]
     : r === "received" ? [t("received0"), t("nextB")]
     : r === "preview" ? [t("nextB"), t("nextC")] : [];
   $("nextFine").innerHTML = fine.map((x) => `<p>${esc(x)}</p>`).join("");
@@ -2206,7 +2293,7 @@ function focusField(id) {
 // Beside the send button: what is still missing, in words. Only when it adds
 // something: two or more things, or the one thing is out of view (its own
 // error already sits under it otherwise).
-const missBox = (k) => k === "accept" ? $("acceptBox") : $(k) ? $(k).closest(".field") : null;
+const missBox = (k) => k === "accept" ? $("acceptBox") : k === "prices" ? $("prices") : $(k) ? $(k).closest(".field") : null;
 function outOfView(el) {
   if (!el || S.step !== ST.last) return false;
   const r = el.getBoundingClientRect();
@@ -2215,7 +2302,7 @@ function outOfView(el) {
 function paintMiss() {
   const items = [];
   for (const k of S.miss) {
-    const s = k === "accept" ? t("missAccept") : k === "p60" ? t("missPrice") : "";
+    const s = k === "accept" ? t("missAccept") : k === "p60" || k === "prices" ? t("missPrice") : "";
     if (s && !items.includes(s)) items.push(s);
   }
   const show = items.length > 1 || (items.length === 1 && outOfView(missBox(S.miss[0])));
@@ -2422,11 +2509,14 @@ $("hours").addEventListener("input", () => {
 // ---------------------------------------------------------------- 5 · price, terms, send
 function checkLast() {
   const bad = [];
-  const p60 = priceNum(val("p60"));
-  const pBad = Number.isNaN(p60);
-  const need = !pBad && priceNeeded() && p60 === null;
-  setErr(null, "priceErr", pBad ? (bad.push("p60"), "errPrice") : need ? (bad.push("p60"), "errPriceNeed") : "");
-  $("p60").setAttribute("aria-invalid", pBad || need ? "true" : "false");
+  // Another amount that is not a price is said under the field. Nothing
+  // chosen at all asks for a price or «Lo pongo más tarde» (Jordan, 23 Oct),
+  // and takes the studio back to the prices, not into the field.
+  const pr = priceNow();
+  const pBad = Number.isNaN(pr.price);
+  const need = !pBad && !pr.later && pr.price === null && priceNeeded();
+  setErr(null, "priceErr", pBad ? (bad.push("p60"), "errPrice") : need ? (bad.push("prices"), "errPriceNeed") : "");
+  $("p60").setAttribute("aria-invalid", pBad ? "true" : "false");
   S.accepted = $("accept").checked;
   setErr(null, "acceptErr", S.accepted ? "" : "errAccept");
   $("acceptBox").classList.toggle("bad", !S.accepted);
@@ -2438,14 +2528,17 @@ $("accept").addEventListener("change", () => {
   if (S.accepted) { setErr(null, "acceptErr", ""); $("acceptBox").classList.remove("bad"); unmiss("accept"); }
   saveDraft();
 });
-$("p60").addEventListener("input", () => {
-  if ($("priceErr").dataset.k) { setErr(null, "priceErr", ""); $("p60").setAttribute("aria-invalid", "false"); }
-  unmiss("p60");
+$("priceChips").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-price]");
+  if (b) setPrice("pick", Number(b.dataset.price));
 });
+$("priceLater").addEventListener("click", () => setPrice("later"));
+$("p60").addEventListener("input", () => setPrice("typed"));
 document.addEventListener("input", (e) => { if (e.target && FIELDS.includes(e.target.id)) saveDraft(); });
 
 function buildPayload(list) {
   const wa = intl(val("wa"));
+  const pr = priceNow();
   return {
     form: "socios",
     form_version: FORM_VERSION,
@@ -2467,7 +2560,10 @@ function buildPayload(list) {
       email: val("email").toLowerCase() || null,
       opening_hours: val("hours") || null,
       opening_hours_read: HOURS ? hoursField(HOURS, "es") : null,
-      price_60_eur: priceNum(val("p60")),
+      // A price tapped or typed, else null (Jordan, 23 Oct: «Lo pongo más
+      // tarde» is allowed; wa-bot saves the times and marks it pending).
+      price_60_eur: Number.isFinite(pr.price) ? pr.price : null,
+      price_later: pr.later,
       // No 90 min price is asked any more; the server takes null.
       price_90_eur: null,
     },
@@ -2499,8 +2595,9 @@ function buildMessage(last) {
   if (val("addr")) lines.push(t("msgAddr", { v: val("addr") }));
   if (val("email")) lines.push(t("msgEmail", { v: val("email") }));
   if (val("hours")) lines.push(t("msgHours", { v: val("hours") }));
-  const p60 = priceNum(val("p60"));
-  if (p60) lines.push(t("msgPrice", { v: "60 min " + euro(p60) }));
+  const pr = priceNow();
+  if (Number.isFinite(pr.price)) lines.push(t("msgPrice", { v: "60 min " + euro(pr.price) }));
+  else if (pr.later) lines.push(t("msgPriceLater"));
   lines.push(t("msgTerms"));
   return lines.join("\n");
 }
@@ -2676,7 +2773,7 @@ if (DEV) {
   const bar = document.createElement("div");
   bar.className = "devbar";
   bar.innerHTML = "<b>DEV</b>";
-  const jumps = [["Inicio", 0], ["1 Días", ST.days], ["2 Horas", ST.times], ["3 Semana", ST.repeat], ["4 Centro", ST.centro], ["5 Último", ST.last],
+  const jumps = [["Inicio", 0], ["1 Días", ST.days], ["2 Horas", ST.times], ["3 Semana", ST.repeat], ["4 Negocio", ST.centro], ["5 Último", ST.last],
     ["Fin: vista previa", "preview"], ["Fin: guardado", "saved"], ["Fin: recibido", "received"], ["Fin: falta un paso", "fallback"]];
   jumps.forEach(([label, n]) => {
     const b = document.createElement("button");

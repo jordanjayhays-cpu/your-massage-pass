@@ -2709,8 +2709,11 @@ for (const [msg, want, note] of [
     [{ terms: { text: "Gratis siempre. Nunca pagaréis nada." } }, "terms_text", "review fix: a different terms text is refused, never stored as ours"],
     [{ terms: { text: undefined } }, "terms_text", "no text at all is refused too"],
     [{ terms: { lang: "en" } }, "terms_text", "the Spanish sentence ticked on an English page is not the English one"],
-    [{ studio: { price_60_eur: null } }, "price_needed", "review fix: every offer carries a price"],
-    [{ studio: { price_60_eur: null, price_90_eur: 80 } }, "price_needed", "60 min chosen: the 60 min price is the one needed"],
+    // Jordan, 23 Oct: a missing price is no longer refused (see below), but
+    // a price that is typed is still checked.
+    [{ studio: { price_60_eur: 501 } }, "price", "the page's other amount, over 500"],
+    [{ studio: { price_60_eur: 0.5 } }, "price", "under 1"],
+    [{ studio: { price_60_eur: "40-50" } }, "price", "a range is not a price"],
     [{ availability: { slots: [] } }, "times_none", ""],
     [{ availability: { slots: Array.from({ length: 41 }, (_, i) => ({ date: "2026-10-22", start: `${String(8 + Math.floor(i / 2) % 12).padStart(2, "0")}:${i % 2 ? "30" : "00"}` })) } }, "times_many", "a sane maximum"],
   ]) {
@@ -2744,8 +2747,19 @@ for (const [msg, want, note] of [
   check("socios checks", "a changed terms text is refused (review fix)", [v.ok, v.errors], [false, ["terms_text"]], "partner_terms only ever holds what the studio saw");
   check("socios checks", "English page, English terms", V({ terms: { lang: "en", text: R.SOCIOS_TERMS["2026-10-19"].en } }).plan.terms.text, R.SOCIOS_TERMS["2026-10-19"].en, "");
   check("socios checks", "the same sentence with extra spaces still counts", V({ terms: { text: "  " + R.SOCIOS_TERMS["2026-10-19"].es.replace(/ /g, "  ") + " " } }).ok, true, "socLine collapses spaces");
-  // Price (review fix): optional only when the studio's own link and a menu on file.
-  check("socios checks", "no price, menu on file (priceKnown): accepted", [R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).ok, R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).plan.price], [true, null], "the listed price is quoted");
+  // Price. Jordan, 23 Oct ("this makes 0 sense ... or at least skip this
+  // step and send them a form later"): a form without a price is accepted
+  // and its times saved; pricePending says customers cannot see them until
+  // there is one. With the menu on file (the studio's own link) it is quoted.
+  check("socios checks", "no price, menu on file (priceKnown): accepted, not pending", [R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).ok, R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).plan?.price, R.socValidate(P({ studio: { price_60_eur: null } }), now, null, { priceKnown: true }).plan?.pricePending], [true, null, false], "the listed price is quoted");
+  v = V({ studio: { price_60_eur: null } });
+  check("socios checks", "no price and no menu: accepted, times kept, price pending (Jordan, 23 Oct)", [v.ok, v.errors, v.plan?.once, v.plan?.price, v.plan?.pricePending], [true, [], [{ ymd: "2026-10-22", hm: "18:00" }], null, true], "was refused as price_needed");
+  v = V({ studio: { price_60_eur: null, price_90_eur: 80 } });
+  check("socios checks", "60 min chosen with only a 90 min price: accepted, the 60 min price pending", [v.ok, v.plan?.price, v.plan?.pricePending], [true, null, true], "");
+  v = V({ studio: { price_60_eur: "", price_later: true } });
+  check("socios checks", "the page's «Lo pongo más tarde» (price_later, an empty price): accepted, pending", [v.ok, v.plan?.price, v.plan?.pricePending], [true, null, true], "");
+  check("socios checks", "a typed price is not pending", [V({}).plan?.pricePending, V({ studio: { price_60_eur: "55" } }).plan?.price], [false, 55], "");
+  check("socios checks", "price_needed is no longer an answer the sign-up gives", [V({ studio: { price_60_eur: null } }).errors.includes("price_needed"), "price_needed" in R.SOC_MSG], [false, false], "");
   // Hours (review fixes): the hard 08:00 to 22:00 window; on file first unless it is the studio's own link.
   const H24 = { opening_hours: "Lun-Dom 0-24", opening_hours_read: "Lun-Dom 00:00-24:00" };
   v = V({ studio: H24, availability: { slots: [{ date: "2026-10-24", start: "03:00" }, { date: "2026-10-23", start: "23:00" }, { date: "2026-10-23", start: "21:30" }, { date: "2026-10-23", start: "21:00" }, { date: "2026-10-23", start: "08:00" }, { date: "2026-10-23", start: "07:30" }] } });
@@ -3093,6 +3107,28 @@ for (const [msg, want, note] of [
   const side1 = botSrc.indexOf("// v215: rel is a released time the customer has tapped", side0);
   check("socios copy", "no em or en dashes in the v216 blocks", side0 > 0 && side1 > side0 && !/[–—]/.test(botSrc.slice(s0, b) + botSrc.slice(side0, side1)), true, "");
   check("socios copy", "no em or en dashes in socios.html", /[–—]/.test(html), false, "");
+  // Jordan, 23 Oct: the business is a «negocio» / "business", never a
+  // «centro» / "centre" (Centro is also a Madrid district). Every string in
+  // T.es and T.en, the title and the meta tags. The booking example in the
+  // sheet is not in T: it stays word for word as wa-bot sends it.
+  const tBlock = (html.match(/\nconst T = \{\n[\s\S]*?\n\};\n/) || [""])[0];
+  const tStrings = [...tBlock.matchAll(/:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]);
+  const headTags = [...html.matchAll(/<title>[^<]*<\/title>|<meta [^>]*content="[^"]*"[^>]*>/g)].map((m) => m[0]);
+  check("socios copy", "no «centro» / \"centre\" for the business on the page (Jordan, 23 Oct)", [tStrings.length > 300, tStrings.filter((s) => /\bcentr(?:o|os|e|es)\b/i.test(s)), headTags.filter((s) => /\bcentr(?:o|os|e|es)\b/i.test(s))], [true, [], []], "«negocio» / \"business\"");
+  const tv = (k, L) => (html.match(new RegExp(`\\n  ${L}: \\{[\\s\\S]*?\\n    (?:[a-zA-Z0-9]+: "[^"]*", )*${k}: "([^"]*)"`)) || [])[1];
+  check("socios copy", "«negocio» / \"business\": title, kicker, step 4, its field and its error (Jordan, 23 Oct)", ["docTitle", "kick", "tkKick", "q5", "fName", "errName", "kCentro"].flatMap((k) => ["es", "en"].map((L) => tv(k, L))),
+    ["Negocios asociados · Massage Club", "Partner businesses · Massage Club", "Massage Club · Negocios", "Massage Club · Businesses", "Massage Club · Negocios", "Massage Club · Businesses", "Vuestro negocio", "Your business", "Nombre del negocio", "Business name", "Falta el nombre del negocio.", "The business name is missing.", "Negocio", "Business"], "");
+  check("socios copy", "the <title> matches docTitle", (html.match(/<title>([^<]*)<\/title>/) || [])[1], tv("docTitle", "es"), "");
+  check("socios copy", "step 1 asks it in Jordan's words (23 Oct)", [tv("q2", "es"), tv("q2", "en")], ["¿Qué días de esta semana tenéis hueco para más clientes?", "Which days this week are you free to take on more customers?"], "");
+  check("socios copy", "who pays is said without naming the place", [tv("payLine", "es"), tv("payLine", "en")], ["El cliente os paga directamente a vosotros, a vuestro precio.", "The customer pays you directly, at your price."], "");
+  check("socios copy", "the server's missing-name error matches the page's (Jordan, 23 Oct: «negocio»)", [R.SOC_MSG.name.es, R.SOC_MSG.name.en], [tv("errName", "es"), tv("errName", "en")], "");
+  {
+    const np0 = botSrc.indexOf("\nfunction notePage(url: URL): Response {");
+    const np = botSrc.slice(np0, botSrc.indexOf("\n}\n", np0)).replace(/^\s*\/\/.*$/gm, "");
+    const tp0 = botSrc.indexOf('<p class="foot">Una hora se puede reservar hasta 60 minutos antes.');
+    const tp = botSrc.slice(tp0, botSrc.indexOf("</p>", tp0));
+    check("socios copy", "the pages a business lands on say «negocio», not «centro» (Jordan, 23 Oct)", [np0 > 0, /\bcentr(?:o|os|e|es)\b/i.test(np), /otro negocio/.test(np) && /another business/.test(np), tp0 > 0, /\bcentr(?:o|os)\b/i.test(tp), /solo para vuestro negocio/.test(tp)], [true, false, true, true, false, true], "the note pages after a tap, and the times page's footer");
+  }
 
   // Hooks.
   check("hook", "the page's endpoint is routed before anything else reads the body", /const url = new URL\(req\.url\);\s*\/\/ v216[^\n]*\n[^\n]*\n\s*if \(url\.searchParams\.has\("socios"\)\) return await sociosApi\(req, url\);/.test(botSrc), true, "");
@@ -3168,11 +3204,36 @@ for (const [msg, want, note] of [
   const helloRe = new RegExp((botSrc.match(/const SOCIOS_HELLO_RE = \/(.*)\/;/) || [])[1]);
   const pageHello = (k, L) => (html.match(new RegExp(`\\n  ${L}: \\{[\\s\\S]*?\\n    ${k}: "([^"]*)",`)) || [])[1];
   check("hook", "the page's four hellos are recognised", ["es", "en"].flatMap((L) => [pageHello("contactHello", L).replace("{n}", "Centro Nuevo Masajes"), pageHello("contactHello0", L)]).map((t) => helloRe.test(t + "¿Cómo funciona?")), [true, true, true, true], "contactHello and contactHello0, es and en");
+  // Jordan, 23 Oct: «negocio» / "business", never «centro» / "centre", in the
+  // page's hellos; every older hello is still read.
+  check("hook", "the page's hellos say «un negocio de masajes» / \"a massage business\" (Jordan, 23 Oct)", ["msgHello", "contactHello", "contactHello0"].flatMap((k) => ["es", "en"].map((L) => pageHello(k, L))), ["Hola, Massage Club. Somos {n}, un negocio de masajes.", "Hello, Massage Club. We are {n}, a massage business.", "Hola, Massage Club. Somos {n}, un negocio de masajes. ", "Hello, Massage Club. We are {n}, a massage business. ", "Hola, Massage Club. Somos un negocio de masajes. ", "Hello, Massage Club. We are a massage business. "], "");
+  check("hook", "every older hello is still recognised (a page left open, a message typed from an old one)", [
+    "Hola, Massage Club. Somos Calma, centro de masaje. ¿Cómo funciona?",
+    "Hola, Massage Club. Somos un centro de masaje. Hola",
+    "Hello, Massage Club. We are Calma, a massage centre. Hi",
+    "Hello, Massage Club. We are a massage centre. Hi",
+    "Hello, Massage Club. We are Calma, a massage studio. Hi",
+    "Hello, Massage Club. We are a massage studio. Hi",
+    "Hola, Massage Club. Somos Calma, un negocio de masajes. ¿Cómo funciona?",
+    "Hola, Massage Club. Somos un negocio de masajes. ",
+    "Hello, Massage Club. We are Calma, a massage business. Hi",
+    "Hello, Massage Club. We are a massage business. ",
+  ].map((t) => helloRe.test(t)), [true, true, true, true, true, true, true, true, true, true], "");
+  check("hook", "a customer's own words never read as the page's hello", ["Hola, Massage Club. Somos dos y queremos un masaje en el centro.", "Hola, somos un negocio de masajes, ¿cómo funciona?", "Hello, Massage Club. We are two people looking for a massage.", "Hola, Massage Club. Somos de Centro, ¿tenéis hueco hoy?"].map((t) => helloRe.test(t)), [false, false, false, false], "only the page's exact opening");
   check("hook", "a released booking's email question promises no rate (review nit)", /await say\(relSlot \? RELEASED_COPY\[L === "es" \? "es" : "en"\]\.emailAsk : COPY\[L\]\.memberJoin\);/.test(botSrc), true, "");
   check("hook", "the times page works before RELEASED is on, and says so", !/Todavía no está activa/.test(botSrc) && /const liveNow = socLiveFor\(mode, isTest\);/.test(botSrc) && /Todavía no las ofrecemos a clientes: las guardamos y os avisamos en cuanto empecemos\./.test(botSrc), true, "Jordan: studios may load times before it is on");
   check("hook", "the page's WhatsApp fallback is read before the studio and customer paths", botSrc.indexOf("if (text && SOCIOS_FALLBACK_RE.test(text)) {") > 0 && botSrc.indexOf("if (text && SOCIOS_FALLBACK_RE.test(text)) {") < botSrc.indexOf("// ---- Studio replies: template button payloads"), true, "");
   const fbRe = new RegExp((botSrc.match(/const SOCIOS_FALLBACK_RE = \/(.*)\/;/) || [])[1]);
   check("hook", "the fallback needs its times block (the page's other WhatsApp links open with the same hello)", [fbRe.test("Hola, Massage Club. Somos Calma, centro de masaje.\n\nHoras que os ofrecemos (1 hueco de 60 min, cada semana):\nCada martes: 18:00"), fbRe.test("Hola, Massage Club. Somos Calma, centro de masaje. ¿Cómo funciona el pago?"), fbRe.test("Hello, Massage Club. We are Calma, a massage centre.\n\nTimes we offer you (1 slot, 60 min, every week):"), fbRe.test("Hello, Massage Club. We are Calma, a massage studio.\n\nTimes we offer you (1 slot, 60 min, every week):")], [true, false, true, true], "");
+  check("hook", "the fallback reads the new hello and every older one (Jordan, 23 Oct: «negocio»)", [
+    fbRe.test("Hola, Massage Club. Somos Calma, un negocio de masajes.\n\nHoras que os ofrecemos (1 hueco de 60 min, cada semana):\nCada martes: 18:00"),
+    fbRe.test("Hello, Massage Club. We are Calma, a massage business.\n\nTimes we offer you (1 slot, 60 min, every week):"),
+    fbRe.test("Hola, Massage Club. Somos Calma, centro de masaje.\nHoras que os ofrecemos (2 huecos de 60 min, solo esta semana):"),
+    fbRe.test("Hola, Massage Club. Somos Calma, un negocio de masajes. ¿Cómo funciona el pago?"),
+    fbRe.test("Hello, Massage Club. We are Calma, a massage business. How does payment work?"),
+    fbRe.test(pageHello("msgHello", "es").replace("{n}", "Calma") + "\n\n" + pageHello("msgTimes", "es").replace("{s}", "1 hueco de 60 min, cada semana") + "\nCada martes: 18:00"),
+    fbRe.test(pageHello("msgHello", "en").replace("{n}", "Calma") + "\n\n" + pageHello("msgTimes", "en").replace("{s}", "1 slot, 60 min, every week") + "\nEvery Tuesday: 18:00"),
+  ], [true, true, true, false, false, true, true], "the page's own msgHello and msgTimes, es and en, as it builds them");
 
   // socios.html: what it sends and when.
   check("socios page", "preview sends nothing", /if \(PREVIEW\) \{[\s\S]{0,400}return finish\("preview", list, key\);\s*\}\s*S\.saving = true;/.test(html), true, "");
@@ -3183,7 +3244,7 @@ for (const [msg, want, note] of [
   check("socios page", "the same limits as the server", [(html.match(/const MAX_TIMES = (\d+);/) || [])[1], (botSrc.match(/const SOC_MAX_TIMES = (\d+);/) || [])[1], (html.match(/const LEAD_MIN = (\d+);/) || [])[1]], ["40", "40", "65"], "65: the grid's lead, one hour is release_slots'");
   check("socios page", "Recibido says WhatsApp and email too (review nit)", /nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email/.test(html), true, "");
   check("socios page", "the page holds times to 08:00 to 22:00 like the server", /const DAY_WIN = \[8 \* 60, 22 \* 60\];/.test(html) && /\.map\(\(\[o, c\]\) => \[Math\.max\(o, DAY_WIN\[0\]\), Math\.min\(c, DAY_WIN\[1\]\)\]\)/.test(html), true, "");
-  check("socios page", "the price for the chosen length is required unless own link with a menu", /const priceNeeded = \(\) => !\(S\.signed && S\.partner && S\.partner\.has_menu === true\);/.test(html) && /errPriceNeed/.test(html), true, "");
+  check("socios page", "a price, another amount or «Lo pongo más tarde» is chosen, unless own link with a menu", /const priceNeeded = \(\) => !\(S\.signed && S\.partner && S\.partner\.has_menu === true\);/.test(html) && /const need = !pBad && !pr\.later && pr\.price === null && priceNeeded\(\);/.test(html) && /errPriceNeed/.test(html), true, "Jordan, 23 Oct: the price can be left for later; run below");
   check("socios page", "the result screens say what the server said", /s4Saved: "Guardado"/.test(html) && /s4Received: "Recibido"/.test(html) && /received0: "Lo revisamos y os confirmamos por WhatsApp o email\."/.test(html), true, "");
 
   // The migration.
@@ -3687,6 +3748,238 @@ for (const [msg, want, note] of [
     await pageSend(answer(500, { ok: false, status: "error", message: socMsg("error", "es") })),
     await pageSend(() => { throw new TypeError("Failed to fetch"); }),
   ], [[[["received", "pending_review"]], ""], [[["saved", "applied"]], ""], [[["fallback", null]], ""], [[["fallback", null]], ""]], "");
+}
+
+// ---------------------------------------------------------------------------
+// Jordan, 23 Oct, on the /socios page's last step ("Last step / Your price
+// and the terms. The customer pays you at your centre. / Price of a 60 min
+// massage"): "this makes 0 sense, we need an easy way for them to plug in
+// their prices, or at least skip this step and send them a form later". The
+// step now asks "¿Cuánto cobráis por un masaje de 60 minutos?" with eight
+// prices to tap, another amount in a small field, and «Lo pongo más tarde»
+// ("I'll add it later"). A form without a price is saved: its times wait
+// for one (released_offers never offers a time without a price), Jordan's
+// card says "Price: not given yet, ask for it", and the studio is told we
+// offer them as soon as we have it. The page's code runs in a vm with a fake
+// DOM; socSubmit runs with the real socValidate and Jordan's card helpers.
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const vm = await import("node:vm");
+  const { stripTypeScriptTypes } = await import("node:module");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const html = fs.readFileSync(path.join(here, "../public/socios.html"), "utf8");
+  const botSrc = fs.readFileSync(path.join(here, "../supabase/functions/wa-bot/bot.ts"), "utf8");
+  const G = "socios price (Jordan, 23 Oct)";
+  const fnOf = (src, head) => { const i = src.indexOf(head); return i < 0 ? "" : src.slice(i, src.indexOf("\n}\n", i) + 3); };
+  const one = (re) => (html.match(re) || [""])[0];
+
+  // 1. The step's words.
+  const tBlock = one(/\nconst T = \{\n[\s\S]*?\n\};\n/);
+  const tv = (k, L) => (html.match(new RegExp(`\\n  ${L}: \\{[\\s\\S]*?\\n    (?:[a-zA-Z0-9]+: "(?:[^"\\\\]|\\\\.)*", )*${k}: "((?:[^"\\\\]|\\\\.)*)"`)) || [])[1];
+  check(G, "the question in Jordan's words, and the choice to leave it for later", ["q6", "priceLater", "fPriceOther"].flatMap((k) => ["es", "en"].map((L) => tv(k, L))),
+    ["¿Cuánto cobráis por un masaje de 60 minutos?", "How much do you charge for a 60-minute massage?", "Lo pongo más tarde", "I'll add it later", "Otro precio", "Other price"], "was \"Último paso\" / \"Last step\"");
+  check(G, "the old step's words are gone from the page's copy", /Último paso|Last step|Vuestro precio y las condiciones|Your price and the terms|Precio de un masaje de 60 min|Price of a 60 min massage/.test(tBlock), false, "\"this makes 0 sense\"");
+  check(G, "the line under it says who sees the price and who pays, without «centro»", [tv("s6", "es"), tv("s6", "en")], ["Es lo que ve el cliente. Os paga directamente a vosotros.", "It's what the customer sees. They pay you directly."], "");
+  check(G, "the terms line is untouched (wa-bot stores it word for word)", /\n    termsLine: "Gratis hasta el 31 de diciembre de 2026; desde el 1 de enero de 2027, 5 € \+ IVA por cada visita que os reservemos nosotros, solo si el cliente viene\. Si un cliente os reserva directamente, sin nosotros, 0 €\. Sin cuota mensual ni contrato\.",/.test(html) && /<label class="check" id="acceptBox" for="accept">/.test(html), true, "");
+
+  // 2. The page's price code in a vm, with a fake DOM.
+  const t0 = html.indexOf("\nconst T = {"), t1 = html.indexOf("\nconst $ = (id)");
+  const parts = [
+    t0 < 0 || t1 < t0 ? "" : html.slice(t0, t1),
+    one(/\nconst t = \(k, vars\) => \{[\s\S]*?\n\};\n/),
+    one(/\nconst priceNum = \(v\) => \{[\s\S]*?\n\};\n/),
+    one(/\nconst PRICE_CHIPS = .*\n/),
+    one(/\nconst euro = .*\n/),
+    one(/\nconst priceNeeded = .*\n/),
+    ...["priceNow", "setPrice", "paintPrice", "setErr", "checkLast", "buildPayload", "buildMessage"].map((n) => fnOf(html, `\nfunction ${n}(`)),
+  ];
+  if (parts.some((x) => !x)) throw new Error("socios.html: the price step's code or its markers are missing");
+  const pageCode = parts.join("") + "\n;globalThis.__p = { priceNow, setPrice, paintPrice, checkLast, buildPayload, buildMessage };";
+  const mk = () => {
+    const e = { value: "", textContent: "", dataset: {}, attrs: {}, cls: new Set(), checked: true, children: [] };
+    e.setAttribute = (k, v) => { e.attrs[k] = String(v); };
+    e.classList = { toggle: (c, on) => { if (on === undefined ? !e.cls.has(c) : on) e.cls.add(c); else e.cls.delete(c); }, remove: (c) => e.cls.delete(c), add: (c) => e.cls.add(c), contains: (c) => e.cls.has(c) };
+    return e;
+  };
+  const page = (o = {}) => {
+    const els = {};
+    const $ = (id) => els[id] || (els[id] = mk());
+    const box = $("priceChips");
+    Object.defineProperty(box, "innerHTML", { set(h) { box.children = [...h.matchAll(/data-price="(\d+)"[^>]*>([^<]*)</g)].map(([, p, label]) => { const b = mk(); b.dataset.price = p; b.textContent = label; return b; }); } });
+    $("name").value = "Calma"; $("wa").value = "+34600111222"; $("addr").value = "Calle Mayor 1"; $("email").value = "hola@calma.es";
+    const ctx = {
+      L: o.L || "es", S: { pricePick: null, priceLater: false, signed: !!o.menu, partner: o.menu ? { has_menu: true, slug: "calma", status: "active" } : null, accepted: true, repeat: true, dur: 60, miss: [] },
+      $, val: (id) => $(id).value.trim(), saves: 0,
+      intl: (v) => v, isLandline: () => false, HOURS: null, hoursField: () => null, FORM_VERSION: "f", SLUG_OK: false, SLUG: "", SIG_OK: false, SIG: "", DRAWN_AT: 0, TERMS_VERSION: "2026-10-19",
+      firstDate: () => "2026-10-27", hhmm: (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`,
+      countOf: (l) => l.reduce((n, x) => n + x.mins.length, 0), dayLabel: (d) => d.label, pretty: (v) => v,
+      Date, Number, String, Array, Object, JSON, Math, Set, Map,
+    };
+    ctx.saveDraft = () => { ctx.saves++; };
+    ctx.unmiss = () => {};
+    vm.createContext(ctx);
+    vm.runInContext(pageCode, ctx);
+    ctx.__p.paintPrice();
+    const chips = () => box.children.filter((b) => b.cls.has("sel")).map((b) => b.dataset.price);
+    const pressed = () => box.children.filter((b) => b.attrs["aria-pressed"] === "true").map((b) => b.dataset.price);
+    const now = () => JSON.parse(JSON.stringify(ctx.__p.priceNow()));
+    return Object.assign({}, ctx.__p, { ctx, $, S: ctx.S, chips, pressed, now });
+  };
+  const list = [{ d: { weekly: true, wd: 2, label: "Cada martes" }, mins: [720] }];
+  const last = { list, dur: 60, repeat: true };
+  const priceLines = (p, re) => p.buildMessage(last).split("\n").filter((x) => re.test(x));
+
+  let p = page();
+  check(G, "page: eight prices to tap, 40 to 80 €, none chosen yet", [p.$("priceChips").children.map((b) => b.textContent), p.chips(), p.pressed()], [["40 €", "45 €", "50 €", "55 €", "60 €", "65 €", "70 €", "80 €"], [], []], "");
+  check(G, "page: nothing chosen: one line asks for a price or «Lo pongo más tarde», and it goes back to the prices", [p.checkLast(), p.$("priceErr").textContent, p.$("p60").attrs["aria-invalid"]], [["prices"], "Tocad vuestro precio o «Lo pongo más tarde».", "false"], "not into the other amount's field");
+  // Picking a price.
+  p.setPrice("pick", 55);
+  check(G, "page: tap 55 €: chosen and pressed, the error goes, the draft is saved", [p.chips(), p.pressed(), p.now(), p.$("priceErr").textContent, p.checkLast(), p.ctx.saves > 0], [["55"], ["55"], { later: false, price: 55 }, "", [], true], "");
+  let pay = p.buildPayload(list);
+  check(G, "page: tap 55 €: sent as the 60 min price", [pay.studio.price_60_eur, pay.studio.price_later, pay.studio.price_90_eur, pay.availability.duration_min], [55, false, null, 60], "");
+  check(G, "page: tap 55 €: the WhatsApp fallback carries it", priceLines(p, /^Precio/), ["Precio: 60 min 55 €"], "");
+  p.setPrice("pick", 70);
+  check(G, "page: tap 70 € after 55 €: one choice", [p.chips(), p.pressed(), p.now()], [["70"], ["70"], { later: false, price: 70 }], "");
+  // Another amount.
+  p.$("p60").value = "75"; p.setPrice("typed");
+  check(G, "page: type 75 in «Otro precio»: the tapped price is let go, 75 is sent", [p.chips(), p.now(), p.checkLast(), p.buildPayload(list).studio.price_60_eur, priceLines(p, /^Precio/)], [[], { later: false, price: 75 }, [], 75, ["Precio: 60 min 75 €"]], "");
+  p.$("p60").value = "72,50 €"; p.setPrice("typed");
+  check(G, "page: \"72,50 €\" reads as 72.5", p.buildPayload(list).studio.price_60_eur, 72.5, "priceNum, as before");
+  for (const [typed, note] of [["40-50", "a range"], ["desde 40", "words"], ["600", "over 500, the server's limit"], ["0", "nothing"], ["0,50", "under 1"]]) {
+    p.$("p60").value = typed; p.setPrice("typed");
+    check(G, `page: another amount "${typed}" is still checked (${note})`, [p.checkLast(), p.$("priceErr").textContent, p.$("p60").attrs["aria-invalid"]], [["p60"], "Poned solo el número, entre 1 y 500. Por ejemplo, 75.", "true"], "");
+  }
+  p.setPrice("pick", 45);
+  check(G, "page: tap a price after a bad amount: the field empties, the error goes", [p.$("p60").value, p.now(), p.$("priceErr").textContent, p.$("p60").attrs["aria-invalid"], p.checkLast()], ["", { later: false, price: 45 }, "", "false", []], "");
+  // «Lo pongo más tarde».
+  p.setPrice("later");
+  check(G, "page: «Lo pongo más tarde»: chosen alone, and it says the times wait for the price", [p.chips(), p.$("priceLater").cls.has("sel"), p.$("priceLater").attrs["aria-pressed"], p.$("p60").value, p.$("priceLaterNote").textContent], [[], true, "true", "", "Vale, os lo pedimos más tarde. Hasta entonces, estas horas no se ofrecen a clientes."], "");
+  check(G, "page: «Lo pongo más tarde»: the form can be sent without a price", [p.now(), p.checkLast()], [{ later: true, price: null }, []], "Jordan: \"or at least skip this step\"");
+  pay = p.buildPayload(list);
+  check(G, "page: «Lo pongo más tarde»: sent with no price and price_later", [pay.studio.price_60_eur, pay.studio.price_later], [null, true], "wa-bot keeps the times and marks the price pending");
+  check(G, "page: «Lo pongo más tarde»: the WhatsApp fallback says the price follows", priceLines(p, /^Precio/), ["Precio: os lo enviamos más tarde."], "");
+  p.setPrice("pick", 50);
+  check(G, "page: a price after «Lo pongo más tarde»: later is let go, its note goes", [p.$("priceLater").cls.has("sel"), p.$("priceLater").attrs["aria-pressed"], p.$("priceLaterNote").textContent, p.now()], [false, "false", "", { later: false, price: 50 }], "");
+  p.$("p60").value = "48"; p.setPrice("typed");
+  p.setPrice("later");
+  check(G, "page: «Lo pongo más tarde» after typing: the amount is cleared, nothing is sent as a price", [p.$("p60").value, p.buildPayload(list).studio.price_60_eur], ["", null], "");
+  // English, and a studio's own link with its menu on file.
+  p = page({ L: "en" });
+  p.checkLast();
+  check(G, "page, English: nothing chosen", p.$("priceErr").textContent, "Tap your price, or \"I'll add it later\".", "");
+  p.setPrice("later");
+  check(G, "page, English: \"I'll add it later\"", [p.$("priceLaterNote").textContent, priceLines(p, /^Price/)], ["Fine, we'll ask you for it later. Until then, these times aren't offered to customers.", ["Price: we'll send it to you later."]], "");
+  p.$("p60").value = "600"; p.setPrice("typed"); p.checkLast();
+  check(G, "page, English: an amount over 500", p.$("priceErr").textContent, "Just the number, between 1 and 500. For example, 75.", "");
+  p = page({ menu: true });
+  check(G, "page: own link with a menu on file: nothing chosen is fine, as before", [p.checkLast(), p.buildPayload(list).studio.price_60_eur], [[], null], "the menu is quoted (priceKnown)");
+  p.setPrice("later");
+  check(G, "page: own link with a menu: «Lo pongo más tarde» says the price on file is used", p.$("priceLaterNote").textContent, "Vale. Mientras, usamos el precio que ya tenemos apuntado.", "");
+  // What the vm does not run: the wiring, the draft and the ticket.
+  check(G, "page: the three choices are wired", /\$\("priceChips"\)\.addEventListener\("click", \(e\) => \{\s*const b = e\.target\.closest\("\[data-price\]"\);\s*if \(b\) setPrice\("pick", Number\(b\.dataset\.price\)\);\s*\}\);/.test(html) && /\$\("priceLater"\)\.addEventListener\("click", \(\) => setPrice\("later"\)\);/.test(html) && /\$\("p60"\)\.addEventListener\("input", \(\) => setPrice\("typed"\)\);/.test(html), true, "");
+  check(G, "page: the choice is kept in the draft, only a listed price", /pricePick: S\.pricePick, priceLater: S\.priceLater,/.test(html) && /S\.priceLater = d\.priceLater === true;\s*S\.pricePick = !S\.priceLater && PRICE_CHIPS\.includes\(Number\(d\.pricePick\)\) \? Number\(d\.pricePick\) : null;/.test(html), true, "");
+  check(G, "page: the ticket shows the price, or that we will ask for it", /if \(Number\.isFinite\(pr\.price\)\) rows\.push\(row\("💶", t\("kPrice"\), esc\(euro\(pr\.price\)\)\)\);\n(?:\s*\/\/[^\n]*\n)*\s*else if \(pr\.later && priceNeeded\(\)\) rows\.push\(row\("💶", t\("kPrice"\), esc\(t\("tkPriceLater"\)\)\)\);/.test(html) && [tv("tkPriceLater", "es"), tv("tkPriceLater", "en")].join(" | ") === "Os lo pedimos más tarde | We'll ask you for it later", true, "");
+  check(G, "page: saved without a price never says \"ya se pueden reservar\"", /t\(!srv\.live \? "nextWait" : srv\.price_pending \? "nextPrice" : "nextLive"\)/.test(html) && tv("nextPrice", "es") === "Las ofrecemos a clientes en cuanto tengamos vuestro precio.", true, "wa-bot's price_pending");
+  check(G, "page: the prices sit in a group named by the question", /<div class="pchips" id="priceChips" role="group" aria-labelledby="h6"><\/div>/.test(html) && /<button type="button" class="chip plater" id="priceLater" aria-pressed="false"/.test(html), true, "");
+
+  // 3. The bot's pure helpers.
+  const a = botSrc.indexOf("// ---- v215 released slots: pure helpers (start) ----");
+  const b = botSrc.indexOf("// ---- v216 socios: pure helpers (end) ----");
+  if (a < 0 || b < a) throw new Error("bot.ts: the v215 / v216 helper markers are missing");
+  const names = ["socValidate", "socPriceState", "socPriceEn", "socSeenEn", "socPriceAskEs", "socPriceAskEn", "SOC_MSG", "socMsg", "SOCIOS_TERMS", "socLine", "socPhone", "socWhyText"];
+  const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
+  const js = `import { madridInstant, madridMidnight, stripAcc, euro } from ${JSON.stringify(copyUrl)};\n`
+    + stripTypeScriptTypes(botSrc.slice(a, b)) + `\nexport { ${names.join(", ")} };\n`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-price-"));
+  const file = path.join(dir, "price.mjs");
+  fs.writeFileSync(file, js);
+  const R = await import(pathToFileURL(file).href);
+  fs.rmSync(dir, { recursive: true, force: true });
+  check(G, "bot: socPriceState", [R.socPriceState({ price: 55, pricePending: false }), R.socPriceState({ price: null, pricePending: false }), R.socPriceState({ price: null, pricePending: true })], ["given", "menu", "pending"], "SocApplied.price");
+  check(G, "bot: the price line on Jordan's cards", [R.socPriceEn({ p60: null, p90: null }, true), R.socPriceEn({ p60: 55, p90: null }, false), R.socPriceEn({ p60: null, p90: null }, false)],
+    ["Price: not given yet, ask for it (customers cannot see these times until there is one)", "Prices: 60 min 55 EUR", "Prices: not given (their menu on file is used)"], "");
+  const seen = R.socSeenEn(true, "on", true);
+  check(G, "bot: what customers see without a price: nothing, and why", [seen.startsWith("Price: not given yet, ask for it. Customers cannot see these times until there is one: released_offers never offers a time without a price"), /can book these now/.test(seen), /RELEASED/.test(seen), /RELEASED is off too/.test(R.socSeenEn(false, "off", true)), /partner_services/.test(seen)], [true, false, false, true, true], "how to make them visible is on the card");
+  check(G, "bot: with a price, as before", [R.socSeenEn(true, "on", false), R.socSeenEn(false, "test", false)], ["Customers can book these now.", "Customers cannot see them yet (RELEASED is test)."], "");
+  check(G, "bot: the draft for Jordan's own WhatsApp asks the page's question, from Jordan, with vosotros", [R.socPriceAskEs(60), R.socPriceAskEn(60)],
+    ["Hola, soy Jordan, de Massage Club. Gracias por vuestras horas. Para ofrecerlas a clientes nos falta vuestro precio: ¿cuánto cobráis por un masaje de 60 minutos?", "Hi, this is Jordan from Massage Club. Thank you for your times. To offer them to customers we still need your price: how much do you charge for a 60-minute massage?"], "CLAUDE.md: studios hear from \"Jordan, de Massage Club\"");
+  check(G, "bot: the answer to the page when saved without a price", [R.socMsg("applied_price", "es"), R.socMsg("applied_price", "en")], ["Guardado. Las ofrecemos a clientes en cuanto tengamos vuestro precio.", "Saved. We will offer them to customers as soon as we have your price."], "never \"Ya se pueden reservar\"");
+  check(G, "bot: no em or en dashes in the new copy", /[–—]/.test([seen, R.socSeenEn(false, "off", true), R.socPriceEn({ p60: null, p90: null }, true), R.socPriceAskEs(60), R.socPriceAskEn(60), R.socMsg("applied_price", "es"), R.socMsg("applied_price", "en")].join(" ")), false, "");
+
+  // 4. socSubmit with the real socValidate: the server accepts a missing price.
+  const subSrc = fnOf(botSrc, "\nasync function socSubmit(");
+  const limSrc = (botSrc.match(/\nconst SOC_LIMIT_IP_10M = [^\n]*\n/) || [""])[0] + (botSrc.match(/\nconst SOC_CARDS_UNSIGNED_H = \d+;\n/) || [""])[0];
+  const studioSrc = fnOf(botSrc, "\nfunction socStudioEn("), pickSrc = fnOf(botSrc, "\nfunction socPick(");
+  if (!subSrc || !limSrc.includes("SOC_CARDS_UNSIGNED_H") || !studioSrc || !pickSrc) throw new Error("bot.ts: socSubmit, socStudioEn, socPick or the /socios limits are missing");
+  const limits = new Function(`${stripTypeScriptTypes(limSrc)}\nreturn { SOC_LIMIT_IP_10M, SOC_LIMIT_IP_DAY, SOC_LIMIT_STUDIO_H, SOC_LIMIT_NOIP_10M, SOC_LIMIT_UNSIGNED_H, SOC_CARDS_UNSIGNED_H };`)();
+  const studioEn = new Function("socPriceEn", `${stripTypeScriptTypes(studioSrc)}\nreturn socStudioEn;`)(R.socPriceEn);
+  const socPick = new Function("socPhone", `${stripTypeScriptTypes(pickSrc)}\nreturn socPick;`)(R.socPhone);
+  const form = (price) => ({
+    lang: "es", link_slug: "calma", link_sig: "a".repeat(24), drawn_at: Date.now() - 60e3,
+    studio: { business_name: "Calma Madrid Spa", whatsapp: "+34 600 111 222", address: "Calle Mayor 1", email: "hola@calma.es", opening_hours: "", opening_hours_read: "", price_60_eur: price, price_later: price === null, price_90_eur: null },
+    terms: { accepted: true, accepted_at: new Date().toISOString(), version: "2026-10-19", text: R.SOCIOS_TERMS["2026-10-19"].es },
+    availability: { tz: "Europe/Madrid", duration_min: 60, repeat_weekly: true, slots: [{ weekday: 2, start: "12:00", first_date: null, date: null }] },
+  });
+  const run = async (o) => {
+    const rows = [], cards = [], reviews = [], applied = [];
+    const calma = { id: "p-calma", business_name: "Calma Madrid Spa", status: "active", whatsapp: "+34 600 111 222", opening_hours: null };
+    const deps = {
+      ...limits, socMsg: R.socMsg, socValidate: R.socValidate, socLine: R.socLine, socPhone: R.socPhone, socWhyText: R.socWhyText,
+      socIpHash: async () => "h-192.0.2.9", socClientIp: () => "192.0.2.9",
+      socResolve: async () => o.signed ? { partner: calma, signed: true, sigBad: false } : { partner: null, signed: false, sigBad: false },
+      socCount: async () => 0,
+      socHasMenu: async () => !!o.menu,
+      socInsert: async (r) => { const row = { id: `row-${rows.length + 1}`, created_at: new Date().toISOString(), ...r }; rows.push(row); return row; },
+      socPatch: async (id, patch) => { const r = rows.find((x) => x.id === id); Object.assign(r, patch); return { ...r }; },
+      findPartnerByNumber: async () => null, socPartner: async () => null,
+      socInactive: () => false, socTestish: () => false, socIsTestStudio: () => false,
+      // socApply's database work is the offline harness's; its price is socPriceState.
+      socApply: async (row, partner, plan, via) => { applied.push({ plan, via }); return { ok: true, error: "", result: { filled: [], differ: [], replaced: [], saved: [], refused: [], skipped: plan.skipped, weekly: plan.pattern.map((x) => ({ ...x, isNew: true })), next: [{ startMs: Date.now() + 2 * 86400e3 }], terms: "accepted now", price: R.socPriceState(plan) } }; },
+      releasedMode: async () => o.mode || "on",
+      socLiveFor: (mode, isTest) => isTest ? mode !== "off" : mode === "on",
+      slotsLink: async () => "https://book.massageclub.io/bot.html?slots=calma",
+      logEvent: async () => {},
+      founderCard: async (subject, card) => { cards.push({ subject, ...card }); },
+      socReviewLink: async (id, want) => `https://example.test/review/${id}/${want || ""}`,
+      socLinksUrl: async () => "https://example.test/links",
+      socAppliedEn: () => [],
+      socStudioEn: studioEn, socPick, socSeenEn: R.socSeenEn, socPriceAskEs: R.socPriceAskEs, socPriceAskEn: R.socPriceAskEn,
+      socWhen: () => "mar 12:00", SOC_WD: { es: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"], en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] },
+      socReviewCard: async (row, plan, match, why) => { reviews.push({ plan, why, after: studioEn(plan) }); },
+    };
+    const socSubmit = new Function(...Object.keys(deps), `${stripTypeScriptTypes(subSrc)}\nreturn socSubmit;`)(...Object.values(deps));
+    const res = await socSubmit(form(o.price === undefined ? null : o.price), { headers: { get: () => "" } }, o.L || "es");
+    return { res, rows, cards, reviews, applied };
+  };
+  const cardOf = (w) => w.cards[0] || { subject: "", badge: "", paras: [""], after: [], links: [], to: [] };
+  let w = await run({});
+  check(G, "server: an unsigned form without a price is received for Jordan's review, not refused", [w.res.status, w.res.body.status, w.rows.map((r) => r.status), w.reviews.length, w.reviews[0]?.plan?.pricePending], [200, "pending_review", ["pending_review"], 1, true], "was 400 invalid, price_needed");
+  check(G, "server: its review card says to ask for the price", (w.reviews[0]?.after || []).filter((x) => /^Price/.test(x)), ["Price: not given yet, ask for it (customers cannot see these times until there is one)"], "");
+  w = await run({ signed: true });
+  const card = cardOf(w);
+  check(G, "server: own link without a price: saved at once, marked pending, and the page is told the truth", [w.res.status, w.res.body.status, w.res.body.price_pending, w.res.body.live, w.res.body.message, w.rows.map((r) => r.status), w.rows[0].result?.price, w.applied[0]?.plan.price], [200, "applied", true, true, "Guardado. Las ofrecemos a clientes en cuanto tengamos vuestro precio.", ["applied"], "pending", null], "never \"Ya se pueden reservar\" for times no customer can see");
+  check(G, "server: Jordan's card: \"Price: not given yet, ask for it\", and why customers cannot see the times", [card.subject, card.badge, card.paras[0].startsWith("Applied at once (signed link). Price: not given yet, ask for it. Customers cannot see these times until there is one: released_offers never offers a time without a price"), / The studio was told we will offer them as soon as we have their price\.$/.test(card.paras[0]), card.after.includes("Price: not given yet, ask for it (customers cannot see these times until there is one)")],
+    ["📥 Calma Madrid Spa gave 1 time on its /socios link: price not given yet, ask for it", "STUDIO GAVE TIMES, NO PRICE YET", true, true, true], "");
+  const askBtn = card.links.find((l) => /price/.test(l.label)) || {};
+  check(G, "server: the card's button opens a draft in Jordan's own WhatsApp; only Jordan gets an email, nothing goes to the business", [askBtn.label, askBtn.href, askBtn.primary, card.to, w.cards.length, card.paras.some((x) => x.includes(`(English: "${R.socPriceAskEn(60)}")`))],
+    ["Ask them for their price (my WhatsApp)", "https://wa.me/34600111222?text=" + encodeURIComponent(R.socPriceAskEs(60)), true, ["jordan@massageclub.io"], 1, true], "CLAUDE.md: English beside any Spanish shown to Jordan");
+  w = await run({ signed: true, menu: true });
+  check(G, "server: own link, no price, menu on file: the menu is quoted, nothing pending", [w.res.body.price_pending, w.res.body.message, w.rows[0]?.result?.price, /price/i.test(cardOf(w).subject), cardOf(w).after.filter((x) => /^Price/.test(x)), cardOf(w).links.some((l) => /price/.test(l.label))], [false, "Guardado. Ya se pueden reservar.", "menu", false, ["Prices: not given (their menu on file is used)"], false], "");
+  w = await run({ signed: true, price: 55 });
+  check(G, "server: own link with a price tapped: as before", [w.res.body.price_pending, w.res.body.message, w.rows[0]?.result?.price, w.applied[0]?.plan.price, cardOf(w).badge, cardOf(w).paras[0], cardOf(w).after.filter((x) => /^Price/.test(x))], [false, "Guardado. Ya se pueden reservar.", "given", 55, "STUDIO GAVE TIMES", "Applied at once (signed link). Customers can book these now.", ["Prices: 60 min 55 EUR"]], "");
+  w = await run({ signed: true, mode: "off" });
+  check(G, "server: own link, no price, RELEASED off: \"os avisamos en cuanto empecemos\", and the card says both", [w.res.body.live, w.res.body.price_pending, w.res.body.message, /, and RELEASED is off too\./.test(cardOf(w).paras[0]), / The studio was told we will let them know when we start\.$/.test(cardOf(w).paras[0])], [false, true, R.socMsg("applied_wait", "es"), true, true], "");
+  w = await run({ signed: true, price: 600 });
+  check(G, "server: a typed price over 500 is still refused, in the studio's words", [w.res.status, w.res.body.errors, w.res.body.message, w.rows.map((r) => r.status)], [400, ["price"], "El precio tiene que ser un número entre 1 y 500.", ["rejected"]], "");
+  // What the harness does not run: socApply, and the approve page.
+  const rp = fnOf(botSrc, "\nasync function socReviewPage(");
+  check(G, "server: socApply stores the price as given, menu or pending", /terms: "", price: socPriceState\(plan\) \};/.test(fnOf(botSrc, "\nasync function socApply(")), true, "studio_signups.result.price");
+  check(G, "server: the approve page says it too, and the draft Jordan sends asks for the price", /const noPrice = res\.result\.price === "pending";/.test(rp) && /\$\{socSeenEn\(live, mode, noPrice, plan\.minutes\)\}/.test(rp) && /\$\{noPrice \? `\\n\\nPara ofrecerlas a clientes nos falta vuestro precio: ¿cuánto cobráis por un masaje de \$\{plan\.minutes\} minutos\?` : ""\}/.test(rp) && /\$\{noPrice \? `\\n\\nTo offer them to customers we still need your price: how much do you charge for a \$\{plan\.minutes\}-minute massage\?` : ""\}/.test(rp), true, "a draft in his own WhatsApp; nothing is sent by us");
+  check(G, "server: a studio's later changes on its link still need a price (unchanged)", /else if \(price === null && !\(await socHasMenu\(pid\)\)\) refuseReady\("price_needed"\);/.test(fnOf(botSrc, "\nasync function socTimesSubmit(")), true, "studio_times is not wired to the page yet");
 }
 
 // ---------------------------------------------------------------------------
