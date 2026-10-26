@@ -13,6 +13,8 @@ Read this first; it saves every session from rediscovering the setup.
 
 ## Operator rules (binding)
 - Ambiguous ask → ask up to 5 short questions before building. Never guess constraints.
+- **Diagnosis → ACH.** Competing hypotheses, scored by what discriminates between them,
+  ranked by fewest inconsistencies. Refute, do not confirm. Full method in `mission-control/CLAUDE.md`.
 - Never state a fact, name, or email you haven't verified — write UNSURE and flag it.
 - Outward-facing work (outreach, posts, payments) → list top 3 failure modes, fix, then proceed.
 - Creative work → 3 versions (safe/bold/weird), one-line tradeoffs.
