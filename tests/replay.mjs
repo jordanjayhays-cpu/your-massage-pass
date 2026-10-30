@@ -1427,9 +1427,9 @@ for (const [msg, want, note] of [
 
   // The follow-up and the lapse, word for word.
   check("offer chase", "en", O.OFFER_COPY.en.chase("Javier", "Calma Madrid Spa", "19:00", "today"),
-    "Javier, Calma Madrid Spa still has 19:00 free today, but they will not hold it for long. Tap Yes and it is yours, or tell me what would suit you better.\n\nMassage Club", "#96: the 19:00 passed with no word");
+    "Javier, Calma Madrid Spa still has 19:00 free today. Tap Yes and it is yours, or tell me what would suit you better.\n\nMassage Club", "#96: the 19:00 passed with no word");
   check("offer chase", "es", O.OFFER_COPY.es.chase("Javier", "Calma Madrid Spa", "19:00", "hoy"),
-    "Javier, Calma Madrid Spa sigue teniendo libre las 19:00 hoy, pero no te la guardan mucho. Toca Sí y es tuya, o dime qué te vendría mejor.\n\nMassage Club", "");
+    "Javier, Calma Madrid Spa sigue teniendo libre las 19:00 hoy. Toca Sí y es tuya, o dime qué te vendría mejor.\n\nMassage Club", "");
   check("offer lapse", "en, no name", O.OFFER_COPY.en.lapse("", "Calma Madrid Spa", "19:00"),
     "It is now too close to 19:00 to book Calma Madrid Spa, so that slot has gone. If you still want a massage, tell me another time or day and I will ask the studios again.\n\nMassage Club", "");
 

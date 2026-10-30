@@ -3304,6 +3304,18 @@ async function actOnReading(r: Reading, s: Session, from: string, L: string, req
     return true;
   }
 
+  // v214.1 (30 Oct): "cancel" in the customer's own words, away from the offer
+  // step, on a request that is still open, closes it here, as the agent core
+  // already does. Fahad (#121, 29 Oct) wrote "cancel" while his website request
+  // waited for dispatch: he got "I am checking that now", the request stayed
+  // open and four studios were asked five minutes later. Dispatch never picks
+  // up a cancelled request, and the chase sweep tells any studio already asked.
+  // A confirmed booking is not CANCELLABLE, so it still goes to Jordan below.
+  if (r.intent === "cancel" && (CANCEL_RE.test(text) || DECLINE_RE.test(text)) && await cancelOpenRequest(s, from, lang, text)) {
+    await logEvent(from, "cancel_by_reading", { request_id: req?.id ?? null });
+    return true;
+  }
+
   // choose, confirm, decline, change and cancel all move money or a partner's
   // diary, so a person decides. The difference from before is that Jordan is
   // told what the customer actually meant instead of "bot answered with menu".
@@ -4423,7 +4435,7 @@ const OFFER_COPY: Record<string, any> = {
     askTime: "What time would suit you better? Tell me and I will ask the studios.",
     cancelled: "Understood, I will not book it. Whenever you want a massage, just write here.",
     chase: (n: string, studio: string, time: string, day: string) =>
-      `${n ? n + ", " : ""}${studio} still has ${time} free${day ? " " + day : ""}, but they will not hold it for long. Tap Yes and it is yours, or tell me what would suit you better.\n\nMassage Club`,
+      `${n ? n + ", " : ""}${studio} still has ${time} free${day ? " " + day : ""}. Tap Yes and it is yours, or tell me what would suit you better.\n\nMassage Club`,
     lapse: (n: string, studio: string, time: string) =>
       `${n ? n + ", i" : "I"}t is now too close to ${time} to book ${studio}, so that slot has gone. If you still want a massage, tell me another time or day and I will ask the studios again.\n\nMassage Club`,
   },
@@ -4449,7 +4461,7 @@ const OFFER_COPY: Record<string, any> = {
     askTime: "¿Qué hora te vendría mejor? Dímela y se la pregunto a los centros.",
     cancelled: "Entendido, no lo reservo. Cuando quieras un masaje, escríbeme por aquí.",
     chase: (n: string, studio: string, time: string, day: string) =>
-      `${n ? n + ", " : ""}${studio} sigue teniendo libre las ${time}${day ? " " + day : ""}, pero no te la guardan mucho. Toca Sí y es tuya, o dime qué te vendría mejor.\n\nMassage Club`,
+      `${n ? n + ", " : ""}${studio} sigue teniendo libre las ${time}${day ? " " + day : ""}. Toca Sí y es tuya, o dime qué te vendría mejor.\n\nMassage Club`,
     lapse: (n: string, studio: string, time: string) =>
       `${n ? n + ", y" : "Y"}a queda muy poco para las ${time} y no da tiempo a reservar ${studio}, así que esa hora se ha perdido. Si todavía quieres el masaje, dime otra hora u otro día y vuelvo a preguntar a los centros.\n\nMassage Club`,
   },
