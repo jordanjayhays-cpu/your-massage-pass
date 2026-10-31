@@ -8,7 +8,7 @@ export default function ForStudios() {
         <title>For studios · Massage Club</title>
         <meta
           name="description"
-          content="No fees, no commission, no lock-in. Massage Club terms for Madrid massage studios."
+          content="Free until 31 December 2026. No monthly fee, no contract. Massage Club terms for Madrid massage studios."
         />
       </Helmet>
 
@@ -50,11 +50,14 @@ export default function ForStudios() {
               >
                 For studios <span className="font-normal opacity-70">/ Para centros</span>
               </div>
+              {/* 31 Oct: this said "No fees, no commission, no lock-in". The partner fee
+                  (Jordan, 17 and 19 Oct) starts on 1 Jan 2027, so the heading says only
+                  what is true for every studio today. */}
               <h1 className="font-display text-3xl md:text-4xl font-semibold text-[#2b2b2b]">
-                No fees, no commission, no lock-in
+                Free until 31 December 2026
               </h1>
               <div className="text-sm text-[#8a7460] mt-2">
-                Sin cuotas, sin comisión, sin permanencia
+                Gratis hasta el 31 de diciembre de 2026
               </div>
             </div>
 
@@ -69,14 +72,15 @@ export default function ForStudios() {
               <h2 className="font-display text-lg font-semibold text-[#2b2b2b] mb-5">
                 What it costs / Lo que cuesta
               </h2>
+              {/* The fee, word for word as Jordan set it (17 Oct, 19 Oct; CLAUDE.md
+                  PARTNER FEE). Replaces "Cost: 0 euros", "Commission: 0 percent" and
+                  "If we ever charge, we will tell you well in advance" (31 Oct).
+                  Never any other figure or date here; billing reads billing_settings
+                  (default_fee_eur 5, fees_from 2027-01-01). */}
               <ul className="space-y-5">
                 <TermItem
-                  en="Cost: 0 euros. No monthly fee, no setup fee."
-                  es="Coste: 0 euros. Sin cuota mensual ni de alta."
-                />
-                <TermItem
-                  en="Commission: 0 percent. We take nothing from your bookings."
-                  es="Comisión: 0%. No nos llevamos nada de vuestras reservas."
+                  en="Free until 31 December 2026. From 1 January 2027, 5 € + VAT (IVA) for each visit we book for you, first or repeat, only if the customer comes. If a customer books you directly, without us, 0 €. No monthly fee, no contract."
+                  es="Gratis hasta el 31 de diciembre de 2026. Desde el 1 de enero de 2027, 5 € + IVA por cada visita que os reservemos nosotros, la primera o las siguientes, solo si el cliente viene. Si un cliente os reserva directamente, sin nosotros, 0 €. Sin cuota mensual ni contrato."
                 />
                 <TermItem
                   en="The client pays you directly at the studio, exactly as they do today. We never handle the money."
@@ -86,10 +90,6 @@ export default function ForStudios() {
                   en="No exclusivity, no lock-in. Leave whenever you want."
                   es="Sin exclusividad y sin permanencia. Podéis salir cuando queráis."
                 />
-                <TermItem
-                  en="Free this year because we need real studios and real bookings, not revenue. If we ever charge, we will tell you well in advance."
-                  es="Gratis este año porque necesitamos estudios y reservas reales, no ingresos. Si algún día cobramos algo, os avisaremos con mucha antelación."
-                />
               </ul>
             </section>
 
@@ -98,10 +98,13 @@ export default function ForStudios() {
               <h2 className="font-display text-lg font-semibold text-[#2b2b2b] mb-5">
                 How it works / Cómo funciona
               </h2>
+              {/* 31 Oct: said "A client books" and "You confirm with one click". Under
+                  BOTH PARTIES TAP (10 Oct) the studio's tap only sends the client an
+                  offer; the booking exists once the client taps yes. */}
               <div className="space-y-4">
-                <Step number={1} en="A client books on Massage Club." es="Un cliente reserva en Massage Club." />
-                <Step number={2} en="You get an email with the day, time and client details." es="Recibes un email con el día, la hora y los datos del cliente." />
-                <Step number={3} en="You confirm or decline with one click. Nothing new to learn, no login required to confirm." es="Confirmas o rechazas con un clic. Nada nuevo que aprender, no hace falta iniciar sesión para confirmar." />
+                <Step number={1} en="A client asks Massage Club for a massage." es="Un cliente pide un masaje a Massage Club." />
+                <Step number={2} en="We ask you by email or WhatsApp if you have that time." es="Os preguntamos por email o WhatsApp si tenéis esa hora." />
+                <Step number={3} en="You tap yes or no. The booking is confirmed once the client taps yes to your offer, and you get it in writing." es="Tocáis sí o no. La reserva queda confirmada cuando el cliente acepta vuestra oferta, y os llega por escrito." />
               </div>
             </section>
 

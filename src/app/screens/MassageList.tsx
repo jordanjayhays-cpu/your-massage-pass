@@ -23,7 +23,6 @@ import CompareToggle from "../components/CompareToggle";
 import CompareBar from "../components/CompareBar";
 import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
-import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 
 
 
@@ -630,11 +629,9 @@ export default function MassageList() {
           </p>
         )}
 
-        <ExitCaptureBlock
-          source="studios-exit"
-          area={areaName}
-          className="mt-8"
-        />
+        {/* The "Email me deals" card (ExitCaptureBlock) sat here. Removed 31 Oct:
+            1 sign-up in 318 views, and it promised "a good price" no studio had
+            confirmed (discount rule, 5 Sept). */}
 
         <div className="pt-8 pb-2 text-center space-y-3">
           <p className="text-xs text-muted-foreground">

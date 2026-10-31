@@ -115,7 +115,11 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   en: {
     showDistance: "Show distance", directions: "Directions",
     yourAppointmentAt: "Your appointment at", checkingWithStudio: "We are checking with the studio now",
-    bookingDone: "You're booked!", waitTime: "You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.",
+    // waitTime (31 Oct): was "You will hear from us within 30 minutes with your
+    // confirmed time." Under BOTH PARTIES TAP the studio's answer is only an offer
+    // until the customer taps Yes, and at night the bot waits for studios to open
+    // at 09:00, so neither "confirmed" nor "30 minutes" was true. Every language.
+    bookingDone: "You're booked!", waitTime: "We will write to you with the studio's answer. If the time works, tap Yes on the offer to book it. If they cannot fit you, we will send you other studios nearby.",
     addToCalendar: "Add to my calendar", waSetItUp: "WhatsApp us and we set it up", visitWebsite: "Visit their website",
     timeConfirmedPay: "Your time is confirmed. You pay at the studio, no card needed.",
     studioConfirmsPay: "The studio usually confirms within a few hours and you will get an email. You pay at the studio, no card needed.",
@@ -136,7 +140,10 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Service", day: "Day", secondChoice: "Second choice", name: "Name", contact: "Contact", price: "Price",
     pickAService: "Pick a service", anyDay: "Any day", anyTime: "Any time", none: "None", notProvided: "Not provided", time: "Time",
     askStudio: "Ask the studio", requestWhatsapp: "Request via WhatsApp", pickAMassage: "Pick a massage",
-    back: "Back", waReassuranceStudios: "Studios already on Massage Club confirm instantly.", browseOtherStudios: "Browse other studios",
+    // waReassuranceStudios (31 Oct): was "Studios already on Massage Club confirm
+    // instantly." Untrue under BOTH PARTIES TAP (10 Oct): nothing is booked until the
+    // studio has the slot and the customer taps Yes. Same fix in every language.
+    back: "Back", waReassuranceStudios: "We ask the studio for you. Nothing is booked until you say yes.", browseOtherStudios: "Browse other studios",
     callStudioLabel: "Call the studio",
     chooseService: "Choose a service", pickDayTime: "Pick a day and time", customizeSession: "Customize your session",
     yourDetails: "Your details", reviewConfirm: "Review and confirm",
@@ -174,7 +181,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   es: {
     showDistance: "Ver distancia", directions: "Cómo llegar",
     yourAppointmentAt: "Tu cita en", checkingWithStudio: "Estamos confirmando con el centro",
-    bookingDone: "¡Tu reserva está hecha! 🎉", waitTime: "Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.",
+    bookingDone: "¡Tu reserva está hecha! 🎉", waitTime: "Te escribimos con la respuesta del centro. Si la hora te va bien, toca Sí en la oferta para reservarla. Si no pueden, te mandamos otros centros cerca.",
     addToCalendar: "Añadir a mi calendario", waSetItUp: "Escríbenos por WhatsApp y te lo organizamos", visitWebsite: "Ver su web",
     timeConfirmedPay: "Tu hora está confirmada. Pagas en el estudio, sin tarjeta.",
     studioConfirmsPay: "El estudio suele confirmar en unas horas y te avisamos por email. Pagas en el estudio, sin tarjeta.",
@@ -195,7 +202,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Servicio", day: "Día", secondChoice: "Segunda opción", name: "Nombre", contact: "Contacto", price: "Precio",
     pickAService: "Elige un servicio", anyDay: "Cualquier día", anyTime: "Cualquier hora", none: "Ninguno", notProvided: "No indicado", time: "Hora",
     askStudio: "Pregunta al estudio", requestWhatsapp: "Solicitar por WhatsApp", pickAMassage: "Elige un masaje",
-    back: "Atrás", waReassuranceStudios: "Los estudios que ya están en Massage Club confirman al instante.", browseOtherStudios: "Ver otros estudios",
+    back: "Atrás", waReassuranceStudios: "Le preguntamos al estudio por ti. No se reserva nada hasta que digas que sí.", browseOtherStudios: "Ver otros estudios",
     callStudioLabel: "Llamar al estudio",
     chooseService: "Elige un servicio", pickDayTime: "Elige día y hora", customizeSession: "Personaliza tu sesión",
     yourDetails: "Tus datos", reviewConfirm: "Revisa y confirma",
@@ -233,7 +240,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   fr: {
     showDistance: "Voir la distance", directions: "Itinéraire",
     yourAppointmentAt: "Votre rendez-vous à", checkingWithStudio: "Nous vérifions avec le centre",
-    bookingDone: "Votre réservation est faite ! 🎉", waitTime: "Nous vous répondrons en moins de 30 minutes avec votre heure confirmée. S'ils ne peuvent pas, nous vous envoyons d'autres centres à proximité.",
+    bookingDone: "Votre réservation est faite ! 🎉", waitTime: "Nous vous écrivons avec la réponse du centre. Si l'heure vous convient, touchez Oui sur l'offre pour la réserver. S'ils ne peuvent pas, nous vous envoyons d'autres centres à proximité.",
     addToCalendar: "Ajouter à mon calendrier", waSetItUp: "Écrivez-nous sur WhatsApp et on s'occupe de tout", visitWebsite: "Voir leur site",
     timeConfirmedPay: "Votre heure est confirmée. Vous payez sur place, sans carte.",
     studioConfirmsPay: "Le centre confirme généralement en quelques heures et vous recevrez un email. Vous payez sur place, sans carte.",
@@ -254,7 +261,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Service", day: "Jour", secondChoice: "Second choix", name: "Nom", contact: "Contact", price: "Prix",
     pickAService: "Choisissez un service", anyDay: "N'importe quel jour", anyTime: "N'importe quelle heure", none: "Aucun", notProvided: "Non fourni", time: "Heure",
     askStudio: "Demander au centre", requestWhatsapp: "Demander via WhatsApp", pickAMassage: "Choisir un massage",
-    back: "Retour", waReassuranceStudios: "Les centres déjà sur Massage Club confirment instantanément.", browseOtherStudios: "Voir d'autres centres",
+    back: "Retour", waReassuranceStudios: "Nous demandons au centre pour vous. Rien n'est réservé tant que vous n'avez pas dit oui.", browseOtherStudios: "Voir d'autres centres",
     callStudioLabel: "Appeler le centre",
     chooseService: "Choisir un service", pickDayTime: "Choisir un jour et une heure", customizeSession: "Personnalisez votre séance",
     yourDetails: "Vos informations", reviewConfirm: "Vérifiez et confirmez",
@@ -292,7 +299,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   de: {
     showDistance: "Entfernung anzeigen", directions: "Wegbeschreibung",
     yourAppointmentAt: "Dein Termin bei", checkingWithStudio: "Wir prüfen das gerade mit dem Studio",
-    bookingDone: "Deine Buchung ist fertig! 🎉", waitTime: "Wir melden uns innerhalb von 30 Minuten mit deiner bestätigten Zeit. Falls es nicht passt, schicken wir dir andere Studios in der Nähe.",
+    bookingDone: "Deine Buchung ist fertig! 🎉", waitTime: "Wir schreiben dir die Antwort des Studios. Wenn die Zeit passt, tippe im Angebot auf Ja, um sie zu buchen. Falls es nicht passt, schicken wir dir andere Studios in der Nähe.",
     addToCalendar: "Zu meinem Kalender hinzufügen", waSetItUp: "Schreib uns auf WhatsApp, wir kümmern uns darum", visitWebsite: "Website besuchen",
     timeConfirmedPay: "Deine Zeit ist bestätigt. Du zahlst im Studio, keine Karte nötig.",
     studioConfirmsPay: "Das Studio bestätigt normalerweise innerhalb einiger Stunden und du bekommst eine E-Mail. Du zahlst im Studio, keine Karte nötig.",
@@ -313,7 +320,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Service", day: "Tag", secondChoice: "Zweite Wahl", name: "Name", contact: "Kontakt", price: "Preis",
     pickAService: "Service wählen", anyDay: "Egal welcher Tag", anyTime: "Egal welche Zeit", none: "Keine", notProvided: "Nicht angegeben", time: "Uhrzeit",
     askStudio: "Beim Studio nachfragen", requestWhatsapp: "Über WhatsApp anfragen", pickAMassage: "Massage wählen",
-    back: "Zurück", waReassuranceStudios: "Studios, die schon bei Massage Club sind, bestätigen sofort.", browseOtherStudios: "Andere Studios ansehen",
+    back: "Zurück", waReassuranceStudios: "Wir fragen für dich beim Studio an. Gebucht ist erst, wenn du Ja sagst.", browseOtherStudios: "Andere Studios ansehen",
     callStudioLabel: "Studio anrufen",
     chooseService: "Service wählen", pickDayTime: "Tag und Uhrzeit wählen", customizeSession: "Passe deine Sitzung an",
     yourDetails: "Deine Daten", reviewConfirm: "Überprüfen und bestätigen",
@@ -351,7 +358,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   it: {
     showDistance: "Mostra distanza", directions: "Indicazioni",
     yourAppointmentAt: "Il tuo appuntamento da", checkingWithStudio: "Stiamo verificando con il centro",
-    bookingDone: "La tua prenotazione è fatta! 🎉", waitTime: "Ti risponderemo entro 30 minuti con l'orario confermato. Se non possono, ti mandiamo altri centri vicini.",
+    bookingDone: "La tua prenotazione è fatta! 🎉", waitTime: "Ti scriviamo con la risposta del centro. Se l'orario ti va bene, tocca Sì sull'offerta per prenotarlo. Se non possono, ti mandiamo altri centri vicini.",
     addToCalendar: "Aggiungi al mio calendario", waSetItUp: "Scrivici su WhatsApp e ci pensiamo noi", visitWebsite: "Visita il loro sito",
     timeConfirmedPay: "Il tuo orario è confermato. Paghi al centro, senza carta.",
     studioConfirmsPay: "Il centro di solito confirma in poche ore e riceverai un'email. Paghi al centro, senza carta.",
@@ -372,7 +379,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Servizio", day: "Giorno", secondChoice: "Seconda scelta", name: "Nome", contact: "Contatto", price: "Prezzo",
     pickAService: "Scegli un servizio", anyDay: "Qualsiasi giorno", anyTime: "Qualsiasi orario", none: "Nessuno", notProvided: "Non fornito", time: "Ora",
     askStudio: "Chiedi al centro", requestWhatsapp: "Richiedi via WhatsApp", pickAMassage: "Scegli un massaggio",
-    back: "Indietro", waReassuranceStudios: "I centri già su Massage Club confermano all'istante.", browseOtherStudios: "Guarda altri centri",
+    back: "Indietro", waReassuranceStudios: "Chiediamo noi al centro per te. Niente è prenotato finché non dici di sì.", browseOtherStudios: "Guarda altri centri",
     callStudioLabel: "Chiama il centro",
     chooseService: "Scegli un servizio", pickDayTime: "Scegli giorno e ora", customizeSession: "Personalizza la tua sessione",
     yourDetails: "I tuoi dati", reviewConfirm: "Rivedi e confirma",
@@ -410,7 +417,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   pt: {
     showDistance: "Ver distância", directions: "Como chegar",
     yourAppointmentAt: "A tua marcação em", checkingWithStudio: "Estamos a confirmar com o estúdio",
-    bookingDone: "A tua reserva está feita! 🎉", waitTime: "Respondemos-te em menos de 30 minutos com a hora confirmada. Se não conseguirem, enviamos-te outros estúdios próximos.",
+    bookingDone: "A tua reserva está feita! 🎉", waitTime: "Escrevemos-te com a resposta do estúdio. Se a hora te servir, toca em Sim na oferta para a reservar. Se não conseguirem, enviamos-te outros estúdios próximos.",
     addToCalendar: "Adicionar ao meu calendário", waSetItUp: "Escreve-nos no WhatsApp e organizamos tudo", visitWebsite: "Visitar o site",
     timeConfirmedPay: "A tua hora está confirmada. Pagas no estúdio, sem cartão.",
     studioConfirmsPay: "O estúdio normalmente confirma em algumas horas e receberás um email. Pagas no estúdio, sem cartão.",
@@ -431,7 +438,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Serviço", day: "Dia", secondChoice: "Segunda opção", name: "Nome", contact: "Contacto", price: "Preço",
     pickAService: "Escolhe um serviço", anyDay: "Qualquer dia", anyTime: "Qualquer hora", none: "Nenhum", notProvided: "Não fornecido", time: "Hora",
     askStudio: "Perguntar ao estúdio", requestWhatsapp: "Pedir via WhatsApp", pickAMassage: "Escolher uma massagem",
-    back: "Voltar", waReassuranceStudios: "Os estúdios já no Massage Club confirmam instantaneamente.", browseOtherStudios: "Ver outros estúdios",
+    back: "Voltar", waReassuranceStudios: "Perguntamos ao estúdio por ti. Nada fica reservado até dizeres que sim.", browseOtherStudios: "Ver outros estúdios",
     callStudioLabel: "Ligar ao estúdio",
     chooseService: "Escolhe um serviço", pickDayTime: "Escolhe dia e hora", customizeSession: "Personaliza a tua sessão",
     yourDetails: "Os teus dados", reviewConfirm: "Revê e confirma",
@@ -469,7 +476,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
   zh: {
     showDistance: "显示距离", directions: "路线",
     yourAppointmentAt: "您在以下门店的预约", checkingWithStudio: "我们正在与门店确认",
-    bookingDone: "预约成功！🎉", waitTime: "我们会在30分钟内告知您确认的时间。如果门店无法安排,我们会为您推荐附近其他门店。",
+    bookingDone: "预约成功！🎉", waitTime: "我们会把门店的答复发给您。时间合适的话，在我们发来的邀约中点击“是”即可预订。如果门店无法安排，我们会为您推荐附近其他门店。",
     addToCalendar: "添加到我的日历", waSetItUp: "通过WhatsApp联系我们,我们会为您安排", visitWebsite: "访问他们的网站",
     timeConfirmedPay: "您的时间已确认。到店付款,无需信用卡。",
     studioConfirmsPay: "门店通常会在几小时内确认,并通过邮件通知您。到店付款,无需信用卡。",
@@ -490,7 +497,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "服务", day: "日期", secondChoice: "第二选择", name: "姓名", contact: "联系方式", price: "价格",
     pickAService: "选择一项服务", anyDay: "任意日期", anyTime: "任意时间", none: "无", notProvided: "未提供", time: "时间",
     askStudio: "询问门店", requestWhatsapp: "通过WhatsApp请求", pickAMassage: "选择一项按摩",
-    back: "返回", waReassuranceStudios: "已加入Massage Club的门店可即时确认。", browseOtherStudios: "浏览其他门店",
+    back: "返回", waReassuranceStudios: "我们替您询问门店。在您确认之前，不会预订任何时段。", browseOtherStudios: "浏览其他门店",
     callStudioLabel: "致电门店",
     chooseService: "选择服务", pickDayTime: "选择日期和时间", customizeSession: "个性化您的疗程",
     yourDetails: "您的信息", reviewConfirm: "查看并确认",
@@ -1107,54 +1114,39 @@ export default function StudioBookingPage() {
 
 
 
+  // Loading and not-found (31 Oct) are light, on the page's own cream. Both
+  // were a near-black #1a0709 screen, and not-found was a dead end ("We could not
+  // find that page") with three competing exits. The Nook, our most visited
+  // studio page, now lands here. One action instead: /reserve asks professional
+  // studios near the visitor. No studio is named on purpose.
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a0709]">
-        <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF6F1" }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#B85C38" }} />
       </div>
     );
   }
 
   if (!profile) {
+    // /reserve is public/go.html (vercel.json rewrite), a plain page outside
+    // the router, so a real link; ?lang=es keeps a Spanish visitor in Spanish.
+    // src=studio-404 keeps the tag the old WhatsApp button sent (source
+    // "not-found"): go.html files the lead as go-page-studio-404.
     const askLang = (i18n.language || "en").slice(0, 2) === "es" ? "es" : "en";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a0709] text-white p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center" style={{ background: "#FAF6F1" }}>
         <div className="max-w-md w-full space-y-6">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">{t("app.shopDetail.notFoundTitle")}</h1>
-            <p className="text-white/60 text-sm">{t("app.shopDetail.notFoundSub")}</p>
+          <div className="space-y-3">
+            <h1 className="font-display text-3xl font-semibold leading-tight" style={{ color: "#2b2b2b" }}>{t("app.shopDetail.notFoundTitle")}</h1>
+            <p className="text-base leading-relaxed" style={{ color: "#3d2b1f" }}>{t("app.shopDetail.notFoundSub")}</p>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              to="/book"
-              className="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-full bg-white text-[#1a0709] font-semibold hover:bg-white/90 transition"
-            >
-              {t("app.shopDetail.bookMassage")}
-            </Link>
-            <Link
-              to="/studios"
-              className="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition"
-            >
-              {t("app.shopDetail.browseStudios")}
-            </Link>
-          </div>
-
-          <WhatsAppAskButton
-            source="not-found"
-            lang={askLang}
-            label={t("app.shopDetail.chatWhatsapp")}
-            renderTrigger={({ open }) => (
-              <button
-                type="button"
-                onClick={open}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition"
-              >
-                <MessageCircle className="h-5 w-5" />
-                {t("app.shopDetail.chatWhatsapp")}
-              </button>
-            )}
-          />
+          <a
+            href={askLang === "es" ? "/reserve?lang=es&src=studio-404" : "/reserve?src=studio-404"}
+            className="w-full inline-flex items-center justify-center h-12 px-6 rounded-full font-semibold hover:opacity-90 transition"
+            style={{ background: "#B85C38", color: "#fff" }}
+          >
+            {t("app.shopDetail.askStudiosNearMe")}
+          </a>
         </div>
       </div>
     );
@@ -1247,7 +1239,10 @@ export default function StudioBookingPage() {
             <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>{c.yourAppointmentAt}</div>
             <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
             <p className="text-base font-semibold mb-3" style={{ color: "#3d2b1f" }}>
-              {isClaimed && !instantConfirm ? c.checkingWithStudio : c.bookingDone}
+              {/* 31 Oct: was `isClaimed && !instantConfirm ? checking : booked`, which told
+                  anyone booking an unclaimed (pending) studio "You're booked!" before any
+                  studio had the slot or the customer had tapped Yes (BOTH PARTIES TAP). */}
+              {instantConfirm ? c.bookingDone : c.checkingWithStudio}
             </p>
             {isClaimed && !instantConfirm && (
               <p className="text-sm mb-6 leading-snug" style={{ color: "#5a4736" }}>
