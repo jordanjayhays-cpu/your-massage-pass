@@ -811,7 +811,7 @@
       "errInvalidCredentials": "电子邮件或密码无效",
       "benefits": [
         "Reach 12,000+ digital nomads in Madrid",
-        "Commission-only — no upfront cost",
+        "Free until 31 December 2026, no monthly fee",
         "Get bookings 24/7 automatically"
       ],
       "recovery": {
@@ -898,7 +898,7 @@
       "createPasswordPlaceholder": "创建密码（6位以上字符）",
       "publishing": "正在发布…",
       "publishListing": "发布我的工作室",
-      "commissionFooter": "仅收佣金 · 无预付费用 · 随时取消",
+      "commissionFooter": "2026年12月31日前免费 · 无月费 · 无合同",
       "alreadyHaveAccount": "已经有账号了？",
       "signIn": "登录",
       "errAddressFirst": "请先输入您的街道地址",

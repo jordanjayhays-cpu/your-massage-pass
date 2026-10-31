@@ -98,10 +98,13 @@ export default function ForStudios() {
               <h2 className="font-display text-lg font-semibold text-[#2b2b2b] mb-5">
                 How it works / Cómo funciona
               </h2>
+              {/* 31 Oct: said "A client books" and "You confirm with one click". Under
+                  BOTH PARTIES TAP (10 Oct) the studio's tap only sends the client an
+                  offer; the booking exists once the client taps yes. */}
               <div className="space-y-4">
-                <Step number={1} en="A client books on Massage Club." es="Un cliente reserva en Massage Club." />
-                <Step number={2} en="You get an email with the day, time and client details." es="Recibes un email con el día, la hora y los datos del cliente." />
-                <Step number={3} en="You confirm or decline with one click. Nothing new to learn, no login required to confirm." es="Confirmas o rechazas con un clic. Nada nuevo que aprender, no hace falta iniciar sesión para confirmar." />
+                <Step number={1} en="A client asks Massage Club for a massage." es="Un cliente pide un masaje a Massage Club." />
+                <Step number={2} en="We ask you by email or WhatsApp if you have that time." es="Os preguntamos por email o WhatsApp si tenéis esa hora." />
+                <Step number={3} en="You tap yes or no. The booking is confirmed once the client taps yes to your offer, and you get it in writing." es="Tocáis sí o no. La reserva queda confirmada cuando el cliente acepta vuestra oferta, y os llega por escrito." />
               </div>
             </section>
 

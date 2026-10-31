@@ -23,7 +23,7 @@ export type PageLang = FlowLang;
 export const BOOK_FLOW_COPY = {
   en: {
     brand: "Massage Club · Madrid",
-    priceRange: "60 min · usually €50 to €85",
+    priceRange: "60 min · usually €50 to €85 per person",
     steps: ["Massage", "When", "Where", "Details"],
     step: "Step",
     of: "of",
@@ -84,8 +84,12 @@ export const BOOK_FLOW_COPY = {
     sending: "Sending...",
     sendError: "Could not send. Message us on WhatsApp at +34 613 97 79 00.",
     promiseTitle: "We are checking with the studio now",
+    // promiseBody (31 Oct): was "within 30 minutes with your confirmed time", the
+    // same untrue promise fixed on the studio page (waitTime): the studio's answer
+    // is only an offer until the customer taps Yes (BOTH PARTIES TAP), and at night
+    // the bot waits for studios to open. Every language.
     promiseBody:
-      "You will hear from us within 30 minutes with your confirmed time. If they cannot fit you, we will send you other studios nearby.",
+      "We will write to you with the studio's answer. If the time works, tap Yes on the offer to book it. If they cannot fit you, we will send you other studios nearby.",
     successTitle: "Almost done - send it to us",
     successSub: "Tap send in WhatsApp and we'll confirm your time with the studio.",
     sendWhatsApp: "Send my request on WhatsApp",
@@ -103,7 +107,7 @@ export const BOOK_FLOW_COPY = {
   },
   es: {
     brand: "Massage Club · Madrid",
-    priceRange: "60 min · normalmente entre 50 y 85 €",
+    priceRange: "60 min · normalmente entre 50 y 85 € por persona",
     steps: ["Masaje", "Cuándo", "Dónde", "Datos"],
     step: "Paso",
     of: "de",
@@ -165,7 +169,7 @@ export const BOOK_FLOW_COPY = {
     sendError: "No se pudo enviar. Escríbenos por WhatsApp al +34 613 97 79 00.",
     promiseTitle: "Estamos confirmando con el centro",
     promiseBody:
-      "Te escribimos en menos de 30 minutos con tu hora confirmada. Si no pueden, te mandamos otros centros cerca.",
+      "Te escribimos con la respuesta del centro. Si la hora te va bien, toca Sí en la oferta para reservarla. Si no pueden, te mandamos otros centros cerca.",
     successTitle: "Casi listo - envíanoslo",
     successSub: "Dale a enviar en WhatsApp y confirmamos tu hora con el centro.",
     sendWhatsApp: "Enviar mi solicitud por WhatsApp",
@@ -183,7 +187,7 @@ export const BOOK_FLOW_COPY = {
   },
   fr: {
     brand: "Massage Club · Madrid",
-    priceRange: "60 min · généralement entre 50 et 85 €",
+    priceRange: "60 min · généralement entre 50 et 85 € par personne",
     steps: ["Massage", "Quand", "Où", "Détails"],
     step: "Étape",
     of: "sur",
@@ -245,7 +249,7 @@ export const BOOK_FLOW_COPY = {
     sendError: "Envoi impossible. Écrivez-nous sur WhatsApp au +34 613 97 79 00.",
     promiseTitle: "Nous confirmons avec le centre",
     promiseBody:
-      "Vous aurez de nos nouvelles sous 30 minutes avec votre horaire confirmé. S'ils ne peuvent pas vous prendre, nous vous proposerons d'autres centres à proximité.",
+      "Nous vous écrivons avec la réponse du centre. Si l'horaire vous convient, touchez Oui sur l'offre pour le réserver. S'ils ne peuvent pas vous prendre, nous vous proposerons d'autres centres à proximité.",
     successTitle: "Presque terminé - envoyez-le nous",
     successSub: "Appuyez sur envoyer dans WhatsApp et nous confirmons votre horaire avec le centre.",
     sendWhatsApp: "Envoyer ma demande sur WhatsApp",
@@ -263,7 +267,7 @@ export const BOOK_FLOW_COPY = {
   },
   de: {
     brand: "Massage Club · Madrid",
-    priceRange: "60 Min. · meist zwischen 50 und 85 €",
+    priceRange: "60 Min. · meist zwischen 50 und 85 € pro Person",
     steps: ["Massage", "Wann", "Wo", "Angaben"],
     step: "Schritt",
     of: "von",
@@ -325,7 +329,7 @@ export const BOOK_FLOW_COPY = {
     sendError: "Konnte nicht gesendet werden. Schreib uns auf WhatsApp an +34 613 97 79 00.",
     promiseTitle: "Wir klären das gerade mit dem Studio",
     promiseBody:
-      "Wir melden uns innerhalb von 30 Minuten mit deiner bestätigten Zeit. Falls es nicht klappt, schicken wir dir andere Studios in der Nähe.",
+      "Wir schreiben dir die Antwort des Studios. Wenn die Zeit passt, tippe im Angebot auf Ja, um sie zu buchen. Falls es nicht klappt, schicken wir dir andere Studios in der Nähe.",
     successTitle: "Fast fertig - schick es uns ab",
     successSub: "Tippe in WhatsApp auf Senden, und wir bestätigen deine Zeit mit dem Studio.",
     sendWhatsApp: "Meine Anfrage per WhatsApp senden",
@@ -343,7 +347,7 @@ export const BOOK_FLOW_COPY = {
   },
   it: {
     brand: "Massage Club · Madrid",
-    priceRange: "60 min · di solito tra 50 e 85 €",
+    priceRange: "60 min · di solito tra 50 e 85 € a persona",
     steps: ["Massaggio", "Quando", "Dove", "Dati"],
     step: "Passo",
     of: "di",
@@ -405,7 +409,7 @@ export const BOOK_FLOW_COPY = {
     sendError: "Impossibile inviare. Scrivici su WhatsApp al +34 613 97 79 00.",
     promiseTitle: "Stiamo confermando con il centro",
     promiseBody:
-      "Ti risponderemo entro 30 minuti con il tuo orario confermato. Se non riescono, ti proponiamo altri centri vicini.",
+      "Ti scriviamo con la risposta del centro. Se l'orario ti va bene, tocca Sì sull'offerta per prenotarlo. Se non riescono, ti proponiamo altri centri vicini.",
     successTitle: "Quasi fatto - invialo",
     successSub: "Tocca invia su WhatsApp e confermiamo il tuo orario con il centro.",
     sendWhatsApp: "Invia la mia richiesta su WhatsApp",
@@ -423,7 +427,7 @@ export const BOOK_FLOW_COPY = {
   },
   pt: {
     brand: "Massage Club · Madrid",
-    priceRange: "60 min · normalmente entre 50 e 85 €",
+    priceRange: "60 min · normalmente entre 50 e 85 € por pessoa",
     steps: ["Massagem", "Quando", "Onde", "Dados"],
     step: "Passo",
     of: "de",
@@ -485,7 +489,7 @@ export const BOOK_FLOW_COPY = {
     sendError: "Não foi possível enviar. Escreve-nos no WhatsApp para +34 613 97 79 00.",
     promiseTitle: "Estamos a confirmar com o estúdio",
     promiseBody:
-      "Vamos responder-te em menos de 30 minutos com o teu horário confirmado. Se não conseguirem, enviamos-te outros estúdios perto.",
+      "Escrevemos-te com a resposta do estúdio. Se o horário te servir, toca em Sim na oferta para o reservar. Se não conseguirem, enviamos-te outros estúdios perto.",
     successTitle: "Quase pronto - envia-nos",
     successSub: "Toca em enviar no WhatsApp e confirmamos o teu horário com o estúdio.",
     sendWhatsApp: "Enviar o meu pedido no WhatsApp",
@@ -503,7 +507,7 @@ export const BOOK_FLOW_COPY = {
   },
   zh: {
     brand: "Massage Club · 马德里",
-    priceRange: "60 分钟 · 通常 50 至 85 欧元",
+    priceRange: "60 分钟 · 通常每人 50 至 85 欧元",
     steps: ["按摩", "时间", "地点", "详情"],
     step: "第",
     of: "步，共",
@@ -564,7 +568,7 @@ export const BOOK_FLOW_COPY = {
     sending: "发送中...",
     sendError: "发送失败，请通过WhatsApp联系我们：+34 613 97 79 00。",
     promiseTitle: "我们正在与门店确认",
-    promiseBody: "我们会在30分钟内告诉你确认的时间。如果门店无法安排，我们会为你推荐附近其他门店。",
+    promiseBody: "我们会把门店的答复发给你。时间合适的话，在我们发来的邀约中点击“是”即可预订。如果门店无法安排，我们会为你推荐附近其他门店。",
     successTitle: "快好了 - 发送给我们",
     successSub: "点击WhatsApp中的发送，我们会与门店确认你的时间。",
     sendWhatsApp: "通过WhatsApp发送我的请求",
@@ -639,6 +643,7 @@ function Chip({
  * own range (wa-bot copy.ts priceInfo: 60 min, 50 to 85 EUR), never a quote:
  * the exact price comes with the studio's times. Same text as /reserve
  * (public/go.html). Calm on purpose, so it never reads as a button or a deal.
+ * "Per person" because Couples is on step 1 and a couples hour is 100 to 170 EUR.
  */
 function PriceChip({ label }: { label: string }) {
   return (

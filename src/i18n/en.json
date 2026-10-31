@@ -200,9 +200,6 @@
       "notFoundTitle": "We couldn't find that studio.",
       "notFoundSub": "We can still ask professional massage studios near you.",
       "askStudiosNearMe": "Ask studios near me",
-      "bookMassage": "Book a massage",
-      "browseStudios": "Browse studios",
-      "chatWhatsapp": "Chat on WhatsApp",
       "back": "Back",
       "default_address": "Madrid, Spain",
       "default_description": "Intensive pressure to relieve chronic tension.",
@@ -817,7 +814,7 @@
       "errInvalidCredentials": "Invalid email or password",
       "benefits": [
         "Reach 12,000+ digital nomads in Madrid",
-        "Commission-only — no upfront cost",
+        "Free until 31 December 2026, no monthly fee",
         "Get bookings 24/7 automatically"
       ],
       "recovery": {
@@ -904,7 +901,7 @@
       "createPasswordPlaceholder": "Create a password (6+ characters)",
       "publishing": "Publishing…",
       "publishListing": "Publish my listing",
-      "commissionFooter": "Commission-only · No upfront cost · Cancel anytime",
+      "commissionFooter": "Free until 31 Dec 2026 · No monthly fee · No contract",
       "alreadyHaveAccount": "Already have an account?",
       "signIn": "Sign in",
       "errAddressFirst": "Enter your street address first",

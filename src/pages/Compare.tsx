@@ -422,7 +422,10 @@ export default function Compare() {
           <Row label="Booking" labelEs="Reserva">
             <div style={gridStyle} className="grid gap-3 min-w-[520px] md:min-w-0">
               {selected.map((s) => {
-                const instant = s.status === "active";
+                // 31 Oct: was `s.status === "active"`, which labelled every claimed
+                // studio "Instant booking" although no booking has been instant since
+                // 1 Sep (BOTH PARTIES TAP). Same rule as the verdict chips above.
+                const instant = isInstant(s);
                 return (
                   <div key={compareKey(s)} className="snap-start text-sm min-w-0">
                     {instant ? (

@@ -200,9 +200,6 @@
       "notFoundTitle": "No hemos encontrado ese estudio.",
       "notFoundSub": "Aun así podemos preguntar a estudios de masaje profesionales cerca de ti.",
       "askStudiosNearMe": "Preguntar a estudios cerca de mí",
-      "bookMassage": "Reservar un masaje",
-      "browseStudios": "Ver estudios",
-      "chatWhatsapp": "Hablar por WhatsApp",
       "back": "Volver",
       "default_address": "Madrid, España",
       "default_description": "Presión intensa para aliviar la tensión crónica.",
@@ -817,7 +814,7 @@
       "errInvalidCredentials": "Correo o contraseña incorrectos",
       "benefits": [
         "Llega a más de 12.000 nómadas digitales en Madrid",
-        "Solo comisión — sin coste inicial",
+        "Gratis hasta el 31 de diciembre de 2026, sin cuota mensual",
         "Recibe reservas 24/7 automáticamente"
       ],
       "recovery": {
@@ -904,7 +901,7 @@
       "createPasswordPlaceholder": "Crea una contraseña (mínimo 6 caracteres)",
       "publishing": "Publicando…",
       "publishListing": "Publicar mi anuncio",
-      "commissionFooter": "Solo comisión · Sin coste inicial · Cancela cuando quieras",
+      "commissionFooter": "Gratis hasta el 31 dic 2026 · Sin cuota mensual · Sin contrato",
       "alreadyHaveAccount": "¿Ya tienes una cuenta?",
       "signIn": "Iniciar sesión",
       "errAddressFirst": "Introduce primero tu dirección",

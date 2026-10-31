@@ -70,7 +70,8 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 /* Price chip (31 Oct): research found not one price on this page, and price is
    among the first things people ask the bot. It is the bot's own range (wa-bot
    copy.ts priceInfo, 50 to 85 EUR for 60 min), never a quote: the real price
-   comes with the studio's times. Small and calm, not a button. */
+   comes with the studio's times. Small and calm, not a button. "Per person"
+   because Couples is on the first screen and a couples hour is 100 to 170 EUR. */
 .price{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin:-6px 0 16px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid var(--line);font-size:14px;font-weight:500;line-height:1.25;color:var(--ink)}
 .price svg{width:15px;height:15px;flex:none;color:var(--clay)}
 
@@ -305,7 +306,7 @@ const T = {
     f2: "Offers on WhatsApp", f2s: "We ask the studios, you pick",
     f3: "Pay at the studio", f3s: "No fee from us, ever",
     start: "Let's go",
-    price: "60 min · usually €50 to €85",
+    price: "60 min · usually €50 to €85 per person",
     k1: "1 of 6", q1: "What kind of massage?", s1: "Tap one. You can change it later.",
     k2: "2 of 6", q2: "Which day?", s2: "Pick the day that suits you best.",
     k3: "3 of 6", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", moreTimes: "+ Add another time", oneTime: "Just one time",
@@ -329,9 +330,9 @@ const T = {
     kick: "Massage Club · Madrid", title: "Tu masaje, resuelto.", host: "Organiza Massage Club",
     f1: "Un centro cerca de ti", f1s: "Centros profesionales por todo Madrid",
     f2: "Ofertas por WhatsApp", f2s: "Preguntamos a los centros, tú eliges",
-    f3: "Pagas en el centro", f3s: "Sin comisión, nunca",
+    f3: "Pagas en el centro", f3s: "Nunca te cobramos nada",
     start: "Vamos",
-    price: "60 min · normalmente entre 50 y 85 €",
+    price: "60 min · normalmente entre 50 y 85 € por persona",
     k1: "1 de 6", q1: "¿Qué masaje te apetece?", s1: "Toca uno. Puedes cambiarlo luego.",
     k2: "2 de 6", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
     k3: "3 de 6", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
