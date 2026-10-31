@@ -104,6 +104,44 @@
 //     it. Notes stop outside 09:00-21:00; a stand-down that could not go out
 //     leaves the row open so chase B tells the studio later. Email-only
 //     studios hear about a change too, and Jordan gets a copy of every email.
+// v49 (31 Oct, Jordan: "rest a business after 5 asks with no yes, or after it
+//   says no; you bring it back after talking to it. Ask at most the 4 nearest
+//   that answer."). Of 210 asks since 1 Sept, 23% got a yes. Calma, TornaSol,
+//   Sinergia38 and Selvarrosa said yes to 42% of theirs; KamAI, Samsara,
+//   Masajes Chamberí, FISIOBARICA and The Organic Spa took 64 asks between
+//   them for 2. KamAI had no yes in 21 and was still asked on 29 Oct, and
+//   Masajes Chamberí was asked 13 more times after writing "No me interesa".
+//   The only resting rule was v37's (three asks, never a reply), and an
+//   auto-reply or a "no" is a reply, so none of them ever rested. A request
+//   went to 6.2 studios on average, and once to 17.
+//   - A studio rests when its last 5 asks hold no yes, or when it has written
+//     us a clear opt-out ("No me interesa", "Baja", "no nos escribáis más")
+//     and has not said yes since. A "No podemos", an auto-reply or any other
+//     reply is not a yes. An ask does not count yet while it is under two
+//     hours old and pending, nor when the studio never answered it because
+//     another studio said yes within two hours (the request was gone before
+//     it had its chance). v37's rule is part of the same check (restInfo).
+//   - Only eligible studios are asked (plan N2): a yes on record, or brought
+//     back by Jordan after he has talked to it. Its partner id in app_secrets
+//     DISPATCH_UNREST (comma separated) is never rested; "id@2026-11-03"
+//     instead gives it a fresh window from that day, so it can rest again.
+//   - At most the first 4 eligible, in the usual order (distance and score,
+//     or a price hunt's price), and never more than 4 asks on one request:
+//     a second wave only fills places the first could not, two at most.
+//   - When nobody is eligible, nobody is asked (no_candidates, with who was
+//     resting and why), and wa-bot tells the customer so.
+//   - A list someone chose (the customer's pick in wa-bot, or Jordan's own)
+//     skips only opt-outs and closed hours: wa-bot has already told the
+//     customer that studio is being asked. Jordan is emailed the picks that
+//     were asked although resting.
+//   - Right before the asks go out the request is read again. A stage that is
+//     no longer open, or a customer who has written "cancel" or "anular"
+//     since the request was made, stops the dispatch and stage_note says why.
+//     Fahad (#121, 29 Oct) wrote "cancel" and four studios were asked five
+//     minutes later.
+//   - A read that fails stops the dispatch and hands the request back to the
+//     sweep, rather than guessing who is resting.
+//   - dry_run lists skippedResting and skippedNoYes, with the reasons.
 //
 // Modes (POST):
 //   { request_id: 42 }              dispatch that request now
@@ -118,6 +156,10 @@
 //  - Nothing is sent outside 09:00-21:00 Madrid; the sweep picks it up later.
 //  - A studio is never asked more than twice in 24h (enforced in SQL).
 //  - A studio is never asked for a day or time its own hours say it is closed.
+//  - A studio that opted out (partners.opted_out_at, or in its own words) is
+//    never asked; one with 5 asks and no yes rests until Jordan brings it back.
+//  - Only studios with a yes on record, or brought back by Jordan, are asked.
+//  - At most 4 studios per request, whatever the waves.
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let OPS_KEY = Deno.env.get("OPS_KEY") || "";
@@ -153,8 +195,18 @@ const DEFAULT_FANOUT = 4;
 const SAMEDAY_FANOUT = 4;
 // v29: how long the first four get before the rest are asked. Jordan set this.
 const WIDEN_AFTER_MS = 20 * 60 * 1000;
-// How many the second wave adds. Four plus six is the whole panel that answers.
-const WIDEN_FANOUT = 6;
+// How many the second wave adds.
+// v49 (Jordan, 31 Oct: "Ask at most the 4 nearest that answer"): two, and
+// only eligible studios. It was six, so a request that went quiet reached ten
+// studios, most of which had never said yes to anyone.
+const WIDEN_FANOUT = 2;
+// v49: hard ceilings whatever the caller asks for. body.fanout used to go up
+// to 10, and one request reached 17 studios across its waves. Four on the
+// whole request is the approved rule (plan N2: "ask at most the 4 nearest
+// eligible studios"), so a second wave only fills places the first left
+// empty.
+const MAX_WAVE = 4;
+const MAX_ASKS_PER_REQUEST = 4;
 
 const OPEN_HOUR = 9;
 const CLOSE_HOUR = 21;
@@ -296,6 +348,20 @@ async function rpc(fn: string, args: Record<string, unknown>) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: H(), body: JSON.stringify(args) });
   const out = await res.json().catch(() => []);
   return Array.isArray(out) ? out : [];
+}
+
+// v49: a setting Jordan can change without a deploy, read the way wa-bot's
+// appSecret reads it: an Edge Function secret wins, else public.app_secrets.
+// Missing is "". Unreadable is null, so the caller can tell "Jordan has not
+// set it" from "we could not see what he set".
+async function appSecret(key: string): Promise<string | null> {
+  const env = Deno.env.get(key);
+  if (env) return env.trim();
+  try {
+    const rows = await sq(`app_secrets?key=eq.${encodeURIComponent(key)}&select=value&limit=1`);
+    if (!Array.isArray(rows)) return null;
+    return rows[0]?.value ? String(rows[0].value).trim() : "";
+  } catch { return null; }
 }
 
 async function logMsg(phone: string, body: string, type = "template") {
@@ -625,19 +691,263 @@ function tooLateReason(r: Record<string, unknown>): string | null {
 // candidate, it is a number we are burning, and every silent template costs a
 // little of the WhatsApp quality rating the whole account runs on.
 const SILENT_LIMIT = 3;
-async function silentIds(ids: string[]): Promise<Set<string>> {
-  const out = new Set<string>();
-  if (!ids.length) return out;
-  const rows = await sq(`request_dispatch?partner_id=in.(${ids.map((x) => encodeURIComponent(x)).join(",")})&sent_at=not.is.null&select=partner_id,replied_at`);
-  const asked = new Map<string, number>();
-  const replied = new Set<string>();
-  for (const x of (Array.isArray(rows) ? rows : []) as any[]) {
-    const pid = String(x.partner_id);
-    asked.set(pid, (asked.get(pid) || 0) + 1);
-    if (x.replied_at) replied.add(pid);
+
+// v49 (Jordan, 31 Oct): "rest a business after 5 asks with no yes, or after it
+// says no; you bring it back after talking to it." v37 rested nobody who
+// mattered: KamAI's auto-reply and Masajes Chamberí's "No me interesa" were
+// both replies. What a studio does with our asks is the measure now, and the
+// v37 rule is one more reason inside the same check. Everything from here to
+// blockedReason is pure, so it can be tested without a database.
+const REST_AFTER_ASKS = 5;
+// An ask this young that is still pending has not had its chance yet.
+const REST_YOUNG_MS = 2 * 3600e3;
+// A yes is stamped a second or two after the message that carried it.
+const SAME_MESSAGE_MS = 60e3;
+type AskRow = Record<string, unknown>;
+const tsOf = (v: unknown) => Date.parse(String(v || "")) || 0;
+// The studio's yes on one ask: it tapped Sí, offered an hour (the one asked or
+// another), named a price, or won the booking. A "No podemos", an auto-reply
+// or any other reply is not a yes. Outcome "no" with an offered hour is the
+// customer turning the studio's offer down, which was still the studio's yes,
+// and customer_answer is only ever written on an offer.
+// v49 review: an hour read into offered_times alone is a yes too. Centro
+// Aloha (#84) wrote "Son 60e la hora a las 18.15h, ya con descuento" and only
+// offered_times was filled.
+function studioSaidYes(x: AskRow): boolean {
+  const has = (v: unknown) => v !== null && v !== undefined && String(v) !== "";
+  return has(x.accepted_at) || has(x.offered_time) || (Array.isArray(x.offered_times) && x.offered_times.length > 0)
+    || has(x.quoted_price) || has(x.customer_answer) || ["accepted", "won"].includes(String(x.outcome || ""));
+}
+// An ask that reached the studio. A send_failed row never did; an offer email
+// (channel email) has no sent_at but did.
+const reachedStudio = (x: AskRow) => !!(x.sent_at || x.replied_at || x.accepted_at || x.offered_time);
+const askAt = (x: AskRow) => tsOf(x.sent_at || x.created_at);
+// When the yes on an ask was given: the tap or the offered hour, else the
+// reply that carried a price or a win.
+function yesTimes(x: AskRow): number[] {
+  const t = [tsOf(x.accepted_at), tsOf(x.offered_at)].filter(Boolean);
+  return t.length ? t : [tsOf(x.replied_at) || askAt(x)];
+}
+// v49 review: an ask another studio answered first. Selvarrosa was stood down
+// 3 minutes after its ask on #89 and 1 minute after on #91 because another
+// studio had said yes; Sinergia38 1 and 2 minutes after on #91 and #96. That
+// is not a studio ignoring us, and it was the only reason both rested. Each
+// ask gets _covered: the first yes from another studio on the same request at
+// or after the ask went out. others: any rows on those requests (the yes
+// rows are picked out here).
+function coverAsks(rows: AskRow[], others: AskRow[]): AskRow[] {
+  const yesBy = new Map<string, Array<{ pid: string; at: number }>>();
+  for (const o of others) {
+    if (!studioSaidYes(o)) continue;
+    const k = String(o.request_id);
+    if (!yesBy.has(k)) yesBy.set(k, []);
+    yesBy.get(k)!.push({ pid: String(o.partner_id), at: Math.min(...yesTimes(o)) });
   }
-  for (const [pid, n] of asked) if (n >= SILENT_LIMIT && !replied.has(pid)) out.add(pid);
+  return rows.map((x) => {
+    const at = askAt(x);
+    const t = (yesBy.get(String(x.request_id)) || [])
+      .filter((y) => y.pid !== String(x.partner_id) && y.at >= at).map((y) => y.at);
+    return t.length ? { ...x, _covered: Math.min(...t) } : x;
+  });
+}
+// How one ask ended, in the reason Jordan reads.
+function askEnding(x: AskRow): string {
+  if (studioSaidYes(x)) return "yes";
+  if (["declined", "no"].includes(String(x.outcome || ""))) return "declined";
+  return x.replied_at ? "replied without a yes" : "no reply";
+}
+// A clear "stop writing to us", in the studio's own words. "Baja" counts only
+// as the whole message ("Baja .\n\nGracias" too) or as "dar(nos) de baja" /
+// "quiero la baja": a masajista "de baja" is on leave, and "bajamos el precio"
+// is an offer. The real ones so far: Masajes Chamberí "No me interesa.
+// Gracias" (5 Sept), Masajes Camino "Baja .\n\nGracias" (6 Sept), Oasis Hammam
+// "BAJA" (8 Sept), Centro Aloha "No me interesa seguir con vosotros" (21
+// Sept), Meissa "no se molesten en escribirnos" (3 Sept).
+// v49 review: "No nos mandes más", "No nos envíen más" and "no me contactes
+// más" match too.
+const OPT_OUT_RE = /\bno (?:me|nos) interesa|\bno estamos interesad|\bda[rd](?:nos|me|le)? de baja\b|\b(?:quiero|queremos|solicito|solicitamos|pido|pedimos) (?:la )?baja\b|^\W*baja\b(?:[\s,.!]*(?:por favor|gracias|please))*\W*$|^\W*stop\W*$|\bno (?:nos |me )?(?:escrib|contact|mand|envi|enví)(?:as|es|áis|ais|éis|eis|an|en)\b(?: \S+)? m[aá]s\b|\bno (?:se molesten|os molest[eé]is) en escribir|\bdej(?:ad|en|a) de (?:escribir|contactar|mandar|enviar)/i;
+// The words that matched, with a little around them so Jordan can judge them.
+function optOutWords(inbound: unknown[]): string | null {
+  for (const b of inbound) {
+    const t = String(b || "").replace(/\s+/g, " ").trim();
+    const m = t ? OPT_OUT_RE.exec(t) : null;
+    if (!m) continue;
+    if (t.length <= 80) return t;
+    // About 25 characters either side, widened to whole words.
+    const a0 = Math.max(0, m.index - 25), z0 = Math.min(t.length, m.index + m[0].length + 25);
+    const a = a0 > 0 ? t.lastIndexOf(" ", a0) + 1 : 0;
+    const z = z0 < t.length && t.indexOf(" ", z0) >= 0 ? t.indexOf(" ", z0) : t.length;
+    return `${a > 0 ? "..." : ""}${t.slice(a, z).trim()}${z < t.length ? "..." : ""}`;
+  }
+  return null;
+}
+// Jordan's DISPATCH_UNREST: partner ids, comma separated (spaces and new lines
+// are forgiven). A bare id is brought back for good. v49 review: "id@YYYY-MM-DD"
+// brings it back from that day, with a fresh window: only asks and messages
+// from then count, so a studio that goes quiet again rests again. A bare id
+// could never rest again, which is how KamAI reached 21 asks without a yes.
+// The day starts at UTC midnight, an hour or two before Madrid's; nothing is
+// sent at night anyway. A date that cannot be read counts as a bare id.
+function parseUnrest(raw: unknown): Map<string, true | number> {
+  const out = new Map<string, true | number>();
+  for (const part of String(raw || "").split(/[\s,;]+/)) {
+    const [id, day] = part.trim().toLowerCase().split("@");
+    if (!id) continue;
+    const since = /^\d{4}-\d{2}-\d{2}$/.test(day || "") ? Date.parse(`${day}T00:00:00Z`) : NaN;
+    out.set(id, Number.isFinite(since) ? since : true);
+  }
   return out;
+}
+const SHORT_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", day: "numeric", month: "short" });
+// eligible: may be asked (plan N2: a yes on record, or brought back by Jordan).
+type RestInfo = { resting: boolean; eligible: boolean; why: string; optOut: boolean; yesEver: boolean; unrested: boolean; last: string[] };
+type InboundMsg = string | { body?: unknown; created_at?: unknown };
+// One studio. rows: every request_dispatch row it has (stamped by coverAsks);
+// inbound: what its number has written to us, as text or { body, created_at };
+// unrest: its DISPATCH_UNREST entry (true for good, a time for "from then").
+function restInfo(rows: AskRow[], inbound: InboundMsg[], unrest: boolean | number = false, now = Date.now()): RestInfo {
+  const since = typeof unrest === "number" ? unrest : 0;
+  const yesEver = rows.some(studioSaidYes);
+  const win = since ? rows.filter((x) => askAt(x) >= since) : rows;
+  const asks = win.filter(reachedStudio).sort((a, b) => askAt(b) - askAt(a));
+  const counted = asks.filter((x) => {
+    if (studioSaidYes(x)) return true;
+    if (String(x.outcome || "") === "pending" && now - askAt(x) < REST_YOUNG_MS) return false;
+    const cov = Number(x._covered) || 0;
+    return !(!x.replied_at && cov && cov - askAt(x) < REST_YOUNG_MS);
+  });
+  const lastN = counted.slice(0, REST_AFTER_ASKS);
+  const base = { optOut: false, yesEver, unrested: unrest !== false, last: lastN.map(askEnding) };
+  const awake = { ...base, resting: false, eligible: yesEver || unrest !== false, why: "" };
+  if (unrest === true) return awake;
+  // An opt-out the studio has since gone back on with a yes is not one: "No
+  // nos interesa hacer descuento, pero tenemos hueco a las 17:00" is the
+  // likeliest answer to the 10% ask, and it carries its own yes.
+  const yesLast = Math.max(0, ...rows.filter(studioSaidYes).map((x) => Math.max(...yesTimes(x))));
+  const said = inbound.map((m) => typeof m === "string" ? { body: m, at: 0 } : { body: m?.body, at: tsOf(m?.created_at) })
+    .filter((m) => !(since && m.at && m.at < since) && !(m.at && yesLast && yesLast >= m.at - SAME_MESSAGE_MS));
+  const words = optOutWords(said.map((m) => m.body));
+  if (words) return { ...base, resting: true, eligible: false, optOut: true, why: `wrote "${words}"` };
+  if (lastN.length >= REST_AFTER_ASKS && !lastN.some(studioSaidYes)) {
+    const n = new Map<string, number>();
+    for (const e of base.last) n.set(e, (n.get(e) || 0) + 1);
+    const from = askAt(lastN[lastN.length - 1]);
+    return { ...base, resting: true, eligible: false, why: `last ${REST_AFTER_ASKS} asks with no yes${from ? ` since ${SHORT_DAY.format(new Date(from))}` : ""} (${[...n].map(([e, k]) => `${k} ${e}`).join(", ")})` };
+  }
+  const sent = counted.filter((x) => !!x.sent_at).length;
+  if (sent >= SILENT_LIMIT && !win.some((x) => !!x.replied_at)) return { ...base, resting: true, eligible: false, why: `${sent} asks and never a reply` };
+  return awake;
+}
+// Who is asked, in the order the candidates came in (distance and score, or a
+// price hunt's price), at most cap. Only eligible studios; the others are
+// reported as resting (with restInfo's reason) or as having no yes on record.
+// named: a list someone chose (the customer's pick in wa-bot, or Jordan's
+// own). wa-bot has already told the customer it is asking those studios, so
+// only an opt-out is skipped, and askedAnyway names the picks that are resting
+// or not eligible, for Jordan. v49 review: when nobody is eligible nobody is
+// asked; there is no fallback to the least bad.
+function planAsks<C extends { id: string }>(cands: C[], info: Map<string, RestInfo>, o: { cap: number; named?: boolean }): { ask: C[]; resting: C[]; noYes: C[]; askedAnyway: C[] } {
+  const inf = (c: C) => info.get(String(c.id));
+  const cap = Math.max(0, Math.floor(o.cap));
+  if (o.named) {
+    const ask = cands.filter((c) => !inf(c)?.optOut).slice(0, cap);
+    return { ask, resting: cands.filter((c) => inf(c)?.optOut), noYes: [], askedAnyway: ask.filter((c) => !inf(c)?.eligible) };
+  }
+  return {
+    ask: cands.filter((c) => inf(c)?.eligible).slice(0, cap),
+    resting: cands.filter((c) => inf(c)?.resting),
+    noYes: cands.filter((c) => !inf(c)?.resting && !inf(c)?.eligible),
+    askedAnyway: [],
+  };
+}
+// The stages a request can still be dispatched from. Everything else is over
+// (confirmed, cancelled, dismissed, stale, too_late, no_show) or waiting for a
+// person (needs_review). needs_contact is open: Jordan dispatches it again once
+// it has an email.
+const OPEN_STAGES = new Set(["new", "dispatching", "studio_asked", "studio_replied", "bidding", "offered", "needs_contact"]);
+// v49 review: whole words only, as wa-bot's CANCEL_RE. Without the closing
+// \b, "What is your cancellation policy?", "anulación" and "[tap: cancel_121]"
+// all stopped a request until Jordan stepped in.
+const CUSTOMER_CANCEL_RE = /\b(cancel|cancela|cancelar|cancelamos|cancelo|anula|anular|anulamos|anulo)\b/i;
+// Why a request must not go out after all, or null. customerSaid: what the
+// customer has written to us since the request was made.
+function blockedReason(stage: unknown, customerSaid: unknown[], ignoreWords = false): { why: string; words: boolean } | null {
+  const st = String(stage || "new");
+  if (!OPEN_STAGES.has(st)) return { why: `stage is ${st}`, words: false };
+  if (ignoreWords) return null;
+  for (const b of customerSaid) {
+    const t = String(b || "").replace(/\s+/g, " ").trim();
+    if (CUSTOMER_CANCEL_RE.test(t)) return { why: `the customer wrote "${t.slice(0, 80)}"`, words: true };
+  }
+  return null;
+}
+
+// restInfo for each candidate, read in one go: its asks, the yeses of the
+// other studios on those requests, what its number has written to us, and
+// DISPATCH_UNREST. v49 review: null when any of it cannot be read. Guessing
+// would be worse either way: nobody resting asks the studios that should rest,
+// and nobody eligible ends the request with "no studio near you".
+async function restingInfo(cands: Array<{ id: string; wa: string }>): Promise<Map<string, RestInfo> | null> {
+  const out = new Map<string, RestInfo>();
+  if (!cands.length) return out;
+  const ids = [...new Set(cands.map((c) => String(c.id)))];
+  const was = [...new Set(cands.map((c) => digits(c.wa)).filter(Boolean))];
+  // order: PostgREST stops at 1000 rows whatever the limit, so the newest come first.
+  const [rows, msgs, unrestRaw] = await Promise.all([
+    sq(`request_dispatch?partner_id=in.(${ids.map(encodeURIComponent).join(",")})&order=created_at.desc&limit=5000&select=request_id,partner_id,outcome,sent_at,created_at,replied_at,accepted_at,offered_at,offered_time,offered_times,quoted_price,customer_answer`),
+    was.length ? sq(`wa_messages?phone=in.(${was.join(",")})&direction=eq.in&order=created_at.desc&limit=5000&select=phone,body,created_at`) : Promise.resolve([]),
+    appSecret("DISPATCH_UNREST"),
+  ]);
+  if (!Array.isArray(rows)) { console.log("[dispatch] resting: could not read asks", String(rows).slice(0, 200)); return null; }
+  if (!Array.isArray(msgs)) { console.log("[dispatch] resting: could not read studio messages", String(msgs).slice(0, 200)); return null; }
+  if (unrestRaw === null) { console.log("[dispatch] resting: could not read DISPATCH_UNREST"); return null; }
+  const reqIds = [...new Set((rows as AskRow[]).map((x) => Number(x.request_id)).filter((n) => Number.isFinite(n) && n > 0))];
+  const others = reqIds.length
+    ? await sq(`request_dispatch?request_id=in.(${reqIds.join(",")})&or=(accepted_at.not.is.null,offered_time.not.is.null,offered_times.not.is.null,quoted_price.not.is.null,customer_answer.not.is.null,outcome.in.(accepted,won))&limit=5000&select=request_id,partner_id,outcome,sent_at,created_at,replied_at,accepted_at,offered_at,offered_time,offered_times,quoted_price,customer_answer`)
+    : [];
+  if (!Array.isArray(others)) { console.log("[dispatch] resting: could not read the other studios' answers", String(others).slice(0, 200)); return null; }
+  const unrest = parseUnrest(unrestRaw);
+  const byPid = new Map<string, AskRow[]>();
+  for (const x of coverAsks(rows as AskRow[], others as AskRow[])) {
+    const k = String(x.partner_id);
+    if (!byPid.has(k)) byPid.set(k, []);
+    byPid.get(k)!.push(x);
+  }
+  const byWa = new Map<string, InboundMsg[]>();
+  for (const m of msgs as AskRow[]) {
+    const k = digits(String(m.phone || ""));
+    if (!byWa.has(k)) byWa.set(k, []);
+    byWa.get(k)!.push({ body: m.body, created_at: m.created_at });
+  }
+  for (const c of cands) {
+    const id = String(c.id);
+    out.set(id, restInfo(byPid.get(id) || [], byWa.get(digits(c.wa)) || [], unrest.get(id.toLowerCase()) ?? false));
+  }
+  return out;
+}
+
+// v49: read the request again right before its asks go out. The sweep and the
+// widen pick requests up a while before they reach this point, and a customer
+// can cancel in between. A request that cannot be read again is not sent now
+// (retry: the claim is released and the sweep tries again in 20 minutes).
+async function dispatchBlocked(r: Record<string, unknown>, ignoreWords: boolean): Promise<{ why: string; words: boolean; retry?: boolean; stage?: string; note?: string } | null> {
+  const fresh = await sq(`whatsapp_requests?id=eq.${Number(r.id)}&select=stage,stage_note,created_at,client_phone&limit=1`);
+  const row = Array.isArray(fresh) && fresh[0] ? fresh[0] : null;
+  if (!row) return { why: "the request could not be read again", words: false, retry: true };
+  const phone = toWa(String(row.client_phone || r.client_phone || ""));
+  const since = String(row.created_at || r.created_at || "");
+  const said = phone && since && !ignoreWords
+    ? await sq(`wa_messages?phone=eq.${phone}&direction=eq.in&created_at=gt.${encodeURIComponent(since)}&order=created_at.asc&limit=200&select=body`)
+    : [];
+  const b = blockedReason(row.stage, (Array.isArray(said) ? said : []).map((m: any) => m?.body), ignoreWords);
+  return b ? { ...b, stage: String(row.stage || ""), note: String(row.stage_note || "") } : null;
+}
+// A line added to stage_note (500 characters at most), keeping the new line
+// whole: the older text is what gets trimmed.
+function appendNote(prev: unknown, add: string): string {
+  const p = String(prev || "").trim();
+  if (!p) return add.slice(0, 500);
+  return `${p.slice(0, Math.max(0, 500 - add.length - 2))}; ${add}`.slice(0, 500);
 }
 
 // v38 (25 Sept): "Hoy" is a word, not a date. It means the day the customer
@@ -1322,7 +1632,7 @@ function askedWhere(studios: Array<{ area: string | null; km: number | null }>, 
   return "";
 }
 
-async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean; introIds?: string[]; serviceBy?: Record<string, string> }) {
+async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean; introIds?: string[]; serviceBy?: Record<string, string>; force?: boolean }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
   // v38: a request for a day that has already been and gone reaches nobody.
@@ -1379,18 +1689,40 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   const reqDay = requestDate(r);
   const isSameDay = /^(today|hoy)$/i.test(String(r.day1 || "").trim())
     || (!!reqDay && reqDay.getTime() === madridToday().getTime());
-  const fanout = isSameDay ? Math.max(opts.fanout, SAMEDAY_FANOUT) : opts.fanout;
+  // v49: four at most in a wave, two in a second wave, four on the whole
+  // request, whatever the caller asked for. Asks that never reached a studio
+  // (send_failed) do not count.
+  const priorRows = await sq(`request_dispatch?request_id=eq.${requestId}&select=partner_id,sent_at,replied_at,accepted_at,offered_time`);
+  const prior = (Array.isArray(priorRows) ? priorRows : []) as AskRow[];
+  const room = Math.max(0, MAX_ASKS_PER_REQUEST - prior.filter(reachedStudio).length);
+  const fanout = Math.min(isSameDay ? Math.max(opts.fanout, SAMEDAY_FANOUT) : opts.fanout, opts.extra ? WIDEN_FANOUT : MAX_WAVE, room);
+  if (fanout <= 0) {
+    console.log(`[dispatch] req=${requestId} already asked ${MAX_ASKS_PER_REQUEST - room} studios, the most one request gets`);
+    return { requestId, sent: 0, reason: "max_asks", asked: MAX_ASKS_PER_REQUEST - room, keepClaim: true };
+  }
+  // v10: never ask the same studio twice for one request. v49: an explicit
+  // partner list on a second wave too. v49 review: on a first wave as well,
+  // apart from a studio the ask never reached (send_failed), which is tried
+  // again. A first wave run twice (dispatched_at cleared, force_dispatch)
+  // used to re-ask every studio, and the insert below put each one back to
+  // pending.
+  const seen = new Set(prior.filter((x) => opts.extra || reachedStudio(x)).map((x) => String(x.partner_id)));
 
   // v7: a price hunt ranks by listed 60 min relaxing price instead of fit and distance.
   // v10: an explicit partner list wins over both.
   let candidates: Candidate[];
   if (opts.partnerIds && opts.partnerIds.length) {
     const ids = opts.partnerIds.map((x) => encodeURIComponent(x)).join(",");
-    const rows = await sq(`partners?id=in.(${ids})&select=id,business_name,neighbourhood,city,whatsapp,phone`);
+    // v49: and never a studio that has opted out. dispatch_candidates leaves
+    // them out already; a named list did not.
+    const rows = await sq(`partners?id=in.(${ids})&opted_out_at=is.null&select=id,business_name,neighbourhood,city,whatsapp,phone`);
+    // v49: in the order the list was given (the customer's own pick first),
+    // not the order the database returned it in.
+    const order = new Map(opts.partnerIds.map((x, i) => [String(x), i]));
     candidates = (Array.isArray(rows) ? rows : []).map((p: any, i: number) => ({
       id: String(p.id), business_name: String(p.business_name || ""), area: p.neighbourhood || p.city || null,
-      wa: toWa(String(p.whatsapp || p.phone || "")), km: null, rank: i + 1, widened: false, score: 0,
-    })).filter((c: Candidate) => c.wa.length >= 9);
+      wa: toWa(String(p.whatsapp || p.phone || "")), km: null, rank: (order.get(String(p.id)) ?? i) + 1, widened: false, score: 0,
+    })).filter((c: Candidate) => c.wa.length >= 9 && !seen.has(c.id)).sort((a: Candidate, b: Candidate) => a.rank - b.rank);
     // v40: the studios the customer picked (offer-first) came from the same
     // ranking, so their distance is in it. Read only; nothing else changes.
     if (area && candidates.length) {
@@ -1404,15 +1736,13 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
     // the ones already asked, so filtering afterwards left nothing and the wave
     // contacted nobody. Ask for the already-asked count on top, then filter,
     // then trim back to the width we actually want.
-    const seen = opts.extra
-      ? new Set(((await sq(`request_dispatch?request_id=eq.${requestId}&select=partner_id`)) as any[] || []).map((x: any) => String(x.partner_id)))
-      : new Set<string>();
-    const want_n = fanout + seen.size;
+    // v49: the whole pool every time (the most each function returns), because
+    // resting, eligibility and closed hours can empty the top of the list.
+    // planAsks trims to the width below.
     candidates = (opts.cheapest
-      ? await rpc("cheapest_candidates", { p_limit: want_n })
-      : await rpc("dispatch_candidates", { p_area: area || null, p_want: want || null, p_limit: want_n })) as Candidate[];
-    // v10: never ask the same studio twice for one request.
-    if (seen.size) candidates = candidates.filter((c) => !seen.has(String(c.id))).slice(0, fanout);
+      ? await rpc("cheapest_candidates", { p_limit: 10 })
+      : await rpc("dispatch_candidates", { p_area: area || null, p_want: want || null, p_limit: 12 })) as Candidate[];
+    candidates = candidates.filter((c) => !seen.has(String(c.id)));
   }
   // v16: never ask a studio its own hours say is closed for that day or time.
   const skippedClosed: string[] = [];
@@ -1426,27 +1756,84 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
       return !why;
     });
   }
-  // v37: rest the studios that have never answered. Never over the last one
-  // standing, because a silent studio still beats asking nobody.
-  const skippedSilent: string[] = [];
-  if (candidates.length > 1) {
-    const silent = await silentIds(candidates.map((x) => String(x.id)));
-    if (silent.size) {
-      const kept = candidates.filter((x) => !silent.has(String(x.id)));
-      if (kept.length) {
-        for (const x of candidates) if (silent.has(String(x.id))) { skippedSilent.push(x.business_name); console.log(`[dispatch] req=${requestId} resting ${x.business_name}, ${SILENT_LIMIT}+ asks and never a reply`); }
-        candidates = kept;
-      }
+  // v37: rest the studios that have never answered.
+  // v49 (Jordan, 31 Oct): rest the ones that never say yes or have told us to
+  // stop, ask only eligible ones (a yes on record, or brought back by Jordan),
+  // in the usual order, and never more than the width (restInfo, planAsks).
+  // A list someone chose keeps its order and skips only opt-outs: wa-bot has
+  // already told the customer those studios are being asked, so Jordan hears
+  // which of them were resting instead. When nobody is eligible, nobody is
+  // asked.
+  const skippedResting: Array<{ name: string; why: string }> = [];
+  const skippedNoYes: string[] = [];
+  const askedResting: Array<{ id: string; name: string; why: string }> = [];
+  let restInfoById = new Map<string, RestInfo>();
+  if (candidates.length) {
+    const info = await restingInfo(candidates);
+    if (!info) {
+      // Handed back to the sweep (no keepClaim), which tries again in 20 minutes.
+      console.log(`[dispatch] req=${requestId} not sent: who is resting could not be read`);
+      return { requestId, sent: 0, reason: "recheck_failed", why: "the studios' past asks or messages could not be read", dryRun: opts.dryRun, skippedClosed };
     }
+    restInfoById = info;
+    const plan = planAsks(candidates, restInfoById, { cap: fanout, named: !!opts.partnerIds?.length });
+    for (const c of plan.resting) {
+      const why = restInfoById.get(String(c.id))?.why || "resting";
+      skippedResting.push({ name: c.business_name, why });
+      console.log(`[dispatch] req=${requestId} resting ${c.business_name}: ${why}`);
+    }
+    for (const c of plan.noYes) skippedNoYes.push(c.business_name);
+    for (const c of plan.askedAnyway) {
+      const why = restInfoById.get(String(c.id))?.why || "no yes on record";
+      askedResting.push({ id: String(c.id), name: c.business_name, why });
+      console.log(`[dispatch] req=${requestId} named on the request, asked although ${why}: ${c.business_name}`);
+    }
+    candidates = plan.ask;
   }
   if (!candidates.length) {
     console.log(`[dispatch] req=${requestId} no reachable studios`);
-    return { requestId, sent: 0, candidates: [], skippedClosed, skippedSilent, reason: "no_candidates" };
+    return { requestId, sent: 0, candidates: [], skippedClosed, skippedResting, skippedNoYes, reason: "no_candidates" };
+  }
+
+  // v49: the request read again right before anything goes out. A stage that
+  // is no longer open, or a customer who has written "cancel" since it was
+  // made, stops it here; stage_note says why and the claim is kept, so the
+  // sweep does not try again every 20 minutes. force_dispatch is Jordan having
+  // read the chat, so it skips the words (never the stage).
+  const blocked = await dispatchBlocked(r, !!opts.force);
+  if (blocked) {
+    console.log(`[dispatch] req=${requestId} not sent: ${blocked.why}`);
+    if (!opts.dryRun && !blocked.retry) {
+      await sq(`whatsapp_requests?id=eq.${requestId}`, {
+        method: "PATCH", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ stage_note: appendNote(blocked.note, `not dispatched: ${blocked.why} (dispatch-studios v49)`) }),
+      });
+      // Words on a request that is still open: wa-bot did not read them as a
+      // cancel, so a person looks.
+      if (blocked.words) {
+        await founderEmail(`Request #${requestId} not sent: the customer may have cancelled`, [
+          `${escH(String(r.first_name || "The customer"))} (${escH(svcEs(r.service_name))} ${escH([r.day1, r.time1].filter(Boolean).join(" "))}) has written to us since making request #${requestId}, and it reads like a cancel: <i>${escH(blocked.why)}</i>.`,
+          `No studio was asked${opts.extra ? " in this second wave" : ""}. The request keeps its stage (${escH(String(blocked.stage || ""))}).`,
+          // v49 review: a second wave must not be re-run as a first one. That
+          // starts from scratch, and the studios already asked would be asked
+          // again and the request's stage and count overwritten.
+          opts.extra
+            ? `If they still want more studios, send dispatch-studios { request_id: ${requestId}, extra: true, force_dispatch: true }. Do not clear dispatched_at: the studios already asked are still waiting on it.`
+            : `If they still want it, clear dispatched_at on #${requestId} and dispatch it again with force_dispatch.`,
+          `All of it: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${requestId}`,
+        ]);
+      }
+    }
+    return { requestId, sent: 0, reason: blocked.retry ? "recheck_failed" : "not_open", why: blocked.why, keepClaim: !blocked.retry, dryRun: opts.dryRun, skippedClosed, skippedResting, skippedNoYes };
   }
 
   const testCustomer = isTestCustomer(r);
   if (opts.dryRun) {
-    return { requestId, sent: 0, dryRun: true, testCustomer, sameDay: isSameDay, fanout, skippedClosed, skippedSilent, requestDate: requestDate(r)?.toISOString().slice(0, 10) || null, candidates: candidates.map((c) => ({ name: c.business_name, area: c.area, km: c.km, wa: c.wa, widened: c.widened, score: c.score })) };
+    return {
+      requestId, sent: 0, dryRun: true, testCustomer, sameDay: isSameDay, fanout, skippedClosed, skippedResting, skippedNoYes, askedResting: askedResting.map(({ name, why }) => ({ name, why })),
+      requestDate: requestDate(r)?.toISOString().slice(0, 10) || null,
+      candidates: candidates.map((c) => ({ name: c.business_name, area: c.area, km: c.km, wa: c.wa, widened: c.widened, score: c.score, saidYesBefore: !!restInfoById.get(String(c.id))?.yesEver, broughtBack: !!restInfoById.get(String(c.id))?.unrested, last5: restInfoById.get(String(c.id))?.last || [] })),
+    };
   }
 
   let sent = 0;
@@ -1461,10 +1848,14 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   // a vosotros"; a single one from the ranking hears only that it is the one
   // being asked.
   const willAsk = candidates.filter((c) => !(testCustomer && !JORDAN_NUMBERS.includes(c.wa)));
-  const askedBefore = opts.extra ? await sq(`request_dispatch?request_id=eq.${requestId}&sent_at=not.is.null&select=partner_id`) : [];
-  const askedSet = new Set<string>([...(Array.isArray(askedBefore) ? askedBefore : []).map((x: any) => String(x.partner_id)), ...willAsk.map((c) => String(c.id))]);
+  const askedBefore = opts.extra ? prior.filter((x) => !!x.sent_at) : [];
+  const askedSet = new Set<string>([...askedBefore.map((x) => String(x.partner_id)), ...willAsk.map((c) => String(c.id))]);
   const several = askedSet.size >= 2;
-  const askLine = several ? SEVERAL_LINE : opts.partnerIds?.length && !opts.extra ? CHOSEN_LINE : ONLY_LINE;
+  // v49: "Os ha elegido a vosotros" only to the studio the customer picked
+  // (the first of the list). Resting or closed hours can leave a backup as the
+  // only one asked, and nobody chose that one.
+  const chosen = !!opts.partnerIds?.length && !opts.extra && willAsk.length === 1 && String(willAsk[0].id) === String(opts.partnerIds[0]);
+  const askLine = several ? SEVERAL_LINE : chosen ? CHOSEN_LINE : ONLY_LINE;
   for (const c of candidates) {
     // A test booking must never reach a real studio.
     if (testCustomer && !JORDAN_NUMBERS.includes(c.wa)) {
@@ -1597,7 +1988,21 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
     });
   }
 
-  return { requestId, sent, studios: sentNames, messages, failed, skippedClosed, testCustomer, name: String(r.first_name || ""), service: `${svcEs(r.service_name)} ${reqDuration(r)} min`, when: [r.day1, r.time1].filter(Boolean).join(" "), area };
+  // v49 review: a named studio asked although it is resting or has no yes on
+  // record. The summary lines below only go out when a copy fails, so Jordan
+  // gets this on its own. Until wa-bot offers studios by the same rule (its
+  // dropSilent is still v37's), a customer can pick one.
+  const restingAsked = askedResting.filter((x) => askedIds.includes(x.id)).map(({ name, why }) => ({ name, why }));
+  if (restingAsked.length && !testCustomer) {
+    await founderEmail(`Request #${requestId}: asked ${restingAsked.length === 1 ? "a named studio" : restingAsked.length + " named studios"} the rest rule would skip`, [
+      `Request #${requestId} (${escH(String(r.first_name || "a customer"))}, ${escH(svcEs(r.service_name))} ${escH([r.day1, r.time1].filter(Boolean).join(" "))}) named these studios: the customer's pick in wa-bot, which has already told them it is asking, or a list you sent. They were asked although they would not have been otherwise:`,
+      ...restingAsked.map((x) => `<b>${escH(x.name)}</b>: ${escH(x.why)}`),
+      `wa-bot still offers studios by the v37 rule (three asks, never a reply), so this can happen again until it uses the v49 one. To bring a studio back after talking to it, add its partner id to app_secrets DISPATCH_UNREST.`,
+      `All studios on this request: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${requestId}`,
+    ]);
+  }
+
+  return { requestId, sent, studios: sentNames, messages, failed, skippedClosed, skippedResting, askedResting: restingAsked, testCustomer, name: String(r.first_name || ""), service: `${svcEs(r.service_name)} ${reqDuration(r)} min`, when: [r.day1, r.time1].filter(Boolean).join(" "), area };
 }
 
 async function handleRequest(req: Request): Promise<Response> {
@@ -1613,7 +2018,10 @@ async function handleRequest(req: Request): Promise<Response> {
 
   // v29: a widen deliberately goes wider than the first wave. The first four
   // are the best match; the second wave is the rest of the panel that is open.
-  const fanout = Math.max(1, Math.min(Number(body.fanout || (body.widen === true ? WIDEN_FANOUT : DEFAULT_FANOUT)), 10));
+  // v49: not any more. A widen is at most two eligible studios, and nothing
+  // is wider than MAX_WAVE (dispatchOne also caps a second wave at
+  // WIDEN_FANOUT and the whole request at MAX_ASKS_PER_REQUEST, four).
+  const fanout = Math.max(1, Math.min(Number(body.fanout || (body.widen === true ? WIDEN_FANOUT : DEFAULT_FANOUT)), MAX_WAVE));
   const dryRun = body.dry_run === true;
   const force = body.force === true;
   const cheapest = body.cheapest === true;
@@ -1750,6 +2158,8 @@ async function handleRequest(req: Request): Promise<Response> {
   } else if (body.widen === true) {
     // v29 (Jordan, 19 Sept): the second wave. A request whose first four
     // studios have said nothing for WIDEN_AFTER_MS gets the rest of the panel.
+    // v49: only the places the first wave left empty, two at most, eligible
+    // studios only (dispatchOne).
     // Three things keep this honest: a request is widened once and never again
     // (widened_at), a request where a studio has already offered a time is left
     // alone because it is in play, and a request whose customer we cannot reach
@@ -1888,13 +2298,25 @@ async function handleRequest(req: Request): Promise<Response> {
         continue;
       }
     }
-    const outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet, introIds, serviceBy });
+    // v49 review: v49 reads five more things between the claim and the first
+    // send. An exception in any of them used to leave dispatched_at set, and
+    // the sweep never looked at the request again. It is a result now, so the
+    // claim below is handed back.
+    let outcome: Record<string, unknown>;
+    try {
+      outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet, introIds, serviceBy, force: forceDispatch });
+    } catch (e) {
+      console.log(`[dispatch] req=${r.id} dispatch failed`, String(e));
+      outcome = { requestId: r.id, sent: 0, reason: "error", error: String(e) };
+    }
     // v35: the claim marked the request dispatched before a single studio was
     // written to. If nothing actually went out (no candidates, every send
     // failed) that mark would hide the request from the sweep forever, so give
     // it back. A test customer keeps the mark on purpose: dispatchOne has
     // already set it so the sweep stops re-picking a request that sends nothing.
-    if (claimed.has(Number(r.id)) && !Number(outcome.sent) && !(outcome as { testCustomer?: boolean }).testCustomer) {
+    // v49: nor a request the recheck stopped (keepClaim): it is closed, or
+    // Jordan has been told the customer may have cancelled.
+    if (claimed.has(Number(r.id)) && !Number(outcome.sent) && !(outcome as { testCustomer?: boolean }).testCustomer && !(outcome as { keepClaim?: boolean }).keepClaim) {
       await sq(`whatsapp_requests?id=eq.${r.id}`, {
         method: "PATCH", headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ dispatched_at: null }),
@@ -1918,7 +2340,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // v5: a founder email a person can read at a glance. v12: it links to the
     // request page in wa-chat, which shows every studio asked and their replies.
     const lines = results.filter((x: any) => x.sent > 0).map((x: any) =>
-      `Request #${x.requestId} · ${x.name || "customer"} · ${x.service} · ${x.when || "time to be set"}${x.area ? " · " + x.area : ""}<br>Asked ${x.sent} studios${cheapest ? " (cheapest listed 60 min first)" : ""}${extra ? " (second wave)" : ""}: ${(x.studios || []).join(", ")}.<br>Each studio was asked for a Massage Club rate; the best offer wins after a 10 minute window (same-day requests go to the first yes). The others are stood down automatically. Nothing to do.${(x.skippedClosed || []).length ? "<br>Not asked, closed by their own hours: " + x.skippedClosed.join(", ") + "." : ""}<br>All studios and their replies: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${x.requestId}`);
+      `Request #${x.requestId} · ${x.name || "customer"} · ${x.service} · ${x.when || "time to be set"}${x.area ? " · " + x.area : ""}<br>Asked ${x.sent} studios${cheapest ? " (cheapest listed 60 min first)" : ""}${extra ? " (second wave)" : ""}: ${(x.studios || []).join(", ")}.<br>Each studio was asked for a Massage Club rate; the best offer wins after a 10 minute window (same-day requests go to the first yes). The others are stood down automatically. Nothing to do.${(x.skippedClosed || []).length ? "<br>Not asked, closed by their own hours: " + x.skippedClosed.join(", ") + "." : ""}${(x.askedResting || []).length ? "<br>Asked because the request named them, although resting: " + x.askedResting.map((s: { name: string; why: string }) => `${escH(s.name)} (${escH(s.why)})`).join("; ") + ". To bring one back after talking to it, add its partner id to app_secrets DISPATCH_UNREST." : ""}${(x.skippedResting || []).length ? "<br>Not asked, resting: " + x.skippedResting.map((s: { name: string; why: string }) => `${escH(s.name)} (${escH(s.why)})`).join("; ") + "." : ""}<br>All studios and their replies: ${SUPABASE_URL}/functions/v1/wa-chat?key=${OPS_KEY}&request=${x.requestId}`);
     let copied = true;
     for (const x of results.filter((x: any) => x.sent > 0) as any[]) {
       for (const m of (x.messages || []) as Array<{ name: string; wa: string; text: string }>) {
