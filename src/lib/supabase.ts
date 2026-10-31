@@ -188,6 +188,9 @@ export async function fetchShops(): Promise<Shop[]> {
     .from("partners")
     .select("*")
     .in("status", ["active", "pending"])
+    // 31 Oct (Jordan: "deploy all of them"): a studio that told us it is not
+    // interested ("No me interesa", "BAJA") is never shown with a Book button.
+    .is("opted_out_at", null)
     .limit(200);
 
   if (error) {
@@ -290,6 +293,7 @@ export async function fetchStudioProfile(partnerId: string): Promise<StudioProfi
     .select("*")
     .eq("id", partnerId)
     .in("status", ["active", "pending"])
+    .is("opted_out_at", null)
     .single();
   if (!partner) return null;
 
@@ -323,6 +327,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     .select("*")
     .eq("id", partnerId)
     .in("status", ["active", "pending"])
+    .is("opted_out_at", null)
     .single();
 
   if (!partner) return null;
