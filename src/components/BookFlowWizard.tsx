@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, MapPin, MessageCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Euro, MapPin, MessageCircle } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
 import { trackFunnel } from "@/lib/funnel";
 import { MADRID_AREAS } from "@/lib/locationConsent";
 import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY, EMAIL_REQUIRED_COPY, isValidEmail } from "@/lib/contactValidation";
 import { DealsConfirmationLine } from "@/components/DealsLink";
-import ExitCaptureBlock from "@/components/ExitCaptureBlock";
 import AccountOfferBlock from "@/components/AccountOfferBlock";
 import { supabase } from "@/lib/supabase";
 import { useLastBooking } from "@/lib/useLastBooking";
@@ -24,6 +23,7 @@ export type PageLang = FlowLang;
 export const BOOK_FLOW_COPY = {
   en: {
     brand: "Massage Club · Madrid",
+    priceRange: "60 min · usually €50 to €85",
     steps: ["Massage", "When", "Where", "Details"],
     step: "Step",
     of: "of",
@@ -103,6 +103,7 @@ export const BOOK_FLOW_COPY = {
   },
   es: {
     brand: "Massage Club · Madrid",
+    priceRange: "60 min · normalmente entre 50 y 85 €",
     steps: ["Masaje", "Cuándo", "Dónde", "Datos"],
     step: "Paso",
     of: "de",
@@ -182,6 +183,7 @@ export const BOOK_FLOW_COPY = {
   },
   fr: {
     brand: "Massage Club · Madrid",
+    priceRange: "60 min · généralement entre 50 et 85 €",
     steps: ["Massage", "Quand", "Où", "Détails"],
     step: "Étape",
     of: "sur",
@@ -261,6 +263,7 @@ export const BOOK_FLOW_COPY = {
   },
   de: {
     brand: "Massage Club · Madrid",
+    priceRange: "60 Min. · meist zwischen 50 und 85 €",
     steps: ["Massage", "Wann", "Wo", "Angaben"],
     step: "Schritt",
     of: "von",
@@ -340,6 +343,7 @@ export const BOOK_FLOW_COPY = {
   },
   it: {
     brand: "Massage Club · Madrid",
+    priceRange: "60 min · di solito tra 50 e 85 €",
     steps: ["Massaggio", "Quando", "Dove", "Dati"],
     step: "Passo",
     of: "di",
@@ -419,6 +423,7 @@ export const BOOK_FLOW_COPY = {
   },
   pt: {
     brand: "Massage Club · Madrid",
+    priceRange: "60 min · normalmente entre 50 e 85 €",
     steps: ["Massagem", "Quando", "Onde", "Dados"],
     step: "Passo",
     of: "de",
@@ -498,6 +503,7 @@ export const BOOK_FLOW_COPY = {
   },
   zh: {
     brand: "Massage Club · 马德里",
+    priceRange: "60 分钟 · 通常 50 至 85 欧元",
     steps: ["按摩", "时间", "地点", "详情"],
     step: "第",
     of: "步，共",
@@ -624,6 +630,22 @@ function Chip({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Price chip (31 Oct). Research found no price anywhere in these four steps,
+ * while price is among the first things people ask the bot. It shows the bot's
+ * own range (wa-bot copy.ts priceInfo: 60 min, 50 to 85 EUR), never a quote:
+ * the exact price comes with the studio's times. Same text as /reserve
+ * (public/go.html). Calm on purpose, so it never reads as a button or a deal.
+ */
+function PriceChip({ label }: { label: string }) {
+  return (
+    <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-sm font-medium text-foreground">
+      <Euro className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+      {label}
+    </p>
   );
 }
 
@@ -1105,6 +1127,7 @@ export default function BookFlowWizard({
       {step === 1 && (
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s1Title}</h2>
+          <PriceChip label={t.priceRange} />
           <div ref={massageRef} className="mt-4 grid gap-3 sm:grid-cols-2">
             {(t.massages.includes(massage as never) || !massage
               ? t.massages
@@ -1150,6 +1173,7 @@ export default function BookFlowWizard({
       {step === 2 && (
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s2Title}</h2>
+          <PriceChip label={t.priceRange} />
           <p className="mt-2 text-sm text-muted-foreground">{t.s2Helper}</p>
 
           {([
@@ -1196,6 +1220,7 @@ export default function BookFlowWizard({
       {step === 3 && (
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s3Title}</h2>
+          <PriceChip label={t.priceRange} />
           <div ref={areaRef} className="mt-4 space-y-3">
             <button
               type="button"
@@ -1249,6 +1274,7 @@ export default function BookFlowWizard({
       {step === 4 && (
         <section className="mt-5">
           <h2 className="font-display text-2xl md:text-3xl text-foreground">{t.s4Title}</h2>
+          <PriceChip label={t.priceRange} />
           <div className="mt-4 space-y-4">
             <div>
               {!peopleOpen ? (
@@ -1393,15 +1419,10 @@ export default function BookFlowWizard({
         </div>
       )}
 
-      {step >= 2 && (
-        <ExitCaptureBlock
-          source="wizard-exit"
-          step={step}
-          want={massage || null}
-          area={area ? (area === t.other ? areaOther || null : area) : null}
-          className="mt-8"
-        />
-      )}
+      {/* The "Email me deals" card (ExitCaptureBlock) used to sit here from step
+          2 on. Removed 31 Oct: 318 views, 1 sign-up, a second email box on the
+          details step, and it promised "a good price" before any studio had
+          confirmed one (discount rule, 5 Sept). */}
     </div>
   );
 }

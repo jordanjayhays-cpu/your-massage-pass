@@ -67,6 +67,12 @@ h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:800;letter-spacing:-.02em
 h1{font-size:clamp(42px,12vw,56px);margin-top:10px}
 h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .sub{color:rgba(38,32,25,.74);font-size:16px;line-height:1.45;margin-bottom:18px}
+/* Price chip (31 Oct): research found not one price on this page, and price is
+   among the first things people ask the bot. It is the bot's own range (wa-bot
+   copy.ts priceInfo, 50 to 85 EUR for 60 min), never a quote: the real price
+   comes with the studio's times. Small and calm, not a button. */
+.price{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin:-6px 0 16px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid var(--line);font-size:14px;font-weight:500;line-height:1.25;color:var(--ink)}
+.price svg{width:15px;height:15px;flex:none;color:var(--clay)}
 
 /* Invite poster */
 .poster{position:relative;border-radius:28px;overflow:hidden;aspect-ratio:1/1.05;background:linear-gradient(160deg,#C96A43 0%,#B85C38 45%,#8E4428 100%);color:#FFF6EE;padding:26px 22px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 24px 60px rgba(120,50,20,.35)}
@@ -185,6 +191,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="kicker" data-t="k1"></div>
       <h2 data-t="q1"></h2>
       <p class="sub" data-t="s1"></p>
+      <p class="price" data-price></p>
       <div class="grid" id="massages"></div>
     </section>
 
@@ -193,6 +200,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="kicker" data-t="k2"></div>
       <h2 data-t="q2"></h2>
       <p class="sub" data-t="s2"></p>
+      <p class="price" data-price></p>
       <div class="list" id="days"></div>
     </section>
 
@@ -201,6 +209,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="kicker" data-t="k3"></div>
       <h2 data-t="q3"></h2>
       <p class="sub" id="timeSub"></p>
+      <p class="price" data-price></p>
       <div class="hours" id="times"></div>
       <button class="skip" id="moreTimes" data-t="moreTimes"></button>
       <button class="cta" id="timeNext" disabled data-t="next" style="display:none"></button>
@@ -211,6 +220,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="kicker" data-t="k5"></div>
       <h2 data-t="q5"></h2>
       <p class="sub" data-t="s5"></p>
+      <p class="price" data-price></p>
       <button class="locate" id="locate"><span>📍</span><span data-t="locate"></span></button>
       <div class="note" id="locNote"></div>
       <div class="label" data-t="orPick"></div>
@@ -222,6 +232,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="kicker" data-t="k6"></div>
       <h2 data-t="q6"></h2>
       <p class="sub" data-t="s6"></p>
+      <p class="price" data-price></p>
       <label class="field"><span data-t="name"></span><input id="name" autocomplete="given-name" autocapitalize="words"></label>
       <label class="field"><span data-t="phone"></span><input id="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000"></label>
       <label class="field"><span data-t="email"></span><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@email.com"></label>
@@ -234,6 +245,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="kicker" data-t="k7"></div>
       <h2 data-t="q7"></h2>
       <p class="sub" data-t="s7"></p>
+      <p class="price" data-price></p>
       <div class="label" data-t="pressure"></div>
       <div class="chips" id="pressure"></div>
       <div class="label" data-t="therapist"></div>
@@ -293,6 +305,7 @@ const T = {
     f2: "Offers on WhatsApp", f2s: "We ask the studios, you pick",
     f3: "Pay at the studio", f3s: "No fee from us, ever",
     start: "Let's go",
+    price: "60 min · usually €50 to €85",
     k1: "1 of 6", q1: "What kind of massage?", s1: "Tap one. You can change it later.",
     k2: "2 of 6", q2: "Which day?", s2: "Pick the day that suits you best.",
     k3: "3 of 6", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", moreTimes: "+ Add another time", oneTime: "Just one time",
@@ -318,6 +331,7 @@ const T = {
     f2: "Ofertas por WhatsApp", f2s: "Preguntamos a los centros, tú eliges",
     f3: "Pagas en el centro", f3s: "Sin comisión, nunca",
     start: "Vamos",
+    price: "60 min · normalmente entre 50 y 85 €",
     k1: "1 de 6", q1: "¿Qué masaje te apetece?", s1: "Toca uno. Puedes cambiarlo luego.",
     k2: "2 de 6", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
     k3: "3 de 6", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
@@ -362,6 +376,8 @@ const AREAS = [
   { n: "Argüelles/Moncloa", lat: 40.4300, lng: -3.7160 }, { n: "Chamartín", lat: 40.4600, lng: -3.6800 },
   { n: "Tetuán", lat: 40.4600, lng: -3.6990 },
 ];
+// The price chip's euro sign (lucide "euro"), drawn once into every [data-price].
+const EURO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg>';
 const PRESSURE = { en: ["Light", "Medium", "Firm"], es: ["Suave", "Media", "Fuerte"] };
 const THERAPIST = { en: [["any", "No preference"], ["female", "Woman"], ["male", "Man"]], es: [["any", "Me da igual"], ["female", "Mujer"], ["male", "Hombre"]] };
 
@@ -396,6 +412,7 @@ function paint() {
   document.documentElement.lang = L;
   $("lang").textContent = L === "es" ? "EN" : "ES";
   document.querySelectorAll("[data-t]").forEach((el) => { const v = T[L][el.dataset.t]; if (typeof v === "string") el.textContent = v; });
+  document.querySelectorAll("[data-price]").forEach((el) => { el.innerHTML = `${EURO}<span>${esc(t("price"))}</span>`; });
 
   $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e">${m.e}</span><b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
   const days = dayList();

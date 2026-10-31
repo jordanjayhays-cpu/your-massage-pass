@@ -136,7 +136,10 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Service", day: "Day", secondChoice: "Second choice", name: "Name", contact: "Contact", price: "Price",
     pickAService: "Pick a service", anyDay: "Any day", anyTime: "Any time", none: "None", notProvided: "Not provided", time: "Time",
     askStudio: "Ask the studio", requestWhatsapp: "Request via WhatsApp", pickAMassage: "Pick a massage",
-    back: "Back", waReassuranceStudios: "Studios already on Massage Club confirm instantly.", browseOtherStudios: "Browse other studios",
+    // waReassuranceStudios (31 Oct): was "Studios already on Massage Club confirm
+    // instantly." Untrue under BOTH PARTIES TAP (10 Oct): nothing is booked until the
+    // studio has the slot and the customer taps Yes. Same fix in every language.
+    back: "Back", waReassuranceStudios: "We ask the studio for you. Nothing is booked until you say yes.", browseOtherStudios: "Browse other studios",
     callStudioLabel: "Call the studio",
     chooseService: "Choose a service", pickDayTime: "Pick a day and time", customizeSession: "Customize your session",
     yourDetails: "Your details", reviewConfirm: "Review and confirm",
@@ -195,7 +198,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Servicio", day: "Día", secondChoice: "Segunda opción", name: "Nombre", contact: "Contacto", price: "Precio",
     pickAService: "Elige un servicio", anyDay: "Cualquier día", anyTime: "Cualquier hora", none: "Ninguno", notProvided: "No indicado", time: "Hora",
     askStudio: "Pregunta al estudio", requestWhatsapp: "Solicitar por WhatsApp", pickAMassage: "Elige un masaje",
-    back: "Atrás", waReassuranceStudios: "Los estudios que ya están en Massage Club confirman al instante.", browseOtherStudios: "Ver otros estudios",
+    back: "Atrás", waReassuranceStudios: "Le preguntamos al estudio por ti. No se reserva nada hasta que digas que sí.", browseOtherStudios: "Ver otros estudios",
     callStudioLabel: "Llamar al estudio",
     chooseService: "Elige un servicio", pickDayTime: "Elige día y hora", customizeSession: "Personaliza tu sesión",
     yourDetails: "Tus datos", reviewConfirm: "Revisa y confirma",
@@ -254,7 +257,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Service", day: "Jour", secondChoice: "Second choix", name: "Nom", contact: "Contact", price: "Prix",
     pickAService: "Choisissez un service", anyDay: "N'importe quel jour", anyTime: "N'importe quelle heure", none: "Aucun", notProvided: "Non fourni", time: "Heure",
     askStudio: "Demander au centre", requestWhatsapp: "Demander via WhatsApp", pickAMassage: "Choisir un massage",
-    back: "Retour", waReassuranceStudios: "Les centres déjà sur Massage Club confirment instantanément.", browseOtherStudios: "Voir d'autres centres",
+    back: "Retour", waReassuranceStudios: "Nous demandons au centre pour vous. Rien n'est réservé tant que vous n'avez pas dit oui.", browseOtherStudios: "Voir d'autres centres",
     callStudioLabel: "Appeler le centre",
     chooseService: "Choisir un service", pickDayTime: "Choisir un jour et une heure", customizeSession: "Personnalisez votre séance",
     yourDetails: "Vos informations", reviewConfirm: "Vérifiez et confirmez",
@@ -313,7 +316,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Service", day: "Tag", secondChoice: "Zweite Wahl", name: "Name", contact: "Kontakt", price: "Preis",
     pickAService: "Service wählen", anyDay: "Egal welcher Tag", anyTime: "Egal welche Zeit", none: "Keine", notProvided: "Nicht angegeben", time: "Uhrzeit",
     askStudio: "Beim Studio nachfragen", requestWhatsapp: "Über WhatsApp anfragen", pickAMassage: "Massage wählen",
-    back: "Zurück", waReassuranceStudios: "Studios, die schon bei Massage Club sind, bestätigen sofort.", browseOtherStudios: "Andere Studios ansehen",
+    back: "Zurück", waReassuranceStudios: "Wir fragen das Studio für dich. Gebucht ist erst, wenn du Ja sagst.", browseOtherStudios: "Andere Studios ansehen",
     callStudioLabel: "Studio anrufen",
     chooseService: "Service wählen", pickDayTime: "Tag und Uhrzeit wählen", customizeSession: "Passe deine Sitzung an",
     yourDetails: "Deine Daten", reviewConfirm: "Überprüfen und bestätigen",
@@ -372,7 +375,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Servizio", day: "Giorno", secondChoice: "Seconda scelta", name: "Nome", contact: "Contatto", price: "Prezzo",
     pickAService: "Scegli un servizio", anyDay: "Qualsiasi giorno", anyTime: "Qualsiasi orario", none: "Nessuno", notProvided: "Non fornito", time: "Ora",
     askStudio: "Chiedi al centro", requestWhatsapp: "Richiedi via WhatsApp", pickAMassage: "Scegli un massaggio",
-    back: "Indietro", waReassuranceStudios: "I centri già su Massage Club confermano all'istante.", browseOtherStudios: "Guarda altri centri",
+    back: "Indietro", waReassuranceStudios: "Chiediamo noi al centro per te. Niente è prenotato finché non dici di sì.", browseOtherStudios: "Guarda altri centri",
     callStudioLabel: "Chiama il centro",
     chooseService: "Scegli un servizio", pickDayTime: "Scegli giorno e ora", customizeSession: "Personalizza la tua sessione",
     yourDetails: "I tuoi dati", reviewConfirm: "Rivedi e confirma",
@@ -431,7 +434,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "Serviço", day: "Dia", secondChoice: "Segunda opção", name: "Nome", contact: "Contacto", price: "Preço",
     pickAService: "Escolhe um serviço", anyDay: "Qualquer dia", anyTime: "Qualquer hora", none: "Nenhum", notProvided: "Não fornecido", time: "Hora",
     askStudio: "Perguntar ao estúdio", requestWhatsapp: "Pedir via WhatsApp", pickAMassage: "Escolher uma massagem",
-    back: "Voltar", waReassuranceStudios: "Os estúdios já no Massage Club confirmam instantaneamente.", browseOtherStudios: "Ver outros estúdios",
+    back: "Voltar", waReassuranceStudios: "Perguntamos ao estúdio por ti. Nada fica reservado até dizeres que sim.", browseOtherStudios: "Ver outros estúdios",
     callStudioLabel: "Ligar ao estúdio",
     chooseService: "Escolhe um serviço", pickDayTime: "Escolhe dia e hora", customizeSession: "Personaliza a tua sessão",
     yourDetails: "Os teus dados", reviewConfirm: "Revê e confirma",
@@ -490,7 +493,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     service: "服务", day: "日期", secondChoice: "第二选择", name: "姓名", contact: "联系方式", price: "价格",
     pickAService: "选择一项服务", anyDay: "任意日期", anyTime: "任意时间", none: "无", notProvided: "未提供", time: "时间",
     askStudio: "询问门店", requestWhatsapp: "通过WhatsApp请求", pickAMassage: "选择一项按摩",
-    back: "返回", waReassuranceStudios: "已加入Massage Club的门店可即时确认。", browseOtherStudios: "浏览其他门店",
+    back: "返回", waReassuranceStudios: "我们替你询问门店。在你确认之前，不会预订任何时段。", browseOtherStudios: "浏览其他门店",
     callStudioLabel: "致电门店",
     chooseService: "选择服务", pickDayTime: "选择日期和时间", customizeSession: "个性化您的疗程",
     yourDetails: "您的信息", reviewConfirm: "查看并确认",
@@ -1107,54 +1110,37 @@ export default function StudioBookingPage() {
 
 
 
+  // Loading and not-found (31 Oct) are light, on the page's own cream. Both
+  // were a near-black #1a0709 screen, and not-found was a dead end ("We could not
+  // find that page") with three competing exits. The Nook, our most visited
+  // studio page, now lands here. One action instead: /reserve asks professional
+  // studios near the visitor. No studio is named on purpose.
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a0709]">
-        <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF6F1" }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#B85C38" }} />
       </div>
     );
   }
 
   if (!profile) {
+    // /reserve is public/go.html (vercel.json rewrite), a plain page outside
+    // the router, so a real link; ?lang=es keeps a Spanish visitor in Spanish.
     const askLang = (i18n.language || "en").slice(0, 2) === "es" ? "es" : "en";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a0709] text-white p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center" style={{ background: "#FAF6F1" }}>
         <div className="max-w-md w-full space-y-6">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">{t("app.shopDetail.notFoundTitle")}</h1>
-            <p className="text-white/60 text-sm">{t("app.shopDetail.notFoundSub")}</p>
+          <div className="space-y-3">
+            <h1 className="font-display text-3xl font-semibold leading-tight" style={{ color: "#2b2b2b" }}>{t("app.shopDetail.notFoundTitle")}</h1>
+            <p className="text-base leading-relaxed" style={{ color: "#3d2b1f" }}>{t("app.shopDetail.notFoundSub")}</p>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              to="/book"
-              className="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-full bg-white text-[#1a0709] font-semibold hover:bg-white/90 transition"
-            >
-              {t("app.shopDetail.bookMassage")}
-            </Link>
-            <Link
-              to="/studios"
-              className="flex-1 inline-flex items-center justify-center px-6 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition"
-            >
-              {t("app.shopDetail.browseStudios")}
-            </Link>
-          </div>
-
-          <WhatsAppAskButton
-            source="not-found"
-            lang={askLang}
-            label={t("app.shopDetail.chatWhatsapp")}
-            renderTrigger={({ open }) => (
-              <button
-                type="button"
-                onClick={open}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition"
-              >
-                <MessageCircle className="h-5 w-5" />
-                {t("app.shopDetail.chatWhatsapp")}
-              </button>
-            )}
-          />
+          <a
+            href={askLang === "es" ? "/reserve?lang=es" : "/reserve"}
+            className="w-full inline-flex items-center justify-center h-12 px-6 rounded-full font-semibold hover:opacity-90 transition"
+            style={{ background: "#B85C38", color: "#fff" }}
+          >
+            {t("app.shopDetail.askStudiosNearMe")}
+          </a>
         </div>
       </div>
     );

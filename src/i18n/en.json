@@ -197,8 +197,9 @@
     },
     "shopDetail": {
       "not_found": "Not found.",
-      "notFoundTitle": "We could not find that page",
-      "notFoundSub": "The link may be old or the studio may have moved.",
+      "notFoundTitle": "We couldn't find that studio.",
+      "notFoundSub": "We can still ask professional massage studios near you.",
+      "askStudiosNearMe": "Ask studios near me",
       "bookMassage": "Book a massage",
       "browseStudios": "Browse studios",
       "chatWhatsapp": "Chat on WhatsApp",

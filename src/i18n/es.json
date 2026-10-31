@@ -197,8 +197,9 @@
     },
     "shopDetail": {
       "not_found": "No encontrado.",
-      "notFoundTitle": "No hemos encontrado esa página",
-      "notFoundSub": "El enlace puede estar antiguo o el estudio haber cambiado.",
+      "notFoundTitle": "No hemos encontrado ese estudio.",
+      "notFoundSub": "Aun así podemos preguntar a estudios de masaje profesionales cerca de ti.",
+      "askStudiosNearMe": "Preguntar a estudios cerca de mí",
       "bookMassage": "Reservar un masaje",
       "browseStudios": "Ver estudios",
       "chatWhatsapp": "Hablar por WhatsApp",
