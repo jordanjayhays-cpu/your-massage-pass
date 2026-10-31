@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
 import { useEffect, useRef, useState } from "react";
-import { Compass, Star, Clock, MapPin, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { Compass, Star, MapPin, Loader2, Maximize2, Minimize2, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useLocationAsk,
@@ -14,9 +14,8 @@ import { MADRID_CENTER } from "../data";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { fetchShops } from "@/lib/supabase";
-import { haversineKm, distanceLabel, walkingDirectionsUrl } from "@/lib/distance";
+import { haversineKm, distanceLabel } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
-import CompareToggle from "./CompareToggle";
 import { isStudioVisited } from "@/lib/visitedStudios";
 import { studioPath } from "@/lib/studioHref";
 
@@ -303,6 +302,8 @@ export default function StudioMap({
         map.addListener("dragend", () => {
           if (allowMoveRef.current) setMoved(true);
         });
+        // A tap on the map itself closes the studio popup (31 Oct).
+        map.addListener("click", () => setSelected(null));
         const markGesture = () => { allowMoveRef.current = true; };
         mapRef.current.addEventListener("pointerdown", markGesture);
         mapRef.current.addEventListener("wheel", markGesture, { passive: true });
@@ -479,7 +480,7 @@ export default function StudioMap({
               : t("app.massageList.nearMadrid")}
           </span>
         </button>
-        {onSearchArea && moved && (
+        {onSearchArea && moved && !selected && (
           <button
             type="button"
             onClick={() => {
@@ -503,86 +504,59 @@ export default function StudioMap({
             </p>
           </div>
         )}
-      </div>
 
-      {showSelectedCard && selected && (
-        <div className="mt-3 bg-card border border-border rounded-3xl shadow-elegant p-4">
-          <div className="flex gap-3">
-            {selected.image && (
+        {/* 31 Oct (Jordan): tapping a pin pops the studio up on the map itself,
+            and the whole card opens the studio. It replaces the card that sat
+            under the map, which a phone often showed off screen. */}
+        {showSelectedCard && selected && (() => {
+          const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
+          const price = lowest60Price(selected);
+          const km = userLoc && typeof selected.lat === "number" && typeof selected.lng === "number"
+            ? haversineKm(userLoc, selected as any)
+            : null;
+          return (
+            <div className="absolute left-3 right-3 bottom-3 z-20">
               <a
                 href={studioPath(selected as any)}
                 onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
-                className="flex-shrink-0"
+                aria-label={lang === "es" ? `Abrir ${selected.studio}` : `Open ${selected.studio}`}
+                className="flex items-center gap-3 rounded-2xl bg-card border border-border shadow-elegant p-2.5 pr-11 hover:border-primary/50 transition"
               >
-                <img src={selected.image} alt={selected.studio} className="h-20 w-20 rounded-2xl object-cover" />
-              </a>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <a
-                    href={studioPath(selected as any)}
-                    onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
-                    className="block font-display text-lg font-semibold text-foreground leading-tight md:hover:text-primary transition-colors"
-                  >
-                    {selected.studio}
-                  </a>
-                  {selected.name && selected.name.trim() !== (selected.studio || "").trim() && (
-                    <p className="text-xs text-primary font-semibold mt-0.5">{selected.name}</p>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setSelected(null)}
-                  className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                {selected.rating != null && (
-                  <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selected.rating}</span>
+                {selected.image && (
+                  <img src={selected.image} alt="" className="h-14 w-14 flex-shrink-0 rounded-xl object-cover" />
                 )}
-                {selected.duration != null && (
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {selected.duration}{t("app.massageList.minutesShort")}</span>
-                )}
-                {selected.district && (
-                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selected.district}</span>
-                )}
-              </div>
-              {userLoc && typeof selected.lat === "number" && typeof selected.lng === "number" && (() => {
-                const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
-                const km = haversineKm(userLoc, selected as any);
-                const dirUrl = walkingDirectionsUrl(selected as any, `${selected.studio} Madrid`, userLoc);
-                return (
-                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
-                    <span>{distanceLabel(km, lang)} {areaName ? originSuffix(areaName, lang) : ""}</span>
-                    {dirUrl && (
-                      <a
-                        href={dirUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary font-semibold hover:underline"
-                      >
-                        Directions / Cómo llegar
-                      </a>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-base font-semibold text-foreground leading-tight truncate">{selected.studio}</p>
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                    {selected.rating != null && (
+                      <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selected.rating}</span>
                     )}
+                    {price != null && (
+                      <span className="font-semibold text-foreground">
+                        {lang === "es" ? `desde ${Math.round(price)} € · 60 min` : `from €${Math.round(price)} · 60 min`}
+                      </span>
+                    )}
+                    {selected.district && (
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selected.district}</span>
+                    )}
+                    {km != null && <span>{distanceLabel(km, lang)}{areaName ? ` ${originSuffix(areaName, lang)}` : ""}</span>}
                   </p>
-                );
-              })()}
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => onSelect?.(selected)}
-                  className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
-                >
-                  {t("app.massageList.bookNow")}
-                </button>
-                <CompareToggle studio={selected as any} size="sm" />
-              </div>
+                </div>
+                <ChevronRight className="h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
+              </a>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label={lang === "es" ? "Cerrar" : "Close"}
+                className="absolute top-2 right-2 h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm"
+              >
+                ×
+              </button>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
+      </div>
+
     </div>
   );
 }
