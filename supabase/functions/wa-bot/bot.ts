@@ -2196,10 +2196,10 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
 
 // v37: urgent things reach Jordan on WhatsApp. Email is where this morning's
 // offers went to die. Short, with a link to the chat.
-// v193: the fake 3460000xxxx test customers never alert Jordan, by phone or by
+// v193: the fake 34600000xxx test customers never alert Jordan, by phone or by
 // email, wherever the alert is raised. Before this only a few call sites knew,
 // so a replay of real conversations on test numbers would have paged him.
-const FAKE_NUM_RE = /(^|\D)3460000\d{4}(\D|$)/;
+const FAKE_NUM_RE = /(^|\D)34600000\d{3}(\D|$)/;
 const aboutFakeCustomer = (...parts: unknown[]) => parts.some((p) => { const t = typeof p === "string" ? p : JSON.stringify(p ?? ""); return FAKE_NUM_RE.test(t) || /\bprueba\b/i.test(t); });
 async function notifyJordanWa(text: string, aboutPhone?: string) {
   if (aboutFakeCustomer(aboutPhone || "", text)) { console.log("[wa] alert about a fake test number, not sent"); return; }
@@ -3531,7 +3531,7 @@ async function readerConfig(): Promise<{ mode: string; model: string }> {
 // v206 (12 Oct, Jordan approved "change 3"): who goes through agent_core.ts.
 // AGENT_CORE in app_secrets (an Edge Function secret wins, as for every
 // appSecret): off, the default and the value for anything missing, empty,
-// unreadable or unknown; test, only the canary's fake 3460000xxxx numbers;
+// unreadable or unknown; test, only the canary's fake 34600000xxx numbers;
 // on, everyone. Read once a minute, like READER.
 let coreModeCache: { mode: CoreMode; at: number } | null = null;
 async function agentCoreMode(): Promise<CoreMode> {
@@ -3654,8 +3654,8 @@ async function readingFor(from: string, text: string, waitMs: number): Promise<R
 async function readerAssist(s: Session, from: string, L: string, text: string, own: string | null): Promise<string[]> {
   try {
     const cfg = await readerConfig();
-    // Fake 3460000xxxx test numbers get assist while the rest is still in shadow.
-    const testNum = /^3460000\d{4}$/.test(digitsOf(from)) && cfg.mode === "shadow";
+    // Fake 34600000xxx test numbers get assist while the rest is still in shadow.
+    const testNum = /^34600000\d{3}$/.test(digitsOf(from)) && cfg.mode === "shadow";
     if (cfg.mode !== "assist" && cfg.mode !== "on" && !testNum) return [];
     const key = `${from}|${text}`;
     const r = await (readings.get(key) || readFor(s, from, text, cfg.model));
@@ -4718,7 +4718,7 @@ function parseReleasedMode(v: unknown): RelMode {
   return x === "on" || x === "test" ? x : "off";
 }
 // Who counts as a test customer for released times: Jordan's own numbers, the
-// canary's fake 3460000xxxx numbers, and CLAUDE.md's test addresses (his
+// canary's fake 34600000xxx numbers, and CLAUDE.md's test addresses (his
 // addresses, the test domains, +mctest/+uitest). Cata and Yi, the friend
 // testers, never see a released time at all, and neither does anyone else the
 // bot already treats as a tester (knownTester).
@@ -4727,7 +4727,7 @@ function parseReleasedMode(v: unknown): RelMode {
 // never opens the test studios to anyone: on a number and address that are
 // not test ones it means "none" (no released times at all).
 const REL_TEST_PHONES = ["15622355063", "34612474827"];
-const REL_CANARY_RE = /^3460000\d{4}$/;
+const REL_CANARY_RE = /^34600000\d{3}$/;
 const REL_FRIEND_EMAIL_RE = /^(cata\.waack@gmail\.com|elon_yilong@student\.ie\.edu|longyi_elon@outlook\.com)$/i;
 const REL_TEST_EMAIL_RE = /^(jordan\.hays@student\.ie\.edu|jordanjayhays@gmail\.com|jordan@massageclub\.io|support@massageclub\.io|jordan@niahconnect\.com)$|@(testing|example|test)\.com$|@placeholder\.local$|\+(mctest|uitest)[^@]*@/i;
 const REL_TEST_NAME_RE = /\b(test|prueba|uitest|mctest)\b/i;
@@ -6558,7 +6558,7 @@ async function chaseOffers(only = ""): Promise<{ chased: number; lapsed: number 
     const phone = digitsOf(String(srow?.phone || ""));
     if (!o || !o.row || !o.sentAt || o.change || !phone || (only && !phone.startsWith(only))) continue;
     // Jordan's own numbers and the friend testers never get a nudge. The fake
-    // 3460000xxxx canary numbers do, so the sweep can be tested end to end.
+    // 34600000xxx canary numbers do, so the sweep can be tested end to end.
     if (TEST_PHONES.includes(phone) || /^86\d*997$/.test(phone)) continue;
     const sent = Date.parse(String(o.sentAt));
     const slot = o.slotAt ? Date.parse(String(o.slotAt)) : NaN;
@@ -6608,7 +6608,7 @@ async function chaseOffers(only = ""): Promise<{ chased: number; lapsed: number 
 // nobody tapped. The row is closed as expired first (that is the guard: only
 // one sweep can win it, and the Yes on the old buttons and on the offer page
 // then says it has gone), the customer hears the truth in their open window,
-// and the studio is told it is free, inside its hours. A fake 3460000xxxx
+// and the studio is told it is free, inside its hours. A fake 34600000xxx
 // canary only ever releases a test partner.
 // v204 review: quiet is a test contact by name or email (CLAUDE.md): the slot
 // is still let go, but nothing is sent to them.
@@ -6668,7 +6668,7 @@ async function lapseOffer(phone: string, o: any, d: any, req: any, L: string, qu
 //     no or nothing to a Monday afternoon and never heard a word. When every
 //     studio said no, a second wave goes first (widenRequest, once per
 //     request); dispatch-studios tells them about that one itself.
-// Jordan's numbers and the friend testers are left out; the fake 3460000xxxx
+// Jordan's numbers and the friend testers are left out; the fake 34600000xxx
 // canary numbers are not, and notifyJordanWa already never pages about those.
 async function watchRequests(only = ""): Promise<{ stuck: number; told: number }> {
   const out = { stuck: 0, told: 0 };
@@ -8166,7 +8166,7 @@ const SOCIOS_PAGE = "https://book.massageclub.io/socios";
 // left open, or a message typed from an old one, must not reach the
 // customer flow.
 const SOCIOS_FALLBACK_RE = /^\s*(?:Hola, Massage Club\. Somos [^\n]{1,160}, (?:un )?(?:negocio|centro) de masajes?\.\s*\n\s*Horas que os ofrecemos \(|Hello, Massage Club\. We are [^\n]{1,160}, a massage (?:business|centre|studio)\.\s*\n\s*Times we offer you \()/;
-const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos por aquí.";
+const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos por aquí.\n\nJordan, de Massage Club";
 // Review fix (17 Oct): the page's other WhatsApp buttons (the result screen's
 // "Escribirnos por WhatsApp" and the footer) open with its hello and no times
 // block (contactHello / contactHello0, es and en). From a number that is not a
@@ -8176,7 +8176,7 @@ const SOCIOS_FALLBACK_ACK = "Recibido, gracias. Lo revisamos y os confirmamos po
 // number it stays an ordinary studio message.
 const SOCIOS_HELLO_RE = /^\s*(?:Hola, Massage Club\. Somos (?:[^\n]{1,160}, (?:un )?(?:negocio|centro) de masajes?|un (?:negocio|centro) de masajes?)\.|Hello, Massage Club\. We are (?:[^\n]{1,160}, a massage (?:business|centre|studio)|a massage (?:business|centre|studio))\.)/;
 // "Thanks for writing to us. We will read it and answer you here."
-const SOCIOS_HELLO_ACK = "Gracias por escribirnos. Lo leemos y os contestamos por aquí.";
+const SOCIOS_HELLO_ACK = "Gracias por escribirnos. Lo leemos y os contestamos por aquí.\n\nJordan, de Massage Club";
 const SOC_STUDIO_CHAT_MS = 2 * 86400e3;
 const SOC_COLS = "id,business_name,slug,status,opted_out_at,whatsapp,phone,email,booking_email,address,neighbourhood,opening_hours,price_from,slots_link_v";
 // Rate limits. Review fix (17 Oct): a signed send counts only against its own
@@ -8320,10 +8320,15 @@ function socPick(p: any): string {
 // preview). Once per studio per 10 minutes per isolate is plenty for the links
 // page; a link preview fetcher runs no script and logs nothing.
 const socViews = new Map<string, number>();
-async function socLogView(pid: string) {
-  if (Date.now() - (socViews.get(pid) || 0) < 10 * 60e3) return;
-  socViews.set(pid, Date.now());
-  await logEvent("system", "socios_view", { partner_id: pid });
+// A/B (Nov 2026): v is the email format the link came in ("t" plain text,
+// "h" HTML), kept in meta.v; any other value is dropped. Jordan's links page
+// reads meta.partner_id only, so it is unchanged.
+async function socLogView(pid: string, via = "") {
+  const v = via === "t" || via === "h" ? via : "";
+  const key = `${pid}:${v}`;
+  if (Date.now() - (socViews.get(key) || 0) < 10 * 60e3) return;
+  socViews.set(key, Date.now());
+  await logEvent("system", "socios_view", { partner_id: pid, ...(v ? { v } : {}) });
 }
 // v217: a studio's own times for its signed page (socTimesView), whether it
 // has accepted the terms (adding times needs them, as the sign-up does), and
@@ -8373,7 +8378,7 @@ async function socPrefill(url: URL): Promise<Record<string, unknown>> {
   if (!partner) return { ok: true, status: "unknown" };
   if (socInactive(partner)) return { ok: true, status: "inactive" };
   if (!signed && String(partner.status || "") !== "active") return { ok: true, status: "unknown" };
-  if (signed && url.searchParams.get("view") === "1") await socLogView(String(partner.id));
+  if (signed && url.searchParams.get("view") === "1") await socLogView(String(partner.id), String(url.searchParams.get("v") || ""));
   const addr = socLine(partner.address), hood = socLine(partner.neighbourhood);
   return {
     ok: true, status: signed ? "signed" : sigBad ? "invalid" : "unsigned",
@@ -9679,7 +9684,7 @@ async function ensureBooking(requestId: number): Promise<string | null> {
     const bookingTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hour12: false }).format(start);
     const name = [req.first_name, req.last_name].filter(Boolean).join(" ").trim() || "WhatsApp customer";
     const phone = digitsOf(req.client_phone || "");
-    // v215: a canary number (3460000xxxx) or a test studio (ZZ Prueba, Aurora
+    // v215: a canary number (34600000xxx) or a test studio (ZZ Prueba, Aurora
     // Test) is a test booking too, so released-time tests never reach the
     // ledger (mc_booking_ledger skips is_test). Real customers at real studios
     // are unaffected.
@@ -10417,12 +10422,12 @@ const handleInner = async (req: Request) => {
     // v46: cron closes bidding windows through here (key-guarded, no Meta payload).
     if (payload?.ops === "settle") {
       if (String(payload.key || "") !== OPS_KEY) return new Response("forbidden", { status: 403 });
-      // v204 review (12 Oct): { ops: "settle", only: "3460000" } is the
+      // v204 review (12 Oct): { ops: "settle", only: "34600000" } is the
       // canary's settle. It runs only the v204 sweeps, and only for the fake
-      // 3460000xxxx numbers, because every sweep here reads every session and
+      // 34600000xxx numbers, because every sweep here reads every session and
       // request in the database: run on wa-bot-canary without it, the code under
       // test would chase, lapse and tell real customers and write to real studios.
-      const only = /^3460000\d{0,4}$/.test(String(payload.only || "")) ? String(payload.only) : "";
+      const only = /^34600000\d{0,3}$/.test(String(payload.only || "")) ? String(payload.only) : "";
       if (only) {
         const released = await releaseHeldOffers(only);
         const offers = await chaseOffers(only);
@@ -10838,7 +10843,7 @@ const handleInner = async (req: Request) => {
       const reqs = await rq.json().catch(() => []);
       for (const r of (Array.isArray(reqs) ? reqs : [])) {
         const ph = digitsOf(r.client_phone);
-        if (!ph || TEST_PHONES.includes(ph) || /^3460000\d{4}$/.test(ph)) continue;
+        if (!ph || TEST_PHONES.includes(ph) || /^34600000\d{3}$/.test(ph)) continue;
         const who = `#${r.id} ${r.first_name || "+" + ph}`;
         // The first dry run flagged Fernando's #67, which he reconfirmed on
         // 9 September and then attended. A watchdog that reports settled
@@ -11054,7 +11059,7 @@ const handleInner = async (req: Request) => {
         if (to) await logMsg(to, "out", line, "status_failed");
         // v174: the 34600000xxx numbers are our own fake test customers; their
         // failures are expected and were buzzing Jordan's phone.
-        if (to && to !== digitsOf(JORDAN_MAIN_NUMBER) && !/^3460000\d{4}$/.test(to)) await notifyJordanWa(`message to +${to} was NOT delivered: ${err.title || err.code || "unknown"}${Number(err.code) === 131047 ? " (24h window closed, only a template reaches them now)" : ""}.`, to);
+        if (to && to !== digitsOf(JORDAN_MAIN_NUMBER) && !/^34600000\d{3}$/.test(to)) await notifyJordanWa(`message to +${to} was NOT delivered: ${err.title || err.code || "unknown"}${Number(err.code) === 131047 ? " (24h window closed, only a template reaches them now)" : ""}.`, to);
       }
       return new Response("OK", { status: 200 });
     }
@@ -11282,8 +11287,8 @@ const handleInner = async (req: Request) => {
     const QUIET_MS = 6 * 60 * 60 * 1000;
     const isFresh = priorLastAt === null;
     const isResumed = priorLastAt !== null && (Date.now() - priorLastAt) > QUIET_MS;
-    // v182: the fake 3460000xxxx numbers used for testing never email Jordan.
-    if ((isFresh || isResumed) && !/^3460000\d{4}$/.test(digitsOf(from))) {
+    // v182: the fake 34600000xxx numbers used for testing never email Jordan.
+    if ((isFresh || isResumed) && !/^34600000\d{3}$/.test(digitsOf(from))) {
       const num = digitsOf(from);
       const firstMsg = text || btnText || (loc ? "[shared their location]" : "[tapped a button]");
       await founderCard(`💬 ${isFresh ? "New chat" : "Back again"}: ${profileName || "+" + num}${ref ? " · from your ad" : ""}`, {
@@ -11586,7 +11591,7 @@ const handleInner = async (req: Request) => {
       await logEvent(from, "voice_failed", { path: voice.path, step: s.step, lang: VL, pinged_before: pinged });
       if (!pinged) {
         const who = s.wa_name || "+" + digitsOf(from);
-        // v204 review: with the number, so a fake 3460000xxxx canary never pages him.
+        // v204 review: with the number, so a fake 34600000xxx canary never pages him.
         if (voice.path) await notifyJordanWa(`Voice note from ${who} could not be transcribed; the bot asked them to type it. Listen: ${SUPABASE_URL}/functions/v1/wa-bot?media=${encodeURIComponent(voice.path)}&sig=${await replySig(digitsOf(from))}`, from);
         else await notifyJordanWa(`Voice note from ${who} could not be transcribed or saved; the bot asked them to type it.`, from);
       }

@@ -25,7 +25,7 @@
 //   CoreCtx, which bot.ts builds (coreCtx()). The replay tests import this file
 //   directly under --experimental-strip-types, so: no enums, no namespaces, no
 //   parameter properties, no decorators.
-// - Behind app_secrets AGENT_CORE: off (default) | test (fake 3460000xxxx
+// - Behind app_secrets AGENT_CORE: off (default) | test (fake 34600000xxx
 //   numbers only) | on (everyone).
 
 // ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ export function parseCoreMode(v: unknown): CoreMode {
 // The canary's fake customers. dispatch-studios' isTestPhone treats the same
 // numbers as test customers, so a test turn can never reach a real studio, and
 // notifyJordanWa drops alerts about them.
-export const CORE_TEST_PHONE_RE = /^3460000\d{4}$/;
+export const CORE_TEST_PHONE_RE = /^34600000\d{3}$/;
 export function coreEligiblePhone(mode: CoreMode, phone: string): boolean {
   const d = String(phone || "").replace(/\D/g, "");
   return mode === "on" ? !!d : mode === "test" ? CORE_TEST_PHONE_RE.test(d) : false;

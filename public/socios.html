@@ -152,7 +152,8 @@
   Developer mode: ?preview=1&dev=1 adds a bar that jumps to every screen and
   every end state without filling anything in. Preview only: nothing is sent.
 
-  No tracking beyond that one "link opened" for a signed link, no external
+  No tracking beyond that one "link opened" for a signed link (with v=t or
+  v=h when the link came in a plain or an HTML email), no external
   JS (only go.html's two Google fonts), nothing saved on page load.
 -->
 <style>
@@ -685,7 +686,10 @@ body.noscroll{overflow:hidden}
       <div class="links" id="doneLinks">
         <button type="button" class="skip" id="more" data-t="more"></button>
         <i aria-hidden="true">·</i>
-        <a class="skip" id="reachWa" data-wa-contact target="_blank" rel="noopener" data-t="askJordan"></a>
+        <!-- «Escribir a Jordan» is Jordan's own inbox (MAIL_TO), not the bot
+             line: from a partner's number the bot reads a message as a studio
+             reply (wa-bot handleStudioReply) and may answer it itself. -->
+        <a class="skip" id="reachWa" href="mailto:jordan@massageclub.io" data-t="askJordan"></a>
       </div>
     </section>
 
@@ -820,12 +824,12 @@ const T = {
     title: "Clientes nuevos, a vuestras horas.",
     host: "Hola, somos Massage Club.",
     hostN: "Hola, {n}. Somos Massage Club.",
-    f1: "Más de 100 clientes nos han escrito",
+    f1: "Más de 100 personas nos han escrito",
     f1s: "Desde septiembre",
     f2: "Os llega todo en español",
     f2s: "Por WhatsApp y email",
-    f3: "Gratis hasta el 31 de diciembre",
-    f3s: "Luego, 5 € + IVA por visita, solo si vienen",
+    f3: "Gratis hasta el 31 de diciembre de 2026",
+    f3s: "Desde el 1 de enero de 2027, 5 € + IVA por visita que os reservemos, solo si el cliente viene",
     start: "Empezar",
     ctaResume: "Seguir donde lo dejasteis",
 
@@ -950,7 +954,7 @@ const T = {
     how3: "En español, con su nombre, teléfono y email.",
     exLbl: "Ejemplo de lo que os llega:",
     priceTitle: "Lo que cuesta",
-    pr1k: "Hasta el 31 de diciembre",
+    pr1k: "Hasta el 31 de diciembre de 2026",
     pr1v: "Gratis",
     pr2k: "Cada visita que os reservemos, desde el 1 de enero de 2027",
     pr2s: "Solo si el cliente viene. IVA = impuesto.",
@@ -962,7 +966,7 @@ const T = {
     cmpCap: "Por la primera visita de un cliente nuevo, en un masaje de 68\u00a0€:",
     cmpThem: "unos 17\u00a0€ + IVA",
     cmpUs: "5\u00a0€ + IVA",
-    cmpSrc: "Treatwell España cobra el 25\u00a0% + IVA de la primera reserva de un cliente nuevo de su marketplace, más una cuota mensual y un contrato de 12 meses.",
+    cmpSrc: "Treatwell España cobra el 25\u00a0% + IVA de la primera reserva de un cliente nuevo de su marketplace, con un contrato de 12 meses.",
     faqTitle: "Preguntas",
     fq1: "¿Tenemos que hablar inglés?",
     fa1: "Para las reservas, no. Hablamos nosotros con el cliente. A vosotros os llega todo en español. No os prometemos que el cliente hable español.",
@@ -1004,12 +1008,12 @@ const T = {
     title: "New customers, at your times.",
     host: "Hi, we're Massage Club.",
     hostN: "Hi, {n}. We're Massage Club.",
-    f1: "More than 100 customers have written to us",
+    f1: "More than 100 people have written to us",
     f1s: "Since September",
     f2: "You get everything in Spanish",
     f2s: "On WhatsApp and by email",
-    f3: "No charge until 31 December",
-    f3s: "Then 5 € + VAT per visit, only if they come",
+    f3: "Free until 31 December 2026",
+    f3s: "From 1 January 2027, 5 € + VAT per visit we book for you, only if the customer comes",
     start: "Start",
     ctaResume: "Carry on where you left off",
 
@@ -1134,7 +1138,7 @@ const T = {
     how3: "In Spanish, with their name, phone and email.",
     exLbl: "Example. It reaches you in Spanish:",
     priceTitle: "What it costs",
-    pr1k: "Until 31 December",
+    pr1k: "Until 31 December 2026",
     pr1v: "No charge",
     pr2k: "Each visit we book for you, from 1 January 2027",
     pr2s: "Only if the customer comes. VAT = tax.",
@@ -1146,7 +1150,7 @@ const T = {
     cmpCap: "For a new customer's first visit, on a 68\u00a0€ massage:",
     cmpThem: "about 17\u00a0€ + VAT",
     cmpUs: "5\u00a0€ + VAT",
-    cmpSrc: "Treatwell Spain charges 25% + VAT of a new client's first marketplace booking, plus a monthly fee and a 12-month contract.",
+    cmpSrc: "Treatwell Spain charges 25% + VAT of a new client's first marketplace booking, with a 12-month contract.",
     faqTitle: "Questions",
     fq1: "Do we have to speak English?",
     fa1: "Not for the bookings. We talk to the customer, and you get everything in Spanish. We can't promise the customer speaks Spanish.",
@@ -1790,6 +1794,7 @@ function paintContact() {
   const name = val("name");
   const hello = name ? t("contactHello", { n: name }) : t("contactHello0");
   document.querySelectorAll("[data-wa-contact]").forEach((a) => { a.href = waLink(hello); });
+  $("reachWa").href = "mailto:" + MAIL_TO + "?subject=" + encodeURIComponent(name ? "Massage Club: " + name : "Massage Club") + "&body=" + encodeURIComponent(hello);
 }
 
 const setText = (id, s) => { const el = $(id); if (el.textContent !== s) el.textContent = s; };
@@ -2743,7 +2748,10 @@ async function loadPartner() {
   try {
     let reached = false;
     try {
-      const qs = "?socios=1&s=" + encodeURIComponent(SLUG) + (SIG_OK ? "&k=" + SIG + (PREVIEW ? "" : "&view=1") : "");
+      // A/B (Nov 2026): the email format the link came in (v=t plain text,
+      // v=h HTML), passed on with the one "link opened". Anything else is dropped.
+      const via = /^[th]$/.test(String(q.get("v") || "")) ? "&v=" + q.get("v") : "";
+      const qs = "?socios=1&s=" + encodeURIComponent(SLUG) + (SIG_OK ? "&k=" + SIG + (PREVIEW ? "" : "&view=1" + via) : "");
       const { ok, j } = await getJson(API + qs, { headers: { Accept: "application/json" } }, 7000);
       if (ok && j && j.ok === true) {
         reached = true;

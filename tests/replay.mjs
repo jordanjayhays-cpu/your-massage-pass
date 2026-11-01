@@ -1782,7 +1782,9 @@ for (const [msg, want, note] of [
   check("review guards", "the voice ping carries the number", /could not be transcribed; the bot asked them to type it\. Listen: [^\n]*`, from\);/.test(botSrc), true, "a fake 3460000xxxx canary paged Jordan");
   check("review guards", "lapse and \"Another time\" notes have a template fallback", (botSrc.match(/await studioNoteSure\(/g) || []).length >= 3 && /body\.studio_note && typeof body\.studio_note === "object"/.test(dsSrc) && /sendStudioNote\(to, String\(n\.text\)/.test(dsSrc), true, "plain text to a studio dies at Meta after 24h");
   check("review guards", "dispatch: a cancelled request is nobody's original", /stage=not\.in\.\(dismissed,cancelled,stale,too_late\)&created_at=gte\.\$\{since24\}/.test(dsSrc), true, "");
-  check("review guards", "the canary's settle only touches fake numbers", /const only = \/\^3460000\\d\{0,4\}\$\/\.test\(String\(payload\.only/.test(botSrc) && /if \(!o \|\| !o\.row \|\| !o\.sentAt \|\| o\.change \|\| !phone \|\| \(only && !phone\.startsWith\(only\)\)\) continue;/.test(botSrc), true, "settle on wa-bot-canary would otherwise sweep every real session");
+  check("review guards", "the canary's settle only touches fake numbers", /const only = \/\^34600000\\d\{0,3\}\$\/\.test\(String\(payload\.only/.test(botSrc) && /if \(!o \|\| !o\.row \|\| !o\.sentAt \|\| o\.change \|\| !phone \|\| \(only && !phone\.startsWith\(only\)\)\) continue;/.test(botSrc), true, "settle on wa-bot-canary would otherwise sweep every real session");
+  check("review guards", "the two automatic studio replies are signed", /const SOCIOS_FALLBACK_ACK = "[^"\n]*\\n\\nJordan, de Massage Club";/.test(botSrc) && /const SOCIOS_HELLO_ACK = "[^"\n]*\\n\\nJordan, de Massage Club";/.test(botSrc), true, "messages to studios are from Jordan, de Massage Club");
+  check("review guards", "the A/B open log keeps only v=t or v=h", /const v = via === "t" \|\| via === "h" \? via : "";/.test(botSrc) && /socLogView\(String\(partner\.id\), String\(url\.searchParams\.get\("v"\) \|\| ""\)\)/.test(botSrc), true, "");
   check("review guards", "dispatch: the \"it ended\" sweep reaches chased rows", /request_dispatch\?outcome=in\.\(pending,accepted\)&created_at=gte/.test(dsSrc), true, "");
 }
 
@@ -1823,15 +1825,15 @@ for (const [msg, want, note] of [
   // 1. The switch. Anything but "test" or "on" is off.
   for (const [v, want] of [["", "off"], [undefined, "off"], ["OFF ", "off"], ["yes", "off"], ["test", "test"], [" On", "on"]]) check("AGENT_CORE", String(v), C.parseCoreMode(v), want, "");
   for (const [mode, ph, want, note] of [
-    ["test", "34600001234", true, "a canary fake number"], ["test", "3460000123", false, "one digit short"],
+    ["test", "34600000234", true, "a canary fake number"], ["test", "3460000023", false, "one digit short"], ["test", "34600004188", false, "a real customer in the old, wider block"],
     ["test", "34612474827", false, "Jordan's own number is not a canary number"], ["test", "15622355063", false, ""],
-    ["on", "34631294370", true, "Hafeez, once it is on"], ["on", "", false, ""], ["off", "34600001234", false, "off is off"],
+    ["on", "34631294370", true, "Hafeez, once it is on"], ["on", "", false, ""], ["off", "34600000234", false, "off is off"],
   ]) check("coreEligiblePhone", `${mode} ${ph}`, C.coreEligiblePhone(mode, ph), want, note);
 
   // 2. Which messages the core takes. Everything here is decided in bot.ts
   // exactly like this (the coreTake block above the clothing gate).
   const AD = "Hi, I'd like to book a massage. I saw you on Facebook.";
-  const takes = (step, text, o = {}) => C.coreTakes({ mode: "test", phone: "34600001234", step, text, jobSeeker: false,
+  const takes = (step, text, o = {}) => C.coreTakes({ mode: "test", phone: "34600000234", step, text, jobSeeker: false,
     offerTimeNamed: step === "await_offer" && !!parseOfferedTime(text) && parseOfferedTime(text) !== "18:00",
     confirmLater: CONFIRM_LATER_RE.test(text), emailOnly: isEmail(text), bareOpener: HI_RE.test(text.trim()) || AD_OPENER_RE.test(text.trim()), adOpener: AD_OPENER_RE.test(text.trim()), ...o }).ok;
   check("coreTakes", "job seeker", takes("await_day", "Estoy buscando trabajo de masaje", { jobSeeker: true }), false, "#91 Manju: the job-seeker gate answers");
@@ -2050,8 +2052,8 @@ for (const [msg, want, note] of [
     };
     return { ctx, log };
   };
-  const sess = (step, data = {}) => ({ phone: "34600001234", step, data: { lang: "en", service: "svc_relax", ...data }, wa_name: "Hafeez Akram" });
-  const turn = (s, text, o = {}) => ({ s, from: "34600001234", L: "en", text, viaVoice: false, founderSaid: null, ackOnly: false, switchMode: "test", ...o });
+  const sess = (step, data = {}) => ({ phone: "34600000234", step, data: { lang: "en", service: "svc_relax", ...data }, wa_name: "Hafeez Akram" });
+  const turn = (s, text, o = {}) => ({ s, from: "34600000234", L: "en", text, viaVoice: false, founderSaid: null, ackOnly: false, switchMode: "test", ...o });
   const ev = (log, name) => log.events.filter((e) => e[0] === name);
 
   // a. Everything said in one message is kept, and the next question is asked once.
@@ -2391,14 +2393,15 @@ for (const [msg, want, note] of [
   for (const [c, want, note] of [
     [{ phone: "15622355063" }, "test", "Jordan, CLAUDE.md test number"],
     [{ phone: "+34 612 474 827" }, "test", "Jordan's business number"],
-    [{ phone: "34600001234" }, "test", "a canary number"],
+    [{ phone: "34600000234" }, "test", "a canary number"],
     [{ phone: "34611222333", email: "ana@example.com" }, "test", "a test domain"],
     [{ phone: "34611222333", email: "jordan+mctest@gmail.com" }, "test", "+mctest"],
     [{ phone: "34611222333", email: "jordan.hays@student.ie.edu" }, "test", "Jordan's student address"],
     [{ phone: "34611222333", name: "Prueba Jordan" }, "none", "review 17 Oct: a profile name alone never opens the test studios"],
     [{ phone: "34611222333", name: "Test" }, "none", "nor a real studio: a test name is held back from both"],
     [{ phone: "15622355063", name: "Ana" }, "test", "a test number with any name"],
-    [{ phone: "34600001234", name: "Prueba" }, "test", "a canary number named Prueba"],
+    [{ phone: "34600000234", name: "Prueba" }, "test", "a canary number named Prueba"],
+    [{ phone: "34600004188" }, "real", "a real customer in the old, wider 3460000xxxx block (18 Sep lead)"],
     [{ phone: "17867276503" }, "none", "Cata, friend tester: never"],
     [{ phone: "34611222333", email: "cata.waack@gmail.com" }, "none", "Cata by email"],
     [{ phone: "8615273855997" }, "none", "Yi, friend tester: never"],
@@ -3240,7 +3243,7 @@ for (const [msg, want, note] of [
   check("socios page", "the fallback only when the save cannot be reached, or the server is busy", /if \(r\.ok && j && j\.ok === true && \(j\.status === "applied" \|\| j\.status === "pending_review"\)\) kind = j\.status;\s*(?:\/\/[^\n]*\n\s*)*else if \(r\.status === 503 \|\| \(j && j\.status === "busy"\)\) kind = "fallback";\s*else if \(r\.status >= 400 && r\.status < 500 && j && j\.ok === false && typeof j\.message === "string" && j\.message\) kind = "refused";/.test(html), true, "a refusal is said under the button; busy (go-live review, 23 Oct) is the WhatsApp and email fallback; run below");
   check("socios page", "email required, with its reason", /id="email"[^>]*required/.test(html) && /errEmailNone/.test(html) && /fEmailHint: "Cada reserva os llega también por email/.test(html), true, "R7");
   check("socios page", "sends the link signature and when it was drawn", /link_sig: SIG_OK \? SIG : null,\s*drawn_at: DRAWN_AT,/.test(html), true, "");
-  check("socios page", "the view is logged only for a signed link and never in preview", /\(SIG_OK \? "&k=" \+ SIG \+ \(PREVIEW \? "" : "&view=1"\) : ""\)/.test(html), true, "");
+  check("socios page", "the view is logged only for a signed link and never in preview", /\(SIG_OK \? "&k=" \+ SIG \+ \(PREVIEW \? "" : "&view=1" \+ via\) : ""\)/.test(html) && /const via = \/\^\[th\]\$\/\.test\(String\(q\.get\("v"\) \|\| ""\)\) \? "&v=" \+ q\.get\("v"\) : "";/.test(html), true, "");
   check("socios page", "the same limits as the server", [(html.match(/const MAX_TIMES = (\d+);/) || [])[1], (botSrc.match(/const SOC_MAX_TIMES = (\d+);/) || [])[1], (html.match(/const LEAD_MIN = (\d+);/) || [])[1]], ["40", "40", "65"], "65: the grid's lead, one hour is release_slots'");
   check("socios page", "Recibido says WhatsApp and email too (review nit)", /nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email/.test(html), true, "");
   check("socios page", "the page holds times to 08:00 to 22:00 like the server", /const DAY_WIN = \[8 \* 60, 22 \* 60\];/.test(html) && /\.map\(\(\[o, c\]\) => \[Math\.max\(o, DAY_WIN\[0\]\), Math\.min\(c, DAY_WIN\[1\]\)\]\)/.test(html), true, "");
