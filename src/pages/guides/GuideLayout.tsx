@@ -80,7 +80,9 @@ export default function GuideLayout({
         )}
       </Helmet>
 
-      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60">
+      {/* Phones and tablets. From 900px SiteHeader and SiteFooter take over
+          (App.tsx, SiteChromeLayout); the guide list below stays. */}
+      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60 desk:hidden">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" className="h-8 w-8 rounded-full" />
@@ -120,7 +122,7 @@ export default function GuideLayout({
               ))}
             </ul>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-6">
+          <p className="text-xs text-muted-foreground text-center mt-6 desk:hidden">
             Massage Club · Madrid <span className="mx-1">·</span>{" "}
             <Link to="/privacy" className="hover:text-primary transition underline-offset-2 hover:underline">
               Privacy

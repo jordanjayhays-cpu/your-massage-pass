@@ -1531,8 +1531,9 @@ function StudioBookingPageInner() {
 
   // Brand bar (2 Nov): wordmark left, account and language right, in one row.
   // The account pill used to float over the wordmark (F6).
+  // From 900px SiteHeader (App.tsx, SiteChromeLayout) replaces this bar.
   const brandBar = () => (
-    <div className="py-2.5 px-4" style={{ background: "#FAF6F1", borderBottom: "1px solid #EADFD2" }}>
+    <div className="py-2.5 px-4 desk:hidden" style={{ background: "#FAF6F1", borderBottom: "1px solid #EADFD2" }}>
       <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3">
       <Link to="/studios" className="flex min-w-0 items-center gap-2" aria-label="Massage Club">
         <img src="/brand/mc-avatar-terracotta.png" alt="" width={26} height={26} className="rounded-full flex-shrink-0" />
@@ -1946,7 +1947,7 @@ function StudioBookingPageInner() {
             </div>
 
             {/* RIGHT: the request panel (sticky on desktop) */}
-            <div ref={hoPanelRef} className="mt-6 min-[900px]:mt-0 min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
+            <div ref={hoPanelRef} className="mt-6 min-[900px]:mt-0 min-[900px]:sticky min-[900px]:top-20 text-left scroll-mt-4">
               <Stepper steps={pickCopy(HANDOFF_STEPS_COPY, lang)} current={hoStep} maxReached={hoSentTo ? 0 : hoMaxStep} onGo={(n) => hoGo(n)} />
               {/* One actionable button at a time: the sticky bar hides its own
                   while the inline one is on screen. */}
@@ -3076,7 +3077,7 @@ function StudioBookingPageInner() {
           </div>
 
           {/* RIGHT: running summary, desktop only */}
-          <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
+          <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-20 space-y-4">
             <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
               <p className="text-xs min-[900px]:text-sm font-bold uppercase tracking-[2px] text-[#C4622D] mb-1 min-[900px]:mb-2">
                 {c.yourBooking}
@@ -3184,14 +3185,14 @@ function StudioBookingPageInner() {
               )}
             </div>
 
-            {/* Massage Club credit */}
-            <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
+            {/* Massage Club credit (phones; SiteFooter from 900px) */}
+            <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px] desk:hidden">
               <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
               <span>{c.poweredBy}</span>
             </div>
 
-            {/* Legal footer */}
-            <div className="flex flex-wrap items-center justify-center gap-x-2 pb-8 text-gray-500 text-xs">
+            {/* Legal footer (phones; SiteFooter from 900px) */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2 pb-8 text-gray-500 text-xs desk:hidden">
               <span>Massage Club · Madrid</span>
               <span>·</span>
               <Link to="/for-studios" className="inline-flex min-h-[44px] items-center hover:text-[#C4622D] transition">{c.forStudios}</Link>
