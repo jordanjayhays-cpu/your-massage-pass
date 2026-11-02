@@ -10,7 +10,7 @@ import { useFlowLang, type FlowLang } from "@/lib/flowLang";
 const COPY = {
   en: {
     title: "How Massage Club works",
-    sub: "Massages in Madrid, booked for you in English. Free to use.",
+    sub: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
     steps: [
       {
         title: "Tell us what you want",
@@ -38,7 +38,7 @@ const COPY = {
   },
   es: {
     title: "Cómo funciona Massage Club",
-    sub: "Masajes en Madrid, reservados por ti en tu idioma. Gratis.",
+    sub: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
     steps: [
       {
         title: "Dinos qué quieres",
@@ -66,7 +66,7 @@ const COPY = {
   },
   fr: {
     title: "Comment fonctionne Massage Club",
-    sub: "Massages à Madrid, réservés pour vous dans votre langue. Gratuit.",
+    sub: "Massages à Madrid. Vous nous écrivez dans votre langue, nous demandons aux centres en espagnol. Gratuit.",
     steps: [
       {
         title: "Dites-nous ce que vous voulez",
@@ -94,7 +94,7 @@ const COPY = {
   },
   de: {
     title: "So funktioniert Massage Club",
-    sub: "Massagen in Madrid, für dich in deiner Sprache gebucht. Kostenlos.",
+    sub: "Massagen in Madrid. Du schreibst uns in deiner Sprache, wir fragen die Studios auf Spanisch. Kostenlos.",
     steps: [
       {
         title: "Sag uns, was du willst",
@@ -122,7 +122,7 @@ const COPY = {
   },
   it: {
     title: "Come funziona Massage Club",
-    sub: "Massaggi a Madrid, prenotati per te nella tua lingua. Gratis.",
+    sub: "Massaggi a Madrid. Ci scrivi nella tua lingua, noi chiediamo ai centri in spagnolo. Gratis.",
     steps: [
       {
         title: "Dicci cosa vuoi",
@@ -150,7 +150,7 @@ const COPY = {
   },
   pt: {
     title: "Como funciona a Massage Club",
-    sub: "Massagens em Madrid, reservadas para ti no teu idioma. Grátis.",
+    sub: "Massagens em Madrid. Dizes-nos no teu idioma, nós perguntamos aos estúdios em espanhol. Grátis.",
     steps: [
       {
         title: "Diz-nos o que queres",
@@ -178,7 +178,7 @@ const COPY = {
   },
   zh: {
     title: "Massage Club 使用方法",
-    sub: "在马德里的按摩，用您的语言为您预订。完全免费。",
+    sub: "马德里的按摩。您用自己的语言告诉我们，我们用西班牙语询问按摩店。完全免费。",
     steps: [
       {
         title: "告诉我们您想要什么",
