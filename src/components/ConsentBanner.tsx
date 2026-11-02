@@ -7,6 +7,8 @@ const KEY = "mc_consent";
 
 /** CSS variable with the bar's height in px while it shows (see src/index.css). */
 const HEIGHT_VAR = "--consent-h";
+/** Room the page keeps free at the bottom while the bar shows (see src/index.css). */
+const ROOM_VAR = "--consent-room";
 
 // Accept grants ad_storage, ad_user_data and ad_personalization as well as
 // analytics, so the copy says plainly that cookies also measure our ads.
@@ -81,22 +83,29 @@ function needsChoice(): boolean {
   }
 }
 
-function setHeightVar(px: number | null) {
+/**
+ * Publishes the bar's size, or clears it (null).
+ * Phones and tablets: --consent-h and --consent-room are both the bar's height,
+ * as before. From 900px the bar is a card in the bottom-left corner: fixed
+ * bottom bars do not need to rise (--consent-h 0), and the page keeps the
+ * card's height plus its 16px gap free (--consent-room).
+ */
+function setHeightVar(el: HTMLElement | null) {
   const root = document.documentElement;
-  if (px == null) root.style.removeProperty(HEIGHT_VAR);
-  else root.style.setProperty(HEIGHT_VAR, `${Math.ceil(px)}px`);
-}
-
-/** Room the bar takes from the bottom of the screen. From 900px it is a card
- *  16px above the bottom edge, so that gap counts too. */
-function roomFor(el: HTMLElement): number {
+  if (!el) {
+    root.style.removeProperty(HEIGHT_VAR);
+    root.style.removeProperty(ROOM_VAR);
+    return;
+  }
   let desk = false;
   try {
     desk = window.matchMedia("(min-width: 900px)").matches;
   } catch {
     /* ignore */
   }
-  return el.offsetHeight + (desk ? 16 : 0);
+  const h = Math.ceil(el.offsetHeight);
+  root.style.setProperty(HEIGHT_VAR, `${desk ? 0 : h}px`);
+  root.style.setProperty(ROOM_VAR, `${desk ? h + 16 : h}px`);
 }
 
 /**
@@ -126,10 +135,10 @@ export default function ConsentBanner() {
       setHeightVar(null);
       return;
     }
-    setHeightVar(roomFor(el));
+    setHeightVar(el);
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => setHeightVar(roomFor(el)));
+      ro = new ResizeObserver(() => setHeightVar(el));
       ro.observe(el);
     }
     return () => {
@@ -169,8 +178,8 @@ export default function ConsentBanner() {
       aria-live="polite"
       aria-label={t.dialogLabel}
       // Phones and tablets: a full-width bar at the bottom. From 900px (desktop
-      // fix F20): a 360px card in the bottom-left corner, z 50. Either way its
-      // room is published as --consent-h, so the page ends above it.
+      // fix F20): a 360px card in the bottom-left corner, z 50. Either way the
+      // page keeps its room free (--consent-room, see setHeightVar).
       className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-card/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_hsl(18_14%_11%/0.18)] desk:inset-x-auto desk:left-4 desk:bottom-4 desk:w-[360px] desk:z-consent desk:rounded-2xl desk:border desk:bg-card desk:backdrop-blur-none desk:shadow-sheet"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >

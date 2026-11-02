@@ -82,11 +82,6 @@
     /* Room that floating buttons keep above the phone tab bar. The tab bar is
        hidden from 900px (BottomNav), so there they sit 20px from the bottom. */
     --tabbar-room: calc(84px + env(safe-area-inset-bottom));
-
-    /* How far the WhatsApp bubble rises while the cookie bar shows. From 900px
-       the bar is a card in the bottom-left corner, so the bubble (bottom right)
-       stays where it is. */
-    --consent-lift: var(--consent-h, 0px);
   }
 
   @media (min-width: 900px) {
@@ -97,7 +92,6 @@
       --fs-h3: 20px;      --lh-h3: 28px;
       --fs-lead: 20px;    --lh-lead: 30px;
       --tabbar-room: 20px;
-      --consent-lift: 0px;
     }
   }
 
@@ -286,16 +280,19 @@ input[type="checkbox"]:disabled {
    ConsentBanner sets --consent-h (its height in px) on <html> while it shows
    and removes it when the visitor chooses; unset, everything falls back to 0.
    Contract: anything fixed to the bottom of the screen sits at
-   bottom: var(--consent-h, 0px), so the bar never covers a button. */
+   bottom: var(--consent-h, 0px), so the bar never covers a button.
+   From 900px the bar is a 360px card in the bottom-left corner: --consent-h
+   is 0 there (fixed bars and the WhatsApp bubble stay put) and the room the
+   card needs goes into --consent-room instead (desktop fix F20). */
 body {
-  padding-bottom: var(--consent-h, 0px);
+  padding-bottom: var(--consent-room, var(--consent-h, 0px));
 }
 
 /* The app shell (MobileFrame) is one screen tall and scrolls inside. While the
    bar shows, it ends just above the bar, so its tab bar and last rows stay
    visible instead of sliding under it. */
 #root .h-screen {
-  height: calc(100vh - var(--consent-h, 0px));
+  height: calc(100vh - var(--consent-room, var(--consent-h, 0px)));
 }
 
 /* ── Desktop type floor (desktop fix F18) ────────────────────────────────────
