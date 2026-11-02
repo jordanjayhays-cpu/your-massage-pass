@@ -207,3 +207,120 @@ export async function studioOffersType(slugOrId: string, type: MassageType): Pro
     return false;
   }
 }
+
+/* ───────────── Studio page: "Other studios nearby" (2 Nov 2026) ───────────── */
+
+/**
+ * Menu rows for two people. "Masaje Relajante Pareja 60 minutos" costs €170
+ * for two; shown next to the €85 single without a word, it reads as the
+ * same massage at double the price (walkthrough F17).
+ */
+export const COUPLE_RE = /pareja|couple|dos personas|\bd[uú]o\b/i;
+/**
+ * Four hands: one client, two therapists. Not "for 2", but also not a price
+ * to quote as the studio's usual 60 minutes.
+ */
+export const FOUR_HANDS_RE = /(?:4|cuatro) ?manos|four[ -]?hands/i;
+
+type PricedService = { name?: string | null; name_en?: string | null; duration?: unknown; price?: unknown };
+
+const svcText = (s: PricedService) => `${s.name ?? ""} ${s.name_en ?? ""}`;
+export const isForTwo = (s: PricedService) => COUPLE_RE.test(svcText(s));
+export const isFourHands = (s: PricedService) => FOUR_HANDS_RE.test(svcText(s));
+
+/**
+ * The studio's own lowest listed price for about an hour (50 to 70 min),
+ * one person, one therapist. null when the menu has no such price, so the
+ * caller falls back to the general "usually €50 to €85".
+ */
+export function sixtyMinFrom(services: PricedService[] | null | undefined): number | null {
+  let min: number | null = null;
+  for (const s of services ?? []) {
+    const d = Number(s.duration);
+    const p = Number(s.price);
+    if (!(d >= 50 && d <= 70) || !(p > 0) || isForTwo(s) || isFourHands(s)) continue;
+    if (min == null || p < min) min = p;
+  }
+  return min;
+}
+
+export type NearbyListedStudio = {
+  id: string;
+  slug: string | null;
+  name: string;
+  neighbourhood: string | null;
+  km: number;
+  /** null when the origin is only a neighbourhood centre, so minutes would be invented. */
+  walkMinutes: number | null;
+  /** "60 min from €X" price, only from the studio's own menu. */
+  from60: number | null;
+};
+
+/**
+ * The listed studios (active or pending, not opted out, with coordinates)
+ * closest to a point, excluding `excludeId`. Without a point, pass the
+ * studio's neighbourhood and the centre of the other studios there is used
+ * instead (no walking time is shown then). Returns [] on any failure.
+ */
+export async function findNearbyStudios(
+  lat: number | null,
+  lng: number | null,
+  excludeId: string,
+  limit = 3,
+  neighbourhood?: string | null,
+): Promise<NearbyListedStudio[]> {
+  try {
+    const { data: partners } = await supabase
+      .from("partners")
+      .select("id, slug, business_name, neighbourhood, latitude, longitude")
+      .in("status", ["active", "pending"])
+      .is("opted_out_at", null)
+      .not("latitude", "is", null)
+      .not("longitude", "is", null)
+      .limit(500);
+    const located = (partners ?? [])
+      .map((p: any) => ({ ...p, la: Number(p.latitude), lo: Number(p.longitude) }))
+      .filter((p: any) => p.id !== excludeId && Number.isFinite(p.la) && Number.isFinite(p.lo));
+    if (!located.length) return [];
+
+    let oLat = lat;
+    let oLng = lng;
+    let approx = false;
+    if (oLat == null || oLng == null || !Number.isFinite(oLat) || !Number.isFinite(oLng)) {
+      const hood = norm(neighbourhood).trim();
+      const same = hood ? located.filter((p: any) => norm(p.neighbourhood).trim() === hood) : [];
+      if (!same.length) return [];
+      oLat = same.reduce((s: number, p: any) => s + p.la, 0) / same.length;
+      oLng = same.reduce((s: number, p: any) => s + p.lo, 0) / same.length;
+      approx = true;
+    }
+
+    const nearest = located
+      .map((p: any) => ({ p, km: haversineKm(oLat as number, oLng as number, p.la, p.lo) }))
+      .sort((a, b) => a.km - b.km)
+      .slice(0, limit);
+
+    const { data: services } = await supabase
+      .from("partner_services")
+      .select("partner_id, name, name_en, duration, price")
+      .in("partner_id", nearest.map((n) => n.p.id));
+    const byPartner = new Map<string, PricedService[]>();
+    for (const s of (services ?? []) as any[]) {
+      const list = byPartner.get(s.partner_id) ?? [];
+      list.push(s);
+      byPartner.set(s.partner_id, list);
+    }
+
+    return nearest.map(({ p, km }) => ({
+      id: p.id,
+      slug: p.slug ?? null,
+      name: p.business_name || "Studio",
+      neighbourhood: p.neighbourhood ?? null,
+      km,
+      walkMinutes: approx ? null : Math.max(1, Math.round((km * 1000) / 80)),
+      from60: sixtyMinFrom(byPartner.get(p.id)),
+    }));
+  } catch {
+    return [];
+  }
+}
