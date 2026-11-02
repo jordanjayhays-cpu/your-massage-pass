@@ -27,7 +27,11 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
   const ready = items.length >= 2;
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 z-50 px-3 pointer-events-none ${className}`}>
+    // Sits above the cookie bar while it shows (--consent-h, set by ConsentBanner; 0 otherwise).
+    <div
+      className={`fixed inset-x-0 z-50 px-3 pointer-events-none ${className}`}
+      style={{ bottom: "var(--consent-h, 0px)" }}
+    >
       <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">

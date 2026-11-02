@@ -36,9 +36,12 @@ export const FILES: string[] = [
   "src/components/DealsLink.tsx",
   "src/components/AccountOfferBlock.tsx",
   "src/app/components/MarketingOptInCard.tsx",
-  // After the UX batch merges, the integrator adds: "index.html",
-  // "public/go.html", "src/app/screens/MassageList.tsx",
-  // "src/components/ConsentBanner.tsx", "src/app/screens/StudioBookingPage.tsx".
+  // Added at integration (ux/batch-1):
+  "index.html",
+  "public/go.html",
+  "src/app/screens/MassageList.tsx",
+  "src/components/ConsentBanner.tsx",
+  "src/app/screens/StudioBookingPage.tsx",
 ];
 
 const EM_EN = /[—–]/;

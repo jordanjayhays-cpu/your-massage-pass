@@ -132,7 +132,7 @@ export default function MyBookings() {
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
           {t("auth.description")}
         </p>
-        <button onClick={() => navigate("/")} className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg">
+        <button onClick={() => navigate("/login")} className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg">
           {t("auth.signIn")}
         </button>
         <button onClick={() => navigate("/studios")} className="mt-3 text-sm text-gray-500 underline">

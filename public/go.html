@@ -350,7 +350,10 @@ const send = (payload) => {
   } catch { /* never block the page */ }
 };
 const BOT = "34613977900";
-let L = (q.get("lang") || (navigator.language || "en")).toLowerCase().startsWith("es") ? "es" : "en";
+// Language: ?lang=, then the language the visitor chose elsewhere on the site
+// (mm-lang, the React app's i18n cache on this origin), then the browser.
+const storedLang = (() => { try { return localStorage.getItem("mm-lang"); } catch { return null; } })();
+let L = (q.get("lang") || storedLang || navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en";
 const track = (event, meta = {}) => send({ event, path: location.pathname, slug: null, partner_slug: null, meta: { path: location.pathname, flow: SRC, lang: L, v: "ds1", ...meta } });
 // The track function keeps the first row per day anyway; this keeps the
 // answer events to one per page load as well.
@@ -543,7 +546,7 @@ const go = (name) => show(ORDER.indexOf(name));
 const advance = (name) => { paint(); setTimeout(() => go(name), 220); };
 
 $("back").onclick = () => show(Math.max(0, cur - 1), true);
-$("lang").onclick = () => { L = L === "es" ? "en" : "es"; paint(); };
+$("lang").onclick = () => { L = L === "es" ? "en" : "es"; try { localStorage.setItem("mm-lang", L); } catch {} paint(); };
 
 $("massages").onclick = (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
