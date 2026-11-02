@@ -2,7 +2,7 @@ import { studioImageFallback } from "@/lib/studioImages";
 import { servicePrimaryName } from "@/lib/serviceName";
 import { findMassageType } from "@/lib/massageTypes";
 import { useTranslation } from "react-i18next";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Search, Star, MapPin, Heart, SlidersHorizontal, Clock, Sparkles, Loader2, Navigation, Compass } from "lucide-react";
 import { MASSAGE_TYPES, MassageType, MADRID_CENTER, distanceKm, type Massage } from "../data";
@@ -29,6 +29,42 @@ import { favouriteKey } from "@/lib/favourites";
 /** Accent and case insensitive compare, so "Chamberi" matches "Chamberí". */
 const norm = (v: string) =>
   v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Where the visitor was in the list when they opened a studio, so Back returns there. */
+const POS_KEY = "mc_studios_pos";
+type ListPos = { scrollY: number; visibleCount: number; q: string; area: string };
+
+/** One language per label. Spanish for Spanish visitors, English otherwise. */
+const COPY = {
+  en: {
+    askUs: "Not sure which studio? Tell us what you want and we'll ask the studios for you.",
+    fewHere: "Few studios here yet. Tell us what you want and we'll ask studios nearby.",
+    askUsLink: "Ask us here",
+    headingMadrid: "Massage studios in Madrid",
+    showDistances: "Show distances",
+    findingYou: "Finding you…",
+    showMore: "Show more",
+    directions: "Directions",
+    areaChip: (a: string) => `Area: ${a} · Clear`,
+    boundsChip: "Showing this area only · Clear",
+    found: (n: number) => (n === 1 ? "1 studio found" : `${n} studios found`),
+    noneFound: "No studios found",
+  },
+  es: {
+    askUs: "¿No sabes qué centro? Dinos qué quieres y preguntamos a los centros por ti.",
+    fewHere: "Todavía hay pocos centros aquí. Dinos qué quieres y preguntamos a centros cercanos.",
+    askUsLink: "Pídelo aquí",
+    headingMadrid: "Centros de masaje en Madrid",
+    showDistances: "Ver distancias",
+    findingYou: "Buscándote…",
+    showMore: "Ver más",
+    directions: "Cómo llegar",
+    areaChip: (a: string) => `Zona: ${a} · Quitar`,
+    boundsChip: "Solo esta zona · Quitar",
+    found: (n: number) => (n === 1 ? "1 centro encontrado" : `${n} centros encontrados`),
+    noneFound: "No hay centros",
+  },
+} as const;
 
 
 export default function MassageList() {
@@ -140,6 +176,54 @@ export default function MassageList() {
 
   const origin = userLoc ?? MADRID_CENTER;
   const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
+  const c = COPY[lang];
+  // The request flow (go.html) for visitors who would rather we ask for them.
+  const requestHref = `/reserve?src=studios${lang === "es" ? "&lang=es" : ""}`;
+
+  // ── Scroll memory: Back from a studio page returns to the same card. ──
+  // This screen scrolls inside its own container (MobileFrame is one screen
+  // tall), so the position is that container's scrollTop, or the window's
+  // when the container does not scroll.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const restoredRef = useRef(false);
+  const [pendingScroll, setPendingScroll] = useState<number | null>(null);
+  const scrollingEl = (): HTMLElement | null => {
+    const el = scrollRef.current;
+    return el && el.scrollHeight > el.clientHeight + 1 ? el : null;
+  };
+  const rememberPosition = () => {
+    try {
+      const el = scrollingEl();
+      const pos: ListPos = { scrollY: el ? el.scrollTop : window.scrollY, visibleCount, q, area: areaParam };
+      sessionStorage.setItem(POS_KEY, JSON.stringify(pos));
+    } catch {
+      /* private mode: Back simply starts at the top */
+    }
+  };
+  useEffect(() => {
+    if (restoredRef.current || shopsLoading || realShops.length === 0) return;
+    restoredRef.current = true;
+    let saved: ListPos | null = null;
+    try {
+      const raw = sessionStorage.getItem(POS_KEY);
+      sessionStorage.removeItem(POS_KEY);
+      saved = raw ? (JSON.parse(raw) as ListPos) : null;
+    } catch {
+      saved = null;
+    }
+    if (!saved || (saved.area || "") !== areaParam) return;
+    if (saved.q) setQ(saved.q);
+    if (saved.visibleCount > 8) setVisibleCount(saved.visibleCount);
+    setPendingScroll(Math.max(0, Number(saved.scrollY) || 0));
+  }, [shopsLoading, realShops.length, areaParam]);
+  useLayoutEffect(() => {
+    if (pendingScroll == null) return;
+    const y = pendingScroll;
+    setPendingScroll(null);
+    const el = scrollingEl();
+    if (el) el.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+    else window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+  }, [pendingScroll]);
 
   const filtered = allShops
     .filter((m) => {
@@ -208,6 +292,7 @@ export default function MassageList() {
     "partner_id" in m && (m as Shop).partner_id ? studioPath(m as Shop) : `/massages/${m.id}`;
 
   const handleBook = (m: Shop | Massage) => {
+    rememberPosition();
     if ("partner_id" in m && (m as Shop).partner_id) {
       navigate(studioPath(m as Shop));
       return;
@@ -220,7 +305,7 @@ export default function MassageList() {
 
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-background">
+    <div ref={scrollRef} className="flex flex-col h-full overflow-y-auto bg-background">
       {/* Top utility bar */}
       <div className="px-5 pt-5 flex items-center justify-between gap-4">
         <ProfileHeaderButton />
@@ -238,19 +323,15 @@ export default function MassageList() {
         </div>
       </div>
 
-      {/* Concierge shortcut */}
+      {/* Concierge shortcut: a full page load of the request flow (go.html). */}
       <div className="px-5 pt-4">
-        <Link
-          to="/book"
+        <a
+          href={requestHref}
           className="flex items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-secondary/50 px-4 py-3 text-sm text-foreground hover:border-primary transition"
         >
-          <span>
-            {i18n.language?.startsWith("es")
-              ? "Sáltate la búsqueda — dinos qué quieres y te lo reservamos."
-              : "Skip the browsing — tell us what you want and we'll book it."}
-          </span>
+          <span>{c.askUs}</span>
           <span aria-hidden className="text-primary">→</span>
-        </Link>
+        </a>
       </div>
 
       {/* Search */}
@@ -278,22 +359,14 @@ export default function MassageList() {
           </div>
 
           {q.trim() !== "" && (
-            <p className="pt-2 pl-1 text-xs text-muted-foreground">
-              {filtered.length === 1
-                ? "1 studio found"
-                : `${filtered.length} studios found`}
-              <span className="text-muted-foreground/70">
-                {" "}· {filtered.length === 1 ? "1 estudio encontrado" : `${filtered.length} estudios encontrados`}
-              </span>
-            </p>
+            <p className="pt-2 pl-1 text-xs text-muted-foreground">{c.found(filtered.length)}</p>
           )}
 
           {searchOpen && debouncedQ.trim() !== "" && (
             <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 bg-white rounded-2xl border border-[#E6DCCF] shadow-lg max-h-[320px] overflow-y-auto">
               {dropdownResults.length === 0 ? (
                 <div className="px-4 py-6 text-center">
-                  <p className="text-sm text-foreground/80">No studios found</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">No hay estudios</p>
+                  <p className="text-sm text-foreground/80">{c.noneFound}</p>
                 </div>
               ) : (
                 dropdownResults.map((m) => {
@@ -334,8 +407,9 @@ export default function MassageList() {
         )}
       </div>
 
-      {/* Quiz entry point — full-width card between search and map */}
-      <div className="px-5 md:px-8 pt-4">
+      {/* Quiz entry point: between search and map from 768px; on phones it
+          follows the studio list (CSS order), so cards come first. */}
+      <div className="order-[5] md:order-none px-5 md:px-8 pt-4">
         <button
           type="button"
           onClick={() => navigate("/app/discovery/quiz")}
@@ -359,14 +433,14 @@ export default function MassageList() {
         </button>
       </div>
 
-      {/* Map header banner — shared component, also used on /app/discovery */}
-      <div className="px-5 pt-5">
-        <BookAgainChip className="mb-3" />
+      {/* Map header banner, shared component, also used on /app/discovery.
+          From 768px it sits above the list; on phones it follows the list.
+          No location sheet opens by itself: "Show distances" asks on a tap. */}
+      <div className="order-[6] md:order-none px-5 pt-5">
         <StudioMap
           shops={realShops}
           heightClass="h-[230px]"
           roundedClass="rounded-3xl"
-          autoAskOnMobile
           highlightedKey={hoverKey}
           onHoverStudio={setHoverKey}
           onSearchArea={setAreaBounds}
@@ -376,54 +450,61 @@ export default function MassageList() {
           }}
           onSelect={(shop) => handleBook(shop)}
         />
-        {areaParam && (
-          <button
-            type="button"
-            onClick={clearAreaParam}
-            className="mt-2 mr-2 inline-flex items-center gap-2 rounded-full border border-primary/50 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
-          >
-            {lang === "es" ? `Zona: ${areaParam} · Quitar` : `Area: ${areaParam} · Clear`}
-          </button>
-        )}
-        {areaBounds && (
-          <button
-            type="button"
-            onClick={() => setAreaBounds(null)}
-            className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-foreground/80 hover:text-primary transition"
-          >
-            Showing this area only · Clear
-            <span className="font-normal text-muted-foreground">/ Solo esta zona · Quitar</span>
-          </button>
-        )}
       </div>
 
-        {/* Studios list */}
-        <div className="px-5 md:px-8 pt-6 pb-28">
+        {/* Studios list: first after the search on phones (order 4). */}
+        <div className="order-[4] md:order-none px-5 md:px-8 pt-6">
+        <BookAgainChip className="mb-3" />
 
         {/* Heading on its own row until the column is wide enough (about 700px)
             to carry the meta actions beside it. */}
         <div className="flex flex-col gap-2 mb-4 min-[1700px]:flex-row min-[1700px]:items-baseline min-[1700px]:justify-between">
-          <h2 className="font-display text-2xl text-foreground">{t("app.massageList.studiosNearYou")}</h2>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 className="font-display text-2xl text-foreground">
+            {userLoc ? t("app.massageList.studiosNearYou") : c.headingMadrid}
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-4">
             {!userLoc && (
               <button
                 onClick={handleShowDistances}
                 disabled={locatingDistances}
-                className="text-[10px] font-bold tracking-[0.12em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1 transition"
+                className="min-h-11 text-xs font-bold tracking-[0.1em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1.5 transition"
               >
-                {locatingDistances ? <Loader2 className="h-3 w-3 animate-spin" /> : <Compass className="h-3 w-3" />}
-                {locatingDistances ? "Locating…" : "Show distances / Ver distancias"}
+                {locatingDistances ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Compass className="h-3.5 w-3.5" />}
+                {locatingDistances ? c.findingYou : c.showDistances}
               </button>
             )}
             <button
               onClick={() => navigate("/app/discovery")}
-              className="text-[10px] font-bold tracking-[0.12em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1 transition"
+              className="min-h-11 text-xs font-bold tracking-[0.1em] uppercase text-foreground/70 hover:text-primary flex items-center gap-1.5 transition"
             >
-              <Sparkles className="h-3 w-3" /> {t("app.massageList.discover")}
+              <Sparkles className="h-3.5 w-3.5" /> {t("app.massageList.discover")}
             </button>
-            <span className="text-[10px] font-bold tracking-[0.12em] text-primary uppercase">{t("app.massageList.foundCount", { count: filtered.length })}</span>
+            <span className="text-xs font-bold tracking-[0.1em] text-primary uppercase">{t("app.massageList.foundCount", { count: filtered.length })}</span>
           </div>
         </div>
+
+        {(areaParam || areaBounds) && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {areaParam && (
+              <button
+                type="button"
+                onClick={clearAreaParam}
+                className="min-h-9 inline-flex items-center gap-2 rounded-full border border-primary/50 bg-card px-3 text-xs font-semibold text-foreground/80 hover:text-primary transition"
+              >
+                {c.areaChip(areaParam)}
+              </button>
+            )}
+            {areaBounds && (
+              <button
+                type="button"
+                onClick={() => setAreaBounds(null)}
+                className="min-h-9 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 text-xs font-semibold text-foreground/80 hover:text-primary transition"
+              >
+                {c.boundsChip}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* All / Saved tabs, so the saved list has somewhere to live */}
         <div className="flex items-center gap-2 mb-4" role="tablist">
@@ -502,7 +583,7 @@ export default function MassageList() {
                     <div className="flex gap-3">
                       <Link
                         to={cardHref(m)}
-                        onClick={(e) => { e.stopPropagation(); }}
+                        onClick={(e) => { e.stopPropagation(); rememberPosition(); }}
                         className="relative h-24 w-24 rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block"
                       >
                         {m.image && (
@@ -522,7 +603,7 @@ export default function MassageList() {
                           <h3 className="font-display text-[17px] font-semibold text-foreground leading-snug min-w-0">
                             <Link
                               to={cardHref(m)}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => { e.stopPropagation(); rememberPosition(); }}
                               className="block line-clamp-2 break-words md:hover:text-primary transition-colors"
                             >
                               {m.studio}
@@ -555,12 +636,15 @@ export default function MassageList() {
                           const typed = findMassageType(svc.name_en, svc.name);
                           const label = typed?.name.en || servicePrimaryName(svc, "");
                           const price = svc?.price ?? (m as any).price;
+                          const minutes = Number(svc?.duration) > 0 ? Number(svc.duration) : null;
                           if (!label) return null;
                           return (
                             <p className="text-xs text-foreground/80 mt-1.5 line-clamp-2 break-words">
                               <span className="font-medium">{label}</span>
                               {price != null && (
-                                <span className="font-semibold text-primary"> · €{price}</span>
+                                <span className="font-semibold text-primary">
+                                  {minutes ? ` · ${minutes} min · €${price}` : ` · €${price}`}
+                                </span>
                               )}
                             </p>
                           );
@@ -580,7 +664,7 @@ export default function MassageList() {
                                   onClick={(e) => e.stopPropagation()}
                                   className="text-primary font-semibold hover:underline"
                                 >
-                                  Directions
+                                  {c.directions}
                                 </a>
                               )}
                             </p>
@@ -605,10 +689,10 @@ export default function MassageList() {
               {filtered.length > visibleCount && (
                 <div className="md:col-span-2 xl:col-span-1 flex justify-center pt-2">
                   <button
-                    onClick={() => setVisibleCount((c) => c + 8)}
-                    className="h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
+                    onClick={() => setVisibleCount((n) => n + 8)}
+                    className="min-h-11 px-8 rounded-full border border-primary text-primary text-xs font-bold tracking-[0.14em] uppercase hover:bg-primary/5 transition"
                   >
-                    Ver más / Show more
+                    {c.showMore}
                   </button>
                 </div>
               )}
@@ -620,12 +704,10 @@ export default function MassageList() {
         {/* Never leave a filtered list looking silent and unresponsive. */}
         {!shopsLoading && !savedOnly && filtered.length < 3 && (areaParam || areaBounds || q.trim()) && (
           <p className="md:col-span-2 xl:col-span-1 text-sm text-muted-foreground text-center py-4">
-            {lang === "es"
-              ? "Todavía hay pocos estudios aquí - dinos qué quieres y te encontramos uno. "
-              : "Few studios here yet - tell us what you want and we will find you one. "}
-            <Link to="/book" className="text-primary font-semibold underline underline-offset-2">
-              {lang === "es" ? "Pídelo aquí" : "Ask us here"}
-            </Link>
+            {c.fewHere}{" "}
+            <a href={requestHref} className="text-primary font-semibold underline underline-offset-2">
+              {c.askUsLink}
+            </a>
           </p>
         )}
 
@@ -633,22 +715,18 @@ export default function MassageList() {
             1 sign-up in 318 views, and it promised "a good price" no studio had
             confirmed (discount rule, 5 Sept). */}
 
-        <div className="pt-8 pb-2 text-center space-y-3">
-          <p className="text-xs text-muted-foreground">
-            <button
-              onClick={() => navigate("/notify")}
-              className="hover:text-primary underline underline-offset-2 transition"
-            >
-              {lang === "es" ? "Recibe ofertas de masajes en Madrid" : "Get massage deals in Madrid"}
-            </button>
-          </p>
-          <button
-            onClick={() => navigate("/partner/login")}
-            className="text-[11px] text-muted-foreground hover:text-primary underline underline-offset-2 transition"
-          >
-            {t("app.massageList.studioCta")}
-          </button>
-        </div>
+      </div>
+
+      {/* Footer: last on phones too, after the quiz and the map. The
+          "Get massage deals" link that sat here was removed: we never promise
+          a deal before a studio confirms one in writing. */}
+      <div className="order-[7] md:order-none px-5 md:px-8 pt-8 pb-28 text-center">
+        <button
+          onClick={() => navigate("/partner/login")}
+          className="min-h-11 text-xs text-muted-foreground hover:text-primary underline underline-offset-2 transition"
+        >
+          {t("app.massageList.studioCta")}
+        </button>
       </div>
 
 
