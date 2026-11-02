@@ -12,6 +12,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Desktop only (900px and up): Outfit, the font of the rest of the site.
+     The media attribute keeps it off phones: not render-blocking there, and
+     no font file is fetched because nothing uses it under 900px. -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" media="(min-width:900px)">
 <!--
   go.html (5 Oct, Jordan): "partiful.com and book.massageclub.io, i want to mix
   these. Aesthetically pleasing to book a massage and simple, while capturing
@@ -32,6 +36,11 @@
   - The sent screen shows the request number and what happens next. The
     WhatsApp button only shows with a phone, because the bot joins a web
     request by its "(#id)" plus the same phone (wa-bot WEB_HANDOFF_RE).
+
+  Desktop (2 Nov, fix F10): from 900px the page has the site header and
+  footer, the flow card on the left and a sticky "What happens next" card on
+  the right, line icons instead of emoji and hover states. Under 900px
+  nothing changes (see the desktop block at the end of the <style>).
 
   Prefill from the URL: ?n=<first name>&p=<phone>&e=<email>&lang=es&src=<where
   the visitor came from>. n, p and e are read once and removed from the
@@ -216,14 +225,251 @@ body{padding-bottom:var(--consent-h,0px)}
 .cbar p{flex:1 1 100%;font-size:13.5px;line-height:1.35}
 .cbar button{flex:1;min-height:44px;border-radius:999px;border:1.5px solid var(--clay-d);color:var(--clay-d);background:#fff;font-weight:700;font-size:14px}
 .cbar a{min-height:44px;display:inline-flex;align-items:center;padding:0 4px;font-size:13px;color:var(--muted);text-decoration:underline}
+
+/* ---------- Desktop (900px and up): a real page, not a phone card ----------
+   Desktop fix F10 (2 Nov). Phones and tablets under 900px keep the layout
+   above exactly: everything below is either inside a min-width:900px query or
+   hidden under 900px. From 900px:
+   - the site header and footer (static copies of the React SiteHeader and
+     SiteFooter: 64px header, one 1120px container with 20px gutters, so the
+     logo, the flow card and the footer share one left edge);
+   - no blobs and no glass, the cream page and white cards;
+   - two columns: the flow card on the left, a sticky "What happens next"
+     card with the price and the trust lines on the right;
+   - line icons instead of emoji, buttons sized to their label, hover states;
+   - the cookie choice as a 360px card in the bottom-left corner (F20).
+   Tokens: design system 3.11. The old names (--ink, --muted, --line, --clay)
+   are pointed at the new values from 900px, so the phone rules above pick
+   them up there and phones stay as they are. */
+:root{
+  --bg:#F7F4F0; --card:#FFFFFF; --sand:#EFE7DD; --brand-tint:#FBF1EB;
+  --action:#A34A22; --action-hover:#8A3D1A; --action-pressed:#74341A;
+  --control:#8F847B; --success:#2F6B3A; --success-tint:#EAF3EC;
+  --shadow-card:0 1px 2px rgb(33 28 26/.06),0 4px 16px -6px rgb(33 28 26/.10);
+  --shadow-sheet:0 24px 60px -24px rgb(33 28 26/.30);
+}
+.sh,.sf,.aside,.ic{display:none}
+/* .page wraps .app (and the desktop aside). Under 900px it is one screen tall,
+   so .app's min-height:100% resolves exactly as it did against <body>. */
+.page{height:100%}
+@media (min-width:900px){
+  :root{
+    --cream:#F7F4F0; --ink:#211C1A; --muted:#6B615B; --line:#E5DDD3; --bad:#B03A2E;
+    --clay:#A34A22; --clay-d:#A34A22;
+    --font:"Outfit","DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  html,body{height:auto}
+  body{min-height:100vh;display:flex;flex-direction:column;background:var(--bg);font-family:var(--font)}
+  .bg{display:none}
+  .e{display:none!important}
+  :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .wrap{width:100%;max-width:1120px;margin:0 auto;padding:0 20px}
+  a{color:inherit}
+
+  /* Site header (copy of src/components/SiteHeader.tsx). */
+  .sh{display:block;position:sticky;top:0;z-index:30;flex:none;height:64px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .sh .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .logo{display:inline-flex;align-items:center;gap:10px;height:44px;padding-right:8px;border-radius:999px;text-decoration:none;color:var(--ink);font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+  /* The avatar loads only here: phones never fetch it. */
+  .logo i{width:32px;height:32px;flex:none;border-radius:50%;background:var(--sand) url(/brand/mc-avatar-terracotta.png) center/cover no-repeat}
+  .logo span{transition:color .2s}
+  .logo:hover span{color:var(--action)}
+  .sh nav{display:flex;align-items:center;gap:4px}
+  .sh ul{list-style:none;padding:0;display:flex;align-items:center;gap:4px}
+  .sh ul a{display:inline-flex;align-items:center;height:44px;padding:0 12px;border-radius:999px;text-decoration:none;font-size:15px;line-height:20px;font-weight:500;color:var(--ink);text-underline-offset:6px;text-decoration-thickness:2px;transition:color .2s}
+  .sh ul a:hover{color:var(--action);text-decoration-line:underline}
+  .acct{margin-left:8px;display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--control);background:var(--card);color:var(--ink);text-decoration:none;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;transition:background-color .2s,border-color .2s}
+  .acct:hover{background:var(--brand-tint);border-color:var(--action)}
+  .langs{margin-left:8px;display:inline-flex;align-items:center;height:40px;padding:3px;gap:2px;border:1px solid var(--line);border-radius:999px;background:var(--card)}
+  .langs button{height:32px;min-width:40px;padding:0 10px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:background-color .2s,color .2s}
+  .langs button:hover{color:var(--ink);background:var(--brand-tint)}
+  .langs button[aria-pressed="true"]{background:var(--sand);color:var(--ink)}
+
+  /* Two columns in the 1120px container. */
+  .page{flex:1 0 auto;height:auto;width:100%;max-width:1120px;margin:0 auto;padding:24px 20px 64px;display:grid;grid-template-columns:minmax(0,1fr) clamp(272px,30vw,360px);gap:40px;align-items:start}
+  .app{max-width:none;min-height:0;margin:0;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-card)}
+  .top{height:auto;min-height:0;gap:12px}
+  .mark,.lang{display:none!important}
+  .back{width:40px;height:40px;background:var(--card);border:1px solid var(--control);backdrop-filter:none;-webkit-backdrop-filter:none;color:var(--ink);transition:background-color .2s,border-color .2s}
+  .back:hover{background:var(--brand-tint);border-color:var(--action)}
+  .back .ic{display:block}
+  .back .ic svg{width:20px;height:20px;display:block}
+  .bar{background:var(--sand)}
+  .stage{margin-top:16px}
+  /* The first and the last screen have no Back, so no row for a lone bar. */
+  .page[data-on="massage"] .top,.page[data-on="done"] .top{display:none}
+  .page[data-on="massage"] .stage,.page[data-on="done"] .stage{margin-top:0}
+  /* The price and the trust lines live in the aside; the footer links in the
+     site footer. */
+  .stage .price,#trust,#foot{display:none}
+
+  /* Type: Fraunces 600 headings and Outfit text, as on the React pages. */
+  h1,h2{font-weight:600;line-height:1.15}
+  .hero{font-size:36px;line-height:42px;margin:0 0 8px}
+  h2{font-size:30px;line-height:36px;margin:2px 0 8px}
+  .s1q h2{font-size:24px;line-height:30px;margin:2px 0 14px}
+  .kicker{font-size:13px;line-height:18px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)}
+  .sub{font-size:16px;line-height:24px;color:var(--muted);max-width:62ch;margin-bottom:20px}
+  .how{margin:0 0 20px;text-wrap:pretty}
+  .label{font-size:15px;line-height:20px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink);margin:24px 0 10px}
+
+  /* Massage tiles: two columns, a line icon, sized for a pointer. */
+  .grid{gap:10px}
+  .tile{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-areas:"i t" "i d";column-gap:14px;align-content:center;align-items:center;min-height:72px;padding:12px 40px 12px 14px;border-radius:12px;border:1px solid var(--control);box-shadow:none;transition:background-color .2s,border-color .2s,box-shadow .2s}
+  .tile .ic{grid-area:i;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--sand);color:var(--action);transition:background-color .2s}
+  .tile .ic svg{width:22px;height:22px}
+  .tile b{grid-area:t;font-size:16px;line-height:20px;font-weight:600;align-self:end}
+  :lang(es) .tile b{font-size:16px}
+  .tile small{grid-area:d;font-size:14px;line-height:20px;margin:0;align-self:start}
+  /* Selected: a check in the corner (lucide circle-check, #A34A22). */
+  .tile.sel:after{content:"";position:absolute;top:10px;right:10px;width:20px;height:20px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A34A22' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E") center/contain no-repeat}
+  .tile.sel{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+  .tile.sel .ic,.tile:hover .ic{background:var(--card)}
+
+  /* Days: two columns of rows. */
+  .list#days{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .row{gap:12px;min-height:64px;padding:12px 14px;border-radius:12px;border:1px solid var(--control);box-shadow:none;transition:background-color .2s,border-color .2s,box-shadow .2s}
+  .row .ic{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:50%;background:var(--sand);color:var(--action)}
+  .row .ic svg{width:18px;height:18px}
+  .row b{font-size:16px;line-height:20px;font-weight:600}
+  .row small{font-size:14px;line-height:20px}
+  .row.sel{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+
+  /* Times: four hour cards a row. */
+  .hours{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .hr{border:1px solid var(--control);border-radius:12px;box-shadow:none}
+  .hr .h0 small{display:flex;justify-content:center;color:var(--muted)}
+  .hr .h0 small .ic{display:block}
+  .hr .h0 small .ic svg{width:16px;height:16px;display:block}
+  .hr .h30{border-top-color:var(--line)}
+  .hr button.sel{background:var(--action);color:#fff}
+  .hr button.sel small{color:rgba(255,255,255,.85)}
+  .skip{display:flex;width:fit-content;margin-top:12px;padding:10px 4px;color:var(--action);font-weight:600;text-underline-offset:4px}
+  .skip:hover{text-decoration:underline}
+
+  /* Where. "Use my location" is a secondary button, sized to its label. */
+  .locate{display:inline-flex;width:auto;height:48px;padding:0 22px;gap:8px;border-radius:999px;background:var(--card);color:var(--ink);border:1.5px solid var(--control);font-size:16px;font-weight:600;transition:background-color .2s,border-color .2s}
+  .locate .ic{display:block;color:var(--action)}
+  .locate .ic svg{width:20px;height:20px;display:block}
+  .locate:hover{background:var(--brand-tint);border-color:var(--action)}
+  .locate.done{background:var(--success-tint);border-color:var(--success);color:var(--success)}
+  .locate.done .ic{color:var(--success)}
+  .chip{border:1px solid var(--control);box-shadow:none;transition:background-color .2s,border-color .2s,box-shadow .2s}
+  .chip.sel{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+  .other input,.field input,.field textarea{border:1px solid var(--control);border-radius:12px;box-shadow:none;font-size:16px}
+  .other input:focus,.field input:focus,.field textarea:focus{border-color:var(--action);box-shadow:0 0 0 1px var(--action)}
+  .field input.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+
+  /* Details. */
+  .field label,.flabel{font-size:15px;line-height:20px;font-weight:600;color:var(--ink);margin:0 0 6px}
+  .flabel{margin-top:20px}
+  .help,.ferr,.typo{margin-left:0;margin-right:0}
+  .help{font-size:14px;line-height:20px;max-width:62ch}
+  .addlink{padding:0;color:var(--action);font-weight:600;text-underline-offset:4px}
+  .addlink:hover{text-decoration:underline}
+  .tog{width:auto;padding-right:20px;border:1px solid var(--control);border-radius:12px;box-shadow:none;transition:background-color .2s,border-color .2s}
+  .tog .box{border-color:var(--control)}
+  .tog[aria-checked="true"]{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+  .tog[aria-checked="true"] .box{background:var(--action);border-color:var(--action)}
+  .consent,.privacy,.err{text-align:left;margin-left:0;margin-right:0;max-width:62ch}
+
+  /* Buttons: sized to the label, the design system's action colour, no glow. */
+  .cta{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:220px;height:52px;padding:0 32px;font-size:17px;font-weight:600;background:var(--action);box-shadow:none;transition:background-color .2s,transform .12s}
+  .cta:hover{background:var(--action-hover)}
+  .cta:active{background:var(--action-pressed)}
+  .cta[disabled]{opacity:.6}
+  .cta.wa{background:#15803D;box-shadow:none}
+  .cta.wa:hover{background:#116B32}
+  .other .cta{min-width:0;height:auto}
+
+  /* Sent. The ticket becomes a plain card: no gradient and no circles. */
+  .ticket{border:1px solid var(--line);border-radius:16px;box-shadow:none;background:var(--card)}
+  .ticket .head{background:var(--brand-tint);color:var(--ink);padding:20px 24px}
+  .ticket .head .o,.ticket .head .o2,.perf{display:none}
+  .ticket .head .kicker{color:var(--success)!important}
+  .ticket .head h2{color:var(--ink);font-size:26px;line-height:32px}
+  .ticket .body{padding:4px 24px 8px}
+  .kv{align-items:flex-start;padding:12px 0;font-size:16px;line-height:24px}
+  .kv .ic{display:block;flex:none;color:var(--action);margin-top:2px}
+  .kv .ic svg{width:20px;height:20px;display:block}
+  .kv small{font-size:14px;font-weight:500;letter-spacing:0;text-transform:none}
+  .next{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:none;padding:20px 24px;margin-top:16px}
+  .next h3{font-size:18px;line-height:24px;font-weight:600}
+  .next li{font-size:16px;line-height:24px}
+  .mail{margin:16px 0 0}
+  .fine{text-align:left;max-width:62ch}
+
+  /* The aside: what happens next, the usual price, the trust lines. */
+  .aside{display:block;position:sticky;top:88px}
+  .acard{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-card);padding:24px}
+  .acard h2{font-size:20px;line-height:28px;margin:0 0 16px}
+  .asteps{list-style:none;padding:0;display:grid;gap:14px;counter-reset:a}
+  .asteps li{display:flex;gap:12px;font-size:15px;line-height:22px;counter-increment:a}
+  .asteps li:before{content:counter(a);width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;flex:none}
+  .aside .price{display:flex;margin:20px 0 0;padding:10px 14px;border:0;border-radius:12px;background:var(--brand-tint);font-size:15px;line-height:20px;font-weight:600}
+  .aside .price svg{width:18px;height:18px;color:var(--action)}
+  .atrust{list-style:none;padding:20px 0 0;margin:20px 0 0;border-top:1px solid var(--line);display:grid;gap:12px}
+  .atrust li{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:20px}
+  .atrust svg{width:20px;height:20px;flex:none;color:var(--action)}
+  /* Once sent, the flow card has its own "What happens next". */
+  .page[data-on="done"] .acard h2,.page[data-on="done"] .asteps,.page[data-on="done"] .aside .price{display:none}
+  .page[data-on="done"] .atrust{padding:0;margin:0;border:0}
+
+  /* Site footer (copy of src/components/SiteFooter.tsx). */
+  .sf{display:block;flex:none;background:var(--bg)}
+  .sf .cols{border-top:1px solid var(--line);padding:48px 0 40px;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:40px}
+  .sf .brand{max-width:360px}
+  .sf .logo{height:auto;font-size:17px}
+  .sf .logo i{width:28px;height:28px}
+  .sf .one{margin-top:12px;font-size:14px;line-height:20px;color:var(--muted)}
+  .sf h2{font-family:var(--font);font-size:14px;line-height:20px;font-weight:600;letter-spacing:0;margin:0}
+  .sf ul{list-style:none;padding:0;margin-top:12px;display:grid;gap:4px}
+  .sf ul a{display:inline-flex;align-items:center;min-height:32px;font-size:14px;line-height:20px;text-decoration:none;text-underline-offset:4px;transition:color .2s}
+  .sf a:hover{color:var(--action);text-decoration-line:underline}
+  .sf .legal{border-top:1px solid var(--line);padding:24px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;font-size:13px;line-height:18px;color:var(--muted)}
+  .sf .legal ul{display:flex;gap:20px;margin:0}
+  .sf .legal a{min-height:0;font-size:13px;line-height:18px}
+
+  /* Hover states for everything you can pick. */
+  .tile:hover,.row:hover,.chip:hover,.tog:hover{border-color:var(--action);background:var(--brand-tint)}
+  .hr button:not(.sel):hover{background:var(--brand-tint)}
+  .typo button:hover,.privacy a:hover,.err a:hover{color:var(--action)}
+
+  /* Cookie choice: a 360px card in the bottom-left corner, z 50 (F20). The
+     page keeps the card's height plus its 16px gap free (setConsentH). */
+  .cbar{left:16px;right:auto;bottom:16px;width:360px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--shadow-sheet)}
+  .cbar div{max-width:none;gap:12px 8px}
+  .cbar p{font-size:14px;line-height:20px}
+  .cbar button{border-color:var(--action);color:var(--action);font-weight:600;transition:background-color .2s}
+  .cbar button:hover{background:var(--brand-tint)}
+  .cbar a:hover{color:var(--action)}
+}
+@media (min-width:1024px){
+  .page{gap:48px}
+  .app{padding:28px 32px 32px}
+}
 </style>
 </head>
 <body>
 <div class="bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
+<!-- Site header, 900px and up (copy of src/components/SiteHeader.tsx). Its
+     words and links are filled in by paint() in the visitor's language. -->
+<header class="sh" id="siteHeader">
+  <div class="wrap">
+    <a class="logo" id="shHome" href="/"><i aria-hidden="true"></i><span>Massage Club</span></a>
+    <nav id="shNav">
+      <ul id="shLinks"></ul>
+      <a class="acct" id="shAcct" href="/login"></a>
+      <div class="langs" role="group" id="shLangs"><button type="button" data-l="en" lang="en">EN</button><button type="button" data-l="es" lang="es">ES</button></div>
+    </nav>
+  </div>
+</header>
+
+<div class="page" id="page">
 <div class="app">
   <div class="top">
-    <button class="back" id="back" aria-label="Back" hidden>←</button>
+    <button class="back" id="back" aria-label="Back" hidden><span class="e">←</span><span class="ic"></span></button>
     <span class="mark" id="mark">Massage Club</span>
     <div class="bar" aria-hidden="true"><b id="bar"></b></div>
     <button class="lang" id="lang">ES</button>
@@ -271,7 +517,7 @@ body{padding-bottom:var(--consent-h,0px)}
       <h2 data-t="q5"></h2>
       <p class="sub" data-t="s5"></p>
       <p class="price" data-price></p>
-      <button class="locate" id="locate"><span>📍</span><span data-t="locate"></span></button>
+      <button class="locate" id="locate"><span class="e">📍</span><span class="ic"></span><span data-t="locate"></span></button>
       <div class="note" id="locNote"></div>
       <div class="label" data-t="orPick"></div>
       <div class="chips" id="areas"></div>
@@ -347,6 +593,35 @@ body{padding-bottom:var(--consent-h,0px)}
 
   </div>
 </div>
+
+<!-- 900px and up: the right column. Sticky, so it stays in view. -->
+<aside class="aside" id="aside" aria-labelledby="asideTitle">
+  <div class="acard">
+    <h2 id="asideTitle" data-t="nextTitle"></h2>
+    <ol class="asteps" id="asideSteps"></ol>
+    <p class="price" data-price></p>
+    <ul class="atrust" id="asideTrust"></ul>
+  </div>
+</aside>
+</div>
+
+<!-- Site footer, 900px and up (copy of src/components/SiteFooter.tsx). -->
+<footer class="sf" id="siteFooter">
+  <div class="wrap">
+    <div class="cols">
+      <div class="brand">
+        <a class="logo" id="sfHome" href="/"><i aria-hidden="true"></i><span>Massage Club</span></a>
+        <p class="one" id="sfOne"></p>
+      </div>
+      <nav aria-labelledby="sfMassages"><h2 id="sfMassages"></h2><ul id="sfMassagesList"></ul></nav>
+      <nav aria-labelledby="sfStudios"><h2 id="sfStudios"></h2><ul id="sfStudiosList"></ul></nav>
+    </div>
+    <div class="legal">
+      <p id="sfCopy"></p>
+      <ul id="sfLegal"></ul>
+    </div>
+  </div>
+</footer>
 
 <div class="cbar" id="cbar" role="dialog" aria-live="polite" hidden></div>
 
@@ -460,6 +735,16 @@ const T = {
     wa: "Get my times on WhatsApp", fine: "Nothing is booked until you tap Yes. You pay at the studio.",
     today: "Today", tomorrow: "Tomorrow", flexible: "I'm flexible", flexibleS: "Whenever a studio has room",
     waText: "Hi, it's {name}. I just asked for a {want} on the website (#{id}). Can you send me the times here?",
+    // Desktop only (900px and up): site header, footer and the aside. Same
+    // words as src/lib/siteChrome.ts and the home "How it works" (design system 5.1).
+    navLabel: "Main", homeLabel: "Massage Club, home", langLabel: "Language",
+    nav: [["/studios", "Studios"], ["/how-it-works", "How it works"], ["/for-studios", "For studios"]],
+    signIn: "Sign in", myAccount: "My account",
+    asideSteps: ["Tell us what, when and where.", "We ask several studios and send you their times.", "Tap Yes on the one you want. You pay at the studio."],
+    fOne: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
+    fMassages: "Massages", fMassagesList: [["/reserve?src=footer", "Book a massage"], ["/studios", "All studios"], ["/how-it-works", "How it works"]],
+    fStudios: "Studios", fStudiosList: [["/for-studios", "For studios"], ["/partner/login", "Studio login"]],
+    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"]],
   },
   es: {
     h1: "Tu masaje en Madrid", docTitle: "Tu masaje en Madrid · Massage Club",
@@ -496,19 +781,29 @@ const T = {
     wa: "Recibir las horas por WhatsApp", fine: "No se reserva nada hasta que tocas Sí. Pagas en el centro.",
     today: "Hoy", tomorrow: "Mañana", flexible: "Me adapto", flexibleS: "Cuando el centro tenga hueco",
     waText: "Hola, soy {name}. Acabo de pedir un {want} en la web (#{id}). ¿Me mandáis las horas por aquí?",
+    navLabel: "Principal", homeLabel: "Massage Club, inicio", langLabel: "Idioma",
+    nav: [["/studios", "Centros"], ["/how-it-works", "Cómo funciona"], ["/for-studios", "Para centros"]],
+    signIn: "Entrar", myAccount: "Mi cuenta",
+    asideSteps: ["Dinos qué, cuándo y dónde.", "Preguntamos a varios centros y te mandamos sus horas.", "Toca Sí en la que quieras. Pagas en el centro."],
+    fOne: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
+    fMassages: "Masajes", fMassagesList: [["/reserve?src=footer", "Reservar un masaje"], ["/studios", "Todos los centros"], ["/how-it-works", "Cómo funciona"]],
+    fStudios: "Centros", fStudiosList: [["/for-studios", "Para centros"], ["/partner/login", "Acceso para centros"]],
+    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"]],
   },
 };
 
 // `want` is what the studios read, so it stays the website's English label.
 // `w` is how the customer says it in the WhatsApp text after a request.
+// `i` is the lucide line icon shown from 900px instead of the emoji (design
+// system 3.7). Couples is two people, not a heart.
 const MASSAGES = [
-  { v: "Relaxing", e: "🌿", en: ["Relaxing", "Gentle, to switch off", "relaxing massage"], es: ["Relajante", "Para desconectar", "masaje relajante"] },
-  { v: "Deep tissue", e: "💪", en: ["Deep tissue", "Firm, for knots", "deep tissue massage"], es: ["Descontrac\u00ADturante", "Para contracturas", "masaje descontracturante"] },
-  { v: "Thai", e: "🧘", en: ["Thai", "Stretching, clothed", "Thai massage"], es: ["Tailandés", "Estiramientos, con ropa", "masaje tailandés"] },
-  { v: "Sports recovery", e: "🏃", en: ["Sports", "Training and recovery", "sports massage"], es: ["Deportivo", "Entreno y recuperación", "masaje deportivo"] },
-  { v: "Hot stone", e: "🔥", en: ["Hot stone", "Warm and deep", "hot stone massage"], es: ["Piedras calientes", "Calor y calma", "masaje con piedras calientes"] },
-  { v: "Couples", e: "💞", en: ["Couples", "Side by side", "couples massage"], es: ["En pareja", "Uno al lado del otro", "masaje en pareja"] },
-  { v: "Not sure", e: "🤷", en: ["Not sure", "We'll help you pick", "massage"], es: ["No lo sé", "Te ayudamos a elegir", "masaje"] },
+  { v: "Relaxing", e: "🌿", i: "leaf", en: ["Relaxing", "Gentle, to switch off", "relaxing massage"], es: ["Relajante", "Para desconectar", "masaje relajante"] },
+  { v: "Deep tissue", e: "💪", i: "hand", en: ["Deep tissue", "Firm, for knots", "deep tissue massage"], es: ["Descontrac\u00ADturante", "Para contracturas", "masaje descontracturante"] },
+  { v: "Thai", e: "🧘", i: "stretch", en: ["Thai", "Stretching, clothed", "Thai massage"], es: ["Tailandés", "Estiramientos, con ropa", "masaje tailandés"] },
+  { v: "Sports recovery", e: "🏃", i: "dumbbell", en: ["Sports", "Training and recovery", "sports massage"], es: ["Deportivo", "Entreno y recuperación", "masaje deportivo"] },
+  { v: "Hot stone", e: "🔥", i: "flame", en: ["Hot stone", "Warm and deep", "hot stone massage"], es: ["Piedras calientes", "Calor y calma", "masaje con piedras calientes"] },
+  { v: "Couples", e: "💞", i: "users", en: ["Couples", "Side by side", "couples massage"], es: ["En pareja", "Uno al lado del otro", "masaje en pareja"] },
+  { v: "Not sure", e: "🤷", i: "help", en: ["Not sure", "We'll help you pick", "massage"], es: ["No lo sé", "Te ayudamos a elegir", "masaje"] },
 ];
 // Jordan (5 Oct): "make it easier to pick a time". Real start times, tap
 // every one that works. 20:00 is the last start: studios close at 21:00.
@@ -530,6 +825,32 @@ const CHECK = svg('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>');
 const TICK = svg('<path d="M20 6 9 17l-5-5"/>').replace('stroke-width="2"', 'stroke-width="3"');
 const ALERT = svg('<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>');
 const MAIL = svg('<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>');
+// Desktop icons (lucide shapes), drawn only from 900px.
+const ICONS = {
+  leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  stretch: '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+  dumbbell: '<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+  range: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/>',
+  sunrise: '<path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  languages: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+  euro: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+};
+const ic = (k) => `<span class="ic" aria-hidden="true">${svg(ICONS[k])}</span>`;
+const hourSvg = (h) => svg(ICONS[h < 13 ? "sunrise" : h < 18 ? "sun" : "moon"]);
 const THERAPIST = { en: [["any", "No preference"], ["female", "Woman"], ["male", "Man"]], es: [["any", "Me da igual"], ["female", "Mujer"], ["male", "Hombre"]] };
 
 const ORDER = ["massage", "day", "time", "where", "you", "done"];
@@ -552,7 +873,7 @@ const t = (k) => T[L][k];
 const madridNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const isAnywhere = (a) => a === T.en.anywhere || a === T.es.anywhere;
-const langHref = (p) => (L === "es" ? p + "?lang=es" : p);
+const langHref = (p) => (L === "es" ? p + (p.includes("?") ? "&" : "?") + "lang=es" : p);
 
 // Start times need an hour's notice, like the studio pages (madridTime.ts
 // isTooSoon): at 18:45 the first time today is 19:45 -> 20:00. Today drops
@@ -579,6 +900,39 @@ function dayList() {
   return out;
 }
 
+// Desktop header, aside and footer (hidden under 900px), in the current
+// language. Links are massageclub.io pages only.
+const signedIn = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem("sb-jglftdstrowwckwqmpue-auth-token") || "null");
+    return !!(v && (v.refresh_token || (v.currentSession && v.currentSession.refresh_token)));
+  } catch { return false; }
+};
+const links = (arr) => arr.map(([p, x]) => `<li><a href="${esc(langHref(p))}">${esc(x)}</a></li>`).join("");
+function paintChrome() {
+  $("shHome").setAttribute("aria-label", t("homeLabel"));
+  $("sfHome").setAttribute("aria-label", t("homeLabel"));
+  $("shNav").setAttribute("aria-label", t("navLabel"));
+  $("shLinks").innerHTML = links(t("nav"));
+  const acct = signedIn();
+  $("shAcct").textContent = t(acct ? "myAccount" : "signIn");
+  $("shAcct").href = langHref(acct ? "/app/profile" : "/login");
+  $("shLangs").setAttribute("aria-label", t("langLabel"));
+  $("shLangs").querySelectorAll("[data-l]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.l === L)));
+  $("asideSteps").innerHTML = t("asideSteps").map((x) => `<li><span>${esc(x)}</span></li>`).join("");
+  const trustIcons = ["shield", L === "es" ? "message" : "languages", "check"];
+  $("asideTrust").innerHTML = t("trust").map((x, i) => `<li>${svg(ICONS[trustIcons[i]])}<span>${esc(x)}</span></li>`).join("");
+  $("sfOne").textContent = t("fOne");
+  $("sfMassages").textContent = t("fMassages");
+  $("sfMassagesList").innerHTML = links(t("fMassagesList"));
+  $("sfStudios").textContent = t("fStudios");
+  $("sfStudiosList").innerHTML = links(t("fStudiosList"));
+  $("sfCopy").textContent = `© ${madridNow().getFullYear()} Massage Club · Madrid`;
+  $("sfLegal").innerHTML = links(t("fLegal")) + `<li><a href="mailto:support@massageclub.io">support@massageclub.io</a></li>`;
+}
+$("back").querySelector(".ic").innerHTML = svg(ICONS.back);
+$("locate").querySelector(".ic").innerHTML = svg(ICONS.pin);
+
 function paint() {
   document.documentElement.lang = L;
   document.title = t("docTitle");
@@ -591,11 +945,11 @@ function paint() {
   $("trust").innerHTML = t("trust").map((x) => `<li>${CHECK}<span>${esc(x)}</span></li>`).join("");
   $("foot").innerHTML = t("foot").map(([p, x]) => `<a href="${langHref(p)}">${esc(x)}</a>`).join("");
 
-  $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e" aria-hidden="true">${m.e}</span><b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
+  $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e" aria-hidden="true">${m.e}</span>${ic(m.i)}<b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
   const days = dayList();
   // The chosen day keeps its date; its label follows the language.
   if (S.day) S.day = days.find((d) => d.iso === S.day.iso) || S.day;
-  $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span><div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
+  $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span>${ic(d.i === 99 ? "range" : "calendar")}<div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
   const today = S.day && S.day.i === 0;
   if (today) S.times = S.times.filter((v) => slotOk(v, true));
   const half = (v, cls, inner) => `<button class="${cls}${S.times.includes(v) ? " sel" : ""}" data-v="${v}">${inner}</button>`;
@@ -605,8 +959,8 @@ function paint() {
     const v0 = `${h}:00`, v30 = h < LAST ? `${h}:30` : null;
     const ok0 = slotOk(v0, today), ok30 = !!v30 && slotOk(v30, today);
     if (!ok0 && !ok30) return "";
-    if (!ok0) return `<div class="hr">${half(v30, "h0", `${v30}<small>${hourIcon(h)}</small>`)}</div>`;
-    return `<div class="hr">${half(v0, "h0", `${v0}<small>${hourIcon(h)}</small>`)}${ok30 ? half(v30, "h30", v30) : ""}</div>`;
+    if (!ok0) return `<div class="hr">${half(v30, "h0", `${v30}<small><span class="e">${hourIcon(h)}</span><span class="ic" aria-hidden="true">${hourSvg(h)}</span></small>`)}</div>`;
+    return `<div class="hr">${half(v0, "h0", `${v0}<small><span class="e">${hourIcon(h)}</span><span class="ic" aria-hidden="true">${hourSvg(h)}</span></small>`)}${ok30 ? half(v30, "h30", v30) : ""}</div>`;
   };
   $("times").innerHTML = HOURS.map(hourCard).join("");
   $("timeNext").disabled = !S.times.length;
@@ -624,6 +978,7 @@ function paint() {
   $("noteCount").textContent = nl ? `${nl}/240` : "";
   $("privacy").innerHTML = t(S.remind ? "privacyRemind" : "privacy").replace("<a>", `<a href="${langHref("/privacy")}">`);
   paintCookieBar();
+  paintChrome();
   $("therapist").innerHTML = THERAPIST[L].map(([v, l]) => `<button type="button" class="chip${S.therapist === v ? " sel" : ""}" aria-pressed="${S.therapist === v}" data-v="${v}">${l}</button>`).join("");
   $("remind").setAttribute("aria-checked", String(S.remind));
   $("remind").querySelector(".box").innerHTML = TICK;
@@ -674,7 +1029,8 @@ function loadClarity() {
 let cookieOpen = !noTrack && !consentValue();
 function setConsentH() {
   const bar = $("cbar");
-  if (cookieOpen && !bar.hidden) document.documentElement.style.setProperty("--consent-h", bar.offsetHeight + "px");
+  const desk = (() => { try { return matchMedia("(min-width:900px)").matches; } catch { return false; } })();
+  if (cookieOpen && !bar.hidden) document.documentElement.style.setProperty("--consent-h", (bar.offsetHeight + (desk ? 16 : 0)) + "px");
   else document.documentElement.style.removeProperty("--consent-h");
 }
 function paintCookieBar() {
@@ -706,6 +1062,7 @@ function show(i, backwards) {
     el.classList.toggle("backwards", on && !!backwards);
   });
   $("bar").style.width = `${Math.round((i / (ORDER.length - 1)) * 100)}%`;
+  $("page").dataset.on = name;
   const back = i > 0 && name !== "done";
   $("back").hidden = !back;
   $("mark").hidden = back;
@@ -733,7 +1090,9 @@ window.addEventListener("popstate", () => {
   show(Math.max(0, cur - 1), true);
 });
 $("back").onclick = () => { if (armed) history.back(); else show(Math.max(0, cur - 1), true); };
-$("lang").onclick = () => { L = L === "es" ? "en" : "es"; try { localStorage.setItem("mm-lang", L); } catch {} paint(); };
+const setLang = (l) => { L = l; try { localStorage.setItem("mm-lang", L); } catch {} paint(); };
+$("lang").onclick = () => setLang(L === "es" ? "en" : "es");
+$("shLangs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b && b.dataset.l !== L) setLang(b.dataset.l); };
 
 // Answers survive a reload (sessionStorage, this tab only). Cleared once the
 // request is sent. Never sent anywhere.
@@ -1006,18 +1365,18 @@ function done(id, name, phone, email) {
 function renderDone() {
   const { id, name, phone, email } = sent;
   const m = MASSAGES.find((x) => x.v === S.massage) || MASSAGES[MASSAGES.length - 1];
-  const row = (e, k, v) => `<div class="kv"><span class="e" aria-hidden="true">${e}</span><div><small>${k}</small>${esc(v)}</div></div>`;
+  const row = (e, k, v, i) => `<div class="kv"><span class="e" aria-hidden="true">${e}</span>${ic(i)}<div><small>${k}</small>${esc(v)}</div></div>`;
   const anywhere = isAnywhere(S.area);
   const who = THERAPIST[L].find(([v]) => v === S.therapist);
   $("reqNo").textContent = id ? t("req").replace("{n}", id) : "Massage Club";
   $("summary").innerHTML = [
-    row(m.e, t("kMassage"), m[L][0]),
-    row("🗓️", t("kWhen"), S.day ? [S.day.i === 99 ? t("anyDay") : S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ") : ""),
-    row("📍", t("kWhere"), anywhere ? t("anywhere") : (S.loc ? t("located").replace("{a}", S.area === "Madrid" ? t("you") : S.area) : S.area)),
-    isGroup() ? row("👥", t("kPeople"), (t("peopleOpts").find(([v]) => v === S.people) || [, S.people])[1]) : "",
-    who && S.therapist !== "any" ? row("👤", t("kWho"), who[1]) : "",
-    row("💶", t("kPrice"), t(S.massage === "Couples" ? "priceDoneCouples" : "priceDone")),
-    S.remind ? row("✨", t("kRemind"), t("remindVal")) : "",
+    row(m.e, t("kMassage"), m[L][0], m.i),
+    row("🗓️", t("kWhen"), S.day ? [S.day.i === 99 ? t("anyDay") : S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ") : "", "calendar"),
+    row("📍", t("kWhere"), anywhere ? t("anywhere") : (S.loc ? t("located").replace("{a}", S.area === "Madrid" ? t("you") : S.area) : S.area), "pin"),
+    isGroup() ? row("👥", t("kPeople"), (t("peopleOpts").find(([v]) => v === S.people) || [, S.people])[1], "users") : "",
+    who && S.therapist !== "any" ? row("👤", t("kWho"), who[1], "user") : "",
+    row("💶", t("kPrice"), t(S.massage === "Couples" ? "priceDoneCouples" : "priceDone"), "euro"),
+    S.remind ? row("✨", t("kRemind"), t("remindVal"), "bell") : "",
   ].join("");
   const near = S.loc && S.area === "Madrid" ? t("you") : S.area;
   $("steps").innerHTML = [
