@@ -118,6 +118,7 @@ import ConsentBanner from "./components/ConsentBanner";
 import AnalyticsOptOut from "./components/AnalyticsOptOut";
 import ThanksToast from "./components/ThanksToast";
 import WhatsAppBubble from "./app/components/WhatsAppBubble";
+import { SiteChromeLayout } from "./components/SiteChrome";
 
 
 
@@ -149,8 +150,13 @@ const App = () => (
 
           <Route path="/compare" element={<Compare />} />
           <Route path="/review" element={<Review />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
+          {/* Desktop frame (F11, F12): SiteHeader and SiteFooter from 900px on
+              these customer pages. Phones keep each page's own header. The app
+              shell (AppLayout) draws its own header and footer. */}
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+          </Route>
 
           {/* One front door: the old wizard pages open the request flow
               (/reserve). They render only with ?stay=1 or on Lovable previews. */}
@@ -168,6 +174,7 @@ const App = () => (
 
 
 
+          <Route element={<SiteChromeLayout />}>
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
@@ -191,6 +198,7 @@ const App = () => (
           {MASSAGE_TYPE_SLUGS.map((slug) => (
             <Route key={slug} path={`/massages/${slug}`} element={<MassageTypePage slug={slug} />} />
           ))}
+          </Route>
 
 
 
@@ -208,7 +216,9 @@ const App = () => (
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
-            <Route path="/:studioId" element={<StudioBookingPage />} />
+            <Route element={<SiteChromeLayout />}>
+              <Route path="/:studioId" element={<StudioBookingPage />} />
+            </Route>
           ) : (
             <Route path="/" element={<Home />} />
           )}
@@ -277,7 +287,9 @@ const App = () => (
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
           {/* Legacy id links stay alive, redirecting to the canonical /{slug} URL. */}
           <Route path="/s/:studioId" element={<StudioIdRedirect />} />
-          <Route path="/book/:studioId" element={<StudioBookingPage />} />
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/book/:studioId" element={<StudioBookingPage />} />
+          </Route>
           {/* Permanent redirect for renamed Calma slug */}
           <Route path="/calma-madrid-spa" element={<Navigate to="/spa-calma" replace />} />
           {/* Studio Invite + Setup */}
@@ -288,17 +300,19 @@ const App = () => (
           <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           {/* Studio terms page */}
-          <Route path="/for-studios" element={<ForStudios />} />
-          <Route path="/para-estudios" element={<ForStudios />} />
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/for-studios" element={<ForStudios />} />
+            <Route path="/para-estudios" element={<ForStudios />} />
+          </Route>
 
           {/* WhatsApp booking card (noindex, standalone) */}
           <Route path="/r/:token" element={<BookingCard />} />
 
           {/* Canonical studio URL on every host: /{slug} */}
-          <Route path="/:studioId" element={<StudioBookingPage />} />
-
-
-          <Route path="*" element={<NotFound />} />
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/:studioId" element={<StudioBookingPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Routes>
         </LocationAskProvider>
       </BrowserRouter>

@@ -15,7 +15,7 @@ export default function ForStudios() {
       <div className="min-h-screen" style={{ background: "#FAF6F1" }}>
         {/* Simple header */}
         <div
-          className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-b"
+          className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-b desk:hidden"
           style={{ borderColor: "#ece4d7", background: "#FAF6F1" }}
         >
           <Link to="/" className="flex items-center gap-2.5">
@@ -45,8 +45,8 @@ export default function ForStudios() {
           >
             <div className="text-center mb-8">
               <div
-                className="text-xs font-bold uppercase mb-3"
-                style={{ color: "#B85C38", letterSpacing: "2.5px" }}
+                className="text-xs font-bold uppercase tracking-[2.5px] mb-3 desk:text-caption desk:font-semibold desk:normal-case desk:tracking-normal"
+                style={{ color: "#B85C38" }}
               >
                 For studios <span className="font-normal opacity-70">/ Para centros</span>
               </div>
@@ -195,8 +195,7 @@ function TopCta() {
     <div className="flex justify-center">
       <Link
         to="/partner/onboarding"
-        className="inline-flex items-center justify-center px-8 py-3 rounded-2xl font-semibold text-white shadow-sm hover:opacity-95 transition"
-        style={{ background: "#B85C38" }}
+        className="inline-flex items-center justify-center px-8 py-3 rounded-2xl font-semibold text-white shadow-sm bg-[#B85C38] hover:opacity-95 desk:hover:opacity-100 desk:hover:bg-primary-hover transition"
       >
         Claim your page <span className="font-normal opacity-90 ml-1.5">/ Reclama tu página</span>
       </Link>

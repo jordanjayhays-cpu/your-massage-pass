@@ -66,8 +66,9 @@ export default function AppLayout() {
     <BookingProvider>
       <MobileFrame>
         <Outlet />
-        {/* Shared quiet footer entry point to the deals list. */}
-        <footer className="px-4 pb-8 pt-6 text-center">
+        {/* Shared quiet footer entry point to the deals list. From 900px the
+            shell closes with SiteFooter instead (MobileFrame). */}
+        <footer className="px-4 pb-8 pt-6 text-center desk:hidden">
           <DealsFooterLine />
         </footer>
       </MobileFrame>

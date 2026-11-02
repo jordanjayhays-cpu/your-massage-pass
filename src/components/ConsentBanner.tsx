@@ -7,6 +7,8 @@ const KEY = "mc_consent";
 
 /** CSS variable with the bar's height in px while it shows (see src/index.css). */
 const HEIGHT_VAR = "--consent-h";
+/** Room the page keeps free at the bottom while the bar shows (see src/index.css). */
+const ROOM_VAR = "--consent-room";
 
 // Accept grants ad_storage, ad_user_data and ad_personalization as well as
 // analytics, so the copy says plainly that cookies also measure our ads.
@@ -81,10 +83,29 @@ function needsChoice(): boolean {
   }
 }
 
-function setHeightVar(px: number | null) {
+/**
+ * Publishes the bar's size, or clears it (null).
+ * Phones and tablets: --consent-h and --consent-room are both the bar's height,
+ * as before. From 900px the bar is a card in the bottom-left corner: fixed
+ * bottom bars do not need to rise (--consent-h 0), and the page keeps the
+ * card's height plus its 16px gap free (--consent-room).
+ */
+function setHeightVar(el: HTMLElement | null) {
   const root = document.documentElement;
-  if (px == null) root.style.removeProperty(HEIGHT_VAR);
-  else root.style.setProperty(HEIGHT_VAR, `${Math.ceil(px)}px`);
+  if (!el) {
+    root.style.removeProperty(HEIGHT_VAR);
+    root.style.removeProperty(ROOM_VAR);
+    return;
+  }
+  let desk = false;
+  try {
+    desk = window.matchMedia("(min-width: 900px)").matches;
+  } catch {
+    /* ignore */
+  }
+  const h = Math.ceil(el.offsetHeight);
+  root.style.setProperty(HEIGHT_VAR, `${desk ? 0 : h}px`);
+  root.style.setProperty(ROOM_VAR, `${desk ? h + 16 : h}px`);
 }
 
 /**
@@ -114,10 +135,10 @@ export default function ConsentBanner() {
       setHeightVar(null);
       return;
     }
-    setHeightVar(el.offsetHeight);
+    setHeightVar(el);
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => setHeightVar(el.offsetHeight));
+      ro = new ResizeObserver(() => setHeightVar(el));
       ro.observe(el);
     }
     return () => {
@@ -148,7 +169,7 @@ export default function ConsentBanner() {
   };
 
   const btn =
-    "h-11 min-w-0 flex-1 sm:flex-none sm:w-32 rounded-full border border-primary/70 bg-card px-4 text-sm font-semibold text-primary hover:bg-primary/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "h-11 min-w-0 flex-1 sm:flex-none sm:w-32 desk:flex-1 desk:w-auto rounded-full border border-primary/70 bg-card px-4 text-sm font-semibold text-primary hover:bg-primary/5 desk:hover:bg-brand-tint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
   return (
     <div
@@ -156,11 +177,14 @@ export default function ConsentBanner() {
       role="dialog"
       aria-live="polite"
       aria-label={t.dialogLabel}
-      className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-card/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_hsl(18_14%_11%/0.18)]"
+      // Phones and tablets: a full-width bar at the bottom. From 900px (desktop
+      // fix F20): a 360px card in the bottom-left corner, z 50. Either way the
+      // page keeps its room free (--consent-room, see setHeightVar).
+      className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-card/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_hsl(18_14%_11%/0.18)] desk:inset-x-auto desk:left-4 desk:bottom-4 desk:w-[360px] desk:z-consent desk:rounded-2xl desk:border desk:bg-card desk:backdrop-blur-none desk:shadow-sheet"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-1.5 px-4 py-2 sm:flex-row sm:items-center sm:gap-4 sm:py-3">
-        <p className="text-sm leading-[1.3] text-foreground sm:flex-1">{t.body}</p>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-1.5 px-4 py-2 sm:flex-row sm:items-center sm:gap-4 sm:py-3 desk:flex-col desk:items-stretch desk:gap-3 desk:p-4">
+        <p className="text-sm leading-[1.3] text-foreground sm:flex-1 desk:leading-5">{t.body}</p>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => decide(true)} className={btn}>
             {t.accept}
@@ -170,7 +194,7 @@ export default function ConsentBanner() {
           </button>
           <a
             href="/privacy"
-            className="flex min-h-11 flex-none items-center px-1.5 text-xs text-muted-foreground underline underline-offset-2 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            className="flex min-h-11 flex-none items-center px-1.5 text-xs desk:text-caption desk:font-normal text-muted-foreground underline underline-offset-2 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
             {t.privacy}
           </a>

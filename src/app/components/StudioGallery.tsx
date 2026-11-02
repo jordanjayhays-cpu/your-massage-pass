@@ -41,15 +41,21 @@ export default function StudioGallery({ items, title }: Props) {
 
   if (!media.length) return null;
 
+  // Phones swipe a strip. From 768px, two or three items sit in a two-column
+  // grid with a fixed 16:10 ratio, so none is cut at the right edge with no
+  // scroll cue (desktop fix F21, Calma at 768px).
+  const asGrid = media.length >= 2 && media.length <= 3;
+  const tile = asGrid ? " md:h-auto md:w-auto md:aspect-[16/10]" : "";
+
   return (
     <div className="mb-4">
       <p className="text-sm font-semibold text-gray-800 mb-2">{heading}</p>
-      <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-3 snap-x snap-mandatory">
+      <div className={`flex gap-2 overflow-x-auto -mx-1 px-1 pb-3 snap-x snap-mandatory${asGrid ? " md:grid md:grid-cols-2 md:overflow-visible md:mx-0 md:px-0" : ""}`}>
         {media.map((url, i) =>
           isVideo(url) ? (
             <div
               key={i}
-              className="relative h-40 w-64 flex-shrink-0 snap-start rounded-2xl overflow-hidden border border-[#EADFD2] bg-black"
+              className={`relative h-40 w-64 flex-shrink-0 snap-start rounded-2xl overflow-hidden border border-[#EADFD2] bg-black${tile}`}
             >
               <video
                 src={url}
@@ -69,7 +75,7 @@ export default function StudioGallery({ items, title }: Props) {
               type="button"
               onClick={() => setLightbox(url)}
               aria-label={copy.openPhoto}
-              className="h-40 w-64 flex-shrink-0 snap-start rounded-2xl overflow-hidden border border-[#EADFD2] bg-[#F6EFE6]"
+              className={`h-40 w-64 flex-shrink-0 snap-start rounded-2xl overflow-hidden border border-[#EADFD2] bg-[#F6EFE6]${tile}`}
             >
               <img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
             </button>

@@ -73,7 +73,8 @@ export default function AnalyticsOptOut() {
     setTimeout(() => setNotice(null), 300);
   };
 
-  const bottomClass = shouldShowBottomNav(pathname) ? "bottom-20" : "bottom-4";
+  // The tab bar is hidden from 900px (BottomNav), so nothing to clear there.
+  const bottomClass = shouldShowBottomNav(pathname) ? "bottom-20 desk:bottom-4" : "bottom-4";
 
   return (
     <>

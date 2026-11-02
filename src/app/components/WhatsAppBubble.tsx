@@ -66,8 +66,11 @@ export default function WhatsAppBubble() {
 
   // Sit above the bottom tab bar when it is on screen, and above the cookie
   // bar while it shows (--consent-h, set by ConsentBanner; 0 otherwise).
+  // --tabbar-room (index.css) is the tab bar's 84px on phones and 20px from
+  // 900px, where the tab bar is hidden. --consent-h is 0 from 900px, where the
+  // cookie bar is a card on the left.
   const base = shouldShowBottomNav(pathname)
-    ? "84px + env(safe-area-inset-bottom)"
+    ? "var(--tabbar-room)"
     : "1rem + env(safe-area-inset-bottom)";
 
   return (

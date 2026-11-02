@@ -64,6 +64,35 @@
     --sidebar-accent-foreground: 18 14% 11%;
     --sidebar-border: 24 14% 88%;
     --sidebar-ring: 20 64% 47%;
+
+    /* Desktop frame tokens (design system 3.1 to 3.5), written in this file's
+       HSL form until the token codemod moves every colour to RGB channels. */
+    --primary-hover: 18.8 68.3% 32.2%;  /* #8A3D1A */
+    --brand-tint: 22.5 66.7% 95.3%;     /* #FBF1EB selected or hovered surface */
+    --shadow-card: 0 1px 2px rgb(33 28 26 / 0.06), 0 4px 16px -6px rgb(33 28 26 / 0.10);
+    --shadow-sheet: 0 24px 60px -24px rgb(33 28 26 / 0.30);
+
+    /* Type scale: phone sizes here, desktop sizes from 900px below. */
+    --fs-display: 34px; --lh-display: 40px;
+    --fs-h1: 28px;      --lh-h1: 34px;
+    --fs-h2: 22px;      --lh-h2: 28px;
+    --fs-h3: 18px;      --lh-h3: 24px;
+    --fs-lead: 18px;    --lh-lead: 26px;
+
+    /* Room that floating buttons keep above the phone tab bar. The tab bar is
+       hidden from 900px (BottomNav), so there they sit 20px from the bottom. */
+    --tabbar-room: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 900px) {
+    :root {
+      --fs-display: 48px; --lh-display: 54px;
+      --fs-h1: 36px;      --lh-h1: 42px;
+      --fs-h2: 28px;      --lh-h2: 34px;
+      --fs-h3: 20px;      --lh-h3: 28px;
+      --fs-lead: 20px;    --lh-lead: 30px;
+      --tabbar-room: 20px;
+    }
   }
 
   .dark {
@@ -115,6 +144,14 @@
 
   html {
     scroll-behavior: smooth;
+  }
+
+  /* From 900px pages that scroll the window carry the 64px sticky SiteHeader:
+     anything scrolled into view (a step, an error, an anchor) stops below it. */
+  @media (min-width: 900px) {
+    html {
+      scroll-padding-top: 80px;
+    }
   }
 
   body {
@@ -232,19 +269,46 @@ input[type="checkbox"]:disabled {
 .pb-tabbar {
   padding-bottom: calc(84px + env(safe-area-inset-bottom));
 }
+/* From 900px the tab bar is hidden (its links live in SiteHeader). */
+@media (min-width: 900px) {
+  .pb-tabbar {
+    padding-bottom: 24px;
+  }
+}
 
 /* ── Cookie bar room ────────────────────────────────────────────────────────
    ConsentBanner sets --consent-h (its height in px) on <html> while it shows
    and removes it when the visitor chooses; unset, everything falls back to 0.
    Contract: anything fixed to the bottom of the screen sits at
-   bottom: var(--consent-h, 0px), so the bar never covers a button. */
+   bottom: var(--consent-h, 0px), so the bar never covers a button.
+   From 900px the bar is a 360px card in the bottom-left corner: --consent-h
+   is 0 there (fixed bars and the WhatsApp bubble stay put) and the room the
+   card needs goes into --consent-room instead (desktop fix F20). */
 body {
-  padding-bottom: var(--consent-h, 0px);
+  padding-bottom: var(--consent-room, var(--consent-h, 0px));
 }
 
 /* The app shell (MobileFrame) is one screen tall and scrolls inside. While the
    bar shows, it ends just above the bar, so its tab bar and last rows stay
    visible instead of sliding under it. */
 #root .h-screen {
-  height: calc(100vh - var(--consent-h, 0px));
+  height: calc(100vh - var(--consent-room, var(--consent-h, 0px)));
+}
+
+/* ── Desktop type floor (desktop fix F18) ────────────────────────────────────
+   Design system 3.2: no customer text under 13px and no tracked capitals.
+   Until the type codemod replaces the 8 to 12px classes one by one, this lifts
+   them to 13px and turns tracked uppercase labels into plain sentence case
+   from 900px, on customer pages only: the ones that carry SiteHeader (partner
+   and founder tools have no SiteHeader and keep their sizes). Elements that
+   already set their own size at a breakpoint are left alone, so a
+   "text-xs min-[900px]:text-sm" label stays 14px. Phones do not change. */
+@media (min-width: 900px) {
+  body:has([data-site-header]) :is(.text-\[9px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\], .text-\[12px\], .text-xs):not([class*="sm:text-"]):not([class*="md:text-"]):not([class*="lg:text-"]):not([class*="xl:text-"]):not([class*="900px]:text-"]):not([class*="desk:text-"]) {
+    font-size: 13px;
+  }
+  body:has([data-site-header]) .uppercase[class*="tracking-"] {
+    text-transform: none;
+    letter-spacing: normal;
+  }
 }
