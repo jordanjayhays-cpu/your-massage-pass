@@ -3,7 +3,6 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { supabase, fetchStudioProfile, type StudioProfile } from "@/lib/supabase";
-import { studioImage, studioImageFallback } from "@/lib/studioImages";
 import { resolveWhatsappNumber, telHref, conciergeWhatsappUrl, conciergePrefill } from "@/app/lib/whatsapp";
 import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
@@ -16,7 +15,7 @@ import { logWhatsappRequest, logWhatsappRequestResult } from "@/lib/whatsappLog"
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import { clarityEvent } from "@/lib/clarity";
 import { requestAccountSignup } from "@/lib/accountSignup";
-import { contactOk, CONTACT_COPY, EMAIL_REQUIRED_COPY, isValidEmail } from "@/lib/contactValidation";
+import { contactOk, isValidEmail, isValidPhone } from "@/lib/contactValidation";
 import { useFlowLang, pickCopy, type FlowLang } from "@/lib/flowLang";
 import { shortWeekday, longWeekday, shortDate, longDate, timeLabel, formatPrice, formatMinutes, parseISODate, localeOf } from "@/lib/localeFormat";
 import { localizedServiceName } from "@/lib/serviceTypeI18n";
@@ -29,11 +28,11 @@ import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { isInstantConfirm } from "@/lib/instantConfirm";
 import { markStudioVisited } from "@/lib/visitedStudios";
-import AbandonedBookingSheet, { useAbandonedBookingCapture } from "@/app/components/AbandonedBookingSheet";
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
-import { DealsConfirmationLine } from "@/components/DealsLink";
-import ExitCaptureBlock from "@/components/ExitCaptureBlock";
-import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
+import StudioPlaceMap from "@/app/components/StudioPlaceMap";
+import { findNearbyStudios, sixtyMinFrom, isForTwo, isFourHands, type NearbyListedStudio } from "@/lib/nearestStudios";
+import { studioPath } from "@/lib/studioHref";
+import { madridTodayIso, madridDays, isTooSoon, isoToLocalDate } from "@/lib/madridTime";
 import StudioGallery from "@/app/components/StudioGallery";
 
 
@@ -93,13 +92,13 @@ const BOOKING_STEPS_ARIA: Record<FlowLang, string> = {
   it: "Passaggi della prenotazione", pt: "Etapas da reserva", zh: "预订步骤",
 };
 const HANDOFF_STEPS_COPY: Record<FlowLang, string[]> = {
-  en: ["Service", "Day and time", "Your details", "WhatsApp"],
-  es: ["Servicio", "Día y hora", "Tus datos", "WhatsApp"],
-  fr: ["Service", "Jour et heure", "Vos infos", "WhatsApp"],
-  de: ["Leistung", "Tag und Uhrzeit", "Deine Daten", "WhatsApp"],
-  it: ["Servizio", "Giorno e ora", "I tuoi dati", "WhatsApp"],
-  pt: ["Serviço", "Dia e hora", "Os teus dados", "WhatsApp"],
-  zh: ["服务", "日期和时间", "您的信息", "WhatsApp"],
+  en: ["Service", "Day and time", "Your details", "Sent"],
+  es: ["Servicio", "Día y hora", "Tus datos", "Enviada"],
+  fr: ["Service", "Jour et heure", "Vos infos", "Envoyée"],
+  de: ["Leistung", "Tag und Uhrzeit", "Deine Daten", "Gesendet"],
+  it: ["Servizio", "Giorno e ora", "I tuoi dati", "Inviata"],
+  pt: ["Serviço", "Dia e hora", "Os teus dados", "Enviada"],
+  zh: ["服务", "日期和时间", "您的信息", "已发送"],
 };
 const CONVERSATION_LABEL_COPY: Record<FlowLang, Record<string, string>> = {
   en: { silence: "Silence", minimal: "A little chat", chatty: "Happy to chat" },
@@ -122,7 +121,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "You're booked!", waitTime: "We will write to you with the studio's answer. If the time works, tap Yes on the offer to book it. If they cannot fit you, we will send you other studios nearby.",
     addToCalendar: "Add to my calendar", waSetItUp: "WhatsApp us and we set it up", visitWebsite: "Visit their website",
     timeConfirmedPay: "Your time is confirmed. You pay at the studio, no card needed.",
-    studioConfirmsPay: "The studio usually confirms within a few hours and you will get an email. You pay at the studio, no card needed.",
+    studioConfirmsPay: "We'll email you when the studio answers. You pay at the studio.",
     almostDone: "Almost done. WhatsApp us and we set it up.",
     footerCredit: "Massage Club · Madrid · book.massageclub.io",
     notOnClub: "This studio isn't on Massage Club yet. We can still set up your booking for you.",
@@ -130,7 +129,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "Book a massage", pickServiceFirst: "Pick a service below first",
     servicesLabel: "Services", takeQuiz: "Not sure which massage? Take the 60 second quiz",
     chooseServiceContinue: "Choose a service to continue", continueLabel: "Continue",
-    contactStep: "This studio isn't on Massage Club yet, so we'll contact them for you. Pick 2-3 times that could work - the more you give us, the faster we confirm.",
+    contactStep: "We contact the studio for you in Spanish. Pick a time, and add a second one if you can.",
     addSecondChoice: "+ Add a second choice", addThirdChoice: "+ Add a third choice", thirdChoice: "Third choice",
     moreThanOne: "Booking for more than one person?", groupCheck: "We will check the studio can take your group at the same time.",
     firstName: "First name", lastName: "Last name", waPhone: "WhatsApp / Phone (+34 600 123 456)", email: "Email",
@@ -176,7 +175,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Something went wrong. Please try again.",
     bookYourMassage: "Book your massage",
     pickService: "Pick a service", pickDay: "Pick a day", pickTime: "Pick a time", priceLabel: "Price",
-    moreTimesFaster: "The more times you give us, the faster we confirm.",
+    moreTimesFaster: "Add a second time if you can. It helps the studio fit you in.",
   },
   es: {
     showDistance: "Ver distancia", directions: "Cómo llegar",
@@ -184,7 +183,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "¡Tu reserva está hecha! 🎉", waitTime: "Te escribimos con la respuesta del centro. Si la hora te va bien, toca Sí en la oferta para reservarla. Si no pueden, te mandamos otros centros cerca.",
     addToCalendar: "Añadir a mi calendario", waSetItUp: "Escríbenos por WhatsApp y te lo organizamos", visitWebsite: "Ver su web",
     timeConfirmedPay: "Tu hora está confirmada. Pagas en el estudio, sin tarjeta.",
-    studioConfirmsPay: "El estudio suele confirmar en unas horas y te avisamos por email. Pagas en el estudio, sin tarjeta.",
+    studioConfirmsPay: "Te escribimos cuando el centro responda. Pagas en el centro.",
     almostDone: "Casi listo. Escríbenos por WhatsApp y te lo organizamos.",
     footerCredit: "Massage Club · Madrid · book.massageclub.io",
     notOnClub: "Este estudio todavía no está en Massage Club. Aun así te organizamos la reserva.",
@@ -192,7 +191,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "Reserva un masaje", pickServiceFirst: "Elige antes un servicio",
     servicesLabel: "Servicios", takeQuiz: "¿No sabes cuál elegir? Haz el test",
     chooseServiceContinue: "Elige un servicio para continuar", continueLabel: "Continuar",
-    contactStep: "Este centro todavía no está en Massage Club, así que contactamos con ellos por ti. Elige 2-3 horas que te vengan bien - cuantas más nos des, antes te confirmamos.",
+    contactStep: "Contactamos con el centro por ti. Elige una hora y, si puedes, añade otra.",
     addSecondChoice: "+ Añadir una segunda opción", addThirdChoice: "+ Añadir una tercera opción", thirdChoice: "Tercera opción",
     moreThanOne: "¿Reservas para más de una persona?", groupCheck: "Confirmamos con el centro que pueden atender a todo el grupo a la vez.",
     firstName: "Nombre", lastName: "Apellido", waPhone: "WhatsApp / Teléfono (+34 600 123 456)", email: "Email",
@@ -235,7 +234,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Algo ha ido mal. Inténtalo de nuevo.",
     bookYourMassage: "Reserva tu masaje",
     pickService: "Elige un servicio", pickDay: "Elige un día", pickTime: "Elige una hora", priceLabel: "Precio",
-    moreTimesFaster: "Cuantas más horas nos des, antes te confirmamos.",
+    moreTimesFaster: "Si puedes, añade otra hora. Así al centro le es más fácil darte hueco.",
   },
   fr: {
     showDistance: "Voir la distance", directions: "Itinéraire",
@@ -243,7 +242,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "Votre réservation est faite ! 🎉", waitTime: "Nous vous écrivons avec la réponse du centre. Si l'heure vous convient, touchez Oui sur l'offre pour la réserver. S'ils ne peuvent pas, nous vous envoyons d'autres centres à proximité.",
     addToCalendar: "Ajouter à mon calendrier", waSetItUp: "Écrivez-nous sur WhatsApp et on s'occupe de tout", visitWebsite: "Voir leur site",
     timeConfirmedPay: "Votre heure est confirmée. Vous payez sur place, sans carte.",
-    studioConfirmsPay: "Le centre confirme généralement en quelques heures et vous recevrez un email. Vous payez sur place, sans carte.",
+    studioConfirmsPay: "Nous vous écrivons dès que le centre répond. Vous payez sur place.",
     almostDone: "Presque fini. Écrivez-nous sur WhatsApp et on s'occupe de tout.",
     footerCredit: "Massage Club · Madrid · book.massageclub.io",
     notOnClub: "Ce centre n'est pas encore sur Massage Club. On peut tout de même organiser votre réservation.",
@@ -251,7 +250,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "Réserver un massage", pickServiceFirst: "Choisissez d'abord un service",
     servicesLabel: "Services", takeQuiz: "Vous ne savez pas quel massage choisir ? Faites le test de 60 secondes",
     chooseServiceContinue: "Choisissez un service pour continuer", continueLabel: "Continuer",
-    contactStep: "Ce centre n'est pas encore sur Massage Club, donc on les contacte pour vous. Choisissez 2-3 horaires possibles - plus vous nous en donnez, plus vite on confirme.",
+    contactStep: "Nous contactons le centre pour vous en espagnol. Choisissez une heure, et ajoutez-en une deuxième si vous pouvez.",
     addSecondChoice: "+ Ajouter un second choix", addThirdChoice: "+ Ajouter un troisième choix", thirdChoice: "Troisième choix",
     moreThanOne: "Vous réservez pour plusieurs personnes ?", groupCheck: "Nous vérifions que le centre peut recevoir tout le groupe en même temps.",
     firstName: "Prénom", lastName: "Nom", waPhone: "WhatsApp / Téléphone (+34 600 123 456)", email: "Email",
@@ -294,7 +293,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Une erreur est survenue. Veuillez réessayer.",
     bookYourMassage: "Réservez votre massage",
     pickService: "Choisissez un service", pickDay: "Choisissez un jour", pickTime: "Choisissez une heure", priceLabel: "Prix",
-    moreTimesFaster: "Plus vous nous donnez d'horaires, plus vite on confirme.",
+    moreTimesFaster: "Ajoutez une deuxième heure si vous pouvez. Cela aide le centre à vous trouver une place.",
   },
   de: {
     showDistance: "Entfernung anzeigen", directions: "Wegbeschreibung",
@@ -302,7 +301,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "Deine Buchung ist fertig! 🎉", waitTime: "Wir schreiben dir die Antwort des Studios. Wenn die Zeit passt, tippe im Angebot auf Ja, um sie zu buchen. Falls es nicht passt, schicken wir dir andere Studios in der Nähe.",
     addToCalendar: "Zu meinem Kalender hinzufügen", waSetItUp: "Schreib uns auf WhatsApp, wir kümmern uns darum", visitWebsite: "Website besuchen",
     timeConfirmedPay: "Deine Zeit ist bestätigt. Du zahlst im Studio, keine Karte nötig.",
-    studioConfirmsPay: "Das Studio bestätigt normalerweise innerhalb einiger Stunden und du bekommst eine E-Mail. Du zahlst im Studio, keine Karte nötig.",
+    studioConfirmsPay: "Wir schreiben dir, sobald das Studio antwortet. Du zahlst im Studio.",
     almostDone: "Fast fertig. Schreib uns auf WhatsApp, wir kümmern uns darum.",
     footerCredit: "Massage Club · Madrid · book.massageclub.io",
     notOnClub: "Dieses Studio ist noch nicht bei Massage Club. Wir organisieren deine Buchung trotzdem.",
@@ -310,7 +309,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "Massage buchen", pickServiceFirst: "Wähle zuerst einen Service",
     servicesLabel: "Leistungen", takeQuiz: "Nicht sicher, welche Massage? Mach den 60-Sekunden-Test",
     chooseServiceContinue: "Wähle einen Service, um fortzufahren", continueLabel: "Weiter",
-    contactStep: "Dieses Studio ist noch nicht bei Massage Club, deshalb kontaktieren wir es für dich. Wähle 2-3 Zeiten, die passen könnten - je mehr du uns gibst, desto schneller bestätigen wir.",
+    contactStep: "Wir kontaktieren das Studio für dich auf Spanisch. Wähle eine Zeit und, wenn möglich, eine zweite.",
     addSecondChoice: "+ Zweite Wahl hinzufügen", addThirdChoice: "+ Dritte Wahl hinzufügen", thirdChoice: "Dritte Wahl",
     moreThanOne: "Buchst du für mehr als eine Person?", groupCheck: "Wir prüfen, ob das Studio deine Gruppe zur gleichen Zeit aufnehmen kann.",
     firstName: "Vorname", lastName: "Nachname", waPhone: "WhatsApp / Telefon (+34 600 123 456)", email: "E-Mail",
@@ -353,7 +352,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     bookYourMassage: "Buche deine Massage",
     pickService: "Service wählen", pickDay: "Tag wählen", pickTime: "Zeit wählen", priceLabel: "Preis",
-    moreTimesFaster: "Je mehr Zeiten du uns gibst, desto schneller bestätigen wir.",
+    moreTimesFaster: "Füge wenn möglich eine zweite Zeit hinzu. Das hilft dem Studio, dich unterzubringen.",
   },
   it: {
     showDistance: "Mostra distanza", directions: "Indicazioni",
@@ -361,7 +360,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "La tua prenotazione è fatta! 🎉", waitTime: "Ti scriviamo con la risposta del centro. Se l'orario ti va bene, tocca Sì sull'offerta per prenotarlo. Se non possono, ti mandiamo altri centri vicini.",
     addToCalendar: "Aggiungi al mio calendario", waSetItUp: "Scrivici su WhatsApp e ci pensiamo noi", visitWebsite: "Visita il loro sito",
     timeConfirmedPay: "Il tuo orario è confermato. Paghi al centro, senza carta.",
-    studioConfirmsPay: "Il centro di solito confirma in poche ore e riceverai un'email. Paghi al centro, senza carta.",
+    studioConfirmsPay: "Ti scriviamo quando il centro risponde. Paghi al centro.",
     almostDone: "Quasi fatto. Scrivici su WhatsApp e ci pensiamo noi.",
     footerCredit: "Massage Club · Madrid · book.massageclub.io",
     notOnClub: "Questo centro non è ancora su Massage Club. Possiamo comunque organizzare la tua prenotazione.",
@@ -369,7 +368,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "Prenota un massaggio", pickServiceFirst: "Scegli prima un servizio",
     servicesLabel: "Servizi", takeQuiz: "Non sai quale massaggio scegliere? Fai il test di 60 secondi",
     chooseServiceContinue: "Scegli un servizio per continuare", continueLabel: "Continua",
-    contactStep: "Questo centro non è ancora su Massage Club, quindi lo contattiamo noi per te. Scegli 2-3 orari possibili - più ce ne dai, più velocemente confermiamo.",
+    contactStep: "Contattiamo noi il centro per te, in spagnolo. Scegli un orario e, se puoi, aggiungine un secondo.",
     addSecondChoice: "+ Aggiungi una seconda scelta", addThirdChoice: "+ Aggiungi una terza scelta", thirdChoice: "Terza scelta",
     moreThanOne: "Prenoti per più di una persona?", groupCheck: "Verifichiamo che il centro possa accogliere tutto il gruppo insieme.",
     firstName: "Nome", lastName: "Cognome", waPhone: "WhatsApp / Telefono (+34 600 123 456)", email: "Email",
@@ -412,7 +411,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Qualcosa è andato storto. Riprova.",
     bookYourMassage: "Prenota il tuo massaggio",
     pickService: "Scegli un servizio", pickDay: "Scegli un giorno", pickTime: "Scegli un orario", priceLabel: "Prezzo",
-    moreTimesFaster: "Più orari ci dai, più velocemente confermiamo.",
+    moreTimesFaster: "Se puoi, aggiungi un secondo orario. Aiuta il centro a trovarti posto.",
   },
   pt: {
     showDistance: "Ver distância", directions: "Como chegar",
@@ -420,7 +419,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "A tua reserva está feita! 🎉", waitTime: "Escrevemos-te com a resposta do estúdio. Se a hora te servir, toca em Sim na oferta para a reservar. Se não conseguirem, enviamos-te outros estúdios próximos.",
     addToCalendar: "Adicionar ao meu calendário", waSetItUp: "Escreve-nos no WhatsApp e organizamos tudo", visitWebsite: "Visitar o site",
     timeConfirmedPay: "A tua hora está confirmada. Pagas no estúdio, sem cartão.",
-    studioConfirmsPay: "O estúdio normalmente confirma em algumas horas e receberás um email. Pagas no estúdio, sem cartão.",
+    studioConfirmsPay: "Escrevemos-te quando o estúdio responder. Pagas no estúdio.",
     almostDone: "Quase pronto. Escreve-nos no WhatsApp e organizamos tudo.",
     footerCredit: "Massage Club · Madrid · book.massageclub.io",
     notOnClub: "Este estúdio ainda não está no Massage Club. Ainda assim organizamos a tua reserva.",
@@ -428,7 +427,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "Reservar uma massagem", pickServiceFirst: "Escolhe primeiro um serviço",
     servicesLabel: "Serviços", takeQuiz: "Não sabes qual massagem escolher? Faz o teste de 60 segundos",
     chooseServiceContinue: "Escolhe um serviço para continuar", continueLabel: "Continuar",
-    contactStep: "Este estúdio ainda não está no Massage Club, por isso contactamo-lo por ti. Escolhe 2-3 horários possíveis - quanto mais nos deres, mais rápido confirmamos.",
+    contactStep: "Contactamos o estúdio por ti, em espanhol. Escolhe uma hora e, se puderes, junta uma segunda.",
     addSecondChoice: "+ Adicionar uma segunda opção", addThirdChoice: "+ Adicionar uma terceira opção", thirdChoice: "Terceira opção",
     moreThanOne: "Estás a reservar para mais de uma pessoa?", groupCheck: "Vamos confirmar que o estúdio pode receber o teu grupo todo ao mesmo tempo.",
     firstName: "Nome próprio", lastName: "Sobrenome", waPhone: "WhatsApp / Telefone (+34 600 123 456)", email: "Email",
@@ -471,7 +470,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "Algo correu mal. Tenta outra vez.",
     bookYourMassage: "Reserva a tua massagem",
     pickService: "Escolhe um serviço", pickDay: "Escolhe um dia", pickTime: "Escolhe uma hora", priceLabel: "Preço",
-    moreTimesFaster: "Quanto mais horários nos deres, mais rápido confirmamos.",
+    moreTimesFaster: "Se puderes, junta uma segunda hora. Ajuda o estúdio a encontrar-te vaga.",
   },
   zh: {
     showDistance: "显示距离", directions: "路线",
@@ -479,7 +478,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookingDone: "预约成功！🎉", waitTime: "我们会把门店的答复发给您。时间合适的话，在我们发来的邀约中点击“是”即可预订。如果门店无法安排，我们会为您推荐附近其他门店。",
     addToCalendar: "添加到我的日历", waSetItUp: "通过WhatsApp联系我们,我们会为您安排", visitWebsite: "访问他们的网站",
     timeConfirmedPay: "您的时间已确认。到店付款,无需信用卡。",
-    studioConfirmsPay: "门店通常会在几小时内确认,并通过邮件通知您。到店付款,无需信用卡。",
+    studioConfirmsPay: "门店答复后我们会给您发邮件。到店付款。",
     almostDone: "快完成了。通过WhatsApp联系我们,我们会为您安排。",
     footerCredit: "Massage Club · 马德里 · book.massageclub.io",
     notOnClub: "该门店尚未加入Massage Club。我们仍然可以为您安排预约。",
@@ -487,7 +486,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     bookMassage: "预约按摩", pickServiceFirst: "请先选择一项服务",
     servicesLabel: "服务", takeQuiz: "不确定选哪种按摩?来做60秒测试",
     chooseServiceContinue: "选择一项服务以继续", continueLabel: "继续",
-    contactStep: "该门店尚未加入Massage Club,所以我们会替您联系他们。请选择2-3个可能的时间 - 提供的选择越多,确认越快。",
+    contactStep: "我们用西班牙语替您联系门店。请选择一个时间，如果可以，再添加一个。",
     addSecondChoice: "+ 添加第二选择", addThirdChoice: "+ 添加第三选择", thirdChoice: "第三选择",
     moreThanOne: "为多人预约吗?", groupCheck: "我们会确认门店能否同时接待您的整个团队。",
     firstName: "名字", lastName: "姓氏", waPhone: "WhatsApp / 电话 (+34 600 123 456)", email: "电子邮箱",
@@ -530,8 +529,201 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     somethingWrong: "出了点问题,请重试。",
     bookYourMassage: "预约您的按摩",
     pickService: "选择服务", pickDay: "选择日期", pickTime: "选择时间", priceLabel: "价格",
-    moreTimesFaster: "你提供的时间越多，我们确认得越快。",
+    moreTimesFaster: "如果可以，请再添加一个时间，这样门店更容易为您安排。",
   },
+};
+
+/**
+ * Studio page copy added on 2 Nov 2026 (UX batch, studio_pages). Typed, so a
+ * language cannot miss a key. Placeholders: {min} {n} {km} {studio} {email}.
+ * No em or en dashes; never "instant", "deals" or English-speaking promises.
+ */
+type SpCopy = {
+  priceFrom: string; priceRange: string; oneLine: string; forTwo: string; fourHands: string;
+  reviewsGoogle: string; reviewsOwn: string; howHereTitle: string; notOnClub: string;
+  nearbyTitle: string; walk: string; kmAway: string; openMaps: string; aboutTitle: string;
+  yourName: string; emailLabel: string; emailHelp: string; phoneLabel: string; notesLabel: string;
+  errName: string; errEmail: string; errPhone: string;
+  send: string; sending: string; sendError: string;
+  sentTitle: string; sentContact: string; sentAnswer: string; sentYes: string; requestTo: string;
+};
+const SP_COPY: Record<FlowLang, SpCopy> = {
+  en: {
+    priceFrom: "60 min from €{min}", priceRange: "60 min · usually €50 to €85",
+    oneLine: "We ask the studio for you in Spanish. Nothing is booked until you tap Yes. You pay at the studio.",
+    forTwo: "for 2", fourHands: "4 hands",
+    reviewsGoogle: "{n} Google reviews", reviewsOwn: "{n} reviews",
+    howHereTitle: "How booking works here",
+    notOnClub: "This studio isn't on Massage Club yet. We contact them for you in Spanish and email you their answer.",
+    nearbyTitle: "Other studios nearby", walk: "{n} min walk", kmAway: "{km} km away",
+    openMaps: "Open in Google Maps", aboutTitle: "About the studio",
+    yourName: "Your name", emailLabel: "Email", emailHelp: "The studio's answer and the Yes button come here.",
+    phoneLabel: "WhatsApp number (optional)", notesLabel: "Anything else? (optional)",
+    errName: "What should we call you?", errEmail: "Check your email, for example name@gmail.com",
+    errPhone: "Add the country code, for example +34",
+    send: "Send request", sending: "Sending...", sendError: "That didn't go through. Try again.",
+    sentTitle: "Request sent. We're asking {studio} now.",
+    sentContact: "We contact {studio} for you in Spanish.",
+    sentAnswer: "Their answer comes to {email}.",
+    sentYes: "If the time works, tap Yes to book it. Nothing is booked before that. You pay at the studio.",
+    requestTo: "Your request to {studio}",
+  },
+  es: {
+    priceFrom: "60 min desde {min} €", priceRange: "60 min · normalmente entre 50 y 85 €",
+    oneLine: "Preguntamos al centro por ti. No se reserva nada hasta que tocas Sí. Pagas en el centro.",
+    forTwo: "para 2", fourHands: "4 manos",
+    reviewsGoogle: "{n} reseñas en Google", reviewsOwn: "{n} reseñas",
+    howHereTitle: "Cómo funciona la reserva aquí",
+    notOnClub: "Este centro aún no está en Massage Club. Contactamos con ellos por ti y te enviamos su respuesta por email.",
+    nearbyTitle: "Otros centros cerca", walk: "{n} min andando", kmAway: "a {km} km",
+    openMaps: "Abrir en Google Maps", aboutTitle: "Sobre el centro",
+    yourName: "Tu nombre", emailLabel: "Email", emailHelp: "Aquí te llegan la respuesta del centro y el botón para decir Sí.",
+    phoneLabel: "Número de WhatsApp (opcional)", notesLabel: "¿Algo más? (opcional)",
+    errName: "¿Cómo te llamamos?", errEmail: "Revisa tu email, por ejemplo nombre@gmail.com",
+    errPhone: "Añade el prefijo, por ejemplo +34",
+    send: "Enviar solicitud", sending: "Enviando...", sendError: "No se ha enviado. Inténtalo de nuevo.",
+    sentTitle: "Solicitud enviada. Ya estamos preguntando a {studio}.",
+    sentContact: "Contactamos con {studio} por ti.",
+    sentAnswer: "Su respuesta te llega a {email}.",
+    sentYes: "Si la hora te va bien, toca Sí para reservarla. Antes de eso no se reserva nada. Pagas en el centro.",
+    requestTo: "Tu solicitud a {studio}",
+  },
+  fr: {
+    priceFrom: "60 min dès {min} €", priceRange: "60 min · généralement entre 50 et 85 €",
+    oneLine: "Nous demandons au centre pour vous, en espagnol. Rien n'est réservé tant que vous n'avez pas touché Oui. Vous payez sur place.",
+    forTwo: "pour 2", fourHands: "4 mains",
+    reviewsGoogle: "{n} avis Google", reviewsOwn: "{n} avis",
+    howHereTitle: "Comment se passe la réservation ici",
+    notOnClub: "Ce centre n'est pas encore sur Massage Club. Nous le contactons pour vous en espagnol et vous envoyons sa réponse par email.",
+    nearbyTitle: "Autres centres à proximité", walk: "{n} min à pied", kmAway: "à {km} km",
+    openMaps: "Ouvrir dans Google Maps", aboutTitle: "À propos du centre",
+    yourName: "Votre nom", emailLabel: "Email", emailHelp: "La réponse du centre et le bouton Oui arrivent ici.",
+    phoneLabel: "Numéro WhatsApp (facultatif)", notesLabel: "Autre chose ? (facultatif)",
+    errName: "Comment vous appelez-vous ?", errEmail: "Vérifiez votre email, par exemple nom@gmail.com",
+    errPhone: "Ajoutez l'indicatif, par exemple +34",
+    send: "Envoyer la demande", sending: "Envoi...", sendError: "La demande n'est pas partie. Réessayez.",
+    sentTitle: "Demande envoyée. Nous demandons maintenant à {studio}.",
+    sentContact: "Nous contactons {studio} pour vous, en espagnol.",
+    sentAnswer: "Leur réponse arrive à {email}.",
+    sentYes: "Si l'heure vous convient, touchez Oui pour la réserver. Rien n'est réservé avant. Vous payez sur place.",
+    requestTo: "Votre demande à {studio}",
+  },
+  de: {
+    priceFrom: "60 Min. ab {min} €", priceRange: "60 Min. · meist zwischen 50 und 85 €",
+    oneLine: "Wir fragen das Studio für dich auf Spanisch. Nichts ist gebucht, bevor du auf Ja tippst. Du zahlst im Studio.",
+    forTwo: "für 2", fourHands: "4 Hände",
+    reviewsGoogle: "{n} Google-Bewertungen", reviewsOwn: "{n} Bewertungen",
+    howHereTitle: "So funktioniert die Buchung hier",
+    notOnClub: "Dieses Studio ist noch nicht bei Massage Club. Wir kontaktieren es für dich auf Spanisch und schicken dir seine Antwort per E-Mail.",
+    nearbyTitle: "Andere Studios in der Nähe", walk: "{n} Min. zu Fuß", kmAway: "{km} km entfernt",
+    openMaps: "In Google Maps öffnen", aboutTitle: "Über das Studio",
+    yourName: "Dein Name", emailLabel: "E-Mail", emailHelp: "Die Antwort des Studios und der Ja-Button kommen hierhin.",
+    phoneLabel: "WhatsApp-Nummer (optional)", notesLabel: "Sonst noch etwas? (optional)",
+    errName: "Wie heißt du?", errEmail: "Prüfe deine E-Mail, zum Beispiel name@gmail.com",
+    errPhone: "Füge die Ländervorwahl hinzu, zum Beispiel +34",
+    send: "Anfrage senden", sending: "Wird gesendet...", sendError: "Das hat nicht geklappt. Versuch es noch einmal.",
+    sentTitle: "Anfrage gesendet. Wir fragen jetzt bei {studio} an.",
+    sentContact: "Wir kontaktieren {studio} für dich auf Spanisch.",
+    sentAnswer: "Die Antwort kommt an {email}.",
+    sentYes: "Wenn die Zeit passt, tippe auf Ja, um sie zu buchen. Vorher ist nichts gebucht. Du zahlst im Studio.",
+    requestTo: "Deine Anfrage an {studio}",
+  },
+  it: {
+    priceFrom: "60 min da {min} €", priceRange: "60 min · di solito tra 50 e 85 €",
+    oneLine: "Chiediamo noi al centro, in spagnolo. Niente è prenotato finché non tocchi Sì. Paghi al centro.",
+    forTwo: "per 2", fourHands: "4 mani",
+    reviewsGoogle: "{n} recensioni Google", reviewsOwn: "{n} recensioni",
+    howHereTitle: "Come funziona la prenotazione qui",
+    notOnClub: "Questo centro non è ancora su Massage Club. Lo contattiamo noi per te in spagnolo e ti mandiamo la sua risposta via email.",
+    nearbyTitle: "Altri centri vicini", walk: "{n} min a piedi", kmAway: "a {km} km",
+    openMaps: "Apri in Google Maps", aboutTitle: "Il centro",
+    yourName: "Il tuo nome", emailLabel: "Email", emailHelp: "Qui ti arrivano la risposta del centro e il pulsante Sì.",
+    phoneLabel: "Numero WhatsApp (facoltativo)", notesLabel: "Altro? (facoltativo)",
+    errName: "Come ti chiami?", errEmail: "Controlla la tua email, per esempio nome@gmail.com",
+    errPhone: "Aggiungi il prefisso, per esempio +34",
+    send: "Invia richiesta", sending: "Invio...", sendError: "Non è stata inviata. Riprova.",
+    sentTitle: "Richiesta inviata. Stiamo chiedendo a {studio}.",
+    sentContact: "Contattiamo {studio} per te, in spagnolo.",
+    sentAnswer: "La risposta arriva a {email}.",
+    sentYes: "Se l'orario ti va bene, tocca Sì per prenotarlo. Prima di allora non è prenotato nulla. Paghi al centro.",
+    requestTo: "La tua richiesta a {studio}",
+  },
+  pt: {
+    priceFrom: "60 min desde {min} €", priceRange: "60 min · normalmente entre 50 e 85 €",
+    oneLine: "Perguntamos ao estúdio por ti, em espanhol. Nada fica reservado até tocares em Sim. Pagas no estúdio.",
+    forTwo: "para 2", fourHands: "4 mãos",
+    reviewsGoogle: "{n} avaliações no Google", reviewsOwn: "{n} avaliações",
+    howHereTitle: "Como funciona a reserva aqui",
+    notOnClub: "Este estúdio ainda não está no Massage Club. Contactamo-lo por ti em espanhol e enviamos-te a resposta por email.",
+    nearbyTitle: "Outros estúdios perto", walk: "{n} min a pé", kmAway: "a {km} km",
+    openMaps: "Abrir no Google Maps", aboutTitle: "Sobre o estúdio",
+    yourName: "O teu nome", emailLabel: "Email", emailHelp: "Aqui chegam a resposta do estúdio e o botão Sim.",
+    phoneLabel: "Número de WhatsApp (opcional)", notesLabel: "Mais alguma coisa? (opcional)",
+    errName: "Como te chamas?", errEmail: "Verifica o teu email, por exemplo nome@gmail.com",
+    errPhone: "Adiciona o indicativo, por exemplo +34",
+    send: "Enviar pedido", sending: "A enviar...", sendError: "Não foi enviado. Tenta outra vez.",
+    sentTitle: "Pedido enviado. Já estamos a perguntar a {studio}.",
+    sentContact: "Contactamos {studio} por ti, em espanhol.",
+    sentAnswer: "A resposta chega a {email}.",
+    sentYes: "Se a hora te servir, toca em Sim para a reservar. Antes disso nada fica reservado. Pagas no estúdio.",
+    requestTo: "O teu pedido a {studio}",
+  },
+  zh: {
+    priceFrom: "60分钟 {min} € 起", priceRange: "60分钟 · 通常 50 至 85 €",
+    oneLine: "我们用西班牙语替您询问门店。在您点击“是”之前不会预订任何时段。到店付款。",
+    forTwo: "2人", fourHands: "四手",
+    reviewsGoogle: "{n} 条 Google 评价", reviewsOwn: "{n} 条评价",
+    howHereTitle: "这里如何预约",
+    notOnClub: "该门店尚未加入Massage Club。我们会用西班牙语替您联系，并通过邮件把答复发给您。",
+    nearbyTitle: "附近的其他门店", walk: "步行{n}分钟", kmAway: "{km} 公里",
+    openMaps: "在 Google 地图中打开", aboutTitle: "关于门店",
+    yourName: "您的姓名", emailLabel: "电子邮箱", emailHelp: "门店的答复和“是”按钮会发到这里。",
+    phoneLabel: "WhatsApp 号码（可选）", notesLabel: "还有其他吗？（可选）",
+    errName: "我们该怎么称呼您？", errEmail: "请检查您的邮箱，例如 name@gmail.com",
+    errPhone: "请加上国家区号，例如 +34",
+    send: "发送请求", sending: "发送中...", sendError: "发送失败，请重试。",
+    sentTitle: "请求已发送。我们正在询问 {studio}。",
+    sentContact: "我们用西班牙语替您联系 {studio}。",
+    sentAnswer: "答复会发送到 {email}。",
+    sentYes: "如果时间合适，点击“是”即可预订。在此之前不会预订任何时段。到店付款。",
+    requestTo: "您发给 {studio} 的请求",
+  },
+};
+
+/** Fill {placeholders} in a copy line. */
+const fill = (tpl: string, vars: Record<string, string | number>) =>
+  tpl.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+
+/** "w***@example.com": enough to recognise the address, not to read it off a screen. */
+const maskEmail = (e: string) => {
+  const v = (e || "").trim();
+  const at = v.lastIndexOf("@");
+  if (at < 1) return v;
+  return `${v[0]}***@${v.slice(at + 1)}`;
+};
+
+/** "Ana María López" -> first "Ana", last "María López" (null when one word). */
+const splitName = (full: string) => {
+  const parts = (full || "").trim().split(/\s+/).filter(Boolean);
+  return { first: parts[0] || "", last: parts.slice(1).join(" ") || null };
+};
+
+/** Days from Madrid today to an ISO day (0 = today). */
+const dayOffset = (iso: string) => {
+  const [y1, m1, d1] = madridTodayIso().split("-").map(Number);
+  const [y2, m2, d2] = (iso || "").split("-").map(Number);
+  if (!y2) return null;
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
+};
+
+type FieldKey = "name" | "email" | "phone";
+/** On-tap validation shared by both studio branches. Phone is checked only when typed. */
+const validateContact = (name: string, email: string, phone: string): FieldKey[] => {
+  const bad: FieldKey[] = [];
+  if (!name.trim()) bad.push("name");
+  if (!isValidEmail(email)) bad.push("email");
+  if (/\d/.test(phone || "") && !isValidPhone(phone)) bad.push("phone");
+  return bad;
 };
 
 const isoDate = (d: Date) =>
@@ -541,7 +733,17 @@ const dayShort = (d: Date, lang: FlowLang) => shortWeekday(d, lang);
 const monShort = (d: Date, lang: FlowLang) =>
   new Intl.DateTimeFormat(localeOf(lang), { month: "short" }).format(d).replace(/\.$/, "");
 
+/**
+ * Keyed by the studio in the URL, so following an "Other studios nearby" link
+ * starts a fresh page (no service, times or name carried over from the last
+ * studio) and opens at the top.
+ */
 export default function StudioBookingPage() {
+  const { studioId } = useParams();
+  return <StudioBookingPageInner key={studioId || ""} />;
+}
+
+function StudioBookingPageInner() {
   const { t, i18n } = useTranslation();
   const lang = useFlowLang();
   const c = pickCopy(PAGE_COPY, lang);
@@ -566,15 +768,15 @@ export default function StudioBookingPage() {
   const [altTime3, setAltTime3] = useState<string | null>(null);
   const [alt2Shown, setAlt2Shown] = useState(false);
   const [alt3Shown, setAlt3Shown] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
-  const nameComplete = !!(firstName.trim() && lastName.trim());
+  // One "Your name" field (2 Nov): first AND last name was where people stopped.
+  const [fullName, setFullName] = useState("");
+  const name = fullName.trim();
+  const { first: firstName, last: lastName } = splitName(fullName);
+  const nameComplete = !!name;
   const applyFullName = (full: string) => {
-    const parts = (full || "").trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return;
-    setFirstName(prev => prev || parts[0]);
-    setLastName(prev => prev || parts.slice(1).join(" "));
+    const v = (full || "").trim();
+    if (!v) return;
+    setFullName(prev => prev || v);
   };
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -587,7 +789,10 @@ export default function StudioBookingPage() {
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [conversationPref, setConversationPref] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ ref: string } | null>(null);
+  // status: what the bookings row says. The anon role cannot read the column
+  // back (2 Nov), and the insert policy only allows "pending", so a new request
+  // is always pending here: no calendar button for an unconfirmed time.
+  const [done, setDone] = useState<{ ref: string; status: string } | null>(null);
   const [error, setError] = useState("");
   const [profileAllergies, setProfileAllergies] = useState<string>("");
   const [profileHealthNotes, setProfileHealthNotes] = useState<string>("");
@@ -620,21 +825,33 @@ export default function StudioBookingPage() {
   const [hoPeople, setHoPeople] = useState("1");
   const [hoPeopleOpen, setHoPeopleOpen] = useState(false);
   const [hoNotes, setHoNotes] = useState("");
-  const [hoFirstName, setHoFirstName] = useState("");
-  const [hoLastName, setHoLastName] = useState("");
-  const hoName = [hoFirstName.trim(), hoLastName.trim()].filter(Boolean).join(" ");
-  const hoNameComplete = !!(hoFirstName.trim() && hoLastName.trim());
+  const [hoFullName, setHoFullName] = useState("");
   const [hoEmail, setHoEmail] = useState("");
   const [hoPhone, setHoPhone] = useState("");
+  // Send-step state: errors appear only after a tap on Send, then follow edits.
+  const [hoErrors, setHoErrors] = useState<FieldKey[]>([]);
+  const [hoSending, setHoSending] = useState(false);
+  const [hoSendError, setHoSendError] = useState(false);
+  const [hoSentTo, setHoSentTo] = useState<string | null>(null);
+  const hoNameRef = useRef<HTMLInputElement | null>(null);
+  const hoEmailRef = useRef<HTMLInputElement | null>(null);
+  const hoPhoneRef = useRef<HTMLInputElement | null>(null);
+  const hoSendRef = useRef<HTMLButtonElement | null>(null);
+  // Claimed-studio details step: same on-tap validation.
+  const [dErrors, setDErrors] = useState<FieldKey[]>([]);
+  const phoneRef = useRef<HTMLInputElement | null>(null);
+  // "Other studios nearby" (SP1): null until loaded.
+  const [nearby, setNearby] = useState<NearbyListedStudio[] | null>(null);
+  const detailsViewedRef = useRef(false);
 
   // Passwordless account creation, offered to visitors who are not signed in.
-  const [createAccount, setCreateAccount] = useState(true);
+  // Off by default (2 Nov): a pre-ticked box sent sign-up emails nobody asked for.
+  const [createAccount, setCreateAccount] = useState(false);
 
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
   const [hoAltDate, setHoAltDate] = useState("");
   const [hoAltTime, setHoAltTime] = useState("");
-  const [waTapped, setWaTapped] = useState(false);
   const [askWaTapped, setAskWaTapped] = useState(false);
   const [altOpen, setAltOpen] = useState(false);
   const [alt2Open, setAlt2Open] = useState(false);
@@ -666,17 +883,35 @@ export default function StudioBookingPage() {
     markStudioVisited(studioId);
   }, [studioId]);
 
-  // Funnel: each booking step becoming visible (claimed-studio wizard).
+  // Step events (contract 3.1, 2 Nov). The old wizard_step_${n} effects fired
+  // on mount, twice per studio view, so "step 1" counted page loads. These fire
+  // on a person's tap; the step is in the event name because `track` keeps
+  // only the first row per day, visitor, event and path.
+  const isHandoffPage = !!profile?.partner && (profile.partner as any).status !== "active";
+  const reqTrack = (event: string, meta: Record<string, unknown> = {}) => {
+    const slug = (profile?.partner as any)?.slug || studioId || null;
+    trackFunnel(event, { flow: isHandoffPage ? "studio-handoff" : "studio", lang: siteLang, v: "ds1", studio: slug, ...meta }, slug);
+  };
   useEffect(() => {
-    trackFunnel(`wizard_step_${step}`, { flow: "studio", studio: studioId, service_id: serviceId || null }, studioId);
+    if (!profile?.partner || detailsViewedRef.current) return;
+    const onDetails = isHandoffPage ? hoStep === 3 : step === 4;
+    if (!onDetails) return;
+    detailsViewedRef.current = true;
+    reqTrack("req_details_view");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [hoStep, step, profile]);
 
-  // Funnel: same for the unclaimed-studio handoff wizard.
+  // "Other studios nearby": the three closest listed studios. A studio with no
+  // coordinates (Wellness Care, Belmont) uses the centre of its neighbourhood.
   useEffect(() => {
-    trackFunnel(`wizard_step_${hoStep}`, { flow: "studio-handoff", studio: studioId, service_id: hoServiceId || null }, studioId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoStep]);
+    const p = profile?.partner as any;
+    if (!p?.id) return;
+    let off = false;
+    const lat = p.latitude != null ? Number(p.latitude) : null;
+    const lng = p.longitude != null ? Number(p.longitude) : null;
+    findNearbyStudios(lat, lng, p.id, 3, p.neighbourhood ?? null).then((r) => { if (!off) setNearby(r); });
+    return () => { off = true; };
+  }, [profile]);
 
 
 
@@ -699,6 +934,11 @@ export default function StudioBookingPage() {
 
   useEffect(() => {
     captureSource();
+  }, []);
+
+  // A studio page opened from "Other studios nearby" starts at the top.
+  useEffect(() => {
+    window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
@@ -954,24 +1194,6 @@ export default function StudioBookingPage() {
     return m;
   }, [profile]);
 
-  // next 21 days that the studio is open
-  const openDates = useMemo(() => {
-    const out: Date[] = [];
-    const today = new Date();
-    for (let i = 0; i < 21 && out.length < 14; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      if ((slotsByDay[d.getDay()] || []).length > 0) out.push(d);
-    }
-    return out;
-  }, [slotsByDay]);
-
-  // Step 2 must never open empty: preselect the first day that has slots.
-  useEffect(() => {
-    if (step !== 2 || date || openDates.length === 0) return;
-    setDate(openDates[0]);
-    setTime(null);
-  }, [step, date, openDates]);
 
   // The quiz remembers which studio sent the visitor there.
   const quizHref = (() => {
@@ -1003,13 +1225,42 @@ export default function StudioBookingPage() {
   const remainingFor = (t: string) =>
     date ? capacityFor(date.getDay(), t) - (slotCounts.get(`${isoDate(date)}__${t}`) || 0) : 0;
 
-  // Only show a time while at least one therapist is still free for it.
-  const timesFor = (d: Date | null) =>
-    d
-      ? (slotsByDay[d.getDay()] || []).filter(
-          t => capacityFor(d.getDay(), t) - (slotCounts.get(`${isoDate(d)}__${t}`) || 0) > 0,
-        )
-      : [];
+  // Madrid's today, not the browser's (2 Nov): a visitor abroad, or anyone
+  // at 16:39, was offered 10:00 to 16:00 today.
+  const todayIso = madridTodayIso();
+
+  // Only show a time while at least one therapist is still free for it, and,
+  // today, only from an hour after Madrid now.
+  const timesFor = (d: Date | null) => {
+    if (!d) return [];
+    const iso = isoDate(d);
+    return (slotsByDay[d.getDay()] || []).filter(
+      t => capacityFor(d.getDay(), t) - (slotCounts.get(`${iso}__${t}`) || 0) > 0
+        && !(iso <= todayIso && isTooSoon(iso, t)),
+    );
+  };
+
+  // The next 21 Madrid days the studio is open (up to 14). Today only while a
+  // time is still bookable.
+  const openDates = useMemo(() => {
+    const out: Date[] = [];
+    for (const iso of madridDays(21)) {
+      if (out.length >= 14) break;
+      const d = isoToLocalDate(iso);
+      const open = iso === todayIso ? timesFor(d).length > 0 : (slotsByDay[d.getDay()] || []).length > 0;
+      if (open) out.push(d);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotsByDay, slotCounts, slotCapacity, therapistCount, todayIso]);
+
+  // Step 2 must never open empty. Preselect the first open day that is not
+  // today; today only when it is the only day with times.
+  useEffect(() => {
+    if (step !== 2 || date || openDates.length === 0) return;
+    setDate(openDates.find(d => isoDate(d) !== todayIso) ?? openDates[0]);
+    setTime(null);
+  }, [step, date, openDates, todayIso]);
   const times = timesFor(date);
   const prettyDayOf = (d: Date | null) =>
     d ? `${dayShort(d, lang)} ${d.getDate()} ${monShort(d, lang)}` : null;
@@ -1048,7 +1299,7 @@ export default function StudioBookingPage() {
       {dVal && (
         <div className="mt-3 flex flex-wrap gap-2">
           {timesFor(dVal).length === 0 ? (
-            <p className="text-sm text-gray-400">Fully booked that day / Sin horas ese día</p>
+            <p className="text-sm text-gray-400">{c.fullyBooked}</p>
           ) : (
             timesFor(dVal).map(t => (
               <button
@@ -1089,14 +1340,6 @@ export default function StudioBookingPage() {
     : null;
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
-
-  // Abandoned-booking capture: signed-out visitors who picked a day and time
-  // but have not submitted yet. Declared before the early returns below.
-  const leadSheet = useAbandonedBookingCapture({
-    eligible: step > 2 && !!date && !!time,
-    onFinalStep: step === 5,
-    disabled: !!userId || !!done,
-  });
 
   // Concierge bubble: studio context on the profile/first step, hidden once the
   // visitor is inside the wizard (it must never compete with the Continue bar).
@@ -1166,92 +1409,204 @@ export default function StudioBookingPage() {
       : null;
   const distanceKm = userLoc && studioLatLng ? haversineKm(userLoc, studioLatLng) : null;
   const directionsHref = walkingDirectionsUrl(studioLatLng, partner.address || partner.business_name, userLoc);
+  // 44px rows (2 Nov): "Show distance" and "Directions" were 20px tall.
   const distanceBlock = (dark: boolean) => (
-    <p className={`text-sm flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 ${dark ? "text-white/80" : ""}`} style={dark ? undefined : { color: "#5a4736" }}>
+    <p className={`text-sm flex flex-wrap items-center gap-x-4 ${dark ? "text-white/80" : ""}`} style={dark ? undefined : { color: "#5a4736" }}>
       {distanceKm != null ? (
-        <span>{distanceLabel(distanceKm, siteLang === "es" ? "es" : "en")} {locAreaName ? originSuffix(locAreaName, siteLang === "es" ? "es" : "en") : ""}</span>
+        <span className="inline-flex min-h-[44px] items-center">{distanceLabel(distanceKm, siteLang === "es" ? "es" : "en")} {locAreaName ? originSuffix(locAreaName, siteLang === "es" ? "es" : "en") : ""}</span>
       ) : (
         <button
           type="button"
           onClick={() => askLocation((res) => { if (res) { setUserLoc(res.loc); setLocAreaName(res.areaName); } })}
-          className="underline underline-offset-2 font-semibold"
+          className="inline-flex min-h-[44px] items-center underline underline-offset-2 font-semibold"
         >
           {c.showDistance}
         </button>
       )}
       {directionsHref && (
-        <a href={directionsHref} target="_blank" rel="noreferrer" className={`underline underline-offset-2 font-semibold ${dark ? "" : "text-[#C4622D]"}`}>
+        <a href={directionsHref} target="_blank" rel="noreferrer" className={`inline-flex min-h-[44px] items-center underline underline-offset-2 font-semibold ${dark ? "" : "text-[#B85C38]"}`}>
           {c.directions}
         </a>)}
     </p>
   );
 
+  // ─── The real place first (SP1, 2 Nov) ───
+  // Jordan: "show customers the real studio visually: photos, place, map,
+  // compare others". Order: photo or map, name, place, rating, price, one line.
+  const sp: SpCopy = pickCopy(SP_COPY, lang) as SpCopy;
+  const numLocale = localeOf(lang);
+  const hood: string | null = ((partner as any).neighbourhood || "").trim() || null;
+  const placeLine = [hood, partner.address || (hood ? "Madrid" : null)].filter(Boolean).join(" · ");
+  // Only the studio's own photos: never stock or Google Places as "the place".
+  const studioPhoto: string | null =
+    partner.cover_url ||
+    (Array.isArray(partner.gallery)
+      ? partner.gallery.find((u: unknown) => typeof u === "string" && u.trim() && !/\.(mp4|webm)(\?.*)?$/i.test(u)) || null
+      : null);
+  const from60 = sixtyMinFrom(profile.services);
+  const priceChipText = from60 != null ? fill(sp.priceFrom, { min: from60 }) : sp.priceRange;
+  const gRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
+  const gReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
+  // A rating means something only with enough reviews behind it.
+  const ratingLine =
+    rating && rating.count >= 3
+      ? { avg: rating.avg, text: fill(sp.reviewsOwn, { n: rating.count.toLocaleString(numLocale) }) }
+      : gRating != null && Number.isFinite(gRating) && gReviews != null && gReviews >= 10
+        ? { avg: gRating, text: fill(sp.reviewsGoogle, { n: gReviews.toLocaleString(numLocale) }) }
+        : null;
+  const fmtRating = (v: number) => v.toLocaleString(numLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  /** Euro amount in the page language: "€85" (en), "85 €" (es). */
+  const eur = (v: number) => formatPrice(v, lang);
 
+  const visualBlock = studioPhoto ? (
+    <img
+      src={studioPhoto}
+      alt={partner.business_name}
+      className="block w-full aspect-[4/3] object-cover rounded-2xl"
+      style={{ background: "#F4EEE6" }}
+      decoding="async"
+    />
+  ) : (
+    <StudioPlaceMap
+      lat={studioLatLng?.lat ?? null}
+      lng={studioLatLng?.lng ?? null}
+      name={partner.business_name}
+      title={hood || "Madrid"}
+      address={partner.address || null}
+      height={180}
+    />
+  );
 
-  // ─── Confirmation screen ───
+  const identityBlock = (
+    <div className="text-left">
+      <h1 className="font-display text-3xl min-[900px]:text-4xl font-semibold leading-tight mt-4" style={{ color: "#2b2b2b" }}>
+        {partner.business_name}
+      </h1>
+      {placeLine && (
+        <p className="mt-1.5 text-sm min-[900px]:text-base flex items-start gap-1.5" style={{ color: "#5a4736" }}>
+          <MapPin size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />
+          <span>{placeLine}</span>
+        </p>
+      )}
+      {distanceBlock(false)}
+      {ratingLine && (
+        <p className="text-sm min-[900px]:text-base flex items-center gap-1.5" style={{ color: "#5a4736" }}>
+          <span aria-hidden="true" style={{ color: "#E0A458" }}>★</span>
+          <span className="font-semibold">{fmtRating(ratingLine.avg)}</span>
+          <span style={{ color: "#7A7068" }}>· {ratingLine.text}</span>
+        </p>
+      )}
+      <p
+        data-testid="studio-price-chip"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold"
+        style={{ borderColor: "#E6DCCF", background: "#FAF6F1", color: "#2b2b2b" }}
+      >
+        <Euro size={15} style={{ color: "#B85C38" }} aria-hidden="true" />
+        {priceChipText}
+      </p>
+      <p className="mt-3 text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
+        {sp.oneLine}
+      </p>
+    </div>
+  );
+
+  // Brand bar (2 Nov): wordmark left, account and language right, in one row.
+  // The account pill used to float over the wordmark (F6).
+  const brandBar = () => (
+    <div className="py-2.5 px-4" style={{ background: "#FAF6F1", borderBottom: "1px solid #EADFD2" }}>
+      <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3">
+      <Link to="/studios" className="flex min-w-0 items-center gap-2" aria-label="Massage Club">
+        <img src="/brand/mc-avatar-terracotta.png" alt="" width={26} height={26} className="rounded-full flex-shrink-0" />
+        <span className="truncate" style={{ color: "#B85C38", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
+      </Link>
+      <div className="flex flex-shrink-0 items-center gap-2"><AccountHeaderLink /><LanguageFlagToggle /></div>
+      </div>
+    </div>
+  );
+
+  const nearbyBlock = nearby && nearby.length > 0 ? (
+    <section aria-label={sp.nearbyTitle} className="text-left" data-testid="studio-nearby">
+      <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{sp.nearbyTitle}</p>
+      <ul className="grid gap-2 min-[900px]:grid-cols-3 min-[900px]:gap-3">
+        {nearby.map((n) => {
+          const dist =
+            n.walkMinutes == null
+              ? null
+              : n.walkMinutes <= 45
+                ? fill(sp.walk, { n: n.walkMinutes })
+                : fill(sp.kmAway, { km: n.km.toLocaleString(numLocale, { maximumFractionDigits: 1 }) });
+          return (
+            <li key={n.id}>
+              <Link
+                to={studioPath(n)}
+                onClick={() => reqTrack("studio_nearby_click", { to: n.slug || n.id })}
+                className="flex h-full min-h-[56px] items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 motion-safe:transition hover:border-[#B85C38]"
+                style={{ borderColor: "#E6DCCF" }}
+              >
+                <span className="min-w-0">
+                  <span className="block font-semibold leading-tight" style={{ color: "#2b2b2b" }}>{n.name}</span>
+                  {(n.neighbourhood || dist) && (
+                    <span className="mt-0.5 block text-sm" style={{ color: "#7A7068" }}>
+                      {[n.neighbourhood, dist].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                </span>
+                {n.from60 != null && (
+                  <span className="flex-shrink-0 text-sm font-semibold text-right" style={{ color: "#2b2b2b" }}>
+                    {fill(sp.priceFrom, { min: n.from60 })}
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  ) : null;
+
+  /** Menu price with "for 2" on couples rows and "4 hands" on four-hands rows (F17). */
+  const serviceTag = (s: any) => (isForTwo(s) ? sp.forTwo : isFourHands(s) ? sp.fourHands : null);
+
+  // ─── Confirmation screen (claimed studios) ───
   if (done) {
     const prettyDate = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : "";
-    const isClaimed = partner.status === "active";
-    const studioNumber = (partner as any).whatsapp || partner.phone;
-    const waNumber = resolveWhatsappNumber(partner as any);
-
-    // Concierge model: every client CTA opens a chat with MASSAGE CLUB, never the studio.
-    const conciergeWhen = prettyDate ? `${prettyDate}${time ? ` at ${time}` : ""}` : (time || null);
-    const conciergeMsg = conciergePrefill({
-      lang: siteLang,
-      studio: partner.business_name,
-      service: service ? servicePrimaryName(service) : null,
-      duration: (service as any)?.duration ?? null,
-      price: (service as any)?.price ?? null,
-      when1: conciergeWhen,
-
-      name: name || null,
-      languages: spokenLangs,
-    });
-    const waLink = conciergeWhatsappUrl(conciergeMsg);
-    const unclaimedWaLink = waLink;
-
-    const websiteUrl = (() => {
-      if (!partner.website) return null;
-      const w = String(partner.website).trim();
-      return /^https?:\/\//i.test(w) ? w : `https://${w}`;
-    })();
-    // Let the customer drop the appointment into their own calendar.
+    const confirmed = done.status === "confirmed";
+    // A calendar entry only for a confirmed time: an unconfirmed slot in a
+    // calendar invites no-shows (F13).
     const gcal = (() => {
-      if (!date || !time || !service) return null;
+      if (!confirmed || !date || !time || !service) return null;
       const [h, m] = time.split(":").map(Number);
       const start = new Date(date); start.setHours(h, m, 0, 0);
       const end = new Date(start.getTime() + (service.duration || 60) * 60000);
       const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
       const text = encodeURIComponent(`${serviceInlineLabel(service)} · ${partner.business_name}`);
-      const details = encodeURIComponent(`Massage Club booking · Ref ${done.ref}`);
+      const details = encodeURIComponent(`Massage Club · ${done.ref}`);
       const loc = encodeURIComponent(partner.address || partner.business_name || "");
       return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${z(start)}/${z(end)}&details=${details}&location=${loc}`;
     })();
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#FAF6F1" }}>
+      <div className="min-h-screen" style={{ background: "#FAF6F1" }}>
+        {brandBar()}
+        <div className="p-4 flex justify-center">
         <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
-          <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
-            <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
-            <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
-          </div>
           <div className="px-6 py-7">
-            <div className="text-xs font-bold uppercase mb-1" style={{ color: "#B85C38", letterSpacing: "2.5px" }}>{c.yourAppointmentAt}</div>
-            <h1 className="font-display text-3xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
+            <h1 className="font-display text-2xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>
+              {fill(sp.requestTo, { studio: partner.business_name })}
+            </h1>
             <p className="text-base font-semibold mb-3" style={{ color: "#3d2b1f" }}>
-              {/* 31 Oct: was `isClaimed && !instantConfirm ? checking : booked`, which told
-                  anyone booking an unclaimed (pending) studio "You're booked!" before any
-                  studio had the slot or the customer had tapped Yes (BOTH PARTIES TAP). */}
-              {instantConfirm ? c.bookingDone : c.checkingWithStudio}
+              {/* 31 Oct: never "You're booked!" before both the studio and the
+                  customer have said yes (BOTH PARTIES TAP). */}
+              {confirmed && instantConfirm ? c.bookingDone : c.checkingWithStudio}
             </p>
-            {isClaimed && !instantConfirm && (
+            {!confirmed && (
               <p className="text-sm mb-6 leading-snug" style={{ color: "#5a4736" }}>
                 {c.waitTime}
               </p>
             )}
             <div className="rounded-xl p-4 mb-5 text-left" style={{ background: "#FAF6F1" }}>
               <div className="text-sm font-semibold mb-1" style={{ color: "#3d2b1f" }}>
-                {servicePrimaryName(service)} · {service?.duration} min · {total}€
+                {[servicePrimaryName(service), service?.duration ? `${service.duration} min` : null, total > 0 ? eur(total) : null].filter(Boolean).join(" · ")}
+                {service && serviceTag(service) ? ` ${serviceTag(service)}` : ""}
               </div>
               {serviceSecondaryName(service) && (
                 <div className="text-xs mb-1" style={{ color: "#8a7460" }}>{serviceSecondaryName(service)}</div>
@@ -1261,73 +1616,34 @@ export default function StudioBookingPage() {
               </div>
               {partner.address && (
                 <div className="text-sm flex items-start gap-1.5" style={{ color: "#5a4736" }}>
-                  <span>📍</span>
+                  <MapPin size={14} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
                   <span>{partner.address}</span>
                 </div>
               )}
             </div>
-            <div className="inline-flex items-center justify-center px-4 py-2 rounded-full font-mono text-xs mb-5" style={{ background: "#FAF6F1", color: "#5a4736" }}>
+            <div data-testid="booking-ref" className="inline-flex items-center justify-center px-4 py-2 rounded-full font-mono text-sm mb-5" style={{ background: "#FAF6F1", color: "#5a4736" }}>
               {done.ref}
             </div>
-            {isClaimed ? (
-              <>
-                {instantConfirm ? (
-                  <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                    {c.timeConfirmedPay}
-                  </p>
-                ) : (
-                  <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                    {c.studioConfirmsPay}
-                  </p>
-                )}
-                <div className="flex flex-col items-center gap-3 w-full">
-                  {gcal && (
-                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <CalendarDays size={18} /> {c.addToCalendar}
-                    </a>
-                  )}
-                  {waLink ? (
-                    <a href={waLink} target="_blank" rel="noopener noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full border font-semibold" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {c.waSetItUp}</span>
-                    </a>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
-                  {c.almostDone}
-                </p>
-                <div className="flex flex-col items-center gap-3 w-full">
-                  {unclaimedWaLink ? (
-                    <a href={unclaimedWaLink} target="_blank" rel="noreferrer" className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                      <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {c.waSetItUp}</span>
-                    </a>
-                  ) : null}
-                  {websiteUrl && (
-                    <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
-                      {c.visitWebsite}
-                    </a>
-                  )}
-
-                  {gcal && (
-                    <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
-                      <CalendarDays size={18} /> {c.addToCalendar}
-                    </a>
-                  )}
-                </div>
-              </>
+            <p className="text-sm mb-6" style={{ color: "#8a7460" }}>
+              {confirmed ? c.timeConfirmedPay : c.studioConfirmsPay}
+            </p>
+            {/* No "WhatsApp us" button here (2 Nov): the request already exists,
+                and a WhatsApp message without its id starts a second one in the
+                bot, which asks studios again (F4). */}
+            {gcal && (
+              <a href={gcal} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition" style={{ borderColor: "#B85C38", color: "#B85C38" }}>
+                <CalendarDays size={18} /> {c.addToCalendar}
+              </a>
             )}
             <AccountOfferBlock
               className="mt-6"
-              firstName={firstName.trim()}
-              lastName={lastName.trim()}
+              firstName={firstName}
+              lastName={lastName || ""}
               email={email.trim()}
               phone={phone.trim()}
               requestId={waRequestIdRef.current}
               source="studio-booking"
             />
-            <DealsConfirmationLine className="mt-6" />
             <MarketingOptInCard
               className="mt-6"
               email={email.trim() || null}
@@ -1335,11 +1651,13 @@ export default function StudioBookingPage() {
               source="booking_success"
               bookingRef={done.ref}
             />
+            {nearbyBlock && <div className="mt-6">{nearbyBlock}</div>}
 
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
               {c.footerCredit}
             </div>
           </div>
+        </div>
         </div>
       </div>
     );
@@ -1347,24 +1665,13 @@ export default function StudioBookingPage() {
 
   // ─── Unclaimed studio handoff ───
   if (partner.status !== "active") {
-    const studioNumber = (partner as any).whatsapp || partner.phone;
     const waNumber = resolveWhatsappNumber(partner as any);
     const hoService = profile.services.find(s => s.id === hoServiceId) || null;
-    const esDate = (v: string) => {
-      if (!v) return "";
-      const [y, mo, d] = v.split("-").map(Number);
-      if (!y || !mo || !d) return "";
-      try {
-        return new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" })
-          .format(new Date(y, mo - 1, d));
-      } catch {
-        return v;
-      }
-    };
     const hoPrice = Number((hoService as any)?.price);
     const hasPrice = Number.isFinite(hoPrice) && hoPrice > 0;
+    const studioSlug = partner.slug || partner.id;
 
-    // Concierge model: the message goes to MASSAGE CLUB, in the visitor's language.
+    // Studio-facing date for waMsg / message_text: format unchanged on 2 Nov.
     const localDate = (v: string) => {
       if (!v) return "";
       const [y, mo, d] = v.split("-").map(Number);
@@ -1373,6 +1680,19 @@ export default function StudioBookingPage() {
         return new Intl.DateTimeFormat(siteLang === "es" ? "es-ES" : "en-GB", {
           weekday: "long", day: "numeric", month: "long",
         }).format(new Date(y, mo - 1, d));
+      } catch {
+        return v;
+      }
+    };
+    // Customer-facing dates in the page language (2 Nov): the review step said
+    // "martes, 3 de noviembre" on English pages.
+    const pageDate = (v: string, style: "long" | "short") => {
+      if (!v) return "";
+      const d = isoToLocalDate(v);
+      try {
+        return style === "short"
+          ? shortDate(d, lang).replace(/[.,]/g, "")
+          : new Intl.DateTimeFormat(localeOf(lang), { weekday: "long", day: "numeric", month: "long" }).format(d).replace(/^\p{Ll}/u, (m) => m.toUpperCase());
       } catch {
         return v;
       }
@@ -1386,16 +1706,19 @@ export default function StudioBookingPage() {
       return siteLang === "es" ? `${day} a las ${tm}` : `${day} at ${tm}`;
     };
     const hoWhen1 = exactWhen(hoDate, hoTime);
-    // One-line reminder of the choice, kept visible in the sticky bar.
+    const hoTag = hoService ? serviceTag(hoService) : null;
+    const hoPriceText = hasPrice ? `${eur(hoPrice)}${hoTag ? ` ${hoTag}` : ""}` : null;
+    // One-line reminder of the choice: in the sticky bar and on top of Your details.
     const hoSummaryLine = hoService
       ? [
           servicePrimaryName(hoService),
           Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : null,
-          hasPrice ? `€${hoPrice}` : null,
+          hoDate ? `${pageDate(hoDate, "short")}${hoTime ? ` ${hoTime}` : ""}` : hoTime || null,
+          hoPriceText,
         ].filter(Boolean).join(" · ")
       : null;
-    // Concierge message from the client to Massage Club, always in English and
-    // composed entirely from their picks, so it arrives complete with no typing.
+    // Message text stored with the request (message_text). Studio-facing
+    // pipeline input: format unchanged on 2 Nov.
     const waMsg = (() => {
       const svc = hoService
         ? `${servicePrimaryName(hoService)}${Number((hoService as any)?.duration) > 0 ? ` ${Number((hoService as any).duration)} min` : ""}`
@@ -1413,57 +1736,49 @@ export default function StudioBookingPage() {
       document.getElementById("mc-services-menu")?.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
-    const hoContact = contactOk(hoPhone, hoEmail);
-    // Email is mandatory: WhatsApp only lets us reply for free for 24h.
-    const hoEmailValid = isValidEmail(hoEmail);
-    const hoPhoneValid = hoContact.phoneValid === true;
-    const hoDetailsReady = !!(hoNameComplete && hoEmailValid && hoContact.phoneValid !== false);
-    const hoDetailsNote =
-      hoNameComplete && !hoEmailValid ? EMAIL_REQUIRED_COPY[lang].error : CONTACT_COPY[lang].needContact;
+    const hasErr = (f: FieldKey) => hoErrors.includes(f);
+    // A field already marked bad is checked again as it changes and on blur.
+    const recheck = (f: FieldKey, next: { name?: string; email?: string; phone?: string }) => {
+      if (!hoErrors.includes(f)) return;
+      const bad = validateContact(next.name ?? hoFullName, next.email ?? hoEmail, next.phone ?? hoPhone);
+      if (!bad.includes(f)) setHoErrors(prev => prev.filter(x => x !== f));
+    };
 
-
-
-
-    const trackWhatsappIntent = async () => {
-      if (waLoggedRef.current) return;
+    // Send (2 Nov). The insert IS the request: whatsapp_requests AFTER INSERT
+    // fires studio-ask, booking-ack and notify-whatsapp-request. Nothing opens
+    // WhatsApp any more: the hand-off text had no "(#id)", so the bot started
+    // a second flow for a request it already had (F4). Always tappable;
+    // problems are shown next to their field.
+    const sendHandoff = async () => {
+      if (hoSentTo || waLoggedRef.current) return;
+      const invalid = validateContact(hoFullName, hoEmail, hoPhone);
+      reqTrack("req_submit_attempt", { invalid });
+      setHoSendError(false);
+      setHoErrors(invalid);
+      if (!hoService) { hoGo(1); scrollToServices(); return; }
+      if (invalid.length) {
+        const first = invalid[0] === "name" ? hoNameRef : invalid[0] === "email" ? hoEmailRef : hoPhoneRef;
+        first.current?.focus();
+        first.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
       waLoggedRef.current = true;
-      setWaTapped(true);
-      clarityEvent("whatsapp_click");
-      trackEvent("wa_click", { slug: partner.slug || partner.id });
-      trackFunnel("wizard_wa_handoff", {
+      setHoSending(true);
+      const { first, last } = splitName(hoFullName);
+      const phoneTyped = /\d/.test(hoPhone);
+      const funnelMeta = {
         flow: "studio-handoff",
-        studio: partner.slug || partner.id,
-        massage: hoService ? servicePrimaryName(hoService) : null,
-        area: (partner as any).district || null,
-      }, partner.slug || partner.id);
-      const hasService = !!hoService;
-      const hasDate = !!hoDate;
-      sendTrack({
-        event: "whatsapp_click",
-        path: window.location.pathname,
-        slug: partner.slug || partner.id,
-        meta: {
-          filled: hasService || hasDate || !!hoTime,
-          service: hasService,
-          date: hasDate,
-          price_shown: hasPrice,
-          languages: spokenLangs,
-        },
-      });
-      // Log the lead BEFORE the WhatsApp link opens, so we keep the record even
-      // if the visitor never sends the message.
-      trackFunnel("wizard_submit_attempt", {
-        flow: "studio-handoff",
-        studio: partner.slug || partner.id,
-        massage: hoService ? servicePrimaryName(hoService) : null,
-        area: (partner as any).district || null,
-        people,
-      }, partner.slug || partner.id);
+        studio: studioSlug,
+        massage: servicePrimaryName(hoService),
+        area: hood,
+        people: hoPeople,
+      };
+      trackFunnel("wizard_submit_attempt", funnelMeta, studioSlug);
       const logged = await logWhatsappRequestResult({
         partner_id: partner.id,
         slug: partner.slug || null,
         studio_name: partner.business_name,
-        service_name: hoService ? servicePrimaryName(hoService) : null,
+        service_name: servicePrimaryName(hoService),
         price: hasPrice ? hoPrice : null,
         day1: hoDate || null,
         time1: hoTime || null,
@@ -1471,45 +1786,39 @@ export default function StudioBookingPage() {
         time2: hoAltTime || null,
         day3: hoAlt2Date || null,
         time3: hoAlt2Time || null,
-        first_name: hoFirstName.trim() || null,
-        last_name: hoLastName.trim() || null,
-        contact_email: hoEmailValid ? hoEmail.trim() : null,
-        client_phone: hoPhoneValid ? hoPhone.trim() : null,
+        first_name: first || null,
+        last_name: last,
+        contact_email: hoEmail.trim(),
+        client_phone: phoneTyped ? hoPhone.trim() : null,
         languages: spokenLangs.join(", "),
         user_id: userId,
         wa_number: waNumber,
         message_text: waMsg,
       });
-      waRequestIdRef.current = logged.id;
+      setHoSending(false);
       if (logged.error) {
-        trackFunnel("wizard_submit_error", {
-          flow: "studio-handoff",
-          studio: partner.slug || partner.id,
-          massage: hoService ? servicePrimaryName(hoService) : null,
-          area: (partner as any).district || null,
-          error: logged.error,
-        }, partner.slug || partner.id);
-      } else {
-        trackFunnel("wizard_submit_ok", {
-          flow: "studio-handoff",
-          studio: partner.slug || partner.id,
-          massage: hoService ? servicePrimaryName(hoService) : null,
-          area: (partner as any).district || null,
-          request_id: logged.id,
-        }, partner.slug || partner.id);
+        waLoggedRef.current = false;
+        setHoSendError(true);
+        reqTrack("req_submit_error", { error: logged.error.slice(0, 120) });
+        trackFunnel("wizard_submit_error", { ...funnelMeta, error: logged.error }, studioSlug);
+        return;
       }
+      waRequestIdRef.current = logged.id;
+      clarityEvent("req_submit_ok");
+      reqTrack("req_submit_ok", { has_phone: phoneTyped });
+      trackFunnel("wizard_submit_ok", { ...funnelMeta, request_id: logged.id }, studioSlug);
+      setHoSentTo(hoEmail.trim());
+      hoGo(4, true);
     };
 
-
-    const waLink = conciergeWhatsappUrl(waMsg);
     const websiteUrl = (() => {
       if (!partner.website) return null;
       const w = String(partner.website).trim();
       return /^https?:\/\//i.test(w) ? w : `https://${w}`;
     })();
-    const googleRating = (partner as any).google_rating != null ? Number((partner as any).google_rating) : null;
-    // Handoff wizard navigation.
-    const hoGo = (n: number) => {
+    // Handoff wizard navigation. Nothing goes back to editing once sent.
+    function hoGo(n: number, afterSend = false) {
+      if (hoSentTo && !afterSend) return;
       setHoStep(n);
       setHoMaxStep(m => Math.max(m, n));
       // Bring the newly revealed step into view. Without this the next step
@@ -1524,509 +1833,445 @@ export default function StudioBookingPage() {
         }
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
+    }
+    // A day that makes the chosen time too soon clears that time.
+    const pickDay = (v: string, tm: string, setD: (v: string) => void, setT: (v: string) => void) => {
+      setD(v);
+      if (v && tm && isTooSoon(v, tm)) { setT(""); return ""; }
+      return tm;
     };
-    const googleReviews = (partner as any).google_reviews != null ? Number((partner as any).google_reviews) : null;
+    const onHoDay = (v: string) => {
+      const keptTime = pickDay(v, hoTime, setHoDate, setHoTime);
+      trackFunnel("wizard_day_selected", { flow: "studio-handoff", day: v, massage: hoService ? servicePrimaryName(hoService) : null, area: hood }, studioSlug);
+      if (v && keptTime) reqTrack("req_answer_when", { offset: dayOffset(v) });
+    };
+    const onHoTime = (v: string) => {
+      setHoTime(v);
+      trackFunnel("wizard_time_selected", { flow: "studio-handoff", time: v, massage: hoService ? servicePrimaryName(hoService) : null, area: hood }, studioSlug);
+      if (v && hoDate) reqTrack("req_answer_when", { offset: dayOffset(hoDate) });
+    };
+
+    const inputCls = (bad: boolean) =>
+      `w-full h-12 px-4 rounded-xl border bg-white text-base focus:outline-none focus:border-[#B85C38] ${bad ? "border-2 border-[#B03A2E]" : "border-gray-300"}`;
+    const labelCls = "block text-sm font-semibold mb-1.5";
+
     return (
-      <div className="min-h-screen p-4 pb-28 relative" style={{ background: "#FAF6F1" }}>
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
-        <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden text-center min-[900px]:text-left" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
-          <div className="flex items-center justify-center gap-2 py-3 px-4" style={{ background: "#B85C38", borderRadius: "1rem 1rem 0 0" }}>
-            <img src="/brand/mc-avatar-cream.png" alt="Massage Club" width={26} height={26} className="rounded-full" />
-            <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, letterSpacing: "2px" }}>MASSAGE CLUB</span>
-          </div>
-          <div className="px-6 py-7 min-[900px]:grid min-[900px]:grid-cols-[1fr_400px] min-[900px]:gap-10 min-[900px]:items-start">
-            {/* LEFT: studio identity + menu */}
-            <div>
-            <h1 className="font-display text-3xl min-[900px]:text-4xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>{partner.business_name}</h1>
-            {partner.address && (
-              <p className="text-sm min-[900px]:text-base flex items-center justify-center min-[900px]:justify-start gap-1 mb-2" style={{ color: "#5a4736" }}>
-                <span>📍</span>
-                <span>{partner.address}</span>
-              </p>
-            )}
-            <div className="mb-2 flex justify-center min-[900px]:justify-start">{distanceBlock(false)}</div>
-            {rating ? (
-              <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
-                <span style={{ color: "#E0A458" }}>★</span>
-                {rating.avg.toFixed(1)} <span className="font-normal" style={{ color: "#7A7068" }}>({rating.count})</span>
-              </p>
-            ) : googleRating != null ? (
-              <p className="text-sm min-[900px]:text-base font-semibold mb-5 flex items-center justify-center min-[900px]:justify-start gap-1" style={{ color: "#5a4736" }}>
-                <span style={{ color: "#E0A458" }}>★</span>
-                {googleRating.toFixed(1)}
-                {googleReviews != null && (
-                  <span className="font-normal" style={{ color: "#7A7068" }}>({googleReviews} · Google)</span>
-                )}
-              </p>
-            ) : null}
-            <p className="text-sm min-[900px]:text-base mb-5" style={{ color: "#5a4736" }}>
-              {c.notOnClub}
-            </p>
-            <div className="mb-5">
-              <HowBookingWorksVideo size="sm" label={c.howWeBook} />
-              <p className="mt-2 text-center text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                {c.howWeBook}
-              </p>
-            </div>
+      <div className="min-h-screen pb-28" style={{ background: "#FAF6F1" }}>
+        {brandBar()}
+        <div className="px-4 pt-4">
+        <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
+          <div className="px-4 min-[420px]:px-6 pt-4 pb-7 min-[900px]:pt-6 min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_400px] min-[900px]:gap-10 min-[900px]:items-start">
+            {/* LEFT: the real place, then the menu */}
+            <div className="min-w-0">
+              {visualBlock}
+              {identityBlock}
 
-            <button
-              type="button"
-              onClick={() => {
-                if (hoServiceId) { hoGo(2); return; }
-                scrollToServices();
-              }}
-              className="w-full min-[900px]:w-auto inline-flex flex-col items-center justify-center min-h-[52px] px-7 rounded-full font-semibold text-white motion-safe:transition hover:opacity-90"
-              style={{ background: "#B85C38" }}
-            >
-              <span className="inline-flex items-center gap-2"><MessageCircle size={18} /> {c.bookMassage}</span>
-            </button>
-            {!hoServiceId && (
-              <p className="text-xs mt-2" style={{ color: "#9E9387" }}>
-                {c.pickServiceFirst}
-              </p>
-            )}
-
-            {profile.services.length > 0 && (
-              <div id="mc-services-menu" className="mt-6 text-left">
-                <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{c.servicesLabel}</p>
-                {/* Extra bottom padding so the last row clears the WhatsApp bubble and the sticky bar. */}
-                <div role="radiogroup" aria-label="Services" className="rounded-xl p-3 min-[900px]:p-4 pb-24 min-[900px]:pb-4 space-y-2 min-[900px]:space-y-3"
-                  style={{ background: "#FAF6F1" }}>
-
-                  {profile.services.map((s: any) => {
-                    const selected = hoServiceId === s.id;
-                    const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
-                    const price = Number(s.price);
-                    return (
-                      <div
-                        key={s.id}
-                        role="radio"
-                        aria-checked={selected}
-                        tabIndex={0}
-                        onClick={() => { setHoServiceId(selected ? "" : s.id); if (!selected) trackEvent("wizard_service_selected", { slug: partner.slug || partner.id, meta: { service: servicePrimaryName(s) } }); }}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setHoServiceId(selected ? "" : s.id); } }}
-                        className="cursor-pointer rounded-xl border-2 px-3 py-2.5 min-[900px]:px-4 min-[900px]:py-3.5 flex items-start justify-between gap-3 text-sm min-[900px]:text-base motion-safe:transition"
-                        style={{ color: "#5a4736", borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
-                      >
-                        <span className="min-w-0 flex items-start gap-2">
-                          {selected && <Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} />}
-                          <span className="min-w-0">
-                            <span className="block font-semibold" style={{ color: "#2b2b2b" }}>
-                              {servicePrimaryName(s)}
-                              {dur ? ` · ${dur} min` : ""}
+              {profile.services.length > 0 && (
+                <div id="mc-services-menu" className="mt-6 text-left scroll-mt-4">
+                  <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{c.servicesLabel}</p>
+                  <div role="radiogroup" aria-label={c.servicesLabel} className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3"
+                    style={{ background: "#FAF6F1" }}>
+                    {profile.services.map((s: any) => {
+                      const selected = hoServiceId === s.id;
+                      const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
+                      const price = Number(s.price);
+                      const tag = serviceTag(s);
+                      const pick = () => {
+                        if (hoSentTo) return;
+                        setHoServiceId(selected ? "" : s.id);
+                        if (!selected) {
+                          trackEvent("wizard_service_selected", { slug: studioSlug, meta: { service: servicePrimaryName(s) } });
+                          reqTrack("req_answer_massage", { value: servicePrimaryName(s) });
+                        }
+                      };
+                      return (
+                        <div
+                          key={s.id}
+                          role="radio"
+                          aria-checked={selected}
+                          tabIndex={0}
+                          data-testid="service-row"
+                          onClick={pick}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } }}
+                          className="cursor-pointer rounded-xl border-2 px-3 py-2.5 min-[900px]:px-4 min-[900px]:py-3.5 flex items-start justify-between gap-3 text-sm min-[900px]:text-base motion-safe:transition"
+                          style={{ color: "#5a4736", borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
+                        >
+                          <span className="min-w-0 flex items-start gap-2">
+                            {selected && <Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} />}
+                            <span className="min-w-0">
+                              <span className="block font-semibold" style={{ color: "#2b2b2b" }}>
+                                {servicePrimaryName(s)}
+                                {dur ? ` · ${dur} min` : ""}
+                              </span>
+                              {serviceSecondaryName(s) && (
+                                <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
+                              )}
                             </span>
-                            {serviceSecondaryName(s) && (
-                              <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s)}</span>
-                            )}
                           </span>
-                        </span>
-                        <span className="flex flex-shrink-0 items-center gap-2">
-                          {Number.isFinite(price) && price > 0 && (
-                            <span className="font-semibold" style={{ color: "#2b2b2b" }}>€{price}</span>
-                          )}
-                          <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
-                        </span>
-                      </div>
-                    );
-                  })}
+                          <span className="flex flex-shrink-0 items-center gap-2">
+                            {Number.isFinite(price) && price > 0 && (
+                              <span className="text-right leading-tight">
+                                <span className="block font-semibold" style={{ color: "#2b2b2b" }}>{eur(price)}</span>
+                                {tag && <span className="block text-xs font-semibold" style={{ color: "#B85C38" }}>{tag}</span>}
+                              </span>
+                            )}
+                            <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-
+              )}
             </div>
 
-            {/* RIGHT: the booking request form + CTA (sticky on desktop) */}
-            <div ref={hoPanelRef} className="min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
-            {waLink && (
-              <>
-                <Stepper steps={pickCopy(HANDOFF_STEPS_COPY, lang)} current={hoStep} maxReached={hoMaxStep} onGo={hoGo} />
-                {/* The only Continue: one sticky bar, never an inline duplicate */}
-                {hoStep === 1 && (
-                  <StickyContinue
-                    ready={!!hoServiceId}
-                    onNext={() => hoGo(2)}
-                    summary={hoSummaryLine}
-                    note={hoServiceId ? undefined : c.chooseServiceContinue}
-                    inlineRef={hoInlineContinueRef}
-                  />
-                )}
-                {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
-                {hoStep === 3 && (
-                  <StickyContinue
-                    ready={hoDetailsReady}
-                    onNext={() => hoGo(4)}
-                    summary={hoSummaryLine}
-                    note={hoDetailsReady ? undefined : hoDetailsNote}
-                  />
-                )}
+            {/* RIGHT: the request panel (sticky on desktop) */}
+            <div ref={hoPanelRef} className="mt-6 min-[900px]:mt-0 min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
+              <Stepper steps={pickCopy(HANDOFF_STEPS_COPY, lang)} current={hoStep} maxReached={hoSentTo ? 0 : hoMaxStep} onGo={(n) => hoGo(n)} />
+              {/* One actionable button at a time: the sticky bar hides its own
+                  while the inline one is on screen. */}
+              {hoStep === 1 && (
+                <StickyContinue
+                  ready={!!hoServiceId}
+                  onNext={() => hoGo(2)}
+                  summary={hoSummaryLine}
+                  note={hoServiceId ? undefined : c.chooseServiceContinue}
+                  inlineRef={hoInlineContinueRef}
+                />
+              )}
+              {hoStep === 2 && <StickyContinue ready onNext={() => hoGo(3)} summary={hoSummaryLine} />}
+              {hoStep === 3 && (
+                <StickyContinue
+                  ready
+                  busy={hoSending}
+                  busyLabel={sp.sending}
+                  onNext={() => void sendHandoff()}
+                  label={sp.send}
+                  summary={hoSummaryLine}
+                  inlineRef={hoSendRef}
+                />
+              )}
 
-
-                <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+              <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+                {hoStep <= 3 && (
                   <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
                     {t("app.handoff.prefTitle")}
                   </p>
+                )}
 
-                  {/* STEP 1: slim summary of the selection made in the menu */}
-                  {hoStep === 1 && (
-                    <div>
-                      <Link
-                        to={quizHref}
-                        className="w-full text-left rounded-xl border border-dashed px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
-                        style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
-                      >
-                        <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
-                        <span className="min-w-0">
-                          <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>{c.takeQuiz}</span>
-                        </span>
-                      </Link>
+                {/* STEP 1: slim summary of the selection made in the menu */}
+                {hoStep === 1 && (
+                  <div>
+                    <Link
+                      to={quizHref}
+                      className="w-full text-left rounded-xl border border-dashed px-3 min-[900px]:px-4 py-2.5 min-[900px]:py-3.5 flex items-center gap-2 motion-safe:transition hover:bg-[#F6EFE6]"
+                      style={{ borderColor: "#B85C38", background: "#FAF6F1" }}
+                    >
+                      <Sparkles size={16} className="min-[900px]:size-5" style={{ color: "#B85C38", flexShrink: 0 }} />
+                      <span className="min-w-0">
+                        <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#B85C38" }}>{c.takeQuiz}</span>
+                      </span>
+                    </Link>
 
-                      <div className="mt-3 rounded-xl border px-3 py-3 min-[900px]:px-4 min-[900px]:py-4" style={{ borderColor: "#E6DCCF", background: "#ffffff" }}>
-                        {hoService ? (
-                          <>
-                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>
-                              {servicePrimaryName(hoService)}
-                            </span>
-                            {serviceSecondaryName(hoService) && (
-                              <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(hoService)}</span>
-                            )}
-                            <span className="mt-1 block text-sm" style={{ color: "#5a4736" }}>
-                              {Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : ""}
-                              {Number((hoService as any).duration) > 0 && hasPrice ? " · " : ""}
-                              {hasPrice ? `€${hoPrice}` : ""}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#7A7068" }}>{c.chooseServiceContinue}</span>
-                          </>
-                        )}
-                      </div>
-
-                      <button
-                        ref={hoInlineContinueRef}
-                        type="button"
-                        onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
-                        className="mt-3 w-full rounded-full px-5 py-3 text-sm min-[900px]:text-base font-semibold text-white motion-safe:transition"
-                        style={{ background: "#B85C38" }}
-                      >
-                        {c.continueLabel}
-                      </button>
-                    </div>
-
-                  )}
-
-                  {/* STEP 2: day and time */}
-                  {hoStep === 2 && (
-                    <div className="space-y-3 min-[900px]:space-y-4">
-                      <div className="rounded-2xl px-3 py-2.5" style={{ background: "#F4EEE6" }}>
-                        <p className="text-xs min-[900px]:text-sm leading-snug" style={{ color: "#5C5349" }}>
-                          {c.contactStep}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
-                        <div className="mt-1.5">
-                          <DayStrip value={hoDate} onChange={(v: string) => { setHoDate(v); trackFunnel("wizard_day_selected", { flow: "studio-handoff", day: v, massage: hoService ? servicePrimaryName(hoService) : null, area: (partner as any).district || null }, partner.slug || partner.id); }} label={t("app.handoff.prefDate")} />
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
-                        <div className="mt-1.5">
-                          <TimePills value={hoTime} onChange={(v: string) => { setHoTime(v); trackFunnel("wizard_time_selected", { flow: "studio-handoff", time: v, massage: hoService ? servicePrimaryName(hoService) : null, area: (partner as any).district || null }, partner.slug || partner.id); }} label={t("app.handoff.prefTime")} />
-                        </div>
-                      </div>
-                      {!altOpen ? (
-                        <button
-                          type="button"
-                          onClick={() => setAltOpen(true)}
-                          className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
-                          style={{ color: "#B85C38" }}
-                        >
-                          {c.addSecondChoice}
-                        </button>
-                      ) : (
+                    <div className="mt-3 rounded-xl border px-3 py-3 min-[900px]:px-4 min-[900px]:py-4" style={{ borderColor: "#E6DCCF", background: "#ffffff" }}>
+                      {hoService ? (
                         <>
-                          <div>
-                            <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
-                            <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
-                              <DayStrip value={hoAltDate} onChange={setHoAltDate} label={t("app.handoff.prefAlt")} />
-                              <TimePills value={hoAltTime} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
-                            </div>
-                          </div>
-                          {!alt2Open ? (
-                            <button
-                              type="button"
-                              onClick={() => setAlt2Open(true)}
-                              className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
-                              style={{ color: "#B85C38" }}
-                            >
-                              {c.addThirdChoice}
-                            </button>
-                          ) : (
-                            <div>
-                              <span className="text-xs min-[900px]:text-base" style={{ color: "#7A7068" }}>
-                                {c.thirdChoice}
-                              </span>
-                              <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
-                                <DayStrip value={hoAlt2Date} onChange={setHoAlt2Date} label={c.thirdChoice} />
-                                <TimePills value={hoAlt2Time} onChange={setHoAlt2Time} label={c.thirdChoice} />
-                              </div>
-                            </div>
+                          <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#2b2b2b" }}>
+                            {servicePrimaryName(hoService)}
+                          </span>
+                          {serviceSecondaryName(hoService) && (
+                            <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(hoService)}</span>
                           )}
+                          <span className="mt-1 block text-sm" style={{ color: "#5a4736" }}>
+                            {[Number((hoService as any).duration) > 0 ? `${Number((hoService as any).duration)} min` : null, hoPriceText].filter(Boolean).join(" · ")}
+                          </span>
                         </>
+                      ) : (
+                        <span className="block text-sm min-[900px]:text-base font-semibold" style={{ color: "#7A7068" }}>{c.chooseServiceContinue}</span>
                       )}
-                      <WizardNav
-                        onBack={() => hoGo(1)}
-                        skip={() => hoGo(3)}
-                      />
                     </div>
-                  )}
 
-                  {/* STEP 3: your details */}
-                  {hoStep === 3 && (
-                    <div className="space-y-3 min-[900px]:space-y-4">
-                      <div>
-                        {!hoPeopleOpen ? (
+                    <button
+                      ref={hoInlineContinueRef}
+                      type="button"
+                      onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
+                      className="mt-3 w-full min-h-[48px] rounded-full px-5 py-3 text-base font-semibold text-white motion-safe:transition"
+                      style={{ background: "#B85C38" }}
+                    >
+                      {c.continueLabel}
+                    </button>
+                  </div>
+                )}
+
+                {/* STEP 2: day and time (Madrid time, never in the past) */}
+                {hoStep === 2 && (
+                  <div className="space-y-3 min-[900px]:space-y-4">
+                    <div className="rounded-2xl px-3 py-2.5" style={{ background: "#F4EEE6" }}>
+                      <p className="text-sm leading-snug" style={{ color: "#5C5349" }}>
+                        {c.contactStep}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefDate")}</span>
+                      <div className="mt-1.5">
+                        <DayStrip value={hoDate} onChange={onHoDay} label={t("app.handoff.prefDate")} />
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefTime")}</span>
+                      <div className="mt-1.5">
+                        <TimePills value={hoTime} date={hoDate} onChange={onHoTime} label={t("app.handoff.prefTime")} />
+                      </div>
+                    </div>
+                    {!altOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => setAltOpen(true)}
+                        className="min-h-[44px] text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
+                        style={{ color: "#B85C38" }}
+                      >
+                        {c.addSecondChoice}
+                      </button>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>{t("app.handoff.prefAlt")}</span>
+                          <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
+                            <DayStrip value={hoAltDate} onChange={(v) => pickDay(v, hoAltTime, setHoAltDate, setHoAltTime)} label={t("app.handoff.prefAlt")} />
+                            <TimePills value={hoAltTime} date={hoAltDate} onChange={setHoAltTime} label={t("app.handoff.prefAlt")} />
+                          </div>
+                        </div>
+                        {!alt2Open ? (
                           <button
                             type="button"
-                            onClick={() => setHoPeopleOpen(true)}
-                            className="text-xs hover:opacity-80 transition-opacity"
-                            style={{ color: "#9E9387" }}
+                            onClick={() => setAlt2Open(true)}
+                            className="min-h-[44px] text-sm min-[900px]:text-base font-semibold underline underline-offset-2"
+                            style={{ color: "#B85C38" }}
                           >
-                            {c.moreThanOne}
+                            {c.addThirdChoice}
                           </button>
                         ) : (
-                          <div className="flex flex-wrap gap-2 justify-center min-[900px]:justify-start">
-                            {PEOPLE_OPTIONS.map((n) => {
-                              const on = hoPeople === n;
-                              return (
-                                <button
-                                  key={n}
-                                  type="button"
-                                  aria-pressed={on}
-                                  onClick={() => setHoPeople(n)}
-                                  className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium ${
-                                    on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-200 bg-white text-gray-600"
-                                  }`}
-                                >
-                                  {n}
-                                </button>
-                              );
-                            })}
-                            <p className="w-full mt-1 text-xs" style={{ color: "#9E9387" }}>
-                              {c.groupCheck}
-                            </p>
+                          <div>
+                            <span className="text-sm min-[900px]:text-base" style={{ color: "#7A7068" }}>
+                              {c.thirdChoice}
+                            </span>
+                            <div className="mt-1.5 space-y-2 min-[900px]:space-y-3">
+                              <DayStrip value={hoAlt2Date} onChange={(v) => pickDay(v, hoAlt2Time, setHoAlt2Date, setHoAlt2Time)} label={c.thirdChoice} />
+                              <TimePills value={hoAlt2Time} date={hoAlt2Date} onChange={setHoAlt2Time} label={c.thirdChoice} />
+                            </div>
                           </div>
                         )}
-                      </div>
-                      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
-                        <input
-                          value={hoFirstName}
-                          onChange={(e) => setHoFirstName(e.target.value)}
-                          placeholder={c.firstName}
-                          autoComplete="given-name"
-                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
-                        />
-                        <input
-                          value={hoLastName}
-                          onChange={(e) => setHoLastName(e.target.value)}
-                          placeholder={c.lastName}
-                          autoComplete="family-name"
-                          className="w-full h-12 min-[900px]:h-14 px-4 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38]"
-                        />
-                      </div>
-                      <div>
-                        <input
-                          value={hoPhone}
-                          onChange={(e) => setHoPhone(e.target.value)}
-                          placeholder={c.waPhone}
-                          type="tel"
-                          inputMode="tel"
-                          autoComplete="tel"
-                          aria-invalid={hoContact.phoneValid === false}
-                          className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
-                            hoContact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                          }`}
-                        />
-                        {hoContact.phoneValid === false ? (
-                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
-                            {CONTACT_COPY[lang].badPhone}
-                          </p>
-                        ) : (
-                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                            {c.reachYouWa}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
-                          {EMAIL_REQUIRED_COPY[lang].label}
-                        </p>
-                        <input
-                          value={hoEmail}
-                          onChange={(e) => setHoEmail(e.target.value)}
-                          placeholder={c.email}
-                          type="email"
-                          inputMode="email"
-                          autoComplete="email"
-                          required
-                          aria-required="true"
-                          aria-invalid={!hoEmailValid && !!hoEmail.trim()}
-                          className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] ${
-                            !hoEmailValid && hoEmail.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                          }`}
-                        />
-                        {!hoEmailValid && hoEmail.trim() ? (
-                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#B03A2E" }}>
-                            {EMAIL_REQUIRED_COPY[lang].error}
-                          </p>
-                        ) : (
-                          <p className="mt-1.5 text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                            {EMAIL_REQUIRED_COPY[lang].helper}
-                          </p>
-                        )}
-                      </div>
+                      </>
+                    )}
+                    <WizardNav
+                      onBack={() => hoGo(1)}
+                      skip={() => hoGo(3)}
+                    />
+                  </div>
+                )}
 
-                      <div>
-
-                        <p className="text-xs font-semibold mb-2 min-[900px]:text-sm" style={{ color: "#5a4736" }}>
-                          {c.anythingElse}
-                        </p>
-                        <textarea
-                          value={hoNotes}
-                          onChange={(e) => setHoNotes(e.target.value)}
-                          placeholder={c.optional}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#B85C38] resize-none h-20 min-[900px]:h-24"
-                        />
-                      </div>
-                      {!hoDetailsReady && (
-                        <p className="text-xs min-[900px]:text-sm" style={{ color: "#7A7068" }}>
-                          {hoDetailsNote}
-                        </p>
+                {/* STEP 3: your details, with Send */}
+                {hoStep === 3 && (
+                  <form
+                    noValidate
+                    className="space-y-4"
+                    onSubmit={(e) => { e.preventDefault(); void sendHandoff(); }}
+                  >
+                    {hoSummaryLine && (
+                      <p className="rounded-xl border bg-white px-3 py-2.5 text-sm font-semibold" style={{ borderColor: "#E6DCCF", color: "#2b2b2b" }}>
+                        {hoSummaryLine}
+                      </p>
+                    )}
+                    <div>
+                      <label htmlFor="ho-name" className={labelCls} style={{ color: "#3d2b1f" }}>{sp.yourName}</label>
+                      <input
+                        id="ho-name"
+                        ref={hoNameRef}
+                        value={hoFullName}
+                        onChange={(e) => { setHoFullName(e.target.value); recheck("name", { name: e.target.value }); }}
+                        onBlur={() => recheck("name", {})}
+                        autoComplete="name"
+                        aria-invalid={hasErr("name")}
+                        aria-describedby={hasErr("name") ? "ho-name-err" : undefined}
+                        className={inputCls(hasErr("name"))}
+                      />
+                      {hasErr("name") && (
+                        <p id="ho-name-err" role="alert" className="mt-1.5 text-sm" style={{ color: "#B03A2E" }}>{sp.errName}</p>
                       )}
-
-                      <WizardNav
-                        onBack={() => hoGo(2)}
-                        onNext={() => hoGo(4)}
-                        disabled={!hoDetailsReady}
-                        hint={hoDetailsNote}
+                    </div>
+                    <div>
+                      <label htmlFor="ho-email" className={labelCls} style={{ color: "#3d2b1f" }}>{sp.emailLabel}</label>
+                      <input
+                        id="ho-email"
+                        ref={hoEmailRef}
+                        value={hoEmail}
+                        onChange={(e) => { setHoEmail(e.target.value); recheck("email", { email: e.target.value }); }}
+                        onBlur={() => recheck("email", {})}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        aria-required="true"
+                        aria-invalid={hasErr("email")}
+                        aria-describedby={hasErr("email") ? "ho-email-err" : "ho-email-help"}
+                        className={inputCls(hasErr("email"))}
+                      />
+                      {hasErr("email") ? (
+                        <p id="ho-email-err" role="alert" className="mt-1.5 text-sm" style={{ color: "#B03A2E" }}>{sp.errEmail}</p>
+                      ) : (
+                        <p id="ho-email-help" className="mt-1.5 text-sm" style={{ color: "#7A7068" }}>{sp.emailHelp}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="ho-phone" className={labelCls} style={{ color: "#3d2b1f" }}>{sp.phoneLabel}</label>
+                      <input
+                        id="ho-phone"
+                        ref={hoPhoneRef}
+                        value={hoPhone}
+                        onChange={(e) => { setHoPhone(e.target.value); recheck("phone", { phone: e.target.value }); }}
+                        onBlur={() => recheck("phone", {})}
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="+34 600 123 456"
+                        aria-invalid={hasErr("phone")}
+                        aria-describedby={hasErr("phone") ? "ho-phone-err" : undefined}
+                        className={inputCls(hasErr("phone"))}
+                      />
+                      {hasErr("phone") && (
+                        <p id="ho-phone-err" role="alert" className="mt-1.5 text-sm" style={{ color: "#B03A2E" }}>{sp.errPhone}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="ho-notes" className={labelCls} style={{ color: "#3d2b1f" }}>{sp.notesLabel}</label>
+                      <textarea
+                        id="ho-notes"
+                        value={hoNotes}
+                        onChange={(e) => setHoNotes(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-base focus:outline-none focus:border-[#B85C38] resize-none h-24"
                       />
                     </div>
-                  )}
-
-                  {/* STEP 4: review and send */}
-                  {hoStep === 4 && !waTapped && (
-                    <div className="space-y-3 min-[900px]:space-y-4">
-                      <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3 border" style={{ borderColor: "#E6DCCF" }}>
-                        <SummaryRow label={c.service} value={hoService ? servicePrimaryName(hoService) : null} placeholder={c.pickAService} />
-                        <SummaryRow label={c.day} value={hoDate ? esDate(hoDate) : null} placeholder={c.anyDay} />
-                        <SummaryRow label={c.time} value={hoTime || null} placeholder={c.anyTime} />
-                        <SummaryRow label={c.secondChoice} value={hoAltDate && hoAltTime ? `${esDate(hoAltDate)} ${hoAltTime}` : null} placeholder={c.none} />
-                        <SummaryRow label={c.name} value={hoName.trim() || null} placeholder={c.notProvided} />
-                        <SummaryRow label={c.contact} value={[hoPhone.trim(), hoEmail.trim()].filter(Boolean).join(" · ") || null} placeholder={c.notProvided} />
-                        <SummaryRow label={c.price} value={hasPrice ? `€${hoPrice}` : null} placeholder={c.askStudio} />
-                      </div>
-                      {hoServiceId ? (
+                    <div>
+                      {!hoPeopleOpen ? (
                         <button
                           type="button"
-                          onClick={async () => {
-                            // Open a blank tab synchronously while the user gesture is active,
-                            // then log the lead and point the tab at WhatsApp.
-                            const win = window.open("about:blank", "_blank");
-                            await trackWhatsappIntent();
-                            if (win) win.location.href = waLink;
-                            // Popup blocked: try a direct new-tab open; never navigate this
-                            // frame to wa.me (X-Frame-Options blocks it in embeds).
-                            else window.open(waLink, "_blank", "noopener,noreferrer");
-                          }}
-                          className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
-                          style={{ background: "#B85C38", color: "#fff" }}
+                          onClick={() => setHoPeopleOpen(true)}
+                          className="min-h-[44px] text-sm font-medium underline underline-offset-2"
+                          style={{ color: "#5a4736" }}
                         >
-                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {c.requestWhatsapp}</span>
+                          {c.moreThanOne}
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={scrollToServices}
-                          className="w-full inline-flex flex-col items-center justify-center h-14 min-[900px]:h-16 px-6 rounded-2xl font-semibold"
-                          style={{ background: "#B85C38", color: "#fff" }}
-                        >
-                          <span className="inline-flex items-center gap-2 min-[900px]:text-lg"><MessageCircle size={18} /> {c.pickAMassage}</span>
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          {["1", ...PEOPLE_OPTIONS].map((n) => {
+                            const on = hoPeople === n;
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => setHoPeople(n)}
+                                className={`h-11 min-w-[2.75rem] px-3 rounded-lg border text-base font-medium ${
+                                  on ? "border-[#B85C38] bg-[#FDF3EC] text-[#B85C38]" : "border-gray-300 bg-white text-gray-700"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                          <p className="w-full mt-1 text-sm" style={{ color: "#7A7068" }}>
+                            {c.groupCheck}
+                          </p>
+                        </div>
                       )}
-                      <p className="text-xs min-[900px]:text-sm text-center" style={{ color: "#7A7068" }}>{t("app.handoff.waReassurance")}</p>
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
-                        {c.back}
-                      </button>
                     </div>
-                  )}
-
-                  {/* STEP 4: confirmation after WhatsApp is opened */}
-                  {hoStep === 4 && waTapped && (
-                    <div className="space-y-4 min-[900px]:space-y-5 text-center">
-                      <div className="mx-auto flex h-14 w-14 min-[900px]:h-16 min-[900px]:w-16 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
-                        <MessageCircle size={28} className="min-[900px]:size-8" style={{ color: "#3F6B36" }} />
-                      </div>
-                      <div>
-                        <h3 className="font-display text-xl min-[900px]:text-2xl font-semibold" style={{ color: "#2b2b2b" }}>{c.checkingWithStudio}</h3>
-                      </div>
-                      <div className="rounded-xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
-                        <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
-                          {c.waitTime}
-                        </p>
-                      </div>
-                      <AccountOfferBlock
-                        firstName={hoFirstName.trim()}
-                        lastName={hoLastName.trim()}
-                        email={hoEmail.trim()}
-                        phone={hoPhone.trim()}
-                        requestId={waRequestIdRef.current}
-                        source="studio-handoff"
-                      />
-                      <Link
-                        to="/studios"
-                        className="inline-flex flex-col items-center justify-center w-full h-12 min-[900px]:h-14 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition"
-                        style={{ borderColor: "#B85C38", color: "#B85C38" }}
-                      >
-                        <span className="inline-flex items-center gap-2">{c.browseOtherStudios}</span>
-                      </Link>
-                      <p className="text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>
-                        {c.waReassuranceStudios}
+                    {hoSendError && (
+                      <p role="alert" className="rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>
+                        {sp.sendError}
                       </p>
-                      <button type="button" onClick={() => hoGo(3)} className="text-sm min-[900px]:text-base font-semibold underline underline-offset-2" style={{ color: "#8a7460" }}>
-                        {c.back}
-                      </button>
+                    )}
+                    <button
+                      ref={hoSendRef}
+                      type="submit"
+                      disabled={hoSending}
+                      className="w-full min-h-[52px] rounded-2xl px-6 text-base min-[900px]:text-lg font-semibold text-white motion-safe:transition hover:opacity-95"
+                      style={{ background: "#B85C38", opacity: hoSending ? 0.75 : 1 }}
+                    >
+                      {hoSending ? sp.sending : sp.send}
+                    </button>
+                    <p className="text-sm text-center" style={{ color: "#7A7068" }}>{c.waReassuranceStudios}</p>
+                    <WizardNav onBack={() => hoGo(2)} />
+                  </form>
+                )}
+
+                {/* STEP 4: sent. Honest: nothing is booked yet, no timing promise. */}
+                {hoStep === 4 && hoSentTo && (
+                  <div className="space-y-4 text-left" data-testid="handoff-sent">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "#EAF3E7" }}>
+                      <Check size={26} style={{ color: "#3F6B36" }} aria-hidden="true" />
                     </div>
-                  )}
-                </div>
-              </>
-            )}
-            <div className="flex flex-col items-center gap-3 w-full">
-              {!waLink && studioNumber && (
-                <a href={telHref(studioNumber) || undefined} className="w-full inline-flex flex-col items-center justify-center h-12 px-6 rounded-full font-semibold" style={{ background: "#B85C38", color: "#fff" }}>
-                  <span className="inline-flex items-center gap-2"><Phone size={18} /> {t("app.handoff.callStudio")}</span>
-                  <span className="text-xs font-normal opacity-90">{t("app.handoff.callStudioSub")}</span>
-                </a>
-              )}
+                    <h2 role="status" className="font-display text-2xl font-semibold leading-tight" style={{ color: "#2b2b2b" }}>
+                      {fill(sp.sentTitle, { studio: partner.business_name })}
+                    </h2>
+                    <div className="rounded-xl bg-white p-3 min-[900px]:p-4 space-y-2 border" style={{ borderColor: "#E6DCCF" }}>
+                      <SummaryRow label={c.service} value={hoService ? servicePrimaryName(hoService) : null} placeholder={c.pickAService} />
+                      <SummaryRow label={c.day} value={hoDate ? pageDate(hoDate, "long") : null} placeholder={c.anyDay} />
+                      <SummaryRow label={c.time} value={hoTime || null} placeholder={c.anyTime} />
+                      {hoAltDate && hoAltTime && (
+                        <SummaryRow label={c.secondChoice} value={`${pageDate(hoAltDate, "short")} ${hoAltTime}`} placeholder="" />
+                      )}
+                      {hoPriceText && <SummaryRow label={c.price} value={hoPriceText} placeholder="" />}
+                    </div>
+                    <ul className="space-y-2 text-sm leading-snug" style={{ color: "#3d2b1f" }}>
+                      <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{fill(sp.sentContact, { studio: partner.business_name })}</li>
+                      <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{fill(sp.sentAnswer, { email: maskEmail(hoSentTo) })}</li>
+                      <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{sp.sentYes}</li>
+                    </ul>
+                    <AccountOfferBlock
+                      firstName={splitName(hoFullName).first}
+                      lastName={splitName(hoFullName).last || ""}
+                      email={hoEmail.trim()}
+                      phone={hoPhone.trim()}
+                      requestId={waRequestIdRef.current}
+                      source="studio-handoff"
+                    />
+                    <Link
+                      to="/studios"
+                      className="inline-flex flex-col items-center justify-center w-full h-12 min-[900px]:h-14 px-6 rounded-full border-2 font-semibold bg-white hover:bg-[#FAF6F1] transition"
+                      style={{ borderColor: "#B85C38", color: "#B85C38" }}
+                    >
+                      <span className="inline-flex items-center gap-2">{c.browseOtherStudios}</span>
+                    </Link>
+                    {nearbyBlock}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* BELOW: how booking works here, then other studios nearby */}
+            <div className="mt-8 min-[900px]:col-span-2 space-y-6">
+              <section className="rounded-2xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
+                <h2 className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{sp.howHereTitle}</h2>
+                <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>{sp.notOnClub}</p>
+              </section>
+              {!hoSentTo && nearbyBlock}
               {websiteUrl && (
-                <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
-                  {t("app.handoff.visitWebsite")}
-                </a>
+                <p className="text-center">
+                  <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center text-sm underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
+                    {t("app.handoff.visitWebsite")}
+                  </a>
+                </p>
               )}
-
             </div>
-            </div>
-
 
             <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
               {c.footerCredit}
             </div>
           </div>
         </div>
+        </div>
       </div>
     );
   }
-
 
   // Name plus at least one valid way to reach them (WhatsApp number OR email).
   const contact = contactOk(phone, email);
@@ -2034,7 +2279,6 @@ export default function StudioBookingPage() {
   // request with no email is one we cannot answer at all.
   const emailValid = isValidEmail(email);
   const hasContact = emailValid && contact.phoneValid !== false;
-  const detailsNote = nameComplete && !emailValid ? EMAIL_REQUIRED_COPY[lang].error : CONTACT_COPY[lang].needContact;
   const canBook = !!(service && date && time && nameComplete && hasContact);
 
 
@@ -2053,24 +2297,25 @@ export default function StudioBookingPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Continue on Your details is always tappable (2 Nov). It checks the fields
+  // on tap and puts each problem next to its field.
   const submitDetailsStep = () => {
-    if (!nameComplete) {
-      setStepError(c.addNameContact);
-      nameRef.current?.focus();
+    const invalid = validateContact(fullName, email, phone);
+    reqTrack("req_submit_attempt", { invalid });
+    setDErrors(invalid);
+    if (invalid.length) {
+      const first = invalid[0] === "name" ? nameRef : invalid[0] === "email" ? emailRef : phoneRef;
+      first.current?.focus();
+      first.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    if (contact.phoneValid === false) {
-      setStepError(CONTACT_COPY[lang].badPhone);
-      return;
-    }
-    if (!emailValid) {
-      setStepError(EMAIL_REQUIRED_COPY[lang].error);
-      emailRef.current?.focus();
-      return;
-    }
-
-
     goStep(5);
+  };
+  const dHasErr = (f: FieldKey) => dErrors.includes(f);
+  const dRecheck = (f: FieldKey, next: { name?: string; email?: string; phone?: string }) => {
+    if (!dErrors.includes(f)) return;
+    const bad = validateContact(next.name ?? fullName, next.email ?? email, next.phone ?? phone);
+    if (!bad.includes(f)) setDErrors(prev => prev.filter(x => x !== f));
   };
 
 
@@ -2081,7 +2326,7 @@ export default function StudioBookingPage() {
       flow: "studio",
       studio: partner?.slug || studioId,
       massage: service ? servicePrimaryName(service) : null,
-      area: (partner as any)?.district || null,
+      area: hood,
       people,
     }, partner?.slug || studioId);
     setSubmitting(true);
@@ -2196,25 +2441,28 @@ export default function StudioBookingPage() {
       
       // Fire and forget: passwordless account for guests who opted in.
       if (!userId && createAccount && email.trim()) {
-        requestAccountSignup({ email: email.trim(), name: firstName.trim(), lang: siteLang });
+        requestAccountSignup({ email: email.trim(), name: firstName, lang: siteLang });
       }
 
       trackFunnel("wizard_submit_ok", {
         flow: "studio",
         studio: partner?.slug || studioId,
         massage: service ? servicePrimaryName(service) : null,
-        area: (partner as any)?.district || null,
+        area: hood,
         request_id: data?.id ?? null,
       }, partner?.slug || studioId);
-      setDone({ ref: `MR-2026-${String(data.id).padStart(4, "0")}` });
+      reqTrack("req_submit_ok", { has_phone: /\d/.test(phone) });
+      // "#3FA85F": six characters a person can read out, not the raw uuid (F13).
+      setDone({ ref: `#${String(data.id).replace(/[^0-9a-f]/gi, "").slice(0, 6).toUpperCase()}`, status: "pending" });
 
     } catch (e: any) {
       const msg = String(e?.message || "");
+      reqTrack("req_submit_error", { error: (msg || "unknown_error").slice(0, 120) });
       trackFunnel("wizard_submit_error", {
         flow: "studio",
         studio: partner?.slug || studioId,
         massage: service ? servicePrimaryName(service) : null,
-        area: (partner as any)?.district || null,
+        area: hood,
         error: (msg || "unknown_error").slice(0, 200),
       }, partner?.slug || studioId);
       if (/fully booked/i.test(msg)) {
@@ -2263,65 +2511,15 @@ export default function StudioBookingPage() {
 
 
   return (
-    <div className="min-h-screen bg-[#FAF6F1] relative">
-      <div className="absolute top-3 right-3 z-30 flex items-center gap-3"><AccountHeaderLink /><LanguageFlagToggle /></div>
-      {/* Hero — real cover photo when the studio has one, otherwise the themed fallback */}
-      <div
-        className={`relative bg-gradient-to-br from-[#C4622D] to-[#5b0a16] ${
-          partner.cover_url
-            ? "aspect-[16/10] max-h-[380px] overflow-hidden rounded-b-3xl"
-            : "h-44"
-        }`}
-      >
-        <img
-          src={studioImage({
-            id: partner.id,
-            name: partner.business_name,
-            imageUrl: partner.cover_url || null,
-            services: (profile.services || []).map((s: any) => `${s.name ?? ""} ${s.type ?? ""}`),
-            description: partner.description,
-          }, 1200)}
-          alt={partner.cover_url ? partner.business_name : ""}
-          loading="lazy"
-          decoding="async"
-          className={`absolute inset-0 h-full w-full object-cover ${partner.cover_url ? "" : "opacity-60"}`}
-          onError={(e) => studioImageFallback(e, 1200)}
-        />
-        {partner.cover_url && <div className="absolute inset-0 bg-black/25" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-        <div className="absolute bottom-4 left-0 right-0 px-5 max-w-lg mx-auto">
-          <div className="flex items-end gap-3">
-            {partner.logo_url && (
-              <img src={partner.logo_url} alt="" className="h-14 w-14 rounded-2xl object-cover border-2 border-white/80 shadow-lg flex-shrink-0" />
-            )}
-            <div>
-              <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur text-white px-3 py-1 rounded-full text-xs font-semibold mb-2">
-                <Sparkles size={12} /> {c.bookYourMassage}
-              </div>
-              <h1 className="font-display text-3xl font-semibold text-white leading-tight">{partner.business_name}</h1>
-              {rating ? (
-                <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
-                  <span style={{ color: "#E0A458" }}>★</span>
-                  {rating.avg.toFixed(1)} <span className="text-white/70 font-normal">({rating.count})</span>
-                </p>
-              ) : (partner as any).google_rating != null ? (
-                <p className="text-white/95 text-sm font-semibold mt-0.5 flex items-center gap-1">
-                  <span style={{ color: "#E0A458" }}>★</span>
-                  {Number((partner as any).google_rating).toFixed(1)}
-                  {(partner as any).google_reviews != null && (
-                    <span className="text-white/70 font-normal">({(partner as any).google_reviews} · Google)</span>
-                  )}
-                </p>
-              ) : null}
-              {partner.address && (
-                <p className="text-white/80 text-sm flex items-center gap-1 mt-0.5">
-                  <MapPin size={12} /> {partner.address}
-                </p>
-              )}
-              {distanceBlock(true)}
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#FAF6F1]">
+      {brandBar()}
+      {/* The real place first (SP1, 2 Nov): the studio's own photo (or a map),
+          then name, place, rating, price and how it works, all on the first
+          screen. The photo used to carry the text on top of it, with the
+          account pill floating over everything. */}
+      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 pt-4 min-[900px]:pt-6 min-[900px]:grid min-[900px]:grid-cols-2 min-[900px]:gap-8 min-[900px]:items-center min-[900px]:[&_h1]:mt-0">
+        <div className="[&_img]:max-h-[300px] min-[900px]:[&_img]:max-h-[380px]">{visualBlock}</div>
+        <div>{identityBlock}</div>
       </div>
 
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 pb-28">
@@ -2333,14 +2531,15 @@ export default function StudioBookingPage() {
         {step === 2 && <StickyContinue ready={!!date && !!time} onNext={() => goStep(3)} />}
         {step === 3 && <StickyContinue ready onNext={() => goStep(4)} />}
         {step === 4 && (
-          <StickyContinue ready={nameComplete && hasContact} onNext={submitDetailsStep} />
+          <StickyContinue ready onNext={submitDetailsStep} />
         )}
         {step === 5 && (
           <StickyContinue
             ready={canBook}
             busy={submitting}
+            busyLabel={sp.sending}
             onNext={handleBook}
-            label={`${instantConfirm ? c.bookNow : c.requestBooking} · €${total}`}
+            label={`${instantConfirm ? c.bookNow : c.requestBooking}${total > 0 ? ` · ${eur(total)}` : ""}`}
             badge={instantConfirm ? { text: c.instantConfirmation } : undefined}
             note={c.freeToBook}
           />
@@ -2357,7 +2556,7 @@ export default function StudioBookingPage() {
             <span className="text-gray-300"> · </span>
             <span className={time ? "font-semibold text-gray-800" : "text-gray-400"}>{time || c.pickTime}</span>
             <span className="text-gray-300"> · </span>
-            <span className={service && total > 0 ? "font-semibold text-[#C4622D]" : "text-gray-400"}>{service && total > 0 ? `€${total}` : c.priceLabel}</span>
+            <span className={service && total > 0 ? "font-semibold text-[#C4622D]" : "text-gray-400"}>{service && total > 0 ? eur(total) : c.priceLabel}</span>
           </p>
         </div>
 
@@ -2369,8 +2568,6 @@ export default function StudioBookingPage() {
             {step === 1 && (
               <div ref={serviceRef}>
                 <Section step="1" title={c.chooseService}>
-                  {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4 min-[900px]:mb-5">{partner.description}</p>}
-                  <StudioGallery items={partner.gallery || []} />
                   {!rebookId && (
                     <BookAgainBanner
                       partnerId={partner.id}
@@ -2393,18 +2590,9 @@ export default function StudioBookingPage() {
                   )}
                   {!rebookMode && (
                     <div className="space-y-2">
-                      <Link
-                        to={quizHref}
-                        className="w-full flex items-center gap-2 p-4 min-[900px]:p-5 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
-                      >
-                        <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
-                        <span className="min-w-0 text-left">
-                          <span className="block text-sm min-[900px]:text-base font-semibold text-[#C4622D]">{c.notSureQuiz}</span>
-                        </span>
-                      </Link>
                       {profile.services.map(s => (
                         <div key={s.id}>
-                          <button onClick={(e) => { setServiceId(s.id); trackEvent("wizard_service_selected", { slug: partner?.slug || studioId, meta: { service: servicePrimaryName(s) } }); scrollIntoViewGently(e.currentTarget); }}
+                          <button data-testid="service-row" onClick={(e) => { if (serviceId !== s.id) reqTrack("req_answer_massage", { value: servicePrimaryName(s) }); setServiceId(s.id); trackEvent("wizard_service_selected", { slug: partner?.slug || studioId, meta: { service: servicePrimaryName(s) } }); scrollIntoViewGently(e.currentTarget); }}
                             className={`card-auto w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
                               serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
                             }`}>
@@ -2422,7 +2610,10 @@ export default function StudioBookingPage() {
                               </div>
                               <div className="flex flex-shrink-0 items-center gap-2">
                                 {s.price != null && Number(s.price) > 0 && (
-                                  <p className="font-bold text-[#C4622D] min-[900px]:text-lg flex items-center gap-0.5"><Euro size={13} />{Number(s.price)}</p>
+                                  <p className="font-bold text-[#C4622D] min-[900px]:text-lg text-right leading-tight">
+                                    {eur(Number(s.price))}
+                                    {serviceTag(s) && <span className="block text-xs font-semibold">{serviceTag(s)}</span>}
+                                  </p>
                                 )}
                                 <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
                               </div>
@@ -2431,6 +2622,22 @@ export default function StudioBookingPage() {
                         </div>
                       ))}
                       {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">{c.noServicesYet}</p>}
+                      <Link
+                        to={quizHref}
+                        className="w-full flex items-center gap-2 p-4 min-[900px]:p-5 rounded-2xl border border-dashed border-[#C4622D] bg-[#FAF6F1] motion-safe:transition hover:bg-[#F6EFE6]"
+                      >
+                        <Sparkles size={18} className="text-[#C4622D] flex-shrink-0" />
+                        <span className="min-w-0 text-left">
+                          <span className="block text-sm min-[900px]:text-base font-semibold text-[#C4622D]">{c.notSureQuiz}</span>
+                        </span>
+                      </Link>
+                    </div>
+                  )}
+                  {(partner.description || (partner.gallery || []).length > 0) && (
+                    <div className="mt-6">
+                      <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2 text-[#B85C38] tracking-[2px]">{sp.aboutTitle}</p>
+                      {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4">{partner.description}</p>}
+                      <StudioGallery items={partner.gallery || []} />
                     </div>
                   )}
 
@@ -2468,7 +2675,7 @@ export default function StudioBookingPage() {
                       {openDates.map(d => {
                         const active = date && isoDate(d) === isoDate(date);
                         return (
-                          <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); trackFunnel("wizard_day_selected", { flow: "studio", day: isoDate(d), massage: service ? servicePrimaryName(service) : null, area: (partner as any)?.district || null }, partner?.slug || studioId); scrollIntoViewGently(e.currentTarget); }}
+                          <button key={isoDate(d)} onClick={(e) => { setDate(d); setTime(null); trackFunnel("wizard_day_selected", { flow: "studio", day: isoDate(d), massage: service ? servicePrimaryName(service) : null, area: hood }, partner?.slug || studioId); scrollIntoViewGently(e.currentTarget); }}
                             className={`flex-shrink-0 w-16 min-[900px]:w-20 py-2.5 min-[900px]:py-3.5 rounded-2xl border-2 text-center transition snap-start ${
                               active ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                             }`}>
@@ -2493,7 +2700,7 @@ export default function StudioBookingPage() {
                             const cap = date ? capacityFor(date.getDay(), t) : therapistCount;
                             const lowStock = cap > 1 && left < cap;
                             return (
-                              <button key={t} onClick={() => { setTime(t); trackFunnel("wizard_time_selected", { flow: "studio", time: t, massage: service ? servicePrimaryName(service) : null, area: (partner as any)?.district || null }, partner?.slug || studioId); }}
+                              <button key={t} onClick={() => { setTime(t); if (date) reqTrack("req_answer_when", { offset: dayOffset(isoDate(date)) }); trackFunnel("wizard_time_selected", { flow: "studio", time: t, massage: service ? servicePrimaryName(service) : null, area: hood }, partner?.slug || studioId); }}
                                 className={`px-4 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition ${
                                   time === t ? "border-[#C4622D] bg-[#C4622D] text-white" : "border-gray-200 bg-white text-gray-700"
                                 }`}>
@@ -2675,23 +2882,59 @@ export default function StudioBookingPage() {
               </div>
             )}
 
-            {/* STEP 4: your details */}
+            {/* STEP 4: your details. One name field, labelled 16px inputs,
+                errors next to the field on tap (2 Nov). */}
             {step === 4 && (
               <div>
                 <Section step="4" title={c.yourDetails}>
-                  <div className="space-y-2 min-[900px]:space-y-3">
-                    <div className="pb-1">
+                  <form noValidate className="space-y-4" onSubmit={(e) => { e.preventDefault(); submitDetailsStep(); }}>
+                    <div>
+                      <label htmlFor="d-name" className="block text-sm font-semibold mb-1.5 text-[#3d2b1f]">{sp.yourName}</label>
+                      <input id="d-name" ref={nameRef} value={fullName}
+                        onChange={e => { setFullName(e.target.value); dRecheck("name", { name: e.target.value }); }}
+                        onBlur={() => dRecheck("name", {})}
+                        autoComplete="name"
+                        aria-invalid={dHasErr("name")}
+                        aria-describedby={dHasErr("name") ? "d-name-err" : undefined}
+                        className={`w-full h-12 px-4 rounded-xl border bg-white text-base focus:outline-none focus:border-[#C4622D] ${dHasErr("name") ? "border-2 border-[#B03A2E]" : "border-gray-300"}`} />
+                      {dHasErr("name") && <p id="d-name-err" role="alert" className="mt-1.5 text-sm text-[#B03A2E]">{sp.errName}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="d-email" className="block text-sm font-semibold mb-1.5 text-[#3d2b1f]">{sp.emailLabel}</label>
+                      <input id="d-email" ref={emailRef} value={email}
+                        onChange={e => { setEmail(e.target.value); dRecheck("email", { email: e.target.value }); }}
+                        onBlur={() => dRecheck("email", {})}
+                        type="email" inputMode="email" autoComplete="email" aria-required="true"
+                        aria-invalid={dHasErr("email")}
+                        aria-describedby={dHasErr("email") ? "d-email-err" : "d-email-help"}
+                        className={`w-full h-12 px-4 rounded-xl border bg-white text-base focus:outline-none focus:border-[#C4622D] ${dHasErr("email") ? "border-2 border-[#B03A2E]" : "border-gray-300"}`} />
+                      {dHasErr("email")
+                        ? <p id="d-email-err" role="alert" className="mt-1.5 text-sm text-[#B03A2E]">{sp.errEmail}</p>
+                        : <p id="d-email-help" className="mt-1.5 text-sm text-[#7A7068]">{sp.emailHelp}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="d-phone" className="block text-sm font-semibold mb-1.5 text-[#3d2b1f]">{sp.phoneLabel}</label>
+                      <input id="d-phone" ref={phoneRef} value={phone}
+                        onChange={e => { setPhone(e.target.value); dRecheck("phone", { phone: e.target.value }); }}
+                        onBlur={() => dRecheck("phone", {})}
+                        type="tel" inputMode="tel" autoComplete="tel" placeholder="+34 600 123 456"
+                        aria-invalid={dHasErr("phone")}
+                        aria-describedby={dHasErr("phone") ? "d-phone-err" : undefined}
+                        className={`w-full h-12 px-4 rounded-xl border bg-white text-base focus:outline-none focus:border-[#C4622D] ${dHasErr("phone") ? "border-2 border-[#B03A2E]" : "border-gray-300"}`} />
+                      {dHasErr("phone") && <p id="d-phone-err" role="alert" className="mt-1.5 text-sm text-[#B03A2E]">{sp.errPhone}</p>}
+                    </div>
+                    <div>
                       {!peopleOpen ? (
                         <button
                           type="button"
                           onClick={() => setPeopleOpen(true)}
-                          className="text-xs text-gray-400 hover:text-gray-500 transition-colors"
+                          className="min-h-[44px] text-sm font-medium underline underline-offset-2 text-[#5a4736]"
                         >
                           {c.moreThanOne}
                         </button>
                       ) : (
                         <div className="flex flex-wrap gap-2">
-                          {PEOPLE_OPTIONS.map((n) => {
+                          {["1", ...PEOPLE_OPTIONS].map((n) => {
                             const on = people === n;
                             return (
                               <button
@@ -2699,98 +2942,42 @@ export default function StudioBookingPage() {
                                 type="button"
                                 aria-pressed={on}
                                 onClick={() => setPeople(n)}
-                                className={`h-9 min-w-[2.5rem] px-3 rounded-lg border text-sm font-medium ${
-                                  on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-200 bg-white text-gray-600"
+                                className={`h-11 min-w-[2.75rem] px-3 rounded-lg border text-base font-medium ${
+                                  on ? "border-[#C4622D] bg-[#FDF3EC] text-[#C4622D]" : "border-gray-300 bg-white text-gray-700"
                                 }`}
                               >
                                 {n}
                               </button>
                             );
                           })}
-                          <p className="w-full mt-1 text-xs text-gray-400">
+                          <p className="w-full mt-1 text-sm text-[#7A7068]">
                             {c.groupCheck}
                           </p>
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
-                      <input ref={nameRef} value={firstName} onChange={e => { setFirstName(e.target.value); setStepError(null); }} placeholder={c.firstName} autoComplete="given-name"
-                        aria-invalid={!!stepError && !firstName.trim()}
-                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                          stepError && !firstName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                        }`} />
-                      <input value={lastName} onChange={e => { setLastName(e.target.value); setStepError(null); }} placeholder={c.lastName} autoComplete="family-name"
-                        aria-invalid={!!stepError && !lastName.trim()}
-                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                          stepError && !lastName.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                        }`} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold mb-2 min-[900px]:text-sm text-[#5a4736]">
-                        {EMAIL_REQUIRED_COPY[lang].label}
-                      </p>
-                      <input ref={emailRef} value={email} onChange={e => { setEmail(e.target.value); setStepError(null); }} placeholder={c.email} type="email" inputMode="email" autoComplete="email" required aria-required="true"
-                        aria-invalid={!emailValid && !!email.trim()}
-                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                          !emailValid && email.trim() ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                        }`} />
-                      {!emailValid && email.trim() ? (
-                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
-                          {EMAIL_REQUIRED_COPY[lang].error}
-                        </p>
-                      ) : (
-                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#7A7068]">
-                          {EMAIL_REQUIRED_COPY[lang].helper}
-                        </p>
-                      )}
-                    </div>
 
-                    <div>
-                      <input value={phone} onChange={e => { setPhone(e.target.value); setStepError(null); }} placeholder={c.waPhone} type="tel" inputMode="tel" autoComplete="tel"
-                        aria-invalid={contact.phoneValid === false}
-                        className={`w-full h-12 min-[900px]:h-14 px-4 rounded-xl border bg-white text-sm min-[900px]:text-base focus:outline-none focus:border-[#C4622D] ${
-                          contact.phoneValid === false ? "border-2 border-[#B03A2E]" : "border-gray-200"
-                        }`} />
-                      {contact.phoneValid === false && (
-                        <p className="mt-1.5 text-xs min-[900px]:text-sm text-[#B03A2E]">
-                          {CONTACT_COPY[lang].badPhone}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-xs min-[900px]:text-sm text-gray-400">
-                      {c.giveContact}
-                    </p>
-
-
+                    {/* Opt-in only: a pre-ticked box sent sign-up emails nobody asked for (F5). */}
                     {!userId && !!email.trim() && (
-                      <label className="flex items-start gap-3 pt-2 min-[900px]:pt-3 cursor-pointer">
+                      <label className="flex items-start gap-3 pt-1 cursor-pointer">
                         <input
                           type="checkbox"
+                          className="mt-0.5 h-5 w-5 flex-shrink-0"
                           checked={createAccount}
                           onChange={e => setCreateAccount(e.target.checked)}
                         />
-                        <span className="text-xs min-[900px]:text-sm text-gray-600 leading-snug">
+                        <span className="text-sm text-gray-700 leading-snug">
                           {c.createAccount}
-                          <span className="block text-[11px] min-[900px]:text-xs text-gray-400">
+                          <span className="block text-xs text-gray-500">
                             {c.createAccountSub}
                           </span>
                         </span>
                       </label>
                     )}
-
-                    {stepError && (
-                      <p role="alert" className="text-sm min-[900px]:text-base font-medium text-[#B03A2E]">
-                        {stepError}
-                      </p>
-                    )}
-                  </div>
+                    <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{c.continueLabel}</button>
+                  </form>
                 </Section>
-                <WizardNav
-                  onBack={() => goStep(3)}
-                  onNext={submitDetailsStep}
-                  disabled={!nameComplete || !hasContact}
-                  hint={detailsNote}
-                />
+                <WizardNav onBack={() => goStep(3)} />
 
               </div>
             )}
@@ -2867,7 +3054,7 @@ export default function StudioBookingPage() {
                     flow: "studio",
                     studio: partner.slug || partner.id,
                     massage: service ? servicePrimaryName(service) : null,
-                    area: (partner as any).district || null,
+                    area: hood,
                   }, partner.slug || partner.id);
                   sendTrack({
                     event: "whatsapp_click",
@@ -2922,15 +3109,9 @@ export default function StudioBookingPage() {
           </aside>
 
           <div className="min-[900px]:col-span-2 space-y-5">
-            <ExitCaptureBlock
-              source="studio-exit"
-              step={step}
-              want={(() => {
-                const svc = service || profile?.services.find((s) => s.id === hoServiceId) || null;
-                return svc ? servicePrimaryName(svc) : null;
-              })()}
-              area={(partner as any).district || null}
-            />
+            {/* Other studios nearby (SP1). The "Email me deals" block that
+                sat here was removed on 2 Nov: we never pre-announce a discount. */}
+            {nearbyBlock}
             {/* Contact footer */}
             <div className="flex items-center justify-center gap-4 pt-6 pb-8 text-gray-400">
               <WhatsAppAskButton
@@ -2978,15 +3159,7 @@ export default function StudioBookingPage() {
         </div>
       </div>
 
-      <AbandonedBookingSheet
-        open={leadSheet.open}
-        onClose={leadSheet.close}
-        slug={partner?.slug || studioId || null}
-        serviceName={service ? servicePrimaryName(service) : null}
-        date={date ? isoDate(date) : null}
-        time={time}
-        defaultEmail={email}
-      />
+
 
     </div>
 
@@ -3007,20 +3180,22 @@ function Section({ step, title, children }: { step: string; title: string; child
   );
 }
 
-/** Horizontal day strip used by the WhatsApp handoff form (ISO value in/out). */
+/** The hand-off times still bookable on a day (Madrid time, an hour's notice). */
+const handoffTimesFor = (iso: string) =>
+  iso ? HANDOFF_TIMES.filter(t => !isTooSoon(iso, t)) : HANDOFF_TIMES;
+
+/**
+ * Horizontal day strip used by the hand-off form (ISO value in/out). 14 days
+ * from Madrid today; today only while a time is left (until 19:00).
+ */
 function DayStrip({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const lang = useFlowLang();
-  const days: Date[] = [];
-  const today = new Date();
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    days.push(d);
-  }
+  const days = madridDays(14)
+    .filter((iso, i) => i > 0 || handoffTimesFor(iso).length > 0)
+    .map(iso => ({ iso, d: isoToLocalDate(iso) }));
   return (
     <div role="radiogroup" aria-label={label} className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-      {days.map(d => {
-        const iso = isoDate(d);
+      {days.map(({ iso, d }) => {
         const active = value === iso;
         return (
           <button
@@ -3046,11 +3221,14 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
   );
 }
 
-/** Rounded time pills for the handoff form (fixed options, real availability unknown). */
-function TimePills({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+/**
+ * Rounded time pills for the hand-off form (fixed options, real availability
+ * unknown). On today, only times from an hour after Madrid now.
+ */
+function TimePills({ value, date, onChange, label }: { value: string; date?: string; onChange: (v: string) => void; label: string }) {
   return (
     <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2 min-[900px]:gap-3">
-      {HANDOFF_TIMES.map(t => {
+      {handoffTimesFor(date || "").map(t => {
         const active = value === t;
         return (
           <button
@@ -3092,9 +3270,9 @@ function scrollIntoViewGently(el: HTMLElement | null) {
  * summary column on desktop, so picking a service never looks like nothing happened.
  */
 function StickyContinue({
-  ready, onNext, label, busy, badge, note, summary, inlineRef,
+  ready, onNext, label, busy, busyLabel, badge, note, summary, inlineRef,
 }: {
-  ready: boolean; onNext: () => void; label?: string; busy?: boolean;
+  ready: boolean; onNext: () => void; label?: string; busy?: boolean; busyLabel?: string;
   badge?: { text: string }; note?: string; summary?: string | null;
   /** Inline Continue inside the step card. While it is in the viewport the
    *  sticky bar shows summary text only (no button), so exactly one
@@ -3123,7 +3301,7 @@ function StickyContinue({
   if (inlineVisible) {
     if (!summary) return null;
     return (
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]" style={{ bottom: "var(--consent-h, 0px)" }}>
         <p className="max-w-lg min-[900px]:max-w-[1100px] mx-auto w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">
           {summary}
         </p>
@@ -3131,7 +3309,7 @@ function StickyContinue({
     );
   }
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="fixed inset-x-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ bottom: "var(--consent-h, 0px)" }}>
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
         {summary && (
           <p className="w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">{summary}</p>
@@ -3150,7 +3328,7 @@ function StickyContinue({
             ready && !busy ? "bg-[#C4622D] text-white shadow-lg hover:opacity-95" : "bg-[#E7D9CB] text-[#9E8B78]"
           }`}
         >
-          <span className="min-[900px]:text-lg">{busy ? c.booking : label || c.continueLabel}</span>
+          <span className="min-[900px]:text-lg">{busy ? busyLabel || c.booking : label || c.continueLabel}</span>
         </button>
         {note && (
           <p className="text-[11px] min-[900px]:text-xs text-center text-[#8a7460]">
@@ -3169,12 +3347,24 @@ function Stepper({
 }: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
   const lang = useFlowLang();
   const activeRef = useRef<HTMLButtonElement | null>(null);
-  // On narrow screens the five steps scroll, so keep the active one in view.
+  const navRef = useRef<HTMLElement | null>(null);
+  const firstRender = useRef(true);
+  // On narrow screens the steps scroll sideways, so keep the active one in
+  // view. Only the strip scrolls, horizontally, and never on first render:
+  // scrollIntoView here used to drag the whole page down to the stepper on
+  // load (scrollY 1361 on /onixama), past the studio's name and address.
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    if (firstRender.current) { firstRender.current = false; return; }
+    const nav = navRef.current;
+    const el = activeRef.current;
+    if (!nav || !el || nav.scrollWidth <= nav.clientWidth) return;
+    try {
+      nav.scrollTo({ left: el.offsetLeft - nav.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+    } catch { /* old browsers: no smooth scroll */ }
   }, [current]);
   return (
     <nav
+      ref={navRef}
       aria-label={pickCopy(BOOKING_STEPS_ARIA, lang)}
       className="relative flex items-start gap-0.5 min-[900px]:gap-1 overflow-x-auto pb-1 -mx-1 px-1 max-w-full min-[900px]:max-w-[720px] no-scrollbar"
     >
