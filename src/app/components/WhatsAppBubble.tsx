@@ -28,7 +28,9 @@ const getSnapshot = () => ctx;
 
 function routeAllowsBubble(pathname: string): boolean {
   const p = pathname.replace(/\/+$/, "") || "/";
-  if (p === "/" || p === "/web" || p === "/landing") return true;
+  // Not on "/": it opens the request flow, and on sign-in the bubble covered
+  // "Continue with Google".
+  if (p === "/web" || p === "/landing") return true;
   if (p === "/studios") return true;
   if (p === "/app/discovery" || p === "/discovery") return true;
   if (p === "/app/bookings" || p === "/bookings") return true;
@@ -62,13 +64,17 @@ export default function WhatsAppBubble() {
   const visible = !hidden && (!!studio || routeAllowsBubble(pathname));
   if (!visible) return null;
 
-  // Sit above the bottom tab bar when it is on screen.
-  const bottomClass = shouldShowBottomNav(pathname)
-    ? "bottom-[calc(84px+env(safe-area-inset-bottom))]"
-    : "bottom-[calc(20px+env(safe-area-inset-bottom))]";
+  // Sit above the bottom tab bar when it is on screen, and above the cookie
+  // bar while it shows (--consent-h, set by ConsentBanner; 0 otherwise).
+  const base = shouldShowBottomNav(pathname)
+    ? "84px + env(safe-area-inset-bottom)"
+    : "1rem + env(safe-area-inset-bottom)";
 
   return (
-    <div className={`fixed right-4 z-50 flex items-center gap-2 ${bottomClass}`}>
+    <div
+      className="fixed right-4 z-50 flex items-center gap-2"
+      style={{ bottom: `calc(${base} + var(--consent-h, 0px))` }}
+    >
       {showHint && (
         <span
           role="status"
