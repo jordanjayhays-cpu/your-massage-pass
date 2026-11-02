@@ -27,10 +27,13 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
   const ready = items.length >= 2;
 
   return (
-    // Sits above the cookie bar while it shows (--consent-h, set by ConsentBanner; 0 otherwise).
+    // Sits above the cookie bar while it shows (set by ConsentBanner; 0 otherwise).
+    // Phones: --consent-room equals the bar's height (--consent-h). From 900px the
+    // bar is a card in the bottom-left corner and this full-width bar would cover
+    // it, so it rises by the card's room instead (desktop fix F20).
     <div
       className={`fixed inset-x-0 z-50 px-3 pointer-events-none ${className}`}
-      style={{ bottom: "var(--consent-h, 0px)" }}
+      style={{ bottom: "var(--consent-room, var(--consent-h, 0px))" }}
     >
       <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3">
         <div className="flex items-center gap-3 flex-wrap">

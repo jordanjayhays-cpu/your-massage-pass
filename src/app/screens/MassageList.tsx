@@ -825,7 +825,8 @@ export default function MassageList() {
       </div>
 
 
-      <CompareBar className="pb-[86px]" />
+      {/* 86px keeps it above the phone tab bar; the tab bar is hidden from 900px (F8). */}
+      <CompareBar className="pb-[86px] desk:pb-3" />
       {favouriteSheet}
     </div>
   );
