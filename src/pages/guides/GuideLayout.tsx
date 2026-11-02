@@ -1,6 +1,5 @@
 import { ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { DealsFooterLine } from "@/components/DealsLink";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -121,8 +120,7 @@ export default function GuideLayout({
               ))}
             </ul>
           </div>
-          <DealsFooterLine className="text-center mt-6" />
-          <p className="text-xs text-muted-foreground text-center mt-2">
+          <p className="text-xs text-muted-foreground text-center mt-6">
             Massage Club · Madrid <span className="mx-1">·</span>{" "}
             <Link to="/privacy" className="hover:text-primary transition underline-offset-2 hover:underline">
               Privacy
@@ -152,7 +150,7 @@ export function CalmaCard({ note }: { note?: string }) {
       </p>
       <p className="text-sm text-foreground/85 mt-3">
         {note ??
-          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €45) and relaxing rituals. Book online in English — you pay at the studio."}
+          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €45) and relaxing rituals. Book online in English. You pay at the studio."}
       </p>
       <Link
         to="/spa-calma"
@@ -178,7 +176,7 @@ export function GuideLinks({ exclude }: { exclude: string }) {
         ))}
         <li>
           <Link to="/spa-calma" className="text-foreground hover:text-primary underline-offset-2 hover:underline transition">
-            Calma Madrid — book a massage
+            Calma Madrid: book a massage
           </Link>
         </li>
       </ul>

@@ -6,7 +6,7 @@ export default function MadridChueca() {
       path="/madrid/chueca"
       neighbourhood="Chueca"
       barrio="Chueca"
-      title="Massage in Chueca, Madrid — studios, prices and booking"
+      title="Massage in Chueca, Madrid: studios, prices and booking"
       description="Massage studios in Chueca, Madrid: addresses, treatments and prices, near metro Chueca, Gran Vía and Alonso Martínez. Book online in English."
       h1="Massage in Chueca, Madrid"
       intro={
@@ -14,7 +14,7 @@ export default function MadridChueca() {
           <p>
             Chueca packs a lot into a few blocks: Plaza de Chueca, the Mercado de San Antón, and
             narrow streets like Hortaleza, Augusto Figueroa and Pelayo lined with small businesses
-            that stay open late. Massage studios here follow the same rhythm — compact, one or two
+            that stay open late. Massage studios here follow the same rhythm: compact, one or two
             rooms, and often the last appointment of the day is at nine in the evening.
           </p>
           <p>
