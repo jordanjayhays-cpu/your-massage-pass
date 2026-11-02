@@ -49,6 +49,17 @@ import MassageTypePage from "./pages/MassageTypePage";
 import BookingCard from "./pages/BookingCard";
 
 import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
+import { RequestFlowRedirect } from "./lib/requestFlowRedirect";
+
+/**
+ * "/" opens the request flow (/reserve). Login stays here only for sign-in
+ * links (Supabase tokens in the URL), signed-in visitors (Login forwards them
+ * on), ?stay=1 and Lovable previews. Rules: src/lib/requestFlowRedirect.ts,
+ * kept in sync with the inline script in index.html.
+ */
+function HomeEntry() {
+  return <RequestFlowRedirect fallback={<Login />} />;
+}
 
 /**
  * Permanent redirect from the old /fb route to /start, preserving query
@@ -141,16 +152,17 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
 
-          {/* Public lead-capture pages shared on WhatsApp */}
-          <Route path="/book" element={<BookFlow />} />
-          <Route path="/start" element={<FbLanding />} />
+          {/* One front door: the old wizard pages open the request flow
+              (/reserve). They render only with ?stay=1 or on Lovable previews. */}
+          <Route path="/book" element={<RequestFlowRedirect fallback={<BookFlow />} />} />
+          <Route path="/start" element={<RequestFlowRedirect fallback={<FbLanding />} />} />
           <Route path="/match" element={<MatchFlow />} />
           <Route path="/fb" element={<FbRedirect />} />
 
           {/* Common near-miss redirects - keep them before the /:studioId catch-all */}
           <Route path="/studio" element={<Redirect to="/studios" />} />
           <Route path="/massages" element={<Redirect to="/studios" />} />
-          <Route path="/booking" element={<Redirect to="/book" />} />
+          <Route path="/booking" element={<RequestFlowRedirect fallback={<BookFlow />} />} />
           {/* NOTE: no "/start/" route - React Router treats it as "/start", so a
               redirect there loops forever and renders a blank page. */}
 
@@ -203,7 +215,7 @@ const App = () => (
 
           <Route path="/web" element={<Web />} />
           <Route path="/" element={<AppLayout />}>
-            <Route index element={<Login />} />
+            <Route index element={<HomeEntry />} />
             <Route path="massages" element={<MassageList />} />
             <Route path="massages/:id" element={<ShopDetail />} />
             {/* Legacy calendar/customize/payment flow removed: customers book on

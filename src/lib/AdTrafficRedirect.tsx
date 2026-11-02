@@ -1,16 +1,17 @@
 import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 const AD_PARAMS = ["gclid", "gbraid", "wbraid", "gad_source"];
 
 /**
  * Paid ad clicks that still land on discovery pages (ads whose final URL was
- * never updated) are bounced to the /start booking flow instead. Replace
- * navigation so Back does not loop. Organic/direct visits are untouched.
+ * never updated) open the request flow (/reserve, public/go.html) with
+ * src=google instead. A full page load, because /reserve is a static page
+ * the React router cannot render; `replace` so Back does not loop.
+ * Organic/direct visits are untouched.
  */
 export default function AdTrafficRedirect() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const path = location.pathname;
@@ -20,8 +21,8 @@ export default function AdTrafficRedirect() {
     const params = new URLSearchParams(location.search);
     if (!AD_PARAMS.some((p) => params.get(p))) return;
     params.set("src", "google");
-    navigate(`/start?${params.toString()}`, { replace: true });
-  }, [location.pathname, location.search, navigate]);
+    window.location.replace(`/reserve?${params.toString()}`);
+  }, [location.pathname, location.search]);
 
   return null;
 }

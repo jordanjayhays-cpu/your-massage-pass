@@ -100,7 +100,7 @@ export interface Shop {
   id: string;
   name: string;           // service name (Massage.name)
   studio: string;         // business_name
-  district: string;       // derived from address city
+  district: string;       // partners.neighbourhood, else city, else "Madrid"
   address: string;
   duration: number;
   /** Real Google rating, or null when we do not have one. Never defaulted. */
@@ -239,7 +239,8 @@ export async function fetchShops(): Promise<Shop[]> {
       id: p.id,                                   // studio id → resolved to /{slug}
       name: p.business_name || "Studio",
       studio: p.business_name || "Studio",
-      district: p.city ?? "Madrid",
+      // The neighbourhood ("Chamberí") is what people pick a studio by; city is always Madrid.
+      district: p.neighbourhood || p.city || "Madrid",
       address: p.address ?? "",
       duration: svcs[0]?.duration ?? 60,
       rating: p.google_rating != null ? Number(p.google_rating) : null,
@@ -359,7 +360,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     id,
     name: matchedSvc.name || "Massage",
     studio: partner.business_name || "Studio",
-    district: partner.city ?? "Madrid",
+    district: partner.neighbourhood || partner.city || "Madrid",
     address: partner.address ?? "",
     duration: matchedSvc.duration ?? 60,
     rating: partner.google_rating != null ? Number(partner.google_rating) : null,

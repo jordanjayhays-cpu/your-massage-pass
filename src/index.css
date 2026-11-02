@@ -232,3 +232,19 @@ input[type="checkbox"]:disabled {
 .pb-tabbar {
   padding-bottom: calc(84px + env(safe-area-inset-bottom));
 }
+
+/* ── Cookie bar room ────────────────────────────────────────────────────────
+   ConsentBanner sets --consent-h (its height in px) on <html> while it shows
+   and removes it when the visitor chooses; unset, everything falls back to 0.
+   Contract: anything fixed to the bottom of the screen sits at
+   bottom: var(--consent-h, 0px), so the bar never covers a button. */
+body {
+  padding-bottom: var(--consent-h, 0px);
+}
+
+/* The app shell (MobileFrame) is one screen tall and scrolls inside. While the
+   bar shows, it ends just above the bar, so its tab bar and last rows stay
+   visible instead of sliding under it. */
+#root .h-screen {
+  height: calc(100vh - var(--consent-h, 0px));
+}
