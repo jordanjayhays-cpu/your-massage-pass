@@ -197,7 +197,7 @@ export default function NeighbourhoodPage({
             name: `How much does a massage cost in ${barrio}?`,
             acceptedAnswer: {
               "@type": "Answer",
-              text: `Most studios in ${barrio} charge around €45–€70 for a 60-minute relaxing massage and €60–€95 for deep tissue. Each studio below shows its cheapest listed treatment.`,
+              text: `Most studios in ${barrio} charge around €45 to €70 for a 60-minute relaxing massage and €60 to €95 for deep tissue. Each studio below shows its cheapest listed treatment.`,
             },
           },
           {
@@ -205,7 +205,7 @@ export default function NeighbourhoodPage({
             name: `Can I book a massage in ${barrio} in English?`,
             acceptedAnswer: {
               "@type": "Answer",
-              text: `Yes. Studios marked as bookable on Massage Club take requests online in English — you choose pressure and focus areas when you book and pay at the studio.`,
+              text: `Yes. Studios marked as bookable on Massage Club take requests online in English. You choose pressure and focus areas when you book and pay at the studio.`,
             },
           },
         ],

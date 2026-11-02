@@ -368,7 +368,7 @@ function RescheduleModal({
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-display text-lg font-bold text-gray-900">{t("rescheduleModal.title")}</h3>
-              <p className="text-sm text-gray-500">{booking.spa_name} — {booking.massage_type}</p>
+              <p className="text-sm text-gray-500">{booking.spa_name} · {booking.massage_type}</p>
             </div>
             <button onClick={onClose} className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
               <X size={16} />

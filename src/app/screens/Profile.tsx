@@ -42,8 +42,8 @@ const MASSAGE_TYPES: { label: string; value: string }[] = [
 const DURATIONS = [30, 60, 90, 120];
 const BUDGETS: { label: string; value: string }[] = [
   { label: "Under €40", value: "under_40" },
-  { label: "€40–60", value: "40_60" },
-  { label: "€60–90", value: "60_90" },
+  { label: "€40-60", value: "40_60" },
+  { label: "€60-90", value: "60_90" },
   { label: "€90+", value: "90_plus" },
 ];
 const ADDONS: { label: string; value: string }[] = [

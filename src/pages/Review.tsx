@@ -44,7 +44,7 @@ type FetchResp = {
 
 const COPY = {
   en: {
-    pageTitle: "Leave a review - Massage Club",
+    pageTitle: "Leave a review · Massage Club",
     pageDesc: "Tell us about your massage.",
     loading: "Loading…",
     invalid: "Invalid link",
@@ -90,7 +90,7 @@ const COPY = {
     browse: "Browse studios",
   },
   es: {
-    pageTitle: "Deja tu opinión - Massage Club",
+    pageTitle: "Deja tu opinión · Massage Club",
     pageDesc: "Cuéntanos qué tal tu masaje.",
     loading: "Cargando…",
     invalid: "Enlace no válido",
@@ -136,7 +136,7 @@ const COPY = {
     browse: "Ver estudios",
   },
   fr: {
-    pageTitle: "Laisser un avis - Massage Club",
+    pageTitle: "Laisser un avis · Massage Club",
     pageDesc: "Parlez-nous de votre massage.",
     loading: "Chargement…",
     invalid: "Lien non valide",
@@ -182,7 +182,7 @@ const COPY = {
     browse: "Voir les studios",
   },
   de: {
-    pageTitle: "Bewertung abgeben - Massage Club",
+    pageTitle: "Bewertung abgeben · Massage Club",
     pageDesc: "Erzähl uns von deiner Massage.",
     loading: "Wird geladen…",
     invalid: "Ungültiger Link",
@@ -228,7 +228,7 @@ const COPY = {
     browse: "Studios ansehen",
   },
   it: {
-    pageTitle: "Lascia una recensione - Massage Club",
+    pageTitle: "Lascia una recensione · Massage Club",
     pageDesc: "Raccontaci del tuo massaggio.",
     loading: "Caricamento…",
     invalid: "Link non valido",
@@ -274,7 +274,7 @@ const COPY = {
     browse: "Sfoglia gli studi",
   },
   pt: {
-    pageTitle: "Deixe uma avaliação - Massage Club",
+    pageTitle: "Deixe uma avaliação · Massage Club",
     pageDesc: "Conte-nos sobre a sua massagem.",
     loading: "A carregar…",
     invalid: "Link inválido",
@@ -320,7 +320,7 @@ const COPY = {
     browse: "Ver estúdios",
   },
   zh: {
-    pageTitle: "留下评价 - Massage Club",
+    pageTitle: "留下评价 · Massage Club",
     pageDesc: "告诉我们你的按摩体验。",
     loading: "加载中…",
     invalid: "链接无效",
@@ -543,7 +543,7 @@ export default function Review() {
   const toggleTag = (key: string) =>
     setTags((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
-  const studio = sanitize(data?.studio) || "—";
+  const studio = sanitize(data?.studio) || "…";
   const service = sanitize(data?.service);
   const chipKeys: readonly string[] = rating >= 4 ? COMPLIMENT_TAGS : ISSUE_TAGS;
   const privateScreen = step === 7;

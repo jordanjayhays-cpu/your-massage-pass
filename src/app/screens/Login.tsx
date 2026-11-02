@@ -1,7 +1,5 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
-import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
-import LiteYouTube from "@/components/LiteYouTube";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -479,11 +477,6 @@ export default function Login() {
         </button>
       </div>
 
-      {/* Promo video */}
-      <div className="px-6 mt-10">
-        <LiteYouTube id="cYTLBYTVAwY" title="Massage in Madrid" heading="What this actually looks like" />
-      </div>
-
       {/* New in Madrid */}
       <div className="px-6 mt-10">
 
@@ -498,10 +491,6 @@ export default function Login() {
       {/* How it works — editorial three column */}
       <div className="px-6 mt-10">
         <p className="text-[11px] uppercase tracking-[0.3em] text-[#7A7068] mb-5">{t("howItWorks.title")}</p>
-        <HowBookingWorksVideo
-          className="mb-6"
-          label={i18n.language?.startsWith("es") ? "Cómo funciona la reserva" : "How booking works"}
-        />
         <div className="space-y-5">
           {[
             { n: "01", icon: Search, title: t("howItWorks.step1.title"), sub: t("howItWorks.step1.subtitle") },

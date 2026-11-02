@@ -77,7 +77,7 @@
     "q2": "这需要费用吗？",
     "a2": "不需要。浏览是免费的，没有账号或订阅费，您直接向工作室付费。",
     "q3": "包含哪些按摩类型？",
-    "a3": "所有类型：包括瑞典式 (relajante)、深层组织 (descontracturante)、运动按摩 (deportivo)、泰式、热石、足底反射等等——取决于具体工作室。",
+    "a3": "所有类型：包括瑞典式 (relajante)、深层组织 (descontracturante)、运动按摩 (deportivo)、泰式、热石、足底反射等等，取决于具体工作室。",
     "q4": "我可以每天都去吗？",
     "a4": "可以。您可以根据自己的意愿经常前往，但需视各工作室的预约情况而定。"
   },
@@ -223,7 +223,7 @@
       "chooseDay": "选择日期",
       "availableTimes": "可选时间",
       "pickDayFirst": "请先选择日期。",
-      "closedDay": "该日休息 —— 请选择其他日期。",
+      "closedDay": "该日休息。请选择其他日期。",
       "fullyBooked": "已约满",
       "continue": "继续",
       "days": {
@@ -246,7 +246,7 @@
         "gettingThere": "如何到达",
         "feedback": {
           "title": "喜欢 Massage Club 吗？",
-          "description": "在您体验结束后，请在 Google 上为 {{studio}} 留下评价 —— 这对按摩店和其他客户都很有帮助。",
+          "description": "在您体验结束后，请在 Google 上为 {{studio}} 留下评价。这对按摩店和其他客户都很有帮助。",
           "button": "在 Google 留下评价 ⭐"
         },
         "whatsapp": {
@@ -269,7 +269,7 @@
           "success": "预订成功！"
         },
         "note": {
-          "referralCredit": "€{{amount}} 推荐奖励金 — 将在到店结账时扣除。"
+          "referralCredit": "€{{amount}} 推荐奖励金。将在到店结账时扣除。"
         }
       },
       "main": {
@@ -290,7 +290,7 @@
         },
         "payment": {
           "title": "到店支付",
-          "description": "现在无需付款 — 到达后支付即可。"
+          "description": "现在无需付款。到达后支付即可。"
         },
         "referral": {
           "apply": "使用 €{{amount}} 推荐奖励金",
@@ -359,7 +359,7 @@
         "share": "分享",
         "creditBalance": "您的积分余额",
         "shareTitle": "Massage Club",
-        "shareText": "我一直在通过 Massage Club 预约马德里的按摩服务——通过我的链接完成首次预约可立减 €{{amount}}：{{url}}"
+        "shareText": "我一直在通过 Massage Club 预约马德里的按摩服务。通过我的链接完成首次预约可立减 €{{amount}}：{{url}}"
       },
       "photo": {
         "changePhoto": "修改照片",
@@ -411,7 +411,7 @@
       },
       "health": {
         "title": "健康与安全",
-        "subtitle": "私密信息 —— 仅与您的按摩师共享",
+        "subtitle": "私密信息：仅与您的按摩师共享",
         "reasonForVisit": "到访原因 / 目标",
         "reasonForVisitPlaceholder": "例如：办公久坐导致的腰背疼痛",
         "medicalConditions": "健康状况",
@@ -434,7 +434,7 @@
         "photoUpdated": "照片已更新",
         "profileSaved": "个人资料已保存",
         "linkCopied": "链接已复制",
-        "copyFailed": "无法复制 —— 请长按进行复制"
+        "copyFailed": "无法复制。请长按进行复制"
       },
       "options": {
         "pressures": {
@@ -490,8 +490,8 @@
         },
         "budgets": {
           "under_40": "40€ 以下",
-          "40_60": "40€–60€",
-          "60_90": "60€–90€",
+          "40_60": "40€-60€",
+          "60_90": "60€-90€",
           "90_plus": "90€ 以上"
         },
         "addons": {
@@ -585,16 +585,16 @@
       },
       "cancelConfirm": "确定取消您在 {{date}} {{time}} 的 {{type}} 预约吗？",
       "messages": {
-        "cancelError": "无法取消 — {{message}}",
+        "cancelError": "无法取消：{{message}}",
         "cancelSuccess": "预约已取消",
-        "rescheduleError": "无法改期 — {{message}}",
+        "rescheduleError": "无法改期：{{message}}",
         "rescheduleSuccess": "预约已改期"
       },
       "rescheduleModal": {
         "title": "重新安排时间",
         "chooseDay": "选择日期",
         "availableTimes": "可选时间",
-        "closed": "该日休息 — 请选择其他日期。",
+        "closed": "该日休息。请选择其他日期。",
         "full": "约满",
         "saving": "正在保存...",
         "confirm": "确认新时间"
@@ -626,7 +626,7 @@
     "login": {
       "toasts": {
         "invalidEmail": "请输入有效的电子邮件地址",
-        "googleError": "Google 登录功能尚未开启 — 请先以游客身份浏览。",
+        "googleError": "Google 登录功能尚未开启。请先以游客身份浏览。",
         "missingName": "请输入您的姓名",
         "welcome": "欢迎，{{name}}！"
       },
@@ -636,7 +636,7 @@
       },
       "nameStep": {
         "title": "马上就准备好了。",
-        "subtitle": "只需填写您的姓名——以便工作室知道谁将前往。",
+        "subtitle": "只需填写您的姓名，以便工作室知道谁将前往。",
         "label": "您的姓名",
         "placeholder": "Alex Martinez",
         "phoneLabel": "电话（可选）",
@@ -658,7 +658,7 @@
         "imageAlt": "宁静的马德里按摩工作室",
         "studiosCount": "遍布马德里的 {{studios}} 多家工作室",
         "payAtStudio": "到店支付",
-        "description": "{{studios}} 多家显示真实价格的工作室，全程中文。如果工作室只使用 WhatsApp，我们会为您用西班牙语撰写预约消息。",
+        "description": "{{studios}} 多家显示真实价格的工作室，全程中文。我们用西班牙语替您询问工作室。您到店付款。",
         "ctaNote": "无需注册即可浏览。免收预订费。您直接向工作室付款。"
       },
       "newInMadrid": {
@@ -680,8 +680,8 @@
           "subtitle": "Chamberí、Chueca、Salamanca、Malasaña。真实的服务与价格，中文呈现。"
         },
         "step2": {
-          "title": "在线预订，或让我们为您代写消息",
-          "subtitle": "部分工作室支持直接在线预订。其他工作室则使用 WhatsApp —— 我们会为您撰写西班牙语消息，省去您的麻烦。"
+          "title": "由您选择时间",
+          "subtitle": "我们用西班牙语替您询问各家工作室，并把他们的时间发给您。在您点击“是”之前，不会预订任何服务。"
         },
         "step3": {
           "title": "准时到达，彻底放松",
@@ -690,7 +690,7 @@
       },
       "trust": {
         "line1": "我们不从您的按摩费用中抽取分成。您看到的价格就是工作室的实价。",
-        "line2": "我们不保证按摩师会说中文——有些会，有些不会。我们保证的是，您在预订过程中不需要会西班牙语。",
+        "line2": "我们不保证按摩师会说中文。有些会，有些不会。我们保证的是，您在预订过程中不需要会西班牙语。",
         "line3": "这里的每一家工作室都是我们亲手寻找、核实并收录的真实场所。"
       },
       "studioCard": {
@@ -703,7 +703,7 @@
         "title": "保存详情以便更快捷地预订",
         "button": "保存"
       },
-      "feedback": "分享反馈 —— 帮助我们完善项目",
+      "feedback": "分享反馈：帮助我们完善项目",
       "emailAuth": {
         "or": "或",
         "continueWithEmail": "使用邮箱继续",
@@ -883,7 +883,7 @@
       "addService": "添加服务",
       "addonsTitle": "附加项目",
       "optional": "（可选）",
-      "addonsHelp": "客户可以添加的付费额外项目——例如：香薰 (Aromatherapy)、热石 (piedras calientes) 或 CBD 精油。",
+      "addonsHelp": "客户可以添加的付费额外项目，例如：香薰 (Aromatherapy)、热石 (piedras calientes) 或 CBD 精油。",
       "addonNamePlaceholder": "附加项目名称",
       "addAddon": "添加附加项目",
       "bookingPolicyTitle": "预订政策",
@@ -911,8 +911,8 @@
       "errAtLeastOneTherapist": "请至少添加一名按摩师",
       "errEmailPassword": "请输入您的邮箱和密码以正式上线",
       "errPasswordShort": "密码长度必须至少为 6 个字符",
-      "savedAtMadridCenter": "已将您的工作室保存在马德里市中心 — 稍后点击“查找我的位置”以微调定位针。",
-      "errConfirmEmail": "账号已创建 — 请确认您的邮箱后登录。（提示：在 Supabase → Authentication 中禁用“Confirm email”即可立即上线。）",
+      "savedAtMadridCenter": "已将您的工作室保存在马德里市中心。稍后点击“查找我的位置”以微调定位针。",
+      "errConfirmEmail": "账号已创建。请确认您的邮箱后登录。（提示：在 Supabase → Authentication 中禁用“Confirm email”即可立即上线。）",
       "errSaveStudio": "无法保存您的工作室：{{message}}",
       "errSaveHours": "无法保存营业时间：{{message}}",
       "errSaveServices": "无法保存您的服务：{{message}}",
@@ -939,7 +939,7 @@
       "statToday": "今日",
       "statThisMonth": "本月",
       "bookingLinkTitle": "您的预约链接",
-      "bookingLinkDesc": "您可以分享到任何地方 —— Google 商家信息、Instagram 简介或 WhatsApp 消息。客户可以直接通过此链接预约。",
+      "bookingLinkDesc": "您可以分享到任何地方：Google 商家信息、Instagram 简介或 WhatsApp 消息。客户可以直接通过此链接预约。",
       "linkCopied": "链接已复制！",
       "copied": "已复制",
       "copy": "复制",
@@ -996,7 +996,7 @@
       "visibilityTitle": "Visibility",
       "visibilityViews30": "page views (30 days)",
       "visibilityViews7": "last 7 days: {{n}}",
-      "visibilityEmpty": "您的页面已上线 —— 您很快就能看到访问者",
+      "visibilityEmpty": "您的页面已上线。您很快就能看到访问者",
       "visibilitySource": {
         "google": "Google",
         "reddit": "Reddit",
@@ -1032,8 +1032,8 @@
       "writeSomething": "请在至少一个字段中输入内容。",
       "couldNotSave": "无法保存笔记。",
       "noteSaved": "Treatment note saved",
-      "soapHintSubjective": "客户的描述 —— 疼痛、压力、目标",
-      "soapHintObjective": "您的观察 —— 紧张度 (tensión)、姿势、活动范围",
+      "soapHintSubjective": "客户的描述：疼痛、压力、目标",
+      "soapHintObjective": "您的观察：紧张度 (tensión)、姿势、活动范围",
       "soapHintAssessment": "Your interpretation",
       "soapHintPlan": "您所做的处理 + 下次疗程建议"
     },
@@ -1042,8 +1042,8 @@
       "objective": "Objective",
       "assessment": "评估 (Assessment)",
       "plan": "方案 (Plan)",
-      "hintSubjective": "客户的陈述 —— 以其口吻描述的疼痛、压力或目标",
-      "hintObjective": "您的观察 —— 紧张度、体态或活动范围",
+      "hintSubjective": "客户的陈述：以其口吻描述的疼痛、压力或目标",
+      "hintObjective": "您的观察：紧张度、体态或活动范围",
       "hintAssessment": "您对发现的专业解释",
       "hintPlan": "您执行的操作 + 建议 / 下次疗程安排",
       "soapNoteLabel": "SOAP 记录",
@@ -1054,7 +1054,7 @@
       "loading": "正在加载…",
       "fieldPlaceholder": "{{field}}…",
       "lastSaved": "最后保存于 {{date}}",
-      "privateNote": "私密记录 —— 仅限您的工作室可见。",
+      "privateNote": "私密记录：仅限您的工作室可见。",
       "saving": "正在保存…",
       "updateNote": "更新记录",
       "saveNote": "保存记录",
@@ -1072,7 +1072,7 @@
       "searchPlaceholder": "在 Google 上搜索您的水疗中心…",
       "noResults": "未找到结果。请尝试其他名称或在下方手动输入。",
       "ratingReviews": "{{rating}} ({{count}} 条评价)",
-      "googleDataLoaded": "Google 数据已加载 —— 请在下方核实并编辑",
+      "googleDataLoaded": "Google 数据已加载。请在下方核实并编辑",
       "businessName": "商家名称",
       "address": "地址",
       "phone": "电话",
@@ -1099,7 +1099,7 @@
       "slugPlaceholder": "my-studio",
       "slugTaken": "该链接已被占用",
       "slugInvalid": "链接长度必须在 3 到 40 个字符之间",
-      "slugUpdatedWarning": "链接已更新 —— 旧链接将失效，请在您分享过的地方及时更新。"
+      "slugUpdatedWarning": "链接已更新。旧链接将失效，请在您分享过的地方及时更新。"
     },
     "services": {
       "stepLabel": "第 2 步（共 3 步）",
@@ -1129,7 +1129,7 @@
     "calendar": {
       "stepLabel": "营业时间",
       "title": "设置您的营业时间",
-      "intro": "请设置您每天的营业时间 —— 我们将为您自动创建可预订的时段。设置好一天后，点击“复制到全部”即可复用。",
+      "intro": "请设置您每天的营业时间。我们将为您自动创建可预订的时段。设置好一天后，点击“复制到全部”即可复用。",
       "capacityLabel": "您同时可以提供多少个按摩服务？",
       "capacityHint": "通常是按摩床的数量或同时工作的理疗师人数。",
       "days": {
@@ -1144,7 +1144,7 @@
       "closed": "休息",
       "bookableTimes": "{{count}} 个可预订时段",
       "copyToAll": "复制到所有营业日",
-      "noHoursSet": "尚未设置营业时间 —— 您暂时不会出现在搜索结果中",
+      "noHoursSet": "尚未设置营业时间。您暂时不会出现在搜索结果中",
       "summary": "{{days}} 个营业日 · {{slots}} 个可预订时段",
       "done": "✓ 完成！",
       "goLive": "立即上线",
@@ -1182,7 +1182,7 @@
       "yourGoogleCalendar": "您的 Google 日历",
       "connectionFailedTitle": "连接失败",
       "connectButton": "连接 Google 日历",
-      "connectHint": "只需点击一次 — 不会存储您的密码。仅限读取您的日历。",
+      "connectHint": "只需点击一次。不会存储您的密码。仅限读取您的日历。",
       "disconnectButton": "断开 Google 日历",
       "howItWorks": "运作方式",
       "step1Title": "一键连接",
@@ -1195,13 +1195,13 @@
       "step4Desc": "来自 Massage Club 的新预订将立即作为事件出现在您的 Google 日历中。",
       "autoConfirmTitle": "自动确认预订",
       "autoConfirmDesc": "启用后，预订将立即显示为已确认。关闭后，您需要手动批准每一笔预订。",
-      "autoConfirmOnLabel": "开启 — 预订将自动确认",
-      "autoConfirmOffLabel": "关闭 — 由您手动确认每笔预订",
+      "autoConfirmOnLabel": "开启：预订将自动确认",
+      "autoConfirmOffLabel": "关闭：由您手动确认每笔预订",
       "manualAvailabilityLink": "改为设置手动空闲时段",
       "confirmDisconnect": "断开 Google Calendar 连接？您的手动空闲时段设置仍将生效。",
       "toastConnected": "Google Calendar 已连接！",
       "toastConnectionFailed": "连接失败：{{error}}",
-      "toastNotSetUp": "Google 尚未设置 — 请先添加您的 Google Client ID。",
+      "toastNotSetUp": "Google 尚未设置。请先添加您的 Google Client ID。",
       "toastDisconnectFailed": "断开连接失败",
       "toastDisconnected": "Google Calendar 已断开连接",
       "toastUpdateFailed": "更新失败",
@@ -1283,7 +1283,7 @@
       "addressPlaceholder": "Calle Gran Vía 15, Madrid",
       "addressHelper": "显示给客户的预订确认信息中。",
       "accessInstructionsLabel": "抵达说明（选填）",
-      "accessInstructionsPlaceholder": "例如：“1A号楼 — 按对讲机后我们会为您开门。一楼右侧门。”",
+      "accessInstructionsPlaceholder": "例如：“1A号楼，按对讲机后我们会为您开门。一楼右侧门。”",
       "accessInstructionsHelper": "包含在客户的确认邮件中。",
       "phoneLabel": "电话",
       "phonePlaceholder": "+34 600 000 000",
@@ -1303,16 +1303,16 @@
       "capacityQuestion": "您可以同时提供多少个按摩位？",
       "capacityHelper": "通常指按摩床的数量或同时工作的治疗师人数。我们使用此数据是为了确保您的预订量不会超出负荷。",
       "step4CalendarTitle": "连接 Google 日历",
-      "calendarRecommendedDesc": "推荐连接 Google 日历 — 我们将显示您的真实空余时段，并自动将新预订同步到您的日历中。您也可以在下方手动设置营业时间。",
+      "calendarRecommendedDesc": "推荐连接 Google 日历。我们将显示您的真实空余时段，并自动将新预订同步到您的日历中。您也可以在下方手动设置营业时间。",
       "calendarBullet1": "仅读取您的忙碌时间",
       "calendarBullet2": "新预订将作为日程出现在您的日历中",
       "calendarBullet3": "客户只会看到真正空闲的时段",
       "connectGoogleCalendar": "连接 Google 日历",
-      "oneClickNote": "一键操作 — 不存储任何密码。",
+      "oneClickNote": "一键操作。不存储任何密码。",
       "orDividerEs": "或",
       "setManuallyButton": "手动设置预约空位",
       "saveAndContinue": "保存并继续",
-      "skipForNow": "暂不连接 — 您之后可以从管理后台进行连接",
+      "skipForNow": "暂不连接。您之后可以从管理后台进行连接",
       "step5Title": "创建您的密码",
       "step5Desc": "使用此密码，您可以随时登录控制面板，无需依赖电子邮件链接。",
       "loginDetailsTitle": "您的登录详情",

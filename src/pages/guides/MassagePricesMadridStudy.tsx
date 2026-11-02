@@ -4,12 +4,12 @@ import { Link } from "react-router-dom";
 type Row = { barrio: string; studios: number; avg: number; range: string; tone?: "high" | "low" };
 
 const BARRIOS: Row[] = [
-  { barrio: "Chueca", studios: 5, avg: 90, range: "€60 – €133", tone: "high" },
-  { barrio: "Chamartín", studios: 5, avg: 73, range: "€49 – €150" },
-  { barrio: "Centro", studios: 5, avg: 69, range: "€55 – €110" },
-  { barrio: "Chamberí", studios: 9, avg: 67, range: "€45 – €100" },
-  { barrio: "Salamanca", studios: 8, avg: 65, range: "€30 – €111" },
-  { barrio: "Malasaña", studios: 4, avg: 58, range: "€49 – €90", tone: "low" },
+  { barrio: "Chueca", studios: 5, avg: 90, range: "€60 to €133", tone: "high" },
+  { barrio: "Chamartín", studios: 5, avg: 73, range: "€49 to €150" },
+  { barrio: "Centro", studios: 5, avg: 69, range: "€55 to €110" },
+  { barrio: "Chamberí", studios: 9, avg: 67, range: "€45 to €100" },
+  { barrio: "Salamanca", studios: 8, avg: 65, range: "€30 to €111" },
+  { barrio: "Malasaña", studios: 4, avg: 58, range: "€49 to €90", tone: "low" },
 ];
 
 const TYPES: { label: string; avg: number }[] = [
@@ -33,7 +33,7 @@ export default function MassagePricesMadridStudy() {
   const path = "/guides/massage-prices-madrid-study";
   const title = "What a massage actually costs in Madrid | Massage Club";
   const description =
-    "We checked the published prices of 48 Madrid massage studios. A 60-minute massage averages €68 — but it costs 55% more in Chueca than in Malasaña, and the city's wealthiest barrio is cheaper than average.";
+    "We checked the published prices of 48 Madrid massage studios. A 60-minute massage averages €68, but it costs 55% more in Chueca than in Malasaña, and the city's wealthiest barrio is cheaper than average.";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -65,7 +65,7 @@ export default function MassagePricesMadridStudy() {
         license: "https://book.massageclub.io" + path,
         variableMeasured: BARRIOS.map((b) => ({
           "@type": "PropertyValue",
-          name: `${b.barrio} — average 60-minute massage`,
+          name: `${b.barrio}: average 60-minute massage`,
           value: b.avg,
           unitText: "EUR",
         })),
@@ -83,7 +83,7 @@ export default function MassagePricesMadridStudy() {
           What a massage actually costs in Madrid
         </h1>
         <p className="text-base text-foreground/85 mt-4 leading-relaxed">
-          We checked the published prices of 48 Madrid massage studios — 232 individual treatment
+          We checked the published prices of 48 Madrid massage studios: 232 individual treatment
           prices in all, collected during August 2026. A 60-minute massage in Madrid averages{" "}
           <strong className="text-foreground">€68</strong>, with a median of{" "}
           <strong className="text-foreground">€65</strong>. The cheapest single treatment we found
@@ -191,7 +191,7 @@ export default function MassagePricesMadridStudy() {
           Madrid's wealthiest district is cheaper than the city average
         </h2>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
-          Salamanca averages €65 against a city average of €68 — and it contains the cheapest
+          Salamanca averages €65 against a city average of €68, and it contains the cheapest
           treatment we found anywhere in Madrid, at €30. Reputation and price are not the same
           thing.
         </p>
@@ -241,11 +241,11 @@ export default function MassagePricesMadridStudy() {
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
           We collected the published prices of every Madrid massage studio in our directory during
           August 2026: 48 studios and 232 individual treatment prices. We counted only 60-minute
-          individual treatments — couples massages, four-hands treatments and packages are excluded,
+          individual treatments. Couples massages, four-hands treatments and packages are excluded,
           because they distort the comparison. Prices are the studios' own published list prices,
           taken from their websites and booking pages; what you pay on the day may differ. Barrios
           with fewer than four studios in our data are excluded from the table, because the average
-          would not mean much. We are not claiming this is every massage studio in Madrid — it is
+          would not mean much. We are not claiming this is every massage studio in Madrid. It is
           every one we have listed, which is the largest English-language set we know of.
         </p>
 

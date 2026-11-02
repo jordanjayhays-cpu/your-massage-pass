@@ -6,7 +6,7 @@ export default function MadridSalamanca() {
       path="/madrid/salamanca"
       neighbourhood="Salamanca"
       barrio="Salamanca"
-      title="Massage in Salamanca, Madrid — studios, prices and booking"
+      title="Massage in Salamanca, Madrid: studios, prices and booking"
       description="Massage studios in Barrio de Salamanca, Madrid: addresses, treatments and prices from €, near metro Serrano, Velázquez and Goya. Book online in English."
       h1="Massage in Salamanca, Madrid"
       intro={

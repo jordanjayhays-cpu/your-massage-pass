@@ -6,13 +6,13 @@ export default function MadridMalasana() {
       path="/madrid/malasana"
       neighbourhood="Malasaña"
       barrio="Malasaña"
-      title="Massage in Malasaña, Madrid — studios, prices and booking"
+      title="Massage in Malasaña, Madrid: studios, prices and booking"
       description="Massage studios in Malasaña, Madrid: addresses, treatments and prices, near metro Tribunal, Noviciado and Bilbao. Book online in English."
       h1="Massage in Malasaña, Madrid"
       intro={
         <>
           <p>
-            Malasaña — officially Universidad — is the barrio around Plaza del Dos de Mayo, and its
+            Malasaña (officially Universidad) is the barrio around Plaza del Dos de Mayo, and its
             studios tend to look like the neighbourhood: independent, small, a little design-led, run
             by one or two therapists who also know their regulars by name.
           </p>
