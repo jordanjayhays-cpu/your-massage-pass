@@ -38,6 +38,14 @@
       "destination": "/go.html"
     },
     {
+      "source": "/socios",
+      "destination": "/socios.html"
+    },
+    {
+      "source": "/socios/",
+      "destination": "/socios.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
