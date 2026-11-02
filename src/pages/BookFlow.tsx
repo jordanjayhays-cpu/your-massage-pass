@@ -28,7 +28,12 @@ export default function BookFlow() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 pb-32 pt-6">
+      <main className="max-w-2xl mx-auto px-4 pb-32 pt-6 min-[900px]:pt-10 min-[900px]:pb-16">
+        {/* Desktop only (F15): the page had no heading at all. Same words as
+            the tab title, so no new copy. Phones keep the wizard's own label. */}
+        <h1 className="hidden min-[900px]:block font-display text-4xl leading-[42px] text-foreground">
+          {t.seoTitle.split(" | ")[0]}
+        </h1>
         <BookFlowWizard source="book-flow" lang={lang} />
       </main>
     </div>

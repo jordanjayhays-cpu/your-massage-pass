@@ -44,9 +44,11 @@ import {
   spanishLanguageOffer, speaksSpanish, isSpokenLang,
   type SpokenLang,
 } from "@/lib/spokenLanguages";
+import { hoursOn } from "@/lib/openingHours";
 import {
   MapPin, Clock, Euro, Check, Loader2, Star, Sparkles,
-  Phone, Instagram, MessageCircle, CalendarDays
+  Phone, Instagram, MessageCircle, CalendarDays,
+  CircleCheck, Banknote, Languages, ChevronLeft, ChevronRight, X, Play, Images,
 } from "lucide-react";
 
 // Canonical (English) keys kept for storage/logic; display labels are localized below.
@@ -677,6 +679,117 @@ const SP_COPY: Record<FlowLang, SpCopy> = {
   },
 };
 
+// ─── Desktop template copy (2 Nov, desktop fixes F5, F6, F13) ───
+// The trust lines repeat, word for word, the page's own one-liners:
+// PAGE_COPY.studioConfirms for studios on Massage Club (requests go to
+// `bookings`, where no Yes button reaches the customer yet, so "say yes") and
+// SP_COPY.oneLine for the studios we ask for the customer ("tap Yes").
+type DeskCopy = {
+  trustClaimed: [string, string, string];
+  trustHandoff: [string, string, string];
+  openToday: string; closedToday: string;
+  choose: string; chosen: string;
+  seeAll: string; seeAllPhotos: string;
+  video: string; openPhoto: string; prevPhoto: string; nextPhoto: string; close: string;
+};
+const DESK_COPY: Record<FlowLang, DeskCopy> = {
+  en: {
+    trustClaimed: ["We ask the studio for you", "Nothing is booked until you say yes", "You pay at the studio"],
+    trustHandoff: ["We ask the studio for you in Spanish", "Nothing is booked until you tap Yes", "You pay at the studio"],
+    openToday: "Open today, {from} to {to}", closedToday: "Closed today",
+    choose: "Choose", chosen: "Chosen",
+    seeAll: "See all {n} services", seeAllPhotos: "See all {n} photos",
+    video: "Video", openPhoto: "Open photo", prevPhoto: "Previous photo", nextPhoto: "Next photo", close: "Close",
+  },
+  es: {
+    trustClaimed: ["Le preguntamos al centro por ti", "No se reserva nada hasta que digas que sí", "Pagas en el centro"],
+    trustHandoff: ["Preguntamos al centro por ti", "No se reserva nada hasta que tocas Sí", "Pagas en el centro"],
+    openToday: "Abierto hoy, de {from} a {to}", closedToday: "Cerrado hoy",
+    choose: "Elegir", chosen: "Elegido",
+    seeAll: "Ver los {n} servicios", seeAllPhotos: "Ver las {n} fotos",
+    video: "Vídeo", openPhoto: "Abrir foto", prevPhoto: "Foto anterior", nextPhoto: "Foto siguiente", close: "Cerrar",
+  },
+  fr: {
+    trustClaimed: ["Nous demandons au centre pour vous", "Rien n'est réservé tant que vous n'avez pas dit oui", "Vous payez sur place"],
+    trustHandoff: ["Nous demandons au centre pour vous, en espagnol", "Rien n'est réservé tant que vous n'avez pas touché Oui", "Vous payez sur place"],
+    openToday: "Ouvert aujourd'hui, de {from} à {to}", closedToday: "Fermé aujourd'hui",
+    choose: "Choisir", chosen: "Choisi",
+    seeAll: "Voir les {n} services", seeAllPhotos: "Voir les {n} photos",
+    video: "Vidéo", openPhoto: "Ouvrir la photo", prevPhoto: "Photo précédente", nextPhoto: "Photo suivante", close: "Fermer",
+  },
+  de: {
+    trustClaimed: ["Wir fragen das Studio für dich", "Nichts ist gebucht, bevor du Ja sagst", "Du zahlst im Studio"],
+    trustHandoff: ["Wir fragen das Studio für dich auf Spanisch", "Nichts ist gebucht, bevor du auf Ja tippst", "Du zahlst im Studio"],
+    openToday: "Heute geöffnet, {from} bis {to}", closedToday: "Heute geschlossen",
+    choose: "Wählen", chosen: "Gewählt",
+    seeAll: "Alle {n} Leistungen ansehen", seeAllPhotos: "Alle {n} Fotos ansehen",
+    video: "Video", openPhoto: "Foto öffnen", prevPhoto: "Vorheriges Foto", nextPhoto: "Nächstes Foto", close: "Schließen",
+  },
+  it: {
+    trustClaimed: ["Chiediamo noi al centro", "Niente è prenotato finché non dici di sì", "Paghi al centro"],
+    trustHandoff: ["Chiediamo noi al centro, in spagnolo", "Niente è prenotato finché non tocchi Sì", "Paghi al centro"],
+    openToday: "Aperto oggi, dalle {from} alle {to}", closedToday: "Chiuso oggi",
+    choose: "Scegli", chosen: "Scelto",
+    seeAll: "Vedi tutti i {n} servizi", seeAllPhotos: "Vedi tutte le {n} foto",
+    video: "Video", openPhoto: "Apri foto", prevPhoto: "Foto precedente", nextPhoto: "Foto successiva", close: "Chiudi",
+  },
+  pt: {
+    trustClaimed: ["Perguntamos ao estúdio por ti", "Nada fica reservado até dizeres que sim", "Pagas no estúdio"],
+    trustHandoff: ["Perguntamos ao estúdio por ti, em espanhol", "Nada fica reservado até tocares em Sim", "Pagas no estúdio"],
+    openToday: "Aberto hoje, das {from} às {to}", closedToday: "Fechado hoje",
+    choose: "Escolher", chosen: "Escolhido",
+    seeAll: "Ver os {n} serviços", seeAllPhotos: "Ver as {n} fotos",
+    video: "Vídeo", openPhoto: "Abrir foto", prevPhoto: "Foto anterior", nextPhoto: "Foto seguinte", close: "Fechar",
+  },
+  zh: {
+    trustClaimed: ["我们替您询问门店", "在您同意之前不会预订任何时段", "到店付款"],
+    trustHandoff: ["我们用西班牙语替您询问门店", "在您点击“是”之前不会预订任何时段", "到店付款"],
+    openToday: "今天营业 {from} 至 {to}", closedToday: "今天休息",
+    choose: "选择", chosen: "已选择",
+    seeAll: "查看全部 {n} 项服务", seeAllPhotos: "查看全部 {n} 张照片",
+    video: "视频", openPhoto: "打开照片", prevPhoto: "上一张", nextPhoto: "下一张", close: "关闭",
+  },
+};
+
+/** The desktop breakpoint (design system "desk", the min-[900px] classes). */
+const DESK_MQ = "(min-width: 900px)";
+const isDeskNow = () => typeof window !== "undefined" && !!window.matchMedia?.(DESK_MQ).matches;
+/** True from 900px. Read on first render, so a desktop page never flashes the phone layout. */
+function useIsDesktop() {
+  const [desk, setDesk] = useState(isDeskNow);
+  useEffect(() => {
+    const mq = window.matchMedia?.(DESK_MQ);
+    if (!mq) return;
+    const on = () => setDesk(mq.matches);
+    on();
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, []);
+  return desk;
+}
+
+// One desktop template for every studio page (F13): the photos or the map
+// across the 1120px container, then the studio and its menu on the left and a
+// 360px column on the right that follows the scroll. Phones never see these
+// classes: every one is min-[900px].
+const DESK_PAGE =
+  "min-[900px]:max-w-[1120px] min-[900px]:mx-auto min-[900px]:px-5 min-[900px]:pt-6 min-[900px]:pb-16 " +
+  "min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_360px] min-[900px]:gap-x-12 min-[900px]:items-start";
+/**
+ * The right column sticks 16px below the top of the window, or below the
+ * 64px SiteHeader on pages that carry it (ux/desk_frame), and scrolls on its
+ * own when it is taller than the window, so its button is never out of reach.
+ * Its height leaves room for the page's bottom padding, so it never has to
+ * slide up (and lose its top) at the end of the page.
+ */
+const DESK_STICKY =
+  "min-[900px]:self-start min-[900px]:sticky min-[900px]:top-4 min-[900px]:[body:has([data-site-header])_&]:top-20 " +
+  "min-[900px]:max-h-[calc(100vh-6rem)] min-[900px]:[body:has([data-site-header])_&]:max-h-[calc(100vh-10rem)] " +
+  "min-[900px]:overflow-y-auto min-[900px]:overflow-x-hidden min-[900px]:overscroll-contain";
+/** Menu rows shown before "See all N services" on desktop. Phones list every row. */
+const DESK_MENU_ROWS = 8;
+const isVideoUrl = (u: string) => /\.(mp4|webm)(\?.*)?$/i.test(u);
+
 /** Fill {placeholders} in a copy line. */
 const fill = (tpl: string, vars: Record<string, string | number>) =>
   tpl.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -730,6 +843,11 @@ function StudioBookingPageInner() {
   const { t, i18n } = useTranslation();
   const lang = useFlowLang();
   const c = pickCopy(PAGE_COPY, lang);
+  const dk = pickCopy(DESK_COPY, lang) as DeskCopy;
+  // Desktop only: the photo band is rendered from 900px (never on phones),
+  // and the menu shows its first rows until "See all N services".
+  const isDesk = useIsDesktop();
+  const [menuAll, setMenuAll] = useState(false);
   const { studioId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const rebookId = searchParams.get("rebook");
@@ -1382,9 +1500,23 @@ function StudioBookingPageInner() {
   // studio page, now lands here. One action instead: /reserve asks professional
   // studios near the visitor. No studio is named on purpose.
   if (loading) {
+    // Phones keep the spinner. From 900px a skeleton of the page (F13): about
+    // 2.5 s of an empty cream screen read as a broken page on a computer.
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#FAF6F1" }}>
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#B85C38" }} />
+      <div className="min-h-screen flex items-center justify-center min-[900px]:block" style={{ background: "#FAF6F1" }}>
+        <Loader2 className="h-8 w-8 animate-spin min-[900px]:hidden" style={{ color: "#B85C38" }} />
+        <div className={`hidden ${DESK_PAGE}`} aria-busy="true" data-testid="studio-skeleton">
+          <div className="hidden min-[900px]:block min-[900px]:col-span-2 mb-8 h-[400px] rounded-2xl bg-[#EFE7DD] motion-safe:animate-pulse" />
+          <div className="hidden min-[900px]:block space-y-4">
+            <div className="h-10 w-2/3 rounded-xl bg-[#EFE7DD]" />
+            <div className="h-5 w-1/2 rounded-lg bg-[#EFE7DD]" />
+            <div className="h-5 w-1/3 rounded-lg bg-[#EFE7DD]" />
+            <div className="pt-6 space-y-3">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-[88px] rounded-2xl bg-[#EFE7DD] motion-safe:animate-pulse" />)}
+            </div>
+          </div>
+          <div className="hidden min-[900px]:block h-[320px] rounded-2xl bg-[#EFE7DD]" />
+        </div>
       </div>
     );
   }
@@ -1496,7 +1628,7 @@ function StudioBookingPageInner() {
 
   const identityBlock = (
     <div className="text-left">
-      <h1 className="font-display text-3xl min-[900px]:text-4xl font-semibold leading-tight mt-4" style={{ color: "#2b2b2b" }}>
+      <h1 className="font-display text-3xl min-[900px]:text-4xl font-semibold leading-tight min-[900px]:leading-[42px] mt-4" style={{ color: "#2b2b2b" }}>
         {partner.business_name}
       </h1>
       {placeLine && (
@@ -1521,7 +1653,8 @@ function StudioBookingPageInner() {
         <Euro size={15} style={{ color: "#B85C38" }} aria-hidden="true" />
         {priceChipText}
       </p>
-      <p className="mt-3 text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>
+      {/* From 900px the same three sentences are the trust list in the right column. */}
+      <p className="mt-3 text-sm min-[900px]:text-base leading-snug min-[900px]:hidden" style={{ color: "#5a4736" }}>
         {/* Claimed studios (Calma) take requests in `bookings`, where no Yes
             button reaches the customer yet: their line says "say yes". */}
         {isHandoffPage ? sp.oneLine : c.studioConfirms}
@@ -1529,10 +1662,71 @@ function StudioBookingPageInner() {
     </div>
   );
 
+  // ─── Desktop pieces (F5, F6, F13) ───
+  // Photos first, then the video, each once (the cover is usually gallery[0]).
+  const deskMedia: string[] = Array.from(new Set(
+    [partner.cover_url, ...(Array.isArray(partner.gallery) ? partner.gallery : [])]
+      .filter((u: unknown): u is string => typeof u === "string" && !!u.trim()),
+  )).sort((a, b) => Number(isVideoUrl(a)) - Number(isVideoUrl(b)));
+  const deskHero = isDesk ? (
+    <div className="hidden min-[900px]:block min-[900px]:col-span-2 min-[900px]:row-start-1 min-[900px]:mb-8" data-testid="studio-desk-hero">
+      <DesktopHero
+        media={deskMedia}
+        name={partner.business_name}
+        lat={studioLatLng?.lat ?? null}
+        lng={studioLatLng?.lng ?? null}
+        hood={hood}
+        address={partner.address || null}
+        copy={dk}
+      />
+    </div>
+  ) : null;
+  /** "Open today, 10:00 to 20:00" from partners.opening_hours (Madrid's weekday), or null. */
+  const todayHoursLine = (() => {
+    const h = hoursOn((partner as any).opening_hours, isoToLocalDate(madridTodayIso()).getDay());
+    if (!h) return null;
+    return h.open ? fill(dk.openToday, { from: h.from, to: h.to }) : dk.closedToday;
+  })();
+  const trustItems = isHandoffPage ? dk.trustHandoff : dk.trustClaimed;
+  const trustList = (
+    <ul className="space-y-2.5 text-sm leading-5 text-[#3d2b1f]" data-testid="studio-trust">
+      {[isHandoffPage ? Languages : MessageCircle, CircleCheck, Banknote].map((Icon, i) => (
+        <li key={i} className="flex items-start gap-2.5">
+          <Icon size={18} className="mt-px flex-shrink-0 text-[#A34A22]" aria-hidden="true" />
+          <span>{trustItems[i]}</span>
+        </li>
+      ))}
+    </ul>
+  );
+  /** "Choose" on a menu row from 900px (the row itself is the button). */
+  const choosePill = (selected: boolean) => (
+    <span
+      aria-hidden="true"
+      className={`hidden min-[900px]:inline-flex h-9 items-center rounded-full border px-4 text-[15px] font-semibold motion-safe:transition-colors ${
+        selected ? "border-[#A34A22] bg-[#A34A22] text-white" : "border-[#C4622D] bg-white text-[#A34A22]"
+      }`}
+    >
+      {selected ? dk.chosen : dk.choose}
+    </span>
+  );
+  /** Desktop: rows after the first DESK_MENU_ROWS wait for "See all" (the chosen one always shows). */
+  const deskRowHidden = (i: number, selected: boolean) => !menuAll && i >= DESK_MENU_ROWS && !selected;
+  const seeAllButton = (n: number) =>
+    n > DESK_MENU_ROWS && !menuAll ? (
+      <button
+        type="button"
+        onClick={() => setMenuAll(true)}
+        className="hidden min-[900px]:inline-flex h-12 items-center rounded-full border border-[#8F847B] bg-white px-6 text-[17px] font-semibold text-[#2b2b2b] hover:bg-[#FBF1EB] motion-safe:transition-colors"
+      >
+        {fill(dk.seeAll, { n })}
+      </button>
+    ) : null;
+
   // Brand bar (2 Nov): wordmark left, account and language right, in one row.
   // The account pill used to float over the wordmark (F6).
+  // From 900px SiteHeader (App.tsx, SiteChromeLayout) replaces this bar.
   const brandBar = () => (
-    <div className="py-2.5 px-4" style={{ background: "#FAF6F1", borderBottom: "1px solid #EADFD2" }}>
+    <div className="py-2.5 px-4 desk:hidden" style={{ background: "#FAF6F1", borderBottom: "1px solid #EADFD2" }}>
       <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-3">
       <Link to="/studios" className="flex min-w-0 items-center gap-2" aria-label="Massage Club">
         <img src="/brand/mc-avatar-terracotta.png" alt="" width={26} height={26} className="rounded-full flex-shrink-0" />
@@ -1543,10 +1737,12 @@ function StudioBookingPageInner() {
     </div>
   );
 
-  const nearbyBlock = nearby && nearby.length > 0 ? (
+  // `wide`: three cards side by side from 900px (page column). Inside the
+  // narrow sent card and the right column it stays a list, as on phones.
+  const nearbyList = (wide: boolean) => nearby && nearby.length > 0 ? (
     <section aria-label={sp.nearbyTitle} className="text-left" data-testid="studio-nearby">
-      <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{sp.nearbyTitle}</p>
-      <ul className="grid gap-2 min-[900px]:grid-cols-3 min-[900px]:gap-3">
+      <p className={`text-xs min-[900px]:text-sm font-bold uppercase mb-2 text-[#B85C38] tracking-[2px] ${wide ? "min-[900px]:normal-case min-[900px]:tracking-normal min-[900px]:text-xl min-[900px]:leading-7 min-[900px]:font-semibold min-[900px]:text-[#2b2b2b] min-[900px]:mb-3" : ""}`}>{sp.nearbyTitle}</p>
+      <ul className={`grid gap-2 ${wide ? "min-[900px]:grid-cols-3 min-[900px]:gap-3" : ""}`}>
         {nearby.map((n) => {
           const dist =
             n.walkMinutes == null
@@ -1559,8 +1755,9 @@ function StudioBookingPageInner() {
               <Link
                 to={studioPath(n)}
                 onClick={() => reqTrack("studio_nearby_click", { to: n.slug || n.id })}
-                className="flex h-full min-h-[56px] items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 motion-safe:transition hover:border-[#B85C38]"
-                style={{ borderColor: "#E6DCCF" }}
+                className={`flex h-full min-h-[56px] items-center justify-between gap-3 rounded-xl border border-[#E6DCCF] bg-white px-4 py-3 motion-safe:transition hover:border-[#B85C38] ${
+                  wide ? "min-[900px]:flex-col min-[900px]:items-start min-[900px]:justify-start min-[900px]:gap-2 min-[900px]:rounded-2xl min-[900px]:p-4 min-[900px]:hover:bg-[#FBF1EB]" : ""
+                }`}
               >
                 <span className="min-w-0">
                   <span className="block font-semibold leading-tight" style={{ color: "#2b2b2b" }}>{n.name}</span>
@@ -1571,7 +1768,7 @@ function StudioBookingPageInner() {
                   )}
                 </span>
                 {n.from60 != null && (
-                  <span className="flex-shrink-0 text-sm font-semibold text-right" style={{ color: "#2b2b2b" }}>
+                  <span className={`flex-shrink-0 text-sm font-semibold text-right ${wide ? "min-[900px]:text-left" : ""}`} style={{ color: "#2b2b2b" }}>
                     {fill(sp.priceFrom, { min: n.from60 })}
                   </span>
                 )}
@@ -1582,6 +1779,7 @@ function StudioBookingPageInner() {
       </ul>
     </section>
   ) : null;
+  const nearbyBlock = nearbyList(true);
 
   /** Menu price with "for 2" on couples rows and "4 hands" on four-hands rows (F17). */
   const serviceTag = (s: any) => (isForTwo(s) ? sp.forTwo : isFourHands(s) ? sp.fourHands : null);
@@ -1606,8 +1804,8 @@ function StudioBookingPageInner() {
     return (
       <div className="min-h-screen" style={{ background: "#FAF6F1" }}>
         {brandBar()}
-        <div className="p-4 flex justify-center">
-        <div className="w-full max-w-md rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
+        <div className="p-4 flex justify-center min-[900px]:py-12">
+        <div className="w-full max-w-md min-[900px]:max-w-[560px] rounded-2xl overflow-hidden text-center" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
           <div className="px-6 py-7">
             <h1 className="font-display text-2xl font-semibold leading-tight mb-3" style={{ color: "#2b2b2b" }}>
               {fill(sp.requestTo, { studio: partner.business_name })}
@@ -1670,7 +1868,7 @@ function StudioBookingPageInner() {
               source="booking_success"
               bookingRef={done.ref}
             />
-            {nearbyBlock && <div className="mt-6">{nearbyBlock}</div>}
+            {nearbyBlock && <div className="mt-6">{nearbyList(false)}</div>}
 
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
               {c.footerCredit}
@@ -1845,6 +2043,9 @@ function StudioBookingPageInner() {
       // renders below the fold and the tap looks like it did nothing.
       requestAnimationFrame(() => {
         const el = hoPanelRef.current;
+        // Desktop: the panel follows the scroll in the right column, so the
+        // page stays where it is and only the panel goes back to its top.
+        if (el && isDeskNow()) { el.scrollTop = 0; return; }
         if (el) {
           try {
             el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1876,22 +2077,25 @@ function StudioBookingPageInner() {
     const labelCls = "block text-sm font-semibold mb-1.5";
 
     return (
-      <div className="min-h-screen pb-28" style={{ background: "#FAF6F1" }}>
+      <div className="min-h-screen pb-28 min-[900px]:pb-0" style={{ background: "#FAF6F1" }}>
         {brandBar()}
-        <div className="px-4 pt-4">
-        <div className="w-full max-w-md min-[900px]:max-w-[1100px] mx-auto rounded-2xl overflow-hidden" style={{ background: "#ffffff", boxShadow: "0 6px 24px rgba(80,44,20,0.08)" }}>
-          <div className="px-4 min-[420px]:px-6 pt-4 pb-7 min-[900px]:pt-6 min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_400px] min-[900px]:gap-10 min-[900px]:items-start">
+        <div className="px-4 pt-4 min-[900px]:p-0">
+        {/* Phones: one white card. From 900px the same page frame as studios
+            on Massage Club (F13): no card, photos or map across the top, the
+            studio and menu on the left, the request panel on the right. */}
+        <div className="w-full max-w-md mx-auto rounded-2xl overflow-hidden bg-white shadow-[0_6px_24px_rgba(80,44,20,0.08)] min-[900px]:max-w-none min-[900px]:rounded-none min-[900px]:overflow-visible min-[900px]:bg-transparent min-[900px]:shadow-none">
+          <div className={`px-4 min-[420px]:px-6 pt-4 pb-7 ${DESK_PAGE} min-[900px]:grid-rows-[auto_auto_1fr_auto]`}>
+            {deskHero}
             {/* LEFT: the real place, then the menu */}
-            <div className="min-w-0">
-              {visualBlock}
+            <div className="min-w-0 min-[900px]:col-start-1 min-[900px]:row-start-2 min-[900px]:[&_h1]:mt-0">
+              <div className="min-[900px]:hidden">{visualBlock}</div>
               {identityBlock}
 
               {profile.services.length > 0 && (
-                <div id="mc-services-menu" className="mt-6 text-left scroll-mt-4">
-                  <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{c.servicesLabel}</p>
-                  <div role="radiogroup" aria-label={c.servicesLabel} className="rounded-xl p-3 min-[900px]:p-4 space-y-2 min-[900px]:space-y-3"
-                    style={{ background: "#FAF6F1" }}>
-                    {profile.services.map((s: any) => {
+                <div id="mc-services-menu" className="mt-6 min-[900px]:mt-8 text-left scroll-mt-4">
+                  <p className="text-xs min-[900px]:text-xl min-[900px]:leading-7 font-bold min-[900px]:font-semibold uppercase min-[900px]:normal-case mb-2 min-[900px]:mb-3 text-[#B85C38] min-[900px]:text-[#2b2b2b] tracking-[2px] min-[900px]:tracking-normal">{c.servicesLabel}</p>
+                  <div role="radiogroup" aria-label={c.servicesLabel} className="rounded-xl p-3 space-y-2 min-[900px]:p-0 min-[900px]:space-y-3 bg-[#FAF6F1] min-[900px]:bg-transparent">
+                    {profile.services.map((s: any, si: number) => {
                       const selected = hoServiceId === s.id;
                       const dur = Number(s.duration) > 0 ? Number(s.duration) : null;
                       const price = Number(s.price);
@@ -1913,40 +2117,53 @@ function StudioBookingPageInner() {
                           data-testid="service-row"
                           onClick={pick}
                           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } }}
-                          className="cursor-pointer rounded-xl border-2 px-3 py-2.5 min-[900px]:px-4 min-[900px]:py-3.5 flex items-start justify-between gap-3 text-sm min-[900px]:text-base motion-safe:transition"
-                          style={{ color: "#5a4736", borderColor: selected ? "#B85C38" : "#E6DCCF", background: selected ? "#FBEFE8" : "#ffffff" }}
+                          className={`cursor-pointer rounded-xl border-2 px-3 py-2.5 min-[900px]:rounded-2xl min-[900px]:px-5 min-[900px]:py-4 flex items-start min-[900px]:items-center justify-between gap-3 text-sm min-[900px]:text-base motion-safe:transition text-[#5a4736] ${
+                            selected ? "border-[#B85C38] bg-[#FBEFE8]" : "border-[#E6DCCF] bg-white min-[900px]:hover:border-[#C4622D] min-[900px]:hover:bg-[#FBF1EB]"
+                          } ${deskRowHidden(si, selected) ? "min-[900px]:hidden" : ""}`}
                         >
                           <span className="min-w-0 flex items-start gap-2">
                             {selected && <Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} />}
                             <span className="min-w-0">
                               <span className="block font-semibold" style={{ color: "#2b2b2b" }}>
                                 {servicePrimaryName(s, "Massage", lang)}
-                                {dur ? ` · ${dur} min` : ""}
+                                {/* From 900px the length is its own caption line, not part of the name. */}
+                                <span className="min-[900px]:hidden">{dur ? ` · ${dur} min` : ""}</span>
                               </span>
                               {serviceSecondaryName(s, lang) && (
                                 <span className="block text-xs min-[900px]:text-sm" style={{ color: "#8a7460" }}>{serviceSecondaryName(s, lang)}</span>
                               )}
+                              {dur && (
+                                <span className="hidden min-[900px]:flex mt-1 items-center gap-1 text-[13px] leading-[18px] font-medium text-[#6B615B]">
+                                  <Clock size={13} aria-hidden="true" /> {dur} min
+                                </span>
+                              )}
                             </span>
                           </span>
-                          <span className="flex flex-shrink-0 items-center gap-2">
+                          <span className="flex flex-shrink-0 items-center gap-2 min-[900px]:gap-3">
                             {Number.isFinite(price) && price > 0 && (
                               <span className="text-right leading-tight">
                                 <span className="block font-semibold" style={{ color: "#2b2b2b" }}>{eur(price)}</span>
-                                {tag && <span className="block text-xs font-semibold" style={{ color: "#B85C38" }}>{tag}</span>}
+                                {tag && <span className="block text-xs min-[900px]:text-[13px] font-semibold" style={{ color: "#B85C38" }}>{tag}</span>}
                               </span>
                             )}
+                            {choosePill(selected)}
                             <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
                           </span>
                         </div>
                       );
                     })}
                   </div>
+                  {seeAllButton(profile.services.length) && <div className="hidden min-[900px]:block mt-4">{seeAllButton(profile.services.length)}</div>}
                 </div>
               )}
             </div>
 
             {/* RIGHT: the request panel (sticky on desktop) */}
-            <div ref={hoPanelRef} className="mt-6 min-[900px]:mt-0 min-[900px]:sticky min-[900px]:top-4 text-left scroll-mt-4">
+            <div
+              ref={hoPanelRef}
+              data-testid="handoff-panel"
+              className={`mt-6 min-[900px]:mt-0 text-left scroll-mt-4 min-[900px]:col-start-2 min-[900px]:row-start-2 min-[900px]:row-span-3 min-[900px]:-mx-1 min-[900px]:px-1 min-[900px]:pb-1 ${DESK_STICKY}`}
+            >
               <Stepper steps={pickCopy(HANDOFF_STEPS_COPY, lang)} current={hoStep} maxReached={hoSentTo ? 0 : hoMaxStep} onGo={(n) => hoGo(n)} />
               {/* One actionable button at a time: the sticky bar hides its own
                   while the inline one is on screen. */}
@@ -1972,9 +2189,9 @@ function StudioBookingPageInner() {
                 />
               )}
 
-              <div className="rounded-2xl p-4 min-[900px]:p-5 mt-3 mb-4" style={{ background: "#FAF6F1" }}>
+              <div className="rounded-2xl p-4 mt-3 mb-4 bg-[#FAF6F1] min-[900px]:p-6 min-[900px]:bg-white min-[900px]:border min-[900px]:border-[#E6DCCF] min-[900px]:shadow-[0_1px_2px_rgb(33_28_26/0.06),0_4px_16px_-6px_rgb(33_28_26/0.10)]">
                 {hoStep <= 3 && (
-                  <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-3" style={{ color: "#B85C38", letterSpacing: "2px" }}>
+                  <p className="text-xs font-bold uppercase mb-3 text-[#B85C38] tracking-[2px] min-[900px]:text-xl min-[900px]:leading-7 min-[900px]:font-semibold min-[900px]:normal-case min-[900px]:tracking-normal min-[900px]:text-[#2b2b2b] min-[900px]:mb-4">
                     {t("app.handoff.prefTitle")}
                   </p>
                 )}
@@ -2015,8 +2232,7 @@ function StudioBookingPageInner() {
                       ref={hoInlineContinueRef}
                       type="button"
                       onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
-                      className="mt-3 w-full min-h-[48px] rounded-full px-5 py-3 text-base font-semibold text-white motion-safe:transition"
-                      style={{ background: "#B85C38" }}
+                      className="mt-3 w-full min-h-[48px] rounded-full px-5 py-3 text-base font-semibold text-white motion-safe:transition bg-[#B85C38] min-[900px]:mt-4 min-[900px]:text-[17px] min-[900px]:bg-[#A34A22] min-[900px]:hover:bg-[#8A3D1A]"
                     >
                       {c.continueLabel}
                     </button>
@@ -2043,6 +2259,16 @@ function StudioBookingPageInner() {
                         <TimePills value={hoTime} date={hoDate} onChange={onHoTime} label={t("app.handoff.prefTime")} />
                       </div>
                     </div>
+                    {/* Desktop: the sticky bar is hidden from 900px, so step 2's
+                        Continue sits here, under the times, where the panel
+                        always shows it (the optional second choice follows). */}
+                    <button
+                      type="button"
+                      onClick={() => hoGo(3)}
+                      className="hidden min-[900px]:block w-full min-h-[48px] rounded-full px-5 py-3 text-[17px] font-semibold text-white bg-[#A34A22] hover:bg-[#8A3D1A] motion-safe:transition-colors"
+                    >
+                      {c.continueLabel}
+                    </button>
                     {!altOpen ? (
                       <button
                         type="button"
@@ -2214,8 +2440,8 @@ function StudioBookingPageInner() {
                       ref={hoSendRef}
                       type="submit"
                       disabled={hoSending}
-                      className="w-full min-h-[52px] rounded-2xl px-6 text-base min-[900px]:text-lg font-semibold text-white motion-safe:transition hover:opacity-95"
-                      style={{ background: "#B85C38", opacity: hoSending ? 0.75 : 1 }}
+                      className="w-full min-h-[52px] rounded-2xl px-6 text-base font-semibold text-white motion-safe:transition hover:opacity-95 bg-[#B85C38] min-[900px]:min-h-[48px] min-[900px]:rounded-full min-[900px]:text-[17px] min-[900px]:bg-[#A34A22] min-[900px]:hover:bg-[#8A3D1A] min-[900px]:hover:opacity-100"
+                      style={{ opacity: hoSending ? 0.75 : 1 }}
                     >
                       {hoSending ? sp.sending : sp.send}
                     </button>
@@ -2270,21 +2496,23 @@ function StudioBookingPageInner() {
                     >
                       <span className="inline-flex items-center gap-2">{c.browseOtherStudios}</span>
                     </Link>
-                    {nearbyBlock}
+                    {nearbyList(false)}
                   </div>
                 )}
               </div>
+              {/* Desktop: the page's one-liner as a list under the panel (phones keep it under the price). */}
+              {hoStep === 1 && <div className="hidden min-[900px]:block px-1 pb-2">{trustList}</div>}
             </div>
 
             {/* BELOW: how booking works here, then other studios nearby */}
-            <div className="mt-8 min-[900px]:col-span-2 space-y-6">
-              <section className="rounded-2xl p-4 min-[900px]:p-5 text-left" style={{ background: "#FAF6F1" }}>
-                <h2 className="text-xs min-[900px]:text-sm font-bold uppercase mb-2" style={{ color: "#B85C38", letterSpacing: "2px" }}>{sp.howHereTitle}</h2>
-                <p className="text-sm min-[900px]:text-base leading-snug" style={{ color: "#5a4736" }}>{sp.notOnClub}</p>
+            <div className="mt-8 min-[900px]:mt-12 min-[900px]:col-start-1 min-[900px]:row-start-3 space-y-6 min-[900px]:space-y-10">
+              <section className="rounded-2xl p-4 text-left bg-[#FAF6F1] min-[900px]:p-0 min-[900px]:rounded-none min-[900px]:bg-transparent">
+                <h2 className="text-xs font-bold uppercase mb-2 text-[#B85C38] tracking-[2px] min-[900px]:font-body min-[900px]:text-xl min-[900px]:leading-7 min-[900px]:font-semibold min-[900px]:normal-case min-[900px]:tracking-normal min-[900px]:text-[#2b2b2b]">{sp.howHereTitle}</h2>
+                <p className="text-sm min-[900px]:text-base leading-snug min-[900px]:leading-6 min-[900px]:max-w-[640px]" style={{ color: "#5a4736" }}>{sp.notOnClub}</p>
               </section>
               {!hoSentTo && nearbyBlock}
               {websiteUrl && (
-                <p className="text-center">
+                <p className="text-center min-[900px]:text-left">
                   <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center text-sm underline underline-offset-2 hover:opacity-80" style={{ color: "#8a7460" }}>
                     {t("app.handoff.visitWebsite")}
                   </a>
@@ -2292,7 +2520,7 @@ function StudioBookingPageInner() {
               )}
             </div>
 
-            <div className="mt-6 text-xs min-[900px]:col-span-2 text-center" style={{ color: "#8a7460" }}>
+            <div className="mt-6 text-xs min-[900px]:col-start-1 min-[900px]:row-start-4 min-[900px]:mt-12 text-center" style={{ color: "#8a7460" }}>
               {c.footerCredit}
             </div>
           </div>
@@ -2322,7 +2550,26 @@ function StudioBookingPageInner() {
     setStep(n);
     setMaxStep(m => Math.max(m, n));
     setStepError(null);
+    // Desktop: the top of the page is the photo band, so going "to the top"
+    // hid the new step below the fold. Bring the steps up instead, unless
+    // they are already on screen.
+    const steps = isDeskNow() ? document.getElementById("mc-booking-steps") : null;
+    if (steps) {
+      const top = steps.getBoundingClientRect().top;
+      if (top < 0 || top > window.innerHeight * 0.5) steps.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  /** Desktop "Choose a service": the menu, its first row focused. */
+  const focusMenu = () => {
+    const row = serviceRef.current?.querySelector<HTMLElement>("[data-testid=service-row]");
+    (row || serviceRef.current)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    row?.focus({ preventScroll: true });
+  };
+  /** Desktop "Pick a day and time": the day strip, or the times once a day is set. */
+  const focusTimes = () => {
+    (date ? timeRef.current : dateRef.current)?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   // Continue on Your details is always tappable (2 Nov). It checks the fields
@@ -2557,21 +2804,49 @@ function StudioBookingPageInner() {
   const bookingWaHref = conciergeWhatsappUrl(bookingWaMsg);
 
 
+  // The one desktop action (F6): it sits in the booking card on the right and
+  // replaces the phone's sticky bar there. Never a dead disabled button: when
+  // something is missing it says what and takes the visitor to it.
+  const deskAction: { label: string; onClick: () => void; note?: string } =
+    step === 1
+      ? service ? { label: c.continueLabel, onClick: () => goStep(2) } : { label: c.chooseService, onClick: focusMenu }
+      : step === 2
+        ? date && time ? { label: c.continueLabel, onClick: () => goStep(3) } : { label: c.pickDayTime, onClick: focusTimes }
+        : step === 3
+          ? { label: c.continueLabel, onClick: () => goStep(4) }
+          : step === 4
+            ? { label: c.continueLabel, onClick: submitDetailsStep }
+            : { label: `${c.requestBooking}${total > 0 ? ` · ${eur(total)}` : ""}`, onClick: submitBook, note: c.freeToBook };
+  const hasPick = !!(service || prettyDay || time);
+
   return (
     <div className="min-h-screen bg-[#FAF6F1]">
       {brandBar()}
+      {/* Phones and tablets: two stacked wrappers, exactly as batch-1 left
+          them. From 900px both wrappers (and the inner grid) are
+          display:contents, so their children sit in one page grid (DESK_PAGE):
+          row 1 the photo band, rows 2 to 5 on the left the studio, the steps,
+          the current step and the page end, and on the right the booking card
+          across rows 2 to 5. The last row is 1fr, so a tall card only ever
+          adds room at the bottom. */}
+      <div className={`${DESK_PAGE} min-[900px]:grid-rows-[auto_auto_auto_auto_1fr]`}>
+      {deskHero}
       {/* The real place first (SP1, 2 Nov): the studio's own photo (or a map),
           then name, place, rating, price and how it works, all on the first
           screen. The photo used to carry the text on top of it, with the
           account pill floating over everything. */}
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 pt-4 min-[900px]:pt-6 min-[900px]:grid min-[900px]:grid-cols-2 min-[900px]:gap-8 min-[900px]:items-center min-[900px]:[&_h1]:mt-0">
-        <div className="[&_img]:max-h-[300px] min-[900px]:[&_img]:max-h-[380px]">{visualBlock}</div>
-        <div>{identityBlock}</div>
+      <div className="max-w-lg mx-auto px-5 pt-4 min-[900px]:contents">
+        <div className="[&_img]:max-h-[300px] min-[900px]:hidden">{visualBlock}</div>
+        <div className="min-[900px]:col-start-1 min-[900px]:row-start-2 min-[900px]:min-w-0 min-[900px]:[&_h1]:mt-0">{identityBlock}</div>
       </div>
 
-      <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto px-5 py-5 pb-28">
+      <div className="max-w-lg mx-auto px-5 py-5 pb-28 min-[900px]:contents">
         {/* Stepper: always visible so nobody misses a step */}
-        <Stepper steps={pickCopy(BOOKING_STEPS_COPY, lang)} current={step} maxReached={maxStep} onGo={goStep} />
+        <Stepper
+          id="mc-booking-steps"
+          className="scroll-mt-4 min-[900px]:col-start-1 min-[900px]:row-start-3 min-[900px]:mt-8"
+          steps={pickCopy(BOOKING_STEPS_COPY, lang)} current={step} maxReached={maxStep} onGo={goStep}
+        />
 
         {/* Always reachable Continue, so the primary action never hides below the fold */}
         {step === 1 && <StickyContinue ready={!!service} onNext={() => goStep(2)} />}
@@ -2606,9 +2881,9 @@ function StudioBookingPageInner() {
           </p>
         </div>
 
-        <div className="mt-5 min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_360px] min-[900px]:gap-8 min-[900px]:items-start">
+        <div className="mt-5 min-[900px]:contents">
           {/* LEFT: one step at a time */}
-          <div className="space-y-5 min-w-0">
+          <div className="space-y-5 min-w-0 min-[900px]:col-start-1 min-[900px]:row-start-4 min-[900px]:mt-6">
 
             {/* STEP 1: service */}
             {step === 1 && (
@@ -2636,17 +2911,22 @@ function StudioBookingPageInner() {
                   )}
                   {!rebookMode && (
                     <div className="space-y-2">
-                      {profile.services.map(s => (
-                        <div key={s.id}>
+                      {profile.services.map((s, si) => (
+                        <div key={s.id} className={deskRowHidden(si, serviceId === s.id) ? "min-[900px]:hidden" : undefined}>
                           <button data-testid="service-row" onClick={(e) => { if (serviceId !== s.id) reqOnce("req_answer_massage", { value: servicePrimaryName(s) }); setServiceId(s.id); trackEvent("wizard_service_selected", { slug: partner?.slug || studioId, meta: { service: servicePrimaryName(s) } }); scrollIntoViewGently(e.currentTarget); }}
-                            className={`card-auto w-full text-left p-4 min-[900px]:p-5 rounded-2xl border-2 transition ${
-                              serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white"
+                            className={`card-auto w-full text-left p-4 min-[900px]:px-5 min-[900px]:py-4 rounded-2xl border-2 transition ${
+                              serviceId === s.id ? "border-[#C4622D] bg-[#C4622D]/5" : "border-gray-200 bg-white min-[900px]:hover:border-[#C4622D] min-[900px]:hover:bg-[#FBF1EB]"
                             }`}>
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start min-[900px]:items-center justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="font-semibold text-gray-900 min-[900px]:text-lg flex items-center gap-1.5">
+                                <p className="font-semibold text-gray-900 min-[900px]:text-[17px] flex items-center gap-1.5">
                                   {serviceId === s.id && <Check size={16} className="text-[#C4622D] flex-shrink-0" />}
-                                  {servicePrimaryName(s, "Massage", lang)}{Number(s.duration) > 0 ? ` · ${Number(s.duration)} min` : ""}
+                                  {/* One flex item, as before: name and length in a single span. From
+                                      900px the length is only the caption line below. */}
+                                  <span>
+                                    {servicePrimaryName(s, "Massage", lang)}
+                                    <span className="min-[900px]:hidden">{Number(s.duration) > 0 ? ` · ${Number(s.duration)} min` : ""}</span>
+                                  </span>
                                 </p>
                                 {serviceSecondaryName(s, lang) && <p className="text-xs min-[900px]:text-sm text-gray-500">{serviceSecondaryName(s, lang)}</p>}
                                 {s.description && <p className="text-xs min-[900px]:text-sm text-gray-500 mt-0.5">{s.description}</p>}
@@ -2654,19 +2934,21 @@ function StudioBookingPageInner() {
                                   <p className="text-xs min-[900px]:text-sm text-gray-500 mt-1 flex items-center gap-1"><Clock size={11} /> {Number(s.duration)} min</p>
                                 )}
                               </div>
-                              <div className="flex flex-shrink-0 items-center gap-2">
+                              <div className="flex flex-shrink-0 items-center gap-2 min-[900px]:gap-3">
                                 {s.price != null && Number(s.price) > 0 && (
                                   <p className="font-bold text-[#C4622D] min-[900px]:text-lg text-right leading-tight">
                                     {eur(Number(s.price))}
-                                    {serviceTag(s) && <span className="block text-xs font-semibold">{serviceTag(s)}</span>}
+                                    {serviceTag(s) && <span className="block text-xs min-[900px]:text-[13px] font-semibold">{serviceTag(s)}</span>}
                                   </p>
                                 )}
+                                {choosePill(serviceId === s.id)}
                                 <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
                               </div>
                             </div>
                           </button>
                         </div>
                       ))}
+                      {seeAllButton(profile.services.length) && <div className="hidden min-[900px]:block pt-2">{seeAllButton(profile.services.length)}</div>}
                       {profile.services.length === 0 && <p className="text-sm min-[900px]:text-base text-gray-400">{c.noServicesYet}</p>}
                       <Link
                         to={quizHref}
@@ -2680,10 +2962,11 @@ function StudioBookingPageInner() {
                     </div>
                   )}
                   {(partner.description || (partner.gallery || []).length > 0) && (
-                    <div className="mt-6">
-                      <p className="text-xs min-[900px]:text-sm font-bold uppercase mb-2 text-[#B85C38] tracking-[2px]">{sp.aboutTitle}</p>
-                      {partner.description && <p className="text-sm min-[900px]:text-base text-gray-600 mb-4">{partner.description}</p>}
-                      <StudioGallery items={partner.gallery || []} />
+                    <div className={`mt-6 min-[900px]:mt-10 ${partner.description ? "" : "min-[900px]:hidden"}`}>
+                      <p className="text-xs min-[900px]:text-xl min-[900px]:leading-7 font-bold min-[900px]:font-semibold uppercase min-[900px]:normal-case mb-2 min-[900px]:mb-3 text-[#B85C38] min-[900px]:text-[#2b2b2b] tracking-[2px] min-[900px]:tracking-normal">{sp.aboutTitle}</p>
+                      {partner.description && <p className="text-sm min-[900px]:text-base min-[900px]:leading-6 min-[900px]:max-w-[640px] text-gray-600 mb-4">{partner.description}</p>}
+                      {/* From 900px the photos and video are in the band at the top. */}
+                      <div className="min-[900px]:hidden"><StudioGallery items={partner.gallery || []} /></div>
                     </div>
                   )}
 
@@ -2692,7 +2975,7 @@ function StudioBookingPageInner() {
                   <StudioReviews
                     partnerId={String(partner.id)}
                     lang={siteLang === "es" ? "es" : "en"}
-                    className="mt-4"
+                    className="mt-4 min-[900px]:mt-10 min-[900px]:[&_p]:max-w-[520px]"
                   />
                 )}
                 <WizardNav
@@ -3075,16 +3358,50 @@ function StudioBookingPageInner() {
 
           </div>
 
-          {/* RIGHT: running summary, desktop only */}
-          <aside className="hidden min-[900px]:block min-[900px]:sticky min-[900px]:top-4 space-y-4">
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 min-[900px]:p-5 space-y-2 min-[900px]:space-y-3">
-              <p className="text-xs min-[900px]:text-sm font-bold uppercase tracking-[2px] text-[#C4622D] mb-1 min-[900px]:mb-2">
-                {c.yourBooking}
-              </p>
-              <SummaryRow label={c.service} value={service ? servicePrimaryName(service, "Massage", lang) : null} placeholder={c.pickAService} />
-              <SummaryRow label={c.day} value={prettyDay} placeholder={c.pickDay} />
-              <SummaryRow label={c.time} value={time} placeholder={c.pickTime} />
-              <SummaryRow label={c.price} value={service && total > 0 ? eur(total) : null} placeholder={c.pickAService} />
+          {/* RIGHT, desktop only: the booking card with the one action (F6),
+              following the scroll down the whole page (F13). Choices show as
+              they are made; before that, where and when the studio is open. */}
+          <aside className={`hidden min-[900px]:block min-[900px]:col-start-2 min-[900px]:row-start-2 min-[900px]:row-span-4 space-y-4 min-[900px]:-mx-1 min-[900px]:px-1 min-[900px]:pb-1 ${DESK_STICKY}`} data-testid="studio-booking-aside">
+            <div className="rounded-2xl border border-[#E6DCCF] bg-white p-6 shadow-[0_1px_2px_rgb(33_28_26/0.06),0_4px_16px_-6px_rgb(33_28_26/0.10)]" data-testid="studio-booking-card">
+              <h2 className="font-body text-xl leading-7 font-semibold text-[#2b2b2b]">{c.yourBooking}</h2>
+              {hasPick ? (
+                <div className="mt-4 space-y-3">
+                  {service && <SummaryRow label={c.service} value={servicePrimaryName(service, "Massage", lang)} placeholder="" />}
+                  {prettyDay && <SummaryRow label={c.day} value={prettyDay} placeholder="" />}
+                  {time && <SummaryRow label={c.time} value={time} placeholder="" />}
+                  {service && total > 0 && <SummaryRow label={c.price} value={eur(total)} placeholder="" />}
+                </div>
+              ) : (
+                <ul className="mt-4 space-y-3 text-[15px] leading-5 text-[#3d2b1f]">
+                  <li className="flex items-start gap-2.5">
+                    <MapPin size={18} className="mt-px flex-shrink-0 text-[#A34A22]" aria-hidden="true" />
+                    <span>{hood || partner.address || "Madrid"}</span>
+                  </li>
+                  {todayHoursLine && (
+                    <li className="flex items-start gap-2.5">
+                      <Clock size={18} className="mt-px flex-shrink-0 text-[#A34A22]" aria-hidden="true" />
+                      <span>{todayHoursLine}</span>
+                    </li>
+                  )}
+                  <li className="flex items-start gap-2.5">
+                    <Euro size={18} className="mt-px flex-shrink-0 text-[#A34A22]" aria-hidden="true" />
+                    <span>{priceChipText}</span>
+                  </li>
+                </ul>
+              )}
+              <button
+                type="button"
+                data-testid="desk-action"
+                onClick={deskAction.onClick}
+                disabled={submitting}
+                aria-busy={submitting || undefined}
+                className="mt-5 w-full min-h-[48px] rounded-full px-6 py-3 text-[17px] leading-5 font-semibold text-white bg-[#A34A22] hover:bg-[#8A3D1A] disabled:opacity-75 motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#211C1A] focus-visible:ring-offset-2"
+              >
+                {submitting ? sp.sending : deskAction.label}
+              </button>
+              {deskAction.note && <p className="mt-2 text-[13px] leading-[18px] text-center text-[#6B615B]">{deskAction.note}</p>}
+              {error && step === 5 && <p className="mt-3 text-sm text-[#B03A2E]">{error}</p>}
+              <div className="mt-5 pt-5 border-t border-[#EADFD2]">{trustList}</div>
             </div>
             {bookingWaHref && (
               <a
@@ -3145,17 +3462,19 @@ function StudioBookingPageInner() {
                 <span className="inline-flex items-center gap-2 min-[900px]:text-base"><MessageCircle size={18} /> {c.waSetItUp}</span>
               </a>
             )}
-            <div className="flex flex-wrap gap-2 min-[900px]:gap-2.5">
-              {(partner.languages || []).slice(0, 4).map((l: string) => (
-                <span key={l} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs min-[900px]:text-sm text-gray-600">{tagLabel(l)}</span>
-              ))}
-              {(partner.amenities || []).slice(0, 4).map((a: string) => (
-                <span key={a} className="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-xs min-[900px]:text-sm text-gray-600">{tagLabel(a)}</span>
-              ))}
-            </div>
+            {/* Amenities only. The spoken-language chips ("English") are gone:
+                we never suggest that a studio speaks English (house rule).
+                Studio-written dashes become a colon. */}
+            {(partner.amenities || []).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {(partner.amenities || []).slice(0, 4).map((a: string) => (
+                  <span key={a} className="px-3 py-1 rounded-full bg-white border border-[#E6DCCF] text-sm text-[#5a4736]">{tagLabel(a).replace(/\s*[\u2013\u2014]\s*/g, ": ")}</span>
+                ))}
+              </div>
+            )}
           </aside>
 
-          <div className="min-[900px]:col-span-2 space-y-5">
+          <div className="min-[900px]:col-start-1 min-[900px]:row-start-5 min-[900px]:mt-12 space-y-5">
             {/* Other studios nearby (SP1). The "Email me deals" block that
                 sat here was removed on 2 Nov: we never pre-announce a discount. */}
             {nearbyBlock}
@@ -3184,14 +3503,14 @@ function StudioBookingPageInner() {
               )}
             </div>
 
-            {/* Massage Club credit */}
-            <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px]">
+            {/* Massage Club credit (phones; SiteFooter from 900px) */}
+            <div className="flex items-center justify-center gap-1.5 pb-4 text-gray-400 text-[11px] desk:hidden">
               <img src="/brand/mc-avatar-terracotta.png" alt="" className="h-4 w-4 rounded-full object-cover" />
               <span>{c.poweredBy}</span>
             </div>
 
-            {/* Legal footer */}
-            <div className="flex flex-wrap items-center justify-center gap-x-2 pb-8 text-gray-500 text-xs">
+            {/* Legal footer (phones; SiteFooter from 900px) */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2 pb-8 text-gray-500 text-xs desk:hidden">
               <span>Massage Club · Madrid</span>
               <span>·</span>
               <Link to="/for-studios" className="inline-flex min-h-[44px] items-center hover:text-[#C4622D] transition">{c.forStudios}</Link>
@@ -3204,6 +3523,7 @@ function StudioBookingPageInner() {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
 
@@ -3223,6 +3543,147 @@ function Section({ step, title, children }: { step: string; title: string; child
         </div>
       </div>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Desktop photo band (F5, F13): across the page container, under the header.
+ * Only the studio's own photos and video (partners.cover_url and gallery),
+ * never stock (design system 3.8).
+ * - 3 or more: one large and two stacked (Booksy), "See all N photos" from 4.
+ * - 2: one large and one tall (Calma: the room and its video tour).
+ * - 1 photo: the photo and the map of where it is.
+ * - none: the map, 240px tall.
+ * Photos open in a lightbox (arrows and Escape work); videos play in place.
+ * Rendered from 900px only, so phones never load it.
+ */
+function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
+  media: string[]; name: string; lat: number | null; lng: number | null;
+  hood: string | null; address: string | null; copy: DeskCopy;
+}) {
+  const [open, setOpen] = useState<number | null>(null);
+  const photos = media.filter((u) => !isVideoUrl(u));
+  const count = photos.length;
+  useEffect(() => {
+    if (open === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+      else if (e.key === "ArrowRight" && count > 1) setOpen((i) => (i === null ? i : (i + 1) % count));
+      else if (e.key === "ArrowLeft" && count > 1) setOpen((i) => (i === null ? i : (i - 1 + count) % count));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, count]);
+
+  const map = (height: number) => (
+    <StudioPlaceMap lat={lat} lng={lng} name={name} title={hood || "Madrid"} address={address} height={height} />
+  );
+  if (!media.length) return map(240);
+
+  const tile = (url: string, big: boolean, extra = "") =>
+    isVideoUrl(url) ? (
+      <div key={url} className={`relative h-full w-full overflow-hidden rounded-2xl bg-black ${extra}`}>
+        <video src={`${url}#t=0.1`} muted playsInline controls preload="metadata" className="h-full w-full object-cover" />
+        <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[13px] font-semibold text-white">
+          <Play size={13} aria-hidden="true" /> {copy.video}
+        </span>
+      </div>
+    ) : (
+      <button
+        key={url}
+        type="button"
+        onClick={() => setOpen(photos.indexOf(url))}
+        aria-label={copy.openPhoto}
+        className={`group relative block h-full w-full overflow-hidden rounded-2xl bg-[#F4EEE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#211C1A] focus-visible:ring-offset-2 ${extra}`}
+      >
+        <img
+          src={url}
+          alt={big ? name : ""}
+          decoding="async"
+          loading={big ? "eager" : "lazy"}
+          className="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-[1.02]"
+        />
+      </button>
+    );
+
+  const band =
+    media.length === 1 ? (
+      <div className="grid h-[400px] grid-cols-[2fr_1fr] gap-2">
+        {tile(media[0], true)}
+        {map(400)}
+      </div>
+    ) : media.length === 2 ? (
+      <div className="grid h-[400px] grid-cols-[2fr_1fr] gap-2">
+        {tile(media[0], true)}
+        {tile(media[1], false)}
+      </div>
+    ) : (
+      <div className="grid h-[400px] grid-cols-[2fr_1fr] grid-rows-2 gap-2">
+        {tile(media[0], true, "row-span-2")}
+        {tile(media[1], false)}
+        {tile(media[2], false)}
+      </div>
+    );
+  const shownPhotos = media.slice(0, 3).filter((u) => !isVideoUrl(u)).length;
+
+  return (
+    <div className="relative">
+      {band}
+      {count > shownPhotos && (
+        <button
+          type="button"
+          onClick={() => setOpen(0)}
+          className="absolute bottom-4 right-4 inline-flex h-10 items-center gap-2 rounded-full bg-white/95 px-4 text-[15px] font-semibold text-[#2b2b2b] shadow-[0_1px_2px_rgb(33_28_26/0.06),0_4px_16px_-6px_rgb(33_28_26/0.10)] hover:bg-white"
+        >
+          <Images size={18} aria-hidden="true" /> {fill(copy.seeAllPhotos, { n: count })}
+        </button>
+      )}
+      {open !== null && photos[open] && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={name}
+          onClick={() => setOpen(null)}
+        >
+          <img
+            src={photos[open]}
+            alt=""
+            className="max-h-[85vh] max-w-[min(1200px,100%)] rounded-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            autoFocus
+            aria-label={copy.close}
+            onClick={() => setOpen(null)}
+            className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white"
+          >
+            <X size={20} />
+          </button>
+          {count > 1 && (
+            <>
+              <button
+                type="button"
+                aria-label={copy.prevPhoto}
+                onClick={(e) => { e.stopPropagation(); setOpen((open - 1 + count) % count); }}
+                className="absolute left-5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white"
+              >
+                <ChevronLeft size={22} />
+              </button>
+              <button
+                type="button"
+                aria-label={copy.nextPhoto}
+                onClick={(e) => { e.stopPropagation(); setOpen((open + 1) % count); }}
+                className="absolute right-5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white"
+              >
+                <ChevronRight size={22} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -3274,7 +3735,7 @@ function DayStrip({ value, onChange, label }: { value: string; onChange: (v: str
  */
 function TimePills({ value, date, onChange, label }: { value: string; date?: string; onChange: (v: string) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2 min-[900px]:gap-3">
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2 min-[900px]:grid min-[900px]:grid-cols-4">
       {handoffTimesFor(date || "").map(t => {
         const active = value === t;
         return (
@@ -3284,7 +3745,7 @@ function TimePills({ value, date, onChange, label }: { value: string; date?: str
             role="radio"
             aria-checked={active}
             onClick={() => onChange(active ? "" : t)}
-            className="px-3.5 min-[900px]:px-5 py-2 min-[900px]:py-3 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
+            className="px-3.5 min-[900px]:px-0 py-2 min-[900px]:py-2.5 rounded-full border-2 text-sm min-[900px]:text-[15px] font-medium motion-safe:transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4622D]"
             style={{
               borderColor: active ? "#C4622D" : "#E6DCCF",
               background: active ? "#C4622D" : "#ffffff",
@@ -3312,10 +3773,6 @@ function scrollIntoViewGently(el: HTMLElement | null) {
   }
 }
 
-/**
- * Always reachable Continue bar. Full width on mobile, aligned under the right
- * summary column on desktop, so picking a service never looks like nothing happened.
- */
 /** "Did you mean ana@gmail.com?" with the fix one tap away (src/lib/emailTypo.ts). */
 function EmailTypoHint({ email, show, tpl, onFix }: { email: string; show: boolean; tpl: string; onFix: (v: string) => void }) {
   const fix = show ? emailTypoFix(email) : null;
@@ -3332,6 +3789,11 @@ function EmailTypoHint({ email, show, tpl, onFix }: { email: string; show: boole
   );
 }
 
+/**
+ * Always reachable Continue bar for phones and tablets (under 900px). From
+ * 900px it is hidden (desktop fix F6): the studio page's one action sits in
+ * the booking card on the right, the hand-off page's in its request panel.
+ */
 function StickyContinue({
   ready, onNext, label, busy, busyLabel, badge, note, summary, inlineRef,
 }: {
@@ -3364,7 +3826,7 @@ function StickyContinue({
   if (inlineVisible) {
     if (!summary) return null;
     return (
-      <div className="fixed inset-x-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]" style={{ bottom: "var(--consent-h, 0px)" }}>
+      <div className="fixed inset-x-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur px-5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] min-[900px]:hidden" style={{ bottom: "var(--consent-h, 0px)" }}>
         <p className="max-w-lg min-[900px]:max-w-[1100px] mx-auto w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">
           {summary}
         </p>
@@ -3372,7 +3834,7 @@ function StickyContinue({
     );
   }
   return (
-    <div className="fixed inset-x-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ bottom: "var(--consent-h, 0px)" }}>
+    <div className="fixed inset-x-0 z-30 border-t border-[#EADFD2] bg-[#FAF6F1]/95 backdrop-blur shadow-[0_-6px_24px_rgba(80,44,20,0.06)] px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] min-[900px]:hidden" style={{ bottom: "var(--consent-h, 0px)" }}>
       <div className="max-w-lg min-[900px]:max-w-[1100px] mx-auto flex flex-col items-center gap-1.5">
         {summary && (
           <p className="w-full text-center text-[12px] min-[900px]:text-sm font-semibold truncate text-[#5a4736]">{summary}</p>
@@ -3406,8 +3868,8 @@ function StickyContinue({
 
 
 function Stepper({
-  steps, current, maxReached, onGo,
-}: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void }) {
+  steps, current, maxReached, onGo, id, className = "",
+}: { steps: StepDef[]; current: number; maxReached: number; onGo: (n: number) => void; id?: string; className?: string }) {
   const lang = useFlowLang();
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
@@ -3428,8 +3890,9 @@ function Stepper({
   return (
     <nav
       ref={navRef}
+      id={id}
       aria-label={pickCopy(BOOKING_STEPS_ARIA, lang)}
-      className="relative flex items-start gap-0.5 min-[900px]:gap-1 overflow-x-auto pb-1 -mx-1 px-1 max-w-full min-[900px]:max-w-[720px] no-scrollbar"
+      className={`relative flex items-start gap-0.5 min-[900px]:gap-1 overflow-x-auto pb-1 -mx-1 px-1 max-w-full min-[900px]:max-w-[720px] no-scrollbar ${className}`}
     >
       {/* Thin connector line behind the step bullets */}
       <span
@@ -3465,7 +3928,7 @@ function Stepper({
               {isDone ? <Check size={13} /> : n}
             </span>
             <span
-              className={`block text-xs font-semibold leading-tight ${
+              className={`block text-xs min-[900px]:text-[13px] font-semibold leading-tight ${
                 isCurrent ? "text-[#A84F25]" : isDone ? "text-gray-700" : "text-[#7A6B5E]"
               }`}
             >
@@ -3480,7 +3943,9 @@ function Stepper({
 
 /**
  * Step footer: Back, an optional Skip, and the "why is Continue not lit" hint.
- * The Continue button itself lives ONLY in the sticky bar, never inline.
+ * The Continue button itself lives ONLY in the sticky bar on phones and in
+ * the booking card from 900px, never inline. The hint is phone-only: the
+ * desktop button is never disabled, it names what is missing.
  * Back and Skip stay visually quiet so the single Continue owns the attention.
  */
 function WizardNav({
@@ -3498,7 +3963,7 @@ function WizardNav({
   return (
     <div className="pt-4 min-[900px]:pt-5 space-y-2 min-[900px]:space-y-3">
       {disabled && hint && (
-        <p className="text-xs min-[900px]:text-sm text-center text-[#8a7460]">
+        <p className="text-xs min-[900px]:hidden text-center text-[#8a7460]">
           {hint}
         </p>
       )}
