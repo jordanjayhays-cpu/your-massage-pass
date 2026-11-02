@@ -12,11 +12,11 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Can I cancel?",
-    a: "Yes. Every confirmation email contains a one-click cancel link, so you can release the slot in a second without phoning anyone or writing in Spanish.",
+    a: "Yes. Need to change or cancel? Reply to the email or message us on WhatsApp. No phone call to the studio and no Spanish needed.",
   },
   {
     q: "What does a massage cost in Madrid?",
-    a: "A 60-minute massage in Madrid typically costs between €45 and €90 depending on the type of treatment, the neighbourhood and the studio. Relaxing massages sit at the lower end, deep tissue and specialised work at the higher end.",
+    a: "A 60-minute massage in Madrid usually costs €50 to €85, depending on the type of treatment, the neighbourhood and the studio. Relaxing massages sit at the lower end, deep tissue and specialised work at the higher end.",
   },
   {
     q: "Do I need to speak Spanish?",
@@ -27,7 +27,7 @@ const FAQS: { q: string; a: string }[] = [
 export default function MassageInEnglishMadrid() {
   const title = "Massage in Madrid, booked in English | Massage Club";
   const description =
-    "Book a massage in Madrid in English: browse real menus and prices, ask in 7 languages, pay at the studio. No prepayment, one-click cancellation.";
+    "Book a massage in Madrid in English: browse real menus and prices, ask in 7 languages, pay at the studio. No prepayment, and nothing is booked until you tap Yes.";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -96,8 +96,8 @@ export default function MassageInEnglishMadrid() {
             stored, no booking fee for you. You settle directly with the therapist afterwards.
           </li>
           <li>
-            <strong className="text-foreground">Cancel in one click.</strong> The confirmation email
-            carries a cancel link. No phone call needed.
+            <strong className="text-foreground">Change or cancel by message.</strong> Reply to the
+            email or message us on WhatsApp. No phone call needed.
           </li>
         </ul>
 
@@ -119,7 +119,7 @@ export default function MassageInEnglishMadrid() {
           studio reads them before you arrive and adapts the session.
         </p>
         <p className="text-sm text-foreground/85 mt-3 leading-relaxed">
-          On price: a 60-minute treatment in Madrid generally lands between €45 and €90. Our{" "}
+          On price: a 60-minute treatment in Madrid usually costs €50 to €85. Our{" "}
           <a className="text-primary underline underline-offset-2" href="/guides/massage-prices-madrid">
             Madrid massage price guide
           </a>{" "}

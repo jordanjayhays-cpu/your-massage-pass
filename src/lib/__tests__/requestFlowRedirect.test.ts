@@ -79,6 +79,21 @@ describe("requestFlowTarget", () => {
     expect(target("/book?stay=1")).toBeNull();
   });
 
+  it("only leaves on the booking host and local previews", () => {
+    // On every other host "/" is the marketing Home (App.tsx).
+    expect(target("/", { host: "your-massage-pass.vercel.app" })).toBeNull();
+    expect(target("/start", { host: "massageclub.io" })).toBeNull();
+    expect(target("/", { host: "localhost" })).toBe("/reserve?src=home");
+    expect(target("/", { host: "book.localhost" })).toBe("/reserve?src=home");
+  });
+
+  it("cleans a hand-typed src and replaces an invalid one", () => {
+    expect(target("/?src=IG")).toBe("/reserve?src=ig");
+    expect(target("/?src=ig_bio&lang=es")).toBe("/reserve?src=ig-bio&lang=es");
+    expect(target("/start?src=not%20valid")).toBe("/reserve?src=start");
+    expect(target("/?src=x.y&gclid=1")).toBe("/reserve?src=google&gclid=1");
+  });
+
   it("stays on Lovable previews", () => {
     expect(target("/", { host: "abc.lovableproject.com" })).toBeNull();
     expect(target("/start", { host: "id-preview--abc.lovable.app" })).toBeNull();
@@ -142,9 +157,30 @@ describe("index.html inline redirect matches requestFlowTarget", () => {
     ["/spa-calma"],
     ["/?stay=1"],
     ["/", { host: "abc.lovableproject.com" }],
+    ["/", { host: "your-massage-pass.vercel.app" }],
+    ["/", { host: "localhost" }],
+    ["/?src=IG"],
+    ["/?src=ig_bio&lang=es"],
+    ["/start?src=not%20valid"],
+    ["/?src=x.y&gclid=1"],
   ];
 
   it.each(cases)("%s", (url, opts = {}) => {
     expect(runInline(url, opts)).toBe(target(url, opts));
+  });
+
+  it("keeps the outside referrer and the landing path for go.html", () => {
+    const saved: Record<string, string> = {};
+    const u = new URL("/start?utm_source=ig", "https://" + HOST);
+    let replaced: string | null = null;
+    const location = { pathname: u.pathname, search: u.search, hash: "", hostname: HOST, replace: (to: string) => { replaced = to; } };
+    const localStorage = { length: 0, key: () => null, getItem: () => null };
+    const sessionStorage = { setItem: (k: string, v: string) => { saved[k] = v; } };
+    vm.runInNewContext(code, { window: { location }, localStorage, sessionStorage, document: { referrer: "https://l.instagram.com/" }, URLSearchParams, JSON, Date, String });
+    expect(replaced).toBe("/reserve?utm_source=ig&src=start");
+    const hop = JSON.parse(saved.mc_hop);
+    expect(hop.ref).toBe("https://l.instagram.com/");
+    expect(hop.path).toBe("/start");
+    expect(typeof hop.t).toBe("number");
   });
 });

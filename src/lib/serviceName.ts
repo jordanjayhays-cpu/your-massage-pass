@@ -18,9 +18,14 @@ export type ServiceLike = {
 
 const clean = (v?: string | null) => (typeof v === "string" ? v.trim() : "");
 
-/** Primary line shown to the visitor: English when we have it, else Spanish. */
-export function servicePrimaryName(s: ServiceLike | null | undefined, fallback = "Massage"): string {
+/**
+ * Primary line shown to the visitor: English when we have it, else Spanish.
+ * With lang "es" the studio's own Spanish name comes first (one language per
+ * label for Spanish visitors).
+ */
+export function servicePrimaryName(s: ServiceLike | null | undefined, fallback = "Massage", lang?: string): string {
   if (!s) return fallback;
+  if (lang === "es") return clean(s.name) || clean(s.name_en) || fallback;
   return clean(s.name_en) || clean(s.name) || fallback;
 }
 
@@ -29,8 +34,10 @@ export function servicePrimaryName(s: ServiceLike | null | undefined, fallback =
  * Returns "" when there is no English name (the Spanish name is already the
  * primary line) or when both names are identical.
  */
-export function serviceSecondaryName(s: ServiceLike | null | undefined): string {
+export function serviceSecondaryName(s: ServiceLike | null | undefined, lang?: string): string {
   if (!s) return "";
+  // Spanish visitors read the Spanish name alone.
+  if (lang === "es") return "";
   const en = clean(s.name_en);
   const es = clean(s.name);
   if (!en || !es) return "";

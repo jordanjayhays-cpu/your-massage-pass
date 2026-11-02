@@ -215,7 +215,10 @@
       "call": "致电",
       "chat": "聊天",
       "whatsapp": "在 WhatsApp 上询问",
-      "whatsappEs": "Preguntar por WhatsApp"
+      "whatsappEs": "Preguntar por WhatsApp",
+      "notFoundTitle": "我们没有找到这家门店。",
+      "notFoundSub": "我们仍可以替您询问附近的专业按摩门店。",
+      "askStudiosNearMe": "询问我附近的门店"
     },
     "calendar": {
       "back": "返回",

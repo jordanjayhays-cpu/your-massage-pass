@@ -84,11 +84,11 @@ export default function MassagePricesMadrid() {
           </li>
           <li>
             <strong className="text-foreground">Kobido facial</strong>, 60 min ·{" "}
-            <span className="font-semibold text-primary">€45</span>
+            <span className="font-semibold text-primary">€85</span>
           </li>
         </ul>
 
-        <CalmaCard note="Deep tissue at €85 for 60 minutes and a Kobido facial at €45. Ask in English online, pay at the studio." />
+        <CalmaCard note="Deep tissue at €85 for 60 minutes and a Kobido facial at €85. Ask in English online, pay at the studio." />
 
         <h2 className="font-display text-2xl text-foreground mt-8">Booking without prepaying</h2>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">

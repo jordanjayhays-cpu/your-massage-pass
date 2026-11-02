@@ -30,6 +30,9 @@ const AD_CLICK_KEYS = ["gclid", "gbraid", "wbraid"];
 
 const SESSION_KEY = /^sb-.*-auth-token$/;
 
+/** The src values go.html accepts. */
+const SRC_RE = /^[a-z0-9-]{1,20}$/;
+
 /** True when the browser holds a Supabase session (a signed-in visitor keeps Login on "/"). */
 export function hasStoredSession(): boolean {
   try {
@@ -60,6 +63,10 @@ export function requestFlowTarget(
 
   // Jordan's Lovable editor previews keep the React pages.
   if ((hostname || "").indexOf("lovable") !== -1) return null;
+  // Only the booking host and local previews: on any other host "/" is the
+  // marketing Home (App.tsx routes it there).
+  const h = hostname || "";
+  if (!h.startsWith("book.") && h !== "localhost" && h !== "127.0.0.1") return null;
 
   const params = new URLSearchParams(search || "");
   if (params.get("stay") === "1") return null;
@@ -70,11 +77,32 @@ export function requestFlowTarget(
     if (hasSession) return null;
   }
 
-  if (!params.get("src")) {
+  // A valid src wins ("IG" and "ig_bio" count as "ig" and "ig-bio"); a
+  // missing or invalid one becomes where the visitor landed.
+  let src = (params.get("src") || "").toLowerCase().replace(/_/g, "-");
+  if (!SRC_RE.test(src)) {
     const fromAd = AD_CLICK_KEYS.some((k) => params.get(k));
-    params.set("src", fromAd ? "google" : mapped);
+    src = fromAd ? "google" : mapped;
   }
+  params.set("src", src);
   return "/reserve?" + params.toString();
+}
+
+/**
+ * After the hop document.referrer is our own page, so the real referrer and
+ * the path the visitor landed on travel to go.html in sessionStorage
+ * ("mc_hop", read and removed there). Same as the inline script.
+ */
+export function saveHop(path: string): void {
+  try {
+    const p = (path || "/").replace(/\/+$/, "") || "/";
+    sessionStorage.setItem(
+      "mc_hop",
+      JSON.stringify({ ref: String(document.referrer || "").slice(0, 300), path: p, t: Date.now() }),
+    );
+  } catch {
+    /* blocked storage only loses the referrer */
+  }
 }
 
 /** The target for the current browser location (used by the routes below). */
@@ -93,8 +121,10 @@ export function RequestFlowRedirect({ fallback = null }: { fallback?: ReactNode 
   const target = currentRequestFlowTarget(pathname, search, hash);
 
   useEffect(() => {
-    if (target) window.location.replace(target);
-  }, [target]);
+    if (!target) return;
+    saveHop(pathname);
+    window.location.replace(target);
+  }, [target, pathname]);
 
   return target ? null : ((fallback ?? null) as ReactElement | null);
 }

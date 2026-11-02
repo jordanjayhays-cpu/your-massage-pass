@@ -1,4 +1,5 @@
 import { MassageTypeVideo } from "@/components/MassageTypeVideo";
+import { useFlowLang } from "@/lib/flowLang";
 import { trackEvent } from "@/lib/siteVisit";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -340,6 +341,7 @@ export default function MassageTypeInfoButton({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const flowLang = useFlowLang();
   const type = findMassageType(...names);
   if (!type) return null;
   
@@ -364,7 +366,7 @@ export default function MassageTypeInfoButton({
       <span
         role="button"
         tabIndex={0}
-        aria-label={`About ${type.name.en} / Sobre ${type.name.es}`}
+        aria-label={flowLang === "es" ? `Sobre ${type.name.es}` : `About ${type.name.en}`}
         onClick={(e) => {
           stop(e);
           openSheet();
@@ -377,7 +379,7 @@ export default function MassageTypeInfoButton({
             openSheet();
           }
         }}
-        className={`inline-flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#E6DCCF] bg-[#FAF6F1] text-[#B85C38] motion-safe:transition hover:bg-[#F6EFE6] ${className}`}
+        className={`relative inline-flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#E6DCCF] bg-[#FAF6F1] text-[#B85C38] motion-safe:transition hover:bg-[#F6EFE6] before:absolute before:-inset-1.5 before:content-[''] ${className}`}
       >
         <Info size={16} />
       </span>

@@ -19,8 +19,8 @@ export default function MadridChueca() {
           </p>
           <p>
             It's the barrio where you're most likely to find sports and deep tissue work sold next to
-            relaxing rituals, plus a strong tradition of English-speaking therapists thanks to the
-            neighbourhood's international crowd.
+            relaxing rituals, in a barrio with many international residents. We write to the studio
+            in Spanish for you.
           </p>
         </>
       }

@@ -150,7 +150,7 @@ export function CalmaCard({ note }: { note?: string }) {
       </p>
       <p className="text-sm text-foreground/85 mt-3">
         {note ??
-          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €45) and relaxing rituals. Book online in English. You pay at the studio."}
+          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €85) and relaxing rituals. Book online in English. You pay at the studio."}
       </p>
       <Link
         to="/spa-calma"

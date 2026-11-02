@@ -110,7 +110,7 @@ export default function IsMassageGoodForYou() {
           Madrid in Chamberí is currently available through Massage Club.
         </p>
 
-        <CalmaCard note="Book a deep tissue session, a Kobido facial or a relaxing full-body ritual. You choose pressure and focus areas in English, pay at the studio, and cancel in one click if plans change." />
+        <CalmaCard note="Book a deep tissue session, a Kobido facial or a relaxing full-body ritual. You choose pressure and focus areas in English and pay at the studio. Need to change plans? Reply to the email or message us on WhatsApp." />
 
         <GuideLinks exclude="/guides/is-massage-good-for-you" />
       </article>

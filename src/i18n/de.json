@@ -215,7 +215,10 @@
       "call": "Anrufen",
       "chat": "Chatten",
       "whatsapp": "Auf WhatsApp fragen",
-      "whatsappEs": "Preguntar por WhatsApp"
+      "whatsappEs": "Preguntar por WhatsApp",
+      "notFoundTitle": "Wir haben dieses Studio nicht gefunden.",
+      "notFoundSub": "Wir können trotzdem professionelle Massagestudios in deiner Nähe fragen.",
+      "askStudiosNearMe": "Studios in meiner Nähe fragen"
     },
     "calendar": {
       "back": "Zurück",

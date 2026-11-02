@@ -16,6 +16,9 @@
           var mapped = Object.prototype.hasOwnProperty.call(map, p) ? map[p] : null;
           if (!mapped) return;
           if (l.hostname.indexOf('lovable') !== -1) return;
+          // Only the booking host and local previews: on any other host "/"
+          // is the marketing Home (App.tsx).
+          if (l.hostname.indexOf('book.') !== 0 && l.hostname !== 'localhost' && l.hostname !== '127.0.0.1') return;
           var q = new URLSearchParams(l.search);
           if (q.get('stay') === '1') return;
           if (p === '/') {
@@ -27,9 +30,17 @@
               if (/^sb-.*-auth-token$/.test(localStorage.key(i) || '')) return;
             }
           }
-          if (!q.get('src')) {
-            q.set('src', (q.get('gclid') || q.get('gbraid') || q.get('wbraid')) ? 'google' : mapped);
-          }
+          // A valid src wins ("IG" and "ig_bio" count as "ig" and "ig-bio");
+          // a missing or invalid one becomes where the visitor landed.
+          var s = (q.get('src') || '').toLowerCase().replace(/_/g, '-');
+          if (!/^[a-z0-9-]{1,20}$/.test(s)) s = (q.get('gclid') || q.get('gbraid') || q.get('wbraid')) ? 'google' : mapped;
+          q.set('src', s);
+          // After the hop document.referrer is our own "/", so the real one
+          // and the landing path travel in sessionStorage (go.html reads and
+          // removes "mc_hop"). Blocked storage only loses the referrer.
+          try {
+            sessionStorage.setItem('mc_hop', JSON.stringify({ ref: String(document.referrer || '').slice(0, 300), path: p, t: new Date().getTime() }));
+          } catch (e) { /* keep going */ }
           l.replace('/reserve?' + q.toString());
         } catch (e) { /* fall through to the React page */ }
       })();

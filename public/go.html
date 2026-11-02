@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#B85C38">
 <meta property="og:title" content="Book a massage in Madrid">
 <meta property="og:description" content="Pick the massage, day and area. We ask the studios. You pay at the studio.">
+<link rel="canonical" href="https://book.massageclub.io/reserve">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -39,7 +40,7 @@
 <style>
 :root{
   --clay:#B85C38; --clay-d:#9A4A2C; --peach:#E8B79E; --sage:#A9BFA6; --plum:#5B4A6E;
-  --cream:#F6F1EA; --ink:#262019; --muted:#7C7166; --line:rgba(38,32,25,.10);
+  --cream:#F6F1EA; --ink:#262019; --muted:#6B6157; --line:rgba(38,32,25,.10);
   --glass:rgba(255,252,248,.78); --chip:#fff; --bad:#B03A2E;
 }
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
@@ -61,12 +62,12 @@ input{font:inherit;color:inherit}
 
 .app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
 .top{display:flex;align-items:center;gap:12px;height:44px}
-.back{width:40px;height:40px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);display:grid;place-items:center;font-size:18px;flex:none}
+.back{width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);display:grid;place-items:center;font-size:18px;flex:none}
 /* The wordmark sits where Back would be, on the first and the last screen. */
 .mark{font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;flex:none}
 .bar{flex:1;height:6px;border-radius:6px;background:rgba(255,255,255,.55);overflow:hidden}
 .bar b{display:block;height:100%;width:0;background:var(--ink);border-radius:6px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
-.lang{font-size:13px;font-weight:700;padding:0 14px;min-height:40px;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px);flex:none}
+.lang{font-size:13px;font-weight:700;padding:0 14px;min-height:44px;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px);flex:none}
 
 .stage{flex:1;position:relative;margin-top:12px}
 .screen{display:none;animation:in .38s cubic-bezier(.2,.8,.2,1)}
@@ -75,7 +76,7 @@ input{font:inherit;color:inherit}
 @keyframes in{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
 @keyframes inback{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
 
-.kicker{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--clay)}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--clay-d)}
 h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:800;letter-spacing:-.02em;line-height:1.02}
 h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .sub{color:rgba(38,32,25,.74);font-size:16px;line-height:1.45;margin-bottom:18px}
@@ -97,7 +98,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .trust li{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35;font-weight:500}
 .trust svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--clay)}
 .foot{display:flex;flex-wrap:wrap;justify-content:center;gap:0 6px;margin:18px -8px 0}
-.foot a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;font-size:14px;font-weight:500;color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(124,113,102,.45)}
+.foot a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;font-size:14px;font-weight:500;color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(107,97,87,.45)}
 
 /* Tap targets */
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -142,9 +143,12 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 /* Details. Labels above, the reason under the field, the error under that. */
 .field{display:block;margin-bottom:14px}
 .field label,.flabel{display:block;font-size:13.5px;font-weight:700;color:rgba(38,32,25,.78);margin:0 0 6px 4px}
-.field input{width:100%;background:#fff;border:2px solid transparent;border-radius:16px;padding:15px 16px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
-.field input:focus{border-color:var(--clay)}
+.field input,.field textarea{width:100%;background:#fff;border:2px solid transparent;border-radius:16px;padding:15px 16px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.field input:focus,.field textarea:focus{border-color:var(--clay)}
 .field input.bad{border-color:var(--bad)}
+.field textarea{resize:vertical;min-height:72px;line-height:1.4;font-family:inherit}
+.addlink{display:inline-flex;align-items:center;gap:4px;min-height:44px;margin-top:8px;padding:0 4px;font-size:15px;font-weight:700;color:var(--clay-d)}
+.count{float:right;font-weight:500;color:var(--muted)}
 .help{font-size:13.5px;line-height:1.4;color:var(--muted);margin:6px 4px 0}
 .ferr{display:flex;align-items:flex-start;gap:6px;font-size:14px;font-weight:500;line-height:1.35;color:var(--bad);margin:6px 4px 0}
 .ferr:empty{display:none}
@@ -160,7 +164,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .cta{display:block;width:100%;text-align:center;text-decoration:none;background:var(--clay);color:#fff;border-radius:999px;padding:18px;font-weight:700;font-size:17px;margin-top:18px;box-shadow:0 12px 28px rgba(184,92,56,.35);transition:transform .12s,opacity .2s}
 .cta:active{transform:scale(.98)}
 .cta[disabled]{opacity:.6;box-shadow:none}
-.cta.wa{background:#1FA855;box-shadow:0 12px 28px rgba(31,168,85,.32)}
+.cta.wa{background:#15803D;box-shadow:0 12px 28px rgba(21,128,61,.30)}
 .skip{display:block;width:100%;text-align:center;margin-top:14px;font-weight:700;color:var(--muted);padding:6px}
 .consent{font-size:13px;color:var(--muted);line-height:1.45;margin:10px 4px 0}
 .err{color:var(--bad);font-size:14px;margin-top:10px;text-align:center}
@@ -191,6 +195,27 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .mail{display:flex;align-items:center;gap:8px;font-size:15px;margin:14px 4px 0;overflow-wrap:anywhere}
 .mail svg{width:18px;height:18px;flex:none;color:var(--clay)}
 .fine{text-align:center;color:var(--muted);font-size:13.5px;margin-top:14px;line-height:1.45;text-wrap:balance}
+
+/* "Did you mean ...@gmail.com?" One tap puts it right. */
+.typo{font-size:14px;line-height:1.4;margin:6px 4px 0;color:var(--ink)}
+.typo:empty{display:none}
+.typo button{font-weight:700;color:var(--clay-d);text-decoration:underline;text-underline-offset:3px;padding:10px 2px;margin:-10px 0;overflow-wrap:anywhere}
+/* "Other area": a street, a hotel or a town outside the chips. */
+.other{display:flex;gap:8px;margin-top:12px}
+.other input{flex:1;min-width:0;background:#fff;border:2px solid transparent;border-radius:16px;padding:13px 14px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.other input:focus{border-color:var(--clay)}
+.other .cta{width:auto;margin:0;padding:0 20px;min-height:52px}
+.privacy{font-size:13px;color:var(--muted);line-height:1.45;margin:12px 4px 0;text-align:center}
+.privacy a,.err a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.err a{font-weight:700}
+/* Cookie choice: pinned to the bottom, small, and the page is padded by its
+   height while it shows, so it never sits on top of a button. */
+body{padding-bottom:var(--consent-h,0px)}
+.cbar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(255,253,251,.97);backdrop-filter:blur(12px);border-top:1px solid var(--line);box-shadow:0 -8px 24px -12px rgba(38,32,25,.18);padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+.cbar div{max-width:480px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.cbar p{flex:1 1 100%;font-size:13.5px;line-height:1.35}
+.cbar button{flex:1;min-height:44px;border-radius:999px;border:1.5px solid var(--clay-d);color:var(--clay-d);background:#fff;font-weight:700;font-size:14px}
+.cbar a{min-height:44px;display:inline-flex;align-items:center;padding:0 4px;font-size:13px;color:var(--muted);text-decoration:underline}
 </style>
 </head>
 <body>
@@ -250,6 +275,10 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <div class="note" id="locNote"></div>
       <div class="label" data-t="orPick"></div>
       <div class="chips" id="areas"></div>
+      <form class="other" id="otherBox" hidden novalidate>
+        <input id="otherIn" type="text" autocomplete="street-address" enterkeyhint="go" maxlength="80" data-ph="otherPh">
+        <button type="submit" class="cta" id="otherGo" data-t="next"></button>
+      </form>
     </section>
 
     <!-- 5 · you. Name and email required, WhatsApp optional. Checked on tap. -->
@@ -268,6 +297,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
           <label for="email" data-t="email"></label>
           <input id="email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" placeholder="you@email.com" aria-describedby="emailHelp emailErr">
           <p class="help" id="emailHelp" data-t="emailHelp"></p>
+          <p class="typo" id="emailTypo" aria-live="polite"></p>
           <p class="ferr" id="emailErr" role="alert"></p>
         </div>
         <div class="field">
@@ -276,13 +306,26 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
           <p class="help" id="phoneHelp" data-t="phoneHelp"></p>
           <p class="ferr" id="phoneErr" role="alert"></p>
         </div>
+        <div id="peopleBox" hidden>
+          <div class="flabel" id="peopleLabel" data-t="people"></div>
+          <div class="chips" id="people" role="group" aria-labelledby="peopleLabel"></div>
+        </div>
         <div class="flabel" id="therLabel" data-t="therapist"></div>
         <div class="chips" id="therapist" role="group" aria-labelledby="therLabel"></div>
         <p class="help" data-t="therapistHelp"></p>
+        <!-- Optional note. Folded away so Send stays close: 1 of 13 web-wizard
+             requests used the old free-text field. -->
+        <button type="button" class="addlink" id="noteOpen" aria-expanded="false" aria-controls="noteBox"><span aria-hidden="true">+</span> <span data-t="noteAdd"></span></button>
+        <div class="field" id="noteBox" style="margin-top:16px" hidden>
+          <label for="note"><span data-t="note"></span><span class="count" id="noteCount" aria-hidden="true"></span></label>
+          <textarea id="note" rows="2" maxlength="240" enterkeyhint="done" data-ph="notePh" aria-describedby="noteErr"></textarea>
+          <p class="ferr" id="noteErr" role="alert"></p>
+        </div>
         <button type="button" class="tog" id="remind" role="switch" aria-checked="false"><span class="box"></span><span data-t="remind"></span></button>
         <p class="consent" id="consent" data-t="consent" hidden></p>
         <div class="err" id="sendErr" role="alert"></div>
         <button type="submit" class="cta" id="send" data-t="send"></button>
+        <p class="privacy" id="privacy"></p>
       </form>
     </section>
 
@@ -305,19 +348,37 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
   </div>
 </div>
 
+<div class="cbar" id="cbar" role="dialog" aria-live="polite" hidden></div>
+
 <script>
 (() => {
 const LEAD = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
 const q = new URLSearchParams(location.search);
 
+// The hop from "/", "/start" or "/book" (index.html and requestFlowRedirect.ts)
+// leaves document.referrer pointing at our own "/". The hop saves the real
+// referrer and the path the visitor landed on in sessionStorage ("mc_hop",
+// {ref, path, t}). Read once and removed, so a reload is not counted twice.
+const HOP = (() => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem("mc_hop") || "null");
+    sessionStorage.removeItem("mc_hop");
+    return v && typeof v === "object" && typeof v.path === "string" && Date.now() - Number(v.t || 0) < 120000 ? v : null;
+  } catch { return null; }
+})();
+// Where the visitor really came from: the hop's referrer, else ?ref=<host>,
+// else the browser's referrer. A hop with no outside referrer is a direct visit.
+const REF = HOP ? String(HOP.ref || "") : q.get("ref") ? "https://" + q.get("ref").replace(/^https?:\/\//, "").slice(0, 120) : (document.referrer || "");
+const refHost = (r) => (r || "").replace(/^https?:\/\/([^/]+).*/, "$1") || "direct";
+
 // Prefill from the bot's link, so a WhatsApp customer types nothing twice.
 // Read once, then take the name, phone and email out of the address bar
 // before anything is tracked or shared (UX batch 1, RF1).
 const PRE = { n: q.get("n") || "", p: q.get("p") || "", e: q.get("e") || "" };
-if (q.has("n") || q.has("p") || q.has("e")) {
+if (q.has("n") || q.has("p") || q.has("e") || q.has("ref")) {
   try {
     const rest = new URLSearchParams(location.search);
-    ["n", "p", "e"].forEach((k) => rest.delete(k));
+    ["n", "p", "e", "ref"].forEach((k) => rest.delete(k));
     const s = rest.toString();
     history.replaceState(history.state, "", location.pathname + (s ? "?" + s : "") + location.hash);
   } catch { /* keep going: the page works with or without it */ }
@@ -326,7 +387,10 @@ if (q.has("n") || q.has("p") || q.has("e")) {
 // Where this visitor came from: the src param, else the path that served
 // this page (/start and /book redirect here after HN1), else plain /reserve.
 // Used for the lead's source ("go-page-" + SRC) and for meta.flow.
-const SRC = /^[a-z0-9-]{1,20}$/.test(q.get("src") || "") ? q.get("src") : ({ "/start": "start", "/book": "book" }[location.pathname.replace(/\/$/, "")] || "reserve");
+// "IG" and "ig_bio" (bio links typed by hand) count as "ig" and "ig-bio".
+const PATH_SRC = { "/": "home", "/start": "start", "/book": "book", "/booking": "book" };
+const rawSrc = (q.get("src") || "").toLowerCase().replace(/_/g, "-");
+const SRC = /^[a-z0-9-]{1,20}$/.test(rawSrc) ? rawSrc : ((HOP && PATH_SRC[HOP.path]) || PATH_SRC[location.pathname.replace(/\/$/, "")] || "reserve");
 
 // Funnel data, same endpoint and opt-out as the website (src/lib/siteVisit.ts):
 // a pageview, one event per answer, and the outcome (contract: batch.md 3.1).
@@ -365,21 +429,26 @@ const T = {
     h1: "Book a massage in Madrid", docTitle: "Book a massage in Madrid · Massage Club",
     how: "We ask the studios for you. You pay at the studio.",
     trust: ["Professional massage studios only", "We write to the studio in Spanish for you", "Nothing is booked until you tap Yes"],
-    foot: [["/studios", "Browse studios"], ["/how-it-works", "How it works"], ["/login", "Sign in"], ["/socios", "Own a studio?"]],
+    foot: [["/studios", "Browse studios"], ["/how-it-works", "How it works"], ["/login", "Sign in"], ["/socios", "Own a studio?"], ["/privacy", "Privacy"]],
     price: "60 min · usually €50 to €85 per person",
     k1: "1 of 5", q1: "What kind of massage?",
     k2: "2 of 5", q2: "Which day?", s2: "Pick the day that suits you best.",
-    k3: "3 of 5", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", moreTimes: "+ Add another time", oneTime: "Just one time",
+    k3: "3 of 5", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", s3any: "Any day works. Pick the time that suits you.", anyDay: "Any day", moreTimes: "+ Add another time", oneTime: "Just one time",
     k5: "4 of 5", q5: "Where in Madrid?", s5: "We look for a studio close to you.",
     locate: "Use my location", locating: "Finding you…", located: "Near {a}", you: "you", locDenied: "No problem, pick an area below.", orPick: "Or pick an area",
+    otherArea: "Other area", otherLabel: "Street, hotel or area", otherPh: "Street, hotel or town",
     anywhere: "Anywhere", k6: "5 of 5", q6: "Who's coming?", s6: "So the studio knows who to expect.",
-    name: "Your name", email: "Email", emailHelp: "Your times and the Yes button come here.",
+    name: "Your name", email: "Email", emailHelp: "Your times and the Yes button come here.", typo: "Did you mean {e}?",
     phone: "WhatsApp number (optional)", phoneHelp: "Add it if you also want your times on WhatsApp.", next: "Next",
     errName: "What should we call you?", errEmail: "Check your email, for example name@gmail.com", errPhone: "Add the country code, for example +34",
     therapist: "Who gives the massage?", therapistHelp: "We ask the studio for you.",
+    people: "How many people?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 or more"]],
+    noteAdd: "Anything the studio should know?", note: "Anything the studio should know? (optional)", notePh: "For example: strong pressure, 90 minutes, pregnant",
+    blocked: "We book therapeutic massage at licensed studios, nothing else.",
     remind: "Remind me in a month to book again",
     consent: "Massage Club will message you on WhatsApp or email in a month, when it's time to book again. Reply STOP anytime.",
-    send: "Send my request", sending: "Sending…", sendErr: "That didn't go through. Try again, or message us on WhatsApp.",
+    send: "Send my request", sending: "Sending…", sendErr: "That didn't go through. Try again, or <a>message us on WhatsApp</a>.",
+    privacy: "We use your details only for this request. <a>Privacy</a>", privacyRemind: "We use your details only for this request and the reminder you asked for. <a>Privacy</a>",
     doneTitle: "Request sent. We're asking the studios now.",
     req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kWho: "Who gives it", kPrice: "Price", kRemind: "Reminder", remindVal: "In a month",
     priceDone: "60 min · usually €50 to €85, paid at the studio", priceDoneCouples: "60 min · usually €50 to €85 per person, paid at the studio",
@@ -387,7 +456,7 @@ const T = {
     next1: "<b>Now:</b> we ask several studios near {area}, in Spanish.", next1Any: "<b>Now:</b> we ask several studios across Madrid, in Spanish.",
     next2: "<b>Next:</b> their times come to you by email.", next2Phone: "<b>Next:</b> their times come to you by email. Tap below to get them on WhatsApp too.",
     next3: "<b>Then:</b> you tap Yes on the one you want. Only then is it booked.",
-    mail: "Your times come to {m}",
+    mail: "Your times come to {m}", kPeople: "People",
     wa: "Get my times on WhatsApp", fine: "Nothing is booked until you tap Yes. You pay at the studio.",
     today: "Today", tomorrow: "Tomorrow", flexible: "I'm flexible", flexibleS: "Whenever a studio has room",
     waText: "Hi, it's {name}. I just asked for a {want} on the website (#{id}). Can you send me the times here?",
@@ -396,21 +465,26 @@ const T = {
     h1: "Tu masaje en Madrid", docTitle: "Tu masaje en Madrid · Massage Club",
     how: "Preguntamos a los centros por ti. Pagas en el centro.",
     trust: ["Solo centros de masaje profesionales", "Escribimos al centro por ti", "No se reserva nada hasta que tocas Sí"],
-    foot: [["/studios", "Ver centros"], ["/how-it-works", "Cómo funciona"], ["/login", "Entrar"], ["/socios", "¿Tienes un centro?"]],
+    foot: [["/studios", "Ver centros"], ["/how-it-works", "Cómo funciona"], ["/login", "Entrar"], ["/socios", "¿Tienes un centro?"], ["/privacy", "Privacidad"]],
     price: "60 min · normalmente entre 50 y 85 € por persona",
     k1: "1 de 5", q1: "¿Qué masaje te apetece?",
     k2: "2 de 5", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
-    k3: "3 de 5", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
+    k3: "3 de 5", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", s3any: "Te vale cualquier día. Elige la hora que mejor te venga.", anyDay: "Cualquier día", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
     k5: "4 de 5", q5: "¿En qué zona?", s5: "Buscamos un centro cerca de ti.",
     locate: "Usar mi ubicación", locating: "Buscándote…", located: "Cerca de {a}", you: "ti", locDenied: "Sin problema, elige una zona abajo.", orPick: "O elige una zona",
+    otherArea: "Otra zona", otherLabel: "Calle, hotel o zona", otherPh: "Calle, hotel o localidad",
     anywhere: "Me da igual", k6: "5 de 5", q6: "¿Quién viene?", s6: "Para que el centro sepa a quién esperar.",
-    name: "Tu nombre", email: "Email", emailHelp: "Aquí te llegan las horas y el botón para decir Sí.",
+    name: "Tu nombre", email: "Email", emailHelp: "Aquí te llegan las horas disponibles y el botón para decir Sí.", typo: "¿Querías decir {e}?",
     phone: "Número de WhatsApp (opcional)", phoneHelp: "Añádelo si también quieres las horas por WhatsApp.", next: "Siguiente",
     errName: "¿Cómo te llamamos?", errEmail: "Revisa tu email, por ejemplo nombre@gmail.com", errPhone: "Añade el prefijo, por ejemplo +34",
     therapist: "¿Quién te da el masaje?", therapistHelp: "Se lo preguntamos al centro.",
+    people: "¿Cuántas personas?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 o más"]],
+    noteAdd: "¿Algo que deba saber el centro?", note: "¿Algo que deba saber el centro? (opcional)", notePh: "Por ejemplo: presión fuerte, 90 minutos, embarazada",
+    blocked: "Reservamos masajes terapéuticos en centros con licencia, nada más.",
     remind: "Recuérdame en un mes para volver a reservar",
     consent: "Massage Club te escribirá por WhatsApp o email dentro de un mes, cuando toque volver. Responde STOP cuando quieras.",
-    send: "Enviar mi solicitud", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o escríbenos por WhatsApp.",
+    send: "Enviar mi solicitud", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o <a>escríbenos por WhatsApp</a>.",
+    privacy: "Solo usamos tus datos para esta solicitud. <a>Privacidad</a>", privacyRemind: "Solo usamos tus datos para esta solicitud y para el recordatorio que pediste. <a>Privacidad</a>",
     doneTitle: "Solicitud enviada. Ya estamos preguntando a los centros.",
     req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kWho: "Quién te lo da", kPrice: "Precio", kRemind: "Recordatorio", remindVal: "Dentro de un mes",
     priceDone: "60 min · normalmente entre 50 y 85 €, se paga en el centro", priceDoneCouples: "60 min · normalmente entre 50 y 85 € por persona, se paga en el centro",
@@ -418,8 +492,8 @@ const T = {
     next1: "<b>Ahora:</b> preguntamos a varios centros cerca de {area}.", next1Any: "<b>Ahora:</b> preguntamos a varios centros de todo Madrid.",
     next2: "<b>Después:</b> te llegan sus horas por email.", next2Phone: "<b>Después:</b> te llegan sus horas por email. Toca abajo para recibirlas también por WhatsApp.",
     next3: "<b>Luego:</b> tocas Sí en la que quieras. Solo entonces queda reservado.",
-    mail: "Tus horas llegan a {m}",
-    wa: "Recibir mis horas por WhatsApp", fine: "No se reserva nada hasta que tocas Sí. Pagas en el centro.",
+    mail: "Las horas disponibles te llegan a {m}", kPeople: "Personas",
+    wa: "Recibir las horas por WhatsApp", fine: "No se reserva nada hasta que tocas Sí. Pagas en el centro.",
     today: "Hoy", tomorrow: "Mañana", flexible: "Me adapto", flexibleS: "Cuando el centro tenga hueco",
     waText: "Hola, soy {name}. Acabo de pedir un {want} en la web (#{id}). ¿Me mandáis las horas por aquí?",
   },
@@ -460,9 +534,17 @@ const THERAPIST = { en: [["any", "No preference"], ["female", "Woman"], ["male",
 
 const ORDER = ["massage", "day", "time", "where", "you", "done"];
 const S = {
-  massage: null, day: null, times: [], multi: false, area: null, loc: null,
-  therapist: "any", remind: false,
+  massage: null, day: null, times: [], multi: false, area: null, loc: null, other: false,
+  therapist: "any", remind: false, people: "1",
 };
+// The bot's "special massage" pattern (wa-bot copy.ts EROTIC_RE). A match in
+// the note gets the standard line and nothing is sent, then or later.
+const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive\s+(?:massage|masaje)|(?:massage|masaje)\s+sensitive|t[aá]ntr\w*|nuru|happy\s*end\w*|final\s*feliz|con\s*extras?|extra\s*servic\w*|servicios?\s*extras?|servicio\s*completo|body\s*(2|to)\s*body|lingam|yoni|prostat\w*)\b/i;
+let blocked = false;
+// Party size: asked only for Couples (2 or 3+) and "Not sure" (1, 2 or 3+).
+const askPeople = () => S.massage === "Couples" || S.massage === "Not sure";
+const defaultPeople = () => (S.massage === "Couples" ? "2" : "1");
+const isGroup = () => askPeople() && S.people !== defaultPeople();
 let cur = 0;
 let sent = null; // { id, name, phone, email } once the request is saved
 const $ = (id) => document.getElementById(id);
@@ -472,12 +554,21 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const isAnywhere = (a) => a === T.en.anywhere || a === T.es.anywhere;
 const langHref = (p) => (L === "es" ? p + "?lang=es" : p);
 
-// Seven real days, like the website. After 19:00 there is no today left: a
-// massage has to finish by 21:00.
+// Start times need an hour's notice, like the studio pages (madridTime.ts
+// isTooSoon): at 18:45 the first time today is 19:45 -> 20:00. Today drops
+// out once no start time is left (after 19:00, since 20:00 is the last).
+const LEAD_MIN = 60;
+const LAST = HOURS[HOURS.length - 1];
+const nowMins = () => { const n = madridNow(); return n.getHours() * 60 + n.getMinutes(); };
+const toMins = (v) => { const [h, m] = v.split(":"); return h * 60 + Number(m); };
+const slotOk = (v, today) => !today || toMins(v) >= nowMins() + LEAD_MIN;
+const todayLeft = () => slotOk(`${LAST}:00`, true);
+
+// Seven real days, like the website.
 function dayList() {
   const now = madridNow();
   const out = [];
-  for (let i = now.getHours() >= 19 ? 1 : 0; i <= 6; i++) {
+  for (let i = todayLeft() ? 0 : 1; i <= 6; i++) {
     const d = new Date(now); d.setDate(now.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const short = d.toLocaleDateString(L === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
@@ -494,6 +585,8 @@ function paint() {
   $("lang").textContent = L === "es" ? "EN" : "ES";
   $("lang").setAttribute("aria-label", L === "es" ? "English" : "Español");
   document.querySelectorAll("[data-t]").forEach((el) => { const v = T[L][el.dataset.t]; if (typeof v === "string") el.textContent = v; });
+  document.querySelectorAll("[data-ph]").forEach((el) => { el.placeholder = t(el.dataset.ph); });
+  $("otherIn").setAttribute("aria-label", t("otherLabel"));
   document.querySelectorAll("[data-price]").forEach((el) => { el.innerHTML = `${EURO}<span>${esc(t("price"))}</span>`; });
   $("trust").innerHTML = t("trust").map((x) => `<li>${CHECK}<span>${esc(x)}</span></li>`).join("");
   $("foot").innerHTML = t("foot").map(([p, x]) => `<a href="${langHref(p)}">${esc(x)}</a>`).join("");
@@ -504,23 +597,103 @@ function paint() {
   if (S.day) S.day = days.find((d) => d.iso === S.day.iso) || S.day;
   $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span><div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
   const today = S.day && S.day.i === 0;
-  const hour = madridNow().getHours();
+  if (today) S.times = S.times.filter((v) => slotOk(v, true));
   const half = (v, cls, inner) => `<button class="${cls}${S.times.includes(v) ? " sel" : ""}" data-v="${v}">${inner}</button>`;
-  const hourCard = (h) => `<div class="hr">${half(`${h}:00`, "h0", `${h}:00<small>${hourIcon(h)}</small>`)}${h < HOURS[HOURS.length - 1] ? half(`${h}:30`, "h30", `${h}:30`) : ""}</div>`;
-  $("times").innerHTML = HOURS.filter((h) => !today || h > hour).map(hourCard).join("");
+  // Each half hour is checked on its own: at 18:45, 19:00 and 19:30 are gone
+  // and 20:00 is the first card.
+  const hourCard = (h) => {
+    const v0 = `${h}:00`, v30 = h < LAST ? `${h}:30` : null;
+    const ok0 = slotOk(v0, today), ok30 = !!v30 && slotOk(v30, today);
+    if (!ok0 && !ok30) return "";
+    if (!ok0) return `<div class="hr">${half(v30, "h0", `${v30}<small>${hourIcon(h)}</small>`)}</div>`;
+    return `<div class="hr">${half(v0, "h0", `${v0}<small>${hourIcon(h)}</small>`)}${ok30 ? half(v30, "h30", v30) : ""}</div>`;
+  };
+  $("times").innerHTML = HOURS.map(hourCard).join("");
   $("timeNext").disabled = !S.times.length;
   $("timeNext").style.display = S.multi ? "" : "none";
   $("moreTimes").textContent = S.multi ? t("oneTime") : t("moreTimes");
-  $("timeSub").textContent = (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t(S.multi ? "s3multi" : "s3");
-  $("areas").innerHTML = [...AREAS.map((a) => a.n), t("anywhere")].map((n) => `<button class="chip${S.area === n && !S.loc ? " sel" : ""}" data-v="${esc(n)}">${esc(n)}</button>`).join("");
+  // "I'm flexible" is not a day to say "For ..." about.
+  const flexible = S.day && S.day.i === 99;
+  $("timeSub").textContent = flexible ? t(S.multi ? "s3multi" : "s3any") : (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t(S.multi ? "s3multi" : "s3");
+  $("areas").innerHTML = [...AREAS.map((a) => a.n), t("anywhere")].map((n) => `<button class="chip${S.area === n && !S.loc && !S.other ? " sel" : ""}" data-v="${esc(n)}">${esc(n)}</button>`).join("")
+    + `<button class="chip${S.other ? " sel" : ""}" data-v="__other" aria-expanded="${!$("otherBox").hidden}">${esc(t("otherArea"))}</button>`;
+  $("peopleBox").hidden = !askPeople();
+  const opts = t("peopleOpts").filter(([v]) => S.massage !== "Couples" || v !== "1");
+  $("people").innerHTML = opts.map(([v, l]) => `<button type="button" class="chip${S.people === v ? " sel" : ""}" aria-pressed="${S.people === v}" data-v="${v}">${esc(l)}</button>`).join("");
+  const nl = $("note").value.length;
+  $("noteCount").textContent = nl ? `${nl}/240` : "";
+  $("privacy").innerHTML = t(S.remind ? "privacyRemind" : "privacy").replace("<a>", `<a href="${langHref("/privacy")}">`);
+  paintCookieBar();
   $("therapist").innerHTML = THERAPIST[L].map(([v, l]) => `<button type="button" class="chip${S.therapist === v ? " sel" : ""}" aria-pressed="${S.therapist === v}" data-v="${v}">${l}</button>`).join("");
   $("remind").setAttribute("aria-checked", String(S.remind));
   $("remind").querySelector(".box").innerHTML = TICK;
   $("consent").hidden = !S.remind;
   // Field errors that are showing follow the language too.
   for (const k of ["name", "email", "phone"]) if ($(k).classList.contains("bad")) setErr(k, true);
+  if ($("emailTypo").innerHTML) showTypo();
+  if (blocked) $("sendErr").textContent = t("blocked");
   if (cur === ORDER.indexOf("done") && sent) renderDone();
 }
+
+// ---------- Cookie choice, Clarity and the Google tag ----------
+// Same key, copy and rules as the website's ConsentBanner (src/components/
+// ConsentBanner.tsx) and index.html: Consent Mode defaults are "denied", the
+// Google tag loads after the page is up (so a gclid from an ad is seen),
+// Clarity only after Accept, and nothing at all for ?nt=1 (mc_nt).
+const CONSENT_KEY = "mc_consent";
+const CB = {
+  en: { body: "We use cookies to see how the site is used and to measure our ads.", accept: "Accept", decline: "Decline", privacy: "Privacy", label: "Cookie choice" },
+  es: { body: "Usamos cookies para ver cómo se usa la web y medir nuestros anuncios.", accept: "Aceptar", decline: "Rechazar", privacy: "Privacidad", label: "Elección de cookies" },
+};
+const consentValue = () => { try { return localStorage.getItem(CONSENT_KEY); } catch { return "blocked"; } };
+const consentGranted = () => { const v = consentValue(); return v === "granted" || v === "accepted"; };
+window.dataLayer = window.dataLayer || [];
+function gtag() { window.dataLayer.push(arguments); }
+window.gtag = window.gtag || gtag;
+const GRANT = { ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted", analytics_storage: "granted" };
+if (!noTrack) {
+  gtag("consent", "default", { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "denied", wait_for_update: 500 });
+  if (consentGranted()) gtag("consent", "update", GRANT);
+}
+function loadGtag() {
+  if (noTrack || window.__mcGtag) return;
+  window.__mcGtag = 1;
+  const sc = document.createElement("script");
+  sc.async = true; sc.src = "https://www.googletagmanager.com/gtag/js?id=AW-18401185487";
+  document.head.appendChild(sc);
+  gtag("js", new Date()); gtag("config", "AW-18401185487");
+}
+function loadClarity() {
+  if (noTrack || !consentGranted() || window.clarity) return;
+  (function (c, l, a, r, i, tg, y) {
+    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+    tg = l.createElement(r); tg.async = 1; tg.src = "https://www.clarity.ms/tag/" + i;
+    y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(tg, y);
+  })(window, document, "clarity", "script", "y6e1s80114");
+}
+let cookieOpen = !noTrack && !consentValue();
+function setConsentH() {
+  const bar = $("cbar");
+  if (cookieOpen && !bar.hidden) document.documentElement.style.setProperty("--consent-h", bar.offsetHeight + "px");
+  else document.documentElement.style.removeProperty("--consent-h");
+}
+function paintCookieBar() {
+  const bar = $("cbar");
+  bar.hidden = !cookieOpen;
+  if (!cookieOpen) { setConsentH(); return; }
+  const c = CB[L];
+  bar.setAttribute("aria-label", c.label);
+  bar.innerHTML = `<div><p>${esc(c.body)}</p><button type="button" data-c="1">${esc(c.accept)}</button><button type="button" data-c="0">${esc(c.decline)}</button><a href="${langHref("/privacy")}">${esc(c.privacy)}</a></div>`;
+  setConsentH();
+}
+$("cbar").onclick = (e) => {
+  const b = e.target.closest("[data-c]"); if (!b) return;
+  const yes = b.dataset.c === "1";
+  try { localStorage.setItem(CONSENT_KEY, yes ? "granted" : "denied"); } catch {}
+  if (yes) { gtag("consent", "update", GRANT); loadClarity(); }
+  cookieOpen = false; paintCookieBar();
+};
+if (typeof ResizeObserver !== "undefined") new ResizeObserver(setConsentH).observe($("cbar"));
 
 const seen = new Set();
 function show(i, backwards) {
@@ -539,17 +712,66 @@ function show(i, backwards) {
   // Only people who came from the website see the headline: the bot's
   // customers already know who we are.
   $("hero").hidden = SRC === "wa";
-  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  // The phone's Back gesture steps back through the questions (one history
+  // entry sits on top while the visitor is past screen 1; see popstate).
+  // The sent screen never adds one, so Back from it cannot resend.
+  if (i > 0 && name !== "done" && !armed) { try { history.pushState({ mcReq: 1 }, ""); armed = true; } catch {} }
+  save();
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 const go = (name) => show(ORDER.indexOf(name));
 // A single tap answers and moves on, with a beat to see the selection land.
 const advance = (name) => { paint(); setTimeout(() => go(name), 220); };
 
-$("back").onclick = () => show(Math.max(0, cur - 1), true);
+// History: one extra entry while inside the flow. Back pops it; we step one
+// screen back and push it again. On the sent screen Back is left alone, so a
+// second Back leaves the page and the request cannot be sent twice.
+let armed = false;
+window.addEventListener("popstate", () => {
+  armed = false;
+  if (sent || cur === 0) return;
+  show(Math.max(0, cur - 1), true);
+});
+$("back").onclick = () => { if (armed) history.back(); else show(Math.max(0, cur - 1), true); };
 $("lang").onclick = () => { L = L === "es" ? "en" : "es"; try { localStorage.setItem("mm-lang", L); } catch {} paint(); };
+
+// Answers survive a reload (sessionStorage, this tab only). Cleared once the
+// request is sent. Never sent anywhere.
+const SAVE_KEY = "mc_req_v1";
+function save() {
+  if (sent) return;
+  try {
+    sessionStorage.setItem(SAVE_KEY, JSON.stringify({
+      v: 1, cur: Math.min(cur, ORDER.indexOf("you")), S: { ...S, day: S.day ? S.day.iso : null },
+      f: { name: $("name").value, email: $("email").value, phone: $("phone").value, note: $("note").value },
+    }));
+  } catch { /* private mode: the page works without it */ }
+}
+function restore() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(SAVE_KEY) || "null");
+    if (!v || v.v !== 1 || !v.S) return 0;
+    Object.assign(S, v.S, { day: null });
+    // A day that has passed (or today, once it is too late) is asked again.
+    S.day = v.S.day ? dayList().find((d) => d.iso === v.S.day) || null : null;
+    if (!S.day) S.times = [];
+    if (S.day && S.day.i === 0) S.times = S.times.filter((x) => slotOk(x, true));
+    const f = v.f || {};
+    if (!PRE.n && f.name) $("name").value = f.name;
+    if (!PRE.e && f.email) $("email").value = f.email;
+    if (!PRE.p && f.phone) $("phone").value = f.phone;
+    if (f.note) { $("note").value = String(f.note).slice(0, 240); openNote(false); }
+    // Never past the first unanswered question.
+    const need = [S.massage, S.day, S.times.length ? 1 : null, S.area || S.loc ? 1 : null];
+    const first = need.findIndex((x) => !x);
+    return Math.max(0, Math.min(Number(v.cur) || 0, first === -1 ? ORDER.indexOf("you") : first));
+  } catch { return 0; }
+}
+const forget = () => { try { sessionStorage.removeItem(SAVE_KEY); } catch {} };
 
 $("massages").onclick = (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
+  if (S.massage !== b.dataset.v) S.people = b.dataset.v === "Couples" ? "2" : "1";
   S.massage = b.dataset.v;
   once("req_answer_massage", { value: S.massage });
   advance("day");
@@ -581,10 +803,31 @@ $("timeNext").onclick = () => {
 };
 $("areas").onclick = (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
-  S.area = b.dataset.v; S.loc = null; $("locate").classList.remove("done"); $("locNote").textContent = "";
+  // "Other area": a street, a hotel or a town outside the 11 chips (24 of 62
+  // bot requests in 75 days were outside them). Typed, then Next.
+  if (b.dataset.v === "__other") {
+    $("otherBox").hidden = false; paint();
+    $("otherIn").focus();
+    return;
+  }
+  S.area = b.dataset.v; S.loc = null; S.other = false; $("otherBox").hidden = true;
+  $("locate").classList.remove("done"); $("locNote").textContent = "";
   once("req_answer_where", { area: isAnywhere(S.area) ? "Anywhere" : S.area });
   advance("you");
 };
+$("otherBox").onsubmit = (e) => {
+  e.preventDefault();
+  const v = $("otherIn").value.trim().replace(/\s+/g, " ").slice(0, 80);
+  if (v.length < 2) { $("otherIn").focus(); return; }
+  S.area = v; S.loc = null; S.other = true;
+  $("locate").classList.remove("done"); $("locNote").textContent = "";
+  once("req_answer_where", { area: "Other", other: true });
+  advance("you");
+};
+$("people").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.people = b.dataset.v; paint(); save(); } };
+const openNote = (focus) => { $("noteBox").hidden = false; $("noteOpen").hidden = true; $("noteOpen").setAttribute("aria-expanded", "true"); if (focus) $("note").focus(); };
+$("noteOpen").onclick = () => openNote(true);
+$("note").addEventListener("input", () => { const n = $("note").value.length; $("noteCount").textContent = n ? `${n}/240` : ""; if ($("noteErr").textContent) $("noteErr").textContent = ""; });
 
 const km = (a, b) => {
   const R = 6371, r = Math.PI / 180;
@@ -601,7 +844,7 @@ $("locate").onclick = () => {
     // Far from all of them (Pozuelo, a hotel by the airport): keep the pin and
     // say Madrid, the studios are ranked by distance from the pin anyway.
     S.area = km(here, best) <= 4 ? best.n : "Madrid";
-    S.loc = here;
+    S.loc = here; S.other = false;
     $("locate").classList.add("done");
     $("locNote").textContent = t("located").replace("{a}", S.area === "Madrid" ? t("you") : S.area);
     once("req_answer_where", { located: true });
@@ -627,8 +870,42 @@ const phoneTyped = () => /\d/.test($("phone").value);
 const valid = {
   name: () => !!$("name").value.trim(),
   email: () => EMAIL_RE.test($("email").value.trim()),
-  phone: () => { if (!phoneTyped()) return true; const n = intl($("phone").value).replace(/\D/g, "").length; return n >= 9 && n <= 15; },
+  // Without + or 00 only a Spanish number is guessed (612 345 678). Anything
+  // else ("5622355063", a US number) needs its country code: guessing "+56"
+  // (Chile) would break the WhatsApp hand-off, which matches the exact number.
+  phone: () => {
+    if (!phoneTyped()) return true;
+    const raw = $("phone").value.replace(/[^0-9+]/g, "");
+    if (!/^(\+|00)/.test(raw) && !/^[6789]\d{8}$/.test(raw)) return false;
+    const n = intl($("phone").value).replace(/\D/g, "").length;
+    return n >= 9 && n <= 15;
+  },
 };
+
+// "ana@gmial.com": email is the only channel for a request with no phone, so a
+// typo means studios answer and the customer never hears. KEEP IN SYNC with
+// src/lib/emailTypo.ts (its test compares the two maps).
+const TYPO = {"gmial.com":"gmail.com","gamil.com":"gmail.com","gmai.com":"gmail.com","gmal.com":"gmail.com","gmaill.com":"gmail.com","gnail.com":"gmail.com","gmail.co":"gmail.com","gmail.con":"gmail.com","gmail.cm":"gmail.com","gmail.om":"gmail.com","hotmial.com":"hotmail.com","hotmal.com":"hotmail.com","hotmai.com":"hotmail.com","hotmil.com":"hotmail.com","hotamil.com":"hotmail.com","hotmail.con":"hotmail.com","hotmail.co":"hotmail.com","outlok.com":"outlook.com","outllok.com":"outlook.com","outlook.con":"outlook.com","yahooo.com":"yahoo.com","yaho.com":"yahoo.com","yahoo.con":"yahoo.com","icloud.con":"icloud.com","iclod.com":"icloud.com","icoud.com":"icloud.com"};
+const typoFix = (e) => {
+  const v = String(e || "").trim().toLowerCase(); const at = v.lastIndexOf("@");
+  if (at < 1) return null;
+  const d = v.slice(at + 1);
+  const f = TYPO[d] || (/\.(con|cmo|ocm|vom)$/.test(d) ? d.replace(/\.(con|cmo|ocm|vom)$/, ".com") : null);
+  return f && f !== d ? v.slice(0, at + 1) + f : null;
+};
+const typoSeen = new Set();
+function showTypo() {
+  const fix = typoFix($("email").value);
+  // Same hint already showing (in this language): leave it, so a tap on the
+  // fix is not lost to the blur that re-renders it.
+  const key = fix ? L + "|" + fix : "";
+  if ($("emailTypo").dataset.k === key && (!fix || $("typoFix"))) return fix;
+  $("emailTypo").dataset.k = key;
+  $("emailTypo").innerHTML = fix ? esc(t("typo")).replace("{e}", `<button type="button" id="typoFix">${esc(fix)}</button>`) : "";
+  if (fix) $("typoFix").onclick = () => { $("email").value = fix; $("emailTypo").innerHTML = ""; $("emailTypo").dataset.k = ""; setErr("email", false); save(); $("phone").focus(); };
+  return fix;
+}
+$("email").addEventListener("blur", showTypo);
 const ERR = { name: "errName", email: "errEmail", phone: "errPhone" };
 function setErr(k, bad) {
   $(k).classList.toggle("bad", bad);
@@ -637,7 +914,7 @@ function setErr(k, bad) {
 }
 // Checked on tap, and again when someone leaves a field we marked: never
 // while they are still typing.
-for (const k of ["name", "email", "phone"]) $(k).addEventListener("blur", () => { if ($(k).classList.contains("bad")) setErr(k, !valid[k]()); });
+for (const k of ["name", "email", "phone"]) $(k).addEventListener("blur", () => { if ($(k).classList.contains("bad")) setErr(k, !valid[k]()); save(); });
 
 $("therapist").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.therapist = b.dataset.v; paint(); } };
 $("remind").onclick = () => { S.remind = !S.remind; paint(); };
@@ -646,16 +923,31 @@ $("remind").onclick = () => { S.remind = !S.remind; paint(); };
 const hm = (hs) => hs.join(" / ");
 const slot = (d, hs) => [d ? d.long : "", hs && hs.length ? hm(hs) : ""].filter(Boolean).join(", ");
 
+// The track function keeps the first row per day and event, so the first tap
+// is req_submit_attempt and later taps are req_submit_retry (with a count).
+let attempts = 0;
 $("youForm").onsubmit = async (ev) => {
   ev.preventDefault();
   const btn = $("send");
   if (btn.disabled) return;
   $("sendErr").textContent = "";
+  if (blocked) { $("sendErr").textContent = t("blocked"); return; }
+  const note = $("note").value.trim().replace(/\s+/g, " ").slice(0, 240);
+  if (EROTIC_RE.test(note) || (S.other && EROTIC_RE.test(S.area || ""))) {
+    blocked = true;
+    track("req_blocked");
+    $("sendErr").textContent = t("blocked");
+    return;
+  }
   const invalid = ["name", "email", "phone"].filter((k) => !valid[k]());
   for (const k of ["name", "email", "phone"]) setErr(k, invalid.includes(k));
-  track("req_submit_attempt", { invalid });
+  // A likely typo stops the first tap only: tapping Send again sends as typed.
+  const em = $("email").value.trim().toLowerCase();
+  if (!invalid.includes("email") && showTypo() && !typoSeen.has(em)) { typoSeen.add(em); invalid.push("email_typo"); }
+  attempts++;
+  track(attempts === 1 ? "req_submit_attempt" : "req_submit_retry", { invalid, n: attempts });
   if (invalid.length) {
-    const el = $(invalid[0]);
+    const el = $(invalid[0] === "email_typo" ? "email" : invalid[0]);
     el.focus({ preventScroll: true });
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     return;
@@ -668,9 +960,13 @@ $("youForm").onsubmit = async (ev) => {
     S.therapist === "female" ? "Prefiere masajista mujer" : S.therapist === "male" ? "Prefiere masajista hombre" : "",
     S.times.length > 1 ? `También le va: ${S.times.slice(1).join(", ")}` : "",
     S.loc ? `Ubicación: ${S.loc.lat.toFixed(5)},${S.loc.lng.toFixed(5)}` : "",
+    note ? `Nota del cliente: ${note}` : "",
   ].filter(Boolean).join("; ");
+  // The group size goes on `want`, as the old website wizard sent it, so the
+  // studio reads it in the ask itself.
+  const people = S.people === "3" ? "3+" : S.people;
   const body = {
-    want: S.massage, area: S.area || "Madrid",
+    want: isGroup() ? `${S.massage} · Personas: ${people}` : S.massage, area: S.area || "Madrid",
     when: slot(S.day, S.times),
     // Structured, so the studio reads "a las 18:00" and is only asked if it is
     // open at that hour (dispatch-studios v16).
@@ -688,22 +984,22 @@ $("youForm").onsubmit = async (ev) => {
     const r = await fetch(LEAD, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(j.error || r.status);
-    track("req_submit_ok", { request_id: j.id, has_phone: !!phone, gender: S.therapist, massage: S.massage, times: S.times.length, located: !!S.loc, remind: S.remind ? 30 : 0 });
+    track("req_submit_ok", { request_id: j.id, has_phone: !!phone, gender: S.therapist, massage: S.massage, times: S.times.length, located: !!S.loc, remind: S.remind ? 30 : 0, people: isGroup() ? people : null, has_note: !!note, other_area: S.other, flexible: !!(S.day && S.day.i === 99), attempts });
+    forget();
     btn.textContent = t("send"); btn.disabled = false;
     done(j.id, name, phone || "", email);
   } catch (e) {
     track("req_submit_error", { error: String(e && e.message || e).slice(0, 120) });
-    $("sendErr").textContent = t("sendErr");
+    $("sendErr").innerHTML = t("sendErr").replace("<a>", `<a href="https://wa.me/${BOT}">`);
     btn.textContent = t("send"); btn.disabled = false;
   }
 };
-
-const mask = (email) => { const at = email.lastIndexOf("@"); return at > 0 ? email[0] + "***@" + email.slice(at + 1) : email; };
 
 function done(id, name, phone, email) {
   sent = { id, name, phone, email };
   renderDone();
   go("done");
+  try { history.replaceState({ mcReq: "done" }, ""); } catch {}
 }
 
 // Drawn from `sent`, so the EN|ES toggle redraws it in the other language.
@@ -716,8 +1012,9 @@ function renderDone() {
   $("reqNo").textContent = id ? t("req").replace("{n}", id) : "Massage Club";
   $("summary").innerHTML = [
     row(m.e, t("kMassage"), m[L][0]),
-    row("🗓️", t("kWhen"), S.day ? [S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ") : ""),
+    row("🗓️", t("kWhen"), S.day ? [S.day.i === 99 ? t("anyDay") : S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ") : ""),
     row("📍", t("kWhere"), anywhere ? t("anywhere") : (S.loc ? t("located").replace("{a}", S.area === "Madrid" ? t("you") : S.area) : S.area)),
+    isGroup() ? row("👥", t("kPeople"), (t("peopleOpts").find(([v]) => v === S.people) || [, S.people])[1]) : "",
     who && S.therapist !== "any" ? row("👤", t("kWho"), who[1]) : "",
     row("💶", t("kPrice"), t(S.massage === "Couples" ? "priceDoneCouples" : "priceDone")),
     S.remind ? row("✨", t("kRemind"), t("remindVal")) : "",
@@ -728,7 +1025,9 @@ function renderDone() {
     phone && id ? t("next2Phone") : t("next2"),
     t("next3"),
   ].map((x) => `<li><span>${x}</span></li>`).join("");
-  $("mail").innerHTML = email ? `${MAIL}<span>${esc(t("mail").replace("{m}", mask(email)))}</span>` : "";
+  // The full address, so a typo can still be seen: it is the customer's own
+  // screen, seconds after they typed it.
+  $("mail").innerHTML = email ? `${MAIL}<span>${esc(t("mail").replace("{m}", email))}</span>` : "";
   // The bot joins this request only by its number plus the same phone, so
   // the button shows only when both exist. "(#id)" must follow "website" or
   // "la web" directly (wa-bot WEB_HANDOFF_RE).
@@ -741,14 +1040,30 @@ function renderDone() {
   }
 }
 
+const startAt = restore();
 paint();
-show(0);
-send({ path: location.pathname, ref: document.referrer || null });
+show(startAt);
+// Pageviews. A visitor who landed on "/" or "/start" and hopped here gets the
+// pageview the React page used to send for that path, with the real referrer,
+// so the weekly path-based numbers still see home traffic. Then /reserve.
+if (HOP && PATH_SRC[HOP.path]) send({ path: HOP.path, ref: REF || null });
+send({ path: location.pathname, ref: REF || null });
 {
   const utm = {};
   for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "fbclid", "gclid"]) { const v = q.get(k); if (v) utm[k] = k.endsWith("clid") ? "1" : v.slice(0, 80); }
-  track("req_view", { src: q.get("src") || null, ref: (document.referrer || "").replace(/^https?:\/\/([^/]+).*/, "$1") || "direct", ...utm });
+  const nav = String(navigator.language || "").toLowerCase().slice(0, 8) || null;
+  track("req_view", { src: SRC, ref: refHost(REF), entry: HOP ? HOP.path : null, navlang: nav, restored: startAt > 0, ...utm });
+  // Campaign attribution, as the website's logCampaignVisit (src/lib/siteVisit.ts).
+  if (q.get("utm_source") || q.has("gclid")) {
+    send({ event: "campaign_visit", path: HOP && PATH_SRC[HOP.path] ? HOP.path : location.pathname, slug: null, partner_slug: null, meta: {
+      lang: L, host: location.hostname, v: "ds1", source: q.get("utm_source") || "gclid", medium: q.get("utm_medium"), campaign: q.get("utm_campaign"),
+      term: q.get("utm_term"), content: q.get("utm_content"), gclid: q.has("gclid"),
+    } });
+  }
 }
+// Tags after the page is up, never in the way of the first screen.
+const later = () => setTimeout(() => { loadGtag(); loadClarity(); }, 1200);
+if (document.readyState === "complete") later(); else window.addEventListener("load", later, { once: true });
 })();
 </script>
 </body>

@@ -1,5 +1,6 @@
 import { studioImageFallback } from "@/lib/studioImages";
 import { servicePrimaryName } from "@/lib/serviceName";
+import { formatPrice } from "@/lib/localeFormat";
 import { findMassageType } from "@/lib/massageTypes";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
@@ -586,8 +587,14 @@ export default function MassageList() {
                         onClick={(e) => { e.stopPropagation(); rememberPosition(); }}
                         className="relative h-24 w-24 rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block"
                       >
-                        {m.image && (
-                          <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
+                        {/* Jordan: "show customers the real studio". Only the studio's
+                            own photo stands for the place; without one the tile
+                            shows its initial and neighbourhood, never a stock
+                            picture that looks like the studio. */}
+                        {m.ownImage ? (
+                          <img src={m.ownImage} alt={m.studio} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
+                        ) : (
+                          <PlaceTile name={m.studio} hood={"district" in m && m.district ? m.district : null} />
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavourite(m as any); }}
@@ -634,7 +641,7 @@ export default function MassageList() {
                           const svc = (m as any).partner_services?.[0];
                           if (!svc) return null;
                           const typed = findMassageType(svc.name_en, svc.name);
-                          const label = typed?.name.en || servicePrimaryName(svc, "");
+                          const label = (typed ? typed.name[lang] : "") || servicePrimaryName(svc, "", lang);
                           const price = svc?.price ?? (m as any).price;
                           const minutes = Number(svc?.duration) > 0 ? Number(svc.duration) : null;
                           if (!label) return null;
@@ -643,7 +650,7 @@ export default function MassageList() {
                               <span className="font-medium">{label}</span>
                               {price != null && (
                                 <span className="font-semibold text-primary">
-                                  {minutes ? ` · ${minutes} min · €${price}` : ` · €${price}`}
+                                  {minutes ? ` · ${minutes} min · ${formatPrice(Number(price), lang)}` : ` · ${formatPrice(Number(price), lang)}`}
                                 </span>
                               )}
                             </p>
@@ -752,5 +759,35 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * A studio with no photo of its own: its initial and neighbourhood on a warm,
+ * map-like tile. Honest about what we have, instead of a stock picture that
+ * reads as the studio's room.
+ */
+function PlaceTile({ name, hood }: { name: string; hood: string | null }) {
+  const initial = (name || "").trim().charAt(0).toUpperCase() || "M";
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="place-tile"
+      className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-[#9A4A2C]"
+      style={{
+        backgroundColor: "#F3E6DA",
+        backgroundImage:
+          "linear-gradient(rgba(154,74,44,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(154,74,44,.09) 1px, transparent 1px)",
+        backgroundSize: "14px 14px",
+      }}
+    >
+      <span className="font-display text-3xl font-semibold leading-none">{initial}</span>
+      {hood && (
+        <span className="flex max-w-[88px] items-center gap-0.5 px-1 text-[11px] font-semibold leading-tight text-[#5E4A3D]">
+          <MapPin className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{hood}</span>
+        </span>
+      )}
+    </div>
   );
 }

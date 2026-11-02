@@ -42,6 +42,10 @@ export const FILES: string[] = [
   "src/app/screens/MassageList.tsx",
   "src/components/ConsentBanner.tsx",
   "src/app/screens/StudioBookingPage.tsx",
+  // Added in the review fixes (2 Nov): /survey is linked from Login.
+  "src/app/screens/Survey.tsx",
+  "src/app/screens/SurveyCustomers.tsx",
+  "src/app/screens/SurveyStudios.tsx",
 ];
 
 const EM_EN = /[—–]/;
@@ -169,6 +173,66 @@ describe("no em dashes, en dashes or spaced hyphens in customer copy", () => {
       expect(bad).toEqual([]);
     });
   }
+});
+
+/**
+ * House rules beyond dashes (CLAUDE.md): never "instant" booking or
+ * confirmation (nothing is booked until the customer taps Yes), and never a
+ * detox, toxin or immunity claim.
+ */
+const BANNED: Array<[RegExp, string]> = [
+  [/\binstant(ly)?\s+(confirm|book)/i, "instant"],
+  [/\b(confirm\w*|book\w*)\s+(instantly|right away|immediately)\b/i, "instant"],
+  [/\b(confirm\w*|reserv\w*)\s+(al instante|inmediatamente|de inmediato)/i, "al instante"],
+  [/confirmaci[oó]n (inmediata|instant[aá]nea|al instante)/i, "al instante"],
+  [/\bdetox|desintox/i, "detox"],
+  [/\btoxin/i, "toxin"],
+  [/\bboosts? (your )?immun|sistema inmun/i, "immunity"],
+];
+/** Files that may name a claim to debunk it ("Releases toxins" is a myth). */
+const BANNED_ALLOW: Record<string, string[]> = {
+  "src/pages/guides/IsMassageGoodForYou.tsx": ["detox", "toxin", "immunity"],
+};
+export function bannedProblem(text: string, allow: string[] = []): string | null {
+  for (const [re, why] of BANNED) if (!allow.includes(why) && re.test(text)) return why;
+  return null;
+}
+
+describe("no instant-booking or detox claims in customer copy", () => {
+  for (const lang of LOCALES) {
+    it(`src/i18n/${lang}.json`, () => {
+      const json = JSON.parse(fs.readFileSync(path.join(ROOT, "src/i18n", `${lang}.json`), "utf8"));
+      const found: { where: string; text: string }[] = [];
+      walkJsonStrings(json, "", found);
+      // partner.* keys are the studio portal, not customer copy.
+      const bad = found
+        .filter((f) => !f.where.startsWith("partner."))
+        .map((f) => ({ ...f, why: bannedProblem(f.text) }))
+        .filter((f) => f.why)
+        .map((f) => `${f.where} (${f.why}): ${f.text}`);
+      expect(bad).toEqual([]);
+    });
+  }
+  for (const rel of expandFiles(FILES)) {
+    it(rel, () => {
+      const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+      const strings = rel.endsWith(".html") ? htmlStrings(src) : codeStrings(src, rel);
+      const bad = strings
+        .map((s) => ({ ...s, why: bannedProblem(s.text, BANNED_ALLOW[rel]) }))
+        .filter((s) => s.why)
+        .map((s) => `${rel}:${s.line} (${s.why}): ${s.text.trim().slice(0, 140)}`);
+      expect(bad).toEqual([]);
+    });
+  }
+  it("catches the claims it is for", () => {
+    expect(bannedProblem("Instant confirmation")).toBe("instant");
+    expect(bannedProblem("Confirmación al instante")).toBe("al instante");
+    expect(bannedProblem("Your time is confirmed right away.")).toBe("instant");
+    expect(bannedProblem("Passer pour l'instant")).toBeNull();
+    expect(bannedProblem("Detox feeling")).toBe("detox");
+    expect(bannedProblem("Releases toxins")).toBe("toxin");
+    expect(bannedProblem("Nothing is booked until you tap Yes.")).toBeNull();
+  });
 });
 
 describe("the dash check itself", () => {

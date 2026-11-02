@@ -103,9 +103,9 @@ const QUESTIONS: Q[] = [
     question: "What would you typically pay for a 60-minute massage in Madrid?",
     options: [
       { value: "under_40", label: "Under €40" },
-      { value: "40_60", label: "€40–60" },
-      { value: "60_80", label: "€60–80" },
-      { value: "80_100", label: "€80–100" },
+      { value: "40_60", label: "€40 to €60" },
+      { value: "60_80", label: "€60 to €80" },
+      { value: "80_100", label: "€80 to €100" },
       { value: "100_plus", label: "€100+" },
     ],
   },
@@ -273,7 +273,7 @@ export default function SurveyCustomers() {
         <link href={FONT_CSS} rel="stylesheet" />
         <div className="max-w-md w-full text-center py-16">
           <div className="text-5xl mb-4">🙏</div>
-          <h1 style={serif} className="text-4xl mb-3">That's everything — thank you!</h1>
+          <h1 style={serif} className="text-4xl mb-3">That's everything. Thank you!</h1>
           <p className="text-[#7A7068] mb-8">You've helped shape the easiest way to book a massage in Madrid.</p>
           <button
             onClick={() => navigate("/studios")}
@@ -297,8 +297,8 @@ export default function SurveyCustomers() {
           <h1 style={serif} className="text-3xl mb-2">Round {waveNumber} of {TOTAL_WAVES} done!</h1>
           <p className="text-[#7A7068] mb-8">
             {email.trim()
-              ? "We'll email you the next round too — or keep going right now."
-              : "Keep the momentum — just a couple more."}
+              ? "We'll email you the next round too, or keep going right now."
+              : "Keep the momentum: just a couple more."}
           </p>
           <button
             onClick={continueNextWave}
@@ -322,7 +322,7 @@ export default function SurveyCustomers() {
         <link href={FONT_CSS} rel="stylesheet" />
         <div className="max-w-xl mx-auto px-5 py-10">
           <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">Round 1 of {TOTAL_WAVES} · almost there</p>
-          <h1 style={serif} className="text-3xl leading-tight mb-2">Nice — where should we send the next rounds? ✨</h1>
+          <h1 style={serif} className="text-3xl leading-tight mb-2">Nice! Where should we send the next rounds? ✨</h1>
           <p className="text-[#7A7068] mb-6">Leave your email and we'll send you rounds 2 &amp; 3 (2 minutes total) plus early access. Optional, but it helps a lot.</p>
 
           <input

@@ -26,6 +26,22 @@ export function isValidPhone(value: string): boolean {
 }
 
 /**
+ * The phone as every request stores it: "+<country><number>", or null when
+ * the field has no digit in it ("" or a lone "+"). Bot lookups match the exact
+ * "+<digits>" form, so "+34 612 345 678" with spaces never matched.
+ * A Spanish number typed without a prefix ("612 345 678") becomes +34;
+ * "0034..." becomes "+34...". Same rule as intl() in public/go.html.
+ */
+export function normalizePhone(value: string | null | undefined): string | null {
+  const raw = String(value ?? "");
+  if (!/\d/.test(raw)) return null;
+  let d = raw.replace(/[^0-9+]/g, "");
+  if (d.startsWith("00")) d = "+" + d.slice(2);
+  if (d.startsWith("+")) return "+" + d.slice(1).replace(/\D/g, "");
+  return /^[6789]\d{8}$/.test(d) ? "+34" + d : "+" + d;
+}
+
+/**
  * Copy for the now mandatory email field. Email is our only reliable channel
  * once the 24 hour WhatsApp reply window closes, so every booking request
  * form asks for it and blocks submission without a valid one.

@@ -215,7 +215,10 @@
       "call": "Chiama",
       "chat": "Chatta",
       "whatsapp": "Chiedi su WhatsApp",
-      "whatsappEs": "Preguntar por WhatsApp"
+      "whatsappEs": "Preguntar por WhatsApp",
+      "notFoundTitle": "Non abbiamo trovato questo centro.",
+      "notFoundSub": "Possiamo comunque chiedere a centri massaggi professionali vicino a te.",
+      "askStudiosNearMe": "Chiedi ai centri vicino a me"
     },
     "calendar": {
       "back": "Indietro",
