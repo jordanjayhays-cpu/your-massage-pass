@@ -57,7 +57,17 @@ type Props = {
   onHoverStudio?: (key: string | null) => void;
   /** Enables the "Search this area" chip and reports the visible bounds. */
   onSearchArea?: (bounds: MapBounds) => void;
+  /**
+   * The map is a sticky full-height column from 900px (/studios). There the
+   * "Bigger map" toggle has nothing to add, so it hides, and the zoom buttons
+   * move to the top right, clear of the WhatsApp bubble in the bottom corner.
+   */
+  desktopSticky?: boolean;
 };
+
+/** Same breakpoint as the `min-[900px]:` classes. */
+const isDesktop = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(min-width: 900px)").matches;
 
 /** Branded clay pin: solid clay circle, white centre dot, white border. */
 function brandPin(active: boolean, visited = false) {
@@ -153,6 +163,7 @@ export default function StudioMap({
   highlightedKey = null,
   onHoverStudio,
   onSearchArea,
+  desktopSticky = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -253,6 +264,9 @@ export default function StudioMap({
    * so the page has settled first.
    */
   useEffect(() => {
+    // Never by itself on a computer: there it covered the whole list a second
+    // after load. Desktop visitors still opt in with "Tap to locate".
+    if (isDesktop()) return;
     if (!autoAskOnMobile) return;
     if (locationChoiceMade() || locationSheetAutoShown()) return;
 
@@ -280,6 +294,9 @@ export default function StudioMap({
           zoom: userLoc ? 14 : 13,
           disableDefaultUI: true,
           zoomControl: true,
+          ...(desktopSticky && isDesktop()
+            ? { zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP } }
+            : {}),
           // One finger moves the map and pinch zooms; no "use two fingers"
           // overlay (Jordan, 15 Oct).
           gestureHandling: "greedy",
@@ -455,7 +472,7 @@ export default function StudioMap({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-label={expanded ? "Smaller map" : "Bigger map"}
-          className="absolute top-3 right-3 z-10 h-9 w-9 flex items-center justify-center rounded-full bg-card/95 backdrop-blur-sm shadow-soft border border-border/60 hover:bg-card transition"
+          className={`absolute top-3 right-3 z-10 h-9 w-9 flex items-center justify-center rounded-full bg-card/95 backdrop-blur-sm shadow-soft border border-border/60 hover:bg-card transition${desktopSticky ? " min-[900px]:hidden" : ""}`}
         >
           {expanded ? <Minimize2 className="h-4 w-4 text-foreground" /> : <Maximize2 className="h-4 w-4 text-foreground" />}
         </button>
@@ -472,7 +489,7 @@ export default function StudioMap({
               <Compass className="h-3 w-3 text-primary" />
             )}
           </div>
-          <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
+          <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase min-[900px]:text-[13px] min-[900px]:font-semibold min-[900px]:normal-case min-[900px]:tracking-normal">
             {locating
               ? t("app.massageList.locating", "Locating you…")
               : userLoc
@@ -499,7 +516,7 @@ export default function StudioMap({
 
         {geoError && (
           <div className="absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground min-[900px]:text-[13px]">
               {t("app.massageList.geoError", "We could not get your location. Showing studios around central Madrid.")}
             </p>
           </div>
