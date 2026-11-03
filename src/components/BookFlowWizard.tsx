@@ -1092,7 +1092,7 @@ export default function BookFlowWizard({
   return (
     <div ref={rootRef}>
       {showBrand && (
-        <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-primary">{t.brand}</p>
+        <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-primary min-[900px]:hidden">{t.brand}</p>
       )}
 
       {/* Progress */}
@@ -1104,7 +1104,7 @@ export default function BookFlowWizard({
           return (
             <div
               key={label}
-              className={`flex items-center gap-1.5 h-8 px-3 rounded-full border text-xs whitespace-nowrap ${
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-full border text-xs min-[900px]:text-[13px] whitespace-nowrap ${
                 active
                   ? "bg-primary text-primary-foreground border-primary font-semibold"
                   : done
@@ -1403,9 +1403,11 @@ export default function BookFlowWizard({
       </div>
 
       {/* Sticky Continue: only appears once the inline one has scrolled away,
-          so exactly one actionable Continue is visible at any scroll position. */}
+          so exactly one actionable Continue is visible at any scroll position.
+          Phones and tablets only: from 900px the inline Continue is the one
+          (desktop fix F6b), as on MassageTypePage. */}
       {!inlineContinueVisible && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] min-[900px]:hidden">
           <div className="max-w-2xl mx-auto">
             {stickySummary && (
               <p className="mb-1.5 text-center text-xs font-semibold text-muted-foreground truncate">{stickySummary}</p>

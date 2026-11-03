@@ -15,6 +15,7 @@ import { savedLocationResult } from "@/lib/locationConsent";
 import { hasWhatsapp } from "@/app/lib/whatsapp";
 import { trackEvent } from "@/lib/siteVisit";
 import { cn } from "@/lib/utils";
+import { PlaceTile } from "@/app/components/PlaceTile";
 
 const LANG_LABEL: Record<string, string> = {
   en: "English",
@@ -293,7 +294,9 @@ export default function Compare() {
 
   return (
     <div className="min-h-screen bg-background pb-32">
-      <div className="mx-auto max-w-[1100px] px-4 md:px-8 pt-5">
+      {/* From 900px: the site's 1120px container with 20px gutters, under the
+          shared header (App.tsx wraps this route in SiteChromeLayout). */}
+      <div className="mx-auto max-w-[1100px] px-4 md:px-8 pt-5 desk:max-w-page desk:px-5 desk:pt-8">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -356,14 +359,19 @@ export default function Compare() {
                     ))}
                   </div>
                 )}
+                {/* Only the studio's own photo stands for the place (as on the
+                    /studios cards); without one, its initial and neighbourhood,
+                    never a stock picture that looks like the studio. */}
                 <Link to={studioPath(s)} className="block relative h-28 rounded-2xl overflow-hidden bg-secondary">
-                  {s.image && (
+                  {s.ownImage ? (
                     <img
-                      src={s.image}
+                      src={s.ownImage}
                       alt={s.studio}
                       onError={studioImageFallback}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
+                  ) : (
+                    <PlaceTile name={s.studio} hood={s.district || null} />
                   )}
                 </Link>
                 <Link

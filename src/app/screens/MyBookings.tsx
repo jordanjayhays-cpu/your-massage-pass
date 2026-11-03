@@ -132,7 +132,7 @@ export default function MyBookings() {
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
           {t("auth.description")}
         </p>
-        <button onClick={() => navigate("/")} className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg">
+        <button onClick={() => navigate("/login")} className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg">
           {t("auth.signIn")}
         </button>
         <button onClick={() => navigate("/studios")} className="mt-3 text-sm text-gray-500 underline">
@@ -368,7 +368,7 @@ function RescheduleModal({
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-display text-lg font-bold text-gray-900">{t("rescheduleModal.title")}</h3>
-              <p className="text-sm text-gray-500">{booking.spa_name} — {booking.massage_type}</p>
+              <p className="text-sm text-gray-500">{booking.spa_name} · {booking.massage_type}</p>
             </div>
             <button onClick={onClose} className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
               <X size={16} />

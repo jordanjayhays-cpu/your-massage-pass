@@ -83,7 +83,7 @@ export default function ExploreMassageTypes() {
               className="flex flex-col rounded-2xl border border-border bg-card p-3.5 shadow-soft motion-safe:transition-all hover:-translate-y-0.5 hover:shadow-elegant focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               <h4 className="font-display text-base font-bold leading-tight text-foreground">{type.name.en}</h4>
-              <p className="text-xs text-muted-foreground">{type.name.es}</p>
+              <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">{type.name.es}</p>
 
               {v && (
                 <span className="mt-2 inline-flex items-center">
@@ -98,7 +98,7 @@ export default function ExploreMassageTypes() {
                     return (
                       <span
                         key={k}
-                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold min-[900px]:text-[13px]"
                         style={{ background: c.bg, color: c.fg, border: `1px solid ${c.border}` }}
                       >
                         {BEST_FOR_LABELS[k].en}
@@ -109,13 +109,13 @@ export default function ExploreMassageTypes() {
               )}
 
               {type.firstTimer && (
-                <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-[#FBEFE8] px-2 py-0.5 text-[10px] font-semibold text-[#B85C38]">
+                <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-[#FBEFE8] px-2 py-0.5 text-[10px] font-semibold text-[#B85C38] min-[900px]:text-[13px]">
                   <Sparkles size={11} /> Great first massage
                 </span>
               )}
 
               {count > 0 && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-[11px] text-muted-foreground min-[900px]:text-[13px]">
                   {count} {count === 1 ? "studio" : "studios"} <span className="opacity-70">/ {count} {count === 1 ? "estudio" : "estudios"}</span>
                 </p>
               )}

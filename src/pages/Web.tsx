@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
 
 const HERO_IMG =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDxeaNyLnXkeBT2dbpMX2zYNIXLilfjVHy2-ZYdxxt-Qz96RWXVq8ByRIFbypkRZAFsvCYxOUnaj7G0ehW0VPaxP8RE0nks98I9JHL5vxlzFO8kSNuYBqf7wSkzD54uJ3PIN5137TDMdzYAkcbmQPLOi3N4Mlkt8VMgYCPUThkf5Um1vQ4HcYfR17UMpgGa0FTsHTlyXvD5STZOzFyet02k1u8FhrOLN2JiHK8_1dsZNOF_D_oZXuxWZj7hXSJr2j8I4jsAuy49e3mK";
@@ -18,7 +17,7 @@ type FeaturedStudio = {
 
 const STEPS = [
   { n: "01", t: "Browse by barrio", d: "Chamberí, Chueca, Salamanca, Malasaña. Real services, real prices, in English." },
-  { n: "02", t: "Book online, or let us write the message", d: "Some studios take bookings here directly. The rest use WhatsApp — we'll write your message in Spanish so you don't have to." },
+  { n: "02", t: "You pick the time", d: "We ask the studios for you in Spanish and send you their times. Nothing is booked until you tap Yes." },
   { n: "03", t: "Turn up and switch off", d: "You'll get a confirmation with the address and how to get in. Pay at the studio." },
 ];
 
@@ -26,7 +25,7 @@ export default function Web() {
   const [studios, setStudios] = useState<FeaturedStudio[]>([]);
 
   useEffect(() => {
-    document.title = "Massage in Madrid, in English — Massage Club";
+    document.title = "Massage in Madrid, in English · Massage Club";
     const meta = document.querySelector('meta[name="description"]') || (() => {
       const m = document.createElement("meta");
       m.setAttribute("name", "description");
@@ -35,7 +34,7 @@ export default function Web() {
     })();
     meta.setAttribute(
       "content",
-      "50+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio."
+      "50+ Madrid massage studios with real prices and services. We ask the studios for you in Spanish and send you their times. No booking fee: you pay the studio."
     );
   }, []);
 
@@ -111,7 +110,7 @@ export default function Web() {
               Your first massage in Madrid
             </h1>
             <p className="text-lg text-[#7A7068] max-w-xl mb-8">
-              50+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.
+              50+ studios with real prices, in English. We ask the studios for you in Spanish. You pay at the studio.
             </p>
             <div className="flex flex-wrap gap-3 mb-4">
               <Link
@@ -216,7 +215,7 @@ export default function Web() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#56433a]">Massage · Madrid</span>
                   <span className="text-base font-medium text-[#99420d]">
-                    {s.price_from != null ? `from €${s.price_from}` : "—"}
+                    {s.price_from != null ? `from €${s.price_from}` : ""}
                   </span>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#f1e6e2] flex items-center justify-between">
@@ -243,8 +242,7 @@ export default function Web() {
               From sore to sorted in three steps.
             </h2>
           </div>
-          <div className="grid gap-10 lg:grid-cols-[320px_1fr] lg:items-center">
-            <HowBookingWorksVideo label="How booking works" />
+          <div>
             <div className="grid md:grid-cols-3 gap-10">
               {STEPS.map((step) => (
                 <div key={step.n}>
@@ -270,7 +268,7 @@ export default function Web() {
         <div className="max-w-6xl mx-auto px-6 lg:px-10">
           <div className="max-w-3xl space-y-4 text-[#56433a] leading-relaxed">
             <p>We don't take a cut of your massage. The prices you see are the studio's own.</p>
-            <p>We won't promise your therapist speaks English — some do, some don't. What we promise is that booking the appointment doesn't need Spanish.</p>
+            <p>We won't promise your therapist speaks English. Some do, some don't. What we promise is that booking the appointment doesn't need Spanish.</p>
             <p>Every studio here is a real place we found, checked and listed by hand.</p>
           </div>
         </div>

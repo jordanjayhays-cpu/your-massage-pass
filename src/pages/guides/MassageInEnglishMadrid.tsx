@@ -4,7 +4,7 @@ import GuideLayout, { CalmaCard, GuideLinks } from "./GuideLayout";
 const FAQS: { q: string; a: string }[] = [
   {
     q: "Do Madrid massage studios speak English?",
-    a: "Some do, many don't — and even where a therapist speaks English, the booking itself usually happens by phone or WhatsApp in Spanish. Massage Club exists to remove that step: you browse and book in English online, and the studio receives your request already translated into the details they need.",
+    a: "Some do, many don't. And even where a therapist speaks English, the booking itself usually happens by phone or WhatsApp in Spanish. Massage Club exists to remove that step: you browse and book in English online, and the studio receives your request already translated into the details they need.",
   },
   {
     q: "Do I pay online?",
@@ -12,22 +12,22 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Can I cancel?",
-    a: "Yes. Every confirmation email contains a one-click cancel link, so you can release the slot in a second without phoning anyone or writing in Spanish.",
+    a: "Yes. Need to change or cancel? Reply to the email or message us on WhatsApp. No phone call to the studio and no Spanish needed.",
   },
   {
     q: "What does a massage cost in Madrid?",
-    a: "A 60-minute massage in Madrid typically costs between €45 and €90 depending on the type of treatment, the neighbourhood and the studio. Relaxing massages sit at the lower end, deep tissue and specialised work at the higher end.",
+    a: "A 60-minute massage in Madrid usually costs €50 to €85, depending on the type of treatment, the neighbourhood and the studio. Relaxing massages sit at the lower end, deep tissue and specialised work at the higher end.",
   },
   {
     q: "Do I need to speak Spanish?",
-    a: "No. The booking flow is available in English and seven other languages, and your preferences — pressure level, focus areas, health notes — are sent to the studio in a structured form so nothing is lost in translation.",
+    a: "No. The booking flow is available in English and six other languages, and your preferences (pressure level, focus areas, health notes) are sent to the studio in a structured form so nothing is lost in translation.",
   },
 ];
 
 export default function MassageInEnglishMadrid() {
   const title = "Massage in Madrid, booked in English | Massage Club";
   const description =
-    "Book a massage in Madrid in English — browse real menus and prices, book online in 8 languages, pay at the studio. No prepayment, one-click cancellation.";
+    "Book a massage in Madrid in English: browse real menus and prices, ask in 7 languages, pay at the studio. No prepayment, and nothing is booked until you tap Yes.";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -61,7 +61,7 @@ export default function MassageInEnglishMadrid() {
 
         <h2 className="font-display text-2xl text-foreground mt-8">The problem: bookings happen by phone, in Spanish</h2>
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
-          Most independent massage studios in Madrid are small businesses — one or two therapists, a
+          Most independent massage studios in Madrid are small businesses: one or two therapists, a
           couple of treatment rooms, no receptionist. Their booking channel is a mobile phone. You
           call, or you send a WhatsApp, and someone replies between clients, in Spanish. Their
           Google listing often has no menu, so you don't know what a treatment costs until you ask.
@@ -78,26 +78,26 @@ export default function MassageInEnglishMadrid() {
         <ul className="mt-3 space-y-2 text-sm text-foreground/85">
           <li>
             <strong className="text-foreground">Browse in English.</strong> Real menus with real
-            prices and durations — what each treatment is, how long it lasts, what it costs, before
+            prices and durations: what each treatment is, how long it lasts, what it costs, before
             you commit to anything.
           </li>
           <li>
-            <strong className="text-foreground">Book online in 8 languages.</strong> Pick a day and
+            <strong className="text-foreground">Ask in 7 languages.</strong> Pick a day and
             time, choose your pressure (light, medium, firm or deep) and the areas you want worked
             on, and add any health notes. All of it in your own language.
           </li>
           <li>
-            <strong className="text-foreground">One-tap studio confirmation.</strong> The studio gets
-            your request with every detail already structured, and confirms with a single tap. You
-            get an email the moment they do.
+            <strong className="text-foreground">We ask the studio for you.</strong> Massage Club
+            sends your request to the studio in Spanish. When the studio answers, you get its time by
+            email, and it's booked only when you tap Yes.
           </li>
           <li>
             <strong className="text-foreground">Pay at the studio.</strong> No prepayment, no card
             stored, no booking fee for you. You settle directly with the therapist afterwards.
           </li>
           <li>
-            <strong className="text-foreground">Cancel in one click.</strong> The confirmation email
-            carries a cancel link. No phone call needed.
+            <strong className="text-foreground">Change or cancel by message.</strong> Reply to the
+            email or message us on WhatsApp. No phone call needed.
           </li>
         </ul>
 
@@ -114,12 +114,12 @@ export default function MassageInEnglishMadrid() {
         <p className="text-sm text-foreground/85 mt-2 leading-relaxed">
           Arrive five minutes early. Treatments are quoted by table time, so a 60-minute massage is
           roughly 60 minutes of hands-on work plus a short consultation. Tipping is not expected in
-          Spain — the listed price is the price. If you have an injury, are pregnant, or take
+          Spain. The listed price is the price. If you have an injury, are pregnant, or take
           medication that affects circulation, say so in the health notes field when you book; the
           studio reads them before you arrive and adapts the session.
         </p>
         <p className="text-sm text-foreground/85 mt-3 leading-relaxed">
-          On price: a 60-minute treatment in Madrid generally lands between €45 and €90. Our{" "}
+          On price: a 60-minute treatment in Madrid usually costs €50 to €85. Our{" "}
           <a className="text-primary underline underline-offset-2" href="/guides/massage-prices-madrid">
             Madrid massage price guide
           </a>{" "}

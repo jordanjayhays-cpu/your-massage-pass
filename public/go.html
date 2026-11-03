@@ -3,14 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Book a massage · Massage Club</title>
-<meta name="description" content="Book a massage in Madrid in a few taps. We ask the best studios near you and send you their offers on WhatsApp. You pay at the studio, no fee.">
+<title>Book a massage in Madrid · Massage Club</title>
+<meta name="description" content="Pick the massage, day and area. We ask the studios. You pay at the studio.">
 <meta name="theme-color" content="#B85C38">
-<meta property="og:title" content="Your massage, sorted">
-<meta property="og:description" content="A few taps. Offers from Madrid's best studios on WhatsApp. Pay at the studio, no fee.">
+<meta property="og:title" content="Book a massage in Madrid">
+<meta property="og:description" content="Pick the massage, day and area. We ask the studios. You pay at the studio.">
+<link rel="canonical" href="https://book.massageclub.io/reserve">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Desktop only (900px and up): Outfit, the font of the rest of the site.
+     The media attribute keeps it off phones: not render-blocking there, and
+     no font file is fetched because nothing uses it under 900px. -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" media="(min-width:900px)">
 <!--
   go.html (5 Oct, Jordan): "partiful.com and book.massageclub.io, i want to mix
   these. Aesthetically pleasing to book a massage and simple, while capturing
@@ -18,19 +23,37 @@
 
   One question per screen, most answered with a single tap that moves on by
   itself. Same backend as the website wizard: POST to the `lead` function,
-  which writes whatsapp_requests and starts the studio asks. The rebooking
-  answers (pressure, therapist, how often) travel as `prefs`, and the reminder
-  is only ever opt-in: nothing is preselected.
+  which writes whatsapp_requests and starts the studio asks.
 
-  Prefill from the URL: ?n=<first name>&p=<phone>&e=<email>&lang=es
+  UX batch 1 (2 Nov): this page is the request flow for the whole site
+  (/reserve, and the home page after HN1).
+  - It opens on the massage question. The hello poster went: 3 of 7 real
+    visitors left there, and it claimed things we cannot back.
+  - The details screen asks for a name and an email (required, every booking
+    needs one) and an optional WhatsApp number. Send is never silently
+    disabled: it checks on tap and says what is missing, next to the field.
+  - The reminder is one opt-in toggle, off by default.
+  - The sent screen shows the request number and what happens next. The
+    WhatsApp button only shows with a phone, because the bot joins a web
+    request by its "(#id)" plus the same phone (wa-bot WEB_HANDOFF_RE).
+
+  Desktop (2 Nov, fix F10): from 900px the page has the site header and
+  footer, the flow card on the left and a sticky "What happens next" card on
+  the right, line icons instead of emoji and hover states. Under 900px
+  nothing changes (see the desktop block at the end of the <style>).
+
+  Prefill from the URL: ?n=<first name>&p=<phone>&e=<email>&lang=es&src=<where
+  the visitor came from>. n, p and e are read once and removed from the
+  address bar before anything is tracked.
 -->
 <style>
 :root{
   --clay:#B85C38; --clay-d:#9A4A2C; --peach:#E8B79E; --sage:#A9BFA6; --plum:#5B4A6E;
-  --cream:#F6F1EA; --ink:#262019; --muted:#7C7166; --line:rgba(38,32,25,.10);
-  --glass:rgba(255,252,248,.78); --chip:#fff;
+  --cream:#F6F1EA; --ink:#262019; --muted:#6B6157; --line:rgba(38,32,25,.10);
+  --glass:rgba(255,252,248,.78); --chip:#fff; --bad:#B03A2E;
 }
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{font-family:'DM Sans',-apple-system,system-ui,sans-serif;color:var(--ink);background:var(--cream);overflow-x:hidden}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
@@ -48,23 +71,22 @@ input{font:inherit;color:inherit}
 
 .app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
 .top{display:flex;align-items:center;gap:12px;height:44px}
-.back{width:40px;height:40px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);display:grid;place-items:center;font-size:18px;visibility:hidden}
-.back.on{visibility:visible}
+.back{width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(12px);display:grid;place-items:center;font-size:18px;flex:none}
+/* The wordmark sits where Back would be, on the first and the last screen. */
+.mark{font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;flex:none}
 .bar{flex:1;height:6px;border-radius:6px;background:rgba(255,255,255,.55);overflow:hidden}
 .bar b{display:block;height:100%;width:0;background:var(--ink);border-radius:6px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
-.lang{font-size:13px;font-weight:700;padding:8px 12px;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px)}
+.lang{font-size:13px;font-weight:700;padding:0 14px;min-height:44px;border-radius:999px;background:var(--glass);backdrop-filter:blur(12px);flex:none}
 
-.stage{flex:1;position:relative;margin-top:14px}
+.stage{flex:1;position:relative;margin-top:12px}
 .screen{display:none;animation:in .38s cubic-bezier(.2,.8,.2,1)}
 .screen.on{display:block}
 .screen.backwards{animation-name:inback}
 @keyframes in{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
 @keyframes inback{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
 
-.card{background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border:1px solid rgba(255,255,255,.6);border-radius:28px;padding:24px 20px;box-shadow:0 18px 50px rgba(80,40,20,.14)}
-.kicker{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--clay)}
+.kicker{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--clay-d)}
 h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:800;letter-spacing:-.02em;line-height:1.02}
-h1{font-size:clamp(42px,12vw,56px);margin-top:10px}
 h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .sub{color:rgba(38,32,25,.74);font-size:16px;line-height:1.45;margin-bottom:18px}
 /* Price chip (31 Oct): research found not one price on this page, and price is
@@ -74,28 +96,30 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
    because Couples is on the first screen and a couples hour is 100 to 170 EUR. */
 .price{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;margin:-6px 0 16px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid var(--line);font-size:14px;font-weight:500;line-height:1.25;color:var(--ink)}
 .price svg{width:15px;height:15px;flex:none;color:var(--clay)}
+.price span{text-wrap:balance}
 
-/* Invite poster */
-.poster{position:relative;border-radius:28px;overflow:hidden;aspect-ratio:1/1.05;background:linear-gradient(160deg,#C96A43 0%,#B85C38 45%,#8E4428 100%);color:#FFF6EE;padding:26px 22px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 24px 60px rgba(120,50,20,.35)}
-.poster .o{position:absolute;border-radius:50%}
-.poster .o1{width:66%;aspect-ratio:1;background:var(--peach);right:-20%;top:-20%;opacity:.9}
-.poster .o2{width:26%;aspect-ratio:1;background:var(--sage);right:30%;top:9%}
-.poster .o3{width:56%;aspect-ratio:1;background:rgba(255,246,238,.16);left:-20%;top:-20%}
-.poster .kicker{color:#FFE3D1;position:relative}
-.poster h1{position:relative;color:#FFF6EE;text-shadow:0 2px 24px rgba(0,0,0,.12)}
-.host{position:relative;display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:500;font-size:15px;color:#FFE9DC}
-.host span{width:26px;height:26px;border-radius:50%;background:#FFF6EE;color:var(--clay);display:grid;place-items:center;font-size:14px}
-.facts{margin:16px 0 18px;display:grid;gap:10px}
-.fact{display:flex;align-items:center;gap:14px;font-size:16px;font-weight:500}
-.fact .e{width:44px;height:44px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:21px;flex:none;box-shadow:0 4px 14px rgba(80,40,20,.08)}
-.fact small{display:block;color:var(--muted);font-weight:400;font-size:13.5px}
+/* Screen 1 says who we are in three lines, instead of a poster and a tap. */
+.hero{font-size:clamp(22px,7.1vw,28px);line-height:1.1;margin:2px 0 12px}
+.hero + .price{margin-top:0}
+.how{font-size:15.5px;margin:-4px 0 14px;text-wrap:balance}
+.s1q h2{font-size:clamp(24px,6.6vw,28px);margin:2px 0 12px}
+.trust{list-style:none;padding:0;margin:18px 4px 0;display:grid;gap:10px}
+.trust li{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35;font-weight:500}
+.trust svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--clay)}
+.foot{display:flex;flex-wrap:wrap;justify-content:center;gap:0 6px;margin:18px -8px 0}
+.foot a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;font-size:14px;font-weight:500;color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(107,97,87,.45)}
 
 /* Tap targets */
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tile{background:var(--chip);border-radius:22px;padding:16px 14px;text-align:left;border:2px solid transparent;box-shadow:0 6px 18px rgba(80,40,20,.07);transition:transform .12s,border-color .15s,background .15s}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{background:var(--chip);border-radius:22px;padding:14px 12px;text-align:left;border:2px solid transparent;box-shadow:0 6px 18px rgba(80,40,20,.07);transition:transform .12s,border-color .15s,background .15s}
 .tile:active{transform:scale(.97)}
-.tile .e{font-size:30px;display:block;margin-bottom:8px}
-.tile b{display:block;font-size:16.5px}
+.tile .e{font-size:26px;line-height:1;display:block;margin-bottom:8px}
+/* One line per title and per description at 390px in both languages, so
+   three rows of tiles fit a short phone screen. "Descontracturante" is one
+   long word: slightly smaller in Spanish, with a soft hyphen (Descontrac-turante)
+   for phones narrower than 390px. */
+.tile b{display:block;font-size:16px;letter-spacing:-.01em;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
+:lang(es) .tile b{font-size:15.5px}
 .tile small{color:var(--muted);font-size:13px;line-height:1.3;display:block;margin-top:2px}
 .tile.sel{border-color:var(--ink);background:#FFFDFB}
 .list{display:grid;gap:10px}
@@ -106,7 +130,7 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .row small{color:var(--muted);font-size:13.5px}
 .row.sel{border-color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{background:var(--chip);border-radius:999px;padding:11px 16px;font-weight:500;font-size:15px;border:2px solid transparent;box-shadow:0 4px 12px rgba(80,40,20,.06);transition:transform .12s,border-color .15s}
+.chip{background:var(--chip);border-radius:999px;padding:11px 16px;min-height:44px;font-weight:500;font-size:15px;border:2px solid transparent;box-shadow:0 4px 12px rgba(80,40,20,.06);transition:transform .12s,border-color .15s}
 .chip:active{transform:scale(.96)}
 .chip.sel{border-color:var(--ink);background:#FFFDFB}
 .chip small{color:var(--muted);font-weight:400;margin-left:4px}
@@ -125,75 +149,346 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .locate.done{background:var(--sage);color:var(--ink)}
 .note{font-size:13.5px;color:var(--muted);margin-top:8px;min-height:18px}
 
-.field{display:block;margin-bottom:12px}
-.field span{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:0 0 6px 4px}
-.field input{width:100%;background:#fff;border:2px solid transparent;border-radius:16px;padding:15px 16px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
-.field input:focus{border-color:var(--clay)}
-.field input.bad{border-color:#C0392B}
+/* Details. Labels above, the reason under the field, the error under that. */
+.field{display:block;margin-bottom:14px}
+.field label,.flabel{display:block;font-size:13.5px;font-weight:700;color:rgba(38,32,25,.78);margin:0 0 6px 4px}
+.field input,.field textarea{width:100%;background:#fff;border:2px solid transparent;border-radius:16px;padding:15px 16px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.field input:focus,.field textarea:focus{border-color:var(--clay)}
+.field input.bad{border-color:var(--bad)}
+.field textarea{resize:vertical;min-height:72px;line-height:1.4;font-family:inherit}
+.addlink{display:inline-flex;align-items:center;gap:4px;min-height:44px;margin-top:8px;padding:0 4px;font-size:15px;font-weight:700;color:var(--clay-d)}
+.count{float:right;font-weight:500;color:var(--muted)}
+.help{font-size:13.5px;line-height:1.4;color:var(--muted);margin:6px 4px 0}
+.ferr{display:flex;align-items:flex-start;gap:6px;font-size:14px;font-weight:500;line-height:1.35;color:var(--bad);margin:6px 4px 0}
+.ferr:empty{display:none}
+.ferr svg{width:16px;height:16px;flex:none;margin-top:1px}
+.flabel{margin-top:20px}
+.tog{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--chip);border-radius:18px;padding:13px 16px;min-height:52px;margin-top:20px;font-size:15.5px;font-weight:500;line-height:1.3;border:2px solid transparent;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.tog .box{width:22px;height:22px;border-radius:7px;border:2px solid rgba(38,32,25,.35);flex:none;display:grid;place-items:center;color:#fff}
+.tog .box svg{width:14px;height:14px;opacity:0}
+.tog[aria-checked="true"]{border-color:var(--ink);background:#FFFDFB}
+.tog[aria-checked="true"] .box{background:var(--ink);border-color:var(--ink)}
+.tog[aria-checked="true"] .box svg{opacity:1}
 
-.cta{width:100%;background:var(--clay);color:#fff;border-radius:999px;padding:18px;font-weight:700;font-size:17px;margin-top:18px;box-shadow:0 12px 28px rgba(184,92,56,.35);transition:transform .12s,opacity .2s}
+.cta{display:block;width:100%;text-align:center;text-decoration:none;background:var(--clay);color:#fff;border-radius:999px;padding:18px;font-weight:700;font-size:17px;margin-top:18px;box-shadow:0 12px 28px rgba(184,92,56,.35);transition:transform .12s,opacity .2s}
 .cta:active{transform:scale(.98)}
-.cta[disabled]{opacity:.45;box-shadow:none}
-.cta.dark{background:var(--ink);box-shadow:0 12px 28px rgba(38,32,25,.25)}
-.cta.wa{background:#1FA855;box-shadow:0 12px 28px rgba(31,168,85,.32)}
+.cta[disabled]{opacity:.6;box-shadow:none}
+.cta.wa{background:#15803D;box-shadow:0 12px 28px rgba(21,128,61,.30)}
 .skip{display:block;width:100%;text-align:center;margin-top:14px;font-weight:700;color:var(--muted);padding:6px}
-.consent{font-size:13px;color:var(--muted);line-height:1.45;margin-top:12px}
-.err{color:#B03A2E;font-size:14px;margin-top:10px;min-height:18px;text-align:center}
+.consent{font-size:13px;color:var(--muted);line-height:1.45;margin:10px 4px 0}
+.err{color:var(--bad);font-size:14px;margin-top:10px;text-align:center}
+.err:empty{display:none}
 
 /* The ticket */
 .ticket{background:#FFFDFB;border-radius:26px;overflow:hidden;box-shadow:0 24px 60px rgba(80,40,20,.18)}
-.ticket .head{background:linear-gradient(150deg,#C96A43,#8E4428);color:#FFF6EE;padding:22px 22px 26px;position:relative;overflow:hidden}
-.ticket .head .o{position:absolute;width:150px;height:150px;border-radius:50%;background:var(--peach);right:-40px;top:-50px;opacity:.85}
-.ticket .head .o2{position:absolute;width:70px;height:70px;border-radius:50%;background:var(--sage);right:46px;top:50px}
-.ticket .head h2{position:relative;color:#FFF6EE}
-.ticket .head p{position:relative;color:#FFE3D1;font-size:15px;margin-top:6px}
+.ticket .head{background:linear-gradient(150deg,#C96A43,#8E4428);color:#FFF6EE;padding:20px 22px 22px;position:relative;overflow:hidden}
+/* The circles stay in the top corner, clear of the (longer) title. */
+.ticket .head .o{position:absolute;width:150px;height:150px;border-radius:50%;background:var(--peach);right:-48px;top:-108px;opacity:.85}
+.ticket .head .o2{position:absolute;width:44px;height:44px;border-radius:50%;background:var(--sage);right:84px;top:-14px}
+.ticket .head h2{position:relative;color:#FFF6EE;font-size:26px;line-height:1.1;margin:8px 0 0;text-wrap:balance}
 .perf{height:22px;position:relative;background:radial-gradient(circle at 0 50%,transparent 11px,#FFFDFB 12px) left/51% 100% no-repeat,radial-gradient(circle at 100% 50%,transparent 11px,#FFFDFB 12px) right/51% 100% no-repeat}
 .perf:after{content:"";position:absolute;left:22px;right:22px;top:50%;border-top:2px dashed #E4D9CB}
-.ticket .body{padding:4px 22px 22px}
-.kv{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15.5px}
+.ticket .body{padding:0 22px 14px}
+/* Label and value share a line when they fit, so the WhatsApp button stays
+   on the first screen of a phone. */
+.kv{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15.5px;line-height:1.4}
 .kv:last-child{border:0}
-.kv .e{width:26px;text-align:center}
-.kv small{display:block;color:var(--muted);font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-.fine{text-align:center;color:var(--muted);font-size:13.5px;margin-top:14px;line-height:1.45}
-#confetti{position:fixed;inset:0;pointer-events:none;z-index:5}
+.kv .e{width:24px;flex:none;text-align:center}
+.kv small{display:inline-block;margin-right:8px;color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.next{background:rgba(255,253,251,.9);border:1px solid rgba(255,255,255,.6);border-radius:22px;padding:16px 18px;margin-top:14px;box-shadow:0 10px 30px rgba(80,40,20,.08)}
+.next h3{font-size:16px;font-weight:700;margin-bottom:10px}
+.next ol{list-style:none;padding:0;display:grid;gap:9px;counter-reset:s}
+.next li{display:flex;gap:12px;font-size:15px;line-height:1.4;counter-increment:s}
+.next li:before{content:counter(s);width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;flex:none;margin-top:-1px}
+.next li b{font-weight:700}
+.mail{display:flex;align-items:center;gap:8px;font-size:15px;margin:14px 4px 0;overflow-wrap:anywhere}
+.mail svg{width:18px;height:18px;flex:none;color:var(--clay)}
+.fine{text-align:center;color:var(--muted);font-size:13.5px;margin-top:14px;line-height:1.45;text-wrap:balance}
+
+/* "Did you mean ...@gmail.com?" One tap puts it right. */
+.typo{font-size:14px;line-height:1.4;margin:6px 4px 0;color:var(--ink)}
+.typo:empty{display:none}
+.typo button{font-weight:700;color:var(--clay-d);text-decoration:underline;text-underline-offset:3px;padding:10px 2px;margin:-10px 0;overflow-wrap:anywhere}
+/* "Other area": a street, a hotel or a town outside the chips. */
+.other{display:flex;gap:8px;margin-top:12px}
+.other input{flex:1;min-width:0;background:#fff;border:2px solid transparent;border-radius:16px;padding:13px 14px;font-size:16.5px;outline:none;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.other input:focus{border-color:var(--clay)}
+.other .cta{width:auto;margin:0;padding:0 20px;min-height:52px}
+.privacy{font-size:13px;color:var(--muted);line-height:1.45;margin:12px 4px 0;text-align:center}
+.privacy a,.err a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.err a{font-weight:700}
+/* Cookie choice: pinned to the bottom, small, and the page is padded by its
+   height while it shows, so it never sits on top of a button. */
+body{padding-bottom:var(--consent-h,0px)}
+.cbar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(255,253,251,.97);backdrop-filter:blur(12px);border-top:1px solid var(--line);box-shadow:0 -8px 24px -12px rgba(38,32,25,.18);padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+.cbar div{max-width:480px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.cbar p{flex:1 1 100%;font-size:13.5px;line-height:1.35}
+.cbar button{flex:1;min-height:44px;border-radius:999px;border:1.5px solid var(--clay-d);color:var(--clay-d);background:#fff;font-weight:700;font-size:14px}
+.cbar a{min-height:44px;display:inline-flex;align-items:center;padding:0 4px;font-size:13px;color:var(--muted);text-decoration:underline}
+
+/* ---------- Desktop (900px and up): a real page, not a phone card ----------
+   Desktop fix F10 (2 Nov). Phones and tablets under 900px keep the layout
+   above exactly: everything below is either inside a min-width:900px query or
+   hidden under 900px. From 900px:
+   - the site header and footer (static copies of the React SiteHeader and
+     SiteFooter: 64px header, one 1120px container with 20px gutters, so the
+     logo, the flow card and the footer share one left edge);
+   - no blobs and no glass, the cream page and white cards;
+   - two columns: the flow card on the left, a sticky "What happens next"
+     card with the price and the trust lines on the right;
+   - line icons instead of emoji, buttons sized to their label, hover states;
+   - the cookie choice as a 360px card in the bottom-left corner (F20).
+   Tokens: design system 3.11. The old names (--ink, --muted, --line, --clay)
+   are pointed at the new values from 900px, so the phone rules above pick
+   them up there and phones stay as they are. */
+:root{
+  --bg:#F7F4F0; --card:#FFFFFF; --sand:#EFE7DD; --brand-tint:#FBF1EB;
+  --action:#A34A22; --action-hover:#8A3D1A; --action-pressed:#74341A;
+  --control:#8F847B; --success:#2F6B3A; --success-tint:#EAF3EC;
+  --shadow-card:0 1px 2px rgb(33 28 26/.06),0 4px 16px -6px rgb(33 28 26/.10);
+  --shadow-sheet:0 24px 60px -24px rgb(33 28 26/.30);
+}
+.sh,.sf,.aside,.ic{display:none}
+/* .page wraps .app (and the desktop aside). Under 900px it is one screen tall,
+   so .app's min-height:100% resolves exactly as it did against <body>. */
+.page{height:100%}
+@media (min-width:900px){
+  :root{
+    --cream:#F7F4F0; --ink:#211C1A; --muted:#6B615B; --line:#E5DDD3; --bad:#B03A2E;
+    --clay:#A34A22; --clay-d:#A34A22;
+    --font:"Outfit","DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  html,body{height:auto}
+  body{min-height:100vh;display:flex;flex-direction:column;background:var(--bg);font-family:var(--font)}
+  .bg{display:none}
+  .e{display:none!important}
+  :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .wrap{width:100%;max-width:1120px;margin:0 auto;padding:0 20px}
+  a{color:inherit}
+
+  /* Site header (copy of src/components/SiteHeader.tsx). */
+  .sh{display:block;position:sticky;top:0;z-index:30;flex:none;height:64px;background:var(--bg);border-bottom:1px solid var(--line)}
+  .sh .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:24px}
+  .logo{display:inline-flex;align-items:center;gap:10px;height:44px;padding-right:8px;border-radius:999px;text-decoration:none;color:var(--ink);font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+  /* The avatar loads only here: phones never fetch it. */
+  .logo i{width:32px;height:32px;flex:none;border-radius:50%;background:var(--sand) url(/brand/mc-avatar-terracotta-64.webp) center/cover no-repeat}
+  .logo span{transition:color .2s}
+  .logo:hover span{color:var(--action)}
+  .sh nav{display:flex;align-items:center;gap:4px}
+  .sh ul{list-style:none;padding:0;display:flex;align-items:center;gap:4px}
+  .sh ul a{display:inline-flex;align-items:center;height:44px;padding:0 12px;border-radius:999px;text-decoration:none;font-size:15px;line-height:20px;font-weight:500;color:var(--ink);text-underline-offset:6px;text-decoration-thickness:2px;transition:color .2s}
+  .sh ul a:hover{color:var(--action);text-decoration-line:underline}
+  .acct{margin-left:8px;display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--control);background:var(--card);color:var(--ink);text-decoration:none;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;transition:background-color .2s,border-color .2s}
+  .acct:hover{background:var(--brand-tint);border-color:var(--action)}
+  .langs{margin-left:8px;display:inline-flex;align-items:center;height:40px;padding:3px;gap:2px;border:1px solid var(--line);border-radius:999px;background:var(--card)}
+  .langs button{height:32px;min-width:40px;padding:0 10px;border-radius:999px;font-size:14px;font-weight:600;color:var(--muted);transition:background-color .2s,color .2s}
+  .langs button:hover{color:var(--ink);background:var(--brand-tint)}
+  .langs button[aria-pressed="true"]{background:var(--sand);color:var(--ink)}
+
+  /* Two columns in the 1120px container. */
+  .page{flex:1 0 auto;height:auto;width:100%;max-width:1120px;margin:0 auto;padding:24px 20px 64px;display:grid;grid-template-columns:minmax(0,1fr) clamp(272px,30vw,360px);gap:40px;align-items:start}
+  .app{max-width:none;min-height:0;margin:0;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-card)}
+  .top{height:auto;min-height:0;gap:12px}
+  .mark,.lang{display:none!important}
+  .back{width:40px;height:40px;background:var(--card);border:1px solid var(--control);backdrop-filter:none;-webkit-backdrop-filter:none;color:var(--ink);transition:background-color .2s,border-color .2s}
+  .back:hover{background:var(--brand-tint);border-color:var(--action)}
+  .back .ic{display:block}
+  .back .ic svg{width:20px;height:20px;display:block}
+  .bar{background:var(--sand)}
+  .stage{margin-top:16px}
+  /* The first and the last screen have no Back, so no row for a lone bar. */
+  .page[data-on="massage"] .top,.page[data-on="done"] .top{display:none}
+  .page[data-on="massage"] .stage,.page[data-on="done"] .stage{margin-top:0}
+  /* The price and the trust lines live in the aside; the footer links in the
+     site footer. */
+  .stage .price,#trust,#foot{display:none}
+
+  /* Type: Fraunces 600 headings and Outfit text, as on the React pages. */
+  h1,h2{font-weight:600;line-height:1.15}
+  .hero{font-size:36px;line-height:42px;margin:0 0 8px}
+  h2{font-size:30px;line-height:36px;margin:2px 0 8px}
+  .s1q h2{font-size:24px;line-height:30px;margin:2px 0 14px}
+  .kicker{font-size:13px;line-height:18px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)}
+  .sub{font-size:16px;line-height:24px;color:var(--muted);max-width:62ch;margin-bottom:20px}
+  .how{margin:0 0 20px;text-wrap:pretty}
+  .label{font-size:15px;line-height:20px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink);margin:24px 0 10px}
+
+  /* Massage tiles: two columns, a line icon, sized for a pointer. */
+  .grid{gap:10px}
+  .tile{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-areas:"i t" "i d";column-gap:14px;align-content:center;align-items:center;min-height:72px;padding:12px 40px 12px 14px;border-radius:12px;border:1px solid var(--control);box-shadow:none;transition:background-color .2s,border-color .2s,box-shadow .2s}
+  .tile .ic{grid-area:i;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--sand);color:var(--action);transition:background-color .2s}
+  .tile .ic svg{width:22px;height:22px}
+  .tile b{grid-area:t;font-size:16px;line-height:20px;font-weight:600;align-self:end}
+  :lang(es) .tile b{font-size:16px}
+  .tile small{grid-area:d;font-size:14px;line-height:20px;margin:0;align-self:start}
+  /* Selected: a check in the corner (lucide circle-check, #A34A22). */
+  .tile.sel:after{content:"";position:absolute;top:10px;right:10px;width:20px;height:20px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A34A22' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E") center/contain no-repeat}
+  .tile.sel{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+  .tile.sel .ic,.tile:hover .ic{background:var(--card)}
+
+  /* Days: two columns of rows. */
+  .list#days{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .row{gap:12px;min-height:64px;padding:12px 14px;border-radius:12px;border:1px solid var(--control);box-shadow:none;transition:background-color .2s,border-color .2s,box-shadow .2s}
+  .row .ic{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:50%;background:var(--sand);color:var(--action)}
+  .row .ic svg{width:18px;height:18px}
+  .row b{font-size:16px;line-height:20px;font-weight:600}
+  .row small{font-size:14px;line-height:20px}
+  .row.sel{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+
+  /* Times: four hour cards a row. */
+  .hours{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .hr{border:1px solid var(--control);border-radius:12px;box-shadow:none}
+  .hr .h0 small{display:flex;justify-content:center;color:var(--muted)}
+  .hr .h0 small .ic{display:block}
+  .hr .h0 small .ic svg{width:16px;height:16px;display:block}
+  .hr .h30{border-top-color:var(--line)}
+  .hr button.sel{background:var(--action);color:#fff}
+  .hr button.sel small{color:rgba(255,255,255,.85)}
+  .skip{display:flex;width:fit-content;margin-top:12px;padding:10px 4px;color:var(--action);font-weight:600;text-underline-offset:4px}
+  .skip:hover{text-decoration:underline}
+
+  /* Where. "Use my location" is a secondary button, sized to its label. */
+  .locate{display:inline-flex;width:auto;height:48px;padding:0 22px;gap:8px;border-radius:999px;background:var(--card);color:var(--ink);border:1.5px solid var(--control);font-size:16px;font-weight:600;transition:background-color .2s,border-color .2s}
+  .locate .ic{display:block;color:var(--action)}
+  .locate .ic svg{width:20px;height:20px;display:block}
+  .locate:hover{background:var(--brand-tint);border-color:var(--action)}
+  .locate.done{background:var(--success-tint);border-color:var(--success);color:var(--success)}
+  .locate.done .ic{color:var(--success)}
+  .chip{border:1px solid var(--control);box-shadow:none;transition:background-color .2s,border-color .2s,box-shadow .2s}
+  .chip.sel{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+  .other input,.field input,.field textarea{border:1px solid var(--control);border-radius:12px;box-shadow:none;font-size:16px}
+  .other input:focus,.field input:focus,.field textarea:focus{border-color:var(--action);box-shadow:0 0 0 1px var(--action)}
+  .field input.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+
+  /* Details. */
+  .field label,.flabel{font-size:15px;line-height:20px;font-weight:600;color:var(--ink);margin:0 0 6px}
+  .flabel{margin-top:20px}
+  .help,.ferr,.typo{margin-left:0;margin-right:0}
+  .help{font-size:14px;line-height:20px;max-width:62ch}
+  .addlink{padding:0;color:var(--action);font-weight:600;text-underline-offset:4px}
+  .addlink:hover{text-decoration:underline}
+  .tog{width:auto;padding-right:20px;border:1px solid var(--control);border-radius:12px;box-shadow:none;transition:background-color .2s,border-color .2s}
+  .tog .box{border-color:var(--control)}
+  .tog[aria-checked="true"]{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
+  .tog[aria-checked="true"] .box{background:var(--action);border-color:var(--action)}
+  .consent,.privacy,.err{text-align:left;margin-left:0;margin-right:0;max-width:62ch}
+
+  /* Buttons: sized to the label, the design system's action colour, no glow. */
+  .cta{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:220px;height:52px;padding:0 32px;font-size:17px;font-weight:600;background:var(--action);box-shadow:none;transition:background-color .2s,transform .12s}
+  .cta:hover{background:var(--action-hover)}
+  .cta:active{background:var(--action-pressed)}
+  .cta[disabled]{opacity:.6}
+  .cta.wa{background:#15803D;box-shadow:none}
+  .cta.wa:hover{background:#116B32}
+  .other .cta{min-width:0;height:auto}
+
+  /* Sent. The ticket becomes a plain card: no gradient and no circles. */
+  .ticket{border:1px solid var(--line);border-radius:16px;box-shadow:none;background:var(--card)}
+  .ticket .head{background:var(--brand-tint);color:var(--ink);padding:20px 24px}
+  .ticket .head .o,.ticket .head .o2,.perf{display:none}
+  .ticket .head .kicker{color:var(--success)!important}
+  .ticket .head h2{color:var(--ink);font-size:26px;line-height:32px}
+  .ticket .body{padding:4px 24px 8px}
+  .kv{align-items:flex-start;padding:12px 0;font-size:16px;line-height:24px}
+  .kv .ic{display:block;flex:none;color:var(--action);margin-top:2px}
+  .kv .ic svg{width:20px;height:20px;display:block}
+  .kv small{font-size:14px;font-weight:500;letter-spacing:0;text-transform:none}
+  .next{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:none;padding:20px 24px;margin-top:16px}
+  .next h3{font-size:18px;line-height:24px;font-weight:600}
+  .next li{font-size:16px;line-height:24px}
+  .mail{margin:16px 0 0}
+  .fine{text-align:left;max-width:62ch}
+
+  /* The aside: what happens next, the usual price, the trust lines. */
+  .aside{display:block;position:sticky;top:88px}
+  .acard{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-card);padding:24px}
+  .acard h2{font-size:20px;line-height:28px;margin:0 0 16px}
+  .asteps{list-style:none;padding:0;display:grid;gap:14px;counter-reset:a}
+  .asteps li{display:flex;gap:12px;font-size:15px;line-height:22px;counter-increment:a}
+  .asteps li:before{content:counter(a);width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;flex:none}
+  .aside .price{display:flex;margin:20px 0 0;padding:10px 14px;border:0;border-radius:12px;background:var(--brand-tint);font-size:15px;line-height:20px;font-weight:600}
+  .aside .price svg{width:18px;height:18px;color:var(--action)}
+  .atrust{list-style:none;padding:20px 0 0;margin:20px 0 0;border-top:1px solid var(--line);display:grid;gap:12px}
+  .atrust li{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:20px}
+  .atrust svg{width:20px;height:20px;flex:none;color:var(--action)}
+  /* Once sent, the flow card has its own "What happens next". */
+  .page[data-on="done"] .acard h2,.page[data-on="done"] .asteps,.page[data-on="done"] .aside .price{display:none}
+  .page[data-on="done"] .atrust{padding:0;margin:0;border:0}
+
+  /* Site footer (copy of src/components/SiteFooter.tsx). */
+  .sf{display:block;flex:none;background:var(--bg)}
+  .sf .cols{border-top:1px solid var(--line);padding:48px 0 40px;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:40px}
+  .sf .brand{max-width:360px}
+  .sf .logo{height:auto;font-size:17px}
+  .sf .logo i{width:28px;height:28px}
+  .sf .one{margin-top:12px;font-size:14px;line-height:20px;color:var(--muted)}
+  .sf h2{font-family:var(--font);font-size:14px;line-height:20px;font-weight:600;letter-spacing:0;margin:0}
+  .sf ul{list-style:none;padding:0;margin-top:12px;display:grid;gap:4px}
+  .sf ul a{display:inline-flex;align-items:center;min-height:32px;font-size:14px;line-height:20px;text-decoration:none;text-underline-offset:4px;transition:color .2s}
+  .sf a:hover{color:var(--action);text-decoration-line:underline}
+  .sf .legal{border-top:1px solid var(--line);padding:24px 0;display:flex;align-items:center;justify-content:space-between;gap:24px;font-size:13px;line-height:18px;color:var(--muted)}
+  .sf .legal ul{display:flex;gap:20px;margin:0}
+  .sf .legal a{min-height:0;font-size:13px;line-height:18px}
+
+  /* Hover states for everything you can pick. */
+  .tile:hover,.row:hover,.chip:hover,.tog:hover{border-color:var(--action);background:var(--brand-tint)}
+  .hr button:not(.sel):hover{background:var(--brand-tint)}
+  .typo button:hover,.privacy a:hover,.err a:hover{color:var(--action)}
+
+  /* Cookie choice: a 360px card in the bottom-left corner, z 50 (F20). The
+     page keeps the card's height plus its 16px gap free (setConsentH). */
+  .cbar{left:16px;right:auto;bottom:16px;width:360px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--shadow-sheet)}
+  .cbar div{max-width:none;gap:12px 8px}
+  .cbar p{font-size:14px;line-height:20px}
+  .cbar button{border-color:var(--action);color:var(--action);font-weight:600;transition:background-color .2s}
+  .cbar button:hover{background:var(--brand-tint)}
+  .cbar a:hover{color:var(--action)}
+}
+@media (min-width:1024px){
+  .page{gap:48px}
+  .app{padding:28px 32px 32px}
+}
 </style>
 </head>
 <body>
 <div class="bg" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-<canvas id="confetti" aria-hidden="true"></canvas>
 
+<!-- Site header, 900px and up (copy of src/components/SiteHeader.tsx). Its
+     words and links are filled in by paint() in the visitor's language. -->
+<header class="sh" id="siteHeader">
+  <div class="wrap">
+    <a class="logo" id="shHome" href="/"><i aria-hidden="true"></i><span>Massage Club</span></a>
+    <nav id="shNav">
+      <ul id="shLinks"></ul>
+      <a class="acct" id="shAcct" href="/login"></a>
+      <div class="langs" role="group" id="shLangs"><button type="button" data-l="en" lang="en">EN</button><button type="button" data-l="es" lang="es">ES</button></div>
+    </nav>
+  </div>
+</header>
+
+<div class="page" id="page">
 <div class="app">
   <div class="top">
-    <button class="back" id="back" aria-label="Back">←</button>
+    <button class="back" id="back" aria-label="Back" hidden><span class="e">←</span><span class="ic"></span></button>
+    <span class="mark" id="mark">Massage Club</span>
     <div class="bar" aria-hidden="true"><b id="bar"></b></div>
     <button class="lang" id="lang">ES</button>
   </div>
 
   <div class="stage" id="stage">
 
-    <!-- 0 · the invite -->
-    <section class="screen" data-s="hello">
-      <div class="poster">
-        <i class="o o3"></i><i class="o o1"></i><i class="o o2"></i>
-        <div class="kicker" data-t="kick"></div>
-        <h1 data-t="title"></h1>
-        <div class="host"><span>✦</span><em data-t="host" style="font-style:normal"></em></div>
-      </div>
-      <div class="facts">
-        <div class="fact"><div class="e">📍</div><div><span data-t="f1"></span><small data-t="f1s"></small></div></div>
-        <div class="fact"><div class="e">💬</div><div><span data-t="f2"></span><small data-t="f2s"></small></div></div>
-        <div class="fact"><div class="e">💶</div><div><span data-t="f3"></span><small data-t="f3s"></small></div></div>
-      </div>
-      <button class="cta dark" data-go="massage" data-t="start"></button>
-    </section>
-
-    <!-- 1 · massage -->
+    <!-- 1 · massage. Also the front door: who we are, the price, how it works. -->
     <section class="screen" data-s="massage">
-      <div class="kicker" data-t="k1"></div>
-      <h2 data-t="q1"></h2>
-      <p class="sub" data-t="s1"></p>
+      <h1 class="hero" id="hero" data-t="h1" hidden></h1>
       <p class="price" data-price></p>
+      <p class="sub how" data-t="how"></p>
+      <div class="s1q">
+        <div class="kicker" data-t="k1"></div>
+        <h2 data-t="q1"></h2>
+      </div>
       <div class="grid" id="massages"></div>
+      <ul class="trust" id="trust"></ul>
+      <nav class="foot" id="foot" aria-label="Massage Club"></nav>
     </section>
 
     <!-- 2 · day -->
@@ -216,153 +511,299 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
       <button class="cta" id="timeNext" disabled data-t="next" style="display:none"></button>
     </section>
 
-    <!-- 5 · where -->
+    <!-- 4 · where -->
     <section class="screen" data-s="where">
       <div class="kicker" data-t="k5"></div>
       <h2 data-t="q5"></h2>
       <p class="sub" data-t="s5"></p>
       <p class="price" data-price></p>
-      <button class="locate" id="locate"><span>📍</span><span data-t="locate"></span></button>
+      <button class="locate" id="locate"><span class="e">📍</span><span class="ic"></span><span data-t="locate"></span></button>
       <div class="note" id="locNote"></div>
       <div class="label" data-t="orPick"></div>
       <div class="chips" id="areas"></div>
+      <form class="other" id="otherBox" hidden novalidate>
+        <input id="otherIn" type="text" autocomplete="street-address" enterkeyhint="go" maxlength="80" data-ph="otherPh">
+        <button type="submit" class="cta" id="otherGo" data-t="next"></button>
+      </form>
     </section>
 
-    <!-- 6 · you -->
+    <!-- 5 · you. Name and email required, WhatsApp optional. Checked on tap. -->
     <section class="screen" data-s="you">
       <div class="kicker" data-t="k6"></div>
       <h2 data-t="q6"></h2>
       <p class="sub" data-t="s6"></p>
       <p class="price" data-price></p>
-      <label class="field"><span data-t="name"></span><input id="name" autocomplete="given-name" autocapitalize="words"></label>
-      <label class="field"><span data-t="phone"></span><input id="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+34 600 000 000"></label>
-      <label class="field"><span data-t="email"></span><input id="email" type="email" autocomplete="email" inputmode="email" placeholder="you@email.com"></label>
-      <div class="err" id="youErr"></div>
-      <button class="cta" id="youNext" data-t="next"></button>
+      <form id="youForm" novalidate>
+        <div class="field">
+          <label for="name" data-t="name"></label>
+          <input id="name" type="text" autocomplete="name" autocapitalize="words" enterkeyhint="next" aria-describedby="nameErr">
+          <p class="ferr" id="nameErr" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="email" data-t="email"></label>
+          <input id="email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="next" placeholder="you@email.com" aria-describedby="emailHelp emailErr">
+          <p class="help" id="emailHelp" data-t="emailHelp"></p>
+          <p class="typo" id="emailTypo" aria-live="polite"></p>
+          <p class="ferr" id="emailErr" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="phone" data-t="phone"></label>
+          <input id="phone" type="tel" autocomplete="tel" inputmode="tel" enterkeyhint="done" placeholder="+34 600 000 000" aria-describedby="phoneHelp phoneErr">
+          <p class="help" id="phoneHelp" data-t="phoneHelp"></p>
+          <p class="ferr" id="phoneErr" role="alert"></p>
+        </div>
+        <div id="peopleBox" hidden>
+          <div class="flabel" id="peopleLabel" data-t="people"></div>
+          <div class="chips" id="people" role="group" aria-labelledby="peopleLabel"></div>
+        </div>
+        <div class="flabel" id="therLabel" data-t="therapist"></div>
+        <div class="chips" id="therapist" role="group" aria-labelledby="therLabel"></div>
+        <p class="help" data-t="therapistHelp"></p>
+        <!-- Optional note. Folded away so Send stays close: 1 of 13 web-wizard
+             requests used the old free-text field. -->
+        <button type="button" class="addlink" id="noteOpen" aria-expanded="false" aria-controls="noteBox"><span aria-hidden="true">+</span> <span data-t="noteAdd"></span></button>
+        <div class="field" id="noteBox" style="margin-top:16px" hidden>
+          <label for="note"><span data-t="note"></span><span class="count" id="noteCount" aria-hidden="true"></span></label>
+          <textarea id="note" rows="2" maxlength="240" enterkeyhint="done" data-ph="notePh" aria-describedby="noteErr"></textarea>
+          <p class="ferr" id="noteErr" role="alert"></p>
+        </div>
+        <button type="button" class="tog" id="remind" role="switch" aria-checked="false"><span class="box"></span><span data-t="remind"></span></button>
+        <p class="consent" id="consent" data-t="consent" hidden></p>
+        <div class="err" id="sendErr" role="alert"></div>
+        <button type="submit" class="cta" id="send" data-t="send"></button>
+        <p class="privacy" id="privacy"></p>
+      </form>
     </section>
 
-    <!-- 7 · next time -->
-    <section class="screen" data-s="later">
-      <div class="kicker" data-t="k7"></div>
-      <h2 data-t="q7"></h2>
-      <p class="sub" data-t="s7"></p>
-      <p class="price" data-price></p>
-      <div class="label" data-t="pressure"></div>
-      <div class="chips" id="pressure"></div>
-      <div class="label" data-t="therapist"></div>
-      <div class="chips" id="therapist"></div>
-      <div class="label" data-t="remind"></div>
-      <div class="chips" id="remind"></div>
-      <p class="consent" data-t="consent"></p>
-      <div class="err" id="sendErr"></div>
-      <button class="cta" id="send" disabled data-t="send"></button>
-    </section>
-
-    <!-- 8 · the ticket -->
+    <!-- 6 · sent -->
     <section class="screen" data-s="done">
       <div class="ticket">
-        <div class="head"><i class="o"></i><i class="o2"></i><div class="kicker" style="color:#FFE3D1;position:relative" id="reqNo"></div><h2 data-t="doneTitle"></h2><p data-t="doneSub"></p></div>
+        <div class="head"><i class="o"></i><i class="o2"></i><div class="kicker" style="color:#FFE3D1;position:relative" id="reqNo"></div><h2 data-t="doneTitle"></h2></div>
         <div class="perf"></div>
         <div class="body" id="summary"></div>
       </div>
-      <a class="cta wa" id="wa" style="display:block;text-align:center;text-decoration:none" data-t="wa"></a>
+      <div class="next">
+        <h3 data-t="nextTitle"></h3>
+        <ol id="steps"></ol>
+      </div>
+      <p class="mail" id="mail"></p>
+      <div id="waSlot"></div>
       <p class="fine" data-t="fine"></p>
     </section>
 
   </div>
 </div>
 
+<!-- 900px and up: the right column. Sticky, so it stays in view. -->
+<aside class="aside" id="aside" aria-labelledby="asideTitle">
+  <div class="acard">
+    <h2 id="asideTitle" data-t="nextTitle"></h2>
+    <ol class="asteps" id="asideSteps"></ol>
+    <p class="price" data-price></p>
+    <ul class="atrust" id="asideTrust"></ul>
+  </div>
+</aside>
+</div>
+
+<!-- Site footer, 900px and up (copy of src/components/SiteFooter.tsx). -->
+<footer class="sf" id="siteFooter">
+  <div class="wrap">
+    <div class="cols">
+      <div class="brand">
+        <a class="logo" id="sfHome" href="/"><i aria-hidden="true"></i><span>Massage Club</span></a>
+        <p class="one" id="sfOne"></p>
+      </div>
+      <nav aria-labelledby="sfMassages"><h2 id="sfMassages"></h2><ul id="sfMassagesList"></ul></nav>
+      <nav aria-labelledby="sfStudios"><h2 id="sfStudios"></h2><ul id="sfStudiosList"></ul></nav>
+    </div>
+    <div class="legal">
+      <p id="sfCopy"></p>
+      <ul id="sfLegal"></ul>
+    </div>
+  </div>
+</footer>
+
+<div class="cbar" id="cbar" role="dialog" aria-live="polite" hidden></div>
+
 <script>
 (() => {
 const LEAD = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/lead";
+const q = new URLSearchParams(location.search);
+
+// The hop from "/", "/start" or "/book" (index.html and requestFlowRedirect.ts)
+// leaves document.referrer pointing at our own "/". The hop saves the real
+// referrer and the path the visitor landed on in sessionStorage ("mc_hop",
+// {ref, path, t}). Read once and removed, so a reload is not counted twice.
+const HOP = (() => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem("mc_hop") || "null");
+    sessionStorage.removeItem("mc_hop");
+    return v && typeof v === "object" && typeof v.path === "string" && Date.now() - Number(v.t || 0) < 120000 ? v : null;
+  } catch { return null; }
+})();
+// Where the visitor really came from: the hop's referrer, else ?ref=<host>,
+// else the browser's referrer. A hop with no outside referrer is a direct visit.
+const REF = HOP ? String(HOP.ref || "") : q.get("ref") ? "https://" + q.get("ref").replace(/^https?:\/\//, "").slice(0, 120) : (document.referrer || "");
+const refHost = (r) => (r || "").replace(/^https?:\/\/([^/]+).*/, "$1") || "direct";
+
+// Prefill from the bot's link, so a WhatsApp customer types nothing twice.
+// Read once, then take the name, phone and email out of the address bar
+// before anything is tracked or shared (UX batch 1, RF1).
+const PRE = { n: q.get("n") || "", p: q.get("p") || "", e: q.get("e") || "" };
+if (q.has("n") || q.has("p") || q.has("e") || q.has("ref")) {
+  try {
+    const rest = new URLSearchParams(location.search);
+    ["n", "p", "e", "ref"].forEach((k) => rest.delete(k));
+    const s = rest.toString();
+    history.replaceState(history.state, "", location.pathname + (s ? "?" + s : "") + location.hash);
+  } catch { /* keep going: the page works with or without it */ }
+}
+
+// Where this visitor came from: the src param, else the path that served
+// this page (/start and /book redirect here after HN1), else plain /reserve.
+// Used for the lead's source ("go-page-" + SRC) and for meta.flow.
+// "IG" and "ig_bio" (bio links typed by hand) count as "ig" and "ig-bio".
+const PATH_SRC = { "/": "home", "/start": "start", "/book": "book", "/booking": "book" };
+const rawSrc = (q.get("src") || "").toLowerCase().replace(/_/g, "-");
+const SRC = /^[a-z0-9-]{1,20}$/.test(rawSrc) ? rawSrc : ((HOP && PATH_SRC[HOP.path]) || PATH_SRC[location.pathname.replace(/\/$/, "")] || "reserve");
+
 // Funnel data, same endpoint and opt-out as the website (src/lib/siteVisit.ts):
-// a pageview, one event per screen reached, and the outcome. ?nt=1 excludes a
-// browser (Jordan's tests), and nothing identifying is sent.
+// a pageview, one event per answer, and the outcome (contract: batch.md 3.1).
+// ?nt=1 excludes a browser (Jordan's tests): nothing is sent, and the events
+// are kept in window.__mcTrack so a test can read them. Nothing identifying
+// is ever sent.
 const TRACK = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/track";
 const noTrack = (() => {
   try {
-    const nt = new URLSearchParams(location.search).get("nt");
+    const nt = q.get("nt");
     if (nt === "1") localStorage.setItem("mc_nt", "1"); else if (nt === "0") localStorage.removeItem("mc_nt");
     return localStorage.getItem("mc_nt") === "1";
   } catch { return false; }
 })();
 const send = (payload) => {
-  if (noTrack) return;
+  if (noTrack) { try { (window.__mcTrack = window.__mcTrack || []).push(payload); } catch {} return; }
   try {
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon && navigator.sendBeacon(TRACK, new Blob([body], { type: "text/plain;charset=UTF-8" }))) return;
     fetch(TRACK, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
   } catch { /* never block the page */ }
 };
-const track = (event, meta = {}) => send({ event, path: location.pathname, slug: null, partner_slug: null, meta: { path: location.pathname, ...meta } });
 const BOT = "34613977900";
-const q = new URLSearchParams(location.search);
-let L = (q.get("lang") || (navigator.language || "en")).toLowerCase().startsWith("es") ? "es" : "en";
+// Language: ?lang=, then the language the visitor chose elsewhere on the site
+// (mm-lang, the React app's i18n cache on this origin), then the browser.
+const storedLang = (() => { try { return localStorage.getItem("mm-lang"); } catch { return null; } })();
+let L = (q.get("lang") || storedLang || navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en";
+const track = (event, meta = {}) => send({ event, path: location.pathname, slug: null, partner_slug: null, meta: { path: location.pathname, flow: SRC, lang: L, v: "ds1", ...meta } });
+// The track function keeps the first row per day anyway; this keeps the
+// answer events to one per page load as well.
+const fired = new Set();
+const once = (event, meta) => { if (fired.has(event)) return; fired.add(event); track(event, meta); };
 
 const T = {
   en: {
-    kick: "Massage Club · Madrid", title: "Your massage, sorted.", host: "Hosted by Massage Club",
-    f1: "A studio near you", f1s: "Licensed studios across Madrid",
-    f2: "Offers on WhatsApp", f2s: "We ask the studios, you pick",
-    f3: "Pay at the studio", f3s: "No fee from us, ever",
-    start: "Let's go",
+    h1: "Book a massage in Madrid", docTitle: "Book a massage in Madrid · Massage Club",
+    how: "We ask the studios for you. You pay at the studio.",
+    trust: ["Professional massage studios only", "We write to the studio in Spanish for you", "Nothing is booked until you tap Yes"],
+    foot: [["/studios", "Browse studios"], ["/how-it-works", "How it works"], ["/login", "Sign in"], ["/socios", "Own a studio?"], ["/privacy", "Privacy"]],
     price: "60 min · usually €50 to €85 per person",
-    k1: "1 of 6", q1: "What kind of massage?", s1: "Tap one. You can change it later.",
-    k2: "2 of 6", q2: "Which day?", s2: "Pick the day that suits you best.",
-    k3: "3 of 6", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", moreTimes: "+ Add another time", oneTime: "Just one time",
-    k5: "4 of 6", q5: "Where in Madrid?", s5: "We look for a studio close to you.",
-    locate: "Use my location", locating: "Finding you…", located: "Near {a}", locDenied: "No problem, pick an area below.", orPick: "Or pick an area",
-    anywhere: "Anywhere", k6: "5 of 6", q6: "Who's coming?", s6: "So the studio knows who to expect, and we can send you the offers.",
-    name: "First name", phone: "WhatsApp number", email: "Email", next: "Next",
-    errName: "What should we call you?", errPhone: "Add your WhatsApp number, with the country code.", errEmail: "That email doesn't look right.",
-    k7: "6 of 6", q7: "Next time, one tap.", s7: "Tell us how you like it and we'll remember for the studio and for next time.",
-    pressure: "Pressure", therapist: "Therapist", remind: "Remind me to rebook",
-    consent: "If you pick a reminder, Massage Club will message you on WhatsApp or email when it's time to book again. Reply STOP anytime.",
-    send: "Find my studio ✨", sending: "Sending…", sendErr: "That didn't go through. Try again, or message us on WhatsApp.",
-    doneTitle: "You're on the list.", doneSub: "We're asking the studios now. Their offers come to your WhatsApp.",
-    wa: "Get my offers on WhatsApp", fine: "Tap the green button so we can message you. Nothing is booked until you say yes, and you pay at the studio.",
-    req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kNext: "Next time",
+    k1: "1 of 5", q1: "What kind of massage?",
+    k2: "2 of 5", q2: "Which day?", s2: "Pick the day that suits you best.",
+    k3: "3 of 5", q3: "What time?", s3: "Tap the time you want. We find a studio free at exactly that time.", s3multi: "Tap up to 3 times that work.", s3for: "For {d}. ", s3any: "Any day works. Pick the time that suits you.", anyDay: "Any day", moreTimes: "+ Add another time", oneTime: "Just one time",
+    k5: "4 of 5", q5: "Where in Madrid?", s5: "We look for a studio close to you.",
+    locate: "Use my location", locating: "Finding you…", located: "Near {a}", you: "you", locDenied: "No problem, pick an area below.", orPick: "Or pick an area",
+    otherArea: "Other area", otherLabel: "Street, hotel or area", otherPh: "Street, hotel or town",
+    anywhere: "Anywhere", k6: "5 of 5", q6: "Who's coming?", s6: "So the studio knows who to expect.",
+    name: "Your name", email: "Email", emailHelp: "Your times and the Yes button come here.", typo: "Did you mean {e}?",
+    phone: "WhatsApp number (optional)", phoneHelp: "Add it if you also want your times on WhatsApp.", next: "Next",
+    errName: "What should we call you?", errEmail: "Check your email, for example name@gmail.com", errPhone: "Add the country code, for example +34",
+    therapist: "Who gives the massage?", therapistHelp: "We ask the studio for you.",
+    people: "How many people?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 or more"]],
+    noteAdd: "Anything the studio should know?", note: "Anything the studio should know? (optional)", notePh: "For example: strong pressure, 90 minutes, pregnant",
+    blocked: "We book therapeutic massage at licensed studios, nothing else.",
+    remind: "Remind me in a month to book again",
+    consent: "Massage Club will message you on WhatsApp or email in a month, when it's time to book again. Reply STOP anytime.",
+    send: "Send my request", sending: "Sending…", sendErr: "That didn't go through. Try again, or <a>message us on WhatsApp</a>.",
+    privacy: "We use your details only for this request. <a>Privacy</a>", privacyRemind: "We use your details only for this request and the reminder you asked for. <a>Privacy</a>",
+    doneTitle: "Request sent. We're asking the studios now.",
+    req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kWho: "Who gives it", kPrice: "Price", kRemind: "Reminder", remindVal: "In a month",
+    priceDone: "60 min · usually €50 to €85, paid at the studio", priceDoneCouples: "60 min · usually €50 to €85 per person, paid at the studio",
+    nextTitle: "What happens next",
+    next1: "<b>Now:</b> we ask several studios near {area}, in Spanish.", next1Any: "<b>Now:</b> we ask several studios across Madrid, in Spanish.",
+    next2: "<b>Next:</b> their times come to you by email.", next2Phone: "<b>Next:</b> their times come to you by email. Tap below to get them on WhatsApp too.",
+    next3: "<b>Then:</b> you tap Yes on the one you want. Only then is it booked.",
+    mail: "Your times come to {m}", kPeople: "People",
+    wa: "Get my times on WhatsApp", fine: "Nothing is booked until you tap Yes. You pay at the studio.",
     today: "Today", tomorrow: "Tomorrow", flexible: "I'm flexible", flexibleS: "Whenever a studio has room",
-    waText: "Hi, it's {name}. I just asked for a {want} on the website{ref}. Can you send me the offers here?",
-    every: { 14: "Every 2 weeks", 30: "Every month", 60: "Every 2 months", 0: "No reminders" },
+    waText: "Hi, it's {name}. I just asked for a {want} on the website (#{id}). Can you send me the times here?",
+    // Desktop only (900px and up): site header, footer and the aside. Same
+    // words as src/lib/siteChrome.ts and the home "How it works" (design system 5.1).
+    navLabel: "Main", homeLabel: "Massage Club, home", langLabel: "Language",
+    nav: [["/studios", "Studios"], ["/how-it-works", "How it works"], ["/for-studios", "For studios"]],
+    signIn: "Sign in", myAccount: "My account",
+    asideSteps: ["Tell us what, when and where.", "We ask several studios and send you their times.", "Tap Yes on the one you want. You pay at the studio."],
+    fOne: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
+    fMassages: "Massages", fMassagesList: [["/reserve?src=footer", "Book a massage"], ["/studios", "All studios"], ["/how-it-works", "How it works"]],
+    fStudios: "Studios", fStudiosList: [["/for-studios", "For studios"], ["/partner/login", "Studio login"]],
+    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"]],
   },
   es: {
-    kick: "Massage Club · Madrid", title: "Tu masaje, resuelto.", host: "Organiza Massage Club",
-    f1: "Un centro cerca de ti", f1s: "Centros profesionales por todo Madrid",
-    f2: "Ofertas por WhatsApp", f2s: "Preguntamos a los centros, tú eliges",
-    f3: "Pagas en el centro", f3s: "Nunca te cobramos nada",
-    start: "Vamos",
+    h1: "Tu masaje en Madrid", docTitle: "Tu masaje en Madrid · Massage Club",
+    how: "Preguntamos a los centros por ti. Pagas en el centro.",
+    trust: ["Solo centros de masaje profesionales", "Escribimos al centro por ti", "No se reserva nada hasta que tocas Sí"],
+    foot: [["/studios", "Ver centros"], ["/how-it-works", "Cómo funciona"], ["/login", "Entrar"], ["/socios", "¿Tienes un centro?"], ["/privacy", "Privacidad"]],
     price: "60 min · normalmente entre 50 y 85 € por persona",
-    k1: "1 de 6", q1: "¿Qué masaje te apetece?", s1: "Toca uno. Puedes cambiarlo luego.",
-    k2: "2 de 6", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
-    k3: "3 de 6", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
-    k5: "4 de 6", q5: "¿En qué zona?", s5: "Buscamos un centro cerca de ti.",
-    locate: "Usar mi ubicación", locating: "Buscándote…", located: "Cerca de {a}", locDenied: "Sin problema, elige una zona abajo.", orPick: "O elige una zona",
-    anywhere: "Me da igual", k6: "5 de 6", q6: "¿Quién viene?", s6: "Para que el centro sepa a quién esperar y podamos enviarte las ofertas.",
-    name: "Nombre", phone: "Número de WhatsApp", email: "Email", next: "Siguiente",
-    errName: "¿Cómo te llamamos?", errPhone: "Añade tu WhatsApp con el prefijo del país.", errEmail: "Ese email no parece correcto.",
-    k7: "6 de 6", q7: "La próxima, con un toque.", s7: "Dinos cómo te gusta y lo recordamos para el centro y para la próxima vez.",
-    pressure: "Presión", therapist: "Masajista", remind: "Recordarme para volver",
-    consent: "Si eliges un recordatorio, Massage Club te escribirá por WhatsApp o email cuando toque volver. Responde STOP cuando quieras.",
-    send: "Buscar mi centro ✨", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o escríbenos por WhatsApp.",
-    doneTitle: "Ya estás en la lista.", doneSub: "Estamos preguntando a los centros. Las ofertas te llegan por WhatsApp.",
-    wa: "Recibir mis ofertas por WhatsApp", fine: "Toca el botón verde para que podamos escribirte. No se reserva nada hasta que digas que sí, y pagas en el centro.",
-    req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kNext: "La próxima vez",
+    k1: "1 de 5", q1: "¿Qué masaje te apetece?",
+    k2: "2 de 5", q2: "¿Qué día?", s2: "Elige el día que mejor te venga.",
+    k3: "3 de 5", q3: "¿A qué hora?", s3: "Toca la hora que quieres. Buscamos un centro libre justo a esa hora.", s3multi: "Toca hasta 3 horas que te vayan bien.", s3for: "Para {d}. ", s3any: "Te vale cualquier día. Elige la hora que mejor te venga.", anyDay: "Cualquier día", moreTimes: "+ Añadir otra hora", oneTime: "Solo una hora",
+    k5: "4 de 5", q5: "¿En qué zona?", s5: "Buscamos un centro cerca de ti.",
+    locate: "Usar mi ubicación", locating: "Buscándote…", located: "Cerca de {a}", you: "ti", locDenied: "Sin problema, elige una zona abajo.", orPick: "O elige una zona",
+    otherArea: "Otra zona", otherLabel: "Calle, hotel o zona", otherPh: "Calle, hotel o localidad",
+    anywhere: "Me da igual", k6: "5 de 5", q6: "¿Quién viene?", s6: "Para que el centro sepa a quién esperar.",
+    name: "Tu nombre", email: "Email", emailHelp: "Aquí te llegan las horas disponibles y el botón para decir Sí.", typo: "¿Querías decir {e}?",
+    phone: "Número de WhatsApp (opcional)", phoneHelp: "Añádelo si también quieres las horas por WhatsApp.", next: "Siguiente",
+    errName: "¿Cómo te llamamos?", errEmail: "Revisa tu email, por ejemplo nombre@gmail.com", errPhone: "Añade el prefijo, por ejemplo +34",
+    therapist: "¿Quién te da el masaje?", therapistHelp: "Se lo preguntamos al centro.",
+    people: "¿Cuántas personas?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 o más"]],
+    noteAdd: "¿Algo que deba saber el centro?", note: "¿Algo que deba saber el centro? (opcional)", notePh: "Por ejemplo: presión fuerte, 90 minutos, embarazada",
+    blocked: "Reservamos masajes terapéuticos en centros con licencia, nada más.",
+    remind: "Recuérdame en un mes para volver a reservar",
+    consent: "Massage Club te escribirá por WhatsApp o email dentro de un mes, cuando toque volver. Responde STOP cuando quieras.",
+    send: "Enviar mi solicitud", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o <a>escríbenos por WhatsApp</a>.",
+    privacy: "Solo usamos tus datos para esta solicitud. <a>Privacidad</a>", privacyRemind: "Solo usamos tus datos para esta solicitud y para el recordatorio que pediste. <a>Privacidad</a>",
+    doneTitle: "Solicitud enviada. Ya estamos preguntando a los centros.",
+    req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kWho: "Quién te lo da", kPrice: "Precio", kRemind: "Recordatorio", remindVal: "Dentro de un mes",
+    priceDone: "60 min · normalmente entre 50 y 85 €, se paga en el centro", priceDoneCouples: "60 min · normalmente entre 50 y 85 € por persona, se paga en el centro",
+    nextTitle: "Qué pasa ahora",
+    next1: "<b>Ahora:</b> preguntamos a varios centros cerca de {area}.", next1Any: "<b>Ahora:</b> preguntamos a varios centros de todo Madrid.",
+    next2: "<b>Después:</b> te llegan sus horas por email.", next2Phone: "<b>Después:</b> te llegan sus horas por email. Toca abajo para recibirlas también por WhatsApp.",
+    next3: "<b>Luego:</b> tocas Sí en la que quieras. Solo entonces queda reservado.",
+    mail: "Las horas disponibles te llegan a {m}", kPeople: "Personas",
+    wa: "Recibir las horas por WhatsApp", fine: "No se reserva nada hasta que tocas Sí. Pagas en el centro.",
     today: "Hoy", tomorrow: "Mañana", flexible: "Me adapto", flexibleS: "Cuando el centro tenga hueco",
-    waText: "Hola, soy {name}. Acabo de pedir un {want} en la web{ref}. ¿Me mandáis las ofertas por aquí?",
-    every: { 14: "Cada 2 semanas", 30: "Cada mes", 60: "Cada 2 meses", 0: "Sin recordatorios" },
+    waText: "Hola, soy {name}. Acabo de pedir un {want} en la web (#{id}). ¿Me mandáis las horas por aquí?",
+    navLabel: "Principal", homeLabel: "Massage Club, inicio", langLabel: "Idioma",
+    nav: [["/studios", "Centros"], ["/how-it-works", "Cómo funciona"], ["/for-studios", "Para centros"]],
+    signIn: "Entrar", myAccount: "Mi cuenta",
+    asideSteps: ["Dinos qué, cuándo y dónde.", "Preguntamos a varios centros y te mandamos sus horas.", "Toca Sí en la que quieras. Pagas en el centro."],
+    fOne: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
+    fMassages: "Masajes", fMassagesList: [["/reserve?src=footer", "Reservar un masaje"], ["/studios", "Todos los centros"], ["/how-it-works", "Cómo funciona"]],
+    fStudios: "Centros", fStudiosList: [["/for-studios", "Para centros"], ["/partner/login", "Acceso para centros"]],
+    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"]],
   },
 };
 
 // `want` is what the studios read, so it stays the website's English label.
+// `w` is how the customer says it in the WhatsApp text after a request.
+// `i` is the lucide line icon shown from 900px instead of the emoji (design
+// system 3.7). Couples is two people, not a heart.
 const MASSAGES = [
-  { v: "Relaxing", e: "🌿", en: ["Relaxing", "Gentle, to switch off"], es: ["Relajante", "Suave, para desconectar"] },
-  { v: "Deep tissue", e: "💪", en: ["Deep tissue", "Firm, for knots"], es: ["Descontracturante", "Firme, para contracturas"] },
-  { v: "Thai", e: "🧘", en: ["Thai", "Stretching, clothed"], es: ["Tailandés", "Estiramientos, con ropa"] },
-  { v: "Sports recovery", e: "🏃", en: ["Sports", "Training and recovery"], es: ["Deportivo", "Entreno y recuperación"] },
-  { v: "Hot stone", e: "🔥", en: ["Hot stone", "Warm and deep"], es: ["Piedras calientes", "Calor y calma"] },
-  { v: "Couples", e: "💞", en: ["Couples", "Side by side"], es: ["En pareja", "Uno al lado del otro"] },
-  { v: "Not sure", e: "🤷", en: ["Not sure", "We'll help you pick"], es: ["No lo sé", "Te ayudamos a elegir"] },
+  { v: "Relaxing", e: "🌿", i: "leaf", en: ["Relaxing", "Gentle, to switch off", "relaxing massage"], es: ["Relajante", "Para desconectar", "masaje relajante"] },
+  { v: "Deep tissue", e: "💪", i: "hand", en: ["Deep tissue", "Firm, for knots", "deep tissue massage"], es: ["Descontrac\u00ADturante", "Para contracturas", "masaje descontracturante"] },
+  { v: "Thai", e: "🧘", i: "stretch", en: ["Thai", "Stretching, clothed", "Thai massage"], es: ["Tailandés", "Estiramientos, con ropa", "masaje tailandés"] },
+  { v: "Sports recovery", e: "🏃", i: "dumbbell", en: ["Sports", "Training and recovery", "sports massage"], es: ["Deportivo", "Entreno y recuperación", "masaje deportivo"] },
+  { v: "Hot stone", e: "🔥", i: "flame", en: ["Hot stone", "Warm and deep", "hot stone massage"], es: ["Piedras calientes", "Calor y calma", "masaje con piedras calientes"] },
+  { v: "Couples", e: "💞", i: "users", en: ["Couples", "Side by side", "couples massage"], es: ["En pareja", "Uno al lado del otro", "masaje en pareja"] },
+  { v: "Not sure", e: "🤷", i: "help", en: ["Not sure", "We'll help you pick", "massage"], es: ["No lo sé", "Te ayudamos a elegir", "masaje"] },
 ];
 // Jordan (5 Oct): "make it easier to pick a time". Real start times, tap
 // every one that works. 20:00 is the last start: studios close at 21:00.
@@ -377,28 +818,78 @@ const AREAS = [
   { n: "Argüelles/Moncloa", lat: 40.4300, lng: -3.7160 }, { n: "Chamartín", lat: 40.4600, lng: -3.6800 },
   { n: "Tetuán", lat: 40.4600, lng: -3.6990 },
 ];
-// The price chip's euro sign (lucide "euro"), drawn once into every [data-price].
-const EURO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg>';
-const PRESSURE = { en: ["Light", "Medium", "Firm"], es: ["Suave", "Media", "Fuerte"] };
+// Small line icons (lucide shapes), inline so the page stays one file.
+const svg = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const EURO = svg('<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>');
+const CHECK = svg('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>');
+const TICK = svg('<path d="M20 6 9 17l-5-5"/>').replace('stroke-width="2"', 'stroke-width="3"');
+const ALERT = svg('<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>');
+const MAIL = svg('<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>');
+// Desktop icons (lucide shapes), drawn only from 900px.
+const ICONS = {
+  leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  stretch: '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
+  dumbbell: '<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+  range: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M3 10h18"/><path d="M8 2v4"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/>',
+  sunrise: '<path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  languages: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+  euro: '<path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+};
+const ic = (k) => `<span class="ic" aria-hidden="true">${svg(ICONS[k])}</span>`;
+const hourSvg = (h) => svg(ICONS[h < 13 ? "sunrise" : h < 18 ? "sun" : "moon"]);
 const THERAPIST = { en: [["any", "No preference"], ["female", "Woman"], ["male", "Man"]], es: [["any", "Me da igual"], ["female", "Mujer"], ["male", "Hombre"]] };
 
-const ORDER = ["hello", "massage", "day", "time", "where", "you", "later", "done"];
+const ORDER = ["massage", "day", "time", "where", "you", "done"];
 const S = {
-  massage: null, day: null, times: [], multi: false, area: null, loc: null,
-  pressure: null, therapist: null, every: null,
+  massage: null, day: null, times: [], multi: false, area: null, loc: null, other: false,
+  therapist: "any", remind: false, people: "1",
 };
+// The bot's "special massage" pattern (wa-bot copy.ts EROTIC_RE). A match in
+// the note gets the standard line and nothing is sent, then or later.
+const EROTIC_RE = /\b(er[oó]tic\w*|sensual\w*|sensitiv[oa]s?\b|sensitive\s+(?:massage|masaje)|(?:massage|masaje)\s+sensitive|t[aá]ntr\w*|nuru|happy\s*end\w*|final\s*feliz|con\s*extras?|extra\s*servic\w*|servicios?\s*extras?|servicio\s*completo|body\s*(2|to)\s*body|lingam|yoni|prostat\w*)\b/i;
+let blocked = false;
+// Party size: asked only for Couples (2 or 3+) and "Not sure" (1, 2 or 3+).
+const askPeople = () => S.massage === "Couples" || S.massage === "Not sure";
+const defaultPeople = () => (S.massage === "Couples" ? "2" : "1");
+const isGroup = () => askPeople() && S.people !== defaultPeople();
 let cur = 0;
+let sent = null; // { id, name, phone, email } once the request is saved
 const $ = (id) => document.getElementById(id);
 const t = (k) => T[L][k];
 const madridNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Madrid" }));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const isAnywhere = (a) => a === T.en.anywhere || a === T.es.anywhere;
+const langHref = (p) => (L === "es" ? p + (p.includes("?") ? "&" : "?") + "lang=es" : p);
 
-// Seven real days, like the website. After 19:00 there is no today left: a
-// massage has to finish by 21:00.
+// Start times need an hour's notice, like the studio pages (madridTime.ts
+// isTooSoon): at 18:45 the first time today is 19:45 -> 20:00. Today drops
+// out once no start time is left (after 19:00, since 20:00 is the last).
+const LEAD_MIN = 60;
+const LAST = HOURS[HOURS.length - 1];
+const nowMins = () => { const n = madridNow(); return n.getHours() * 60 + n.getMinutes(); };
+const toMins = (v) => { const [h, m] = v.split(":"); return h * 60 + Number(m); };
+const slotOk = (v, today) => !today || toMins(v) >= nowMins() + LEAD_MIN;
+const todayLeft = () => slotOk(`${LAST}:00`, true);
+
+// Seven real days, like the website.
 function dayList() {
   const now = madridNow();
   const out = [];
-  for (let i = now.getHours() >= 19 ? 1 : 0; i <= 6; i++) {
+  for (let i = todayLeft() ? 0 : 1; i <= 6; i++) {
     const d = new Date(now); d.setDate(now.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const short = d.toLocaleDateString(L === "es" ? "es-ES" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).replace(/[.,]/g, "");
@@ -409,74 +900,293 @@ function dayList() {
   return out;
 }
 
+// Desktop header, aside and footer (hidden under 900px), in the current
+// language. Links are massageclub.io pages only.
+const signedIn = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem("sb-jglftdstrowwckwqmpue-auth-token") || "null");
+    return !!(v && (v.refresh_token || (v.currentSession && v.currentSession.refresh_token)));
+  } catch { return false; }
+};
+const links = (arr) => arr.map(([p, x]) => `<li><a href="${esc(langHref(p))}">${esc(x)}</a></li>`).join("");
+function paintChrome() {
+  $("shHome").setAttribute("aria-label", t("homeLabel"));
+  $("sfHome").setAttribute("aria-label", t("homeLabel"));
+  $("shNav").setAttribute("aria-label", t("navLabel"));
+  $("shLinks").innerHTML = links(t("nav"));
+  const acct = signedIn();
+  $("shAcct").textContent = t(acct ? "myAccount" : "signIn");
+  $("shAcct").href = langHref(acct ? "/app/profile" : "/login");
+  $("shLangs").setAttribute("aria-label", t("langLabel"));
+  $("shLangs").querySelectorAll("[data-l]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.l === L)));
+  $("asideSteps").innerHTML = t("asideSteps").map((x) => `<li><span>${esc(x)}</span></li>`).join("");
+  const trustIcons = ["shield", L === "es" ? "message" : "languages", "check"];
+  $("asideTrust").innerHTML = t("trust").map((x, i) => `<li>${svg(ICONS[trustIcons[i]])}<span>${esc(x)}</span></li>`).join("");
+  $("sfOne").textContent = t("fOne");
+  $("sfMassages").textContent = t("fMassages");
+  $("sfMassagesList").innerHTML = links(t("fMassagesList"));
+  $("sfStudios").textContent = t("fStudios");
+  $("sfStudiosList").innerHTML = links(t("fStudiosList"));
+  $("sfCopy").textContent = `© ${madridNow().getFullYear()} Massage Club · Madrid`;
+  $("sfLegal").innerHTML = links(t("fLegal")) + `<li><a href="mailto:support@massageclub.io">support@massageclub.io</a></li>`;
+}
+$("back").querySelector(".ic").innerHTML = svg(ICONS.back);
+$("locate").querySelector(".ic").innerHTML = svg(ICONS.pin);
+
 function paint() {
   document.documentElement.lang = L;
+  document.title = t("docTitle");
   $("lang").textContent = L === "es" ? "EN" : "ES";
+  $("lang").setAttribute("aria-label", L === "es" ? "English" : "Español");
   document.querySelectorAll("[data-t]").forEach((el) => { const v = T[L][el.dataset.t]; if (typeof v === "string") el.textContent = v; });
+  document.querySelectorAll("[data-ph]").forEach((el) => { el.placeholder = t(el.dataset.ph); });
+  $("otherIn").setAttribute("aria-label", t("otherLabel"));
   document.querySelectorAll("[data-price]").forEach((el) => { el.innerHTML = `${EURO}<span>${esc(t("price"))}</span>`; });
+  $("trust").innerHTML = t("trust").map((x) => `<li>${CHECK}<span>${esc(x)}</span></li>`).join("");
+  $("foot").innerHTML = t("foot").map(([p, x]) => `<a href="${langHref(p)}">${esc(x)}</a>`).join("");
 
-  $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e">${m.e}</span><b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
+  $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e" aria-hidden="true">${m.e}</span>${ic(m.i)}<b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
   const days = dayList();
-  $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span><div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
+  // The chosen day keeps its date; its label follows the language.
+  if (S.day) S.day = days.find((d) => d.iso === S.day.iso) || S.day;
+  $("days").innerHTML = days.map((d) => `<button class="row${S.day && S.day.iso === d.iso ? " sel" : ""}" data-v="${d.iso}"><span class="e">${d.i === 0 ? "✨" : d.i === 1 ? "🗓️" : d.i === 99 ? "🤙" : "📅"}</span>${ic(d.i === 99 ? "range" : "calendar")}<div><b>${esc(d.title)}</b>${d.sub ? `<small>${esc(d.sub)}</small>` : ""}</div></button>`).join("");
   const today = S.day && S.day.i === 0;
-  const hour = madridNow().getHours();
+  if (today) S.times = S.times.filter((v) => slotOk(v, true));
   const half = (v, cls, inner) => `<button class="${cls}${S.times.includes(v) ? " sel" : ""}" data-v="${v}">${inner}</button>`;
-  const hourCard = (h) => `<div class="hr">${half(`${h}:00`, "h0", `${h}:00<small>${hourIcon(h)}</small>`)}${h < HOURS[HOURS.length - 1] ? half(`${h}:30`, "h30", `${h}:30`) : ""}</div>`;
-  $("times").innerHTML = HOURS.filter((h) => !today || h > hour).map(hourCard).join("");
+  // Each half hour is checked on its own: at 18:45, 19:00 and 19:30 are gone
+  // and 20:00 is the first card.
+  const hourCard = (h) => {
+    const v0 = `${h}:00`, v30 = h < LAST ? `${h}:30` : null;
+    const ok0 = slotOk(v0, today), ok30 = !!v30 && slotOk(v30, today);
+    if (!ok0 && !ok30) return "";
+    if (!ok0) return `<div class="hr">${half(v30, "h0", `${v30}<small><span class="e">${hourIcon(h)}</span><span class="ic" aria-hidden="true">${hourSvg(h)}</span></small>`)}</div>`;
+    return `<div class="hr">${half(v0, "h0", `${v0}<small><span class="e">${hourIcon(h)}</span><span class="ic" aria-hidden="true">${hourSvg(h)}</span></small>`)}${ok30 ? half(v30, "h30", v30) : ""}</div>`;
+  };
+  $("times").innerHTML = HOURS.map(hourCard).join("");
   $("timeNext").disabled = !S.times.length;
   $("timeNext").style.display = S.multi ? "" : "none";
   $("moreTimes").textContent = S.multi ? t("oneTime") : t("moreTimes");
-  $("timeSub").textContent = (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t(S.multi ? "s3multi" : "s3");
-  $("areas").innerHTML = [...AREAS.map((a) => a.n), t("anywhere")].map((n) => `<button class="chip${S.area === n && !S.loc ? " sel" : ""}" data-v="${esc(n)}">${esc(n)}</button>`).join("");
-  $("pressure").innerHTML = PRESSURE[L].map((p, i) => `<button class="chip${S.pressure === PRESSURE.en[i] ? " sel" : ""}" data-v="${PRESSURE.en[i]}">${p}</button>`).join("");
-  $("therapist").innerHTML = THERAPIST[L].map(([v, l]) => `<button class="chip${S.therapist === v ? " sel" : ""}" data-v="${v}">${l}</button>`).join("");
-  $("remind").innerHTML = [30, 14, 60, 0].map((n) => `<button class="chip${S.every === n ? " sel" : ""}" data-v="${n}">${T[L].every[n]}</button>`).join("");
-  $("send").disabled = S.every === null;
+  // "I'm flexible" is not a day to say "For ..." about.
+  const flexible = S.day && S.day.i === 99;
+  $("timeSub").textContent = flexible ? t(S.multi ? "s3multi" : "s3any") : (S.day ? t("s3for").replace("{d}", L === "es" ? S.day.title.toLowerCase() + (S.day.sub ? ", " + S.day.sub : "") : S.day.title + (S.day.sub ? ", " + S.day.sub : "")) : "") + t(S.multi ? "s3multi" : "s3");
+  $("areas").innerHTML = [...AREAS.map((a) => a.n), t("anywhere")].map((n) => `<button class="chip${S.area === n && !S.loc && !S.other ? " sel" : ""}" data-v="${esc(n)}">${esc(n)}</button>`).join("")
+    + `<button class="chip${S.other ? " sel" : ""}" data-v="__other" aria-expanded="${!$("otherBox").hidden}">${esc(t("otherArea"))}</button>`;
+  $("peopleBox").hidden = !askPeople();
+  const opts = t("peopleOpts").filter(([v]) => S.massage !== "Couples" || v !== "1");
+  $("people").innerHTML = opts.map(([v, l]) => `<button type="button" class="chip${S.people === v ? " sel" : ""}" aria-pressed="${S.people === v}" data-v="${v}">${esc(l)}</button>`).join("");
+  const nl = $("note").value.length;
+  $("noteCount").textContent = nl ? `${nl}/240` : "";
+  $("privacy").innerHTML = t(S.remind ? "privacyRemind" : "privacy").replace("<a>", `<a href="${langHref("/privacy")}">`);
+  paintCookieBar();
+  paintChrome();
+  $("therapist").innerHTML = THERAPIST[L].map(([v, l]) => `<button type="button" class="chip${S.therapist === v ? " sel" : ""}" aria-pressed="${S.therapist === v}" data-v="${v}">${l}</button>`).join("");
+  $("remind").setAttribute("aria-checked", String(S.remind));
+  $("remind").querySelector(".box").innerHTML = TICK;
+  $("consent").hidden = !S.remind;
+  // Field errors that are showing follow the language too.
+  for (const k of ["name", "email", "phone"]) if ($(k).classList.contains("bad")) setErr(k, true);
+  if ($("emailTypo").innerHTML) showTypo();
+  if (blocked) $("sendErr").textContent = t("blocked");
+  if (cur === ORDER.indexOf("done") && sent) renderDone();
 }
+
+// ---------- Cookie choice, Clarity and the Google tag ----------
+// Same key, copy and rules as the website's ConsentBanner (src/components/
+// ConsentBanner.tsx) and index.html: Consent Mode defaults are "denied", the
+// Google tag loads after the page is up (so a gclid from an ad is seen),
+// Clarity only after Accept, and nothing at all for ?nt=1 (mc_nt).
+const CONSENT_KEY = "mc_consent";
+const CB = {
+  en: { body: "We use cookies to see how the site is used and to measure our ads.", accept: "Accept", decline: "Decline", privacy: "Privacy", label: "Cookie choice" },
+  es: { body: "Usamos cookies para ver cómo se usa la web y medir nuestros anuncios.", accept: "Aceptar", decline: "Rechazar", privacy: "Privacidad", label: "Elección de cookies" },
+};
+const consentValue = () => { try { return localStorage.getItem(CONSENT_KEY); } catch { return "blocked"; } };
+const consentGranted = () => { const v = consentValue(); return v === "granted" || v === "accepted"; };
+window.dataLayer = window.dataLayer || [];
+function gtag() { window.dataLayer.push(arguments); }
+window.gtag = window.gtag || gtag;
+const GRANT = { ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted", analytics_storage: "granted" };
+if (!noTrack) {
+  gtag("consent", "default", { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "denied", wait_for_update: 500 });
+  if (consentGranted()) gtag("consent", "update", GRANT);
+}
+function loadGtag() {
+  if (noTrack || window.__mcGtag) return;
+  window.__mcGtag = 1;
+  const sc = document.createElement("script");
+  sc.async = true; sc.src = "https://www.googletagmanager.com/gtag/js?id=AW-18401185487";
+  document.head.appendChild(sc);
+  gtag("js", new Date()); gtag("config", "AW-18401185487");
+}
+function loadClarity() {
+  if (noTrack || !consentGranted() || window.clarity) return;
+  (function (c, l, a, r, i, tg, y) {
+    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+    tg = l.createElement(r); tg.async = 1; tg.src = "https://www.clarity.ms/tag/" + i;
+    y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(tg, y);
+  })(window, document, "clarity", "script", "y6e1s80114");
+}
+let cookieOpen = !noTrack && !consentValue();
+function setConsentH() {
+  const bar = $("cbar");
+  const desk = (() => { try { return matchMedia("(min-width:900px)").matches; } catch { return false; } })();
+  if (cookieOpen && !bar.hidden) document.documentElement.style.setProperty("--consent-h", (bar.offsetHeight + (desk ? 16 : 0)) + "px");
+  else document.documentElement.style.removeProperty("--consent-h");
+}
+function paintCookieBar() {
+  const bar = $("cbar");
+  bar.hidden = !cookieOpen;
+  if (!cookieOpen) { setConsentH(); return; }
+  const c = CB[L];
+  bar.setAttribute("aria-label", c.label);
+  bar.innerHTML = `<div><p>${esc(c.body)}</p><button type="button" data-c="1">${esc(c.accept)}</button><button type="button" data-c="0">${esc(c.decline)}</button><a href="${langHref("/privacy")}">${esc(c.privacy)}</a></div>`;
+  setConsentH();
+}
+$("cbar").onclick = (e) => {
+  const b = e.target.closest("[data-c]"); if (!b) return;
+  const yes = b.dataset.c === "1";
+  try { localStorage.setItem(CONSENT_KEY, yes ? "granted" : "denied"); } catch {}
+  if (yes) { gtag("consent", "update", GRANT); loadClarity(); }
+  cookieOpen = false; paintCookieBar();
+};
+if (typeof ResizeObserver !== "undefined") new ResizeObserver(setConsentH).observe($("cbar"));
 
 const seen = new Set();
 function show(i, backwards) {
   cur = i;
-  if (!seen.has(ORDER[i])) { seen.add(ORDER[i]); if (i > 0) track("go_step_" + ORDER[i], { n: i }); }
+  const name = ORDER[i];
+  if (!seen.has(name)) { seen.add(name); if (name === "you") track("req_details_view"); }
   document.querySelectorAll(".screen").forEach((el) => {
-    const on = el.dataset.s === ORDER[i];
+    const on = el.dataset.s === name;
     el.classList.toggle("on", on);
     el.classList.toggle("backwards", on && !!backwards);
   });
   $("bar").style.width = `${Math.round((i / (ORDER.length - 1)) * 100)}%`;
-  $("back").classList.toggle("on", i > 0 && ORDER[i] !== "done");
-  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  $("page").dataset.on = name;
+  const back = i > 0 && name !== "done";
+  $("back").hidden = !back;
+  $("mark").hidden = back;
+  // Only people who came from the website see the headline: the bot's
+  // customers already know who we are.
+  $("hero").hidden = SRC === "wa";
+  // The phone's Back gesture steps back through the questions (one history
+  // entry sits on top while the visitor is past screen 1; see popstate).
+  // The sent screen never adds one, so Back from it cannot resend.
+  if (i > 0 && name !== "done" && !armed) { try { history.pushState({ mcReq: 1 }, ""); armed = true; } catch {} }
+  save();
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 const go = (name) => show(ORDER.indexOf(name));
 // A single tap answers and moves on, with a beat to see the selection land.
 const advance = (name) => { paint(); setTimeout(() => go(name), 220); };
 
-$("back").onclick = () => {
-  let i = cur - 1;
-  show(Math.max(0, i), true);
-};
-$("lang").onclick = () => { L = L === "es" ? "en" : "es"; paint(); };
-document.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => go(b.dataset.go)));
+// History: one extra entry while inside the flow. Back pops it; we step one
+// screen back and push it again. On the sent screen Back is left alone, so a
+// second Back leaves the page and the request cannot be sent twice.
+let armed = false;
+window.addEventListener("popstate", () => {
+  armed = false;
+  if (sent || cur === 0) return;
+  show(Math.max(0, cur - 1), true);
+});
+$("back").onclick = () => { if (armed) history.back(); else show(Math.max(0, cur - 1), true); };
+const setLang = (l) => { L = l; try { localStorage.setItem("mm-lang", L); } catch {} paint(); };
+$("lang").onclick = () => setLang(L === "es" ? "en" : "es");
+$("shLangs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b && b.dataset.l !== L) setLang(b.dataset.l); };
 
-$("massages").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.massage = b.dataset.v; advance("day"); };
+// Answers survive a reload (sessionStorage, this tab only). Cleared once the
+// request is sent. Never sent anywhere.
+const SAVE_KEY = "mc_req_v1";
+function save() {
+  if (sent) return;
+  try {
+    sessionStorage.setItem(SAVE_KEY, JSON.stringify({
+      v: 1, cur: Math.min(cur, ORDER.indexOf("you")), S: { ...S, day: S.day ? S.day.iso : null },
+      f: { name: $("name").value, email: $("email").value, phone: $("phone").value, note: $("note").value },
+    }));
+  } catch { /* private mode: the page works without it */ }
+}
+function restore() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(SAVE_KEY) || "null");
+    if (!v || v.v !== 1 || !v.S) return 0;
+    Object.assign(S, v.S, { day: null });
+    // A day that has passed (or today, once it is too late) is asked again.
+    S.day = v.S.day ? dayList().find((d) => d.iso === v.S.day) || null : null;
+    if (!S.day) S.times = [];
+    if (S.day && S.day.i === 0) S.times = S.times.filter((x) => slotOk(x, true));
+    const f = v.f || {};
+    if (!PRE.n && f.name) $("name").value = f.name;
+    if (!PRE.e && f.email) $("email").value = f.email;
+    if (!PRE.p && f.phone) $("phone").value = f.phone;
+    if (f.note) { $("note").value = String(f.note).slice(0, 240); openNote(false); }
+    // Never past the first unanswered question.
+    const need = [S.massage, S.day, S.times.length ? 1 : null, S.area || S.loc ? 1 : null];
+    const first = need.findIndex((x) => !x);
+    return Math.max(0, Math.min(Number(v.cur) || 0, first === -1 ? ORDER.indexOf("you") : first));
+  } catch { return 0; }
+}
+const forget = () => { try { sessionStorage.removeItem(SAVE_KEY); } catch {} };
+
+$("massages").onclick = (e) => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  if (S.massage !== b.dataset.v) S.people = b.dataset.v === "Couples" ? "2" : "1";
+  S.massage = b.dataset.v;
+  once("req_answer_massage", { value: S.massage });
+  advance("day");
+};
 $("days").onclick = (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
-  S.day = dayList().find((d) => d.iso === b.dataset.v); S.times = []; advance("time");
+  S.day = dayList().find((d) => d.iso === b.dataset.v); S.times = [];
+  once("req_answer_day", S.day.i === 99 ? { offset: null, flexible: true } : { offset: S.day.i });
+  advance("time");
 };
 // Tap to add, tap again to remove; a fourth tap replaces the oldest.
 const mins = (v) => { const [h, m] = v.split(":"); return h * 60 + Number(m); };
 const toggle = (arr, v) => { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else { arr.push(v); if (arr.length > 3) arr.shift(); } arr.sort((a, b) => mins(a) - mins(b)); };
+const timeMeta = (v) => ({ hour: Number(v.split(":")[0]), min: Number(v.split(":")[1]) });
 // One tap picks the time and moves on: the studio is asked for exactly that.
 // "+ Add another time" switches to picking up to three, with a Next button.
 $("times").onclick = (e) => {
   const b = e.target.closest("[data-v]"); if (!b) return;
   const v = b.dataset.v;
   if (S.multi) { toggle(S.times, v); paint(); return; }
-  S.times = [v]; advance("where");
+  S.times = [v];
+  once("req_answer_time", timeMeta(v));
+  advance("where");
 };
 $("moreTimes").onclick = () => { S.multi = !S.multi; if (!S.multi) S.times = S.times.slice(0, 1); paint(); };
-$("timeNext").onclick = () => go("where");
-$("areas").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; S.area = b.dataset.v; S.loc = null; $("locate").classList.remove("done"); $("locNote").textContent = ""; advance("you"); };
+$("timeNext").onclick = () => {
+  if (S.times.length) once("req_answer_time", { ...timeMeta(S.times[0]), times: S.times.length });
+  go("where");
+};
+$("areas").onclick = (e) => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  // "Other area": a street, a hotel or a town outside the 11 chips (24 of 62
+  // bot requests in 75 days were outside them). Typed, then Next.
+  if (b.dataset.v === "__other") {
+    $("otherBox").hidden = false; paint();
+    $("otherIn").focus();
+    return;
+  }
+  S.area = b.dataset.v; S.loc = null; S.other = false; $("otherBox").hidden = true;
+  $("locate").classList.remove("done"); $("locNote").textContent = "";
+  once("req_answer_where", { area: isAnywhere(S.area) ? "Anywhere" : S.area });
+  advance("you");
+};
+$("otherBox").onsubmit = (e) => {
+  e.preventDefault();
+  const v = $("otherIn").value.trim().replace(/\s+/g, " ").slice(0, 80);
+  if (v.length < 2) { $("otherIn").focus(); return; }
+  S.area = v; S.loc = null; S.other = true;
+  $("locate").classList.remove("done"); $("locNote").textContent = "";
+  once("req_answer_where", { area: "Other", other: true });
+  advance("you");
+};
+$("people").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.people = b.dataset.v; paint(); save(); } };
+const openNote = (focus) => { $("noteBox").hidden = false; $("noteOpen").hidden = true; $("noteOpen").setAttribute("aria-expanded", "true"); if (focus) $("note").focus(); };
+$("noteOpen").onclick = () => openNote(true);
+$("note").addEventListener("input", () => { const n = $("note").value.length; $("noteCount").textContent = n ? `${n}/240` : ""; if ($("noteErr").textContent) $("noteErr").textContent = ""; });
 
 const km = (a, b) => {
   const R = 6371, r = Math.PI / 180;
@@ -493,30 +1203,17 @@ $("locate").onclick = () => {
     // Far from all of them (Pozuelo, a hotel by the airport): keep the pin and
     // say Madrid, the studios are ranked by distance from the pin anyway.
     S.area = km(here, best) <= 4 ? best.n : "Madrid";
-    S.loc = here;
+    S.loc = here; S.other = false;
     $("locate").classList.add("done");
-    $("locNote").textContent = t("located").replace("{a}", S.area === "Madrid" ? "you" : S.area);
+    $("locNote").textContent = t("located").replace("{a}", S.area === "Madrid" ? t("you") : S.area);
+    once("req_answer_where", { located: true });
     setTimeout(() => go("you"), 650);
   }, () => { $("locNote").textContent = t("locDenied"); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
 };
 
-// Prefill from the bot's link, so a WhatsApp customer types nothing twice.
-$("name").value = q.get("n") || "";
-$("phone").value = q.get("p") ? "+" + String(q.get("p")).replace(/[^0-9]/g, "") : "";
-$("email").value = q.get("e") || "";
-$("youNext").onclick = () => {
-  const name = $("name").value.trim(), phone = $("phone").value.replace(/[^0-9+]/g, ""), email = $("email").value.trim();
-  ["name", "phone", "email"].forEach((k) => $(k).classList.remove("bad"));
-  let err = "";
-  if (!name) { err = t("errName"); $("name").classList.add("bad"); }
-  else if (phone.replace(/\D/g, "").length < 9) { err = t("errPhone"); $("phone").classList.add("bad"); }
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { err = t("errEmail"); $("email").classList.add("bad"); }
-  $("youErr").textContent = err;
-  if (!err) go("later");
-};
-$("pressure").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.pressure = b.dataset.v; paint(); } };
-$("therapist").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.therapist = b.dataset.v; paint(); } };
-$("remind").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.every = Number(b.dataset.v); paint(); } };
+$("name").value = PRE.n;
+$("phone").value = PRE.p ? "+" + String(PRE.p).replace(/[^0-9]/g, "") : "";
+$("email").value = PRE.e;
 
 // Every request elsewhere stores "+<country><number>". A Spanish mobile typed
 // without a prefix ("612 474 827") is +34; "0034..." is "+34...".
@@ -526,97 +1223,206 @@ const intl = (v) => {
   if (d.startsWith("+")) return "+" + d.slice(1).replace(/\D/g, "");
   return /^[6789]\d{8}$/.test(d) ? "+34" + d : "+" + d;
 };
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// The phone is optional: it counts only once it has a digit in it.
+const phoneTyped = () => /\d/.test($("phone").value);
+const valid = {
+  name: () => !!$("name").value.trim(),
+  email: () => EMAIL_RE.test($("email").value.trim()),
+  // Without + or 00 only a Spanish number is guessed (612 345 678). Anything
+  // else ("5622355063", a US number) needs its country code: guessing "+56"
+  // (Chile) would break the WhatsApp hand-off, which matches the exact number.
+  phone: () => {
+    if (!phoneTyped()) return true;
+    const raw = $("phone").value.replace(/[^0-9+]/g, "");
+    if (!/^(\+|00)/.test(raw) && !/^[6789]\d{8}$/.test(raw)) return false;
+    const n = intl($("phone").value).replace(/\D/g, "").length;
+    return n >= 9 && n <= 15;
+  },
+};
+
+// "ana@gmial.com": email is the only channel for a request with no phone, so a
+// typo means studios answer and the customer never hears. KEEP IN SYNC with
+// src/lib/emailTypo.ts (its test compares the two maps).
+const TYPO = {"gmial.com":"gmail.com","gamil.com":"gmail.com","gmai.com":"gmail.com","gmal.com":"gmail.com","gmaill.com":"gmail.com","gnail.com":"gmail.com","gmail.co":"gmail.com","gmail.con":"gmail.com","gmail.cm":"gmail.com","gmail.om":"gmail.com","hotmial.com":"hotmail.com","hotmal.com":"hotmail.com","hotmai.com":"hotmail.com","hotmil.com":"hotmail.com","hotamil.com":"hotmail.com","hotmail.con":"hotmail.com","hotmail.co":"hotmail.com","outlok.com":"outlook.com","outllok.com":"outlook.com","outlook.con":"outlook.com","yahooo.com":"yahoo.com","yaho.com":"yahoo.com","yahoo.con":"yahoo.com","icloud.con":"icloud.com","iclod.com":"icloud.com","icoud.com":"icloud.com"};
+const typoFix = (e) => {
+  const v = String(e || "").trim().toLowerCase(); const at = v.lastIndexOf("@");
+  if (at < 1) return null;
+  const d = v.slice(at + 1);
+  const f = TYPO[d] || (/\.(con|cmo|ocm|vom)$/.test(d) ? d.replace(/\.(con|cmo|ocm|vom)$/, ".com") : null);
+  return f && f !== d ? v.slice(0, at + 1) + f : null;
+};
+const typoSeen = new Set();
+function showTypo() {
+  const fix = typoFix($("email").value);
+  // Same hint already showing (in this language): leave it, so a tap on the
+  // fix is not lost to the blur that re-renders it.
+  const key = fix ? L + "|" + fix : "";
+  if ($("emailTypo").dataset.k === key && (!fix || $("typoFix"))) return fix;
+  $("emailTypo").dataset.k = key;
+  $("emailTypo").innerHTML = fix ? esc(t("typo")).replace("{e}", `<button type="button" id="typoFix">${esc(fix)}</button>`) : "";
+  if (fix) $("typoFix").onclick = () => { $("email").value = fix; $("emailTypo").innerHTML = ""; $("emailTypo").dataset.k = ""; setErr("email", false); save(); $("phone").focus(); };
+  return fix;
+}
+$("email").addEventListener("blur", showTypo);
+const ERR = { name: "errName", email: "errEmail", phone: "errPhone" };
+function setErr(k, bad) {
+  $(k).classList.toggle("bad", bad);
+  $(k).setAttribute("aria-invalid", String(bad));
+  $(k + "Err").innerHTML = bad ? `${ALERT}<span>${esc(t(ERR[k]))}</span>` : "";
+}
+// Checked on tap, and again when someone leaves a field we marked: never
+// while they are still typing.
+for (const k of ["name", "email", "phone"]) $(k).addEventListener("blur", () => { if ($(k).classList.contains("bad")) setErr(k, !valid[k]()); save(); });
+
+$("therapist").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.therapist = b.dataset.v; paint(); } };
+$("remind").onclick = () => { S.remind = !S.remind; paint(); };
 
 // The same words the website wizard sends, so studios read one format.
 const hm = (hs) => hs.join(" / ");
 const slot = (d, hs) => [d ? d.long : "", hs && hs.length ? hm(hs) : ""].filter(Boolean).join(", ");
 
-$("send").onclick = async () => {
+// The track function keeps the first row per day and event, so the first tap
+// is req_submit_attempt and later taps are req_submit_retry (with a count).
+let attempts = 0;
+$("youForm").onsubmit = async (ev) => {
+  ev.preventDefault();
   const btn = $("send");
-  btn.disabled = true; btn.textContent = t("sending"); $("sendErr").textContent = "";
-  const name = $("name").value.trim(), phone = intl($("phone").value), email = $("email").value.trim().toLowerCase();
+  if (btn.disabled) return;
+  $("sendErr").textContent = "";
+  if (blocked) { $("sendErr").textContent = t("blocked"); return; }
+  const note = $("note").value.trim().replace(/\s+/g, " ").slice(0, 240);
+  if (EROTIC_RE.test(note) || (S.other && EROTIC_RE.test(S.area || ""))) {
+    blocked = true;
+    track("req_blocked");
+    $("sendErr").textContent = t("blocked");
+    return;
+  }
+  const invalid = ["name", "email", "phone"].filter((k) => !valid[k]());
+  for (const k of ["name", "email", "phone"]) setErr(k, invalid.includes(k));
+  // A likely typo stops the first tap only: tapping Send again sends as typed.
+  const em = $("email").value.trim().toLowerCase();
+  if (!invalid.includes("email") && showTypo() && !typoSeen.has(em)) { typoSeen.add(em); invalid.push("email_typo"); }
+  attempts++;
+  track(attempts === 1 ? "req_submit_attempt" : "req_submit_retry", { invalid, n: attempts });
+  if (invalid.length) {
+    const el = $(invalid[0] === "email_typo" ? "email" : invalid[0]);
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    return;
+  }
+  btn.disabled = true; btn.textContent = t("sending");
+  const name = $("name").value.trim().replace(/\s+/g, " "), email = $("email").value.trim().toLowerCase();
+  // intl("") is "+": an empty field must send no phone at all.
+  const phone = phoneTyped() ? intl($("phone").value) : undefined;
   const notes = [
-    S.pressure ? `Presión: ${{ Light: "suave", Medium: "media", Firm: "fuerte" }[S.pressure]}` : "",
     S.therapist === "female" ? "Prefiere masajista mujer" : S.therapist === "male" ? "Prefiere masajista hombre" : "",
     S.times.length > 1 ? `También le va: ${S.times.slice(1).join(", ")}` : "",
     S.loc ? `Ubicación: ${S.loc.lat.toFixed(5)},${S.loc.lng.toFixed(5)}` : "",
+    note ? `Nota del cliente: ${note}` : "",
   ].filter(Boolean).join("; ");
+  // The group size goes on `want`, as the old website wizard sent it, so the
+  // studio reads it in the ask itself.
+  const people = S.people === "3" ? "3+" : S.people;
   const body = {
-    want: S.massage, area: S.area || "Madrid",
+    want: isGroup() ? `${S.massage} · Personas: ${people}` : S.massage, area: S.area || "Madrid",
     when: slot(S.day, S.times),
     // Structured, so the studio reads "a las 18:00" and is only asked if it is
     // open at that hour (dispatch-studios v16).
     date: S.day && S.day.iso !== "Flexible" ? S.day.iso : undefined,
     time1: S.times.length ? S.times[0].padStart(5, "0") : undefined,
-    name, first_name: name.split(" ")[0], phone, email, lang: L, source: "go-page" + (/^[a-z0-9-]{1,20}$/.test(q.get("src") || "") ? "-" + q.get("src") : ""), notes: notes || undefined,
+    name, first_name: name.split(" ")[0], phone, email, lang: L, source: "go-page-" + SRC, notes: notes || undefined,
     prefs: {
-      service: S.massage, pressure: S.pressure, therapist_gender: S.therapist && S.therapist !== "any" ? S.therapist : null,
-      every_days: S.every || null, remind_ok: !!S.every, day1: S.day && S.day.iso !== "Flexible" ? S.day.iso : null,
+      service: S.massage, pressure: null, therapist_gender: S.therapist && S.therapist !== "any" ? S.therapist : null,
+      every_days: S.remind ? 30 : null, remind_ok: S.remind, day1: S.day && S.day.iso !== "Flexible" ? S.day.iso : null,
       lat: S.loc ? S.loc.lat : null, lng: S.loc ? S.loc.lng : null,
-      consent_text: S.every ? T[L].consent : null,
+      consent_text: S.remind ? T[L].consent : null,
     },
   };
   try {
     const r = await fetch(LEAD, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(j.error || r.status);
-    track("go_submit_ok", { request_id: j.id, massage: S.massage, area: S.area, times: S.times.length, located: !!S.loc, remind: S.every || 0 });
-    done(j.id, name);
+    track("req_submit_ok", { request_id: j.id, has_phone: !!phone, gender: S.therapist, massage: S.massage, times: S.times.length, located: !!S.loc, remind: S.remind ? 30 : 0, people: isGroup() ? people : null, has_note: !!note, other_area: S.other, flexible: !!(S.day && S.day.i === 99), attempts });
+    forget();
+    btn.textContent = t("send"); btn.disabled = false;
+    done(j.id, name, phone || "", email);
   } catch (e) {
-    track("go_submit_error", { error: String(e && e.message || e).slice(0, 120) });
-    $("sendErr").textContent = t("sendErr");
+    track("req_submit_error", { error: String(e && e.message || e).slice(0, 120) });
+    $("sendErr").innerHTML = t("sendErr").replace("<a>", `<a href="https://wa.me/${BOT}">`);
     btn.textContent = t("send"); btn.disabled = false;
   }
 };
 
-function done(id, name) {
-  const m = MASSAGES.find((x) => x.v === S.massage);
-  const row = (e, k, v) => `<div class="kv"><span class="e">${e}</span><div><small>${k}</small>${esc(v)}</div></div>`;
+function done(id, name, phone, email) {
+  sent = { id, name, phone, email };
+  renderDone();
+  go("done");
+  try { history.replaceState({ mcReq: "done" }, ""); } catch {}
+}
+
+// Drawn from `sent`, so the EN|ES toggle redraws it in the other language.
+function renderDone() {
+  const { id, name, phone, email } = sent;
+  const m = MASSAGES.find((x) => x.v === S.massage) || MASSAGES[MASSAGES.length - 1];
+  const row = (e, k, v, i) => `<div class="kv"><span class="e" aria-hidden="true">${e}</span>${ic(i)}<div><small>${k}</small>${esc(v)}</div></div>`;
+  const anywhere = isAnywhere(S.area);
+  const who = THERAPIST[L].find(([v]) => v === S.therapist);
   $("reqNo").textContent = id ? t("req").replace("{n}", id) : "Massage Club";
   $("summary").innerHTML = [
-    row(m.e, t("kMassage"), m[L][0]),
-    row("🗓️", t("kWhen"), [S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ")),
-    row("📍", t("kWhere"), S.area === T[L].anywhere ? T[L].anywhere : (S.loc ? t("located").replace("{a}", S.area) : S.area)),
-    S.every ? row("✨", t("kNext"), T[L].every[S.every]) : "",
+    row(m.e, t("kMassage"), m[L][0], m.i),
+    row("🗓️", t("kWhen"), S.day ? [S.day.i === 99 ? t("anyDay") : S.day.title + (S.day.sub ? ", " + S.day.sub : ""), hm(S.times)].filter(Boolean).join(" · ") : "", "calendar"),
+    row("📍", t("kWhere"), anywhere ? t("anywhere") : (S.loc ? t("located").replace("{a}", S.area === "Madrid" ? t("you") : S.area) : S.area), "pin"),
+    isGroup() ? row("👥", t("kPeople"), (t("peopleOpts").find(([v]) => v === S.people) || [, S.people])[1], "users") : "",
+    who && S.therapist !== "any" ? row("👤", t("kWho"), who[1], "user") : "",
+    row("💶", t("kPrice"), t(S.massage === "Couples" ? "priceDoneCouples" : "priceDone"), "euro"),
+    S.remind ? row("✨", t("kRemind"), t("remindVal"), "bell") : "",
   ].join("");
-  const want = (m[L][0] || "").toLowerCase() + (L === "es" ? "" : " massage");
-  const text = t("waText").replace("{name}", name.split(" ")[0]).replace("{want}", want).replace("{ref}", id ? ` (#${id})` : "");
-  $("wa").href = `https://wa.me/${BOT}?text=${encodeURIComponent(text)}`;
-  $("wa").onclick = () => track("go_wa_tap", { request_id: id });
-  go("done");
-  confetti();
+  const near = S.loc && S.area === "Madrid" ? t("you") : S.area;
+  $("steps").innerHTML = [
+    anywhere || !S.area ? t("next1Any") : t("next1").replace("{area}", esc(near)),
+    phone && id ? t("next2Phone") : t("next2"),
+    t("next3"),
+  ].map((x) => `<li><span>${x}</span></li>`).join("");
+  // The full address, so a typo can still be seen: it is the customer's own
+  // screen, seconds after they typed it.
+  $("mail").innerHTML = email ? `${MAIL}<span>${esc(t("mail").replace("{m}", email))}</span>` : "";
+  // The bot joins this request only by its number plus the same phone, so
+  // the button shows only when both exist. "(#id)" must follow "website" or
+  // "la web" directly (wa-bot WEB_HANDOFF_RE).
+  if (phone && id) {
+    const text = t("waText").replace("{name}", name.split(" ")[0]).replace("{want}", m[L][2]).replace("{id}", id);
+    $("waSlot").innerHTML = `<a class="cta wa" id="wa" href="https://wa.me/${BOT}?text=${encodeURIComponent(text)}">${esc(t("wa"))}</a>`;
+    $("wa").onclick = () => track("wa_handoff", { request_id: id, has_id: true, flow: SRC });
+  } else {
+    $("waSlot").innerHTML = "";
+  }
 }
 
-// A short burst in the club's colours. Partiful's signature, kept brief.
-function confetti() {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const c = $("confetti"), x = c.getContext("2d");
-  const W = (c.width = innerWidth * devicePixelRatio), H = (c.height = innerHeight * devicePixelRatio);
-  const cols = ["#B85C38", "#E8B79E", "#A9BFA6", "#5B4A6E", "#F2D3B8", "#262019"];
-  const P = Array.from({ length: 140 }, () => ({
-    x: W / 2 + (Math.random() - .5) * W * .3, y: H * .35, vx: (Math.random() - .5) * 16 * devicePixelRatio,
-    vy: (-Math.random() * 16 - 6) * devicePixelRatio, s: (6 + Math.random() * 7) * devicePixelRatio,
-    r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: cols[(Math.random() * cols.length) | 0],
-  }));
-  let f = 0;
-  (function tick() {
-    x.clearRect(0, 0, W, H);
-    for (const p of P) {
-      p.vy += .45 * devicePixelRatio; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.r += p.vr;
-      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .66); x.restore();
-    }
-    if (++f < 150) requestAnimationFrame(tick); else x.clearRect(0, 0, W, H);
-  })();
-}
-
+const startAt = restore();
 paint();
-show(0);
-send({ path: location.pathname, ref: document.referrer || null });
+show(startAt);
+// Pageviews. A visitor who landed on "/" or "/start" and hopped here gets the
+// pageview the React page used to send for that path, with the real referrer,
+// so the weekly path-based numbers still see home traffic. Then /reserve.
+if (HOP && PATH_SRC[HOP.path]) send({ path: HOP.path, ref: REF || null });
+send({ path: location.pathname, ref: REF || null });
 {
   const utm = {};
   for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "fbclid", "gclid"]) { const v = q.get(k); if (v) utm[k] = k.endsWith("clid") ? "1" : v.slice(0, 80); }
-  track("go_view", { lang: L, src: q.get("src") || null, ref: (document.referrer || "").replace(/^https?:\/\/([^/]+).*/, "$1") || "direct", ...utm });
+  const nav = String(navigator.language || "").toLowerCase().slice(0, 8) || null;
+  track("req_view", { src: SRC, ref: refHost(REF), entry: HOP ? HOP.path : null, navlang: nav, restored: startAt > 0, ...utm });
+  // Campaign attribution, as the website's logCampaignVisit (src/lib/siteVisit.ts).
+  if (q.get("utm_source") || q.has("gclid")) {
+    send({ event: "campaign_visit", path: HOP && PATH_SRC[HOP.path] ? HOP.path : location.pathname, slug: null, partner_slug: null, meta: {
+      lang: L, host: location.hostname, v: "ds1", source: q.get("utm_source") || "gclid", medium: q.get("utm_medium"), campaign: q.get("utm_campaign"),
+      term: q.get("utm_term"), content: q.get("utm_content"), gclid: q.has("gclid"),
+    } });
+  }
 }
+// Tags after the page is up, never in the way of the first screen.
+const later = () => setTimeout(() => { loadGtag(); loadClarity(); }, 1200);
+if (document.readyState === "complete") later(); else window.addEventListener("load", later, { once: true });
 })();
 </script>
 </body>

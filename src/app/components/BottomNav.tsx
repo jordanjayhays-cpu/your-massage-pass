@@ -42,7 +42,8 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="relative flex-shrink-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/60 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      // From 900px the tabs live in SiteHeader (desktop fix F8).
+      className="relative flex-shrink-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/60 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] desk:hidden"
       aria-label={ARIA_PRIMARY[lang]}
     >
       <ul className="flex items-stretch justify-around w-full md:max-w-2xl md:mx-auto">

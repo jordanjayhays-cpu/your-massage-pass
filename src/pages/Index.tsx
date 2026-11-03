@@ -69,7 +69,7 @@ const Index = () => {
     "Real menus and prices per studio",
     "Browse all 8+ listed studios",
     "Opening hours and locations",
-    "Free to browse — no account",
+    "Free to browse, no account",
     "Your preferences saved everywhere",
     "Save the studios you like",
     "Share studios with friends",
@@ -92,8 +92,8 @@ const Index = () => {
       icon: User,
       title: "Your personal profile",
       titleEs: "Tu perfil personal",
-      desc: "Your massage notes, preferred pressure, allergies, favorite studios — all saved in one place. Browse anywhere and your preferences follow you.",
-      descEs: "Tu historial de masajes, presión preferida, alergias, terapeutas favoritos — todo en un solo lugar.",
+      desc: "Your massage notes, preferred pressure, allergies, favorite studios: all saved in one place. Browse anywhere and your preferences follow you.",
+      descEs: "Tu historial de masajes, presión preferida, alergias, terapeutas favoritos: todo en un solo lugar.",
       highlight: "Preferences travel with you"
     },
     {
@@ -305,10 +305,10 @@ const Index = () => {
           <div className="max-w-2xl mb-16">
             <p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">What you get</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground text-balance">
-              Everything you need to choose a studio — in one directory
+              Everything you need to choose a studio, in one directory
             </h2>
             <p className="text-muted-foreground mt-4 text-lg">
-              We looked at how people actually pick a massage in Madrid. Then we put everything that matters into Massage Club — and made it simple.
+              We looked at how people actually pick a massage in Madrid. Then we put everything that matters into Massage Club, and made it simple.
             </p>
           </div>
 

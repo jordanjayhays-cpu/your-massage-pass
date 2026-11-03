@@ -76,7 +76,7 @@ export default function QuizEmailCapture({ resultSlug }: { resultSlug: string })
     return (
       <div className="rounded-2xl border border-[#E5DDD3] bg-[#FBF7F2] p-4">
         <p className="text-sm font-semibold text-[#3d2b1f]">{title}</p>
-        <p className="mt-1 text-xs text-[#7A7068]">{helper}</p>
+        <p className="mt-1 text-xs text-[#7A7068] min-[900px]:text-[13px]">{helper}</p>
         <button
           type="button"
           disabled={state === "saving"}
@@ -90,7 +90,7 @@ export default function QuizEmailCapture({ resultSlug }: { resultSlug: string })
           {state === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
           {es ? "Guardar en mi perfil" : "Save to my profile"}
         </button>
-        {state === "error" && <p className="mt-2 text-xs text-red-600">{failed}</p>}
+        {state === "error" && <p className="mt-2 text-xs text-red-600 min-[900px]:text-[13px]">{failed}</p>}
       </div>
     );
   }
@@ -131,8 +131,8 @@ export default function QuizEmailCapture({ resultSlug }: { resultSlug: string })
           <span className="hidden sm:inline">{label}</span>
         </button>
       </div>
-      <p className="mt-2 text-xs text-[#7A7068]">{helper}</p>
-      {state === "error" && <p className="mt-2 text-xs text-red-600">{failed}</p>}
+      <p className="mt-2 text-xs text-[#7A7068] min-[900px]:text-[13px]">{helper}</p>
+      {state === "error" && <p className="mt-2 text-xs text-red-600 min-[900px]:text-[13px]">{failed}</p>}
     </form>
   );
 }

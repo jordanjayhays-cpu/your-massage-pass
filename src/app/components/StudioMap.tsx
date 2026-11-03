@@ -18,6 +18,7 @@ import { haversineKm, distanceLabel } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
 import { isStudioVisited } from "@/lib/visitedStudios";
 import { studioPath } from "@/lib/studioHref";
+import { PlaceTile } from "./PlaceTile";
 
 
 
@@ -57,7 +58,17 @@ type Props = {
   onHoverStudio?: (key: string | null) => void;
   /** Enables the "Search this area" chip and reports the visible bounds. */
   onSearchArea?: (bounds: MapBounds) => void;
+  /**
+   * The map is a sticky full-height column from 900px (/studios). There the
+   * "Bigger map" toggle has nothing to add, so it hides, and the zoom buttons
+   * move to the top right, clear of the WhatsApp bubble in the bottom corner.
+   */
+  desktopSticky?: boolean;
 };
+
+/** Same breakpoint as the `min-[900px]:` classes. */
+const isDesktop = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(min-width: 900px)").matches;
 
 /** Branded clay pin: solid clay circle, white centre dot, white border. */
 function brandPin(active: boolean, visited = false) {
@@ -153,6 +164,7 @@ export default function StudioMap({
   highlightedKey = null,
   onHoverStudio,
   onSearchArea,
+  desktopSticky = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -253,6 +265,9 @@ export default function StudioMap({
    * so the page has settled first.
    */
   useEffect(() => {
+    // Never by itself on a computer: there it covered the whole list a second
+    // after load. Desktop visitors still opt in with "Tap to locate".
+    if (isDesktop()) return;
     if (!autoAskOnMobile) return;
     if (locationChoiceMade() || locationSheetAutoShown()) return;
 
@@ -280,6 +295,9 @@ export default function StudioMap({
           zoom: userLoc ? 14 : 13,
           disableDefaultUI: true,
           zoomControl: true,
+          ...(desktopSticky && isDesktop()
+            ? { zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP } }
+            : {}),
           // One finger moves the map and pinch zooms; no "use two fingers"
           // overlay (Jordan, 15 Oct).
           gestureHandling: "greedy",
@@ -455,7 +473,7 @@ export default function StudioMap({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-label={expanded ? "Smaller map" : "Bigger map"}
-          className="absolute top-3 right-3 z-10 h-9 w-9 flex items-center justify-center rounded-full bg-card/95 backdrop-blur-sm shadow-soft border border-border/60 hover:bg-card transition"
+          className={`absolute top-3 right-3 z-10 h-9 w-9 flex items-center justify-center rounded-full bg-card/95 backdrop-blur-sm shadow-soft border border-border/60 hover:bg-card transition${desktopSticky ? " min-[900px]:hidden" : ""}`}
         >
           {expanded ? <Minimize2 className="h-4 w-4 text-foreground" /> : <Maximize2 className="h-4 w-4 text-foreground" />}
         </button>
@@ -472,7 +490,7 @@ export default function StudioMap({
               <Compass className="h-3 w-3 text-primary" />
             )}
           </div>
-          <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase">
+          <span className="text-[10px] font-bold tracking-[0.14em] text-foreground uppercase min-[900px]:text-[13px] min-[900px]:font-semibold min-[900px]:normal-case min-[900px]:tracking-normal">
             {locating
               ? t("app.massageList.locating", "Locating you…")
               : userLoc
@@ -491,15 +509,15 @@ export default function StudioMap({
               onSearchArea({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
               setMoved(false);
             }}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 backdrop-blur border border-[#EADFD2] shadow-soft px-4 py-2 text-xs font-semibold text-[#C4622D] hover:bg-white transition"
+            className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 backdrop-blur border border-[#EADFD2] shadow-soft px-4 py-2 text-xs font-semibold text-[#C4622D] hover:bg-white transition${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14" : ""}`}
           >
             Search this area <span className="font-normal text-[#8a7460]">/ Buscar en esta zona</span>
           </button>
         )}
 
         {geoError && (
-          <div className="absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft">
-            <p className="text-[11px] text-muted-foreground">
+          <div className={`absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14 min-[900px]:right-16" : ""}`}>
+            <p className="text-[11px] text-muted-foreground min-[900px]:text-[13px]">
               {t("app.massageList.geoError", "We could not get your location. Showing studios around central Madrid.")}
             </p>
           </div>
@@ -515,15 +533,24 @@ export default function StudioMap({
             ? haversineKm(userLoc, selected as any)
             : null;
           return (
-            <div className="absolute left-3 right-3 bottom-3 z-20">
+            // Desktop sticky map (/studios): the map runs below the fold while
+            // the page is at rest, so the card opens at the top, under the
+            // "Near Madrid" pill and clear of the zoom buttons (top right).
+            <div className={`absolute left-3 right-3 bottom-3 z-20${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14 min-[900px]:right-16" : ""}`}>
               <a
                 href={studioPath(selected as any)}
                 onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
                 aria-label={lang === "es" ? `Abrir ${selected.studio}` : `Open ${selected.studio}`}
                 className="flex items-center gap-3 rounded-2xl bg-card border border-border shadow-elegant p-2.5 pr-11 hover:border-primary/50 transition"
               >
-                {selected.image && (
-                  <img src={selected.image} alt="" className="h-14 w-14 flex-shrink-0 rounded-xl object-cover" />
+                {/* Only the studio's own photo, as on the list cards; without
+                    one its initial, never a stock picture that reads as the room. */}
+                {selected.ownImage ? (
+                  <img src={selected.ownImage} alt="" className="h-14 w-14 flex-shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl [&_.text-3xl]:text-2xl">
+                    <PlaceTile name={selected.studio} hood={null} />
+                  </span>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-base font-semibold text-foreground leading-tight truncate">{selected.studio}</p>

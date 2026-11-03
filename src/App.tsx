@@ -49,6 +49,17 @@ import MassageTypePage from "./pages/MassageTypePage";
 import BookingCard from "./pages/BookingCard";
 
 import { MASSAGE_TYPE_SLUGS } from "./lib/massageTypes";
+import { RequestFlowRedirect } from "./lib/requestFlowRedirect";
+
+/**
+ * "/" opens the request flow (/reserve). Login stays here only for sign-in
+ * links (Supabase tokens in the URL), signed-in visitors (Login forwards them
+ * on), ?stay=1 and Lovable previews. Rules: src/lib/requestFlowRedirect.ts,
+ * kept in sync with the inline script in index.html.
+ */
+function HomeEntry() {
+  return <RequestFlowRedirect fallback={<Login />} />;
+}
 
 /**
  * Permanent redirect from the old /fb route to /start, preserving query
@@ -107,6 +118,7 @@ import ConsentBanner from "./components/ConsentBanner";
 import AnalyticsOptOut from "./components/AnalyticsOptOut";
 import ThanksToast from "./components/ThanksToast";
 import WhatsAppBubble from "./app/components/WhatsAppBubble";
+import { SiteChromeLayout } from "./components/SiteChrome";
 
 
 
@@ -136,26 +148,34 @@ const App = () => (
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/account/setup" element={<AccountSetup />} />
 
-          <Route path="/compare" element={<Compare />} />
           <Route path="/review" element={<Review />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
+          {/* Desktop frame (F11, F12): SiteHeader and SiteFooter from 900px on
+              these customer pages. Phones keep each page's own header. The app
+              shell (AppLayout) draws its own header and footer. */}
+          <Route element={<SiteChromeLayout />}>
+            {/* /compare opens from the /studios compare tray: same frame. */}
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+          </Route>
 
-          {/* Public lead-capture pages shared on WhatsApp */}
-          <Route path="/book" element={<BookFlow />} />
-          <Route path="/start" element={<FbLanding />} />
+          {/* One front door: the old wizard pages open the request flow
+              (/reserve). They render only with ?stay=1 or on Lovable previews. */}
+          <Route path="/book" element={<RequestFlowRedirect fallback={<BookFlow />} />} />
+          <Route path="/start" element={<RequestFlowRedirect fallback={<FbLanding />} />} />
           <Route path="/match" element={<MatchFlow />} />
           <Route path="/fb" element={<FbRedirect />} />
 
           {/* Common near-miss redirects - keep them before the /:studioId catch-all */}
           <Route path="/studio" element={<Redirect to="/studios" />} />
           <Route path="/massages" element={<Redirect to="/studios" />} />
-          <Route path="/booking" element={<Redirect to="/book" />} />
+          <Route path="/booking" element={<RequestFlowRedirect fallback={<BookFlow />} />} />
           {/* NOTE: no "/start/" route - React Router treats it as "/start", so a
               redirect there loops forever and renders a blank page. */}
 
 
 
+          <Route element={<SiteChromeLayout />}>
           <Route path="/request" element={<Request />} />
           <Route path="/notify" element={<Notify />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
@@ -179,6 +199,7 @@ const App = () => (
           {MASSAGE_TYPE_SLUGS.map((slug) => (
             <Route key={slug} path={`/massages/${slug}`} element={<MassageTypePage slug={slug} />} />
           ))}
+          </Route>
 
 
 
@@ -196,14 +217,16 @@ const App = () => (
           {/* On the booking subdomain (book.<domain>), the root path IS the studio:
               book.massageclub.io/art-thai-massage → that studio's booking page. */}
           {typeof window !== "undefined" && window.location.hostname.startsWith("book.") ? (
-            <Route path="/:studioId" element={<StudioBookingPage />} />
+            <Route element={<SiteChromeLayout />}>
+              <Route path="/:studioId" element={<StudioBookingPage />} />
+            </Route>
           ) : (
             <Route path="/" element={<Home />} />
           )}
 
           <Route path="/web" element={<Web />} />
           <Route path="/" element={<AppLayout />}>
-            <Route index element={<Login />} />
+            <Route index element={<HomeEntry />} />
             <Route path="massages" element={<MassageList />} />
             <Route path="massages/:id" element={<ShopDetail />} />
             {/* Legacy calendar/customize/payment flow removed: customers book on
@@ -265,7 +288,9 @@ const App = () => (
           {/* Shareable public booking page (goes on Google Maps / WhatsApp) */}
           {/* Legacy id links stay alive, redirecting to the canonical /{slug} URL. */}
           <Route path="/s/:studioId" element={<StudioIdRedirect />} />
-          <Route path="/book/:studioId" element={<StudioBookingPage />} />
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/book/:studioId" element={<StudioBookingPage />} />
+          </Route>
           {/* Permanent redirect for renamed Calma slug */}
           <Route path="/calma-madrid-spa" element={<Navigate to="/spa-calma" replace />} />
           {/* Studio Invite + Setup */}
@@ -276,17 +301,19 @@ const App = () => (
           <Route path="/studio-portal" element={<StudioPortal />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           {/* Studio terms page */}
-          <Route path="/for-studios" element={<ForStudios />} />
-          <Route path="/para-estudios" element={<ForStudios />} />
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/for-studios" element={<ForStudios />} />
+            <Route path="/para-estudios" element={<ForStudios />} />
+          </Route>
 
           {/* WhatsApp booking card (noindex, standalone) */}
           <Route path="/r/:token" element={<BookingCard />} />
 
           {/* Canonical studio URL on every host: /{slug} */}
-          <Route path="/:studioId" element={<StudioBookingPage />} />
-
-
-          <Route path="*" element={<NotFound />} />
+          <Route element={<SiteChromeLayout />}>
+            <Route path="/:studioId" element={<StudioBookingPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Routes>
         </LocationAskProvider>
       </BrowserRouter>

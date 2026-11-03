@@ -28,7 +28,9 @@ const getSnapshot = () => ctx;
 
 function routeAllowsBubble(pathname: string): boolean {
   const p = pathname.replace(/\/+$/, "") || "/";
-  if (p === "/" || p === "/web" || p === "/landing") return true;
+  // Not on "/": it opens the request flow, and on sign-in the bubble covered
+  // "Continue with Google".
+  if (p === "/web" || p === "/landing") return true;
   if (p === "/studios") return true;
   if (p === "/app/discovery" || p === "/discovery") return true;
   if (p === "/app/bookings" || p === "/bookings") return true;
@@ -62,13 +64,26 @@ export default function WhatsAppBubble() {
   const visible = !hidden && (!!studio || routeAllowsBubble(pathname));
   if (!visible) return null;
 
-  // Sit above the bottom tab bar when it is on screen.
-  const bottomClass = shouldShowBottomNav(pathname)
-    ? "bottom-[calc(84px+env(safe-area-inset-bottom))]"
-    : "bottom-[calc(20px+env(safe-area-inset-bottom))]";
+  // Sit above the bottom tab bar when it is on screen, and above the cookie
+  // bar while it shows (--consent-h, set by ConsentBanner; 0 otherwise).
+  // --tabbar-room (index.css) is the tab bar's 84px on phones and 20px from
+  // 900px, where the tab bar is hidden. --consent-h is 0 from 900px, where the
+  // cookie bar is a card on the left.
+  const base = shouldShowBottomNav(pathname)
+    ? "var(--tabbar-room)"
+    : "1rem + env(safe-area-inset-bottom)";
+
+  // Studio pages and /studios have a right-hand column (the booking card, the
+  // sticky map) that already offers WhatsApp. Between 900 and 1279px that
+  // column reaches the bottom-right corner, so the bubble would cover its
+  // button or the map: it steps aside there. From 1280px there is room.
+  const besideColumn = !!studio || (pathname.replace(/\/+$/, "") || "/") === "/studios";
 
   return (
-    <div className={`fixed right-4 z-50 flex items-center gap-2 ${bottomClass}`}>
+    <div
+      className={`fixed right-4 z-50 flex items-center gap-2${besideColumn ? " desk:max-xl:hidden" : ""}`}
+      style={{ bottom: `calc(${base} + var(--consent-h, 0px))` }}
+    >
       {showHint && (
         <span
           role="status"

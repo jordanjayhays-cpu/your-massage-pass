@@ -77,7 +77,7 @@
     "q2": "Ha un costo?",
     "a2": "No. La consultazione è gratuita, non c'è account o abbonamento, e paghi direttamente lo studio.",
     "q3": "Quali tipi di massaggio sono inclusi?",
-    "a3": "Tutti: svedese, tessuto profondo (descontracturante), sportivo (deportivo), Thai, pietre calde (piedras calientes), riflessologia e altri ancora — a seconda dello studio.",
+    "a3": "Tutti: svedese, tessuto profondo (descontracturante), sportivo (deportivo), Thai, pietre calde (piedras calientes), riflessologia e altri ancora, a seconda dello studio.",
     "q4": "Posso andarci ogni giorno?",
     "a4": "Sì. Tutte le volte che vuoi, in base alla disponibilità di ciascuno studio."
   },
@@ -120,7 +120,7 @@
       "nearbyTitle": "Centri vicino a te",
       "nearbyTitleMadrid": "Centri a Madrid",
       "exploreTitle": "Esplora gli stili di massaggio",
-      "exploreSub": "Scopri i benefici di ogni stile — poi prenota quello giusto.",
+      "exploreSub": "Scopri i benefici di ogni stile, poi prenota quello giusto.",
       "inMadrid": "A Madrid"
     },
     "customize": {
@@ -215,7 +215,10 @@
       "call": "Chiama",
       "chat": "Chatta",
       "whatsapp": "Chiedi su WhatsApp",
-      "whatsappEs": "Preguntar por WhatsApp"
+      "whatsappEs": "Preguntar por WhatsApp",
+      "notFoundTitle": "Non abbiamo trovato questo centro.",
+      "notFoundSub": "Possiamo comunque chiedere a centri massaggi professionali vicino a te.",
+      "askStudiosNearMe": "Chiedi ai centri vicino a me"
     },
     "calendar": {
       "back": "Indietro",
@@ -223,7 +226,7 @@
       "chooseDay": "Scegli un giorno",
       "availableTimes": "Orari disponibili",
       "pickDayFirst": "Prima scegli un giorno.",
-      "closedDay": "Chiuso in questa data — per favore scegli un altro giorno.",
+      "closedDay": "Chiuso in questa data. Per favore scegli un altro giorno.",
       "fullyBooked": "Tutto esaurito",
       "continue": "Continua",
       "days": {
@@ -246,7 +249,7 @@
         "gettingThere": "Come arrivare",
         "feedback": {
           "title": "Ti piace Massage Club?",
-          "description": "Dopo la tua visita, lascia una recensione a {{studio}} su Google — aiuterai il centro e altri clienti.",
+          "description": "Dopo la tua visita, lascia una recensione a {{studio}} su Google. Aiuterai il centro e altri clienti.",
           "button": "Lascia una recensione su Google ⭐"
         },
         "whatsapp": {
@@ -269,7 +272,7 @@
           "success": "Prenotazione confermata!"
         },
         "note": {
-          "referralCredit": "€{{amount}} di credito invito — da detrarre dal conto in studio."
+          "referralCredit": "€{{amount}} di credito invito. Da detrarre dal conto in studio."
         }
       },
       "main": {
@@ -290,7 +293,7 @@
         },
         "payment": {
           "title": "Paga in studio",
-          "description": "Nessun pagamento richiesto ora — pagherai al tuo arrivo."
+          "description": "Nessun pagamento richiesto ora. Pagherai al tuo arrivo."
         },
         "referral": {
           "apply": "Applica €{{amount}} di credito invito",
@@ -359,7 +362,7 @@
         "share": "Condividi",
         "creditBalance": "Il tuo saldo crediti",
         "shareTitle": "Massage Club",
-        "shareText": "Sto prenotando massaggi a Madrid tramite Massage Club — ottieni {{amount}} € di sconto sulla tua prima prenotazione con il mio link: {{url}}"
+        "shareText": "Sto prenotando massaggi a Madrid tramite Massage Club. Ottieni {{amount}} € di sconto sulla tua prima prenotazione con il mio link: {{url}}"
       },
       "photo": {
         "changePhoto": "Cambia foto",
@@ -411,7 +414,7 @@
       },
       "health": {
         "title": "Salute e sicurezza",
-        "subtitle": "Privato — condiviso solo con il terapista",
+        "subtitle": "Privato: condiviso solo con il terapista",
         "reasonForVisit": "Motivo della visita / obiettivi",
         "reasonForVisitPlaceholder": "es. mal di schiena (dolor de espalda) dovuto al lavoro d'ufficio",
         "medicalConditions": "Condizioni mediche",
@@ -434,7 +437,7 @@
         "photoUpdated": "Foto aggiornata",
         "profileSaved": "Profilo salvato",
         "linkCopied": "Link copiato",
-        "copyFailed": "Impossibile copiare — tieni premuto per copiare"
+        "copyFailed": "Impossibile copiare. Tieni premuto per copiare"
       },
       "options": {
         "pressures": {
@@ -490,8 +493,8 @@
         },
         "budgets": {
           "under_40": "Meno di 40 €",
-          "40_60": "40–60 €",
-          "60_90": "60–90 €",
+          "40_60": "40-60 €",
+          "60_90": "60-90 €",
           "90_plus": "Più di 90 €"
         },
         "addons": {
@@ -585,16 +588,16 @@
       },
       "cancelConfirm": "Vuoi annullare il tuo trattamento {{type}} il {{date}} alle {{time}}?",
       "messages": {
-        "cancelError": "Impossibile annullare — {{message}}",
+        "cancelError": "Impossibile annullare: {{message}}",
         "cancelSuccess": "Prenotazione annullata",
-        "rescheduleError": "Impossibile spostare — {{message}}",
+        "rescheduleError": "Impossibile spostare: {{message}}",
         "rescheduleSuccess": "Prenotazione spostata con successo"
       },
       "rescheduleModal": {
         "title": "Sposta prenotazione",
         "chooseDay": "Scegli un giorno",
         "availableTimes": "Orari disponibili",
-        "closed": "Chiuso in questo giorno — scegli un'altra data.",
+        "closed": "Chiuso in questo giorno. Scegli un'altra data.",
         "full": "Al completo",
         "saving": "Salvataggio...",
         "confirm": "Conferma nuovo orario"
@@ -626,7 +629,7 @@
     "login": {
       "toasts": {
         "invalidEmail": "Inserisci un'email valida",
-        "googleError": "L'accesso con Google non è ancora attivo — esplora Massage Club come ospite per ora.",
+        "googleError": "L'accesso con Google non è ancora attivo. Esplora Massage Club come ospite per ora.",
         "missingName": "Inserisci il tuo nome",
         "welcome": "Benvenuto/a, {{name}}!"
       },
@@ -636,7 +639,7 @@
       },
       "nameStep": {
         "title": "Quasi fatto.",
-        "subtitle": "Solo il tuo nome — così il centro saprà chi aspettarsi.",
+        "subtitle": "Solo il tuo nome, così il centro saprà chi aspettarsi.",
         "label": "Il tuo nome",
         "placeholder": "Alex Martinez",
         "phoneLabel": "Telefono (opzionale)",
@@ -658,7 +661,7 @@
         "imageAlt": "Tranquillo centro massaggi a Madrid",
         "studiosCount": "Oltre {{studios}} centri in tutta Madrid",
         "payAtStudio": "Paga in sede",
-        "description": "Oltre {{studios}} centri con prezzi reali, in italiano. Se un centro accetta solo WhatsApp, scriveremo noi il messaggio in spagnolo per te.",
+        "description": "Oltre {{studios}} centri con prezzi reali, in italiano. Chiediamo noi agli studi in spagnolo. Paghi in sede.",
         "ctaNote": "Nessun account necessario per curiosare. Nessuna commissione di prenotazione. Paghi direttamente in sede."
       },
       "newInMadrid": {
@@ -680,8 +683,8 @@
           "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Servizi reali, prezzi reali, in italiano."
         },
         "step2": {
-          "title": "Prenota online, o lascia scrivere noi",
-          "subtitle": "Alcuni centri accettano prenotazioni dirette qui. Gli altri usano WhatsApp — scriveremo il tuo messaggio in spagnolo così non dovrai farlo tu."
+          "title": "Scegli tu l'orario",
+          "subtitle": "Chiediamo noi agli studi in spagnolo e ti mandiamo i loro orari. Niente è prenotato finché non tocchi Sì."
         },
         "step3": {
           "title": "Arriva e stacca la spina",
@@ -690,7 +693,7 @@
       },
       "trust": {
         "line1": "Non tratteniamo commissioni sul tuo massaggio. I prezzi che vedi sono quelli originali del centro.",
-        "line2": "Non garantiamo che il terapista parli italiano — alcuni lo fanno, altri no. Quello che garantiamo è che per prenotare l'appuntamento non serve conoscere lo spagnolo.",
+        "line2": "Non garantiamo che il terapista parli italiano. Alcuni lo fanno, altri no. Quello che garantiamo è che per prenotare l'appuntamento non serve conoscere lo spagnolo.",
         "line3": "Ogni centro presente qui è un luogo reale che abbiamo trovato, verificato e inserito manualmente."
       },
       "studioCard": {
@@ -703,7 +706,7 @@
         "title": "Salva i dati per prenotare più velocemente",
         "button": "Salva"
       },
-      "feedback": "Inviaci un feedback — aiutaci a costruire tutto questo",
+      "feedback": "Inviaci un feedback: aiutaci a costruire tutto questo",
       "emailAuth": {
         "or": "O",
         "continueWithEmail": "Continua con email",
@@ -779,7 +782,7 @@
       "to": "To",
       "slots": "{{count}} slots",
       "copyAll": "Copia questo orario per ogni giorno",
-      "copyWeekdays": "Solo giorni feriali (Lun–Ven)",
+      "copyWeekdays": "Solo giorni feriali (Lun-Ven)",
       "copied": "Schedule copied",
       "helper": "Imposta un orario di apertura/chiusura per ogni giorno. Creeremo automaticamente le fasce orarie.",
       "staffTitle": "Quante persone lavorano in totale nello studio?",
@@ -883,7 +886,7 @@
       "addService": "Aggiungi servizio",
       "addonsTitle": "Extra",
       "optional": "(opzionale)",
-      "addonsHelp": "Extra a pagamento che i clienti possono aggiungere — es. Aromaterapia, pietre calde (piedras calientes), olio di CBD.",
+      "addonsHelp": "Extra a pagamento che i clienti possono aggiungere, es. Aromaterapia, pietre calde (piedras calientes), olio di CBD.",
       "addonNamePlaceholder": "Nome dell'extra",
       "addAddon": "Aggiungi un extra",
       "bookingPolicyTitle": "Politica di prenotazione su Massage Club",
@@ -903,7 +906,7 @@
       "signIn": "Accedi",
       "errAddressFirst": "Inserisci prima l'indirizzo della sede",
       "locationConfirmedToast": "📍 Posizione confermata sulla mappa",
-      "errAddressNotFound": "Indirizzo non trovato — controlla come è scritto",
+      "errAddressNotFound": "Indirizzo non trovato. Controlla come è scritto",
       "errStudioName": "Inserisci il nome del tuo studio",
       "errAddress": "Inserisci l'indirizzo della sede",
       "errAtLeastOneService": "Aggiungi almeno un servizio",
@@ -911,8 +914,8 @@
       "errAtLeastOneTherapist": "Aggiungi almeno un terapista",
       "errEmailPassword": "Inserisci email e password per andare online",
       "errPasswordShort": "La password deve contenere almeno 6 caratteri",
-      "savedAtMadridCenter": "Studio salvato nel centro di Madrid — tocca “Trova la mia posizione” più tardi per perfezionare il segnaposto.",
-      "errConfirmEmail": "Account creato — conferma la tua email e poi accedi. (Suggerimento: disabilita “Confirm email” in Supabase → Authentication per andare online istantaneamente.)",
+      "savedAtMadridCenter": "Studio salvato nel centro di Madrid. Tocca “Trova la mia posizione” più tardi per perfezionare il segnaposto.",
+      "errConfirmEmail": "Account creato. Conferma la tua email e poi accedi. (Suggerimento: disabilita “Confirm email” in Supabase → Authentication per andare online istantaneamente.)",
       "errSaveStudio": "Impossibile salvare lo studio: {{message}}",
       "errSaveHours": "Impossibile salvare gli orari di apertura: {{message}}",
       "errSaveServices": "Impossibile salvare i servizi: {{message}}",
@@ -996,7 +999,7 @@
       "visibilityTitle": "Visibility",
       "visibilityViews30": "page views (30 days)",
       "visibilityViews7": "last 7 days: {{n}}",
-      "visibilityEmpty": "La tua pagina è online — presto vedrai chi la sta visitando",
+      "visibilityEmpty": "La tua pagina è online. Presto vedrai chi la sta visitando",
       "visibilitySource": {
         "google": "Google",
         "reddit": "Reddit",
@@ -1032,8 +1035,8 @@
       "writeSomething": "Scrivi qualcosa in almeno un campo.",
       "couldNotSave": "Impossibile salvare la nota.",
       "noteSaved": "Treatment note saved",
-      "soapHintSubjective": "Cosa riferisce il cliente — dolore, stress, obiettivi",
-      "soapHintObjective": "Cosa osservi — tensione, postura, ampiezza di movimento",
+      "soapHintSubjective": "Cosa riferisce il cliente: dolore, stress, obiettivi",
+      "soapHintObjective": "Cosa osservi: tensione, postura, ampiezza di movimento",
       "soapHintAssessment": "Your interpretation",
       "soapHintPlan": "Cosa hai fatto + prossima sessione"
     },
@@ -1054,7 +1057,7 @@
       "loading": "Caricamento…",
       "fieldPlaceholder": "{{field}}…",
       "lastSaved": "Ultimo salvataggio: {{date}}",
-      "privateNote": "Privata — solo il tuo studio può visualizzarla.",
+      "privateNote": "Privata: solo il tuo studio può visualizzarla.",
       "saving": "Salvataggio…",
       "updateNote": "Aggiorna nota",
       "saveNote": "Salva nota",
@@ -1072,7 +1075,7 @@
       "searchPlaceholder": "Cerca la tua spa su Google…",
       "noResults": "Nessun risultato trovato. Prova con un altro nome o inseriscilo manualmente qui sotto.",
       "ratingReviews": "{{rating}} ({{count}} recensioni)",
-      "googleDataLoaded": "Dati Google caricati — verifica e modifica qui sotto",
+      "googleDataLoaded": "Dati Google caricati. Verifica e modifica qui sotto",
       "businessName": "Nome dell'attività",
       "address": "Indirizzo",
       "phone": "Telefono",
@@ -1099,7 +1102,7 @@
       "slugPlaceholder": "my-studio",
       "slugTaken": "Questo link è già occupato",
       "slugInvalid": "Il link deve essere compreso tra 3 e 40 caratteri",
-      "slugUpdatedWarning": "Link aggiornato — il link precedente smetterà di funzionare, aggiornalo ovunque tu l'abbia condiviso."
+      "slugUpdatedWarning": "Link aggiornato. Il link precedente smetterà di funzionare, aggiornalo ovunque tu l'abbia condiviso."
     },
     "services": {
       "stepLabel": "Step 2 of 3",
@@ -1129,7 +1132,7 @@
     "calendar": {
       "stepLabel": "Availability",
       "title": "Imposta i tuoi orari di apertura",
-      "intro": "Imposta quando sei aperto ogni giorno — creeremo noi gli orari prenotabili per te. Configura un giorno, poi tocca \"Copia per tutti\" per riutilizzarlo.",
+      "intro": "Imposta quando sei aperto ogni giorno. Creeremo noi gli orari prenotabili per te. Configura un giorno, poi tocca \"Copia per tutti\" per riutilizzarlo.",
       "capacityLabel": "Quanti massaggi puoi offrire contemporaneamente?",
       "capacityHint": "Solitamente il numero di lettini o terapisti che lavorano nello stesso momento.",
       "days": {
@@ -1144,7 +1147,7 @@
       "closed": "Closed",
       "bookableTimes": "{{count}} orari prenotabili",
       "copyToAll": "Copy to all days",
-      "noHoursSet": "Nessun orario impostato — non apparirai ancora nei risultati di ricerca",
+      "noHoursSet": "Nessun orario impostato. Non apparirai ancora nei risultati di ricerca",
       "summary": "{{days}} giorno/i di apertura · {{slots}} orari prenotabili",
       "done": "✓ Done!",
       "goLive": "Go Live",
@@ -1182,7 +1185,7 @@
       "yourGoogleCalendar": "il tuo Google Calendar",
       "connectionFailedTitle": "Connessione fallita",
       "connectButton": "Collega Google Calendar",
-      "connectHint": "Un clic — nessuna password memorizzata. Accesso al calendario in sola lettura.",
+      "connectHint": "Un clic. Nessuna password memorizzata. Accesso al calendario in sola lettura.",
       "disconnectButton": "Scollega Google Calendar",
       "howItWorks": "Come funziona",
       "step1Title": "Collega in un clic",
@@ -1195,13 +1198,13 @@
       "step4Desc": "Le nuove prenotazioni da Massage Club appaiono istantaneamente come eventi nel tuo Google Calendar.",
       "autoConfirmTitle": "Conferma automatica prenotazioni",
       "autoConfirmDesc": "Se attivata, le prenotazioni risultano confermate immediatamente. Se disattivata, dovrai approvarle manualmente.",
-      "autoConfirmOnLabel": "Attivo — prenotazioni confermate automaticamente",
-      "autoConfirmOffLabel": "Disattivo — confermi tu ogni prenotazione",
+      "autoConfirmOnLabel": "Attivo: prenotazioni confermate automaticamente",
+      "autoConfirmOffLabel": "Disattivo: confermi tu ogni prenotazione",
       "manualAvailabilityLink": "Imposta invece la disponibilità manuale",
       "confirmDisconnect": "Scollegare Google Calendar? La tua disponibilità manuale continuerà a funzionare.",
       "toastConnected": "Google Calendar collegato!",
       "toastConnectionFailed": "Connessione fallita: {{error}}",
-      "toastNotSetUp": "Google non è ancora configurato — aggiungi prima il tuo Google Client ID.",
+      "toastNotSetUp": "Google non è ancora configurato. Aggiungi prima il tuo Google Client ID.",
       "toastDisconnectFailed": "Disconnessione fallita",
       "toastDisconnected": "Google Calendar scollegato",
       "toastUpdateFailed": "Aggiornamento fallito",
@@ -1283,7 +1286,7 @@
       "addressPlaceholder": "Calle Gran Vía 15, Madrid",
       "addressHelper": "Viene mostrato ai clienti nella conferma della prenotazione.",
       "accessInstructionsLabel": "Istruzioni per l'arrivo (opzionale)",
-      "accessInstructionsPlaceholder": "Es: 'Edificio 1A — citofonare per entrare. Primo piano, porta a destra.'",
+      "accessInstructionsPlaceholder": "Es: 'Edificio 1A, citofonare per entrare. Primo piano, porta a destra.'",
       "accessInstructionsHelper": "Incluse nell'email di conferma del cliente.",
       "phoneLabel": "Telefono",
       "phonePlaceholder": "+34 600 000 000",
@@ -1308,11 +1311,11 @@
       "calendarBullet2": "Le nuove prenotazioni appaiono come eventi nel tuo calendario",
       "calendarBullet3": "I clienti vedono solo gli slot effettivamente liberi",
       "connectGoogleCalendar": "Collega Google Calendar",
-      "oneClickNote": "Un clic — nessuna password memorizzata.",
+      "oneClickNote": "Un clic. Nessuna password memorizzata.",
       "orDividerEs": "oppure",
       "setManuallyButton": "Imposta disponibilità manualmente",
       "saveAndContinue": "Salva e continua",
-      "skipForNow": "Salta per ora — potrai collegarlo più tardi dal tuo portale",
+      "skipForNow": "Salta per ora. Potrai collegarlo più tardi dal tuo portale",
       "step5Title": "Crea la tua password",
       "step5Desc": "Con questa password potrai accedere alla tua dashboard quando vuoi, senza dover dipendere dai link via email.",
       "loginDetailsTitle": "I tuoi dati di accesso",

@@ -198,8 +198,7 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
                 <p className="text-xs text-center" style={{ color: "#8a7460" }}>Masajes cerca de ti</p>
 
                 <p className="text-xs text-center mt-2" style={{ color: "#5a4736" }}>
-                  Used once, never stored.{" "}
-                  <span style={{ color: "#8a7460" }}>Un solo uso, nunca se guarda.</span>
+                  {es ? "Un solo uso, nunca se guarda." : "Used once, never stored."}
                 </p>
 
                 <div className="mt-4 space-y-1.5">
@@ -212,12 +211,10 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
                   >
                     {phase === "locating" ? (
                       <span className="inline-flex items-center gap-2">
-                        <Loader2 size={16} className="animate-spin" /> Locating you
+                        <Loader2 size={16} className="animate-spin" /> {es ? "Buscándote…" : "Finding you…"}
                       </span>
                     ) : (
-                      <span className="text-sm">
-                        Show what's nearby <span className="font-normal opacity-85">/ Ver qué hay cerca</span>
-                      </span>
+                      <span className="text-sm">{es ? "Ver qué hay cerca" : "Show what's nearby"}</span>
                     )}
                   </button>
                   <button
@@ -226,12 +223,12 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
                     className="w-full min-h-10 rounded-2xl text-sm font-medium"
                     style={{ color: "#8a7460" }}
                   >
-                    Not now <span className="opacity-70">/ Ahora no</span>
+                    {es ? "Ahora no" : "Not now"}
                   </button>
                 </div>
 
-                <p className="text-[10px] text-center mt-2" style={{ color: "#9E8B78" }}>
-                  Your browser will ask first · Tu navegador pedirá permiso
+                <p className="text-xs text-center mt-2" style={{ color: "#9E8B78" }}>
+                  {es ? "Tu navegador te pedirá permiso antes." : "Your browser will ask first."}
                 </p>
               </>
 
@@ -264,7 +261,7 @@ export function LocationAskProvider({ children }: { children: ReactNode }) {
                   className="w-full min-h-11 mt-4 rounded-2xl text-sm font-medium"
                   style={{ color: "#8a7460" }}
                 >
-                  Not now <span className="opacity-70">/ Ahora no</span>
+                  {es ? "Ahora no" : "Not now"}
                 </button>
               </>
             )}

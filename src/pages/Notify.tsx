@@ -321,7 +321,7 @@ export default function Notify() {
 
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-b border-border bg-background sticky top-0 z-10">
+        <header className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-b border-border bg-background sticky top-0 z-10 desk:hidden">
           <Link to="/" className="flex items-center gap-2.5">
             <img
               src="/brand/mc-avatar-terracotta.png"

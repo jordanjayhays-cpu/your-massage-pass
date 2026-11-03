@@ -100,7 +100,7 @@ export interface Shop {
   id: string;
   name: string;           // service name (Massage.name)
   studio: string;         // business_name
-  district: string;       // derived from address city
+  district: string;       // partners.neighbourhood, else city, else "Madrid"
   address: string;
   duration: number;
   /** Real Google rating, or null when we do not have one. Never defaulted. */
@@ -108,6 +108,12 @@ export interface Shop {
   /** Real Google review count, or null. Never defaulted. */
   reviews: number | null;
   image: string;
+  /**
+   * The studio's OWN photo (cover, else the first gallery image), or null.
+   * `image` falls back to stock pictures; the list shows those only as
+   * decoration, never as "the place" (2 Nov: 165 of 166 studios have none).
+   */
+  ownImage?: string | null;
   description: string;
   tags: string[];
   type: string;           // massage type from partner_service
@@ -147,6 +153,21 @@ let shopsInFlight: Promise<Shop[]> | null = null;
 /** Last successful result, if any. Used to paint instantly on remount. */
 export function cachedShops(): Shop[] | null {
   return shopsCache;
+}
+
+/**
+ * The studio's own photo: its cover, else the first gallery image that is not
+ * a video. Same rule as the studio page (StudioBookingPage studioPhoto). A
+ * logo is not a photo of the place, and stock images never count.
+ */
+export function ownStudioPhoto(p: { cover_url?: string | null; gallery?: unknown } | null | undefined): string | null {
+  if (!p) return null;
+  if (typeof p.cover_url === "string" && p.cover_url.trim()) return p.cover_url;
+  if (Array.isArray(p.gallery)) {
+    const g = p.gallery.find((u: unknown) => typeof u === "string" && u.trim() && !/\.(mp4|webm)(\?.*)?$/i.test(u));
+    if (typeof g === "string") return g;
+  }
+  return null;
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -239,7 +260,8 @@ export async function fetchShops(): Promise<Shop[]> {
       id: p.id,                                   // studio id → resolved to /{slug}
       name: p.business_name || "Studio",
       studio: p.business_name || "Studio",
-      district: p.city ?? "Madrid",
+      // The neighbourhood ("Chamberí") is what people pick a studio by; city is always Madrid.
+      district: p.neighbourhood || p.city || "Madrid",
       address: p.address ?? "",
       duration: svcs[0]?.duration ?? 60,
       rating: p.google_rating != null ? Number(p.google_rating) : null,
@@ -251,6 +273,7 @@ export async function fetchShops(): Promise<Shop[]> {
         services: svcs.map(s => `${s.name ?? ""} ${s.type ?? ""}`),
         description: p.description,
       }),
+      ownImage: ownStudioPhoto(p),
       description: p.description || svcs[0]?.description || "",
       tags: types.length ? types : ["Massage"],
       type: (svcs[0]?.type || "Massage").toLowerCase(),
@@ -359,7 +382,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     id,
     name: matchedSvc.name || "Massage",
     studio: partner.business_name || "Studio",
-    district: partner.city ?? "Madrid",
+    district: partner.neighbourhood || partner.city || "Madrid",
     address: partner.address ?? "",
     duration: matchedSvc.duration ?? 60,
     rating: partner.google_rating != null ? Number(partner.google_rating) : null,
@@ -371,6 +394,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
       services: [`${matchedSvc.name ?? ""} ${matchedSvc.type ?? ""}`],
       description: partner.description,
     }),
+    ownImage: ownStudioPhoto(partner),
     description: matchedSvc.description || partner.description || "",
     tags: [matchedSvc.type || "Massage"],
     type: (matchedSvc.type || "Massage").toLowerCase(),

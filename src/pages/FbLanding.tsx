@@ -218,7 +218,7 @@ export default function FbLanding() {
           <button
             type="button"
             onClick={scrollToBooking}
-            className="mt-6 w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition"
+            className="mt-6 w-full h-14 rounded-full bg-primary text-primary-foreground text-base font-semibold shadow-soft hover:opacity-90 transition min-[900px]:hidden"
           >
             {t.cta}
           </button>

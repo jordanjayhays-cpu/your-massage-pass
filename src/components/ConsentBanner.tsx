@@ -1,57 +1,63 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFlowLang } from "@/lib/flowLang";
 import { initClarity, loadClarity } from "@/lib/clarity";
 
 
 const KEY = "mc_consent";
 
+/** CSS variable with the bar's height in px while it shows (see src/index.css). */
+const HEIGHT_VAR = "--consent-h";
+/** Room the page keeps free at the bottom while the bar shows (see src/index.css). */
+const ROOM_VAR = "--consent-room";
+
+// Accept grants ad_storage, ad_user_data and ad_personalization as well as
+// analytics, so the copy says plainly that cookies also measure our ads.
 const COPY = {
   en: {
     dialogLabel: "Cookie choice",
-    body: "We use cookies to see how people find and use Massage Club, so we can fix what does not work. Nothing is sold or shared.",
+    body: "We use cookies to see how the site is used and to measure our ads.",
     accept: "Accept",
     decline: "Decline",
     privacy: "Privacy",
   },
   es: {
     dialogLabel: "Elección de cookies",
-    body: "Usamos cookies para ver cómo la gente encuentra y usa Massage Club, así podemos arreglar lo que no funciona. No vendemos ni compartimos nada.",
+    body: "Usamos cookies para ver cómo se usa la web y medir nuestros anuncios.",
     accept: "Aceptar",
     decline: "Rechazar",
     privacy: "Privacidad",
   },
   fr: {
     dialogLabel: "Choix des cookies",
-    body: "Nous utilisons des cookies pour voir comment les gens trouvent et utilisent Massage Club, afin de corriger ce qui ne fonctionne pas. Rien n'est vendu ni partagé.",
+    body: "Nous utilisons des cookies pour voir comment le site est utilisé et mesurer nos annonces.",
     accept: "Accepter",
     decline: "Refuser",
     privacy: "Confidentialité",
   },
   de: {
     dialogLabel: "Cookie-Auswahl",
-    body: "Wir verwenden Cookies, um zu sehen, wie Leute Massage Club finden und nutzen, damit wir reparieren können, was nicht funktioniert. Nichts wird verkauft oder geteilt.",
+    body: "Wir nutzen Cookies, um zu sehen, wie die Seite genutzt wird, und um unsere Anzeigen zu messen.",
     accept: "Akzeptieren",
     decline: "Ablehnen",
     privacy: "Datenschutz",
   },
   it: {
     dialogLabel: "Scelta sui cookie",
-    body: "Usiamo i cookie per capire come le persone trovano e usano Massage Club, così possiamo sistemare quello che non funziona. Non vendiamo né condividiamo nulla.",
+    body: "Usiamo i cookie per vedere come viene usato il sito e per misurare i nostri annunci.",
     accept: "Accetta",
     decline: "Rifiuta",
     privacy: "Privacy",
   },
   pt: {
     dialogLabel: "Escolha de cookies",
-    body: "Usamos cookies para ver como as pessoas encontram e usam a Massage Club, para podermos corrigir o que não funciona. Nada é vendido ou partilhado.",
+    body: "Usamos cookies para ver como o site é usado e para medir os nossos anúncios.",
     accept: "Aceitar",
     decline: "Recusar",
     privacy: "Privacidade",
   },
   zh: {
     dialogLabel: "Cookie 选择",
-    body: "我们使用 Cookie 来了解人们如何发现和使用 Massage Club，以便改进不完善之处。我们不会出售或分享任何信息。",
+    body: "我们使用 Cookie 来了解网站的使用情况，并衡量我们的广告效果。",
     accept: "接受",
     decline: "拒绝",
     privacy: "隐私政策",
@@ -67,29 +73,79 @@ function gtagSafe(...args: unknown[]) {
   }
 }
 
+/** Shown only to visitors who have not chosen yet and are not opted out (mc_nt). */
+function needsChoice(): boolean {
+  try {
+    if (localStorage.getItem("mc_nt") === "1") return false;
+    return !localStorage.getItem(KEY);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Quiet bottom-corner cookie consent bar for the Google Ads tag.
- * - Fixed position, so it never pushes content (no layout shift).
+ * Publishes the bar's size, or clears it (null).
+ * Phones and tablets: --consent-h and --consent-room are both the bar's height,
+ * as before. From 900px the bar is a card in the bottom-left corner: fixed
+ * bottom bars do not need to rise (--consent-h 0), and the page keeps the
+ * card's height plus its 16px gap free (--consent-room).
+ */
+function setHeightVar(el: HTMLElement | null) {
+  const root = document.documentElement;
+  if (!el) {
+    root.style.removeProperty(HEIGHT_VAR);
+    root.style.removeProperty(ROOM_VAR);
+    return;
+  }
+  let desk = false;
+  try {
+    desk = window.matchMedia("(min-width: 900px)").matches;
+  } catch {
+    /* ignore */
+  }
+  const h = Math.ceil(el.offsetHeight);
+  root.style.setProperty(HEIGHT_VAR, `${desk ? 0 : h}px`);
+  root.style.setProperty(ROOM_VAR, `${desk ? h + 16 : h}px`);
+}
+
+/**
+ * Cookie consent bar for the Google Ads tag.
+ * - Pinned to the very bottom, full width, at most about 104px tall on a phone,
+ *   so it never sits on top of a page's main button.
+ * - While it shows, its height is published as --consent-h on <html>: the body
+ *   is padded by it, and anything fixed to the bottom sits above it.
+ * - Read in the useState initialiser, so it never flashes in after first paint.
  * - Hidden entirely for visitors with the personal opt-out flag (mc_nt).
  * - Denied defaults are set in index.html before the tag loads; this only upgrades them.
  */
 export default function ConsentBanner() {
-  const { pathname } = useLocation();
   const lang = useFlowLang();
   const t = COPY[lang];
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState<boolean>(needsChoice);
+  const barRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Load Clarity for visitors who already accepted on a previous visit.
     initClarity();
-    try {
-      if (localStorage.getItem("mc_nt") === "1") return;
-      if (localStorage.getItem(KEY)) return;
-      setVisible(true);
-    } catch {
-      /* ignore */
-    }
   }, []);
+
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!visible || !el) {
+      setHeightVar(null);
+      return;
+    }
+    setHeightVar(el);
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => setHeightVar(el));
+      ro.observe(el);
+    }
+    return () => {
+      ro?.disconnect();
+      setHeightVar(null);
+    };
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -106,47 +162,39 @@ export default function ConsentBanner() {
         ad_personalization: "granted",
         analytics_storage: "granted",
       });
-      // Start session replay right away — no reload needed.
+      // Start session replay right away, no reload needed.
       loadClarity();
     }
     setVisible(false);
   };
 
-  // Keep clear of the bottom nav / sticky WhatsApp CTA on studio pages.
-  const liftedForStickyCta =
-    pathname.startsWith("/s/") || pathname.startsWith("/book/") || pathname.split("/").length === 2;
-  const bottomClass = liftedForStickyCta ? "bottom-24" : "bottom-4";
+  const btn =
+    "h-11 min-w-0 flex-1 sm:flex-none sm:w-32 desk:flex-1 desk:w-auto rounded-full border border-primary/70 bg-card px-4 text-sm font-semibold text-primary hover:bg-primary/5 desk:hover:bg-brand-tint transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
   return (
     <div
+      ref={barRef}
       role="dialog"
       aria-live="polite"
       aria-label={t.dialogLabel}
-      className={`fixed ${bottomClass} left-4 right-4 sm:right-auto sm:max-w-sm z-[60] motion-safe:animate-fade-up`}
-      style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+      // Phones and tablets: a full-width bar at the bottom. From 900px (desktop
+      // fix F20): a 360px card in the bottom-left corner, z 50. Either way the
+      // page keeps its room free (--consent-room, see setHeightVar).
+      className="fixed inset-x-0 bottom-0 z-[60] border-t border-border bg-card/95 backdrop-blur-md shadow-[0_-8px_24px_-12px_hsl(18_14%_11%/0.18)] desk:inset-x-auto desk:left-4 desk:bottom-4 desk:w-[360px] desk:z-consent desk:rounded-2xl desk:border desk:bg-card desk:backdrop-blur-none desk:shadow-sheet"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-md shadow-elegant p-4">
-        <p className="text-sm text-foreground leading-snug">
-          {t.body}
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => decide(true)}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-1.5 px-4 py-2 sm:flex-row sm:items-center sm:gap-4 sm:py-3 desk:flex-col desk:items-stretch desk:gap-3 desk:p-4">
+        <p className="text-sm leading-[1.3] text-foreground sm:flex-1 desk:leading-5">{t.body}</p>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => decide(true)} className={btn}>
             {t.accept}
           </button>
-          <button
-            type="button"
-            onClick={() => decide(false)}
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
+          <button type="button" onClick={() => decide(false)} className={btn}>
             {t.decline}
           </button>
           <a
             href="/privacy"
-            className="ml-auto text-xs text-muted-foreground underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            className="flex min-h-11 flex-none items-center px-1.5 text-xs desk:text-caption desk:font-normal text-muted-foreground underline underline-offset-2 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
             {t.privacy}
           </a>

@@ -1,10 +1,52 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Massage in Madrid, in English — Massage Club</title>
-    <meta name="description" content="50+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio.">
+    <!-- One front door: "/", "/start", "/book" and "/booking" open the request
+         flow at /reserve (public/go.html) before the 2 MB bundle loads.
+         KEEP IN SYNC with requestFlowTarget() in src/lib/requestFlowRedirect.ts,
+         which applies the same rules to client-side navigations. ES5 only. -->
+    <script>
+      (function () {
+        try {
+          var l = window.location;
+          var p = l.pathname.replace(/\/+$/, '') || '/';
+          var map = { '/': 'home', '/start': 'start', '/book': 'book', '/booking': 'book' };
+          var mapped = Object.prototype.hasOwnProperty.call(map, p) ? map[p] : null;
+          if (!mapped) return;
+          if (l.hostname.indexOf('lovable') !== -1) return;
+          // Only the booking host and local previews: on any other host "/"
+          // is the marketing Home (App.tsx).
+          if (l.hostname.indexOf('book.') !== 0 && l.hostname !== 'localhost' && l.hostname !== '127.0.0.1') return;
+          var q = new URLSearchParams(l.search);
+          if (q.get('stay') === '1') return;
+          if (p === '/') {
+            // Supabase sign-in links land on "/": leave them to Login.
+            if (/access_token|refresh_token|error_description|type=(signup|magiclink|recovery|invite)/.test(l.hash)) return;
+            if (q.has('code') || q.has('token') || q.has('token_hash') || q.has('error')) return;
+            // A signed-in visitor keeps Login, which forwards them on.
+            for (var i = 0; i < localStorage.length; i++) {
+              if (/^sb-.*-auth-token$/.test(localStorage.key(i) || '')) return;
+            }
+          }
+          // A valid src wins ("IG" and "ig_bio" count as "ig" and "ig-bio");
+          // a missing or invalid one becomes where the visitor landed.
+          var s = (q.get('src') || '').toLowerCase().replace(/_/g, '-');
+          if (!/^[a-z0-9-]{1,20}$/.test(s)) s = (q.get('gclid') || q.get('gbraid') || q.get('wbraid')) ? 'google' : mapped;
+          q.set('src', s);
+          // After the hop document.referrer is our own "/", so the real one
+          // and the landing path travel in sessionStorage (go.html reads and
+          // removes "mc_hop"). Blocked storage only loses the referrer.
+          try {
+            sessionStorage.setItem('mc_hop', JSON.stringify({ ref: String(document.referrer || '').slice(0, 300), path: p, t: new Date().getTime() }));
+          } catch (e) { /* keep going */ }
+          l.replace('/reserve?' + q.toString());
+        } catch (e) { /* fall through to the React page */ }
+      })();
+    </script>
+    <title>Massage in Madrid · Massage Club</title>
+    <meta name="description" content="Tell us the massage, day and area. We ask Madrid massage studios for you and send you their times. Nothing is booked until you tap Yes. You pay at the studio.">
     <meta name="author" content="Massage Club" />
     <link rel="canonical" href="https://book.massageclub.io/" />
 
@@ -17,16 +59,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Outfit:wght@100..900&family=EB+Garamond:ital,wght@0,400..800&display=swap" rel="stylesheet" />
-    <meta property="og:title" content="Massage in Madrid, in English — Massage Club">
-    <meta name="twitter:title" content="Massage in Madrid, in English — Massage Club">
+    <meta property="og:title" content="Massage in Madrid · Massage Club">
+    <meta name="twitter:title" content="Massage in Madrid · Massage Club">
     <meta property="og:url" content="https://book.massageclub.io/">
-    <meta property="og:description" content="50+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio.">
-    <meta name="twitter:description" content="50+ Madrid massage studios with real prices and services. Book online in English, or we'll write your WhatsApp message in Spanish. No booking fee — you pay the studio.">
+    <meta property="og:description" content="Tell us the massage, day and area. We ask Madrid massage studios for you and send you their times. Nothing is booked until you tap Yes. You pay at the studio.">
+    <meta name="twitter:description" content="Tell us the massage, day and area. We ask Madrid massage studios for you and send you their times. Nothing is booked until you tap Yes. You pay at the studio.">
 
     <link rel="icon" type="image/png" href="/brand/mc-avatar-terracotta.png">
     <link rel="apple-touch-icon" href="/brand/mc-avatar-terracotta.png">
 
-    <!-- Google Consent Mode v2 — denied defaults MUST run before the gtag script -->
+    <!-- Google Consent Mode v2: denied defaults MUST run before the gtag script -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}

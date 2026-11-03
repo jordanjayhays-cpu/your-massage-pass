@@ -23,6 +23,23 @@ import QuizEmailCapture from "../components/QuizEmailCapture";
 
 const ORIGIN_KEY = "mc_quiz_origin";
 
+/**
+ * From 900px the quiz reads as one centred 672px column (42rem) inside the
+ * full-width bars, without an extra wrapper: the side padding grows instead.
+ */
+const DESK_COL = "min-[900px]:px-[max(1.5rem,calc((100%_-_42rem)/2))]";
+/** The same column as a margin, for blocks that carry their own background. */
+const DESK_COL_MX = "min-[900px]:mx-[max(1.5rem,calc((100%_-_42rem)/2))]";
+/**
+ * From 900px the app shell (MobileFrame) is the only scroller, as on /login
+ * and /studios, so there is one scrollbar and SiteFooter shows at the end.
+ * Phones keep the pinned bar and the inner scroll.
+ */
+const DESK_ONE_SCROLLER = "min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible";
+const DESK_BODY = "min-[900px]:flex-none min-[900px]:overflow-visible";
+/** The quiz bar on desktop: part of the page under the site header, not a second white header band. */
+const DESK_BAR = "min-[900px]:bg-transparent min-[900px]:border-b-0 min-[900px]:pt-8 min-[900px]:pb-0";
+
 type QuizOrigin = { slug: string; name: string };
 
 /** Where the visitor opened the quiz from, kept across the quiz steps. */
@@ -167,8 +184,8 @@ export default function Quiz() {
 
   if (done && winner) {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3">
+      <div className={`flex flex-col h-full overflow-hidden ${DESK_ONE_SCROLLER}`}>
+        <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_COL} ${DESK_BAR}`}>
           <button
             onClick={() => navigate("/discovery")}
             aria-label="Back"
@@ -177,25 +194,25 @@ export default function Quiz() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <p className="text-xs text-muted-foreground">Your result</p>
+            <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">Your result</p>
             <h1 className="font-display text-lg font-bold">Your perfect match</h1>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="relative h-56">
+        <div className={`flex-1 overflow-y-auto ${DESK_BODY}`}>
+          <div className={`relative h-56 min-[900px]:h-auto min-[900px]:aspect-[3/1] min-[900px]:mt-6 min-[900px]:rounded-2xl min-[900px]:overflow-hidden ${DESK_COL_MX}`}>
             <img src={winner.image} alt={winner.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
             <div className="absolute bottom-4 left-6 right-6">
-              <div className="inline-flex items-center gap-1.5 bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-1.5 bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider min-[900px]:text-[13px] min-[900px]:font-semibold min-[900px]:normal-case min-[900px]:tracking-normal">
                 <Sparkles className="h-3 w-3" /> Best match
               </div>
-              <h2 className="font-display text-3xl font-bold text-primary-foreground mt-2">{winner.name}</h2>
+              <h2 className="font-display text-3xl font-bold text-primary-foreground mt-2 min-[900px]:text-foreground min-[900px]:text-4xl">{winner.name}</h2>
             </div>
           </div>
 
-          <div className="px-6 py-5 space-y-5">
-            <p className="text-foreground/85 leading-relaxed">{winner.description}</p>
+          <div className={`px-6 py-5 space-y-5 ${DESK_COL} min-[900px]:pt-6 min-[900px]:pb-12`}>
+            <p className="text-foreground/85 leading-relaxed min-[900px]:text-[17px]">{winner.description}</p>
 
             <QuizEmailCapture resultSlug={winner.id} />
 
@@ -203,7 +220,7 @@ export default function Quiz() {
             {geoState !== "ready" && (
               <div className="rounded-2xl border border-[#E6DCCF] bg-[#FBEFE8] p-4">
                 <p className="text-sm font-semibold text-foreground">Want us to find the closest studio to you?</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5 min-[900px]:text-[13px]">
                   {geoState === "unavailable"
                     ? "No problem, here are studios offering this massage in Madrid."
                     : "We only use your location to sort studios by distance."}
@@ -240,23 +257,23 @@ export default function Quiz() {
                   href={studioHref(nearby[0])}
                   className="block rounded-2xl border-2 border-[#C4622D] bg-[#C4622D]/5 p-4 hover:opacity-95 transition"
                 >
-                  <span className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1.5 bg-[#C4622D] text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider min-[900px]:text-[13px] min-[900px]:font-semibold min-[900px]:normal-case min-[900px]:tracking-normal">
                     <MapPin className="h-3 w-3" /> Closest to you
                   </span>
                   <p className="font-display text-xl font-semibold mt-2">{nearby[0].name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">
                     {distanceLabel(nearby[0].meters, nearby[0].walkMinutes)}
                   </p>
-                  {nearby[0].address && <p className="text-xs text-muted-foreground">{nearby[0].address}</p>}
+                  {nearby[0].address && <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">{nearby[0].address}</p>}
                   <p className="text-sm mt-2 font-medium">
                     {servicePrimaryName(nearby[0].service)}
                     {nearby[0].service.duration ? ` · ${nearby[0].service.duration} min` : ""}
                     {nearby[0].service.price != null ? ` · €${nearby[0].service.price}` : ""}
                   </p>
                   {serviceSecondaryName(nearby[0].service) && (
-                    <p className="text-xs text-muted-foreground">{serviceSecondaryName(nearby[0].service)}</p>
+                    <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">{serviceSecondaryName(nearby[0].service)}</p>
                   )}
-                  <span className="mt-3 inline-flex items-center justify-center h-11 w-full rounded-full bg-[#C4622D] text-white font-semibold text-sm">
+                  <span className="mt-3 inline-flex items-center justify-center h-11 w-full rounded-full bg-[#C4622D] text-white font-semibold text-sm min-[900px]:w-auto min-[900px]:px-6">
                     View studio <ChevronRight className="h-4 w-4" />
                   </span>
                 </a>
@@ -272,7 +289,7 @@ export default function Quiz() {
                       setCompareEntries(picks);
                       navigate(comparePath(picks.map((p) => p.key)));
                     }}
-                    className="w-full min-h-11 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition"
+                    className="w-full min-h-11 rounded-full border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition min-[900px]:w-auto min-[900px]:px-6"
                   >
                     Compare nearest <span className="font-normal opacity-75">· Comparar los más cercanos</span>
                   </button>
@@ -280,7 +297,7 @@ export default function Quiz() {
 
                 {nearby.length > 1 && (
                   <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Also nearby</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground min-[900px]:text-sm min-[900px]:normal-case min-[900px]:tracking-normal">Also nearby</h3>
                     {nearby.slice(1).map((s) => (
                       <a
                         key={s.id}
@@ -289,7 +306,7 @@ export default function Quiz() {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm truncate">{s.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">
                             {distanceLabel(s.meters, s.walkMinutes)}
                             {s.service.price != null ? ` · €${s.service.price}` : ""}
                           </p>
@@ -314,7 +331,7 @@ export default function Quiz() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">{s.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground truncate min-[900px]:text-[13px]">
                         {servicePrimaryName(s.service)}
                         {s.service.duration ? ` · ${s.service.duration} min` : ""}
                         {s.service.price != null ? ` · €${s.service.price}` : ""}
@@ -331,7 +348,7 @@ export default function Quiz() {
               <Button
                 variant="outline"
                 onClick={() => navigate(studioPath(origin as any))}
-                className="w-full h-auto min-h-11 py-2 whitespace-normal"
+                className="w-full h-auto min-h-11 py-2 whitespace-normal min-[900px]:w-auto min-[900px]:px-6"
               >
                 {originOffers
                   ? `Back to ${origin.name}, they offer ${winner.name} too`
@@ -352,7 +369,7 @@ export default function Quiz() {
                       <img src={s.image} alt={s.studio} className="h-14 w-14 rounded-lg object-cover" />
                       <div className="flex-1">
                         <p className="font-semibold text-sm">{s.studio}</p>
-                        <p className="text-xs text-muted-foreground">{s.district} · {s.duration} min</p>
+                        <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">{s.district} · {s.duration} min</p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </button>
@@ -361,20 +378,22 @@ export default function Quiz() {
               </div>
             )}
 
-            <Button
-              onClick={() => { window.location.href = `/?q=${encodeURIComponent(winner.name)}`; }}
-              className="w-full h-11"
-            >
-              Find a {winner.name} studio <ChevronRight className="h-4 w-4" />
-            </Button>
+            <div className="space-y-5 min-[900px]:space-y-0 min-[900px]:flex min-[900px]:flex-wrap min-[900px]:gap-3">
+              <Button
+                onClick={() => { window.location.href = `/?q=${encodeURIComponent(winner.name)}`; }}
+                className="w-full h-11 min-[900px]:w-auto min-[900px]:px-6"
+              >
+                Find a {winner.name} studio <ChevronRight className="h-4 w-4" />
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={reset}
-              className="w-full h-11"
-            >
-              <RefreshCw className="h-4 w-4" /> Retake quiz
-            </Button>
+              <Button
+                variant="outline"
+                onClick={reset}
+                className="w-full h-11 min-[900px]:w-auto min-[900px]:px-6"
+              >
+                <RefreshCw className="h-4 w-4" /> Retake quiz
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -382,8 +401,8 @@ export default function Quiz() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3">
+    <div className={`flex flex-col h-full overflow-hidden ${DESK_ONE_SCROLLER}`}>
+      <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_COL} ${DESK_BAR}`}>
         <button
           onClick={() => navigate("/discovery")}
           aria-label="Back"
@@ -392,7 +411,7 @@ export default function Quiz() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1">
-          <p className="text-xs text-muted-foreground">Question {step + 1} of {total}</p>
+          <p className="text-xs text-muted-foreground min-[900px]:text-[13px]">Question {step + 1} of {total}</p>
           <div className="mt-1.5 h-1.5 w-full bg-secondary rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-royal transition-all duration-500"
@@ -402,15 +421,15 @@ export default function Quiz() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <h2 className="font-display text-2xl font-bold text-foreground mb-6">{current.question}</h2>
+      <div className={`flex-1 overflow-y-auto px-6 py-6 ${DESK_COL} ${DESK_BODY} min-[900px]:pt-10`}>
+        <h2 className="font-display text-2xl font-bold text-foreground mb-6 min-[900px]:text-[28px] min-[900px]:leading-[34px]">{current.question}</h2>
         <div className="space-y-3">
           {current.options.map((opt) => (
             <button
               key={opt.label}
               onClick={() => pickOption(opt)}
               className={cn(
-                "w-full text-left p-4 rounded-2xl border-2 border-border bg-card hover:border-primary hover:bg-primary/5 transition-all",
+                "w-full text-left p-4 rounded-2xl border-2 border-border bg-card hover:border-primary hover:bg-primary/5 transition-all min-[900px]:px-5",
               )}
             >
               <span className="font-medium text-foreground">{opt.label}</span>

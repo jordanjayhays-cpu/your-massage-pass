@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { conciergeWhatsappUrl } from "@/app/lib/whatsapp";
 import { trackEvent } from "@/lib/siteVisit";
@@ -229,6 +229,14 @@ export default function WhatsAppAskButton({
   const [areaUnsure, setAreaUnsure] = useState(false);
   const askArea = !studioName;
 
+  // Esc closes the sheet (keyboards: mostly the desktop dialog).
+  useEffect(() => {
+    if (!open || !sheet) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, sheet]);
+
   const submit = () => {
     const chosenArea = areaUnsure ? "" : area;
     trackEvent("wa_prefill", {
@@ -330,15 +338,22 @@ export default function WhatsAppAskButton({
 
       {open && !sheet && <div className="mt-4">{questions}</div>}
 
+      {/* A bottom sheet on phones; a centred dialog from 900px, where a sheet
+          stuck to the bottom of a wide screen reads as a cookie bar. */}
       {open && sheet && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end min-[900px]:items-center justify-center">
           <button
             type="button"
             aria-label="Close"
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="relative w-full max-w-[520px] p-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={label ?? t.trigger}
+            className="relative w-full max-w-[520px] p-3 pb-[calc(12px+env(safe-area-inset-bottom))] min-[900px]:max-w-[480px] min-[900px]:p-0 min-[900px]:shadow-2xl min-[900px]:rounded-2xl"
+          >
             {questions}
           </div>
         </div>

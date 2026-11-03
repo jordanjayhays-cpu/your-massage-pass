@@ -1,6 +1,5 @@
 import { ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { DealsFooterLine } from "@/components/DealsLink";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
@@ -81,7 +80,9 @@ export default function GuideLayout({
         )}
       </Helmet>
 
-      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60">
+      {/* Phones and tablets. From 900px SiteHeader and SiteFooter take over
+          (App.tsx, SiteChromeLayout); the guide list below stays. */}
+      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60 desk:hidden">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" className="h-8 w-8 rounded-full" />
@@ -107,7 +108,9 @@ export default function GuideLayout({
 
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">{children}</main>
 
-      <footer className="border-t border-border/60 bg-background mt-8">
+      {/* Phones only: from 900px SiteFooter carries the site links and each
+          guide already ends with "Keep reading", so this row would repeat them. */}
+      <footer className="border-t border-border/60 bg-background mt-8 desk:hidden">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center">
             <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-primary mb-2">Guides</p>
@@ -121,8 +124,7 @@ export default function GuideLayout({
               ))}
             </ul>
           </div>
-          <DealsFooterLine className="text-center mt-6" />
-          <p className="text-xs text-muted-foreground text-center mt-2">
+          <p className="text-xs text-muted-foreground text-center mt-6 desk:hidden">
             Massage Club · Madrid <span className="mx-1">·</span>{" "}
             <Link to="/privacy" className="hover:text-primary transition underline-offset-2 hover:underline">
               Privacy
@@ -152,7 +154,7 @@ export function CalmaCard({ note }: { note?: string }) {
       </p>
       <p className="text-sm text-foreground/85 mt-3">
         {note ??
-          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €45) and relaxing rituals. Book online in English — you pay at the studio."}
+          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €85) and relaxing rituals. Book online in English. You pay at the studio."}
       </p>
       <Link
         to="/spa-calma"
@@ -178,7 +180,7 @@ export function GuideLinks({ exclude }: { exclude: string }) {
         ))}
         <li>
           <Link to="/spa-calma" className="text-foreground hover:text-primary underline-offset-2 hover:underline transition">
-            Calma Madrid — book a massage
+            Calma Madrid: book a massage
           </Link>
         </li>
       </ul>

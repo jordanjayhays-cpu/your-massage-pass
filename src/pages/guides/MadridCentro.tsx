@@ -6,7 +6,7 @@ export default function MadridCentro() {
       path="/madrid/centro"
       neighbourhood="Centro"
       barrio="Centro (Sol)"
-      title="Massage in Centro (Sol), Madrid — studios, prices and booking"
+      title="Massage in Centro (Sol), Madrid: studios, prices and booking"
       description="Massage studios in central Madrid around Sol: addresses, treatments and prices, near metro Sol, Ópera and Callao. Book online in English, pay at the studio."
       h1="Massage in Centro (Sol), Madrid"
       intro={
@@ -18,7 +18,7 @@ export default function MadridCentro() {
             residential barrios.
           </p>
           <p>
-            The trade-off is space — expect smaller rooms above street level and a bit of city noise.
+            The trade-off is space: expect smaller rooms above street level and a bit of city noise.
             What you get in return is a studio five minutes from wherever you're sleeping, and menus
             that lean towards an hour of relaxing or decontracting work rather than long spa
             circuits.

@@ -30,8 +30,8 @@ export default function MarketingOptInCard({
 
   const heading = es ? "Un correo al mes" : "One email a month";
   const body = es
-    ? "Nuevos estudios, ofertas para estudiantes y qué probar después. Nada de spam."
-    : "New studios, student deals, and what to try next. No spam ever.";
+    ? "Centros nuevos y qué probar. Sin spam."
+    : "New studios and what to try next. No spam.";
   const cta = es ? "Apúntame" : "Count me in";
   const thanks = es ? "¡Hecho! Te escribimos una vez al mes." : "Done. We will write once a month.";
 

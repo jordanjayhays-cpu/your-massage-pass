@@ -55,9 +55,9 @@ const QUESTIONS: Q[] = [
     key: "foreign_pct",
     question: "¿Qué porcentaje de tus clientes son extranjeros o turistas?",
     options: [
-      { value: "pct_0_10", label: "0–10%" },
-      { value: "pct_10_30", label: "10–30%" },
-      { value: "pct_30_50", label: "30–50%" },
+      { value: "pct_0_10", label: "0 a 10%" },
+      { value: "pct_10_30", label: "10 a 30%" },
+      { value: "pct_30_50", label: "30 a 50%" },
       { value: "pct_50_plus", label: "Más del 50%" },
     ],
   },
@@ -67,8 +67,8 @@ const QUESTIONS: Q[] = [
     question: "¿Cuántas ausencias tienes por semana?",
     options: [
       { value: "zero", label: "0" },
-      { value: "one_two", label: "1–2" },
-      { value: "three_five", label: "3–5" },
+      { value: "one_two", label: "1 a 2" },
+      { value: "three_five", label: "3 a 5" },
       { value: "five_plus", label: "Más de 5" },
     ],
   },
@@ -129,7 +129,7 @@ export default function SurveyStudios() {
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" — ") || null;
+    const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" · ") || null;
     const payloadAnswers: Record<string, string | string[]> = { ...answers };
     if (comments.trim()) {
       payloadAnswers.comments = comments.trim();
@@ -244,7 +244,7 @@ export default function SurveyStudios() {
             <textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              placeholder="Cuéntanos lo que quieras — ideas, dudas, lo que sea."
+              placeholder="Cuéntanos lo que quieras: ideas, dudas, lo que sea."
               rows={3}
               className="w-full rounded-xl bg-white border border-[#E5DDD3] p-3 placeholder:text-[#9E9387]"
             />

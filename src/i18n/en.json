@@ -77,7 +77,7 @@
     "q2": "Does it cost anything?",
     "a2": "No. Browsing is free, there is no account or subscription, and you pay the studio directly.",
     "q3": "What types of massage are included?",
-    "a3": "All of them: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more — depending on the studio.",
+    "a3": "All of them: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more, depending on the studio.",
     "q4": "Can I go every day?",
     "a4": "Yes. As often as you like, subject to each studio's availability."
   },
@@ -120,7 +120,7 @@
       "nearbyTitle": "Studios near you",
       "nearbyTitleMadrid": "Studios in Madrid",
       "exploreTitle": "Explore massage styles",
-      "exploreSub": "Learn what each style does — then book the right one.",
+      "exploreSub": "Learn what each style does, then book the right one.",
       "inMadrid": "In Madrid"
     },
     "customize": {
@@ -226,7 +226,7 @@
       "chooseDay": "Choose a day",
       "availableTimes": "Available times",
       "pickDayFirst": "Pick a day first.",
-      "closedDay": "Closed on this day — please pick another date.",
+      "closedDay": "Closed on this day. Please pick another date.",
       "fullyBooked": "Fully booked",
       "continue": "Continue",
       "days": {
@@ -249,7 +249,7 @@
         "gettingThere": "Getting there",
         "feedback": {
           "title": "Enjoyed Massage Club?",
-          "description": "After your visit, leave {{studio}} a review on Google — it helps the studio and other clients.",
+          "description": "After your visit, leave {{studio}} a review on Google. It helps the studio and other clients.",
           "button": "Leave a Google review ⭐"
         },
         "whatsapp": {
@@ -272,7 +272,7 @@
           "success": "Booking confirmed!"
         },
         "note": {
-          "referralCredit": "€{{amount}} referral credit — deduct from bill at studio."
+          "referralCredit": "€{{amount}} referral credit. Deduct from bill at studio."
         }
       },
       "main": {
@@ -293,7 +293,7 @@
         },
         "payment": {
           "title": "Pay at the studio",
-          "description": "No payment needed now — pay when you arrive."
+          "description": "No payment needed now. Pay when you arrive."
         },
         "referral": {
           "apply": "Apply €{{amount}} referral credit",
@@ -362,7 +362,7 @@
         "share": "Share",
         "creditBalance": "Your credit balance",
         "shareTitle": "Massage Club",
-        "shareText": "I've been booking massages in Madrid through Massage Club — get €{{amount}} off your first booking with my link: {{url}}"
+        "shareText": "I've been booking massages in Madrid through Massage Club. Get €{{amount}} off your first booking with my link: {{url}}"
       },
       "photo": {
         "changePhoto": "Change photo",
@@ -414,7 +414,7 @@
       },
       "health": {
         "title": "Health & safety",
-        "subtitle": "Private — only shared with your therapist",
+        "subtitle": "Private: only shared with your therapist",
         "reasonForVisit": "Reason for visit / goals",
         "reasonForVisitPlaceholder": "e.g. lower back pain from desk work",
         "medicalConditions": "Medical conditions",
@@ -437,7 +437,7 @@
         "photoUpdated": "Photo updated",
         "profileSaved": "Profile saved",
         "linkCopied": "Link copied",
-        "copyFailed": "Couldn't copy — long-press to copy"
+        "copyFailed": "Couldn't copy. Long-press to copy"
       },
       "options": {
         "pressures": {
@@ -493,8 +493,8 @@
         },
         "budgets": {
           "under_40": "Under €40",
-          "40_60": "€40–60",
-          "60_90": "€60–90",
+          "40_60": "€40-60",
+          "60_90": "€60-90",
           "90_plus": "€90+"
         },
         "addons": {
@@ -588,16 +588,16 @@
       },
       "cancelConfirm": "Cancel your {{type}} on {{date}} at {{time}}?",
       "messages": {
-        "cancelError": "Could not cancel — {{message}}",
+        "cancelError": "Could not cancel: {{message}}",
         "cancelSuccess": "Booking cancelled",
-        "rescheduleError": "Could not reschedule — {{message}}",
+        "rescheduleError": "Could not reschedule: {{message}}",
         "rescheduleSuccess": "Booking rescheduled"
       },
       "rescheduleModal": {
         "title": "Reschedule",
         "chooseDay": "Choose a day",
         "availableTimes": "Available times",
-        "closed": "Closed on this day — please pick another date.",
+        "closed": "Closed on this day. Please pick another date.",
         "full": "Full",
         "saving": "Saving...",
         "confirm": "Confirm new time"
@@ -629,7 +629,7 @@
     "login": {
       "toasts": {
         "invalidEmail": "Please enter a valid email",
-        "googleError": "Google sign-in isn't switched on yet — browse as guest for now.",
+        "googleError": "Google sign-in isn't switched on yet. Browse as guest for now.",
         "missingName": "Please enter your name",
         "welcome": "Welcome, {{name}}!"
       },
@@ -639,7 +639,7 @@
       },
       "nameStep": {
         "title": "Almost there.",
-        "subtitle": "Just your name — so the studio knows who's coming.",
+        "subtitle": "Just your name, so the studio knows who's coming.",
         "label": "Your name",
         "placeholder": "Alex Martinez",
         "phoneLabel": "Phone (optional)",
@@ -661,7 +661,7 @@
         "imageAlt": "Calm Madrid massage studio",
         "studiosCount": "{{studios}}+ studios across Madrid",
         "payAtStudio": "Pay at studio",
-        "description": "{{studios}}+ studios with real prices, in English. If a studio only takes WhatsApp, we write your message in Spanish for you.",
+        "description": "{{studios}}+ studios with real prices, in English. We ask the studios for you in Spanish. You pay at the studio.",
         "ctaNote": "No account needed to look. No booking fee. You pay the studio directly."
       },
       "newInMadrid": {
@@ -683,8 +683,8 @@
           "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Real services, real prices, in English."
         },
         "step2": {
-          "title": "Book online, or let us write the message",
-          "subtitle": "Some studios take bookings here directly. The rest use WhatsApp — we'll write your message in Spanish so you don't have to."
+          "title": "You pick the time",
+          "subtitle": "We ask the studios for you in Spanish and send you their times. Nothing is booked until you tap Yes."
         },
         "step3": {
           "title": "Turn up and switch off",
@@ -693,7 +693,7 @@
       },
       "trust": {
         "line1": "We don't take a cut of your massage. The prices you see are the studio's own.",
-        "line2": "We won't promise your therapist speaks English — some do, some don't. What we promise is that booking the appointment doesn't need Spanish.",
+        "line2": "We won't promise your therapist speaks English. Some do, some don't. What we promise is that booking the appointment doesn't need Spanish.",
         "line3": "Every studio here is a real place we found, checked and listed by hand."
       },
       "studioCard": {
@@ -706,7 +706,7 @@
         "title": "Save details for faster booking",
         "button": "Save"
       },
-      "feedback": "Share feedback — help us build this",
+      "feedback": "Share feedback: help us build this",
       "emailAuth": {
         "or": "Or",
         "continueWithEmail": "Continue with email",
@@ -782,7 +782,7 @@
       "to": "To",
       "slots": "{{count}} slots",
       "copyAll": "Copy this schedule to every day",
-      "copyWeekdays": "Weekdays only (Mon–Fri)",
+      "copyWeekdays": "Weekdays only (Mon-Fri)",
       "copied": "Schedule copied",
       "helper": "Set an open/close time for each day. We turn it into hourly slots automatically.",
       "staffTitle": "How many people work at the studio in total?",
@@ -886,7 +886,7 @@
       "addService": "Add service",
       "addonsTitle": "Add-ons",
       "optional": "(optional)",
-      "addonsHelp": "Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.",
+      "addonsHelp": "Paid extras clients can add, e.g. Aromatherapy, Hot stones, CBD oil.",
       "addonNamePlaceholder": "Add-on name",
       "addAddon": "Add an add-on",
       "bookingPolicyTitle": "Booking policy",
@@ -906,7 +906,7 @@
       "signIn": "Sign in",
       "errAddressFirst": "Enter your street address first",
       "locationConfirmedToast": "📍 Location confirmed on the map",
-      "errAddressNotFound": "Couldn't find that address — check the spelling",
+      "errAddressNotFound": "Couldn't find that address. Check the spelling",
       "errStudioName": "Enter your studio name",
       "errAddress": "Enter your street address",
       "errAtLeastOneService": "Add at least one service",
@@ -914,8 +914,8 @@
       "errAtLeastOneTherapist": "Add at least one therapist",
       "errEmailPassword": "Enter your email and password to go live",
       "errPasswordShort": "Password must be at least 6 characters",
-      "savedAtMadridCenter": "Saved your studio at Madrid center — tap “Find my location” later to fine-tune the pin.",
-      "errConfirmEmail": "Account created — confirm your email then sign in. (Tip: disable “Confirm email” in Supabase → Authentication to go live instantly.)",
+      "savedAtMadridCenter": "Saved your studio at Madrid center. Tap “Find my location” later to fine-tune the pin.",
+      "errConfirmEmail": "Account created. Confirm your email then sign in. (Tip: disable “Confirm email” in Supabase → Authentication to go live instantly.)",
       "errSaveStudio": "Could not save your studio: {{message}}",
       "errSaveHours": "Could not save opening hours: {{message}}",
       "errSaveServices": "Could not save your services: {{message}}",
@@ -942,7 +942,7 @@
       "statToday": "Today",
       "statThisMonth": "This Month",
       "bookingLinkTitle": "Your booking link",
-      "bookingLinkDesc": "Share this anywhere — your Google listing, Instagram bio, or a WhatsApp message. Customers book right from it.",
+      "bookingLinkDesc": "Share this anywhere: your Google listing, Instagram bio, or a WhatsApp message. Customers book right from it.",
       "linkCopied": "Link copied!",
       "copied": "Copied",
       "copy": "Copy",
@@ -999,7 +999,7 @@
       "visibilityTitle": "Visibility",
       "visibilityViews30": "page views (30 days)",
       "visibilityViews7": "last 7 days: {{n}}",
-      "visibilityEmpty": "Your page is live — you'll soon see who's visiting",
+      "visibilityEmpty": "Your page is live. You'll soon see who's visiting",
       "visibilitySource": {
         "google": "Google",
         "reddit": "Reddit",
@@ -1035,8 +1035,8 @@
       "writeSomething": "Write something in at least one field.",
       "couldNotSave": "Couldn't save the note.",
       "noteSaved": "Treatment note saved",
-      "soapHintSubjective": "What the client reports — pain, stress, goals",
-      "soapHintObjective": "What you observe — tension, posture, range of motion",
+      "soapHintSubjective": "What the client reports: pain, stress, goals",
+      "soapHintObjective": "What you observe: tension, posture, range of motion",
       "soapHintAssessment": "Your interpretation",
       "soapHintPlan": "What you did + next session"
     },
@@ -1045,8 +1045,8 @@
       "objective": "Objective",
       "assessment": "Assessment",
       "plan": "Plan",
-      "hintSubjective": "What the client reports — pain, stress, goals in their words",
-      "hintObjective": "What you observe — tension, posture, range of motion",
+      "hintSubjective": "What the client reports: pain, stress, goals in their words",
+      "hintObjective": "What you observe: tension, posture, range of motion",
       "hintAssessment": "Your interpretation of the findings",
       "hintPlan": "What you did + recommendations / next session",
       "soapNoteLabel": "SOAP note",
@@ -1057,7 +1057,7 @@
       "loading": "Loading…",
       "fieldPlaceholder": "{{field}}…",
       "lastSaved": "Last saved {{date}}",
-      "privateNote": "Private — only your studio can see this.",
+      "privateNote": "Private: only your studio can see this.",
       "saving": "Saving…",
       "updateNote": "Update note",
       "saveNote": "Save note",
@@ -1075,7 +1075,7 @@
       "searchPlaceholder": "Search for your spa on Google…",
       "noResults": "No results found. Try a different name or enter manually below.",
       "ratingReviews": "{{rating}} ({{count}} reviews)",
-      "googleDataLoaded": "Google data loaded — verify and edit below",
+      "googleDataLoaded": "Google data loaded. Verify and edit below",
       "businessName": "Business Name",
       "address": "Address",
       "phone": "Phone",
@@ -1102,7 +1102,7 @@
       "slugPlaceholder": "my-studio",
       "slugTaken": "That link is already taken",
       "slugInvalid": "The link must be between 3 and 40 characters",
-      "slugUpdatedWarning": "Link updated — the previous link will stop working, update it wherever you shared it."
+      "slugUpdatedWarning": "Link updated. The previous link will stop working, update it wherever you shared it."
     },
     "services": {
       "stepLabel": "Step 2 of 3",
@@ -1132,7 +1132,7 @@
     "calendar": {
       "stepLabel": "Availability",
       "title": "Set your opening hours",
-      "intro": "Set when you're open each day — we'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.",
+      "intro": "Set when you're open each day. We'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.",
       "capacityLabel": "How many massages can you give at the same time?",
       "capacityHint": "Usually the number of tables or therapists working at once.",
       "days": {
@@ -1147,7 +1147,7 @@
       "closed": "Closed",
       "bookableTimes": "{{count}} bookable times",
       "copyToAll": "Copy to all days",
-      "noHoursSet": "No hours set — you won't appear in search yet",
+      "noHoursSet": "No hours set. You won't appear in search yet",
       "summary": "{{days}} day(s) open · {{slots}} bookable times",
       "done": "✓ Done!",
       "goLive": "Go Live",
@@ -1185,7 +1185,7 @@
       "yourGoogleCalendar": "your Google Calendar",
       "connectionFailedTitle": "Connection failed",
       "connectButton": "Connect Google Calendar",
-      "connectHint": "One click — no password stored. Read-only access to your calendar.",
+      "connectHint": "One click. No password stored. Read-only access to your calendar.",
       "disconnectButton": "Disconnect Google Calendar",
       "howItWorks": "How it works",
       "step1Title": "Connect in one click",
@@ -1198,13 +1198,13 @@
       "step4Desc": "New bookings from Massage Club appear as events in your Google Calendar instantly.",
       "autoConfirmTitle": "Auto-confirm bookings",
       "autoConfirmDesc": "When enabled, bookings appear confirmed immediately. When off, you manually approve each one.",
-      "autoConfirmOnLabel": "On — bookings confirmed automatically",
-      "autoConfirmOffLabel": "Off — you confirm each booking",
+      "autoConfirmOnLabel": "On: bookings confirmed automatically",
+      "autoConfirmOffLabel": "Off: you confirm each booking",
       "manualAvailabilityLink": "Set manual availability instead",
       "confirmDisconnect": "Disconnect Google Calendar? Your manual availability will still work.",
       "toastConnected": "Google Calendar connected!",
       "toastConnectionFailed": "Connection failed: {{error}}",
-      "toastNotSetUp": "Google isn't set up yet — add your Google Client ID first.",
+      "toastNotSetUp": "Google isn't set up yet. Add your Google Client ID first.",
       "toastDisconnectFailed": "Failed to disconnect",
       "toastDisconnected": "Google Calendar disconnected",
       "toastUpdateFailed": "Failed to update",
@@ -1313,7 +1313,7 @@
       "addressPlaceholder": "Calle Gran Vía 15, Madrid",
       "addressHelper": "Shown to customers on their booking confirmation.",
       "accessInstructionsLabel": "Arrival instructions (optional)",
-      "accessInstructionsPlaceholder": "E.g.: 'Building 1A — buzz the intercom and we'll let you in. First floor, right-hand door.'",
+      "accessInstructionsPlaceholder": "E.g.: 'Building 1A, buzz the intercom and we'll let you in. First floor, right-hand door.'",
       "accessInstructionsHelper": "Included in the customer's confirmation email.",
       "phoneLabel": "Phone",
       "phonePlaceholder": "+34 600 000 000",
@@ -1333,16 +1333,16 @@
       "capacityQuestion": "How many massages can you give at the same time?",
       "capacityHelper": "Usually the number of tables or therapists working at once. We use it so you never get more bookings than you can handle.",
       "step4CalendarTitle": "Connect Google Calendar",
-      "calendarRecommendedDesc": "Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.",
+      "calendarRecommendedDesc": "Connecting Google Calendar is recommended. We'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.",
       "calendarBullet1": "Read-only access to your busy times",
       "calendarBullet2": "New bookings appear as events in your calendar",
       "calendarBullet3": "Customers only ever see truly free slots",
       "connectGoogleCalendar": "Connect Google Calendar",
-      "oneClickNote": "One click — no password stored.",
+      "oneClickNote": "One click. No password stored.",
       "orDividerEs": "or",
       "setManuallyButton": "Set availability manually",
       "saveAndContinue": "Save & continue",
-      "skipForNow": "Skip for now — you can connect it later from your portal",
+      "skipForNow": "Skip for now. You can connect it later from your portal",
       "step5Title": "Create your password",
       "step5Desc": "With this password you'll be able to log in to your dashboard whenever you want, without relying on email links.",
       "loginDetailsTitle": "Your login details",

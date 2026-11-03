@@ -30,7 +30,11 @@ i18n
     supportedLngs: SUPPORTED as unknown as string[],
     nonExplicitSupportedLngs: true,
     detection: {
-      order: ["localStorage", "navigator"],
+      // ?lang=es on a link (bot, ads, emails) wins, then the visitor's saved
+      // choice, then the browser. The link's language is saved, so a reload
+      // without the parameter stays in that language.
+      order: ["querystring", "localStorage", "navigator"],
+      lookupQuerystring: "lang",
       caches: ["localStorage"],
       lookupLocalStorage: "mm-lang",
     },
@@ -38,8 +42,16 @@ i18n
   });
 
 // First-visit auto-detect: if no mm-lang set, pick from navigator against SUPPORTED (default en).
+// Skipped when the link carries ?lang=, which the detector above already applied.
+const hasLangParam = (): boolean => {
+  try {
+    return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("lang");
+  } catch {
+    return false;
+  }
+};
 try {
-  if (typeof window !== "undefined" && !localStorage.getItem("mm-lang")) {
+  if (typeof window !== "undefined" && !hasLangParam() && !localStorage.getItem("mm-lang")) {
     const nav = (navigator.language || "en").toLowerCase().slice(0, 2);
     const picked = (SUPPORTED as readonly string[]).includes(nav) ? nav : "en";
     if (picked !== i18n.resolvedLanguage) i18n.changeLanguage(picked);
