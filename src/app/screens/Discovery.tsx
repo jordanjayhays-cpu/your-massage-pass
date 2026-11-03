@@ -30,9 +30,13 @@ export default function Discovery() {
 
 
 
+  // Phones: the title bar is pinned and the page scrolls inside the screen.
+  // From 900px the app shell is the only scroller (so SiteFooter shows at the
+  // end), the site header is the only header band, and the title is the
+  // page's H1 at the top of the content column.
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_PAGE}`}>
+    <div className="flex flex-col h-full overflow-hidden min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible">
+      <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_PAGE} min-[900px]:hidden`}>
         <button
           onClick={() => navigate(-1)}
           aria-label={t("app.common.back")}
@@ -46,7 +50,15 @@ export default function Discovery() {
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-6 pb-28 ${DESK_PAGE} min-[900px]:pt-8 min-[900px]:space-y-10 min-[900px]:pb-16`}>
+      {/* Desktop title. A sibling of the list, not its first child: inside the
+          space-y list a hidden first child would still push the next one down
+          on phones. */}
+      <div className={`hidden min-[900px]:block ${DESK_PAGE} min-[900px]:pt-8`}>
+        <p className="text-[15px] text-muted-foreground">{t("app.discovery.kicker")}</p>
+        <h1 className="mt-1 font-display text-[36px] leading-[42px] font-semibold text-foreground">{t("app.discovery.title")}</h1>
+      </div>
+
+      <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-6 pb-28 ${DESK_PAGE} min-[900px]:flex-none min-[900px]:overflow-visible min-[900px]:pt-8 min-[900px]:space-y-10 min-[900px]:pb-16`}>
         {/* Quiz CTA — full-card clickable */}
         <button
           onClick={() => navigate("/discovery/quiz")}

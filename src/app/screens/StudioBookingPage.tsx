@@ -781,11 +781,28 @@ const DESK_PAGE =
  * own when it is taller than the window, so its button is never out of reach.
  * Its height leaves room for the page's bottom padding, so it never has to
  * slide up (and lose its top) at the end of the page.
+ *
+ * Only on screens at least 640px tall: below that (a large phone turned
+ * sideways, 932x430) a box of 100vh minus 10rem is 270px, too small to work
+ * in, so the column scrolls with the page instead. Every class carries the
+ * same width-and-height media query (DESK_TALL_MQ).
  */
 const DESK_STICKY =
-  "min-[900px]:self-start min-[900px]:sticky min-[900px]:top-4 min-[900px]:[body:has([data-site-header])_&]:top-20 " +
-  "min-[900px]:max-h-[calc(100vh-6rem)] min-[900px]:[body:has([data-site-header])_&]:max-h-[calc(100vh-10rem)] " +
-  "min-[900px]:overflow-y-auto min-[900px]:overflow-x-hidden min-[900px]:overscroll-contain";
+  "min-[900px]:self-start [@media(min-width:900px)_and_(min-height:640px)]:sticky [@media(min-width:900px)_and_(min-height:640px)]:top-4 [@media(min-width:900px)_and_(min-height:640px)]:[body:has([data-site-header])_&]:top-20 " +
+  "[@media(min-width:900px)_and_(min-height:640px)]:max-h-[calc(100vh-6rem)] [@media(min-width:900px)_and_(min-height:640px)]:[body:has([data-site-header])_&]:max-h-[calc(100vh-10rem)] " +
+  "[@media(min-width:900px)_and_(min-height:640px)]:overflow-y-auto [@media(min-width:900px)_and_(min-height:640px)]:overflow-x-hidden [@media(min-width:900px)_and_(min-height:640px)]:overscroll-contain";
+/** The query DESK_STICKY's classes use: the column is a sticky box of its own. */
+const DESK_TALL_MQ = "(min-width: 900px) and (min-height: 640px)";
+/**
+ * The hand-off panel's action (Continue, Send) inside that box: it stays on
+ * the bottom edge of the box while the rest of the step scrolls under it, so
+ * the action is always on screen. Same query as DESK_STICKY; phones see none
+ * of it. -mx-6/px-6 spans the card's 24px padding; -bottom-1 also covers the
+ * box's own 4px bottom padding, so nothing peeks out under the button.
+ */
+const DESK_ACTION_ROW =
+  "min-[900px]:-mx-6 min-[900px]:px-6 min-[900px]:pt-3 min-[900px]:pb-3 min-[900px]:bg-white " +
+  "[@media(min-width:900px)_and_(min-height:640px)]:sticky [@media(min-width:900px)_and_(min-height:640px)]:-bottom-1 [@media(min-width:900px)_and_(min-height:640px)]:z-10";
 /** Menu rows shown before "See all N services" on desktop. Phones list every row. */
 const DESK_MENU_ROWS = 8;
 const isVideoUrl = (u: string) => /\.(mp4|webm)(\?.*)?$/i.test(u);
@@ -1506,7 +1523,7 @@ function StudioBookingPageInner() {
       <div className="min-h-screen flex items-center justify-center min-[900px]:block" style={{ background: "#FAF6F1" }}>
         <Loader2 className="h-8 w-8 animate-spin min-[900px]:hidden" style={{ color: "#B85C38" }} />
         <div className={`hidden ${DESK_PAGE}`} aria-busy="true" data-testid="studio-skeleton">
-          <div className="hidden min-[900px]:block min-[900px]:col-span-2 mb-8 h-[400px] rounded-2xl bg-[#EFE7DD] motion-safe:animate-pulse" />
+          <div className="hidden min-[900px]:block min-[900px]:col-span-2 mb-8 h-[400px] [@media(max-height:760px)]:h-[300px] rounded-2xl bg-[#EFE7DD] motion-safe:animate-pulse" />
           <div className="hidden min-[900px]:block space-y-4">
             <div className="h-10 w-2/3 rounded-xl bg-[#EFE7DD]" />
             <div className="h-5 w-1/2 rounded-lg bg-[#EFE7DD]" />
@@ -1716,7 +1733,7 @@ function StudioBookingPageInner() {
       <button
         type="button"
         onClick={() => setMenuAll(true)}
-        className="hidden min-[900px]:inline-flex h-12 items-center rounded-full border border-[#8F847B] bg-white px-6 text-[17px] font-semibold text-[#2b2b2b] hover:bg-[#FBF1EB] motion-safe:transition-colors"
+        className="hidden min-[900px]:inline-flex h-12 items-center rounded-full border border-[#8F847B] bg-white px-6 text-[17px] font-semibold text-[#2b2b2b] hover:bg-[#FBF1EB] motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#211C1A] focus-visible:ring-offset-2"
       >
         {fill(dk.seeAll, { n })}
       </button>
@@ -2043,9 +2060,24 @@ function StudioBookingPageInner() {
       // renders below the fold and the tap looks like it did nothing.
       requestAnimationFrame(() => {
         const el = hoPanelRef.current;
-        // Desktop: the panel follows the scroll in the right column, so the
-        // page stays where it is and only the panel goes back to its top.
-        if (el && isDeskNow()) { el.scrollTop = 0; return; }
+        // Desktop: the panel goes back to its own top, and the page moves
+        // just enough for the whole panel to be on screen: up to its sticky
+        // spot under the header when it is a sticky box (its action row then
+        // sits on the bottom edge, in view), or to its top on short screens
+        // where it scrolls with the page. On "Your details" the name field
+        // gets the focus, so the keyboard starts there.
+        if (el && isDeskNow()) {
+          el.scrollTop = 0;
+          const r = el.getBoundingClientRect();
+          if (window.matchMedia?.(DESK_TALL_MQ).matches) {
+            const stickTop = parseFloat(window.getComputedStyle(el).top) || 0;
+            if (r.top > stickTop + 1) window.scrollBy({ top: r.top - stickTop, behavior: "smooth" });
+          } else if (r.top < 0 || r.top > window.innerHeight * 0.5) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          if (n === 3 && !afterSend) hoNameRef.current?.focus({ preventScroll: true });
+          return;
+        }
         if (el) {
           try {
             el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2228,14 +2260,16 @@ function StudioBookingPageInner() {
                       )}
                     </div>
 
-                    <button
-                      ref={hoInlineContinueRef}
-                      type="button"
-                      onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
-                      className="mt-3 w-full min-h-[48px] rounded-full px-5 py-3 text-base font-semibold text-white motion-safe:transition bg-[#B85C38] min-[900px]:mt-4 min-[900px]:text-[17px] min-[900px]:bg-[#A34A22] min-[900px]:hover:bg-[#8A3D1A]"
-                    >
-                      {c.continueLabel}
-                    </button>
+                    <div className={`mt-3 min-[900px]:mt-1 ${DESK_ACTION_ROW}`}>
+                      <button
+                        ref={hoInlineContinueRef}
+                        type="button"
+                        onClick={() => { if (!hoServiceId) { scrollToServices(); return; } hoGo(2); }}
+                        className="w-full min-h-[48px] rounded-full px-5 py-3 text-base font-semibold text-white motion-safe:transition bg-[#B85C38] min-[900px]:text-[17px] min-[900px]:bg-[#A34A22] min-[900px]:hover:bg-[#8A3D1A]"
+                      >
+                        {c.continueLabel}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -2262,13 +2296,15 @@ function StudioBookingPageInner() {
                     {/* Desktop: the sticky bar is hidden from 900px, so step 2's
                         Continue sits here, under the times, where the panel
                         always shows it (the optional second choice follows). */}
-                    <button
-                      type="button"
-                      onClick={() => hoGo(3)}
-                      className="hidden min-[900px]:block w-full min-h-[48px] rounded-full px-5 py-3 text-[17px] font-semibold text-white bg-[#A34A22] hover:bg-[#8A3D1A] motion-safe:transition-colors"
-                    >
-                      {c.continueLabel}
-                    </button>
+                    <div className={`hidden min-[900px]:block ${DESK_ACTION_ROW}`}>
+                      <button
+                        type="button"
+                        onClick={() => hoGo(3)}
+                        className="w-full min-h-[48px] rounded-full px-5 py-3 text-[17px] font-semibold text-white bg-[#A34A22] hover:bg-[#8A3D1A] motion-safe:transition-colors"
+                      >
+                        {c.continueLabel}
+                      </button>
+                    </div>
                     {!altOpen ? (
                       <button
                         type="button"
@@ -2436,15 +2472,17 @@ function StudioBookingPageInner() {
                         {sp.sendError}
                       </p>
                     )}
-                    <button
-                      ref={hoSendRef}
-                      type="submit"
-                      disabled={hoSending}
-                      className="w-full min-h-[52px] rounded-2xl px-6 text-base font-semibold text-white motion-safe:transition hover:opacity-95 bg-[#B85C38] min-[900px]:min-h-[48px] min-[900px]:rounded-full min-[900px]:text-[17px] min-[900px]:bg-[#A34A22] min-[900px]:hover:bg-[#8A3D1A] min-[900px]:hover:opacity-100"
-                      style={{ opacity: hoSending ? 0.75 : 1 }}
-                    >
-                      {hoSending ? sp.sending : sp.send}
-                    </button>
+                    <div className={DESK_ACTION_ROW}>
+                      <button
+                        ref={hoSendRef}
+                        type="submit"
+                        disabled={hoSending}
+                        className="w-full min-h-[52px] rounded-2xl px-6 text-base font-semibold text-white motion-safe:transition hover:opacity-95 bg-[#B85C38] min-[900px]:min-h-[48px] min-[900px]:rounded-full min-[900px]:text-[17px] min-[900px]:bg-[#A34A22] min-[900px]:hover:bg-[#8A3D1A] min-[900px]:hover:opacity-100"
+                        style={{ opacity: hoSending ? 0.75 : 1 }}
+                      >
+                        {hoSending ? sp.sending : sp.send}
+                      </button>
+                    </div>
                     <p className="text-sm text-center" style={{ color: "#7A7068" }}>{c.waReassuranceStudios}</p>
                     <WizardNav onBack={() => hoGo(2)} />
                   </form>
@@ -3580,11 +3618,14 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
     <StudioPlaceMap lat={lat} lng={lng} name={name} title={hood || "Madrid"} address={address} height={height} />
   );
   if (!media.length) return map(240);
+  // Laptop windows under 760px tall (1366x657, 1280x650) get a 300px band, so
+  // the booking card's action is on the first screen.
+  const bandH = typeof window !== "undefined" && window.matchMedia?.("(max-height: 760px)").matches ? 300 : 400;
 
   const tile = (url: string, big: boolean, extra = "") =>
     isVideoUrl(url) ? (
       <div key={url} className={`relative h-full w-full overflow-hidden rounded-2xl bg-black ${extra}`}>
-        <video src={`${url}#t=0.1`} muted playsInline controls preload="metadata" className="h-full w-full object-cover" />
+        <video src={`${url}#t=0.1`} muted playsInline controls preload="metadata" aria-label={`${name}: ${copy.video}`} className="h-full w-full object-cover" />
         <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[13px] font-semibold text-white">
           <Play size={13} aria-hidden="true" /> {copy.video}
         </span>
@@ -3594,7 +3635,7 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
         key={url}
         type="button"
         onClick={() => setOpen(photos.indexOf(url))}
-        aria-label={copy.openPhoto}
+        aria-label={`${copy.openPhoto} ${photos.indexOf(url) + 1}/${count}: ${name}`}
         className={`group relative block h-full w-full overflow-hidden rounded-2xl bg-[#F4EEE6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#211C1A] focus-visible:ring-offset-2 ${extra}`}
       >
         <img
@@ -3609,17 +3650,17 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
 
   const band =
     media.length === 1 ? (
-      <div className="grid h-[400px] grid-cols-[2fr_1fr] gap-2">
+      <div className="grid h-[400px] [@media(max-height:760px)]:h-[300px] grid-cols-[2fr_1fr] gap-2">
         {tile(media[0], true)}
-        {map(400)}
+        {map(bandH)}
       </div>
     ) : media.length === 2 ? (
-      <div className="grid h-[400px] grid-cols-[2fr_1fr] gap-2">
+      <div className="grid h-[400px] [@media(max-height:760px)]:h-[300px] grid-cols-[2fr_1fr] gap-2">
         {tile(media[0], true)}
         {tile(media[1], false)}
       </div>
     ) : (
-      <div className="grid h-[400px] grid-cols-[2fr_1fr] grid-rows-2 gap-2">
+      <div className="grid h-[400px] [@media(max-height:760px)]:h-[300px] grid-cols-[2fr_1fr] grid-rows-2 gap-2">
         {tile(media[0], true, "row-span-2")}
         {tile(media[1], false)}
         {tile(media[2], false)}
@@ -3634,7 +3675,7 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
         <button
           type="button"
           onClick={() => setOpen(0)}
-          className="absolute bottom-4 right-4 inline-flex h-10 items-center gap-2 rounded-full bg-white/95 px-4 text-[15px] font-semibold text-[#2b2b2b] shadow-[0_1px_2px_rgb(33_28_26/0.06),0_4px_16px_-6px_rgb(33_28_26/0.10)] hover:bg-white"
+          className="absolute bottom-4 right-4 inline-flex h-10 items-center gap-2 rounded-full bg-white/95 px-4 text-[15px] font-semibold text-[#2b2b2b] shadow-[0_1px_2px_rgb(33_28_26/0.06),0_4px_16px_-6px_rgb(33_28_26/0.10)] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#211C1A] focus-visible:ring-offset-2"
         >
           <Images size={18} aria-hidden="true" /> {fill(copy.seeAllPhotos, { n: count })}
         </button>
@@ -3649,7 +3690,7 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
         >
           <img
             src={photos[open]}
-            alt=""
+            alt={`${name}, ${open + 1}/${count}`}
             className="max-h-[85vh] max-w-[min(1200px,100%)] rounded-2xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
@@ -3658,7 +3699,7 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
             autoFocus
             aria-label={copy.close}
             onClick={() => setOpen(null)}
-            className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white"
+            className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             <X size={20} />
           </button>
@@ -3668,7 +3709,7 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
                 type="button"
                 aria-label={copy.prevPhoto}
                 onClick={(e) => { e.stopPropagation(); setOpen((open - 1 + count) % count); }}
-                className="absolute left-5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white"
+                className="absolute left-5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               >
                 <ChevronLeft size={22} />
               </button>
@@ -3676,7 +3717,7 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
                 type="button"
                 aria-label={copy.nextPhoto}
                 onClick={(e) => { e.stopPropagation(); setOpen((open + 1) % count); }}
-                className="absolute right-5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white"
+                className="absolute right-5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#211C1A] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               >
                 <ChevronRight size={22} />
               </button>

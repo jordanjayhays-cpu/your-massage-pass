@@ -31,11 +31,16 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
     // Phones: --consent-room equals the bar's height (--consent-h). From 900px the
     // bar is a card in the bottom-left corner and this full-width bar would cover
     // it, so it rises by the card's room instead (desktop fix F20).
+    // From 900px it is a card over the list column only (/studios: the list
+    // on the left, the sticky map on the right), never across the map, and
+    // opaque, so no card text shows through it. The column starts at the
+    // 1120px container's 20px gutter and ends 24px before the map (340px
+    // wide below 1024px, 400px from there).
     <div
-      className={`fixed inset-x-0 z-50 px-3 pointer-events-none ${className}`}
+      className={`fixed inset-x-0 z-50 px-3 pointer-events-none ${className} desk:right-auto desk:px-0 desk:left-[max(20px,calc((100vw_-_1120px)/2_+_20px))] desk:w-[calc(100vw_-_420px)] lg:w-[min(656px,calc(100vw_-_480px))]`}
       style={{ bottom: "var(--consent-room, var(--consent-h, 0px))" }}
     >
-      <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3">
+      <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3 desk:max-w-none desk:rounded-2xl desk:bg-card desk:backdrop-blur-none desk:px-4">
         <div className="flex items-center gap-3 flex-wrap">
           <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
             <Scale className="h-3.5 w-3.5" /> {t.compare}
@@ -64,7 +69,7 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
             <button
               type="button"
               onClick={clear}
-              className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+              className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 desk:text-[13px] desk:min-h-10"
             >
               {t.clear}
             </button>

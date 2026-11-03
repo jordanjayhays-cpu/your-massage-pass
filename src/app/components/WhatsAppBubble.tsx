@@ -73,9 +73,15 @@ export default function WhatsAppBubble() {
     ? "var(--tabbar-room)"
     : "1rem + env(safe-area-inset-bottom)";
 
+  // Studio pages and /studios have a right-hand column (the booking card, the
+  // sticky map) that already offers WhatsApp. Between 900 and 1279px that
+  // column reaches the bottom-right corner, so the bubble would cover its
+  // button or the map: it steps aside there. From 1280px there is room.
+  const besideColumn = !!studio || (pathname.replace(/\/+$/, "") || "/") === "/studios";
+
   return (
     <div
-      className="fixed right-4 z-50 flex items-center gap-2"
+      className={`fixed right-4 z-50 flex items-center gap-2${besideColumn ? " desk:max-xl:hidden" : ""}`}
       style={{ bottom: `calc(${base} + var(--consent-h, 0px))` }}
     >
       {showHint && (

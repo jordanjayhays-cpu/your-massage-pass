@@ -30,6 +30,15 @@ const ORIGIN_KEY = "mc_quiz_origin";
 const DESK_COL = "min-[900px]:px-[max(1.5rem,calc((100%_-_42rem)/2))]";
 /** The same column as a margin, for blocks that carry their own background. */
 const DESK_COL_MX = "min-[900px]:mx-[max(1.5rem,calc((100%_-_42rem)/2))]";
+/**
+ * From 900px the app shell (MobileFrame) is the only scroller, as on /login
+ * and /studios, so there is one scrollbar and SiteFooter shows at the end.
+ * Phones keep the pinned bar and the inner scroll.
+ */
+const DESK_ONE_SCROLLER = "min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible";
+const DESK_BODY = "min-[900px]:flex-none min-[900px]:overflow-visible";
+/** The quiz bar on desktop: part of the page under the site header, not a second white header band. */
+const DESK_BAR = "min-[900px]:bg-transparent min-[900px]:border-b-0 min-[900px]:pt-8 min-[900px]:pb-0";
 
 type QuizOrigin = { slug: string; name: string };
 
@@ -175,8 +184,8 @@ export default function Quiz() {
 
   if (done && winner) {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_COL}`}>
+      <div className={`flex flex-col h-full overflow-hidden ${DESK_ONE_SCROLLER}`}>
+        <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_COL} ${DESK_BAR}`}>
           <button
             onClick={() => navigate("/discovery")}
             aria-label="Back"
@@ -190,7 +199,7 @@ export default function Quiz() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className={`flex-1 overflow-y-auto ${DESK_BODY}`}>
           <div className={`relative h-56 min-[900px]:h-auto min-[900px]:aspect-[3/1] min-[900px]:mt-6 min-[900px]:rounded-2xl min-[900px]:overflow-hidden ${DESK_COL_MX}`}>
             <img src={winner.image} alt={winner.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
@@ -392,8 +401,8 @@ export default function Quiz() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_COL}`}>
+    <div className={`flex flex-col h-full overflow-hidden ${DESK_ONE_SCROLLER}`}>
+      <div className={`px-6 pt-6 pb-4 border-b border-border bg-card flex items-center gap-3 ${DESK_COL} ${DESK_BAR}`}>
         <button
           onClick={() => navigate("/discovery")}
           aria-label="Back"
@@ -412,7 +421,7 @@ export default function Quiz() {
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto px-6 py-6 ${DESK_COL} min-[900px]:pt-10`}>
+      <div className={`flex-1 overflow-y-auto px-6 py-6 ${DESK_COL} ${DESK_BODY} min-[900px]:pt-10`}>
         <h2 className="font-display text-2xl font-bold text-foreground mb-6 min-[900px]:text-[28px] min-[900px]:leading-[34px]">{current.question}</h2>
         <div className="space-y-3">
           {current.options.map((opt) => (

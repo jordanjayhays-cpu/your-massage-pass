@@ -7,7 +7,8 @@
  * 10:00-18:00", "Sun-Thu 10:00-21:30, Fri-Sat 10:00-22:00", "Lun-Vie
  * 10:00-20:00, Sáb 10:00-14:00" or "Todos los días 12:00-20:00".
  *
- * Anything else returns null, so the page shows nothing rather than a guess.
+ * Anything else returns null, so the page shows nothing rather than a guess,
+ * and so does a day with two parts (a split shift).
  * "Closed today" is only ever claimed when every part of the text was read.
  */
 
@@ -80,7 +81,12 @@ export function hoursOn(text: string | null | undefined, weekday: number): Today
     const days = daysOf(m[1]);
     const from = timeOf(m[2]), to = timeOf(m[3]);
     if (!days || !from || !to) return null;
-    if (!found && days.includes(weekday)) found = { open: true, from, to };
+    if (days.includes(weekday)) {
+      // Two parts for the same day is a split shift ("10:00-14:00, 17:00-21:00"):
+      // showing only the first would read as closed in the evening, so show nothing.
+      if (found) return null;
+      found = { open: true, from, to };
+    }
   }
   return found ?? { open: false };
 }

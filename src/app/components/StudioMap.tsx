@@ -18,6 +18,7 @@ import { haversineKm, distanceLabel } from "@/lib/distance";
 import type { Shop } from "@/lib/supabase";
 import { isStudioVisited } from "@/lib/visitedStudios";
 import { studioPath } from "@/lib/studioHref";
+import { PlaceTile } from "./PlaceTile";
 
 
 
@@ -508,14 +509,14 @@ export default function StudioMap({
               onSearchArea({ north: ne.lat(), south: sw.lat(), east: ne.lng(), west: sw.lng() });
               setMoved(false);
             }}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 backdrop-blur border border-[#EADFD2] shadow-soft px-4 py-2 text-xs font-semibold text-[#C4622D] hover:bg-white transition"
+            className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 backdrop-blur border border-[#EADFD2] shadow-soft px-4 py-2 text-xs font-semibold text-[#C4622D] hover:bg-white transition${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14" : ""}`}
           >
             Search this area <span className="font-normal text-[#8a7460]">/ Buscar en esta zona</span>
           </button>
         )}
 
         {geoError && (
-          <div className="absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft">
+          <div className={`absolute bottom-3 left-3 right-3 rounded-2xl bg-card/95 backdrop-blur-sm border border-border/60 px-3 py-2 shadow-soft${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14 min-[900px]:right-16" : ""}`}>
             <p className="text-[11px] text-muted-foreground min-[900px]:text-[13px]">
               {t("app.massageList.geoError", "We could not get your location. Showing studios around central Madrid.")}
             </p>
@@ -532,15 +533,24 @@ export default function StudioMap({
             ? haversineKm(userLoc, selected as any)
             : null;
           return (
-            <div className="absolute left-3 right-3 bottom-3 z-20">
+            // Desktop sticky map (/studios): the map runs below the fold while
+            // the page is at rest, so the card opens at the top, under the
+            // "Near Madrid" pill and clear of the zoom buttons (top right).
+            <div className={`absolute left-3 right-3 bottom-3 z-20${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14 min-[900px]:right-16" : ""}`}>
               <a
                 href={studioPath(selected as any)}
                 onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
                 aria-label={lang === "es" ? `Abrir ${selected.studio}` : `Open ${selected.studio}`}
                 className="flex items-center gap-3 rounded-2xl bg-card border border-border shadow-elegant p-2.5 pr-11 hover:border-primary/50 transition"
               >
-                {selected.image && (
-                  <img src={selected.image} alt="" className="h-14 w-14 flex-shrink-0 rounded-xl object-cover" />
+                {/* Only the studio's own photo, as on the list cards; without
+                    one its initial, never a stock picture that reads as the room. */}
+                {selected.ownImage ? (
+                  <img src={selected.ownImage} alt="" className="h-14 w-14 flex-shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl [&_.text-3xl]:text-2xl">
+                    <PlaceTile name={selected.studio} hood={null} />
+                  </span>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-base font-semibold text-foreground leading-tight truncate">{selected.studio}</p>

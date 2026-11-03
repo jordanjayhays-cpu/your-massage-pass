@@ -39,4 +39,11 @@ describe("hoursOn: every format studios wrote on 2 Nov 2026", () => {
     expect(hoursOn("Mon-Fri 10:00-20:00, weekends by appointment", SUN)).toBeNull();
     expect(hoursOn("Mon-Fri 25:00-20:00", MON)).toBeNull();
   });
+
+  it("a split shift shows nothing for that day, never half of it", () => {
+    const t = "Lun-Vie 10:00-14:00, Lun-Vie 17:00-21:00, Sáb 10:00-14:00";
+    expect(hoursOn(t, MON)).toBeNull();
+    expect(hoursOn(t, SAT)).toEqual({ open: true, from: "10:00", to: "14:00" });
+    expect(hoursOn(t, SUN)).toEqual({ open: false });
+  });
 });

@@ -2,9 +2,17 @@ import { Link } from "react-router-dom";
 import { useFlowLang } from "@/lib/flowLang";
 import { cn } from "@/lib/utils";
 import { SITE_COPY } from "@/lib/siteChrome";
+import { SITE_LOGO_SRC } from "@/components/SiteHeader";
+
+/** #6B615B on cream is 5.5:1 (the muted #7A7068 is 4.48:1, just under AA),
+ *  and it is the colour go.html's copy of this footer already uses. */
+const QUIET = "text-[#6B615B]";
 
 const linkCls =
-  "inline-flex min-h-[32px] items-center text-small text-foreground underline-offset-4 transition-colors duration-state hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
+  "inline-flex min-h-[32px] items-center text-small text-foreground underline-offset-4 transition-colors duration-state hover:text-[#A34A22] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
+/** The bottom row's links: same focus ring as the columns above. */
+const smallLinkCls =
+  "underline-offset-4 hover:text-[#A34A22] hover:underline transition-colors duration-state focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm";
 
 /**
  * One footer for every customer page from 900px up (desktop fix F12): inside
@@ -26,11 +34,11 @@ export function SiteFooter({ className = "" }: { className?: string }) {
       <div className="max-w-page mx-auto px-5">
         <div className="border-t border-border pt-12 pb-10 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-10">
           <div className="max-w-[360px]">
-            <a href="/" aria-label={t.home} className="inline-flex items-center gap-2.5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <img src="/brand/mc-avatar-terracotta.png" alt="" width={28} height={28} className="h-7 w-7 rounded-full object-cover" />
-              <span className="text-[17px] leading-6 font-semibold tracking-tight text-foreground">Massage Club</span>
+            <a href="/" aria-label={t.home} className="group inline-flex items-center gap-2.5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <img src={SITE_LOGO_SRC} alt="" width={28} height={28} loading="lazy" decoding="async" className="h-7 w-7 rounded-full object-cover" />
+              <span className="text-[17px] leading-6 font-semibold tracking-tight text-foreground group-hover:text-[#A34A22] transition-colors duration-state">Massage Club</span>
             </a>
-            <p className="mt-3 text-small text-muted-foreground">{t.oneLine}</p>
+            <p className={`mt-3 text-small ${QUIET}`}>{t.oneLine}</p>
           </div>
 
           <nav aria-label={t.massages}>
@@ -65,17 +73,17 @@ export function SiteFooter({ className = "" }: { className?: string }) {
           </nav>
         </div>
 
-        <div className="border-t border-border py-6 flex items-center justify-between gap-6 text-caption font-normal text-muted-foreground">
+        <div className={`border-t border-border py-6 flex items-center justify-between gap-6 text-caption font-normal ${QUIET}`}>
           <p>© {year} Massage Club · Madrid</p>
           <ul className="flex items-center gap-5">
             <li>
-              <Link to="/privacy" className="underline-offset-4 hover:text-primary hover:underline transition-colors duration-state">{t.privacy}</Link>
+              <Link to="/privacy" className={smallLinkCls}>{t.privacy}</Link>
             </li>
             <li>
-              <Link to="/terms" className="underline-offset-4 hover:text-primary hover:underline transition-colors duration-state">{t.terms}</Link>
+              <Link to="/terms" className={smallLinkCls}>{t.terms}</Link>
             </li>
             <li>
-              <a href="mailto:support@massageclub.io" className="underline-offset-4 hover:text-primary hover:underline transition-colors duration-state">support@massageclub.io</a>
+              <a href="mailto:support@massageclub.io" className={smallLinkCls}>support@massageclub.io</a>
             </li>
           </ul>
         </div>

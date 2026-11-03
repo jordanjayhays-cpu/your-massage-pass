@@ -108,7 +108,9 @@ export default function GuideLayout({
 
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">{children}</main>
 
-      <footer className="border-t border-border/60 bg-background mt-8">
+      {/* Phones only: from 900px SiteFooter carries the site links and each
+          guide already ends with "Keep reading", so this row would repeat them. */}
+      <footer className="border-t border-border/60 bg-background mt-8 desk:hidden">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center">
             <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-primary mb-2">Guides</p>

@@ -128,12 +128,13 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
           <ArrowLeft size={16} /> All studios <span className="font-normal text-[#8a7460]">/ Todos los estudios</span>
         </Link>
 
-        <header className="mt-5">
+        {/* A div, not <header>: outside main or article a header is a second banner next to SiteHeader. */}
+        <div className="mt-5">
           <h1 className="font-display text-3xl leading-tight text-[#2b2b2b] min-[900px]:text-4xl">
             {type.name.en} in Madrid
           </h1>
           <p className="mt-1 text-lg text-[#8a7460]">{type.name.es} en Madrid</p>
-        </header>
+        </div>
 
         <div className="mt-6 rounded-3xl border border-[#E6DCCF] bg-white p-5 min-[900px]:p-7">
           <MassageTypeBody type={type} es={es} />

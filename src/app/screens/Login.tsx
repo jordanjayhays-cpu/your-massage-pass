@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, User, ChevronRight, MessageCircle, Search, CalendarCheck, Sparkles, MapPin, ArrowRight, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -60,16 +60,18 @@ function linkifyAreas(text: string) {
  * after one letter.
  *
  * From 900px: one centred 672px column, no scroller of its own (the app
- * shell scrolls) and no sand panel behind it.
+ * shell scrolls) and no sand panel behind it. It also uses the site's own
+ * type there, Outfit for text and Fraunces for titles (the serif titles read
+ * --login-serif, see `serif` below), so /login matches every other desktop
+ * page. Phones keep Work Sans and Instrument Serif.
  */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="flex flex-col h-full overflow-y-auto min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible min-[900px]:!bg-none"
+      className="flex flex-col h-full overflow-y-auto [font-family:'Work_Sans',system-ui,sans-serif] min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible min-[900px]:!bg-none min-[900px]:font-body min-[900px]:[--login-serif:Fraunces,'EB_Garamond',Georgia,serif] min-[900px]:[--login-serif-w:600]"
       style={{
         background: "linear-gradient(180deg,#F7F4F0 0%,#EFE7DD 100%)",
         color: "#211C1A",
-        fontFamily: "'Work Sans', system-ui, sans-serif",
       }}
     >
       <link href={FONT_CSS} rel="stylesheet" />
@@ -236,7 +238,12 @@ export default function Login() {
     navigate("/studios");
   };
 
-  const serif = { fontFamily: "'Instrument Serif', serif", fontWeight: 400 };
+  // Phones: Instrument Serif 400 (the variables are unset). From 900px Shell
+  // sets them to Fraunces 600, the site's display face.
+  const serif = {
+    fontFamily: "var(--login-serif, 'Instrument Serif', serif)",
+    fontWeight: "var(--login-serif-w, 400)",
+  } as React.CSSProperties;
 
   if (step === "name") {
     return (
@@ -248,7 +255,7 @@ export default function Login() {
           >←</button>
           <div className="flex-1 flex flex-col justify-center">
             <p className={`text-[11px] tracking-[0.25em] uppercase text-[#7A7068] mb-3 ${DESK_LABEL}`}>{t("steps.step2")}</p>
-            <h2 style={serif} className="text-5xl leading-[1.05] mb-3">{t("nameStep.title")}</h2>
+            <h2 style={serif} className="text-5xl leading-[1.05] mb-3 min-[900px]:text-[36px] min-[900px]:leading-[42px]">{t("nameStep.title")}</h2>
             <p className="text-[#7A7068] mb-8">{t("nameStep.subtitle")}</p>
             <div className={`space-y-4 ${DESK_AUTH_W}`}>
               <div>
@@ -290,7 +297,7 @@ export default function Login() {
           >←</button>
           <div className="flex-1 flex flex-col justify-center">
             <p className={`text-[11px] tracking-[0.25em] uppercase text-[#7A7068] mb-3 ${DESK_LABEL}`}>{t("steps.step1")}</p>
-            <h2 style={serif} className="text-5xl leading-[1.05] mb-3">{t("emailStep.title")}</h2>
+            <h2 style={serif} className="text-5xl leading-[1.05] mb-3 min-[900px]:text-[36px] min-[900px]:leading-[42px]">{t("emailStep.title")}</h2>
             <p className="text-[#7A7068] mb-8">{t("emailStep.subtitle")}</p>
             <input
               type="email" value={email} onChange={(e) => setEmail(e.target.value)}
@@ -334,15 +341,17 @@ export default function Login() {
       {/* Hero — editorial split */}
       <div className="px-6 pt-6">
         <p className={`text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3 ${DESK_LABEL}`}>{t("hero.established")}</p>
-        <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#211C1A]">
+        <h1 style={serif} className="text-[56px] leading-[0.95] tracking-tight text-[#211C1A] min-[900px]:text-[48px] min-[900px]:leading-[54px] min-[900px]:tracking-normal">
           {t("hero.title1")}<br/>
           <em className="text-[#C4622D]">{t("hero.title2")}</em><br/>
           {t("hero.title3")}
         </h1>
 
-        {/* Hero image card */}
-        <div className="mt-6 relative rounded-[28px] overflow-hidden shadow-[0_20px_50px_-20px_rgba(122,48,0,0.35)]">
-          <img src={HERO_IMG} alt={t("hero.imageAlt")} className="w-full h-52 object-cover min-[900px]:h-auto min-[900px]:aspect-[3/1]" />
+        {/* Hero image card. A stock photo, so it is decorative (alt=""), never
+            "a Madrid studio". From 900px it is not shown at all (desktop fix
+            F2; design system 3.8): its two facts sit in a plain line instead. */}
+        <div className="mt-6 relative rounded-[28px] overflow-hidden shadow-[0_20px_50px_-20px_rgba(122,48,0,0.35)] min-[900px]:hidden">
+          <img src={HERO_IMG} alt="" className="w-full h-52 object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
             <div className="flex items-center gap-2 text-xs min-[900px]:text-[13px]">
@@ -352,7 +361,12 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-[15px] text-[#7A7068] mt-5 leading-relaxed min-[900px]:text-base min-[900px]:max-w-[36rem]">
+        <p className="hidden min-[900px]:flex mt-6 items-center gap-5 text-[15px] text-[#6B615B]">
+          <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4 text-[#A34A22]" aria-hidden="true" /> {t("hero.studiosCount", { studios: studioCount })}</span>
+          <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[#A34A22]" aria-hidden="true" /> {t("hero.payAtStudio")}</span>
+        </p>
+
+        <p className="text-[15px] text-[#7A7068] mt-5 leading-relaxed min-[900px]:text-base min-[900px]:max-w-[36rem] min-[900px]:mt-4">
           {t("hero.description", { studios: studioCount })}
         </p>
       </div>

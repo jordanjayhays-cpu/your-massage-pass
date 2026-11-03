@@ -148,12 +148,13 @@ const App = () => (
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/account/setup" element={<AccountSetup />} />
 
-          <Route path="/compare" element={<Compare />} />
           <Route path="/review" element={<Review />} />
           {/* Desktop frame (F11, F12): SiteHeader and SiteFooter from 900px on
               these customer pages. Phones keep each page's own header. The app
               shell (AppLayout) draws its own header and footer. */}
           <Route element={<SiteChromeLayout />}>
+            {/* /compare opens from the /studios compare tray: same frame. */}
+            <Route path="/compare" element={<Compare />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
           </Route>
