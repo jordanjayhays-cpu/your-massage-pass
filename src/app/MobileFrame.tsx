@@ -40,13 +40,17 @@ export function MobileFrame({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
 
   const langVisible = shouldShowLangToggle(pathname);
+  // /studios from 1024px: the map runs to the right edge of the window
+  // (7 Nov), so that screen is not held to the 1120px column. It lines its
+  // list up with the header itself; SiteFooter keeps its own container.
+  const fullBleedDesktop = pathname === "/studios" || pathname === "/studios/";
   return (
     <div className="h-screen w-full bg-background flex flex-col relative overflow-hidden">
       <SiteHeader />
       {/* The tab bar is a real flex item, so every scroll area (and any sticky
           Save bar inside it) ends above the tabs instead of sliding under them. */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="h-full w-full mx-auto md:max-w-page">
+        <div className={`h-full w-full mx-auto md:max-w-page${fullBleedDesktop ? " lg:max-w-none" : ""}`}>
           <SiteChromeDrawn>{children}</SiteChromeDrawn>
           <SiteFooter className="mt-12" />
         </div>

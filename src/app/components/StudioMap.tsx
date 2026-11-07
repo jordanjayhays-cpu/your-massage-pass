@@ -1,6 +1,6 @@
 /// <reference types="google.maps" />
-import { useEffect, useRef, useState } from "react";
-import { Compass, Star, MapPin, Loader2, Maximize2, Minimize2, ChevronRight } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Compass, Star, MapPin, Loader2, Maximize2, Minimize2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useLocationAsk,
@@ -15,10 +15,11 @@ import { loadGoogleMaps } from "../lib/googleMaps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { fetchShops } from "@/lib/supabase";
 import { haversineKm, distanceLabel } from "@/lib/distance";
+import { formatPrice } from "@/lib/localeFormat";
 import type { Shop } from "@/lib/supabase";
 import { isStudioVisited } from "@/lib/visitedStudios";
 import { studioPath } from "@/lib/studioHref";
-import { PlaceTile } from "./PlaceTile";
+import { StudioPhoto } from "./StudioPhoto";
 
 
 
@@ -38,11 +39,16 @@ type Props = {
   heightClass?: string;
   /** Tailwind rounding classes for the map frame. */
   roundedClass?: string;
+  /** Extra Tailwind classes for the map frame (border and shadow overrides). */
+  frameClass?: string;
   /** Tailwind classes for the outer wrapper. */
   wrapperClass?: string;
   /** Optional heading rendered above the map. */
   heading?: string;
-  /** Show the selected-studio card beneath the map. */
+  /**
+   * Tapping a pin opens the studio card as a popup above that pin. When
+   * false, a pin tap calls onSelect straight away instead.
+   */
   showSelectedCard?: boolean;
   /** Called when a marker (or the card CTA) is used to open a studio. */
   onSelect?: (shop: Shop) => void;
@@ -115,8 +121,43 @@ function lowest60Price(shop: any): number | null {
   return prices.length ? Math.min(...prices) : null;
 }
 
+/** True when the studio lists more than one 60 minute price ("from €X"). */
+function has60PriceRange(shop: any): boolean {
+  const list: any[] = shop?.partner_services || [];
+  const prices = new Set(
+    list
+      .filter((s) => Number(s?.duration) === 60 && Number(s?.price) > 0)
+      .map((s) => Math.round(Number(s.price))),
+  );
+  return prices.size > 1;
+}
+
 /** Price pills only make sense once the map is zoomed into a neighbourhood. */
 const PRICE_ZOOM = 14;
+
+/**
+ * Studio popup geometry (7 Nov, Jordan: "the studio should pop up above the
+ * price when the person clicks"). The card's bottom edge sits POP_LIFT px
+ * above the pin's centre and its pointer reaches down to the top of the pin
+ * (the active price pill is 31px tall, the active dot 34px).
+ */
+const POP_LIFT = 26;
+/** Room kept under the pin's centre so the pin itself stays in view. */
+const POP_BELOW = 22;
+/** Keeps the card clear of the location chip and the "Bigger map" button. */
+const POP_TOP = 56;
+const POP_SIDE = 12;
+/** Desktop sticky map: the zoom buttons sit at the top right. */
+const POP_SIDE_ZOOM = 60;
+/** Google's logo and terms line along the bottom edge. */
+const POP_BOTTOM = 8;
+/** From this map height the popup shows the photo on top (Airbnb style). */
+const POP_TALL_MIN_H = 420;
+
+/** "850 m" / "1.2 km", for the compact popup's one meta line. */
+function shortKm(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+}
 
 
 
@@ -154,6 +195,7 @@ export default function StudioMap({
   shops,
   heightClass = "h-[230px]",
   roundedClass = "rounded-3xl",
+  frameClass = "",
   wrapperClass = "",
   heading,
   showSelectedCard = true,
@@ -199,7 +241,69 @@ export default function StudioMap({
 
   const [ownHoverKey, setOwnHoverKey] = useState<string | null>(null);
   const askLocation = useLocationAsk();
-  const activeKey = highlightedKey || ownHoverKey || (selected ? studioKey(selected) : null);
+  // The open studio's pin stays highlighted while another pin or list card
+  // is hovered: both show as active.
+  const selectedKey = selected ? studioKey(selected) : null;
+  const hoverActiveKey = highlightedKey || ownHoverKey;
+
+  // ── Studio popup anchored above its pin ──
+  // The card is a React sibling of the map canvas, so its taps never reach
+  // the map (no stray map click that closes it, no drag starting on it). An
+  // empty OverlayView lends us the map projection, and every frame the map
+  // moves the card is placed at its pin's container pixel.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const popupWrapRef = useRef<HTMLDivElement>(null);
+  const popupCardRef = useRef<HTMLDivElement>(null);
+  const projRef = useRef<google.maps.OverlayView | null>(null);
+  const selectedRef = useRef<Shop | null>(null);
+  selectedRef.current = showSelectedCard ? selected : null;
+  const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
+
+  const popupAnchor = (): { x: number; y: number } | null => {
+    const s = selectedRef.current;
+    const proj = projRef.current?.getProjection();
+    if (!s || !proj || typeof s.lat !== "number" || typeof s.lng !== "number") return null;
+    const p = proj.fromLatLngToContainerPixel(new google.maps.LatLng(s.lat, s.lng));
+    return p ? { x: p.x, y: p.y } : null;
+  };
+  const placePopup = () => {
+    const el = popupWrapRef.current;
+    if (!el) return;
+    const p = popupAnchor();
+    if (!p) {
+      el.style.visibility = "hidden";
+      return;
+    }
+    el.style.visibility = "visible";
+    el.style.transform = `translate3d(${Math.round(p.x)}px, ${Math.round(p.y)}px, 0)`;
+  };
+  const placePopupRef = useRef(placePopup);
+  placePopupRef.current = placePopup;
+
+  /** If the card (or its pin) would be cut off, pan the map just enough. */
+  const fitPopup = () => {
+    const map = mapInstanceRef.current;
+    const frame = mapRef.current;
+    const card = popupCardRef.current;
+    const p = popupAnchor();
+    if (!map || !frame || !card || !p) return;
+    const W = frame.clientWidth;
+    const H = frame.clientHeight;
+    const cw = card.offsetWidth;
+    const ch = card.offsetHeight;
+    const mL = POP_SIDE;
+    const mR = desktopSticky && isDesktop() ? POP_SIDE_ZOOM : POP_SIDE;
+    // How far the map content has to move (positive = right / down).
+    let sx = 0;
+    let sy = 0;
+    if (cw > W - mL - mR) sx = mL + (W - mL - mR) / 2 - p.x;
+    else if (p.x - cw / 2 < mL) sx = mL - (p.x - cw / 2);
+    else if (p.x + cw / 2 > W - mR) sx = W - mR - (p.x + cw / 2);
+    const top = p.y - POP_LIFT - ch;
+    if (top < POP_TOP) sy = POP_TOP - top;
+    else if (p.y + POP_BELOW > H - POP_BOTTOM) sy = H - POP_BOTTOM - (p.y + POP_BELOW);
+    if (Math.abs(sx) >= 1 || Math.abs(sy) >= 1) map.panBy(Math.round(-sx), Math.round(-sy));
+  };
 
 
   const allShops = shops ?? ownShops;
@@ -307,6 +411,15 @@ export default function StudioMap({
         });
       mapInstanceRef.current = map;
 
+      if (!projRef.current) {
+        const overlay = new google.maps.OverlayView();
+        overlay.onAdd = () => {};
+        overlay.onRemove = () => {};
+        overlay.draw = () => placePopupRef.current();
+        overlay.setMap(map);
+        projRef.current = overlay;
+      }
+
       // Zoom and pan listeners: price pills at close zoom, "Search this area"
       // only after a real user gesture (our own framing must never trigger it).
       if (!(map as any).__mcListeners) {
@@ -321,7 +434,28 @@ export default function StudioMap({
           if (allowMoveRef.current) setMoved(true);
         });
         // A tap on the map itself closes the studio popup (31 Oct).
-        map.addListener("click", () => setSelected(null));
+        map.addListener("click", () => {
+          setSelected(null);
+          setOwnHoverKey(null);
+        });
+        // The popup follows its pin while the map pans, zooms or animates:
+        // it is re-placed every frame from the first change until "idle".
+        let raf = 0;
+        let lastKick = 0;
+        const tick = () => {
+          placePopupRef.current();
+          raf = performance.now() - lastKick < 1200 ? requestAnimationFrame(tick) : 0;
+        };
+        const kick = () => {
+          if (!selectedRef.current) return;
+          lastKick = performance.now();
+          if (!raf) raf = requestAnimationFrame(tick);
+        };
+        ["bounds_changed", "center_changed", "zoom_changed", "drag"].forEach((ev) => map.addListener(ev, kick));
+        map.addListener("idle", () => {
+          lastKick = 0;
+          placePopupRef.current();
+        });
         const markGesture = () => { allowMoveRef.current = true; };
         mapRef.current.addEventListener("pointerdown", markGesture);
         mapRef.current.addEventListener("wheel", markGesture, { passive: true });
@@ -347,10 +481,10 @@ export default function StudioMap({
           icon: iconFor(false),
         });
         (marker as any).__mcIconFor = iconFor;
+        // The popup opens above the pin; the map only pans when the card
+        // would be cut off (fitPopup), so a tap never throws the map around.
         marker.addListener("click", () => {
           setSelected(m as Shop);
-          setOwnHoverKey(key);
-          map.panTo({ lat: m.lat, lng: m.lng });
           if (!showSelectedCard) onSelect?.(m as Shop);
         });
         marker.addListener("mouseover", () => {
@@ -412,8 +546,11 @@ export default function StudioMap({
         google.maps.event.addListenerOnce(map, "idle", () => {
           const z = map.getZoom() ?? 13;
           // Outlying studios must not pull the default view out to the region.
+          // At 12 too: the full-height desktop map (1920px and up) fits the
+          // outliers at exactly 12, and the bounds' centre then left the
+          // central studios crammed in the top right corner.
           if (z > 14) map.setZoom(14);
-          if (z < 12) {
+          if (z <= 12) {
             map.setZoom(12);
             map.setCenter(MADRID_CENTER);
           }
@@ -454,11 +591,62 @@ export default function StudioMap({
     markersByKeyRef.current.forEach((marker, key) => {
       const iconFor = (marker as any).__mcIconFor as ((active: boolean) => any) | undefined;
       if (!iconFor) return;
-      const active = key === activeKey;
+      const isOpen = key === selectedKey;
+      const active = isOpen || key === hoverActiveKey;
       marker.setIcon(iconFor(active));
-      marker.setZIndex(active ? 5000 : 1);
+      marker.setZIndex(isOpen ? 6000 : active ? 5000 : 1);
     });
-  }, [activeKey, closeZoom, allShops]);
+  }, [selectedKey, hoverActiveKey, closeZoom, allShops]);
+
+  // The frame's size decides the popup layout (photo on top from 420px tall).
+  useLayoutEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const measure = () =>
+      setFrameSize((cur) =>
+        cur.w === el.clientWidth && cur.h === el.clientHeight ? cur : { w: el.clientWidth, h: el.clientHeight },
+      );
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const popupOpen = showSelectedCard && !!selected;
+  const popupTall = frameSize.h >= POP_TALL_MIN_H && frameSize.w >= 300;
+  // Never wider than the room between the side margins, so fitPopup can
+  // always keep the whole card in view (the 340px map at 900 to 1023px).
+  const popupRoom = (frameSize.w || 360) - POP_SIDE - (desktopSticky && isDesktop() ? POP_SIDE_ZOOM : POP_SIDE);
+  const popupW = Math.max(200, Math.min(popupTall ? 300 : 340, popupRoom));
+
+  // Place the card before paint, then pan the map if it does not fit.
+  useLayoutEffect(() => {
+    if (!popupOpen) return;
+    placePopup();
+    fitPopup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popupOpen, selectedKey, popupTall, popupW]);
+
+  // While the popup is open, the zoom buttons in the bottom corner would sit
+  // on the card, so they step aside (pinch and wheel zoom still work). The
+  // desktop sticky map keeps them: they are top right, outside the card's
+  // room (POP_SIDE_ZOOM).
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.setOptions({ zoomControl: !popupOpen || (desktopSticky && isDesktop()) });
+  }, [popupOpen, desktopSticky]);
+
+  // Escape closes the popup.
+  useEffect(() => {
+    if (!popupOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [popupOpen]);
 
 
   return (
@@ -467,7 +655,7 @@ export default function StudioMap({
       {heading && (
         <h3 className="font-display text-lg font-semibold text-foreground mb-3">{heading}</h3>
       )}
-      <div className={`relative ${roundedClass} overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${expanded ? "h-[72vh]" : heightClass}`}>
+      <div ref={frameRef} className={`relative ${roundedClass} overflow-hidden shadow-soft ring-1 ring-border/70 border border-border/60 bg-[#EEEAE4] ${expanded ? "h-[72vh]" : heightClass} ${frameClass}`}>
         <div ref={mapRef} className="absolute inset-0" />
         <button
           type="button"
@@ -523,62 +711,136 @@ export default function StudioMap({
           </div>
         )}
 
-        {/* 31 Oct (Jordan): tapping a pin pops the studio up on the map itself,
-            and the whole card opens the studio. It replaces the card that sat
-            under the map, which a phone often showed off screen. */}
-        {showSelectedCard && selected && (() => {
+        {/* 7 Nov (Jordan): the studio pops up above the pin that was tapped,
+            with a pointer down to it, and moves with the map. The whole card
+            opens the studio; the X, a tap on the map or Escape closes it.
+            Short maps (phones) get a compact row, tall maps (desktop, the
+            bigger phone map) a card with the picture on top. */}
+        {popupOpen && selected && (() => {
           const lang: "en" | "es" = i18n.language?.startsWith("es") ? "es" : "en";
           const price = lowest60Price(selected);
+          // "from" only when the studio really has more than one 60 min price.
+          const priceAmount = price != null ? formatPrice(Math.round(price), i18n.language) : null;
+          const priceText = priceAmount
+            ? `60 min · ${has60PriceRange(selected) ? (lang === "es" ? "desde " : "from ") : ""}${priceAmount}`
+            : null;
           const km = userLoc && typeof selected.lat === "number" && typeof selected.lng === "number"
             ? haversineKm(userLoc, selected as any)
             : null;
+          const rating = selected.rating != null && Number.isFinite(Number(selected.rating)) ? Number(selected.rating) : null;
+          const area = selected.district || null;
+          const href = studioPath(selected as any);
+          const onOpen = (e: React.MouseEvent<HTMLAnchorElement>) => {
+            // Cmd, ctrl, shift and middle clicks open a new tab as links do.
+            if (!onSelect || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            onSelect(selected);
+          };
+          // The studio's own photo, else its labelled stock photo (the same
+          // one as its list card), else its initial and neighbourhood.
+          const media = (
+            <StudioPhoto
+              key={studioKey(selected)}
+              name={selected.studio}
+              hood={popupTall ? area : null}
+              ownImage={selected.ownImage}
+              stockImage={selected.stockImage}
+              width={popupTall ? 640 : 160}
+              label={popupTall ? "md" : "sm"}
+              eager
+            />
+          );
+          const ratingEl = rating != null ? (
+            <span className="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap text-foreground">
+              <Star className="h-3.5 w-3.5 fill-accent text-accent" aria-hidden="true" />
+              <span className="font-semibold">{rating.toFixed(1)}</span>
+              {popupTall && selected.reviews != null && (
+                <span className="text-muted-foreground">({selected.reviews})</span>
+              )}
+            </span>
+          ) : null;
           return (
-            // Desktop sticky map (/studios): the map runs below the fold while
-            // the page is at rest, so the card opens at the top, under the
-            // "Near Madrid" pill and clear of the zoom buttons (top right).
-            <div className={`absolute left-3 right-3 bottom-3 z-20${desktopSticky ? " min-[900px]:bottom-auto min-[900px]:top-14 min-[900px]:right-16" : ""}`}>
-              <a
-                href={studioPath(selected as any)}
-                onClick={(e) => { e.preventDefault(); onSelect?.(selected); }}
-                aria-label={lang === "es" ? `Abrir ${selected.studio}` : `Open ${selected.studio}`}
-                className="flex items-center gap-3 rounded-2xl bg-card border border-border shadow-elegant p-2.5 pr-11 hover:border-primary/50 transition"
+            <div
+              ref={popupWrapRef}
+              data-testid="studio-popup"
+              className="absolute left-0 top-0 z-20 h-0 w-0"
+              style={{ visibility: "hidden" }}
+            >
+              <div
+                ref={popupCardRef}
+                role="dialog"
+                aria-label={selected.studio}
+                className="absolute origin-bottom motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-150"
+                style={{ bottom: POP_LIFT, width: popupW, left: -popupW / 2 }}
               >
-                {/* Only the studio's own photo, as on the list cards; without
-                    one its initial, never a stock picture that reads as the room. */}
-                {selected.ownImage ? (
-                  <img src={selected.ownImage} alt="" className="h-14 w-14 flex-shrink-0 rounded-xl object-cover" />
-                ) : (
-                  <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl [&_.text-3xl]:text-2xl">
-                    <PlaceTile name={selected.studio} hood={null} />
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-base font-semibold text-foreground leading-tight truncate">{selected.studio}</p>
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                    {selected.rating != null && (
-                      <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {selected.rating}</span>
-                    )}
-                    {price != null && (
-                      <span className="font-semibold text-foreground">
-                        {lang === "es" ? `desde ${Math.round(price)} € · 60 min` : `from €${Math.round(price)} · 60 min`}
+                <a
+                  href={href}
+                  onClick={onOpen}
+                  aria-label={lang === "es" ? `Abrir ${selected.studio}` : `Open ${selected.studio}`}
+                  className={`group relative rounded-2xl border border-border bg-card text-left shadow-[0_10px_30px_-6px_rgba(43,30,20,0.28)] transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${popupTall ? "block" : "flex items-center gap-3 p-2.5 pr-11"}`}
+                >
+                  {popupTall ? (
+                    <>
+                      <span className="relative block h-[150px] w-full overflow-hidden rounded-t-[15px] bg-secondary">{media}</span>
+                      <span className="block px-3.5 pb-4 pt-3">
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="min-w-0 font-display text-[17px] font-semibold leading-tight text-foreground line-clamp-2 transition-colors group-hover:text-primary">
+                            {selected.studio}
+                          </span>
+                          {ratingEl && <span className="pt-0.5 text-[13px]">{ratingEl}</span>}
+                        </span>
+                        {area && (
+                          <span className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                            <span className="truncate">{area}</span>
+                          </span>
+                        )}
+                        {priceText && (
+                          <span className="mt-1.5 block text-[15px] font-semibold text-primary">{priceText}</span>
+                        )}
+                        {km != null && (
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {distanceLabel(km, lang)}{areaName ? ` ${originSuffix(areaName, lang)}` : ""}
+                          </span>
+                        )}
                       </span>
-                    )}
-                    {selected.district && (
-                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selected.district}</span>
-                    )}
-                    {km != null && <span>{distanceLabel(km, lang)}{areaName ? ` ${originSuffix(areaName, lang)}` : ""}</span>}
-                  </p>
-                </div>
-                <ChevronRight className="h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
-              </a>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                aria-label={lang === "es" ? "Cerrar" : "Close"}
-                className="absolute top-2 right-2 h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground text-sm"
-              >
-                ×
-              </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-secondary [&_.text-3xl]:text-2xl">{media}</span>
+                      <span className="block min-w-0 flex-1">
+                        <span className="block truncate font-display text-base font-semibold leading-tight text-foreground">{selected.studio}</span>
+                        <span className="mt-1 flex items-center gap-x-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
+                          {ratingEl}
+                          {area && (
+                            <span className="flex min-w-0 items-center gap-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                              <span className="truncate">{area}</span>
+                            </span>
+                          )}
+                          {km != null && <span className="flex-shrink-0">{shortKm(km)}</span>}
+                        </span>
+                        {priceText && (
+                          <span className="mt-1 block text-[13px] font-semibold text-primary">{priceText}</span>
+                        )}
+                      </span>
+                    </>
+                  )}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  aria-label={lang === "es" ? "Cerrar" : "Close"}
+                  className={`absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${popupTall ? "bg-card/95 shadow-soft hover:bg-card" : "bg-secondary hover:bg-secondary/80"}`}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+                {/* Pointer down to the pin. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -bottom-[6px] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-border bg-card"
+                />
+              </div>
             </div>
           );
         })()}

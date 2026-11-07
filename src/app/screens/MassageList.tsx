@@ -1,4 +1,3 @@
-import { studioImageFallback } from "@/lib/studioImages";
 import { servicePrimaryName } from "@/lib/serviceName";
 import { formatPrice } from "@/lib/localeFormat";
 import { findMassageType } from "@/lib/massageTypes";
@@ -22,7 +21,7 @@ import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl } 
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import CompareToggle from "../components/CompareToggle";
 import CompareBar from "../components/CompareBar";
-import { PlaceTile } from "../components/PlaceTile";
+import { StudioPhoto } from "../components/StudioPhoto";
 import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
 
@@ -343,19 +342,32 @@ export default function MassageList() {
   const headingText = userLoc ? t("app.massageList.studiosNearYou") : c.headingMadrid;
   // Desktop map height: the visible scroll area minus the 16px sticky offset
   // above and 16px of air below.
+  // From 1024px the map is the full height of the scroll area (it starts
+  // right under the site header and runs to the bottom of the window).
   const mapStyle = scrollerH
-    ? ({ "--mc-map-h": `${Math.max(360, scrollerH - 32)}px` } as React.CSSProperties)
+    ? ({
+        "--mc-map-h": `${Math.max(360, scrollerH - 32)}px`,
+        "--mc-map-full": `${Math.max(360, scrollerH)}px`,
+      } as React.CSSProperties)
     : undefined;
 
   return (
+    // From 1024px (7 Nov, Jordan: "the map should be bigger"): Airbnb layout.
+    // The page is a 3 column grid: a spacer that lines the list up with the
+    // site header's logo, the list at a reading width, and the map filling
+    // everything to the right edge of the window. Every block is placed by
+    // row (utility bar, title, list, footer link, save sheet); the map spans
+    // them all and stays sticky. The last row takes any spare height, so a
+    // short list never opens gaps between its blocks. CompareBar uses the
+    // same list width (clamp(560px,40vw,640px)).
     <div
       ref={scrollRef}
-      className="flex flex-col h-full overflow-y-auto bg-background min-[900px]:block min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible min-[900px]:w-full min-[900px]:max-w-[1120px] min-[900px]:mx-auto min-[900px]:px-5 min-[900px]:pt-6"
+      className="flex flex-col h-full overflow-y-auto bg-background min-[900px]:block min-[900px]:h-auto min-[900px]:min-h-full min-[900px]:overflow-visible min-[900px]:w-full min-[900px]:max-w-[1120px] min-[900px]:mx-auto min-[900px]:px-5 min-[900px]:pt-6 lg:grid lg:max-w-none lg:mx-0 lg:px-0 lg:pt-0 lg:items-start lg:grid-cols-[max(20px,calc((100%_-_1120px)/2_+_20px))_clamp(560px,40vw,640px)_minmax(0,1fr)] lg:grid-rows-[auto_auto_auto_auto_1fr]"
     >
       {/* Top utility bar. From 900px it steps aside when the shared site
           header (a <header> element) is on the page, so the account link and
           language picker are not shown twice. */}
-      <div className="px-5 pt-5 flex items-center justify-between gap-4 min-[900px]:px-0 min-[900px]:pt-0 min-[900px]:pb-5 min-[900px]:[body:has(header)_&]:hidden">
+      <div className="px-5 pt-5 flex items-center justify-between gap-4 min-[900px]:px-0 min-[900px]:pt-0 min-[900px]:pb-5 min-[900px]:[body:has(header)_&]:hidden lg:col-start-2 lg:row-start-1 lg:pt-6">
         <ProfileHeaderButton />
 
         <div className="flex items-center gap-3">
@@ -372,7 +384,7 @@ export default function MassageList() {
       </div>
 
       {/* Desktop page title: one line of facts and actions, sentence case. */}
-      <div className="hidden min-[900px]:block pb-6">
+      <div className="hidden min-[900px]:block pb-6 lg:col-start-2 lg:row-start-2 lg:pt-6">
         <h1 className="font-display text-[36px] leading-[42px] text-foreground">{headingText}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-[15px] text-muted-foreground">
           <span className="font-semibold text-foreground">
@@ -399,9 +411,11 @@ export default function MassageList() {
 
       {/* From 900px: the list on the left, the map sticky on the right
           (Treatwell pattern). Below 900px both wrappers are display:contents,
-          so every block keeps the CSS order it has on phones and tablets. */}
-      <div className="contents min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_340px] lg:grid-cols-[minmax(0,1fr)_400px] min-[900px]:gap-6 min-[900px]:items-start">
-        <div className="contents min-[900px]:flex min-[900px]:flex-col min-[900px]:min-w-0 min-[900px]:col-start-1 min-[900px]:row-start-1">
+          so every block keeps the CSS order it has on phones and tablets.
+          From 1024px this wrapper is display:contents again and its two
+          columns sit in the page grid above. */}
+      <div className="contents min-[900px]:grid min-[900px]:grid-cols-[minmax(0,1fr)_340px] min-[900px]:gap-6 min-[900px]:items-start lg:contents">
+        <div className="contents min-[900px]:flex min-[900px]:flex-col min-[900px]:min-w-0 min-[900px]:col-start-1 min-[900px]:row-start-1 lg:col-start-2 lg:row-start-3">
           {/* Concierge shortcut: a full page load of the request flow (go.html). */}
           <div className="px-5 pt-4 md:order-1 min-[900px]:px-0 min-[900px]:pt-0">
             <a
@@ -648,17 +662,20 @@ export default function MassageList() {
                           <Link
                             to={cardHref(m)}
                             onClick={(e) => { e.stopPropagation(); rememberPosition(); }}
+                            aria-label={m.studio}
                             className="relative h-24 w-24 rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block min-[900px]:h-[90px] min-[900px]:w-[120px] lg:h-[120px] lg:w-[160px] min-[900px]:rounded-xl"
                           >
-                            {/* Jordan: "show customers the real studio". Only the studio's
-                                own photo stands for the place; without one the tile
-                                shows its initial and neighbourhood, never a stock
-                                picture that looks like the studio. */}
-                            {m.ownImage ? (
-                              <img src={m.ownImage} alt={m.studio} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
-                            ) : (
-                              <PlaceTile name={m.studio} hood={"district" in m && m.district ? m.district : null} />
-                            )}
+                            {/* The studio's own photo stands for the place. Without one,
+                                its own stock photo (7 Nov, Jordan: "everyone should be
+                                different"), always labelled "Stock photo"; the letter
+                                tile if neither loads. */}
+                            <StudioPhoto
+                              name={m.studio}
+                              hood={"district" in m && m.district ? m.district : null}
+                              ownImage={m.ownImage}
+                              stockImage={m.stockImage}
+                              width={360}
+                            />
                             <button
                               onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavourite(m as any); }}
                               aria-label={t("app.massageList.favorite")}
@@ -790,16 +807,18 @@ export default function MassageList() {
 
         {/* Map: shared component, also used on /app/discovery. Follows the
             list on phones, sits above it on tablets, and stays in view beside
-            it from 900px. No location sheet opens by itself: "Show distances"
-            asks on a tap. */}
+            it from 900px. From 1024px it fills the right of the window, from
+            the header to the bottom edge, square and flush. No location sheet
+            opens by itself: "Show distances" asks on a tap. */}
         <div
-          className="order-[6] md:order-4 px-5 pt-5 min-[900px]:px-0 min-[900px]:pt-0 min-[900px]:sticky min-[900px]:top-4 min-[900px]:col-start-2 min-[900px]:row-start-1"
+          className="order-[6] md:order-4 px-5 pt-5 min-[900px]:px-0 min-[900px]:pt-0 min-[900px]:sticky min-[900px]:top-4 min-[900px]:col-start-2 min-[900px]:row-start-1 lg:top-0 lg:col-start-3 lg:row-[1/6] lg:pl-6"
           style={mapStyle}
         >
           <StudioMap
             shops={realShops}
-            heightClass="h-[230px] md:h-[360px] min-[900px]:h-[var(--mc-map-h,560px)]"
-            roundedClass="rounded-3xl min-[900px]:rounded-2xl"
+            heightClass="h-[230px] md:h-[360px] min-[900px]:h-[var(--mc-map-h,560px)] lg:h-[var(--mc-map-full,560px)]"
+            roundedClass="rounded-3xl min-[900px]:rounded-2xl lg:rounded-none"
+            frameClass="lg:border-0 lg:border-l lg:ring-0 lg:shadow-none"
             desktopSticky
             highlightedKey={hoverKey}
             onHoverStudio={setHoverKey}
@@ -816,7 +835,7 @@ export default function MassageList() {
       {/* Footer: last on phones too, after the quiz and the map. The
           "Get massage deals" link that sat here was removed: we never promise
           a deal before a studio confirms one in writing. */}
-      <div className="order-[7] md:order-6 px-5 pt-8 pb-28 text-center min-[900px]:px-0 min-[900px]:pt-10 min-[900px]:pb-12">
+      <div className="order-[7] md:order-6 px-5 pt-8 pb-28 text-center min-[900px]:px-0 min-[900px]:pt-10 min-[900px]:pb-12 lg:col-start-2 lg:row-start-4">
         <button
           onClick={() => navigate("/partner/login")}
           className="min-h-11 text-xs text-muted-foreground hover:text-primary underline underline-offset-2 transition min-[900px]:text-sm"
@@ -828,7 +847,9 @@ export default function MassageList() {
 
       {/* 86px keeps it above the phone tab bar; the tab bar is hidden from 900px (F8). */}
       <CompareBar className="pb-[86px] desk:pb-3" />
-      {favouriteSheet}
+      {favouriteSheet && (
+        <div className="contents lg:block lg:col-start-2 lg:row-start-5">{favouriteSheet}</div>
+      )}
     </div>
   );
 }
