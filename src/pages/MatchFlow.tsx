@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, Leaf, Dumbbell, Flower2, HelpCircle, Star, Check, Loader2 } from "lucide-react";
-import { supabase, loadShops, cachedShops, type Shop } from "@/lib/supabase";
+import { supabase, loadShops, cachedShops, stockPhotoFor, type Shop } from "@/lib/supabase";
 import { studioPath } from "@/lib/studioHref";
-import { studioImageFallback } from "@/lib/studioImages";
+import { StudioPhoto } from "@/app/components/StudioPhoto";
 import { useFlowLang, pickCopy } from "@/lib/flowLang";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import AccountHeaderLink from "@/components/AccountHeaderLink";
@@ -349,7 +349,10 @@ type MatchCard = {
   studio: string;
   area: string;
   slug: string | null;
-  image: string;
+  /** The studio's own photo, else null. */
+  ownImage: string | null;
+  /** Its stock photo (the same as on /studios), shown with the label. */
+  stockImage: string | null;
   rating: number | null;
   reviews: number | null;
   service: string;
@@ -370,7 +373,10 @@ function fromRpcRow(row: Record<string, unknown>, i: number, shops: Shop[]): Mat
     studio: String(row.studio_name ?? row.name ?? shop?.studio ?? ""),
     area: String(row.area ?? row.district ?? shop?.district ?? ""),
     slug: slug || shop?.slug || shop?.partner_id || null,
-    image: String(row.image ?? row.cover_url ?? shop?.image ?? ""),
+    // Own photo, else the studio's stock photo. The row's other image
+    // fields are not used: they cannot tell a stock picture from the place.
+    ownImage: (typeof row.cover_url === "string" && row.cover_url.trim() ? row.cover_url : null) ?? shop?.ownImage ?? null,
+    stockImage: shop?.stockImage ?? stockPhotoFor(String(row.partner_id ?? row.id ?? "")),
     rating: num(row.rating ?? row.google_rating) ?? shop?.rating ?? null,
     reviews: num(row.reviews ?? row.review_count ?? row.google_reviews) ?? shop?.reviews ?? null,
     service: String(row.service ?? row.service_name ?? shop?.partner_services?.[0]?.name ?? ""),
@@ -391,7 +397,8 @@ function fromShop(shop: Shop, keyword: string | null): MatchCard {
     studio: shop.studio,
     area: shop.district,
     slug: shop.slug || shop.partner_id || null,
-    image: shop.image,
+    ownImage: shop.ownImage ?? null,
+    stockImage: shop.stockImage ?? null,
     rating: shop.rating,
     reviews: shop.reviews,
     service: svc?.name_en || svc?.name || "",
@@ -780,15 +787,9 @@ export default function MatchFlow() {
               <div className="mt-4 space-y-4">
                 {cards.map((c) => (
                   <article key={c.key} className="rounded-2xl border border-border/70 bg-card shadow-soft overflow-hidden">
-                    {c.image && (
+                    {(c.ownImage || c.stockImage) && (
                       <div className="relative h-40 w-full bg-secondary">
-                        <img
-                          src={c.image}
-                          alt={c.studio}
-                          loading="lazy"
-                          onError={studioImageFallback}
-                          className="absolute inset-0 h-full w-full object-cover"
-                        />
+                        <StudioPhoto name={c.studio} hood={c.area || null} ownImage={c.ownImage} stockImage={c.stockImage} width={800} />
                       </div>
                     )}
                     <div className="p-4">

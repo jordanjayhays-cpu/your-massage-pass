@@ -7,7 +7,6 @@ import { fetchShops, type Shop, type ShopService } from "@/lib/supabase";
 import { compareKey, parseCompareParam, readQuizRecommendedType, setCompareEntries } from "@/lib/compare";
 import { findMassageType, MASSAGE_TYPES_CONTENT, type MassageTypeContent } from "@/lib/massageTypes";
 import { studioPath } from "@/lib/studioHref";
-import { studioImageFallback } from "@/lib/studioImages";
 import { servicePrimaryName } from "@/lib/serviceName";
 import { tagLabel } from "@/lib/tagLabel";
 import { haversineKm, distanceLabelShort } from "@/lib/distance";
@@ -15,7 +14,7 @@ import { savedLocationResult } from "@/lib/locationConsent";
 import { hasWhatsapp } from "@/app/lib/whatsapp";
 import { trackEvent } from "@/lib/siteVisit";
 import { cn } from "@/lib/utils";
-import { PlaceTile } from "@/app/components/PlaceTile";
+import { StudioPhoto } from "@/app/components/StudioPhoto";
 
 const LANG_LABEL: Record<string, string> = {
   en: "English",
@@ -359,20 +358,16 @@ export default function Compare() {
                     ))}
                   </div>
                 )}
-                {/* Only the studio's own photo stands for the place (as on the
-                    /studios cards); without one, its initial and neighbourhood,
-                    never a stock picture that looks like the studio. */}
-                <Link to={studioPath(s)} className="block relative h-28 rounded-2xl overflow-hidden bg-secondary">
-                  {s.ownImage ? (
-                    <img
-                      src={s.ownImage}
-                      alt={s.studio}
-                      onError={studioImageFallback}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  ) : (
-                    <PlaceTile name={s.studio} hood={s.district || null} />
-                  )}
+                {/* As on the /studios cards: the studio's own photo, else its
+                    own labelled stock photo, else its initial and neighbourhood. */}
+                <Link to={studioPath(s)} aria-label={s.studio} className="block relative h-28 rounded-2xl overflow-hidden bg-secondary">
+                  <StudioPhoto
+                    name={s.studio}
+                    hood={s.district || null}
+                    ownImage={s.ownImage}
+                    stockImage={s.stockImage}
+                    width={560}
+                  />
                 </Link>
                 <Link
                   to={studioPath(s)}

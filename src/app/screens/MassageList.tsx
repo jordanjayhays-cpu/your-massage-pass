@@ -1,4 +1,3 @@
-import { studioImageFallback } from "@/lib/studioImages";
 import { servicePrimaryName } from "@/lib/serviceName";
 import { formatPrice } from "@/lib/localeFormat";
 import { findMassageType } from "@/lib/massageTypes";
@@ -22,7 +21,7 @@ import { haversineKm, distanceLabel, distanceLabelShort, walkingDirectionsUrl } 
 import { useLocationAsk, savedLocationResult, originSuffix } from "@/lib/locationConsent";
 import CompareToggle from "../components/CompareToggle";
 import CompareBar from "../components/CompareBar";
-import { PlaceTile } from "../components/PlaceTile";
+import { StudioPhoto } from "../components/StudioPhoto";
 import { useFavouriteAction } from "../components/FavouriteSignupSheet";
 import { favouriteKey } from "@/lib/favourites";
 
@@ -663,17 +662,20 @@ export default function MassageList() {
                           <Link
                             to={cardHref(m)}
                             onClick={(e) => { e.stopPropagation(); rememberPosition(); }}
+                            aria-label={m.studio}
                             className="relative h-24 w-24 rounded-2xl overflow-hidden flex-shrink-0 bg-secondary block min-[900px]:h-[90px] min-[900px]:w-[120px] lg:h-[120px] lg:w-[160px] min-[900px]:rounded-xl"
                           >
-                            {/* Jordan: "show customers the real studio". Only the studio's
-                                own photo stands for the place; without one the tile
-                                shows its initial and neighbourhood, never a stock
-                                picture that looks like the studio. */}
-                            {m.ownImage ? (
-                              <img src={m.ownImage} alt={m.studio} className="absolute inset-0 h-full w-full object-cover" onError={studioImageFallback} />
-                            ) : (
-                              <PlaceTile name={m.studio} hood={"district" in m && m.district ? m.district : null} />
-                            )}
+                            {/* The studio's own photo stands for the place. Without one,
+                                its own stock photo (7 Nov, Jordan: "everyone should be
+                                different"), always labelled "Stock photo"; the letter
+                                tile if neither loads. */}
+                            <StudioPhoto
+                              name={m.studio}
+                              hood={"district" in m && m.district ? m.district : null}
+                              ownImage={m.ownImage}
+                              stockImage={m.stockImage}
+                              width={360}
+                            />
                             <button
                               onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavourite(m as any); }}
                               aria-label={t("app.massageList.favorite")}

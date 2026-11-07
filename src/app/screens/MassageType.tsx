@@ -6,6 +6,7 @@ import { MASSAGE_GUIDE, MASSAGE_TYPES, type Massage, type MassageGuide } from ".
 import { fetchShops, type Shop } from "@/lib/supabase";
 import { useBooking } from "../BookingContext";
 import { studioPath } from "@/lib/studioHref";
+import { StudioPhoto } from "../components/StudioPhoto";
 
 type AnyStudio = Shop | Massage;
 
@@ -193,7 +194,15 @@ export default function MassageTypePage() {
                   className="w-full flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-card hover:border-primary/50 hover:shadow-soft transition text-left"
                 >
                   {(s as any).image && (
-                    <img src={(s as any).image} alt={(s as any).studio} className="h-14 w-14 rounded-xl object-cover flex-shrink-0" />
+                    <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-secondary [&_.text-3xl]:text-2xl">
+                      <StudioPhoto
+                        name={(s as any).studio}
+                        ownImage={(s as Shop).ownImage}
+                        stockImage={(s as Shop).stockImage}
+                        width={160}
+                        label="sm"
+                      />
+                    </span>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-display text-base font-semibold text-foreground truncate">{(s as any).studio}</p>

@@ -19,7 +19,7 @@ import { formatPrice } from "@/lib/localeFormat";
 import type { Shop } from "@/lib/supabase";
 import { isStudioVisited } from "@/lib/visitedStudios";
 import { studioPath } from "@/lib/studioHref";
-import { PlaceTile } from "./PlaceTile";
+import { StudioPhoto } from "./StudioPhoto";
 
 
 
@@ -258,7 +258,6 @@ export default function StudioMap({
   const selectedRef = useRef<Shop | null>(null);
   selectedRef.current = showSelectedCard ? selected : null;
   const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
-  const [popupImgFailed, setPopupImgFailed] = useState(false);
 
   const popupAnchor = (): { x: number; y: number } | null => {
     const s = selectedRef.current;
@@ -626,10 +625,6 @@ export default function StudioMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popupOpen, selectedKey, popupTall, popupW]);
 
-  useEffect(() => {
-    setPopupImgFailed(false);
-  }, [selectedKey]);
-
   // While the popup is open, the zoom buttons in the bottom corner would sit
   // on the card, so they step aside (pinch and wheel zoom still work). The
   // desktop sticky map keeps them: they are top right, outside the card's
@@ -738,17 +733,19 @@ export default function StudioMap({
             e.preventDefault();
             onSelect(selected);
           };
-          // Only the studio's own photo stands for the place; without one,
-          // its initial and neighbourhood (PlaceTile).
-          const media = selected.ownImage && !popupImgFailed ? (
-            <img
-              src={selected.ownImage}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              onError={() => setPopupImgFailed(true)}
+          // The studio's own photo, else its labelled stock photo (the same
+          // one as its list card), else its initial and neighbourhood.
+          const media = (
+            <StudioPhoto
+              key={studioKey(selected)}
+              name={selected.studio}
+              hood={popupTall ? area : null}
+              ownImage={selected.ownImage}
+              stockImage={selected.stockImage}
+              width={popupTall ? 640 : 160}
+              label={popupTall ? "md" : "sm"}
+              eager
             />
-          ) : (
-            <PlaceTile name={selected.studio} hood={popupTall ? area : null} />
           );
           const ratingEl = rating != null ? (
             <span className="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap text-foreground">
