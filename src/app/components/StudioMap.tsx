@@ -546,8 +546,11 @@ export default function StudioMap({
         google.maps.event.addListenerOnce(map, "idle", () => {
           const z = map.getZoom() ?? 13;
           // Outlying studios must not pull the default view out to the region.
+          // At 12 too: the full-height desktop map (1920px and up) fits the
+          // outliers at exactly 12, and the bounds' centre then left the
+          // central studios crammed in the top right corner.
           if (z > 14) map.setZoom(14);
-          if (z < 12) {
+          if (z <= 12) {
             map.setZoom(12);
             map.setCenter(MADRID_CENTER);
           }
