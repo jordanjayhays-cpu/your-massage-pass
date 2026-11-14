@@ -80,13 +80,13 @@ if (process.argv.includes("--show")) hunks.forEach((h, i) => console.log(`--- hu
 const added = hunks.reduce((t, h) => t + h.added.length, 0);
 const removed = hunks.reduce((t, h) => t + h.removed.length, 0);
 const G1 = "snapshot = v214.1 + F3";
-check(G1, "hunks, lines added, lines removed", [hunks.length, added, removed], [25, 298, 41], "anything else in the snapshot changes these; --show prints them");
+check(G1, "hunks, lines added, lines removed", [hunks.length, added, removed], [26, 350, 41], "anything else in the snapshot changes these; --show prints them");
 const [head, imp, ...f3] = hunks;
 check(G1, "first hunk: the dated header", [head?.removed.length, head?.added.length, /^\/\/ wa-bot v214\.2 deploy snapshot \(14 Nov 2026\)/.test(head?.added[0] || "")], [0, 6, true], "");
 const importLine = (to) => `import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./${to}";`;
 check(G1, "second hunk: only the agent_core import", [imp?.removed, imp?.added], [[importLine("agent_core.ts")], [importLine("agent_core_v214.ts")]], "");
 // reAskAt: the inline v200 checks the patch removes in favour of reAskOnce.
-const F3_MARK = /v214\.2|reAskOnce|reAskNow|reAskHeld|reAskAt|f3Answer|f3q|todayQ|sameDay|LANGQ_RE|LANGQ_CUE_RE|langQ|langAsk|ENGLISH_ASK_RE|LANG_ANSWER|shortAsk|bareAreaAsk|AREA_ASK_WORD_RE|AREA_NEAR_RE|AREA_TAIL_RE|softAckHow|nameWithLang|lang0|SAMEDAY_|INFO_ASK_RE|WHERE_ASK_RE|TYPES_ASK_RE|REASK_GAP_MS|askAgain|reasked|mustAsk|how = "answer"|madrid_now/;
+const F3_MARK = /v214\.2|reAskOnce|reAskNow|reAskHeld|reAskAt|f3Answer|f3q|todayQ|sameDay|LANGQ_RE|LANGQ_CUE_RE|langQ|langAsk|ENGLISH_ASK_RE|LANG_ANSWER|shortAsk|bareAreaAsk|AREA_ASK_WORD_RE|AREA_NEAR_RE|AREA_TAIL_RE|softAckHow|nameWithLang|lang0|placeAsk|areaAskWords|onlyAreaWords|AREA_TAG_RE|AREA_FILLER_RE|NOT_A_NAME_RE|nightLineAt|rebookLater|SOFT_ACK_RE\.test\(text\)|SAMEDAY_|INFO_ASK_RE|WHERE_ASK_RE|TYPES_ASK_RE|REASK_GAP_MS|askAgain|reasked|mustAsk|how = "answer"|madrid_now/;
 f3.forEach((h, i) => {
   const text = [...h.removed, ...h.added].join("\n");
   check(G1, `F3 hunk ${i + 1}: an F3 change`, F3_MARK.test(text), true, text.slice(0, 120));
@@ -94,7 +94,7 @@ f3.forEach((h, i) => {
 });
 // The whole patch is there, not part of it: every F3 name is used as often in
 // the snapshot as in bot.ts.
-for (const name of ["reAskOnce(", "reAskNow(", "reAskHeld(", "f3Answer(", "sameDayReply(", "sameDayFor(", "sameDayLine(", "shortAsk(", "bareAreaAsk(", "AREA_ASK_WORD_RE", "AREA_NEAR_RE", "AREA_TAIL_RE", "softAckHow(", "nameWithLang(", "lang0", "area_question_mark", "LANGQ_RE", "langQ(", "langAsk", "ENGLISH_ASK_RE", "SAMEDAY_STEPS", "todayQ", "f3q", "askAgain", "reasked", "mustAsk", "madrid_now: madridNowLabel()", "\"bare\"", "\"ack\""]) {
+for (const name of ["reAskOnce(", "reAskNow(", "reAskHeld(", "f3Answer(", "sameDayReply(", "sameDayFor(", "sameDayLine(", "shortAsk(", "bareAreaAsk(", "AREA_ASK_WORD_RE", "AREA_NEAR_RE", "AREA_TAIL_RE", "softAckHow(", "nameWithLang(", "lang0", "area_question_mark", "placeAsk(", "areaAskWords(", "onlyAreaWords(", "AREA_TAG_RE", "AREA_FILLER_RE", "NOT_A_NAME_RE", "nightLineAt", "night_line_ack", "rebookLater", "Review round 3", "LANGQ_RE", "langQ(", "langAsk", "ENGLISH_ASK_RE", "SAMEDAY_STEPS", "todayQ", "f3q", "askAgain", "reasked", "mustAsk", "madrid_now: madridNowLabel()", "\"bare\"", "\"ack\""]) {
   const count = (src) => src.split(name).length - 1;
   check(G1, `uses of ${name}`, count(snap), count(bot), "same as bot.ts");
 }
@@ -143,13 +143,13 @@ check(G2, "the language gate", [snap.includes("const langAsk = !!text && (langQ(
 const nameCase = between(snap, "      case \"await_name\": {", "      case \"await_email_req\": {");
 const iNameLang = nameCase.indexOf("if (langAsk && nameWithLang(text)) await f3Answer(from, L, text, true);");
 check(G2, "the name step answers the language request, then keeps the name", [iNameLang > nameCase.indexOf("if (!text) { await sendText(from, COPY[L].name); break; }"), iNameLang < nameCase.indexOf("const parsedName = parseName(text);")], [true, true], "");
-const iLangReset = at("if (s.data.lang !== lang0 && s.data.reAskStep) { delete s.data.reAskStep; await saveSession(s); }\n    const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";");
+const iLangReset = at("if (s.data.lang !== lang0 && s.data.reAskStep && !SOFT_ACK_RE.test(text) && !ACK_ONLY_RE.test(text)) { delete s.data.reAskStep; await saveSession(s); }\n    const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";");
 check(G2, "a language switch starts the repeat limit again", [at("const lang0 = s.data.lang; // v214.2 (review): the language before this message\n    const placeOnly = ") > 0, iLangReset > at("if (text && !replyId && s.data.lang === \"es\" && ENGLISH_ASK_RE.test(text)) {")], [true, true], "");
 const iEnAsk = at("if (text && !replyId && s.data.lang === \"es\" && ENGLISH_ASK_RE.test(text)) {");
 check(G2, "\"English?\" switches before the language is fixed", [iEnAsk > at("else if (s.data.lang === \"es\" && !strongSpanish(text) && looksEnglish(text)"), iEnAsk < at("const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";\n\n    // v195 (replay): \"No entiendo\""), iEnAsk < iTyped], [true, true, true], "");
 check(G2, "the fallback agent knows the time", snap.includes("facts_url: FACTS_URL, madrid_now: madridNowLabel() };"), true, "");
 check(G2, "the v200 rule lives in one place", [(snap.match(/s\.data\.reAskAt = Date\.now\(\)/g) || []).length, /Number\(s\.data\.reAskAt \|\| 0\) < 15 \* 60e3/.test(snap)], [1, false], "");
-check(G2, "reAskOnce: a held thanks stays quiet; reAskNow records", [/const held = reAskHeld\(s\.data, s\.step, text, Date\.now\(\), how !== "bare"\);\n  if \(held\) \{ if \(how === "ack"\) quietThisTurn = true;/.test(lift(snap, "async function reAskOnce(")), /async function reAskNow\([^\n]*\n  s\.data\.reAskStep = s\.step; s\.data\.reAskAt = Date\.now\(\); await saveSession\(s\);/.test(snap)], [true, true], "");
+check(G2, "reAskOnce: a held thanks stays quiet; reAskNow records", [/const held = reAskHeld\(s\.data, s\.step, text, Date\.now\(\), how !== "bare"\);\n(?: *\/\/[^\n]*\n)*  if \(held === "later" && how === "bare" && !sentThisTurn\) await sendText\(from, COPY\[L\]\.rebookLater\);\n  if \(held\) \{ if \(how === "ack"\) quietThisTurn = true;/.test(lift(snap, "async function reAskOnce(")), /async function reAskNow\([^\n]*\n  s\.data\.reAskStep = s\.step; s\.data\.reAskAt = Date\.now\(\); await saveSession\(s\);/.test(snap)], [true, true], "");
 const fallback = between(snap, "const flowStep = !isStudio", "await logEvent(from, \"fallback_ack\"");
 check(G2, "re-ask: the holding turn", [fallback.includes("reasked = await reAskOnce(s, from, L, said, undefined, \"bare\");"), fallback.includes("await reAsk(")], [true, false], "");
 const dayCase = between(snap, "      case \"await_day\": {", "      case \"await_day_text\": {");
@@ -165,14 +165,14 @@ const iGuard = areaCase.indexOf("if (text.includes(\"?\") || f3q) {");
 check(G2, "the area step never saves a \"?\" message", [iGuard > areaCase.indexOf("else if (text) {"), iGuard < areaCase.indexOf("if (ANY_RE.test(text)) area = \"anywhere\";"), iGuard < areaCase.indexOf("area = area || hit || text.slice(0, 40);")], [true, true, true], "");
 // Review: "Retiro?" at the area question loses its marks (bareAreaAsk) after
 // the complaint guard and before any question test.
-const iBare = at("if (text && !replyId && s.step === \"await_area\") {\n      const bare = bareAreaAsk(text);\n      if (bare) { await logEvent(from, \"area_question_mark\", { said: text.slice(0, 80), area: bare }); text = bare; }\n    }\n");
+const iBare = at("if (text && !replyId && s.step === \"await_area\") {\n      const bare = bareAreaAsk(text);\n      if (bare) { await logEvent(from, \"area_question_mark\", { said: text.slice(0, 80), area: bare }); text = bare; }\n      // Review round 3: a place we do not know (\"Pacífico?\"): the area the reader finds in it.\n      else if (placeAsk(text) && (await readerAssist(s, from, L, text, \"area\")).includes(\"area\")) { await logEvent(from, \"area_question_mark\", { said: text.slice(0, 80), area: s.data.area, by: \"reader\" }); text = String(s.data.area); }\n    }\n");
 check(G2, "\"Retiro?\" is the area", [iBare > iComplaint, iBare < iToday, (snap.match(/bareAreaAsk\(/g) || []).length], [true, true, 2], "");
 
 // The lifted helpers behave in the snapshot exactly as in bot.ts.
 const copyUrl = pathToFileURL(fn("copy.ts")).href;
 const one = (name) => (snap.match(new RegExp(`^const ${name} = .*$`, "m")) || [""])[0];
-const js = `import { stripAcc, detectArea, ACK_ONLY_RE, GOODBYE_RE, parseName } from ${JSON.stringify(copyUrl)};\n`
-  + stripTypeScriptTypes([one("LATER_RE"), one("EXTRA_AREAS"), lift(snap, "function detectAreaPlus("), block(snap)].join("\n")) + "\nexport { LANGQ_RE, langQ, ENGLISH_ASK_RE, sameDayQ, sameDayFor, sameDayLine, shortAsk, reAskHeld, bareAreaAsk, softAckHow, nameWithLang };\n";
+const js = `import { stripAcc, detectArea, ACK_ONLY_RE, GOODBYE_RE, parseName, AREAS, looksLikeQuestion } from ${JSON.stringify(copyUrl)};\n`
+  + stripTypeScriptTypes([one("LATER_RE"), one("EXTRA_AREAS"), lift(snap, "function detectAreaPlus("), block(snap)].join("\n")) + "\nexport { LANGQ_RE, langQ, ENGLISH_ASK_RE, sameDayQ, sameDayFor, sameDayLine, shortAsk, reAskHeld, bareAreaAsk, placeAsk, softAckHow, nameWithLang };\n";
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-f3snap-"));
 fs.writeFileSync(path.join(dir, "f3.mjs"), js);
 const Q = await import(pathToFileURL(path.join(dir, "f3.mjs")).href);
@@ -203,6 +203,17 @@ check(G2, "the night line, then Yes / Claro: the day buttons", [Q.reAskHeld(T3, 
 // Review round 2: "In English?" asks for English; a name with a request is the name.
 for (const [msg, want] of [["In English?", true], ["English please?", true], ["English pls?", true]]) check(G2, `asks for English: ${msg}`, [Q.langQ(msg) || Q.ENGLISH_ASK_RE.test(msg), Q.nameWithLang(msg)], [want, ""], "never saved as the name or the studio");
 for (const [msg, want] of [["Mark, English speaking therapist please", "Mark"], ["Ana, English speaker", "Ana"], ["Ana, i dont speak spanish", "Ana"], ["I only speak English", ""], ["English-speaking therapist please", ""], ["Ana, do you speak English?", ""]]) check(G2, `nameWithLang: ${msg}`, Q.nameWithLang(msg), want, "");
+// Review round 3: only an area's words and filler stand with the area; a tag,
+// a flag, ":)" or an invisible mark after it is still the area.
+for (const [msg, want] of [["¿Retiro está lejos?", ""], ["Not in Centro?", ""], ["Fuera del centro?", ""], ["Centro de masajes?", ""], ["Retiro y Salamanca?", ""], ["Retiro vs Salamanca?", ""], ["Centro no?", ""], ["Near to Sol?", "Sol"], ["Barrio de Salamanca?", "Barrio de Salamanca"], ["Salamanca, ¿vale?", "Salamanca"], ["Chamberí, ¿sí?", "Chamberí"], ["Retiro ¿ok?", "Retiro"], ["Retiro? 🇪🇸", "Retiro"], ["Retiro? :)", "Retiro"], ["Retiro?" + String.fromCharCode(0x200e), "Retiro"], ["Retiro?" + String.fromCharCode(0x200b), "Retiro"]]) check(G2, `bareAreaAsk (round 3): ${JSON.stringify(msg)}`, Q.bareAreaAsk(msg), want, "");
+for (const [msg, want] of [["Pacífico?", true], ["Ríos Rosas?", true], ["Bernabéu?", true], ["Retiro?", false], ["Price?", false], ["Info?", false], ["Is Sol ok?", false]]) check(G2, `placeAsk: ${msg}`, Q.placeAsk(msg), want, "the reader may name the area; nothing else is kept");
+// Review round 3: the night line stamps the day question, and a soft ack to it is the Tomorrow tap.
+check(G2, "the night line, then \"Ok\": the Tomorrow tap", [sdr.includes("  if (s.step === \"await_day\" || (!dayStep && /^(today|hoy)$/i.test(String(s.data.day || \"\").trim()))) s.data.nightLineAt = Date.now();\n"), /^ {6}case "await_day": \{\n(?: *\/\/[^\n]*\n)* {8}if \(!replyId && text && SOFT_ACK_RE\.test\(text\) && Date\.now\(\) - Number\(s\.data\.nightLineAt \|\| 0\) < REASK_GAP_MS\) \{\n {10}delete s\.data\.nightLineAt;\n {10}if \(mcMadridHour\(\) >= 19\) replyId = "day_tomorrow"; else delete s\.data\.reAskStep;\n/.test(dayCase)], [true, true], "before the core's own check of a tapped day");
+// Review round 3: "I'll let you know" as the whole reply gets the approved no-problem line (reAskOnce, above); the question stays held.
+check(G2, "\"I'll let you know\": the no-problem line, and Jordan is told", [Q.reAskHeld({}, "await_day", "I'll let you know", T, false), fallback.length > 0 && snap.includes("sentThisTurn ? \"They said they will tell us later, so they got the no-problem line and their booking question was not repeated\" : ")], ["later", true], "");
+for (const [msg, want] of [["Ok 👍", "ack"], ["thx", "ack"], ["Yes 👍", "bare"]]) check(G2, `softAckHow (round 3): ${msg}`, Q.softAckHow(msg), want, "");
+for (const msg of ["Sorry, I only speak English", "Hola, ¿hablan inglés", "Ok, English speaker please"]) check(G2, `nameWithLang (round 3): ${msg}`, Q.nameWithLang(msg), "", "never saved as the name");
+check(G2, "typed steps: the ready answers at the area question", ord(typed, ["else if (zoneQ(text))", "else if (s.step === \"await_area\" && THERAPISTQ_RE.test(text)) { await sendText(from, COPY[L].therapistAnswer);", "else if (s.step === \"await_area\" && SERVICEQ_RE.test(text) && !detectService(text)) { await sendText(from, COPY[L].servicesAnswer);", "else if (await f3Answer(from, L, text, langAsk) || todayQ) {"]), true, "\"What type?\" at the area question gets the massage list");
 
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
