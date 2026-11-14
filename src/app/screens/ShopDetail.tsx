@@ -30,6 +30,7 @@ import WhatsAppAskButton from "@/components/WhatsAppAskButton";
 import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { sendTrack, trackEvent } from "@/lib/siteVisit";
 import { studioPath } from "@/lib/studioHref";
+import { StudioPhoto } from "../components/StudioPhoto";
 
 
 export default function ShopDetail() {
@@ -183,7 +184,17 @@ export default function ShopDetail() {
     <div className="flex flex-col h-full overflow-y-auto bg-background">
       {/* Hero */}
       <div className="relative h-72 flex-shrink-0">
-        <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
+        {/* Own photo, else the studio's labelled stock photo, else its tile. */}
+        <StudioPhoto
+          name={m.studio || m.name}
+          hood={m.district || null}
+          ownImage={m.ownImage}
+          stockImage={m.stockImage}
+          width={1000}
+          label="lg"
+          labelPosition="bottom-11 left-4"
+          eager
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-background/40" />
         <button
           onClick={() => navigate(-1)}

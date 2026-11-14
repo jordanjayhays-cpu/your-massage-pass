@@ -30,6 +30,8 @@ import { tagLabel } from "@/lib/tagLabel";
 import { markStudioVisited } from "@/lib/visitedStudios";
 import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 import StudioPlaceMap from "@/app/components/StudioPlaceMap";
+import { StudioPhoto } from "@/app/components/StudioPhoto";
+import { useStockPhoto } from "@/lib/useStockPhoto";
 import { findNearbyStudios, sixtyMinFrom, isForTwo, isFourHands, type NearbyListedStudio } from "@/lib/nearestStudios";
 import { studioPath } from "@/lib/studioHref";
 import { madridTodayIso, madridDays, isTooSoon, isoToLocalDate } from "@/lib/madridTime";
@@ -872,6 +874,9 @@ function StudioBookingPageInner() {
   const stepParam = searchParams.get("step");
   const [profile, setProfile] = useState<StudioProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // The studio's stock photo, the same one as on its /studios card (7 Nov).
+  // undefined while the photo slots load, null when there is none.
+  const stockPhoto = useStockPhoto(profile?.partner?.id);
   // How many bookings already exist for each `date__time` slot.
   // A slot is full only when this count reaches the studio's therapist count.
   const [slotCounts, setSlotCounts] = useState<Map<string, number>>(new Map());
@@ -1624,15 +1629,7 @@ function StudioBookingPageInner() {
   /** Euro amount in the page language: "€85" (en), "85 €" (es). */
   const eur = (v: number) => formatPrice(v, lang);
 
-  const visualBlock = studioPhoto ? (
-    <img
-      src={studioPhoto}
-      alt={partner.business_name}
-      className="block w-full aspect-[4/3] object-cover rounded-2xl"
-      style={{ background: "#F4EEE6" }}
-      decoding="async"
-    />
-  ) : (
+  const placeMap = (
     <StudioPlaceMap
       lat={studioLatLng?.lat ?? null}
       lng={studioLatLng?.lng ?? null}
@@ -1641,6 +1638,30 @@ function StudioBookingPageInner() {
       address={partner.address || null}
       height={180}
     />
+  );
+  // Without its own photo, the studio's stock photo (7 Nov, Jordan: "photos
+  // for each studio even if it's stock photos"), labelled "Stock photo",
+  // beside the map of where the studio really is. While the photo slots
+  // load, a plain box of the same height keeps the page from jumping.
+  const visualBlock = studioPhoto ? (
+    <img
+      src={studioPhoto}
+      alt={partner.business_name}
+      className="block w-full aspect-[4/3] object-cover rounded-2xl"
+      style={{ background: "#F4EEE6" }}
+      decoding="async"
+    />
+  ) : stockPhoto ? (
+    <div className="grid grid-cols-[3fr_2fr] gap-2" data-testid="studio-stock-hero">
+      <div className="relative h-[180px] overflow-hidden rounded-2xl bg-[#F4EEE6]">
+        <StudioPhoto name={partner.business_name} hood={hood} stockImage={stockPhoto} width={560} eager />
+      </div>
+      {placeMap}
+    </div>
+  ) : stockPhoto === undefined ? (
+    <div aria-hidden="true" className="h-[180px] w-full rounded-2xl bg-[#F4EEE6]" />
+  ) : (
+    placeMap
   );
 
   const identityBlock = (
@@ -1689,6 +1710,7 @@ function StudioBookingPageInner() {
     <div className="hidden min-[900px]:block min-[900px]:col-span-2 min-[900px]:row-start-1 min-[900px]:mb-8" data-testid="studio-desk-hero">
       <DesktopHero
         media={deskMedia}
+        stock={stockPhoto}
         name={partner.business_name}
         lat={studioLatLng?.lat ?? null}
         lng={studioLatLng?.lng ?? null}
@@ -3592,12 +3614,17 @@ function Section({ step, title, children }: { step: string; title: string; child
  * - 3 or more: one large and two stacked (Booksy), "See all N photos" from 4.
  * - 2: one large and one tall (Calma: the room and its video tour).
  * - 1 photo: the photo and the map of where it is.
- * - none: the map, 240px tall.
+ * - none: the studio's stock photo, labelled "Stock photo" (7 Nov), and the
+ *   map, as for 1 photo; the map alone, 240px tall, when there is no stock
+ *   photo either.
  * Photos open in a lightbox (arrows and Escape work); videos play in place.
  * Rendered from 900px only, so phones never load it.
  */
-function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
-  media: string[]; name: string; lat: number | null; lng: number | null;
+function DesktopHero({ media, stock, name, lat, lng, hood, address, copy }: {
+  media: string[];
+  /** Stock photo URL; undefined while loading, null when there is none. */
+  stock: string | null | undefined;
+  name: string; lat: number | null; lng: number | null;
   hood: string | null; address: string | null; copy: DeskCopy;
 }) {
   const [open, setOpen] = useState<number | null>(null);
@@ -3617,10 +3644,21 @@ function DesktopHero({ media, name, lat, lng, hood, address, copy }: {
   const map = (height: number) => (
     <StudioPlaceMap lat={lat} lng={lng} name={name} title={hood || "Madrid"} address={address} height={height} />
   );
-  if (!media.length) return map(240);
   // Laptop windows under 760px tall (1366x657, 1280x650) get a 300px band, so
   // the booking card's action is on the first screen.
   const bandH = typeof window !== "undefined" && window.matchMedia?.("(max-height: 760px)").matches ? 300 : 400;
+  if (!media.length) {
+    if (stock === null) return map(240);
+    // The stock photo is not the place: no lightbox, and always the label.
+    return (
+      <div className="grid h-[400px] [@media(max-height:760px)]:h-[300px] grid-cols-[2fr_1fr] gap-2" data-testid="studio-stock-hero-desk">
+        <div className="relative h-full w-full overflow-hidden rounded-2xl bg-[#F4EEE6]">
+          {stock && <StudioPhoto name={name} hood={hood} stockImage={stock} width={1200} label="lg" eager />}
+        </div>
+        {map(bandH)}
+      </div>
+    );
+  }
 
   const tile = (url: string, big: boolean, extra = "") =>
     isVideoUrl(url) ? (

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { studioImage } from "./studioImages";
+import { STOCK_PHOTOS, assignStockSlots, type StockSlotInput } from "./studioImages";
 import { getSource } from "./attribution";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -107,13 +107,18 @@ export interface Shop {
   rating: number | null;
   /** Real Google review count, or null. Never defaulted. */
   reviews: number | null;
+  /** `ownImage`, else `stockImage`, else "". Render it with StudioPhoto, which labels stock. */
   image: string;
   /**
    * The studio's OWN photo (cover, else the first gallery image), or null.
-   * `image` falls back to stock pictures; the list shows those only as
-   * decoration, never as "the place" (2 Nov: 165 of 166 studios have none).
+   * It stands for the place (2 Nov: 165 of 166 studios have none).
    */
   ownImage?: string | null;
+  /**
+   * The studio's stock photo (7 Nov), unique to it; see assignStockSlots.
+   * Only ever shown with the "Stock photo" label (StudioPhoto component).
+   */
+  stockImage?: string | null;
   description: string;
   tags: string[];
   type: string;           // massage type from partner_service
@@ -170,7 +175,7 @@ export function ownStudioPhoto(p: { cover_url?: string | null; gallery?: unknown
   return null;
 }
 
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error("timeout")), ms);
     p.then(
@@ -178,6 +183,86 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       (e) => { window.clearTimeout(timer); reject(e); },
     );
   });
+}
+
+// ─── Stock photos (7 Nov) ───
+// One studio, one stock photo, the same on every page. The slots come from
+// the full studio list (the same filter as the studio pages), loaded once per
+// visit and kept in memory; assignStockSlots (studioImages.ts) has the rule.
+// Single-studio pages (the studio page, "Book again") read the same slots.
+
+let stockSlots: Map<string, number> | null = null;
+let stockSlotsFailed = false;
+let stockSlotsInFlight: Promise<Map<string, number> | null> | null = null;
+const stockListeners = new Set<() => void>();
+
+function notifyStock() {
+  stockListeners.forEach((fn) => fn());
+}
+
+function setStockSlots(next: Map<string, number>) {
+  stockSlots = next;
+  stockSlotsFailed = false;
+  notifyStock();
+}
+
+/** For useStockPhoto: `fn` runs once the slots are known, or their load failed. */
+export function subscribeStockPhotos(fn: () => void): () => void {
+  stockListeners.add(fn);
+  return () => { stockListeners.delete(fn); };
+}
+
+/** The stock photo for a studio id; null while the slots are unknown, or for an unknown id. */
+export function stockPhotoFor(id?: string | null): string | null {
+  if (!id || !stockSlots) return null;
+  const slot = stockSlots.get(String(id));
+  return slot == null ? null : STOCK_PHOTOS[slot] ?? null;
+}
+
+/** True once the slots are known, or once their load failed (nothing more will come). */
+export function stockPhotosSettled(): boolean {
+  return stockSlots != null || stockSlotsFailed;
+}
+
+/**
+ * Load the studio list behind the stock photo slots, once per visit. Light:
+ * id, created_at and a service count per studio. Resolves to null when it
+ * cannot load; pages then show the studio's tile or map, as before.
+ */
+export function loadStockPhotos(): Promise<Map<string, number> | null> {
+  if (stockSlots) return Promise.resolve(stockSlots);
+  if (stockSlotsInFlight) return stockSlotsInFlight;
+  stockSlotsInFlight = (async () => {
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("partners")
+          .select("id, created_at, partner_services(count)")
+          .in("status", ["active", "pending"])
+          .is("opted_out_at", null)
+          .limit(1000),
+        12000,
+      );
+      if (error || !Array.isArray(data)) throw error ?? new Error("no rows");
+      type LightRow = { id: string; created_at: string | null; partner_services: { count: number }[] | null };
+      const rows: StockSlotInput[] = (data as unknown as LightRow[]).map((p) => ({
+        id: String(p.id),
+        createdAt: p.created_at ?? null,
+        listed: Number(p.partner_services?.[0]?.count ?? 0) > 0,
+      }));
+      setStockSlots(assignStockSlots(rows));
+    } catch (err) {
+      console.warn("[loadStockPhotos] failed:", err);
+      if (!stockSlots) {
+        stockSlotsFailed = true;
+        notifyStock();
+      }
+    } finally {
+      stockSlotsInFlight = null;
+    }
+    return stockSlots;
+  })();
+  return stockSlotsInFlight;
 }
 
 /** Always-resolving studio loader: dedupes concurrent calls, times out,
@@ -204,6 +289,8 @@ export async function loadShops(): Promise<Shop[]> {
  *  Returns an empty list when the table is empty (no hardcoded demo studios). */
 
 export async function fetchShops(): Promise<Shop[]> {
+  // The stock photo slots load alongside (once per visit).
+  const stockReady = loadStockPhotos();
   // Try real data first
   const { data: partners, error } = await supabase
     .from("partners")
@@ -249,6 +336,17 @@ export async function fetchShops(): Promise<Shop[]> {
     availabilityByPartner[a.partner_id][a.day_of_week].push(a.time_slot);
   }
 
+  // Stock photo slots. If the light list could not load, the same rule runs
+  // on this list, which holds the same studios while there are under 200.
+  await stockReady;
+  if (!stockSlots && partners.length < 200) {
+    setStockSlots(assignStockSlots(partners.map((p) => ({
+      id: String(p.id),
+      createdAt: p.created_at ?? null,
+      listed: (servicesByPartner[p.id]?.length ?? 0) > 0,
+    }))));
+  }
+
   // One card PER STUDIO (not per service) — the card opens the studio's page.
   const shops: Shop[] = [];
   for (const p of partners) {
@@ -256,6 +354,8 @@ export async function fetchShops(): Promise<Shop[]> {
     if (svcs.length === 0) continue;
     const types = [...new Set(svcs.map(s => s.type).filter(Boolean))];
     const prices = svcs.map(s => Number(s.price)).filter(n => !isNaN(n));
+    const ownImage = ownStudioPhoto(p);
+    const stockImage = stockPhotoFor(p.id);
     shops.push({
       id: p.id,                                   // studio id → resolved to /{slug}
       name: p.business_name || "Studio",
@@ -266,14 +366,9 @@ export async function fetchShops(): Promise<Shop[]> {
       duration: svcs[0]?.duration ?? 60,
       rating: p.google_rating != null ? Number(p.google_rating) : null,
       reviews: p.google_reviews != null ? Number(p.google_reviews) : null,
-      image: studioImage({
-        id: p.id,
-        name: p.business_name,
-        imageUrl: p.cover_url || (Array.isArray(p.gallery) && p.gallery[0]) || p.logo_url || (p as any).image_url || null,
-        services: svcs.map(s => `${s.name ?? ""} ${s.type ?? ""}`),
-        description: p.description,
-      }),
-      ownImage: ownStudioPhoto(p),
+      image: ownImage || stockImage || "",
+      ownImage,
+      stockImage,
       description: p.description || svcs[0]?.description || "",
       tags: types.length ? types : ["Massage"],
       type: (svcs[0]?.type || "Massage").toLowerCase(),
@@ -345,6 +440,7 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
   const slug = id.split("__").slice(1).join("__");
   if (!partnerId) return null;
 
+  const stockReady = loadStockPhotos();
   const { data: partner } = await supabase
     .from("partners")
     .select("*")
@@ -354,6 +450,9 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     .single();
 
   if (!partner) return null;
+  await stockReady;
+  const ownImage = ownStudioPhoto(partner);
+  const stockImage = stockPhotoFor(partner.id);
 
   const { data: services } = await supabase
     .from("partner_services")
@@ -387,14 +486,9 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
     duration: matchedSvc.duration ?? 60,
     rating: partner.google_rating != null ? Number(partner.google_rating) : null,
     reviews: partner.google_reviews != null ? Number(partner.google_reviews) : null,
-    image: studioImage({
-      id: partner.id,
-      name: partner.business_name,
-      imageUrl: partner.cover_url || (Array.isArray(partner.gallery) && partner.gallery[0]) || partner.logo_url || (partner as any).image_url || null,
-      services: [`${matchedSvc.name ?? ""} ${matchedSvc.type ?? ""}`],
-      description: partner.description,
-    }),
-    ownImage: ownStudioPhoto(partner),
+    image: ownImage || stockImage || "",
+    ownImage,
+    stockImage,
     description: matchedSvc.description || partner.description || "",
     tags: [matchedSvc.type || "Massage"],
     type: (matchedSvc.type || "Massage").toLowerCase(),

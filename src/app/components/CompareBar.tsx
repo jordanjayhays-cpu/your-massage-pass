@@ -35,9 +35,10 @@ export default function CompareBar({ className = "pb-3" }: { className?: string 
     // on the left, the sticky map on the right), never across the map, and
     // opaque, so no card text shows through it. The column starts at the
     // 1120px container's 20px gutter and ends 24px before the map (340px
-    // wide below 1024px, 400px from there).
+    // wide below 1024px). From 1024px the list has its own reading width,
+    // clamp(560px, 40vw, 640px), and the map fills the rest (MassageList).
     <div
-      className={`fixed inset-x-0 z-50 px-3 pointer-events-none ${className} desk:right-auto desk:px-0 desk:left-[max(20px,calc((100vw_-_1120px)/2_+_20px))] desk:w-[calc(100vw_-_420px)] lg:w-[min(656px,calc(100vw_-_480px))]`}
+      className={`fixed inset-x-0 z-50 px-3 pointer-events-none ${className} desk:right-auto desk:px-0 desk:left-[max(20px,calc((100vw_-_1120px)/2_+_20px))] desk:w-[calc(100vw_-_420px)] lg:w-[clamp(560px,40vw,640px)]`}
       style={{ bottom: "var(--consent-room, var(--consent-h, 0px))" }}
     >
       <div className="pointer-events-auto mx-auto max-w-[1100px] rounded-3xl border border-[#E6DCCF] bg-card/98 backdrop-blur shadow-elegant p-3 desk:max-w-none desk:rounded-2xl desk:bg-card desk:backdrop-blur-none desk:px-4">

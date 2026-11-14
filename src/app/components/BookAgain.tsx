@@ -7,13 +7,11 @@
  */
 import { Link } from "react-router-dom";
 import { RotateCcw } from "lucide-react";
-import { studioImage, studioImageFallback } from "@/lib/studioImages";
-import { bookAgainHref, useLastBooking, type LastBooking } from "@/lib/useLastBooking";
+import { StudioPhoto } from "./StudioPhoto";
+import { useStockPhoto } from "@/lib/useStockPhoto";
+import { bookAgainHref, useLastBooking } from "@/lib/useLastBooking";
 import { useFlowLang } from "@/lib/flowLang";
 import { localizedServiceName } from "@/lib/serviceTypeI18n";
-
-const photoFor = (b: LastBooking, width = 200) =>
-  studioImage({ id: b.partnerId, name: b.studioName, imageUrl: b.coverUrl, services: [b.serviceName] }, width);
 
 const COPY = {
   en: {
@@ -72,6 +70,8 @@ export function BookAgainCard({ className = "" }: { className?: string }) {
   const { lastBooking } = useLastBooking();
   const lang = useFlowLang();
   const c = COPY[lang];
+  // The same stock photo as this studio's card on /studios.
+  const stock = useStockPhoto(lastBooking?.partnerId);
   if (!lastBooking) return null;
   const serviceName = localizedServiceName(lastBooking.serviceName, lang);
 
@@ -80,12 +80,15 @@ export function BookAgainCard({ className = "" }: { className?: string }) {
       to={bookAgainHref(lastBooking)}
       className={`group flex items-center gap-3 rounded-2xl border border-primary/40 bg-card p-3 shadow-soft motion-safe:transition hover:border-primary hover:bg-accent/40 ${className}`}
     >
-      <img
-        src={photoFor(lastBooking)}
-        alt=""
-        className="h-14 w-14 rounded-xl object-cover flex-shrink-0"
-        onError={(e) => studioImageFallback(e, 200)}
-      />
+      <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-secondary [&_.text-3xl]:text-2xl">
+        <StudioPhoto
+          name={lastBooking.studioName}
+          ownImage={lastBooking.coverUrl}
+          stockImage={stock}
+          width={160}
+          label="sm"
+        />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-sm font-bold text-primary">
           <RotateCcw className="h-3.5 w-3.5" /> {c.bookAgain}

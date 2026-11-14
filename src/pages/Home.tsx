@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { DealsFooterLine, DealsJoinSection } from "@/components/DealsLink";
-import { studioImageFallback } from "@/lib/studioImages";
+import { StudioPhoto } from "@/app/components/StudioPhoto";
 import { GUIDES } from "@/pages/guides/GuideLayout";
 import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
 import { BookAgainCard } from "@/app/components/BookAgain";
@@ -372,24 +372,15 @@ function StudioCard({ shop, href, freeTodayIds }: { shop: ShopWithSlug; href: st
       className="group bg-card border border-border/60 rounded-2xl overflow-hidden shadow-soft hover:shadow-elegant hover:border-primary/50 transition-all flex flex-col"
     >
       <div className="relative aspect-[4/3] bg-secondary overflow-hidden">
-        {shop.image ? (
-          <img
-            src={shop.image}
-            alt={shop.studio}
-            className="absolute inset-0 h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-            loading="lazy"
-            onError={studioImageFallback}
-          />
-
-        ) : (
-          <div className="absolute inset-0 bg-gradient-warm flex items-center justify-center">
-            <img
-              src="/brand/mc-avatar-terracotta.png"
-              alt=""
-              className="h-14 w-14 rounded-full opacity-90"
-            />
-          </div>
-        )}
+        {/* Own photo, else the studio's labelled stock photo, else its tile. */}
+        <StudioPhoto
+          name={shop.studio}
+          hood={shop.district || null}
+          ownImage={shop.ownImage}
+          stockImage={shop.stockImage}
+          width={640}
+          imgClassName="group-hover:scale-[1.03] transition-transform duration-500"
+        />
       </div>
       <div className="p-3.5 flex-1 flex flex-col">
         <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
