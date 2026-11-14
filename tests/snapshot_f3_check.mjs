@@ -80,13 +80,13 @@ if (process.argv.includes("--show")) hunks.forEach((h, i) => console.log(`--- hu
 const added = hunks.reduce((t, h) => t + h.added.length, 0);
 const removed = hunks.reduce((t, h) => t + h.removed.length, 0);
 const G1 = "snapshot = v214.1 + F3";
-check(G1, "hunks, lines added, lines removed", [hunks.length, added, removed], [18, 172, 39], "anything else in the snapshot changes these; --show prints them");
+check(G1, "hunks, lines added, lines removed", [hunks.length, added, removed], [22, 227, 41], "anything else in the snapshot changes these; --show prints them");
 const [head, imp, ...f3] = hunks;
 check(G1, "first hunk: the dated header", [head?.removed.length, head?.added.length, /^\/\/ wa-bot v214\.2 deploy snapshot \(14 Nov 2026\)/.test(head?.added[0] || "")], [0, 6, true], "");
 const importLine = (to) => `import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./${to}";`;
 check(G1, "second hunk: only the agent_core import", [imp?.removed, imp?.added], [[importLine("agent_core.ts")], [importLine("agent_core_v214.ts")]], "");
 // reAskAt: the inline v200 checks the patch removes in favour of reAskOnce.
-const F3_MARK = /v214\.2|reAskOnce|reAskHeld|reAskAt|f3Answer|f3q|todayQ|sameDay|LANGQ_RE|LANG_ANSWER|shortAsk|SAMEDAY_|INFO_ASK_RE|WHERE_ASK_RE|TYPES_ASK_RE|REASK_GAP_MS|askAgain|reasked/;
+const F3_MARK = /v214\.2|reAskOnce|reAskNow|reAskHeld|reAskAt|f3Answer|f3q|todayQ|sameDay|LANGQ_RE|LANGQ_CUE_RE|langQ|langAsk|ENGLISH_ASK_RE|LANG_ANSWER|shortAsk|SAMEDAY_|INFO_ASK_RE|WHERE_ASK_RE|TYPES_ASK_RE|REASK_GAP_MS|askAgain|reasked|mustAsk|how = "answer"|madrid_now/;
 f3.forEach((h, i) => {
   const text = [...h.removed, ...h.added].join("\n");
   check(G1, `F3 hunk ${i + 1}: an F3 change`, F3_MARK.test(text), true, text.slice(0, 120));
@@ -94,7 +94,7 @@ f3.forEach((h, i) => {
 });
 // The whole patch is there, not part of it: every F3 name is used as often in
 // the snapshot as in bot.ts.
-for (const name of ["reAskOnce(", "reAskHeld(", "f3Answer(", "sameDayReply(", "sameDayFor(", "sameDayLine(", "shortAsk(", "LANGQ_RE", "todayQ", "f3q", "askAgain", "reasked"]) {
+for (const name of ["reAskOnce(", "reAskNow(", "reAskHeld(", "f3Answer(", "sameDayReply(", "sameDayFor(", "sameDayLine(", "shortAsk(", "LANGQ_RE", "langQ(", "langAsk", "ENGLISH_ASK_RE", "SAMEDAY_STEPS", "todayQ", "f3q", "askAgain", "reasked", "mustAsk", "madrid_now: madridNowLabel()", "\"bare\"", "\"ack\""]) {
   const count = (src) => src.split(name).length - 1;
   check(G1, `uses of ${name}`, count(snap), count(bot), "same as bot.ts");
 }
@@ -135,17 +135,25 @@ check(G2, "the earlier language rules still win", [iSwitch < iTyped, iLostEs < i
 const typed = snap.slice(iTyped, iButton);
 const button = snap.slice(iButton, iHuman);
 const ord = (src, parts) => parts.map((p) => src.indexOf(p)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1]));
-check(G2, "typed steps: known answers, new answers, agent, one repeat limit", ord(typed, ["if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);", "else if (zoneQ(text))", "else if (await f3Answer(from, L, text) || todayQ) {", "await lastResort(s, from, L, text)", "if (todayQ) await sameDayReply(s, from, L, text, askAgain);\n      else await reAskOnce(s, from, L, text, askAgain);"]), true, "");
-check(G2, "button steps: known answers, new answers, agent, one repeat limit", ord(button, ["if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);", "else if (THERAPISTQ_RE.test(text)) {", "else if (SERVICEQ_RE.test(text) && !detectService(text)) {", "else if (await f3Answer(from, L, text) || todayQ) {", "await lastResort(s, from, L, text)", "if (todayQ) await sameDayReply(s, from, L, text);\n      else await reAskOnce(s, from, L, text);"]) && !button.includes("await reAsk(s, from, L);"), true, "");
+check(G2, "typed steps: known answers, new answers, agent, one repeat limit", ord(typed, ["if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);", "else if (zoneQ(text))", "else if (await f3Answer(from, L, text, langAsk) || todayQ) {", "await lastResort(s, from, L, text)", "if (todayQ) await sameDayReply(s, from, L, text, askAgain);\n      else await reAskOnce(s, from, L, text, askAgain);"]), true, "");
+check(G2, "button steps: known answers, new answers, agent, one repeat limit", ord(button, ["if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);", "else if (THERAPISTQ_RE.test(text)) {", "else if (SERVICEQ_RE.test(text) && !detectService(text)) {", "else if (await f3Answer(from, L, text, langAsk) || todayQ) {", "await lastResort(s, from, L, text)", "if (todayQ) await sameDayReply(s, from, L, text);\n      else await reAskOnce(s, from, L, text);"]) && !button.includes("await reAsk(s, from, L);"), true, "");
+// Review fixes: a language question that answers the step goes to the step;
+// "English?" in a Spanish chat switches it; the agent knows the time.
+check(G2, "the language gate", [snap.includes("const langAsk = !!text && langQ(text);\n    const f3q = !!text && ((langAsk && !stepAnswer && !detectService(text) && !detectDay(text, L)) || todayQ || (!!shortAsk(text) && !stepAnswer));"), (snap.match(/LANGQ_RE\.test\(/g) || []).length], [true, 1], "");
+const iEnAsk = at("if (text && !replyId && s.data.lang === \"es\" && ENGLISH_ASK_RE.test(text)) {");
+check(G2, "\"English?\" switches before the language is fixed", [iEnAsk > at("else if (s.data.lang === \"es\" && !strongSpanish(text) && looksEnglish(text)"), iEnAsk < at("const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";\n\n    // v195 (replay): \"No entiendo\""), iEnAsk < iTyped], [true, true, true], "");
+check(G2, "the fallback agent knows the time", snap.includes("facts_url: FACTS_URL, madrid_now: madridNowLabel() };"), true, "");
 check(G2, "the v200 rule lives in one place", [(snap.match(/s\.data\.reAskAt = Date\.now\(\)/g) || []).length, /Number\(s\.data\.reAskAt \|\| 0\) < 15 \* 60e3/.test(snap)], [1, false], "");
+check(G2, "reAskOnce: a held thanks stays quiet; reAskNow records", [/const held = reAskHeld\(s\.data, s\.step, text, Date\.now\(\), how !== "bare"\);\n  if \(held\) \{ if \(how === "ack"\) quietThisTurn = true;/.test(lift(snap, "async function reAskOnce(")), /async function reAskNow\([^\n]*\n  s\.data\.reAskStep = s\.step; s\.data\.reAskAt = Date\.now\(\); await saveSession\(s\);/.test(snap)], [true, true], "");
 const fallback = between(snap, "const flowStep = !isStudio", "await logEvent(from, \"fallback_ack\"");
-check(G2, "re-ask: the holding turn", [fallback.includes("reasked = await reAskOnce(s, from, L, said);"), fallback.includes("await reAsk(")], [true, false], "");
+check(G2, "re-ask: the holding turn", [fallback.includes("reasked = await reAskOnce(s, from, L, said, undefined, \"bare\");"), fallback.includes("await reAsk(")], [true, false], "");
 const dayCase = between(snap, "      case \"await_day\": {", "      case \"await_day_text\": {");
-check(G2, "re-ask: thanks at the day question", dayCase.includes("await logEvent(from, \"soft_ack\", { at: \"await_day\", said: text.slice(0, 30) });\n          await reAskOnce(s, from, L, text);"), true, "");
-check(G2, "re-ask: a miss at the day question", /await reAskOnce\(s, from, L, text \|\| ""\);\n {8}\}\n {8}break;\n {6}\}\n$/.test(dayCase), true, "");
+check(G2, "re-ask: thanks at the day question", dayCase.includes("await logEvent(from, \"soft_ack\", { at: \"await_day\", said: text.slice(0, 30) });\n          await reAskOnce(s, from, L, text, undefined, \"ack\");"), true, "");
+check(G2, "re-ask: a miss at the day question", [/if \(mustAsk\) await reAskNow\(s, from, L\);\n {10}else await reAskOnce\(s, from, L, text \|\| "", undefined, how\);\n {8}\}\n {8}break;\n {6}\}\n$/.test(dayCase), /Tap a day below[^\n]*\); mustAsk = true; \}/.test(dayCase), /if \(s\.step !== stepNow\) break;\n[^\n]*\n[^\n]*\n[^\n]*\n {14}how = "answer";/.test(dayCase)], [true, true, true], "\"Tap a day below\" always has the buttons under it");
 check(G2, "re-ask: the day list after an agent answer", between(snap, "      case \"await_day_text\": {", "      case \"await_time\": {").includes("await reAskOnce(s, from, L, text);\n            break;"), true, "");
 const sdr = lift(snap, "async function sameDayReply(");
 check(G2, "same day at the day question goes on like a typed today", [sdr.includes("s.data.day = L === \"es\" ? \"Hoy\" : \"Today\"; s.data.dayDate = longDate(L, 0);"), sdr.includes("else { s.step = \"await_time\"; await saveSession(s); await askTime(from, L); }"), /const hour = mcMadridHour\(\);/.test(sdr)], [true, true, true], "");
+check(G2, "the night line never stands alone", [/s\.step = "await_day";\n    await reAskNow\(s, from, L\);\n    return;\n  \}\n  await reAskNow\(s, from, L, ask\);\n\}\n$/.test(sdr), (sdr.match(/reAskOnce\(/g) || []).length, lift(snap, "async function sameDayReply(") === lift(bot, "async function sameDayReply(")], [true, 1, true], "");
 const areaCase = between(snap, "      case \"await_area\": {", "      case \"await_studio\": {");
 const iGuard = areaCase.indexOf("if (text.includes(\"?\") || f3q) {");
 check(G2, "the area step never saves a \"?\" message", [iGuard > areaCase.indexOf("else if (text) {"), iGuard < areaCase.indexOf("if (ANY_RE.test(text)) area = \"anywhere\";"), iGuard < areaCase.indexOf("area = area || hit || text.slice(0, 40);")], [true, true, true], "");
@@ -153,7 +161,7 @@ check(G2, "the area step never saves a \"?\" message", [iGuard > areaCase.indexO
 // The lifted helpers behave in the snapshot exactly as in bot.ts.
 const copyUrl = pathToFileURL(fn("copy.ts")).href;
 const one = (name) => (snap.match(new RegExp(`^const ${name} = .*$`, "m")) || [""])[0];
-const js = stripTypeScriptTypes([one("LATER_RE"), block(snap)].join("\n")) + "\nexport { LANGQ_RE, sameDayQ, sameDayFor, sameDayLine, shortAsk, reAskHeld };\n";
+const js = stripTypeScriptTypes([one("LATER_RE"), block(snap)].join("\n")) + "\nexport { LANGQ_RE, langQ, ENGLISH_ASK_RE, sameDayQ, sameDayFor, sameDayLine, shortAsk, reAskHeld };\n";
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-f3snap-"));
 fs.writeFileSync(path.join(dir, "f3.mjs"), js);
 const Q = await import(pathToFileURL(path.join(dir, "f3.mjs")).href);
@@ -167,6 +175,12 @@ check(G2, "night line from 19:00", [Q.sameDayLine("en", 18).startsWith("Yes, sam
 for (const [msg, want] of [["Info", "info"], ["más info", "info"], ["location?", "where"], ["ubicación?", "where"], ["tipos?", "types"], ["types?", "types"]]) check(G2, `short: ${msg}`, [Q.shortAsk(msg), looksLikeQuestion(msg)], [want, false], "");
 const T = Date.UTC(2026, 10, 14, 10);
 check(G2, "reAskHeld", [Q.reAskHeld({ reAskStep: "await_day", reAskAt: T - 5 * 60e3 }, "await_day", "ok", T), Q.reAskHeld({ reAskStep: "await_day", reAskAt: T - 16 * 60e3 }, "await_day", "ok", T), Q.reAskHeld({}, "await_day", "I'll let you know", T)], ["recent", "", "later"], "");
+check(G2, "reAskHeld when the question is the whole reply", [Q.reAskHeld({ reAskStep: "await_day", reAskAt: T - 60e3 }, "await_day", "hmm", T, false), Q.reAskHeld({}, "await_day", "I'll let you know", T, false)], ["", "later"], "a miss still gets the day buttons");
+// Review: no same-day answer once a request exists (await_email_post).
+for (const [step, day, msg, want] of [["await_email_post", "Today", "Is it confirmed for today?", false], ["await_email_post", "Hoy", "¿Sigue en pie lo de hoy?", false], ["await_email_post", "Today", "Any news for today?", false], ["done", "Today", "Is it today?", false], ["await_email", "Today", "Is it still possible today?", true], ["await_day", null, "Can I come today?", true]]) check(G2, `sameDayFor ${step} ${msg}`, Q.sameDayFor(step, day, msg), want, "");
+// Review: statements are not language questions; "English?" switches.
+for (const [msg, want] of [["I speak English", false], ["hablo inglés", false], ["Hi, I speak English. Tomorrow at 6pm near Sol", false], ["Ana, I speak English", false], ["Do you speak English?", true], ["Tengo 82 años y no entiendo inglés", true], ["English-speaking therapist please", true], ["English?", true]]) check(G2, `langQ: ${msg}`, Q.langQ(msg), want, "");
+for (const [msg, want] of [["English?", true], ["In English?", true], ["English", false], ["Inglés?", false]]) check(G2, `ENGLISH_ASK_RE: ${msg}`, Q.ENGLISH_ASK_RE.test(msg), want, "");
 
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

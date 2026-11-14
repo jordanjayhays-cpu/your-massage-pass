@@ -4243,6 +4243,19 @@ for (const [msg, want, note] of [
     dayCase.includes("if (s.data.time) { await saveSession(s); await afterTime(s, from, L); }\n          else { s.step = \"await_time\"; await saveSession(s); await askTime(from, L); }"),
     /const hour = mcMadridHour\(\);\n  await sendText\(from, sameDayLine\(L, hour\)\);/.test(sdr),
   ], [true, true, true, true, true], "the customer is not asked the day again");
+  // Review: the night line never stands alone, and a today just kept is
+  // followed by the question. Only a same-day line that changed nothing
+  // (today was already their day) waits on the limit.
+  const sdrTail = sdr.slice(sdr.indexOf("  if (hour < 19) {\n"));
+  check(G + ": what follows the same-day line", "sameDayReply", [
+    sdr.includes("  if (hour < 19 && dayStep) {\n"),
+    sdrTail.startsWith("  if (hour < 19) {\n    if (s.data.day) { await reAskOnce(s, from, L, text, ask); return; }\n    s.data.day = L === \"es\" ? \"Hoy\" : \"Today\"; s.data.dayDate = longDate(L, 0);\n    await reAskNow(s, from, L, ask);\n    return;\n  }\n"),
+    /s\.step = "await_day";\n    await reAskNow\(s, from, L\);\n    return;\n  \}\n  await reAskNow\(s, from, L, ask\);\n\}\n$/.test(sdr),
+    (sdr.match(/reAskOnce\(/g) || []).length,
+  ], [true, true, true, 1], "19:40, \"How much?\" then \"Can I come today?\": the night line and the day buttons, not the line alone");
+
+  // Review: the fallback agent is told the Madrid time the facts depend on.
+  check(G + ": the fallback agent knows the time", "agentHandoff payload", botSrc.includes("facts_url: FACTS_URL, madrid_now: madridNowLabel() };"), true, "the same-day facts need the clock");
 
   // 3. Source: the area step never saves a question.
   const areaCase = between(botSrc, "      case \"await_area\": {", "      case \"await_studio\": {");
@@ -4251,7 +4264,8 @@ for (const [msg, want, note] of [
 
   // copy.ts stays pinned and the fallback agent knows the same-day rule.
   check(G + ": copy.ts pin", "6715b8a", /\/6715b8a\/supabase\/functions\/wa-bot\/copy\.ts";/.test(botSrc), true, "new patterns and wording live in bot.ts");
-  check(G + ": facts.md same-day rule", "facts", [facts.includes("a 60 minute massage must start at least an hour from now\n  and by 20:00 Madrid time. Most studios open at 11:00 or 12:00."), facts.includes("From 19:00 Madrid time there is nothing left for today"), (facts.match(/Do not promise that the studio staff speak English/g) || []).length], [true, true, 1], "the language fact was already there, once");
+  check(G + ": facts.md same-day rule", "facts", [facts.includes("a 60 minute massage must start\n  at least an hour from now and by 20:00 Madrid time. Most studios open at\n  11:00 or 12:00."), facts.includes("From 19:00 Madrid time there is nothing left for today"), facts.includes("(madrid_now in the\n  message)"), facts.includes("If you are not given the time, never say today still works or that it is\n  too late"), (facts.match(/Do not promise that the studio staff speak English/g) || []).length], [true, true, true, true, 1], "the language fact was already there, once");
+  check(G + ": facts.md house rules", "same-day section", (() => { const sec = between(facts, "## Same-day bookings", "## When they are not ready yet"); return { dash: /[–—]/.test(sec), discount: /descuento|discount|%/i.test(sec) }; })(), { dash: false, discount: false }, "");
 }
 
 // ---------------------------------------------------------------------------
