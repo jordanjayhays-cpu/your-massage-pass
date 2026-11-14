@@ -4174,7 +4174,7 @@ for (const [msg, want, note] of [
   ]) check(G + ": sameDayFor", `${step} ${day} ${msg}`, Q.sameDayFor(step, day, msg), want, note);
   check(G + ": the step list is the gate", "\"Is it confirmed for today?\"", [Q.sameDayQ("Is it confirmed for today?"), Q.SAMEDAY_STEPS.includes("await_email_post"), Q.SAMEDAY_STEPS.includes("done")], [true, false, false], "a same-day question, kept out by its step");
   check(G + ": same-day answer before 19:00", "en 10:00", Q.sameDayLine("en", 10), "Yes, same day can work: a 60 min massage needs to start at least an hour from now and by 20:00. Most studios open at 11:00 or 12:00.", "");
-  check(G + ": same-day answer before 19:00", "es 18:00", Q.sameDayLine("es", 18), "Sí, para hoy puede ser: un masaje de 60 min tiene que empezar como pronto dentro de una hora y antes de las 20:00. La mayoría de los centros abren a las 11:00 o a las 12:00.", "");
+  check(G + ": same-day answer before 19:00", "es 18:00", Q.sameDayLine("es", 18), "Sí, para hoy puede ser: un masaje de 60 min tiene que empezar como pronto dentro de una hora y como tarde a las 20:00. La mayoría de los centros abren a las 11:00 o a las 12:00.", "");
   check(G + ": same-day answer at 02:00", "en", Q.sameDayLine("en", 2), Q.SAMEDAY_COPY.en.open, "a night owl hears when studios open");
   check(G + ": from 19:00 the night line", "en 19 / es 23", [Q.sameDayLine("en", 19), Q.sameDayLine("es", 23)], ["It's late for tonight, so I'll look at tomorrow.", "Para esta noche ya es tarde, así que miro mañana."], "");
   check(G + ": the night line is the opener's own", "firstLine", [botSrc.includes(`"\\n${Q.SAMEDAY_COPY.en.late}"`), botSrc.includes(`"\\n${Q.SAMEDAY_COPY.es.late}"`)], [true, true], "already approved wording (firstLine)");

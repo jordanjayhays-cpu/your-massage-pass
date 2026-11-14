@@ -3803,7 +3803,7 @@ function sameDayFor(step: string, day: unknown, text: string): boolean {
 // The answer. From 19:00 Madrid the opener's own night line (firstLine).
 const SAMEDAY_COPY: Record<string, { open: string; late: string }> = {
   en: { open: "Yes, same day can work: a 60 min massage needs to start at least an hour from now and by 20:00. Most studios open at 11:00 or 12:00.", late: "It's late for tonight, so I'll look at tomorrow." },
-  es: { open: "Sí, para hoy puede ser: un masaje de 60 min tiene que empezar como pronto dentro de una hora y antes de las 20:00. La mayoría de los centros abren a las 11:00 o a las 12:00.", late: "Para esta noche ya es tarde, así que miro mañana." },
+  es: { open: "Sí, para hoy puede ser: un masaje de 60 min tiene que empezar como pronto dentro de una hora y como tarde a las 20:00. La mayoría de los centros abren a las 11:00 o a las 12:00.", late: "Para esta noche ya es tarde, así que miro mañana." },
 };
 const sameDayLine = (L: string, madridHour: number): string => SAMEDAY_COPY[L === "es" ? "es" : "en"][madridHour >= 19 ? "late" : "open"];
 // One or two words that looksLikeQuestion (copy.ts) misses: it wants a
