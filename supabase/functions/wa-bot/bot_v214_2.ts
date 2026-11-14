@@ -3889,6 +3889,10 @@ function nameWithLang(t: string): string {
   const n = parseName(s);
   return n && !LANGQ_RE.test(n) && !NOT_A_NAME_RE.test(n.trim()) ? n : "";
 }
+// Review round 4: the "Ok" that agrees to the night line ("I'll look at
+// tomorrow"): an ok, a yes or a vale, with a thumbs-up or an OK hand at most.
+// Never a thanks or another emoji: those may close the chat (softAckHow).
+const NIGHT_OK_RE = /^[\s¡]*(?:s[ií]+|s[ií],?\s*s[ií]|sisi+|yes|yes,? yes|yep|yeah|ok(?:ay)?|okey|vale|claro|perfecto|genial|bien)[\s.,!¡\u{1F44D}\u{1F44C}\u{1F3FB}-\u{1F3FF}\ufe0f]*$/iu;
 // ---- v214.2 questions first: pure helpers (end) ----
 // v183: "¡Gracias!", "Si, si" and acks with any emoji (skin tones too) count.
 const SOFT_ACK_RE = /^[\s¡]*(s[ií]+|s[ií],?\s*s[ií]|sisi+|yes|yes,? yes|yep|yeah|ok(ay)?|okey|vale|claro|perfecto|genial|bien|gracias|muchas gracias|thanks|thank you|thx|ok,? gracias|vale,? gracias|s[ií],? gracias)[\s.,!¡\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]*$/iu;
@@ -8068,6 +8072,11 @@ const handleInner = async (req: Request) => {
     const s = await getSession(from);
     if (profileName && !s.wa_name) s.wa_name = profileName;
     if (ref) s.data.adRef = [ref.headline, ref.source_url].filter(Boolean).join(" ") || "ctwa";
+    // v214.2 (review round 4): the night line's stamp is for the next message
+    // only, read and cleared here, so an "Ok" after a question, after "I'll let
+    // you know" or after a tapped day never picks Tomorrow (case "await_day").
+    const nightAt = Number(s.data.nightLineAt || 0);
+    if (nightAt) { delete s.data.nightLineAt; await saveSession(s); }
 
     // Blocked numbers stay blocked: no replies, no alerts, ever.
     // v81: "blocked" is no longer a death sentence (Jordan, 10 Sept: do not
@@ -9039,8 +9048,9 @@ const handleInner = async (req: Request) => {
         // v214.2 (review round 3): the night line says "I'll look at tomorrow",
         // so an "Ok" or a "Vale" to it within 15 minutes is the Tomorrow tap.
         // Past midnight that is another day, so the day question goes again.
-        if (!replyId && text && SOFT_ACK_RE.test(text) && Date.now() - Number(s.data.nightLineAt || 0) < REASK_GAP_MS) {
-          delete s.data.nightLineAt;
+        // Review round 4: only the next message (nightAt), and only a plain ok
+        // or yes (NIGHT_OK_RE); a thanks is held as before (softAckHow).
+        if (!replyId && text && NIGHT_OK_RE.test(text) && Date.now() - nightAt < REASK_GAP_MS) {
           if (mcMadridHour() >= 19) replyId = "day_tomorrow"; else delete s.data.reAskStep;
           await logEvent(from, "night_line_ack", { said: text.slice(0, 30), tomorrow: replyId === "day_tomorrow" });
         }

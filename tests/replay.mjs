@@ -4055,7 +4055,7 @@ for (const [msg, want, note] of [
   const jobBlock = between(botSrc, "// ---- v204 requests, days and voice: pure helpers (start) ----", "// ---- v204 requests, days and voice: pure helpers (end) ----");
   const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
   const { LOST_ES_RE, HOWWORKS_RE, AREAS, stripAcc } = await import(copyUrl);
-  const names = ["REASK_GAP_MS", "reAskHeld", "LANGQ_RE", "langQ", "ENGLISH_ASK_RE", "LANG_ANSWER", "sameDayQ", "sameDayFor", "SAMEDAY_STEPS", "SAMEDAY_COPY", "sameDayLine", "shortAsk", "bareAreaAsk", "areaAskWords", "placeAsk", "softAckHow", "nameWithLang", "SOFT_ACK_RE", "detectAreaPlus", "WHO_RE", "MEANING_RE", "THERAPISTQ_RE", "ZONEQ_MORE_RE", "isPriceObjection", "jobSeekerKind", "LATER_RE"];
+  const names = ["REASK_GAP_MS", "reAskHeld", "LANGQ_RE", "langQ", "ENGLISH_ASK_RE", "LANG_ANSWER", "sameDayQ", "sameDayFor", "SAMEDAY_STEPS", "SAMEDAY_COPY", "sameDayLine", "shortAsk", "bareAreaAsk", "areaAskWords", "placeAsk", "softAckHow", "nameWithLang", "SOFT_ACK_RE", "detectAreaPlus", "WHO_RE", "MEANING_RE", "THERAPISTQ_RE", "ZONEQ_MORE_RE", "isPriceObjection", "jobSeekerKind", "LATER_RE", ...(block.includes("\nconst NIGHT_OK_RE = ") ? ["NIGHT_OK_RE"] : [])];
   const js = `import { JOB_RE, madridMidnight, madridInstant, stripAcc, detectArea, ACK_ONLY_RE, GOODBYE_RE, parseName, AREAS, looksLikeQuestion } from ${JSON.stringify(copyUrl)};\n`
     + stripTypeScriptTypes([one("LATER_RE"), one("WHO_RE"), one("MEANING_RE"), one("THERAPISTQ_RE"), one("ZONEQ_MORE_RE"), one("EXTRA_AREAS"), one("SOFT_ACK_RE"), lift(botSrc, "function detectAreaPlus("), one("PRICE_OBJ_RE"), lift(botSrc, "function isPriceObjection("), block, jobBlock].join("\n"))
     + `\nexport { ${names.join(", ")} };\n`;
@@ -4247,23 +4247,51 @@ for (const [msg, want, note] of [
   // the next 15 minutes as the Tomorrow tap (the tap's own branch: the day,
   // then the time question). Past midnight the day buttons go again instead.
   // All three lines are read from the source, so the model follows the code.
-  const nightBlock = "        if (!replyId && text && SOFT_ACK_RE.test(text) && Date.now() - Number(s.data.nightLineAt || 0) < REASK_GAP_MS) {\n          delete s.data.nightLineAt;\n          if (mcMadridHour() >= 19) replyId = \"day_tomorrow\"; else delete s.data.reAskStep;\n";
-  const iNight = daySrc.indexOf(nightBlock);
+  // Review round 4: a thank-you is not an "Ok" (it may close the chat), and the
+  // stamp lasted its 15 minutes whatever came in between. Now the stamp is read
+  // and cleared as the next message comes in (nightAt, right after the session
+  // is loaded), and only a plain ok or yes (NIGHT_OK_RE) is the tap. Which
+  // pattern and which stamp the block reads are taken from the source too.
+  const nightHead = daySrc.match(/\n {8}if \(!replyId && text && (NIGHT_OK_RE|SOFT_ACK_RE)\.test\(text\) && Date\.now\(\) - (nightAt|Number\(s\.data\.nightLineAt \|\| 0\)) < REASK_GAP_MS\) \{\n(?: {10}delete s\.data\.nightLineAt;\n)? {10}if \(mcMadridHour\(\) >= 19\) replyId = "day_tomorrow"; else delete s\.data\.reAskStep;\n/) || [];
+  const iNight = nightHead.length ? nightHead.index : -1;
   const nightFirst = iNight >= 0 && iNight < daySrc.indexOf("if ((replyId === \"day_today\" || replyId === \"day_tomorrow\") && s.data.coreAt && s.data.time) {");
+  const nightRe = nightHead[1] === "NIGHT_OK_RE" ? Q.NIGHT_OK_RE : nightHead[1] === "SOFT_ACK_RE" ? Q.SOFT_ACK_RE : null;
+  const nightOnce = nightHead[2] === "nightAt" && /\n    const s = await getSession\(from\);\n    if \(profileName && !s\.wa_name\) s\.wa_name = profileName;\n    if \(ref\) s\.data\.adRef = [^\n]*\n(?: *\/\/[^\n]*\n)*    const nightAt = Number\(s\.data\.nightLineAt \|\| 0\);\n    if \(nightAt\) \{ delete s\.data\.nightLineAt; await saveSession\(s\); \}\n/.test(botSrc);
   const nightStamp = lift(botSrc, "async function sameDayReply(").includes("  if (s.step === \"await_day\" || (!dayStep && /^(today|hoy)$/i.test(String(s.data.day || \"\").trim()))) s.data.nightLineAt = Date.now();\n  // Review: from 19:00 an area");
   const tapTomorrow = daySrc.includes("else if (replyId === \"day_tomorrow\") { s.data.day = L === \"es\" ? \"Mañana\" : \"Tomorrow\"; s.data.dayDate = longDate(L, 1); s.step = \"await_time\"; await saveSession(s); await logEvent(from, \"day_chosen\", { day: \"tomorrow\" }); await askTime(from, L); }");
-  const afterNightLine = (msg, hour, minsAgo) => {
-    const data = { reAskStep: "await_day", reAskAt: T - minsAgo * 60e3, ...(nightStamp ? { nightLineAt: T - minsAgo * 60e3 } : {}) };
-    if (nightFirst && Q.SOFT_ACK_RE.test(msg) && T - Number(data.nightLineAt || 0) < Q.REASK_GAP_MS) {
-      if (hour >= 19) return tapTomorrow ? "Tomorrow tap, then the time question" : "unknown";
+  const TAP = "Tomorrow tap, then the time question";
+  // One customer message (null: a button tap) at `at`, on the session `data`.
+  const nightTurn = (data, msg, hour, at) => {
+    const stamp = Number(data.nightLineAt || 0);
+    if (nightOnce) delete data.nightLineAt;
+    if (msg && nightFirst && nightRe && nightRe.test(msg) && at - stamp < Q.REASK_GAP_MS) {
+      if (!nightOnce) delete data.nightLineAt;
+      if (hour >= 19) return tapTomorrow ? TAP : "unknown";
       delete data.reAskStep;
     }
-    return dayAfterAck(data, msg);
+    return msg ? dayAfterAck(data, msg) : "a tap";
   };
+  const nightData = (minsAgo) => ({ reAskStep: "await_day", reAskAt: T - minsAgo * 60e3, ...(nightStamp ? { nightLineAt: T - minsAgo * 60e3 } : {}) });
+  const afterNightLine = (msg, hour, minsAgo) => nightTurn(nightData(minsAgo), msg, hour, T);
   check(G + ": the night line stamps the day question", "sameDayReply / case await_day", [nightStamp, nightFirst, tapTomorrow], [true, true, true], "review round 3: before the core's own check of a tapped day");
-  for (const msg of ["Ok", "Vale", "Okay", "Perfecto", "Genial", "Bien", "Thanks", "Gracias", "Yes", "Sí", "Ok 👍"]) check(G + ": the night line at 21:30, then 2 minutes later", msg, afterNightLine(msg, 21, 2), "Tomorrow tap, then the time question", "review round 3: \"Ok\" got nothing and tomorrow was never chosen");
-  for (const msg of ["Ok", "Gracias"]) check(G + ": the night line at 23:55, then at 00:05", msg, afterNightLine(msg, 0, 10), "day buttons", "review round 3: tomorrow is another day by then, so the question goes again");
+  check(G + ": the night line's stamp is for the next message only, and only an ok", "turn start / case await_day", [nightOnce, nightHead[1] || ""], [true, "NIGHT_OK_RE"], "review round 4");
+  for (const msg of ["Ok", "Vale", "Okay", "Perfecto", "Genial", "Bien", "Yes", "Sí", "Ok 👍", "Vale 👌🏽"]) check(G + ": the night line at 21:30, then 2 minutes later", msg, afterNightLine(msg, 21, 2), TAP, "review round 3: \"Ok\" got nothing and tomorrow was never chosen");
+  for (const msg of ["Thanks", "Thank you", "Thanks!", "Gracias", "¡Gracias!", "Muchas gracias", "Ok gracias", "Ok, gracias", "Vale, gracias", "Sí, gracias", "Gracias 👋", "Thanks 👋", "Gracias 🙏"]) check(G + ": the night line at 21:30, then 2 minutes later", msg, afterNightLine(msg, 21, 2), "quiet: a plain thanks", "review round 4: a thank-you picked Tomorrow and got the time question; held quietly, as in round 2");
+  for (const msg of ["Ok 😞", "Ok 🙏", "thx", "Thx 👋"]) check(G + ": the night line at 21:30, then 2 minutes later, never the Tomorrow tap", msg, afterNightLine(msg, 21, 2) === TAP, false, "review round 4: only a thumbs-up or an OK hand goes with the ok");
+  for (const [msg, want] of [["Ok", "day buttons"], ["Gracias", "quiet: a plain thanks"], ["Thanks", "quiet: a plain thanks"]]) check(G + ": the night line at 23:55, then at 00:05", msg, afterNightLine(msg, 0, 10), want, "review round 3: tomorrow is another day by then, so the question goes again; review round 4: a thanks stays quiet, as in round 2");
   for (const msg of ["Ok", "Yes"]) check(G + ": the night line, then 20 minutes later", msg, afterNightLine(msg, 21, 20), "day buttons", "as before");
+  // Review round 4: something else in between uses the stamp up. An answered
+  // question, "I'll let you know", or a tapped Tomorrow that came back to the
+  // day buttons (no studio could be asked): the "Ok" after it is not the tap.
+  for (const [before, note] of [
+    [["Do the therapists speak English?"], "a question answered"],
+    [["I'll let you know"], "\"I'll let you know\""],
+    [[null, "18:00", "Sol"], "Tomorrow tapped, the time and the area, and the day buttons again"],
+  ]) for (const msg of ["Ok", "Ok 👍", "Yes"]) {
+    const data = nightData(5);
+    before.forEach((b, i) => nightTurn(data, b, 21, T - (4 - i) * 60e3));
+    check(G + `: the night line at 21:25, then ${note}, then`, msg, nightTurn(data, msg, 21, T) === TAP, false, "review round 4: the stamp lasted 15 minutes and this message picked Tomorrow");
+  }
   for (const msg of ["Yes", "Gracias"]) check(G + ": 16 minutes later", msg, dayAfterAck({ reAskStep: "await_day", reAskAt: T - 16 * 60e3 }, msg), "day buttons", "");
 
   // House rules on every new line a customer can read.
