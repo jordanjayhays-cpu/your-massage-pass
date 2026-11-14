@@ -2341,6 +2341,9 @@ async function sameDayReply(s: Session, from: string, L: string, text: string, a
     await reAskNow(s, from, L, ask);
     return;
   }
+  // Review: from 19:00 an area, a massage or a length said with the question is
+  // kept, as before 19:00; a time said with it was for tonight.
+  if (absorbOffStep(s, text, L, "day").includes("time")) { s.data.time = null; s.data.timeBand = null; }
   if (!dayStep && /^(today|hoy)$/i.test(String(s.data.day || "").trim())) {
     s.data.day = null; s.data.dayDate = null; s.data.time = null; s.data.timeBand = null; s.data.timeBandId = null;
     s.step = "await_day";
@@ -3840,6 +3843,49 @@ const TYPES_ASK_RE = /^[\s¿?¡]*(?:types?|tipos?)\s*\?[\s?]*$/i;
 function shortAsk(t: string): "" | "info" | "where" | "types" {
   const s = String(t || "");
   return INFO_ASK_RE.test(s) ? "info" : WHERE_ASK_RE.test(s) ? "where" : TYPES_ASK_RE.test(s) ? "types" : "";
+}
+// v214.2 (review): at the area question "Retiro?", "¿Sol?" or "Sol ?" is the
+// area with a question mark. v214.1 saved it; asking the area again is the
+// repeat F3 removes. Without the marks it is one to three words, with no
+// question word, naming a known area (detectAreaPlus), and the step takes it as
+// it takes the same words typed without them. "Is Sol ok?", "Where is
+// Retiro?", "Something near Sol?", "Retiro or Salamanca?" and a language or
+// same-day question keep the round-1 rule. The words without the marks, or "".
+const AREA_ASK_WORD_RE = /^(?:where|which|what|how|near|cerca|donde|cual|que|como|is|es|hay|any|do|does|can|puedo|puede|or|o)$/;
+// Review: "Near Sol?", "¿Cerca de Sol?" and "Por Retiro?" name the area too,
+// and "Retiro? 🙏" or "Sol? thanks" is "Retiro?" said politely. An area answer
+// is short, so a long message is never read here (and never makes it slow).
+const AREA_NEAR_RE = /^(?:near|close\s+to|cerca\s+del?|por(?:\s+(?:el|la))?)\s+/i;
+const AREA_TAIL_RE = /(?:[\s.,!¡?¿\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]|\b(?:please|pls|plz|thanks|thank\s+you|thx|gracias|porfa|por\s+favor)\b)+$/iu;
+function bareAreaAsk(t: string): string {
+  const raw = String(t || "");
+  if (!/[?¿]/.test(raw) || raw.length > 80) return "";
+  const s = raw.replace(/^[\s¿¡]+/, "").replace(AREA_TAIL_RE, "").replace(AREA_NEAR_RE, "");
+  const n = s ? s.split(/\s+/).length : 0;
+  if (n < 1 || n > 3 || /[?¿]/.test(s)) return "";
+  if (stripAcc(s).split(/[^a-z0-9]+/).some((w) => AREA_ASK_WORD_RE.test(w))) return "";
+  if (langQ(raw) || sameDayQ(raw)) return "";
+  return detectAreaPlus(s) ? s : "";
+}
+// v214.2 (review): a thanks or an ok at the day question may be held quietly
+// ("ack") only when it is a plain one, the kind the holding turn also lets pass
+// (ACK_ONLY_RE, GOODBYE_RE). "Yes", "Sí" or "Claro" answers something (the
+// link line asks "Would you like to continue?"), so the day question goes
+// again, as in v214.1 ("bare").
+function softAckHow(t: string): "ack" | "bare" {
+  const s = String(t || "");
+  return ACK_ONLY_RE.test(s) || GOODBYE_RE.test(s) ? "ack" : "bare";
+}
+// v214.2 (review): at the name question "Mark, English speaking therapist
+// please" or "Ana, i dont speak spanish" is the name with a language request.
+// The name (parseName keeps what comes before the comma), or "". Never with a
+// "?", and never when the name part is itself about the language ("I only
+// speak English", "English-speaking therapist please").
+function nameWithLang(t: string): string {
+  const s = String(t || "");
+  if (s.includes("?")) return "";
+  const n = parseName(s);
+  return n && !LANGQ_RE.test(n) ? n : "";
 }
 // ---- v214.2 questions first: pure helpers (end) ----
 // v183: "¡Gracias!", "Si, si" and acks with any emoji (skin tones too) count.
@@ -11615,6 +11661,7 @@ const handleInner = async (req: Request) => {
     // word list. A place name alone never changes the language, and a language
     // we only guessed is settled by the reader on the customer's first real
     // sentence of two words or more.
+    const lang0 = s.data.lang; // v214.2 (review): the language before this message
     const placeOnly = !!text && !!detectAreaPlus(text) && text.trim().split(/\s+/).length <= 3;
     if (text && !replyId && s.data.langGuess && text.trim().split(/\s+/).length >= 2 && !AD_OPENER_RE.test(text.trim())) {
       const rd = await readingFor(from, text, 4000);
@@ -11632,6 +11679,10 @@ const handleInner = async (req: Request) => {
       s.data.lang = "en"; delete s.data.langGuess; delete s.data.reAskStep; await saveSession(s);
       await logEvent(from, "lang_settled", { lang: "en", by: "english_question" });
     }
+    // v214.2 (review): a switch by the reader, strongSpanish or looksEnglish
+    // starts the repeat limit again too, so the step's question goes once in
+    // the new language.
+    if (s.data.lang !== lang0 && s.data.reAskStep) { delete s.data.reAskStep; await saveSession(s); }
     const L: string = s.data.lang === "es" ? "es" : "en";
 
     // v195 (replay): "No entiendo" or "I don't speak English" after an English
@@ -12080,6 +12131,14 @@ const handleInner = async (req: Request) => {
       await logEvent(from, "complaint", { step: s.step, text: text.slice(0, 300) });
       return new Response("OK", { status: 200 });
     }
+    // v214.2 (review): "Retiro?" or "¿Sol?" at the area question is the area
+    // (bareAreaAsk). From here on the words go without the marks, so the
+    // question branches, the area guard and the step see "Retiro" or "Sol",
+    // as v214.1 did. Every other "?" at the area question stays a question.
+    if (text && !replyId && s.step === "await_area") {
+      const bare = bareAreaAsk(text);
+      if (bare) { await logEvent(from, "area_question_mark", { said: text.slice(0, 80), area: bare }); text = bare; }
+    }
     // v214.2 (14 Nov 2026, F3): questions about the language, about today,
     // and one-word ones ("Info", "location?", "tipos?") get an answer here,
     // after the job-seeker, decline, price-objection and complaint guards. A
@@ -12090,9 +12149,12 @@ const handleInner = async (req: Request) => {
     // speak English?", "Deep tissue, English speaking please") goes to the step,
     // as the button branch's own question test does (!detectService, !detectDay).
     const todayQ = !!text && sameDayFor(s.step, s.data.day, text) && (["await_day", "await_day_text"].includes(s.step) || !stepAnswer);
-    const langAsk = !!text && langQ(text);
-    const f3q = !!text && ((langAsk && !stepAnswer && !detectService(text) && !detectDay(text, L)) || todayQ || (!!shortAsk(text) && !stepAnswer));
-    // v214.2: at the area question anything with a "?" is a question, never the area.
+    // Review: "In English?" and "English please?" ask for English too
+    // (ENGLISH_ASK_RE), and "Mark, English speaking therapist please" at the
+    // name question is the name (nameWithLang): the step keeps it.
+    const langAsk = !!text && (langQ(text) || ENGLISH_ASK_RE.test(text));
+    const f3q = !!text && ((langAsk && !stepAnswer && !(s.step === "await_name" && !!nameWithLang(text)) && !detectService(text) && !detectDay(text, L)) || todayQ || (!!shortAsk(text) && !stepAnswer));
+    // v214.2: at the area question anything else with a "?" is a question, never the area.
     if (text && freeTextStep && !isEmail(text) && (looksLikeQuestion(text) || MEANING_RE.test(text) || f3q || (s.step === "await_area" && text.includes("?")))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
@@ -12125,8 +12187,11 @@ const handleInner = async (req: Request) => {
           case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
         }
       };
+      // Review: a question that holds the step's answer ("Is Sol ok?" at the
+      // area question) leaves the step without it, so the question always
+      // follows ("bare"), or the chat would stall.
       if (todayQ) await sameDayReply(s, from, L, text, askAgain);
-      else await reAskOnce(s, from, L, text, askAgain);
+      else await reAskOnce(s, from, L, text, askAgain, stepAnswer ? "bare" : "answer");
       return new Response("OK", { status: 200 });
     }
 
@@ -12426,7 +12491,7 @@ const handleInner = async (req: Request) => {
         // plainly, without saying we did not understand.
         else if (text && SOFT_ACK_RE.test(text)) {
           await logEvent(from, "soft_ack", { at: "await_day", said: text.slice(0, 30) });
-          await reAskOnce(s, from, L, text, undefined, "ack"); // v214.2: the one repeat limit
+          await reAskOnce(s, from, L, text, undefined, softAckHow(text)); // v214.2: the one repeat limit
         }
         else {
           // v214.2: "answer" once the agent answered; a miss or a kept detail
@@ -12471,6 +12536,9 @@ const handleInner = async (req: Request) => {
             // Someone who sends a link is showing us something, not failing to
             // answer, and the first thing they should read is that it arrived.
             if (LINK_ONLY_RE.test(String(text || ""))) {
+              // v214.2 (review): the link line asks a yes or no question, so
+              // the "Ok" that answers it is never held back.
+              delete s.data.reAskStep; await saveSession(s);
               await sendText(from, COPY[L].gotLink);
               await logEvent(from, "got_link", { at: "await_day" });
               break;
@@ -12848,6 +12916,9 @@ const handleInner = async (req: Request) => {
       }
       case "await_name": {
         if (!text) { await sendText(from, COPY[L].name); break; }
+        // v214.2 (review): "Mark, English speaking therapist please" is Mark
+        // with a language request: the answer goes first, then the name below.
+        if (langAsk && nameWithLang(text)) await f3Answer(from, L, text, true);
         // v121: "Me llamo Manju" used to store "Me". parseName strips the
         // sentence people actually answer with and rejects anything that is
         // not a plausible name, so we ask again instead of sending a phrase to

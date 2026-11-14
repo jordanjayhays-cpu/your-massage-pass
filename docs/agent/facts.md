@@ -142,7 +142,9 @@ The bot POSTs to `AGENT_URL` with `Authorization: Bearer AGENT_KEY`:
 ```json
 { "phone": "34600000000", "name": "Ana", "lang": "es", "text": "what they wrote",
   "step": "await_time", "booking": "one line on their booking, or none",
-  "thread": [{ "dir": "in|out", "body": "..." }], "facts_url": "this file" }
+  "thread": [{ "dir": "in|out", "body": "..." }], "facts_url": "this file",
+  "madrid_now": "Saturday, 14 November 2026 at 18:30",
+  "context": "only when the team wrote the last message by hand: what they wrote" }
 ```
 
 The agent answers within 15 seconds:
