@@ -2280,6 +2280,75 @@ async function reAsk(s: Session, from: string, L: string) {
     case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
   }
 }
+// v214.2 (14 Nov 2026, F3): every re-ask of the step's own question goes
+// through here. v200 held it back only after an AI answer at a button step;
+// the same limit (reAskHeld) now covers the ready-made answers, a thanks or a
+// miss at the day question, and the holding turn. When it is held back only
+// the answer goes, not the question again. True when the question was sent.
+// how: "answer" (an answer went out this turn) and "ack" (a thanks or an ok)
+// are held when the question went in the last 15 minutes or after "I'll tell
+// you later"; a held "ack" then stays quiet, with no holding line. "bare" is
+// when the question is the whole reply (a miss, a kept detail, the holding
+// turn): only "later" holds it, or the customer would get nothing at all.
+async function reAskOnce(s: Session, from: string, L: string, text: string, ask?: () => Promise<unknown>, how: "answer" | "ack" | "bare" = "answer"): Promise<boolean> {
+  const held = reAskHeld(s.data, s.step, text, Date.now(), how !== "bare");
+  if (held) { if (how === "ack") quietThisTurn = true; await logEvent(from, "reask_skipped", { step: s.step, later: held === "later", how }); return false; }
+  await reAskNow(s, from, L, ask);
+  return true;
+}
+// v214.2: the step's question with no hold, when what was just said changes it
+// or points at it (the night line, a today just kept, "Tap a day below").
+// Recorded, so the limit counts it.
+async function reAskNow(s: Session, from: string, L: string, ask?: () => Promise<unknown>): Promise<void> {
+  s.data.reAskStep = s.step; s.data.reAskAt = Date.now(); await saveSession(s);
+  if (ask) await ask(); else await reAsk(s, from, L);
+}
+// v214.2: the questions the branches had no answer for. True when one was sent.
+// lang is langQ(text): a real language question, not "I speak English".
+async function f3Answer(from: string, L: string, text: string, lang: boolean): Promise<boolean> {
+  const k = shortAsk(text);
+  if (k === "info") await sendText(from, COPY[L].howItWorks);
+  else if (k === "where") await sendText(from, await whereAnswer(from, L));
+  else if (k === "types") await sendText(from, COPY[L].servicesAnswer);
+  else if (lang) await sendText(from, LANG_ANSWER[L === "es" ? "es" : "en"]);
+  else return false;
+  await logEvent(from, "question_answered", { kind: k || "language", said: text.slice(0, 80) });
+  return true;
+}
+// v214.2: a same-day question gets its answer, then what comes next. Before
+// 19:00 Madrid today is the day, the way a typed "today" is: at the day
+// question the flow goes on to the time; elsewhere today is kept if no day was
+// chosen yet, and the step's question goes again. From 19:00 a today chosen
+// earlier is dropped and the day is asked, on buttons that no longer carry
+// Today; otherwise the step's question goes again. The night line says we look
+// at tomorrow, so it never stands alone: what follows it is never held back.
+async function sameDayReply(s: Session, from: string, L: string, text: string, ask?: () => Promise<unknown>): Promise<void> {
+  const hour = mcMadridHour();
+  await sendText(from, sameDayLine(L, hour));
+  await logEvent(from, "sameday_asked", { at: s.step, late: hour >= 19, said: text.slice(0, 80) });
+  const dayStep = s.step === "await_day" || s.step === "await_day_text";
+  if (hour < 19 && dayStep) {
+    s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0);
+    const more = absorbOffStep(s, text, L, "day");
+    await logEvent(from, "day_chosen", { day: "typed", sameday_q: true, more });
+    if (s.data.time) { await saveSession(s); await afterTime(s, from, L); }
+    else { s.step = "await_time"; await saveSession(s); await askTime(from, L); }
+    return;
+  }
+  if (hour < 19) {
+    if (s.data.day) { await reAskOnce(s, from, L, text, ask); return; }
+    s.data.day = L === "es" ? "Hoy" : "Today"; s.data.dayDate = longDate(L, 0);
+    await reAskNow(s, from, L, ask);
+    return;
+  }
+  if (!dayStep && /^(today|hoy)$/i.test(String(s.data.day || "").trim())) {
+    s.data.day = null; s.data.dayDate = null; s.data.time = null; s.data.timeBand = null; s.data.timeBandId = null;
+    s.step = "await_day";
+    await reAskNow(s, from, L);
+    return;
+  }
+  await reAskNow(s, from, L, ask);
+}
 
 async function helpInstead(s: Session, from: string, L: string, text: string) {
   await sendText(from, COPY[L].noHuman);
@@ -3698,6 +3767,81 @@ const THERAPISTQ_RE = /(who\s+(gives?|does|will\s+(give|do)|is)\s+(the\s+)?(mass
 const MEANING_RE = /\b(means?|meaning|what\s+(is|are)|what'?s|qu[eé]\s+es|qu[eé]\s+significa|significa|explain|expl[ií]ca(me)?|c[oó]mo\s+(es|ser[ií]a|son|funciona)|how\s+is|what\s+.{0,20}\s+like|descripci[oó]n|description|describe)\b/i;
 // "Ya no gracias" (Adrian) and a "No" tap (Vinzma29) were read as answers.
 const NOTHANKS_RE = /^(no|nope|nah|ya no|no,? gracias|ya no,? gracias|no thanks?|no,? thank you|not now|ahora no|no me interesa|not interested|ya no hace falta|no hace falta|d[eé]jalo|olv[ií]dalo)[\s.!,]*(gracias|thanks|thank you|thx)?[\s.!]*$/i;
+// ---- v214.2 questions first: pure helpers (start) ----
+// v214.2 (14 Nov 2026, F3 from the ads review): 23 people got the same
+// question three or more times, and questions about the language and about
+// booking for today went unanswered. copy.ts stays pinned, so the patterns
+// and the wording live here.
+// One repeat limit for the step's own question (the v200 rule, now for every
+// re-ask): at most once in 15 minutes, never after "I'll tell you later".
+const REASK_GAP_MS = 15 * 60e3;
+// recent: false when the question is the whole reply; then only "later" holds.
+function reAskHeld(data: Record<string, any>, step: string, text: string, now: number, recent = true): "" | "later" | "recent" {
+  if (LATER_RE.test(String(text || ""))) return "later";
+  if (recent && data.reAskStep === step && now - Number(data.reAskAt || 0) < REASK_GAP_MS) return "recent";
+  return "";
+}
+// "Do you speak English?", "¿Habláis inglés?", "English?", "do the therapists
+// speak English", "no entiendo inglés". A plain "English" or "Español" still
+// switches the language, and "No entiendo" still resends the Spanish opener
+// once (LOST_ES_RE); both run earlier.
+const LANGQ_RE = /\b(?:speak|talk|understand|habl|entiend|entender|comprend)[a-záéíóú]*[^.!\n]{0,40}?\b(?:engl\w*|ingl\w*|spanish|spanich|espa[nñ]ol|castellano)|\b(?:english|ingl[eé]s|spanish|espa[nñ]ol)[\s-]+(?:speak\w*|hablante)|^\s*[¿?]*\s*(?:english|ingl[eé]s|spanish|espa[nñ]ol)\s*\?+\s*$/i;
+// Only a question, a "no" or "only", or a request is asked here. "I speak
+// English", "hablo inglés" and "Ana, I speak English" are statements and go to
+// the step as before; "no entiendo inglés", "I only speak English" and
+// "English-speaking therapist please" get the answer.
+const LANGQ_CUE_RE = /[?¿]|^[\s¡]*(?:(?:hi|hello|hey|hola|buenas|ok|okay|vale|and|y|also|so|pues|sorry|perdona|perd[oó]n)[\s,!.]+)*(?:do|does|can|could|is|are|will|would|anyone|someone|somebody|hablas|habl[aá]is|hablan|habla|se\s+habla|hay|alguien|entiendes|entend[eé]is|entienden|pueden?|pod[eé]is)(?![a-zñáéíóú])|\b(?:no|not|don'?t|doesn'?t|can'?t|cannot|only|just|solo|s[oó]lo|ni)\s+(?:[a-zñáéíóú']+\s+){0,2}?(?:speak|talk|understand|habl|entiend|entender|comprend)|\b(?:english|ingl[eé]s|spanish|espa[nñ]ol)[\s-]+(?:speak\w*|hablante)|\b(?:need|want|prefer|looking\s+for|busco|necesito|quiero|prefiero|someone\s+who|somebody\s+who|alguien\s+que)\b/i;
+function langQ(t: string): boolean {
+  const s = String(t || "");
+  return LANGQ_RE.test(s) && LANGQ_CUE_RE.test(s);
+}
+// "English?", "In English?", "Speak English?" in a Spanish chat ask for
+// English: the chat switches, as a typed "English" does (that one has no "?").
+const ENGLISH_ASK_RE = /^[\s¿?¡]*(?:(?:in|speak)\s+)?english(?:\s+(?:please|pls))?\s*\?[\s?]*$/i;
+const LANG_ANSWER: Record<string, string> = {
+  en: "We can chat here in English, Spanish or your own language. At the studio itself the staff usually speak Spanish, so we cannot promise English there.",
+  es: "Podemos hablar aquí en español, en inglés o en tu idioma. En el centro normalmente hablan español, así que no podemos prometer que te atiendan en inglés.",
+};
+// "Can I book today?", "¿Para hoy?", "Is it possible now?". Only a question:
+// "today at 6" and "hoy a las 18" are answers, and the day step takes them.
+// A bare "now" counts only with a booking word or in a very short message, so
+// "How does it work now?" is not about today.
+const SAMEDAY_WORD_RE = /\b(?:today|tonight|this\s+(?:afternoon|evening)|same[\s-]?day|hoy|esta\s+(?:tarde|noche)|mismo\s+d[ií]a)(?![a-zñáéíóú])/i;
+const SAMEDAY_NOW_RE = /\bnow\b|\bahora(?![a-zñáéíóú])/i;
+const SAMEDAY_CUE_RE = /\b(?:come|go|book|get|available|availability|possible|anything|any|slot|space|appointment|massage|ir|venir|reservar|hueco|sitio|espacio|disponibles?|posible|cita|masaje)\b/i;
+const SAMEDAY_NOT_RE = /\b(?:for|by|until|till|from|just)\s+now\b|\b(?:por|hasta|desde)\s+ahora(?![a-zñáéíóú])|\bahora\s+no\b|\bnot\s+(?:today|tonight|now)\b|\bhoy\s+no\b/gi;
+const SAMEDAY_ASK_RE = /[?¿]|^[\s¡]*(?:(?:hi|hello|hey|hola|buenas|ok|okay|vale|and|y|also|so|pues)[\s,!.]+)*(?:can|could|is|are|do|does|will|would|any|anything|what|when|how|which|possible|available|puedo|puede|puedes|pod[eé]is|podr[ií]a[ns]?|podr[ií]ais|pueden|hay|ten[eé]is|tienes|tienen|tendr[ií]a[ns]?|tendr[ií]ais|habr[ií]a|qu[eé]|cu[aá]ndo|c[oó]mo|cu[aá]l|es\s+posible|se\s+puede|quedan?|posible|disponibles?)(?![a-zñáéíóú])/i;
+function sameDayQ(t: string): boolean {
+  const s = String(t || "");
+  const c = s.replace(SAMEDAY_NOT_RE, " ");
+  const today = SAMEDAY_WORD_RE.test(c) || (SAMEDAY_NOW_RE.test(c) && (SAMEDAY_CUE_RE.test(c) || c.trim().split(/\s+/).length <= 3));
+  return today && SAMEDAY_ASK_RE.test(s);
+}
+// Only where today is still the question: at the day step, or while no other
+// day has been chosen. "Today instead?" after picking Saturday goes on as before.
+// And only before a request exists: at await_email_post, done or an offer,
+// "Is it today?" is about their booking, and lastResort answers it as before.
+const SAMEDAY_STEPS = ["await_service", "await_day", "await_day_text", "await_time", "await_hour", "await_time_text", "await_area", "await_name", "await_email", "await_email_req", "await_sameday"];
+function sameDayFor(step: string, day: unknown, text: string): boolean {
+  if (!SAMEDAY_STEPS.includes(step) || !sameDayQ(text)) return false;
+  return step === "await_day" || step === "await_day_text" || !day || /^(today|hoy)$/i.test(String(day).trim());
+}
+// The answer. From 19:00 Madrid the opener's own night line (firstLine).
+const SAMEDAY_COPY: Record<string, { open: string; late: string }> = {
+  en: { open: "Yes, same day can work: a 60 min massage needs to start at least an hour from now and by 20:00. Most studios open at 11:00 or 12:00.", late: "It's late for tonight, so I'll look at tomorrow." },
+  es: { open: "Sí, para hoy puede ser: un masaje de 60 min tiene que empezar como pronto dentro de una hora y antes de las 20:00. La mayoría de los centros abren a las 11:00 o a las 12:00.", late: "Para esta noche ya es tarde, así que miro mañana." },
+};
+const sameDayLine = (L: string, madridHour: number): string => SAMEDAY_COPY[L === "es" ? "es" : "en"][madridHour >= 19 ? "late" : "open"];
+// One or two words that looksLikeQuestion (copy.ts) misses: it wants a
+// question word, or a "?" with three words or more.
+const INFO_ASK_RE = /^[\s¿?¡]*(?:(?:m[aá]s|more)\s+)?(?:info|informaci[oó]n|information)[\s,]*(?:please|pls|por\s+favor|porfa)?[\s.!?]*$/i;
+const WHERE_ASK_RE = /^[\s¿?¡]*(?:location|ubicaci[oó]n)\s*\?[\s?]*$/i;
+const TYPES_ASK_RE = /^[\s¿?¡]*(?:types?|tipos?)\s*\?[\s?]*$/i;
+function shortAsk(t: string): "" | "info" | "where" | "types" {
+  const s = String(t || "");
+  return INFO_ASK_RE.test(s) ? "info" : WHERE_ASK_RE.test(s) ? "where" : TYPES_ASK_RE.test(s) ? "types" : "";
+}
+// ---- v214.2 questions first: pure helpers (end) ----
 // v183: "¡Gracias!", "Si, si" and acks with any emoji (skin tones too) count.
 const SOFT_ACK_RE = /^[\s¡]*(s[ií]+|s[ií],?\s*s[ií]|sisi+|yes|yes,? yes|yep|yeah|ok(ay)?|okey|vale|claro|perfecto|genial|bien|gracias|muchas gracias|thanks|thank you|thx|ok,? gracias|vale,? gracias|s[ií],? gracias)[\s.,!¡\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]*$/iu;
 // v183 (review): a message that is only a gender word, said without being
@@ -3735,7 +3879,8 @@ async function agentHandoff(s: Session, from: string, L: string, text: string, t
   // proved itself. Customers keep AGENT_URL (unset) and so Qwen on OpenRouter.
   const url = JORDAN_TEST_NUMS.includes(digitsOf(from)) ? (await appSecret("HERMES_URL_STANDBY")) || (await appSecret("AGENT_URL")) : await appSecret("AGENT_URL");
   try {
-    const payload: Record<string, unknown> = { phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL };
+    // v214.2 (14 Nov 2026, F3): madrid_now, so the same-day facts can be applied.
+    const payload: Record<string, unknown> = { phone: digitsOf(from), name: firstNameFromProfile(s.wa_name) || null, lang: L, text, step: s.step, booking, thread, facts_url: FACTS_URL, madrid_now: madridNowLabel() };
     if (ctx.founderSaid) payload.context = `A person from the Massage Club team wrote the last message in this chat by hand: "${ctx.founderSaid.slice(0, 500)}". The customer's text answers that message, not the booking question before it. Answer it as that person would, using only the facts.`;
     let j: any = null;
     let via = url ? "agent_url" : "openrouter";
@@ -10368,10 +10513,14 @@ const handler = async (req: Request) => {
         // again, not a promise to come back. 13 of the holding lines went to
         // people at the day question.
         const flowStep = !isStudio && ["await_service", "await_day", "await_day_text", "await_time", "await_hour", "await_time_text", "await_area", "await_name", "await_email", "await_email_req"].includes(s.step);
-        if (flowStep) { if (!(await greetedRecently(from, 90_000))) await reAsk(s, from, L); }
+        // v214.2 (14 Nov 2026, F3): that question goes through the one repeat
+        // limit too (reAskOnce). Nothing else went out this turn, so it is the
+        // whole reply ("bare"): only "I'll tell you later" holds it back.
+        let reasked = false;
+        if (flowStep) { if (!(await greetedRecently(from, 90_000))) reasked = await reAskOnce(s, from, L, said, undefined, "bare"); }
         else if (!repeat) await sendText(from, ack);
-        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120), held: repeat, type: m?.type, reasked: flowStep });
-        await notifyJordanWa(`${flowStep ? "Nothing was sent back, so they got their booking question again" : repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
+        await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120), held: repeat, type: m?.type, reasked });
+        await notifyJordanWa(`${flowStep ? (reasked ? "Nothing was sent back, so they got their booking question again" : "Nothing was sent back and their booking question was not repeated (we wrote to them in the last 90 seconds, or they said they will tell us later)") : repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
       }
     }
   } catch (e) { console.log("[wa] fallback check failed", String(e)); }
@@ -11476,6 +11625,13 @@ const handleInner = async (req: Request) => {
       if (s.data.lang !== "es" && strongSpanish(text)) s.data.lang = "es";
       else if (s.data.lang === "es" && !strongSpanish(text) && looksEnglish(text) && !AD_OPENER_RE.test(text.trim())) s.data.lang = "en";
     }
+    // v214.2 (14 Nov 2026, F3): "English?" after the Spanish opener asks for
+    // English. The chat switches, and the step's question has not been asked in
+    // English yet, so the repeat limit starts again.
+    if (text && !replyId && s.data.lang === "es" && ENGLISH_ASK_RE.test(text)) {
+      s.data.lang = "en"; delete s.data.langGuess; delete s.data.reAskStep; await saveSession(s);
+      await logEvent(from, "lang_settled", { lang: "en", by: "english_question" });
+    }
     const L: string = s.data.lang === "es" ? "es" : "en";
 
     // v195 (replay): "No entiendo" or "I don't speak English" after an English
@@ -11924,11 +12080,25 @@ const handleInner = async (req: Request) => {
       await logEvent(from, "complaint", { step: s.step, text: text.slice(0, 300) });
       return new Response("OK", { status: 200 });
     }
-    if (text && freeTextStep && !isEmail(text) && (looksLikeQuestion(text) || MEANING_RE.test(text))) {
+    // v214.2 (14 Nov 2026, F3): questions about the language, about today,
+    // and one-word ones ("Info", "location?", "tipos?") get an answer here,
+    // after the job-seeker, decline, price-objection and complaint guards. A
+    // same-day question that also answers this step ("Thai today?" at the
+    // massage question, "today at 17:00?" at the time) is left to the step,
+    // except at the day question, where today is the answer. A language
+    // question that also answers the step ("Tomorrow at 6pm, do the therapists
+    // speak English?", "Deep tissue, English speaking please") goes to the step,
+    // as the button branch's own question test does (!detectService, !detectDay).
+    const todayQ = !!text && sameDayFor(s.step, s.data.day, text) && (["await_day", "await_day_text"].includes(s.step) || !stepAnswer);
+    const langAsk = !!text && langQ(text);
+    const f3q = !!text && ((langAsk && !stepAnswer && !detectService(text) && !detectDay(text, L)) || todayQ || (!!shortAsk(text) && !stepAnswer));
+    // v214.2: at the area question anything with a "?" is a question, never the area.
+    if (text && freeTextStep && !isEmail(text) && (looksLikeQuestion(text) || MEANING_RE.test(text) || f3q || (s.step === "await_area" && text.includes("?")))) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
       else if (zoneQ(text)) await sendText(from, await whereAnswer(from, L));
+      else if (await f3Answer(from, L, text, langAsk) || todayQ) { /* v214.2: answered; a same-day line goes below */ }
       else {
         // v71: the regexes above cover price, how it works and zone. Everything
         // else went to helpInstead, which is the generic "tell me the massage,
@@ -11943,15 +12113,20 @@ const handleInner = async (req: Request) => {
           return new Response("OK", { status: 200 });
         }
       }
-      switch (s.step) {
-        case "await_area": await askArea(from, L); break;
-        case "await_day_text": await askDayList(from, L); break;
-        case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
-        case "await_studio_text": await sendText(from, COPY[L].otherStudioAsk); break;
-        case "await_name": await sendText(from, COPY[L].name); break;
-        case "await_email": case "await_email_req": await sendText(from, COPY[L].email); break;
-        case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
-      }
+      // v214.2: the step's question again goes through the one repeat limit.
+      const askAgain = async () => {
+        switch (s.step) {
+          case "await_area": await askArea(from, L); break;
+          case "await_day_text": await askDayList(from, L); break;
+          case "await_time_text": await sendText(from, COPY[L].timeAsk); break;
+          case "await_studio_text": await sendText(from, COPY[L].otherStudioAsk); break;
+          case "await_name": await sendText(from, COPY[L].name); break;
+          case "await_email": case "await_email_req": await sendText(from, COPY[L].email); break;
+          case "await_email_post": await sendText(from, COPY[L].emailAskPost); break;
+        }
+      };
+      if (todayQ) await sameDayReply(s, from, L, text, askAgain);
+      else await reAskOnce(s, from, L, text, askAgain);
       return new Response("OK", { status: 200 });
     }
 
@@ -11959,7 +12134,7 @@ const handleInner = async (req: Request) => {
     // again. On 6 Sept a customer asked "Que precio es?" three times at the day
     // question and got the day buttons three times.
     const buttonStep = ["await_service", "await_day", "await_time", "await_hour", "await_area", "await_sameday"].includes(s.step);
-    if (text && buttonStep && !replyId && (THERAPISTQ_RE.test(text) || PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || zoneQ(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10))) {
+    if (text && buttonStep && !replyId && (THERAPISTQ_RE.test(text) || PRICEQ_RE.test(text) || PHOTOQ_RE.test(text) || (HOWWORKS_RE.test(text) || WHO_RE.test(text)) || zoneQ(text) || SERVICEQ_RE.test(text) || (looksLikeQuestion(text) && !detectService(text) && !detectDay(text, L)) || (MEANING_RE.test(text) && text.split(/\s+/).length <= 10) || f3q)) {
       if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
@@ -11981,6 +12156,7 @@ const handleInner = async (req: Request) => {
         await sendText(from, COPY[L].servicesAnswer);
         await logEvent(from, "services_asked", { said: String(text).slice(0, 80), at: s.step });
       }
+      else if (await f3Answer(from, L, text, langAsk) || todayQ) { /* v214.2: answered; a same-day line goes below */ }
       else {
         const stepBefore = s.step;
         if (await lastResort(s, from, L, text)) {
@@ -11989,19 +12165,16 @@ const handleInner = async (req: Request) => {
           await helpInstead(s, from, L, text);
           return new Response("OK", { status: 200 });
         }
-        // v200 (11 Oct): Bernard got "¿Qué día te viene bien?" five times in
-        // four minutes, once after every answer, including straight after
-        // "Perfecto, sin prisas" when he had said he would tell us the day
-        // later. After an answered question the step's question goes again at
-        // most once in 15 minutes, and never when they said they will say later.
-        const reAskedLately = s.data.reAskStep === s.step && Date.now() - Number(s.data.reAskAt || 0) < 15 * 60e3;
-        if (reAskedLately || LATER_RE.test(text)) {
-          await logEvent(from, "reask_skipped", { step: s.step, later: LATER_RE.test(text) });
-          return new Response("OK", { status: 200 });
-        }
-        s.data.reAskStep = s.step; s.data.reAskAt = Date.now(); await saveSession(s);
       }
-      await reAsk(s, from, L);
+      // v200 (11 Oct): Bernard got "¿Qué día te viene bien?" five times in
+      // four minutes, once after every answer, including straight after
+      // "Perfecto, sin prisas" when he had said he would tell us the day
+      // later. After an answered question the step's question goes again at
+      // most once in 15 minutes, and never when they said they will say later.
+      // v214.2: that was only after an AI answer; now after every answer here
+      // (reAskOnce). "How much for today?" gets the price, then the same-day line.
+      if (todayQ) await sameDayReply(s, from, L, text);
+      else await reAskOnce(s, from, L, text);
       return new Response("OK", { status: 200 });
     }
 
@@ -12253,9 +12426,13 @@ const handleInner = async (req: Request) => {
         // plainly, without saying we did not understand.
         else if (text && SOFT_ACK_RE.test(text)) {
           await logEvent(from, "soft_ack", { at: "await_day", said: text.slice(0, 30) });
-          if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
+          await reAskOnce(s, from, L, text, undefined, "ack"); // v214.2: the one repeat limit
         }
         else {
+          // v214.2: "answer" once the agent answered; a miss or a kept detail
+          // is "bare"; under "Tap a day below" the buttons always go.
+          let how: "answer" | "bare" = "bare";
+          let mustAsk = false;
           // v191: the reader first. "1. full body, lower back pain 2. any time
           // 3. near Rios Rosas" has nothing a regex knows, and all of it counts.
           const rgot = text ? await readerAssist(s, from, L, text, "day") : [];
@@ -12305,11 +12482,8 @@ const handleInner = async (req: Request) => {
               if (s.step !== stepNow) break;
               // v200: see LATER_RE. Answered, so the day question goes again at
               // most once in 15 minutes, and not at all after "I'll tell you".
-              if (LATER_RE.test(text) || (s.data.reAskStep === s.step && Date.now() - Number(s.data.reAskAt || 0) < 15 * 60e3)) {
-                await logEvent(from, "reask_skipped", { step: s.step, later: LATER_RE.test(text) });
-                break;
-              }
-              s.data.reAskStep = s.step; s.data.reAskAt = Date.now(); await saveSession(s);
+              // v214.2: that limit is reAskOnce below, for every way down here.
+              how = "answer";
             } else if (s.data.miss >= 2) {
               // v183 (8 Oct): Alexandru wrote in Romanian and broken Spanish
               // ("Traslator. Romano", "Noă tindo") and got "Sorry, I did not catch
@@ -12318,11 +12492,14 @@ const handleInner = async (req: Request) => {
               // v188: from the third miss on, no "did not catch that" at all, in
               // any language: the day buttons below are the whole answer.
               // v195: and no "did not catch that" here either. Say what we can do.
-              if (s.data.miss === 2) await sendText(from, "Puedo ayudarte en español o en inglés. Toca un día abajo o escríbeme cuándo te viene bien, por ejemplo \"mañana a las 18:00\".\nI can help in Spanish or English. Tap a day below or write when suits you, like \"tomorrow 18:00\".");
+              if (s.data.miss === 2) { await sendText(from, "Puedo ayudarte en español o en inglés. Toca un día abajo o escríbeme cuándo te viene bien, por ejemplo \"mañana a las 18:00\".\nI can help in Spanish or English. Tap a day below or write when suits you, like \"tomorrow 18:00\"."); mustAsk = true; }
               await logEvent(from, "not_caught", { at: "await_day", miss: s.data.miss, said: String(text || "").slice(0, 80) });
             }
           }
-          if (s.data.service === "svc_unsure") await askDayUnsure(from, L); else await askDay(from, L);
+          // v214.2 (14 Nov 2026, F3): after a miss, a kept detail or an answer,
+          // the day question goes through the one repeat limit.
+          if (mustAsk) await reAskNow(s, from, L);
+          else await reAskOnce(s, from, L, text || "", undefined, how);
         }
         break;
       }
@@ -12386,11 +12563,9 @@ const handleInner = async (req: Request) => {
           const stepNow = s.step;
           if (text.trim().split(/\s+/).length >= 2 && await lastResort(s, from, L, text)) {
             if (s.step !== stepNow) break;
-            if (LATER_RE.test(text) || (s.data.reAskStep === s.step && Date.now() - Number(s.data.reAskAt || 0) < 15 * 60e3)) {
-              await logEvent(from, "reask_skipped", { step: s.step, later: LATER_RE.test(text) });
-              break;
-            }
-            s.data.reAskStep = s.step; s.data.reAskAt = Date.now(); await saveSession(s);
+            // v214.2: the same v200 limit, now the shared reAskOnce (the day list).
+            await reAskOnce(s, from, L, text);
+            break;
           } else await logEvent(from, "not_a_day", { said: text.slice(0, 60) });
         }
         await askDayList(from, L);
@@ -12487,6 +12662,11 @@ const handleInner = async (req: Request) => {
         else if (replyId.startsWith("area_")) area = AREA_ROWS.find((a) => a.id === replyId)?.area || "";
         else if (loc && loc.latitude && loc.longitude) area = await nearestArea(loc.latitude, loc.longitude);
         else if (text) {
+          // v214.2 (14 Nov 2026, F3): a question is never the area. The
+          // question branch above takes every "?" and every question it knows
+          // at this step; this keeps the rule here too, so nothing below can
+          // save one as someone's area.
+          if (text.includes("?") || f3q) { await logEvent(from, "area_question_kept_out", { said: text.slice(0, 80) }); await sendText(from, COPY[L].areaAgain); break; }
           if (ANY_RE.test(text)) area = "anywhere";
           else {
             const hit = AREAS.find((a) => stripAcc(a) === stripAcc(text) || stripAcc(text).includes(stripAcc(a)));
