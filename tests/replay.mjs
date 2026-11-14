@@ -4055,8 +4055,8 @@ for (const [msg, want, note] of [
   const jobBlock = between(botSrc, "// ---- v204 requests, days and voice: pure helpers (start) ----", "// ---- v204 requests, days and voice: pure helpers (end) ----");
   const copyUrl = pathToFileURL(path.join(here, "../supabase/functions/wa-bot/copy.ts")).href;
   const { LOST_ES_RE, HOWWORKS_RE, AREAS, stripAcc } = await import(copyUrl);
-  const names = ["REASK_GAP_MS", "reAskHeld", "LANGQ_RE", "langQ", "ENGLISH_ASK_RE", "LANG_ANSWER", "sameDayQ", "sameDayFor", "SAMEDAY_STEPS", "SAMEDAY_COPY", "sameDayLine", "shortAsk", "bareAreaAsk", "softAckHow", "nameWithLang", "SOFT_ACK_RE", "detectAreaPlus", "WHO_RE", "MEANING_RE", "THERAPISTQ_RE", "ZONEQ_MORE_RE", "isPriceObjection", "jobSeekerKind"];
-  const js = `import { JOB_RE, madridMidnight, madridInstant, stripAcc, detectArea, ACK_ONLY_RE, GOODBYE_RE, parseName } from ${JSON.stringify(copyUrl)};\n`
+  const names = ["REASK_GAP_MS", "reAskHeld", "LANGQ_RE", "langQ", "ENGLISH_ASK_RE", "LANG_ANSWER", "sameDayQ", "sameDayFor", "SAMEDAY_STEPS", "SAMEDAY_COPY", "sameDayLine", "shortAsk", "bareAreaAsk", "areaAskWords", "placeAsk", "softAckHow", "nameWithLang", "SOFT_ACK_RE", "detectAreaPlus", "WHO_RE", "MEANING_RE", "THERAPISTQ_RE", "ZONEQ_MORE_RE", "isPriceObjection", "jobSeekerKind", "LATER_RE"];
+  const js = `import { JOB_RE, madridMidnight, madridInstant, stripAcc, detectArea, ACK_ONLY_RE, GOODBYE_RE, parseName, AREAS, looksLikeQuestion } from ${JSON.stringify(copyUrl)};\n`
     + stripTypeScriptTypes([one("LATER_RE"), one("WHO_RE"), one("MEANING_RE"), one("THERAPISTQ_RE"), one("ZONEQ_MORE_RE"), one("EXTRA_AREAS"), one("SOFT_ACK_RE"), lift(botSrc, "function detectAreaPlus("), one("PRICE_OBJ_RE"), lift(botSrc, "function isPriceObjection("), block, jobBlock].join("\n"))
     + `\nexport { ${names.join(", ")} };\n`;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-f3-"));
@@ -4134,6 +4134,12 @@ for (const [msg, want, note] of [
     check(G + ": the name step keeps the name", msg, [Q.nameWithLang(msg), parseName(msg), Q.langQ(msg), looksLikeQuestion(msg), Q.MEANING_RE.test(msg), msg.includes("?"), detectArea(msg), detectService(msg), detectDay(msg, "en"), detectTime(msg, "en"), nameCaseAnswers ? Q.shortAsk(msg) || "LANG_ANSWER" : "no answer"], [name, name, true, false, false, false, "", "", "", "", "LANG_ANSWER"], "no question branch takes it; case await_name sends the language answer (f3Answer), then saves the name");
   }
   for (const [msg, note] of [["I only speak English", "the name part is the request"], ["English-speaking therapist please", ""], ["No entiendo inglés", ""], ["Do the therapists speak English", "five words: not a name"], ["In English?", "a question"], ["Ana, do you speak English?", ""], ["", ""]]) check(G + ": nameWithLang", msg, Q.nameWithLang(msg), "", note);
+  // Review round 3 (low): a greeting, a sorry or an ok before the comma is not
+  // a name, and "¿" is a question too. These get the answer, then the name
+  // question again (round 1), instead of "Sorry" going to the studios as a name.
+  for (const msg of ["Sorry, I only speak English", "Hi, do the therapists speak English", "Hello, I don't speak Spanish", "Perdona, no entiendo inglés", "Hola, ¿hablan inglés", "Ok, English speaker please", "Ana, ¿hablan inglés"]) {
+    check(G + ": not a name with a language request", msg, [parseName(msg) !== "", Q.langQ(msg), Q.nameWithLang(msg), langGate("await_name", msg, "en")], [true, true, "", true], "review round 3: parseName kept the word before the comma as the name");
+  }
   for (const msg of ["Salamanca, English speaking therapist please", "Sol, I speak English", "Ana, I speak English", "Hablo inglés, mañana a las 18"]) {
     check(G + ": a statement is not a question either", msg, [looksLikeQuestion(msg), msg.includes("?")], [false, false], "so no other branch takes it from the step");
   }
@@ -4217,6 +4223,8 @@ for (const [msg, want, note] of [
     ["Yes", "bare", "review: after the link line or the night line it got nothing at all"], ["Sí", "bare", ""], ["Si", "bare", ""], ["Claro", "bare", ""], ["Sisi", "bare", ""], ["Yeah", "bare", ""], ["Yep", "bare", ""], ["Yes 👍", "bare", ""],
     ["Ok", "ack", "a plain ok"], ["Vale", "ack", ""], ["Bien", "ack", ""], ["Gracias", "ack", ""], ["Thanks", "ack", ""], ["Thank you", "ack", ""], ["Perfecto", "ack", ""], ["Sí, gracias", "ack", "a thanks"],
   ]) check(G + ": softAckHow", msg, [Q.SOFT_ACK_RE.test(msg), Q.softAckHow(msg), want === "ack" ? (GOODBYE_RE.test(msg) || ACK_ONLY_RE.test(msg)) : false], [true, want, want === "ack"], note + (want === "ack" ? " (the holding turn lets it pass too)" : ""));
+  // Review round 3 (low): an emoji after the ok, or "thx", is still a plain one.
+  for (const [msg, want] of [["Ok 👍", "ack"], ["Vale 👍", "ack"], ["Ok 🙏", "ack"], ["Perfecto 😊", "ack"], ["thx", "ack"], ["Yes 👍", "bare"], ["Sí 🙏", "bare"], ["Claro 👍", "bare"]]) check(G + ": softAckHow with an emoji", msg, [Q.SOFT_ACK_RE.test(msg), Q.softAckHow(msg)], [true, want], want === "ack" ? "review round 3: \"Ok 👍\" got the day question within seconds, \"Ok\" got nothing" : "a yes still gets the day question");
   // The day question after a soft ack: reAskOnce sends it unless reAskHeld
   // holds it ("ack" holds within 15 minutes, "bare" only after "later"). How
   // the day step calls it, and whether the link line clears the limit, are read
@@ -4230,8 +4238,32 @@ for (const [msg, want, note] of [
   const { reAskStep: _cleared, ...cleared } = askedAgo3;
   const afterLinkLine = linkClears ? cleared : askedAgo3;
   for (const msg of ["Yes", "Sí", "Claro", "Ok", "Vale"]) check(G + ": the link line, then", msg, dayAfterAck(afterLinkLine, msg), "day buttons", "review: \"Would you like to continue with booking a massage?\" answered and nothing came back");
-  for (const msg of ["Yes", "Claro", "Sí", "Yeah"]) check(G + ": the night line, then", msg, dayAfterAck(askedAgo3, msg), "day buttons", "review: \"It's late for tonight, so I'll look at tomorrow.\" and the day buttons, then a yes got nothing");
-  for (const msg of ["Gracias", "Thanks", "Ok"]) check(G + ": the night line, then", msg, dayAfterAck(askedAgo3, msg), "quiet: a plain thanks", "a plain thanks needs no reply");
+  for (const msg of ["Yes", "Claro", "Sí", "Yeah"]) check(G + ": the price answer and the day buttons 3 minutes ago, then", msg, dayAfterAck(askedAgo3, msg), "day buttons", "review: a yes got nothing");
+  for (const msg of ["Gracias", "Thanks", "Ok"]) check(G + ": the price answer and the day buttons 3 minutes ago, then", msg, dayAfterAck(askedAgo3, msg), "quiet: a plain thanks", "a plain thanks needs no reply");
+  // Review round 3: the night line ("It's late for tonight, so I'll look at
+  // tomorrow.") and the day buttons, then "Ok": held as a plain ok, so nothing
+  // came back and tomorrow was never chosen. sameDayReply stamps nightLineAt
+  // when the day question follows it, and the day step takes any soft ack in
+  // the next 15 minutes as the Tomorrow tap (the tap's own branch: the day,
+  // then the time question). Past midnight the day buttons go again instead.
+  // All three lines are read from the source, so the model follows the code.
+  const nightBlock = "        if (!replyId && text && SOFT_ACK_RE.test(text) && Date.now() - Number(s.data.nightLineAt || 0) < REASK_GAP_MS) {\n          delete s.data.nightLineAt;\n          if (mcMadridHour() >= 19) replyId = \"day_tomorrow\"; else delete s.data.reAskStep;\n";
+  const iNight = daySrc.indexOf(nightBlock);
+  const nightFirst = iNight >= 0 && iNight < daySrc.indexOf("if ((replyId === \"day_today\" || replyId === \"day_tomorrow\") && s.data.coreAt && s.data.time) {");
+  const nightStamp = lift(botSrc, "async function sameDayReply(").includes("  if (s.step === \"await_day\" || (!dayStep && /^(today|hoy)$/i.test(String(s.data.day || \"\").trim()))) s.data.nightLineAt = Date.now();\n  // Review: from 19:00 an area");
+  const tapTomorrow = daySrc.includes("else if (replyId === \"day_tomorrow\") { s.data.day = L === \"es\" ? \"Mañana\" : \"Tomorrow\"; s.data.dayDate = longDate(L, 1); s.step = \"await_time\"; await saveSession(s); await logEvent(from, \"day_chosen\", { day: \"tomorrow\" }); await askTime(from, L); }");
+  const afterNightLine = (msg, hour, minsAgo) => {
+    const data = { reAskStep: "await_day", reAskAt: T - minsAgo * 60e3, ...(nightStamp ? { nightLineAt: T - minsAgo * 60e3 } : {}) };
+    if (nightFirst && Q.SOFT_ACK_RE.test(msg) && T - Number(data.nightLineAt || 0) < Q.REASK_GAP_MS) {
+      if (hour >= 19) return tapTomorrow ? "Tomorrow tap, then the time question" : "unknown";
+      delete data.reAskStep;
+    }
+    return dayAfterAck(data, msg);
+  };
+  check(G + ": the night line stamps the day question", "sameDayReply / case await_day", [nightStamp, nightFirst, tapTomorrow], [true, true, true], "review round 3: before the core's own check of a tapped day");
+  for (const msg of ["Ok", "Vale", "Okay", "Perfecto", "Genial", "Bien", "Thanks", "Gracias", "Yes", "Sí", "Ok 👍"]) check(G + ": the night line at 21:30, then 2 minutes later", msg, afterNightLine(msg, 21, 2), "Tomorrow tap, then the time question", "review round 3: \"Ok\" got nothing and tomorrow was never chosen");
+  for (const msg of ["Ok", "Gracias"]) check(G + ": the night line at 23:55, then at 00:05", msg, afterNightLine(msg, 0, 10), "day buttons", "review round 3: tomorrow is another day by then, so the question goes again");
+  for (const msg of ["Ok", "Yes"]) check(G + ": the night line, then 20 minutes later", msg, afterNightLine(msg, 21, 20), "day buttons", "as before");
   for (const msg of ["Yes", "Gracias"]) check(G + ": 16 minutes later", msg, dayAfterAck({ reAskStep: "await_day", reAskAt: T - 16 * 60e3 }, msg), "day buttons", "");
 
   // House rules on every new line a customer can read.
@@ -4253,7 +4285,9 @@ for (const [msg, want, note] of [
   const iButton = at(buttonHead);
   const iLostEs = at("(LOST_ES_RE.test(text) || NO_ENGLISH_RE.test(text))");
   const iSwitch = at("else if (text && /^(english|ingl[eé]s|in english)$/i.test(text.trim())) replyId = \"lang_en\";");
-  const bareHead = "if (text && !replyId && s.step === \"await_area\") {\n      const bare = bareAreaAsk(text);\n      if (bare) { await logEvent(from, \"area_question_mark\", { said: text.slice(0, 80), area: bare }); text = bare; }\n    }\n";
+  // Review round 3: a place we do not know ("Pacífico?") is read by the reader there too.
+  const readerLine = "      else if (placeAsk(text) && (await readerAssist(s, from, L, text, \"area\")).includes(\"area\")) { await logEvent(from, \"area_question_mark\", { said: text.slice(0, 80), area: s.data.area, by: \"reader\" }); text = String(s.data.area); }\n";
+  const bareHead = "if (text && !replyId && s.step === \"await_area\") {\n      const bare = bareAreaAsk(text);\n      if (bare) { await logEvent(from, \"area_question_mark\", { said: text.slice(0, 80), area: bare }); text = bare; }\n      // Review round 3: a place we do not know (\"Pacífico?\"): the area the reader finds in it.\n" + readerLine + "    }\n";
   const iBare = at(bareHead);
   check(G + ": the guards run first", "job seeker, decline, price objection, complaint, then the questions", [iJob < iNoThanks, iNoThanks < iObj, iObj < iComplaint, iComplaint < iToday, iToday < iTyped, iTyped < iButton], [true, true, true, true, true, true], "\"Busco trabajo de masajista, ¿cuánto pagáis?\" never gets the price");
   check(G + ": \"Retiro?\" loses its marks before any question test", "order", [iComplaint < iBare, iBare < iToday, (botSrc.match(/bareAreaAsk\(/g) || []).length], [true, true, 2], "review: the question branches, the area guard and the step all see \"Retiro\"; defined once, used once");
@@ -4263,6 +4297,15 @@ for (const [msg, want, note] of [
   const button = botSrc.slice(iButton, at("if ((text && !freeTextStep && wantsHuman(text)) || replyId === \"svc_human\") {"));
   const ord = (src, parts) => parts.map((p) => src.indexOf(p)).every((x, i, a) => x >= 0 && (i === 0 || x > a[i - 1]));
   check(G + ": typed steps: the known answers first, then the new ones, then the agent", "order", ord(typed, ["if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);", "else if (zoneQ(text))", "else if (await f3Answer(from, L, text, langAsk) || todayQ) {", "await lastResort(s, from, L, text)", "if (todayQ) await sameDayReply(s, from, L, text, askAgain);\n      else await reAskOnce(s, from, L, text, askAgain, stepAnswer ? \"bare\" : \"answer\");"]), true, "\"How much for today?\": the price, then the same-day line");
+  // Review round 3 (low, real messages): "What type?" at the area question now
+  // comes here (it has a "?"), where nothing answered it from COPY; with the
+  // agent down it got the generic help line. v214.1's button branch sent the
+  // massage list. The two ready answers are here for the area question too.
+  const areaTherapist = "      else if (s.step === \"await_area\" && THERAPISTQ_RE.test(text)) { await sendText(from, COPY[L].therapistAnswer); s.data.askedGender = new Date().toISOString(); await saveSession(s); await logEvent(from, \"therapist_asked\", { said: String(text).slice(0, 80), at: s.step }); }\n";
+  const areaServices = "      else if (s.step === \"await_area\" && SERVICEQ_RE.test(text) && !detectService(text)) { await sendText(from, COPY[L].servicesAnswer); await logEvent(from, \"services_asked\", { said: String(text).slice(0, 80), at: s.step }); }\n";
+  check(G + ": typed steps: the ready answers at the area question", "order", ord(typed, ["else if (zoneQ(text))", areaTherapist, areaServices, "else if (await f3Answer(from, L, text, langAsk) || todayQ) {"]), true, "review round 3: before the agent, as in the button branch");
+  const typedAreaAnswer = (t) => PRICEQ_RE.test(t) ? "price" : PHOTOQ_RE.test(t) ? "photos" : (HOWWORKS_RE.test(t) || Q.WHO_RE.test(t)) ? "how it works" : (ZONEQ_RE.test(t) || Q.ZONEQ_MORE_RE.test(t)) ? "where" : (typed.includes(areaTherapist) && Q.THERAPISTQ_RE.test(t)) ? "therapistAnswer" : (typed.includes(areaServices) && SERVICEQ_RE.test(t) && !detectService(t)) ? "servicesAnswer" : Q.shortAsk(t) ? Q.shortAsk(t) : "agent";
+  for (const [msg, want] of [["What type?", "servicesAnswer"], ["Which massages?", "servicesAnswer"], ["Who gives the massage?", "therapistAnswer"], ["Is Sol ok?", "agent"]]) check(G + ": a \"?\" at the area question", msg, [msg.includes("?"), Q.bareAreaAsk(msg), Q.placeAsk(msg), Q.shortAsk(msg), typedAreaAnswer(msg)], [true, "", false, "", want], want === "agent" ? "the agent, as before" : "review round 3: the ready answer, as v214.1's button branch gave it");
   check(G + ": button steps: the known answers first, then the new ones, then the agent", "order", ord(button, ["if (PRICEQ_RE.test(text)) await sendText(from, COPY[L].priceInfo);", "else if (THERAPISTQ_RE.test(text)) {", "else if (SERVICEQ_RE.test(text) && !detectService(text)) {", "else if (await f3Answer(from, L, text, langAsk) || todayQ) {", "await lastResort(s, from, L, text)", "if (todayQ) await sameDayReply(s, from, L, text);\n      else await reAskOnce(s, from, L, text);"]), true, "");
   // Review: the language gate (mirrored as langGate above) and "English?".
   check(G + ": the language gate in the handler", "f3q", [botSrc.includes("const langAsk = !!text && (langQ(text) || ENGLISH_ASK_RE.test(text));\n    const f3q = !!text && ((langAsk && !stepAnswer && !(s.step === \"await_name\" && !!nameWithLang(text)) && !detectService(text) && !detectDay(text, L)) || todayQ || (!!shortAsk(text) && !stepAnswer));"), (botSrc.match(/LANGQ_RE\.test\(/g) || []).length], [true, 2], "review: \"In English?\" counts, and a name with a request goes to the step; LANGQ_RE is read through langQ, and by nameWithLang on the name part");
@@ -4272,14 +4315,43 @@ for (const [msg, want, note] of [
   const iEnAsk = at("if (text && !replyId && s.data.lang === \"es\" && ENGLISH_ASK_RE.test(text)) {");
   // Review (round 2, low): any change of the chat's language starts the repeat limit again.
   const iLang0 = botSrc.indexOf("const lang0 = s.data.lang; // v214.2 (review): the language before this message\n    const placeOnly = ");
-  const iLangReset = botSrc.indexOf("if (s.data.lang !== lang0 && s.data.reAskStep) { delete s.data.reAskStep; await saveSession(s); }\n    const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";");
+  const resetLine = "if (s.data.lang !== lang0 && s.data.reAskStep && !SOFT_ACK_RE.test(text) && !ACK_ONLY_RE.test(text)) { delete s.data.reAskStep; await saveSession(s); }\n    const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";";
+  const iLangReset = botSrc.indexOf(resetLine);
+  // Review round 3 (low): "Gracias!" in an English chat switches it to Spanish
+  // (strongSpanish), but a thanks or an ok never starts the limit again, so it
+  // stays quiet instead of bringing the day question back in Spanish.
+  const resetsOn = (msg) => iLangReset >= 0 ? !Q.SOFT_ACK_RE.test(msg) && !ACK_ONLY_RE.test(msg) : true;
+  for (const [msg, want] of [["Gracias!", false], ["Vale", false], ["Muchas gracias 😊", false], ["Ok", false], ["Hola, quiero un masaje mañana", true], ["¿Cuánto cuesta?", true]]) check(G + ": a language switch and the repeat limit", msg, resetsOn(msg), want, want ? "a real switch: the question goes once in the new language" : "review round 3: held and quiet, as a thanks in the chat's own language is");
+  check(G + ": \"Gracias!\" switches an English chat", "strongSpanish", strongSpanish("Gracias!"), true, "why the reset needs the exception");
   check(G + ": a language switch starts the repeat limit again", "lang0", [iLang0 > 0 && iLang0 < at("const rd = await readingFor(from, text, 4000);\n      const said = rd?.language;"), iEnAsk < iLangReset, iLangReset < at("const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";\n\n    // v195 (replay): \"No entiendo\"")], [true, true, true], "review: \"Info\" in Spanish, then an English question: the day question goes once in English");
   check(G + ": \"English?\" switches before the language is fixed", "order", [at("else if (s.data.lang === \"es\" && !strongSpanish(text) && looksEnglish(text)") < iEnAsk, iEnAsk < at("const L: string = s.data.lang === \"es\" ? \"es\" : \"en\";\n\n    // v195 (replay): \"No entiendo\""), botSrc.slice(iEnAsk, iEnAsk + 300).includes("s.data.lang = \"en\"; delete s.data.langGuess; delete s.data.reAskStep; await saveSession(s);")], [true, true, true], "the question then goes in English, not held back by the Spanish one");
 
   // Source: every re-ask of the step's question goes through reAskOnce.
   check(G + ": the v200 rule lives in one place", "reAskHeld / reAskNow", [(botSrc.match(/s\.data\.reAskAt = Date\.now\(\)/g) || []).length, /Number\(s\.data\.reAskAt \|\| 0\) < 15 \* 60e3/.test(botSrc), /async function reAskNow\(s: Session, from: string, L: string, ask\?: \(\) => Promise<unknown>\): Promise<void> \{\n  s\.data\.reAskStep = s\.step; s\.data\.reAskAt = Date\.now\(\); await saveSession\(s\);/.test(botSrc)], [1, false, true], "no inline copies of the 15-minute check left");
   const reAskOnceSrc = lift(botSrc, "async function reAskOnce(");
-  check(G + ": reAskOnce", "held: only the answer goes", /const held = reAskHeld\(s\.data, s\.step, text, Date\.now\(\), how !== "bare"\);\n  if \(held\) \{ if \(how === "ack"\) quietThisTurn = true; await logEvent\(from, "reask_skipped", \{ step: s\.step, later: held === "later", how \}\); return false; \}\n  await reAskNow\(s, from, L, ask\);/.test(reAskOnceSrc), true, "a held thanks stays quiet, so the holding turn does not send the question anyway");
+  const laterLine = "  if (held === \"later\" && how === \"bare\" && !sentThisTurn) await sendText(from, COPY[L].rebookLater);\n";
+  check(G + ": reAskOnce", "held: only the answer goes", /const held = reAskHeld\(s\.data, s\.step, text, Date\.now\(\), how !== "bare"\);\n(?: *\/\/[^\n]*\n)*(?:[^\n]*rebookLater[^\n]*\n)?  if \(held\) \{ if \(how === "ack"\) quietThisTurn = true; await logEvent\(from, "reask_skipped", \{ step: s\.step, later: held === "later", how \}\); return false; \}\n  await reAskNow\(s, from, L, ask\);/.test(reAskOnceSrc), true, "a held thanks stays quiet, so the holding turn does not send the question anyway");
+  // Review round 3 (real messages): "I'll let you know" as the whole message,
+  // with the agent down (or its reply rejected), got nothing at all: the day
+  // step held the day question, and so did the holding turn. Now the approved
+  // "no problem" line goes (COPY.rebookLater), and the question stays held.
+  const laterIdx = reAskOnceSrc.indexOf(laterLine);
+  check(G + ": reAskOnce after \"I'll tell you later\"", "the no-problem line", [laterIdx > reAskOnceSrc.indexOf("const held = reAskHeld("), laterIdx >= 0 && laterIdx < reAskOnceSrc.indexOf("  if (held) {")], [true, true], "review round 3: before the held branch returns");
+  const reAskOnceOut = (data, msg, how, sentBefore) => {
+    const held = Q.reAskHeld(data, "await_day", msg, T, how !== "bare");
+    if (!held) return "day buttons";
+    if (held === "later" && how === "bare" && !sentBefore && laterIdx >= 0) return "no-problem line";
+    return how === "ack" ? "quiet: a plain thanks" : sentBefore ? "only the answer" : "NOTHING SENT";
+  };
+  // Paraphrased deferrals, as they reach the day step with the agent down:
+  // nothing else in the turn reads them, so the step's re-ask is "bare".
+  for (const [msg, L] of [["I'll let you know", "en"], ["Te lo diré cuando lo sepa", "es"], ["Ya te aviso cuando lo tenga claro, sin prisas", "es"]]) {
+    check(G + ": a deferral at the day question, agent down", msg, [Q.LATER_RE.test(msg), Q.SOFT_ACK_RE.test(msg), GOODBYE_RE.test(msg) || ACK_ONLY_RE.test(msg), looksLikeQuestion(msg), detectDay(msg, L), detectTime(msg, L), detectService(msg), detectArea(msg), LINK_ONLY_RE.test(msg), /\b(no|not|don'?t|can'?t|cannot|won'?t|nunca|ya no|no puedo|no quiero|no necesito|no me|later|luego|otro d[ií]a|another time)\b/i.test(msg)], [true, false, false, false, "", "", "", "", false, false], "review round 3: no other branch answers it, so only the step's re-ask can");
+    check(G + ": a deferral at the day question, agent down", msg + " -> reply", [reAskOnceOut({}, msg, "bare", false), reAskOnceOut({}, msg, "answer", true), reAskOnceOut({}, msg, "bare", true)], ["no-problem line", "only the answer", "only the answer"], "review round 3: v214.1 sent the day buttons; round 2 sent nothing; the question stays held either way");
+  }
+  check(G + ": the no-problem line", "rebookLater", [COPY.en.rebookLater, COPY.es.rebookLater, /[–—]/.test(COPY.en.rebookLater + COPY.es.rebookLater)], ["No problem, we'll be here when you need us. 🙌", "Sin problema, aquí estaremos cuando te apetezca. 🙌", false], "approved copy already in copy.ts; no new wording");
+  // The holding turn tells Jordan which of the two happened.
+  check(G + ": the holding turn tells Jordan about the no-problem line", "ping", botSrc.includes("(reasked ? \"Nothing was sent back, so they got their booking question again\" : sentThisTurn ? \"They said they will tell us later, so they got the no-problem line and their booking question was not repeated\" : \"Nothing was sent back and their booking question was not repeated"), true, "review round 3: it said nothing was sent");
   check(G + ": re-ask sites", "typed steps", typed.includes("const askAgain = async () => {") && !/\n {6}switch \(s\.step\) \{/.test(typed), true, "the old switch only runs as askAgain, inside reAskOnce");
   check(G + ": re-ask sites", "button steps", !button.includes("await reAsk(s, from, L);"), true, "v200 held it back only after an AI answer");
   const fallback = between(botSrc, "const flowStep = !isStudio", "await logEvent(from, \"fallback_ack\"");
@@ -4364,6 +4436,29 @@ for (const [msg, want, note] of [
     ["Sol, English speaking?", "question", "the language answer"], ["Retiro today?", "question", ""],
   ]) check(G + ": the area question", msg, areaRoute(msg), want, note);
   for (const msg of ["Retiro?", "¿Sol?", "Sol ?", "Chamberí?"]) check(G + ": the round-1 rule alone", msg, areaRoute(msg, false), "question", "what the review found: the area was asked again");
+  // Review round 3: round 2 took any three words with an area in them. Only the
+  // words of an area, and filler (the, zona, barrio de, in, Madrid), may stand
+  // with it now; negations, distances and joins stay questions, as in v214.1.
+  for (const [msg, want, note] of [
+    ["¿Retiro está lejos?", "", "review round 3: saved Retiro and offered studios there"], ["Not in Centro?", "", "review round 3: saved Centro, the area they ruled out"], ["Fuera del centro?", "", ""], ["Lejos del centro?", "", ""], ["Centro de masajes?", "", "a massage centre, not the district"],
+    ["Retiro y Salamanca?", "", "two areas joined: a question"], ["Retiro vs Salamanca?", "", ""], ["Retiro too?", "", ""], ["Centro no?", "", "may mean \"not Centro\""], ["No Centro?", "", ""],
+    ["Near to Sol?", "Sol", "round 3: \"near to\" is \"near\""], ["Barrio de Salamanca?", "Barrio de Salamanca", "filler"], ["Zona Retiro?", "Zona Retiro", ""], ["In Salamanca?", "In Salamanca", ""], ["Madrid centro?", "Madrid centro", ""], ["Gran Via?", "Gran Via", ""], ["Sol, Retiro?", "Sol, Retiro", "two areas named, as v214.1 kept them"],
+    // Review round 3: a tag question, a flag or an emoticon after it, an invisible mark.
+    ["Salamanca, ¿vale?", "Salamanca", "review round 3: the inner ¿ made it a question"], ["Chamberí, ¿sí?", "Chamberí", ""], ["Retiro ¿ok?", "Retiro", ""], ["Centro, ¿no?", "Centro", "after a comma, \"no\" is a tag"], ["Retiro, right?", "Retiro", ""],
+    ["Retiro? 🇪🇸", "Retiro", "review round 3: a flag is two regional indicators, not a pictograph"], ["Retiro? :)", "Retiro", ""], ["Sol? ;-)", "Sol", ""],
+    ["Retiro?" + String.fromCharCode(0x200e), "Retiro", "review round 3: a left-to-right mark after it"], ["Retiro?" + String.fromCharCode(0x200b), "Retiro", "a zero-width space"],
+  ]) check(G + ": bareAreaAsk (round 3)", msg, Q.bareAreaAsk(msg), want, note);
+  for (const [msg, want] of [["Not in Centro?", "question"], ["¿Retiro está lejos?", "question"], ["Fuera del centro?", "question"], ["Retiro y Salamanca?", "question"], ["Centro de masajes?", "question"], ["Salamanca, ¿vale?", "Salamanca"], ["Retiro? 🇪🇸", "Retiro"], ["Retiro? :)", "Retiro"]]) check(G + ": the area question (round 3)", msg, areaRoute(msg), want, want === "question" ? "review round 3: answered as v214.1 did, never saved as the area" : "review round 3: v214.1 saved it; round 2 asked the area again");
+  // Review round 3: "Pacífico?", a place we do not know, one or two words. The
+  // reader reads it there (readerAssist, as the v214.1 step did) and only an
+  // area it finds is kept; with no area it stays a question, never saved raw.
+  for (const [msg, want, note] of [
+    ["Ríos Rosas?", true, "review round 3: asked as a question with the area question again, or never saved"], ["Pacífico?", true, ""], ["Nuevos Ministerios?", true, ""], ["Bernabéu?", true, ""], ["Príncipe Pío?", true, ""],
+    ["Retiro?", false, "a known area: bareAreaAsk"], ["Price?", false, "a question looksLikeQuestion knows: no wait for the reader"], ["Info?", false, "shortAsk"], ["location?", false, ""], ["Where?", false, ""], ["Is Sol ok?", false, ""], ["Plaza de España?", false, "three words: a question, as in v214.1"], ["Pacífico", false, "no mark: the step reads it as before"],
+  ]) check(G + ": placeAsk", msg, Q.placeAsk(msg), want, note);
+  const readerCarve = botSrc.includes(readerLine);
+  const areaRouteR = (msg, readerArea) => areaRoute(readerCarve && !Q.bareAreaAsk(msg) && Q.placeAsk(msg) && readerArea ? readerArea : msg);
+  for (const [msg, readerArea, want] of [["Pacífico?", "Retiro", "Retiro"], ["Ríos Rosas?", "Ríos Rosas", "Ríos Rosas"], ["Bernabéu?", "", "question"], ["Parking?", "", "question"]]) check(G + ": the reader at the area question", `${msg} (reader: ${readerArea || "nothing"})`, areaRouteR(msg, readerArea), want, readerArea ? "review round 3: kept, then the studio offer" : "no area found: the agent answers, as in round 2");
   check(G + ": the same as typed without the marks", "Retiro / Sol / Chamberí", [areaRoute("Retiro"), areaRoute("Sol"), areaRoute("Chamberí")], ["Retiro", "Sol", "Chamberí"], "");
   // Review (round 2): kept as the area, then the studio offer.
   for (const [msg, want] of [["Near Sol?", "Sol"], ["¿Cerca de Sol?", "Sol"], ["Por Retiro?", "Retiro"], ["Retiro? 🙏", "Retiro"], ["Sol? thanks", "Sol"]]) check(G + ": the area question (round 2)", msg, areaRoute(msg), want, "review: the agent answered, the area was lost and the chat stalled");

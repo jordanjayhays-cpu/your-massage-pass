@@ -2277,6 +2277,9 @@ async function reAsk(s: Session, from: string, L: string) {
 // turn): only "later" holds it, or the customer would get nothing at all.
 async function reAskOnce(s: Session, from: string, L: string, text: string, ask?: () => Promise<unknown>, how: "answer" | "ack" | "bare" = "answer"): Promise<boolean> {
   const held = reAskHeld(s.data, s.step, text, Date.now(), how !== "bare");
+  // Review round 3: "I'll let you know" with nothing else sent this turn gets
+  // the approved "no problem" line, never silence; the question stays held.
+  if (held === "later" && how === "bare" && !sentThisTurn) await sendText(from, COPY[L].rebookLater);
   if (held) { if (how === "ack") quietThisTurn = true; await logEvent(from, "reask_skipped", { step: s.step, later: held === "later", how }); return false; }
   await reAskNow(s, from, L, ask);
   return true;
@@ -2326,6 +2329,9 @@ async function sameDayReply(s: Session, from: string, L: string, text: string, a
     await reAskNow(s, from, L, ask);
     return;
   }
+  // v214.2 (review round 3): when the day question follows the night line, an
+  // "Ok" to it is the Tomorrow tap (case "await_day").
+  if (s.step === "await_day" || (!dayStep && /^(today|hoy)$/i.test(String(s.data.day || "").trim()))) s.data.nightLineAt = Date.now();
   // Review: from 19:00 an area, a massage or a length said with the question is
   // kept, as before 19:00; a time said with it was for tonight.
   if (absorbOffStep(s, text, L, "day").includes("time")) { s.data.time = null; s.data.timeBand = null; }
@@ -3820,37 +3826,68 @@ const AREA_ASK_WORD_RE = /^(?:where|which|what|how|near|cerca|donde|cual|que|com
 // Review: "Near Sol?", "¿Cerca de Sol?" and "Por Retiro?" name the area too,
 // and "Retiro? 🙏" or "Sol? thanks" is "Retiro?" said politely. An area answer
 // is short, so a long message is never read here (and never makes it slow).
-const AREA_NEAR_RE = /^(?:near|close\s+to|cerca\s+del?|por(?:\s+(?:el|la))?)\s+/i;
-const AREA_TAIL_RE = /(?:[\s.,!¡?¿\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]|\b(?:please|pls|plz|thanks|thank\s+you|thx|gracias|porfa|por\s+favor)\b)+$/iu;
-function bareAreaAsk(t: string): string {
+const AREA_NEAR_RE = /^(?:near(?:\s+to)?|close\s+to|cerca\s+del?|por(?:\s+(?:el|la))?)\s+/i;
+// Review round 3: a flag, a ":)" or an invisible mark after it too ("Retiro? 🇪🇸").
+const AREA_TAIL_RE = /(?:[\s.,!¡?¿\p{Extended_Pictographic}\p{EMod}\p{Regional_Indicator}\u200b\u200d\u200e\u200f\u2060\ufe0f]|[:;]-?[)D(]|\b(?:please|pls|plz|thanks|thank\s+you|thx|gracias|porfa|por\s+favor)\b)+$/iu;
+// Review round 3: "Salamanca, ¿vale?", "Chamberí, ¿sí?" and "Retiro ok?" are the
+// area with a tag. A bare "no" only after a comma or a "¿" ("Centro, ¿no?"):
+// "Centro no?" may mean "not Centro".
+const AREA_TAG_RE = /(?:[\s,]+¿?|¿)\s*(?:vale|ok|okay|s[ií]|right|yes|verdad)$|(?:\s*,\s*¿?|\s*¿)\s*no$/iu;
+// Review round 3: nothing may stand with the area but the words of an area and
+// these. "Not in Centro?", "¿Retiro está lejos?", "Fuera del centro?", "Retiro
+// y Salamanca?" and "Centro de masajes?" stay questions.
+const AREA_FILLER_RE = /^(?:the|el|la|los|las|zona|area|barrio|distrito|district|de|del|in|en|madrid)$/;
+function onlyAreaWords(s: string): boolean {
+  const own = new Set([...AREAS, ...EXTRA_AREAS, "Puerta del Sol", "Gran Via"].flatMap((a) => stripAcc(a).split(/[^a-z0-9]+/)));
+  return stripAcc(s).split(/[^a-z0-9]+/).filter(Boolean).every((w) => own.has(w) || AREA_FILLER_RE.test(w));
+}
+// The words of a short "?" message without the marks, a tag, a polite tail or
+// "near", or "" (longer, a question word, a language or a same-day question).
+function areaAskWords(t: string): string {
   const raw = String(t || "");
   if (!/[?¿]/.test(raw) || raw.length > 80) return "";
-  const s = raw.replace(/^[\s¿¡]+/, "").replace(AREA_TAIL_RE, "").replace(AREA_NEAR_RE, "");
+  const s = raw.replace(/^[\s¿¡]+/, "").replace(AREA_TAIL_RE, "").replace(AREA_TAG_RE, "").replace(AREA_TAIL_RE, "").replace(AREA_NEAR_RE, "");
   const n = s ? s.split(/\s+/).length : 0;
   if (n < 1 || n > 3 || /[?¿]/.test(s)) return "";
   if (stripAcc(s).split(/[^a-z0-9]+/).some((w) => AREA_ASK_WORD_RE.test(w))) return "";
   if (langQ(raw) || sameDayQ(raw)) return "";
-  return detectAreaPlus(s) ? s : "";
+  return s;
+}
+function bareAreaAsk(t: string): string {
+  const s = areaAskWords(t);
+  return s && detectAreaPlus(s) && onlyAreaWords(s) ? s : "";
+}
+// Review round 3: "Pacífico?" or "Ríos Rosas?", one or two words naming no
+// area we know. The step's reader reads it, as in v214.1 (readerAssist), and
+// only an area it finds is kept; anything else stays a question.
+function placeAsk(t: string): boolean {
+  const s = areaAskWords(t);
+  return !!s && s.split(/\s+/).length <= 2 && !detectAreaPlus(s) && !shortAsk(t) && !looksLikeQuestion(t);
 }
 // v214.2 (review): a thanks or an ok at the day question may be held quietly
 // ("ack") only when it is a plain one, the kind the holding turn also lets pass
 // (ACK_ONLY_RE, GOODBYE_RE). "Yes", "Sí" or "Claro" answers something (the
 // link line asks "Would you like to continue?"), so the day question goes
 // again, as in v214.1 ("bare").
+// Review round 3: "Ok 👍" and "thx" are plain ones too.
 function softAckHow(t: string): "ack" | "bare" {
   const s = String(t || "");
-  return ACK_ONLY_RE.test(s) || GOODBYE_RE.test(s) ? "ack" : "bare";
+  const plain = s.replace(/[\p{Extended_Pictographic}\p{EMod}\u200d\ufe0f]/gu, "");
+  return ACK_ONLY_RE.test(s) || ACK_ONLY_RE.test(plain) || GOODBYE_RE.test(s) || /\b(?:thx|thnx|ty)\b/i.test(s) ? "ack" : "bare";
 }
 // v214.2 (review): at the name question "Mark, English speaking therapist
 // please" or "Ana, i dont speak spanish" is the name with a language request.
 // The name (parseName keeps what comes before the comma), or "". Never with a
 // "?", and never when the name part is itself about the language ("I only
 // speak English", "English-speaking therapist please").
+// Review round 3: nor with a "¿", nor when the part before the comma is a
+// greeting, a sorry or an ok ("Sorry, I only speak English"): not a name.
+const NOT_A_NAME_RE = /^(?:hi|hello|hey|hola|buenas|sorry|perdona|perd[oó]n|disculpa|disculpe|ok|okay|vale|please|thanks|gracias|yes|s[ií])$/i;
 function nameWithLang(t: string): string {
   const s = String(t || "");
-  if (s.includes("?")) return "";
+  if (/[?¿]/.test(s)) return "";
   const n = parseName(s);
-  return n && !LANGQ_RE.test(n) ? n : "";
+  return n && !LANGQ_RE.test(n) && !NOT_A_NAME_RE.test(n.trim()) ? n : "";
 }
 // ---- v214.2 questions first: pure helpers (end) ----
 // v183: "¡Gracias!", "Si, si" and acks with any emoji (skin tones too) count.
@@ -7211,7 +7248,7 @@ const handler = async (req: Request) => {
         if (flowStep) { if (!(await greetedRecently(from, 90_000))) reasked = await reAskOnce(s, from, L, said, undefined, "bare"); }
         else if (!repeat) await sendText(from, ack);
         await logEvent(from, "fallback_ack", { step: s.step, said: said.slice(0, 120), held: repeat, type: m?.type, reasked });
-        await notifyJordanWa(`${flowStep ? (reasked ? "Nothing was sent back, so they got their booking question again" : "Nothing was sent back and their booking question was not repeated (we wrote to them in the last 90 seconds, or they said they will tell us later)") : repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
+        await notifyJordanWa(`${flowStep ? (reasked ? "Nothing was sent back, so they got their booking question again" : sentThisTurn ? "They said they will tell us later, so they got the no-problem line and their booking question was not repeated" : "Nothing was sent back and their booking question was not repeated (we wrote to them in the last 90 seconds, or they said they will tell us later)") : repeat ? "No reply sent (holding line already sent)" : "Nothing was sent back, so they got the holding line"} to +${from} (step ${s.step}). They ${m?.type === "audio" ? "sent a voice note, playable on the reply page" : "said: " + said.slice(0, 140)}`, from).catch(() => {});
       }
     }
   } catch (e) { console.log("[wa] fallback check failed", String(e)); }
@@ -8251,7 +8288,8 @@ const handleInner = async (req: Request) => {
     // v214.2 (review): a switch by the reader, strongSpanish or looksEnglish
     // starts the repeat limit again too, so the step's question goes once in
     // the new language.
-    if (s.data.lang !== lang0 && s.data.reAskStep) { delete s.data.reAskStep; await saveSession(s); }
+    // Review round 3: not for a thanks or an ok ("Gracias!" in an English chat).
+    if (s.data.lang !== lang0 && s.data.reAskStep && !SOFT_ACK_RE.test(text) && !ACK_ONLY_RE.test(text)) { delete s.data.reAskStep; await saveSession(s); }
     const L: string = s.data.lang === "es" ? "es" : "en";
 
     // v195 (replay): "No entiendo" or "I don't speak English" after an English
@@ -8693,6 +8731,8 @@ const handleInner = async (req: Request) => {
     if (text && !replyId && s.step === "await_area") {
       const bare = bareAreaAsk(text);
       if (bare) { await logEvent(from, "area_question_mark", { said: text.slice(0, 80), area: bare }); text = bare; }
+      // Review round 3: a place we do not know ("Pacífico?"): the area the reader finds in it.
+      else if (placeAsk(text) && (await readerAssist(s, from, L, text, "area")).includes("area")) { await logEvent(from, "area_question_mark", { said: text.slice(0, 80), area: s.data.area, by: "reader" }); text = String(s.data.area); }
     }
     // v214.2 (14 Nov 2026, F3): questions about the language, about today,
     // and one-word ones ("Info", "location?", "tipos?") get an answer here,
@@ -8715,6 +8755,10 @@ const handleInner = async (req: Request) => {
       else if (PHOTOQ_RE.test(text)) await sendText(from, COPY[L].photoAnswer);
       else if ((HOWWORKS_RE.test(text) || WHO_RE.test(text))) await sendText(from, COPY[L].howItWorks);
       else if (zoneQ(text)) await sendText(from, await whereAnswer(from, L));
+      // v214.2 (review round 3): every "?" at the area question comes here, so
+      // the button branch's two ready answers are here for it too, as in v214.1.
+      else if (s.step === "await_area" && THERAPISTQ_RE.test(text)) { await sendText(from, COPY[L].therapistAnswer); s.data.askedGender = new Date().toISOString(); await saveSession(s); await logEvent(from, "therapist_asked", { said: String(text).slice(0, 80), at: s.step }); }
+      else if (s.step === "await_area" && SERVICEQ_RE.test(text) && !detectService(text)) { await sendText(from, COPY[L].servicesAnswer); await logEvent(from, "services_asked", { said: String(text).slice(0, 80), at: s.step }); }
       else if (await f3Answer(from, L, text, langAsk) || todayQ) { /* v214.2: answered; a same-day line goes below */ }
       else {
         // v71: the regexes above cover price, how it works and zone. Everything
@@ -8992,6 +9036,14 @@ const handleInner = async (req: Request) => {
         break;
       }
       case "await_day": {
+        // v214.2 (review round 3): the night line says "I'll look at tomorrow",
+        // so an "Ok" or a "Vale" to it within 15 minutes is the Tomorrow tap.
+        // Past midnight that is another day, so the day question goes again.
+        if (!replyId && text && SOFT_ACK_RE.test(text) && Date.now() - Number(s.data.nightLineAt || 0) < REASK_GAP_MS) {
+          delete s.data.nightLineAt;
+          if (mcMadridHour() >= 19) replyId = "day_tomorrow"; else delete s.data.reAskStep;
+          await logEvent(from, "night_line_ack", { said: text.slice(0, 30), tomorrow: replyId === "day_tomorrow" });
+        }
         // v206 review (12 Oct): the core saves a clock time with no day only
         // after checking it against studio hours, not against today's clock
         // (it cannot know the day yet). At 18:55, "18:00" then a tap on Today
