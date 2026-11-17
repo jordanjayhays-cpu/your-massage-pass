@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { makeApi, listCsv, GOOD_SETTINGS, PASS, OTHER_TOKEN, ORG, WH_SECRET, P1, P2, P3, P4, SUPA } from "./_helpers.mjs";
+import { makeApi, listCsv, GOOD_SETTINGS, PASS, OTHER_TOKEN, ORG, WH_SECRET, P1, P2, P3, P4, SUPA, ADMIN, ADMIN_ID, OTHER_ID, googleUser } from "./_helpers.mjs";
 import { defaultTemplate, useApprovedFeeWording } from "../../supabase/functions/letters/templates.ts";
 
 const STAGING = { LETTERS_MODE: "staging", PINGEN_CLIENT_ID: "cid", PINGEN_CLIENT_SECRET: "csecret", PINGEN_ORGANISATION_ID: ORG };
@@ -18,9 +18,19 @@ async function importList(api) {
 async function recipientIds(api) {
   return (await api.call("eligible_list")).body.rows.map((r) => r.recipient_id);
 }
-async function previewApprove(api, letterId, ack = true) {
+// The page fetches the bytes, draws them, and only then says it was looked at
+// (letter_seen); fetching alone no longer counts (review fix, 17 Nov).
+async function look(api, letterId, how = "full") {
   const p = await api.call("letter_preview", { letter_id: letterId });
   assert.equal(p.status, 200, JSON.stringify(p.body));
+  if (p.body.sha256) {
+    const s = await api.call("letter_seen", { letter_id: letterId, sha256: p.body.sha256, how });
+    assert.equal(s.status, 200, JSON.stringify(s.body));
+  }
+  return p;
+}
+async function previewApprove(api, letterId, ack = true) {
+  const p = await look(api, letterId);
   return await api.call("letter_approve", { letter_id: letterId, sha256: p.body.sha256, ack_warnings: ack });
 }
 // Settings filled, list imported, a campaign with the approved fee wording,
@@ -57,34 +67,64 @@ function hook(category, pingenLetterId, eventId, o = {}) {
   return { data: { id: eventId, type: `webhook_${category}`, attributes: { reason: o.reason || "", url: "x", created_at: "2026-11-20T09:42:48+0100" }, relationships: { organisation: { data: { id: o.org || ORG, type: "organisations" } }, deliverable: { data: { id: pingenLetterId, type: "letters" } }, event: { data: { id: eventId, type: "letters_events" } } } } };
 }
 
-test("auth: no token 401, other account 403, GET 405, CORS only for our origins", async () => {
+test("auth: no token 401, other account 403, GET 405, CORS only for the page's origin", async () => {
   const api = await makeApi();
   assert.equal((await api.call("whoami", {}, null)).status, 401);
   assert.equal((await api.call("whoami", {}, null)).body.error, "auth_required");
   const other = await api.call("whoami", {}, OTHER_TOKEN);
   assert.equal(other.status, 403);
   assert.equal(other.body.error, "not_allowed");
+  assert.equal(other.body.user_id, OTHER_ID, "a Google account learns its own user id, to copy into the secret");
   const ok = await api.call("whoami");
   assert.equal(ok.status, 200);
   assert.equal(ok.body.email, "jordan@massageclub.io");
+  assert.equal(ok.body.user_id, ADMIN_ID);
   assert.equal(ok.headers.get("access-control-allow-origin"), "https://book.massageclub.io");
   const get = await api.handler(new Request(`${SUPA}/functions/v1/letters`, { method: "GET" }));
   assert.equal(get.status, 405);
-  const pre = await api.handler(new Request(`${SUPA}/functions/v1/letters`, { method: "OPTIONS", headers: { origin: "https://your-massage-pass-o5fo.vercel.app" } }));
-  assert.equal(pre.status, 204);
-  assert.equal(pre.headers.get("access-control-allow-origin"), "https://your-massage-pass-o5fo.vercel.app");
-  const evil = await api.handler(new Request(`${SUPA}/functions/v1/letters`, { method: "OPTIONS", headers: { origin: "https://evil.example" } }));
-  assert.equal(evil.headers.get("access-control-allow-origin"), null);
+  for (const origin of ["https://your-massage-pass-o5fo.vercel.app", "https://massageclub.io", "https://evil.example"]) {
+    const pre = await api.handler(new Request(`${SUPA}/functions/v1/letters`, { method: "OPTIONS", headers: { origin } }));
+    assert.equal(pre.headers.get("access-control-allow-origin"), null, origin);
+    assert.equal(pre.status, 403);
+  }
   const unknown = await api.call("drop_tables");
   assert.equal(unknown.status, 400);
-  // An allowlist secret replaces the default; no domain wildcard ever.
-  const api2 = await makeApi({ env: { LETTERS_ADMIN_EMAILS: "*@massageclub.io, someone@example.com" } });
+  // The allowlist is user ids; listing the other user's id lets them in.
+  const api2 = await makeApi({ env: { LETTERS_ADMIN_USER_IDS: `${OTHER_ID}` } });
   assert.equal((await api2.call("whoami")).status, 403);
   assert.equal((await api2.call("whoami", {}, OTHER_TOKEN)).status, 200);
 });
 
+test("auth (review H1): fails closed, user ids not emails, email confirmed and a Google identity", async () => {
+  // No secret, or a typo in it: nobody gets in, and the answer says why.
+  for (const v of [undefined, "", "jordan@massageclub.io", `${ADMIN_ID},not-a-uuid`]) {
+    const api = await makeApi({ env: { LETTERS_ADMIN_USER_IDS: v } });
+    const r = await api.call("whoami");
+    assert.equal(r.status, 503, String(v));
+    assert.equal(r.body.error, "admins_not_set");
+    assert.equal(r.body.user_id, ADMIN_ID, "Jordan's own id, so he can set the secret");
+  }
+  // Someone who signed up with email and password as jordan@massageclub.io
+  // (another user id, no Google identity) is refused even if confirmed.
+  const T = (n) => `tok_${n}_${"z".repeat(24)}`;
+  const api = await makeApi({ users: {
+    [T("pw")]: { id: "e0e0e0e0-0000-4000-8000-000000000001", email: ADMIN, email_confirmed_at: "2026-11-17T00:00:00Z", identities: [{ provider: "email", identity_data: { email: ADMIN } }] },
+    [T("pwsameid")]: { id: ADMIN_ID, email: ADMIN, email_confirmed_at: "2026-11-17T00:00:00Z", identities: [{ provider: "email", identity_data: { email: ADMIN } }] },
+    [T("phone")]: { id: ADMIN_ID, email: ADMIN, email_confirmed_at: null, confirmed_at: "2026-11-17T00:00:00Z", identities: [{ provider: "google", identity_data: { email: ADMIN, email_verified: true } }] },
+    [T("othergoogle")]: googleUser(ADMIN_ID, ADMIN, { identities: [{ provider: "google", identity_data: { email: "someone.else@gmail.com", email_verified: true } }] }),
+    [T("unverified")]: googleUser(ADMIN_ID, ADMIN, { identities: [{ provider: "google", identity_data: { email: ADMIN, email_verified: false } }] }),
+  } });
+  for (const n of ["pw", "pwsameid", "phone", "othergoogle", "unverified"]) {
+    const r = await api.call("whoami", {}, T(n));
+    assert.equal(r.status, 403, n);
+    assert.equal(r.body.error, "not_allowed", n);
+    assert.equal(r.body.user_id, undefined, `${n}: an account that could never get in is not told its id`);
+  }
+  assert.equal((await api.call("whoami")).status, 200);
+});
+
 test("auth: an unconfirmed account is refused; 60 failed calls per IP are rate limited", async () => {
-  const api = await makeApi({ users: { tok_unconfirmed_cccccccccccccccccccc: { email: "jordan@massageclub.io", email_confirmed_at: null } } });
+  const api = await makeApi({ users: { tok_unconfirmed_cccccccccccccccccccc: googleUser(ADMIN_ID, ADMIN, { email_confirmed_at: null }) } });
   assert.equal((await api.call("whoami", {}, "tok_unconfirmed_cccccccccccccccccccc")).status, 403);
   for (let i = 0; i < 60; i++) await api.call("whoami", {}, null, { "cf-connecting-ip": "203.0.113.9" });
   const r = await api.call("whoami", {}, null, { "cf-connecting-ip": "203.0.113.9" });
@@ -98,7 +138,10 @@ test("test mode is the default: readiness says so and nothing can be queued or p
   assert.equal(w.body.mode, "test");
   assert.ok(w.body.readiness.blocking_reasons[0].startsWith("Test mode: nothing is posted."));
   assert.equal(w.body.readiness.legal_sender, false);
-  assert.equal(w.body.readiness.allowlist_source, "default");
+  assert.equal(w.body.readiness.admin_ids_set, true);
+  assert.deepEqual(w.body.limits, { max_per_send: 20, daily_cap: 50, posted_today: 0, daily_left: 50 });
+  assert.equal(w.body.prices.estimate_eur, 0.97);
+  assert.equal(w.body.prices.vat_rate, 21);
   const { campaignId, letters } = await prepare(api);
   const q = await api.call("campaign_queue", { campaign_id: campaignId });
   assert.equal(q.status, 409);
@@ -133,7 +176,7 @@ test("approval: placeholders, fee guard, stale bytes, warnings, re-render clears
   const l1 = letters.find((l) => l.partner_id === P1);
   const l3 = letters.find((l) => l.partner_id === P3);
   // Missing legal sender: red placeholders, cannot approve.
-  let p = await api.call("letter_preview", { letter_id: l1.id });
+  let p = await look(api, l1.id);
   assert.equal(p.body.can_approve, false);
   assert.ok(p.body.english.privacy.includes("MISSING: legal sender"));
   let a = await api.call("letter_approve", { letter_id: l1.id, sha256: p.body.sha256 });
@@ -145,7 +188,7 @@ test("approval: placeholders, fee guard, stale bytes, warnings, re-render clears
   assert.equal(a.status, 409);
   assert.equal(a.body.error, "stale");
   // The draft template's fee sentence blocks approval.
-  p = await api.call("letter_preview", { letter_id: l1.id });
+  p = await look(api, l1.id);
   a = await api.call("letter_approve", { letter_id: l1.id, sha256: p.body.sha256 });
   assert.equal(a.status, 422);
   assert.match(a.body.message, /fee sentence is not the approved wording/);
@@ -198,7 +241,7 @@ test("bulk approve is all or nothing", async () => {
   const c = await api.call("campaign_create", { name: "Bulk", recipient_ids: await recipientIds(api), template: useApprovedFeeWording(defaultTemplate()) });
   const letters = (await api.call("campaign_get", { campaign_id: c.body.campaign.id })).body.letters;
   const items = [];
-  for (const l of letters.slice(0, 2)) items.push({ letter_id: l.id, sha256: (await api.call("letter_preview", { letter_id: l.id })).body.sha256 });
+  for (const l of letters.slice(0, 2)) items.push({ letter_id: l.id, sha256: (await look(api, l.id)).body.sha256 });
   items.push({ letter_id: letters[2].id, sha256: "0".repeat(64) });
   const r = await api.call("letters_approve_bulk", { items, ack_warnings: true });
   assert.equal(r.status, 422);
@@ -371,7 +414,7 @@ test("unapproved letters and changed bytes are never queued or posted", async ()
   const letters = (await api.call("campaign_get", { campaign_id: cid })).body.letters;
   const [l1, l2] = letters;
   assert.equal((await previewApprove(api, l1.id)).status, 200);
-  await api.call("letter_preview", { letter_id: l2.id }); // seen, not approved
+  await look(api, l2.id); // seen, not approved
   // Changed bytes: the stored PDF no longer matches the approval.
   const stored = api.db.letters.find((l) => l.id === l1.id);
   api.db.pdfs.set(stored.pdf_path, new TextEncoder().encode("%PDF-tampered"));
@@ -420,6 +463,15 @@ test("BAJA: optout_mark sets opted_out_at, records it, withdraws unsent letters 
   const l = api.db.letters.find((x) => x.partner_id === P2);
   assert.equal(l.status, "withdrawn");
   assert.equal(pingenCalls(api).filter((c) => c.method === "DELETE").length, 1);
+  // Only what is needed not to write again is kept: its list row loses the
+  // address and leaves the active list, and an import of it again is refused.
+  assert.equal((await api.call("eligible_list")).body.rows.find((x) => x.partner_id === P2), undefined);
+  const rec = api.db.recipients.find((x) => x.partner_id === P2);
+  assert.equal(rec.address_lines, null);
+  assert.equal(rec.active, false);
+  assert.equal(api.db.pdfDeletions.length, 0, "its PDFs were queued and deleted at once");
+  assert.ok(![...api.db.pdfs.keys()].some((k) => k.includes(l.id)));
+  await api.call("list_import", { csv: listCsv(), list_version: "2026-11-16", mode: "replace" });
   assert.equal((await api.call("eligible_list")).body.rows.find((x) => x.partner_id === P2).reasons[0].code, "opted_out");
   // A BAJA message typed in later can be matched to a studio.
   api.db.optouts.push({ id: "0b0b0b0b-0000-4000-8000-000000000001", channel: "whatsapp", from_ref: "34600000000", message: "BAJA ABC234", ref_code: "ABC234", partner_id: null, matched_by: null, matched_at: null, created_at: "2026-11-21T10:00:00Z" });

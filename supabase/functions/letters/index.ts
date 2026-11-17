@@ -3,15 +3,17 @@
 // this JSON API; Pingen's webhooks arrive at ?pingen_webhook=1).
 //
 // Deployed with verify_jwt = false (supabase/config.toml) because Pingen's
-// webhooks carry no JWT. Every other call is checked in code: a signed-in,
-// confirmed Supabase Auth user whose email is on the allowlist (auth.ts).
+// webhooks carry no JWT. Every other call is checked in code: a signed-in
+// Supabase Auth user whose USER ID is in LETTERS_ADMIN_USER_IDS, with a
+// confirmed email and a Google identity for it (auth.ts). Unset: nobody.
 //
 // Secrets (Supabase, Edge Functions, Secrets; never in code or the DB):
 //   LETTERS_MODE            test (default: no Pingen call at all) | staging | live
 //   PINGEN_CLIENT_ID, PINGEN_CLIENT_SECRET, PINGEN_ORGANISATION_ID
 //   LETTERS_WEBHOOK_SECRET  20 to 32 characters, also given to Pingen
 //   LETTERS_PASSCODE        at least 12 characters; needed to post
-//   LETTERS_ADMIN_EMAILS    optional allowlist override (exact addresses)
+//   LETTERS_ADMIN_USER_IDS  Supabase Auth user ids allowed in (required; the
+//                           refusal page shows the signed-in account its id)
 //   MC_SIGN_KEY             wa-bot's sign key, for the studios' QR links
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (platform)
 

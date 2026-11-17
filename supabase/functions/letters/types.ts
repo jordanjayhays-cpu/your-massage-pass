@@ -8,6 +8,9 @@ import type { Template } from "./templates.ts";
 export type Campaign = {
   id: string; name: string; status: "open" | "closed"; template: Template; template_version: number;
   pingen_env: "staging" | "production" | null; copied_from: string | null; created_by: string; created_at: string; updated_at: string;
+  // Review fix (17 Nov, UX H2): in live, studio letters are posted only after
+  // Jordan's own proof letter arrived and he said it looks right.
+  proof_confirmed_at?: string | null; proof_confirmed_by?: string | null;
 };
 
 export type Letter = {
@@ -22,7 +25,7 @@ export type Letter = {
   pingen_pages: number | null; pingen_fonts: unknown; pingen_price: number | null; pingen_currency: string | null;
   uploaded_sha256: string | null; uploaded_at: string | null; submitted_at: string | null; submitted_by: string | null;
   sent_at: string | null; delivered_at: string | null; undeliverable_at: string | null; cancelled_at: string | null;
-  last_error: string | null; created_at: string; updated_at: string;
+  last_error: string | null; created_at: string; updated_at: string; purged_at?: string | null;
 };
 
 export type LetterEvent = {
@@ -30,9 +33,17 @@ export type LetterEvent = {
   from_status?: string | null; to_status?: string | null; detail?: Record<string, unknown> | null; pingen_event_id?: string | null; created_at?: string;
 };
 
+// Review fixes (17 Nov): scope says what the BAJA stopped ("letters" only, for
+// an active partner, or "all" contact, which sets partners.opted_out_at);
+// prev_opted_out_at is what partners.opted_out_at was before, so an undo
+// restores it; test rows come from the bot's test numbers and only prove the
+// WhatsApp route works (they never touch a studio); message_en is the bot's
+// English for Jordan.
 export type Optout = {
   id: string; channel: "whatsapp" | "email" | "phone" | "post" | "manual"; from_ref: string | null; message: string | null;
   ref_code: string | null; partner_id: string | null; matched_by: string | null; matched_at: string | null; created_at: string;
+  scope?: "letters" | "all" | null; prev_opted_out_at?: string | null; opted_out_set_at?: string | null; undone_at?: string | null; undone_by?: string | null;
+  message_en?: string | null; test?: boolean | null;
 };
 
 export type LetterFilter = { campaign_id?: string; ids?: string[]; partner_ids?: string[]; statuses?: string[]; limit?: number };
@@ -49,7 +60,14 @@ export interface Store {
 
   getPartners(ids: string[]): Promise<Partner[]>;
   countPartnersWithSlug(slug: string): Promise<number>;
-  setPartnerOptedOut(id: string, atIso: string): Promise<Partner | null>;
+  // Sets opted_out_at only when it is empty; says what it was before.
+  setPartnerOptedOut(id: string, atIso: string): Promise<{ partner: Partner | null; previous: string | null; changed: boolean }>;
+  // Undo: puts back `previous` only while opted_out_at is still `current`.
+  restorePartnerOptedOut(id: string, previous: string | null, current: string): Promise<boolean>;
+  // Revokes the studio's signed links (slots page and /socios QR): +1.
+  bumpPartnerLink(id: string): Promise<number | null>;
+  // Every mailing-list row of these studios, active or not.
+  recipientsForPartners(ids: string[]): Promise<Recipient[]>;
 
   listCampaigns(): Promise<Campaign[]>;
   getCampaign(id: string): Promise<Campaign | null>;
@@ -74,6 +92,10 @@ export interface Store {
 
   insertOptout(row: Omit<Optout, "id" | "created_at">): Promise<Optout>;
   listOptouts(limit: number): Promise<Optout[]>;
+  // Matched, not undone, not test: the BAJAs that stop letters.
+  activeOptoutsFor(partnerIds: string[]): Promise<Optout[]>;
+  // The newest test BAJA that came by WhatsApp since then (the route proof).
+  latestTestOptout(sinceIso: string): Promise<Optout | null>;
   getOptout(id: string): Promise<Optout | null>;
   updateOptout(id: string, patch: Partial<Optout>): Promise<void>;
 
@@ -84,6 +106,14 @@ export interface Store {
   putPdf(path: string, bytes: Uint8Array): Promise<void>;
   getPdf(path: string): Promise<Uint8Array | null>;
   deletePdf(path: string): Promise<void>;
+
+  // Review fix (17 Nov, security M3): retention. letters_purge_expired (SQL,
+  // also run daily by pg_cron) blanks addresses 12 months after the mailing
+  // and at once for studios that opted out, and queues their PDFs; the
+  // function deletes queued PDFs from Storage (SQL cannot).
+  purgeExpired(): Promise<Record<string, number>>;
+  pdfDeletions(limit: number): Promise<string[]>;
+  pdfDeleted(path: string): Promise<void>;
 
   funnelStats(partnerIds: string[], sinceIso: string): Promise<{ partner_id: string; opened: number; signed_up: number }[]>;
 }

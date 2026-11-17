@@ -14,7 +14,7 @@
 
 export type Mode = "test" | "staging" | "live";
 export type PingenEnv = "staging" | "production";
-export type Req = { method: string; url: string; headers: Record<string, string>; body?: string | Uint8Array; auth: boolean };
+export type Req = { method: string; url: string; headers: Record<string, string>; body?: string | Uint8Array; auth: boolean; noRetry?: boolean };
 
 export const PINGEN_HOSTS: Record<PingenEnv, { identity: string; api: string }> = {
   staging: { identity: "https://identity-staging.pingen.com", api: "https://api-staging.pingen.com" },
@@ -76,7 +76,7 @@ export function letterEventsRequest(env: PingenEnv, orgId: string, id: string): 
 }
 export function sendLetterRequest(env: PingenEnv, orgId: string, id: string, o: { delivery_product: string; print_spectrum: string }, idem: string): Req {
   const body = { data: { id, type: "letters", attributes: { delivery_product: o.delivery_product, print_mode: "simplex", print_spectrum: o.print_spectrum } } };
-  return { method: "PATCH", url: `${org(env, orgId)}/deliveries/letters/${encodeURIComponent(id)}/send`, headers: jsonHeaders(idem), body: JSON.stringify(body), auth: true };
+  return { method: "PATCH", url: `${org(env, orgId)}/deliveries/letters/${encodeURIComponent(id)}/send`, headers: jsonHeaders(idem), body: JSON.stringify(body), auth: true, noRetry: true };
 }
 export function cancelLetterRequest(env: PingenEnv, orgId: string, id: string, idem: string): Req {
   return { method: "PATCH", url: `${org(env, orgId)}/deliveries/letters/${encodeURIComponent(id)}/cancel`, headers: jsonHeaders(idem), auth: true };
@@ -151,7 +151,7 @@ export function postUploadChecks(a: LetterAttrs, o: { addressLines: string[]; ma
   if (a.country !== "ES") p.push(`Pingen reads the country as ${a.country || "unknown"}, not ES.`);
   if (a.address_position !== "left") p.push(`Address position is ${a.address_position || "unknown"}, not left.`);
   if (!Array.isArray(a.paper_types) || a.paper_types.length !== 1 || a.paper_types[0] !== "normal") p.push(`Paper types are ${JSON.stringify(a.paper_types ?? null)}, not ["normal"].`);
-  if (!addressMatches(a.address || "", o.addressLines)) p.push(`Pingen read the address as "${String(a.address || "").replace(/\n/g, " / ")}", which is not the address we printed.`);
+  if (!addressMatches(a.address || "", o.addressLines)) p.push(`Pingen read the address as "${String(a.address || "").replace(/\n/g, " / ")}", which is not the address we printed. Take it back. Then correct or shorten that line in the CSV and import the list again in Settings, Mailing list: the letter is prepared again for you to look at.`);
   const price = Number(a.price_value);
   if (!(price > 0) || price > o.maxPrice) p.push(`Price ${a.price_value ?? "?"} ${a.price_currency || ""} is outside 0 to ${o.maxPrice.toFixed(2)}.`);
   return { ok: p.length === 0, problems: p };
@@ -232,7 +232,10 @@ export function createPingenClient(o: {
         await sleep(Math.min(10, Math.max(0, Number.isFinite(ra) ? ra : 1)) * 1000);
         continue;
       }
-      if (res.status === 503 && tries503 < 3) { await sleep([1000, 5000, 10000][tries503++]); continue; }
+      // Review fix (17 Nov): a send is never retried blindly (spec 10.4), not
+      // even on a 503 with the same Idempotency-Key: campaign_send reads the
+      // letter back and decides.
+      if (res.status === 503 && tries503 < 3 && !r.noRetry) { await sleep([1000, 5000, 10000][tries503++]); continue; }
       const text = res.status === 204 ? "" : await res.text().catch(() => "");
       let json: Record<string, unknown> | null = null;
       try { json = text ? JSON.parse(text) : null; } catch { json = null; }

@@ -60,6 +60,7 @@
 
 import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/6715b8a/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
+import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -8468,6 +8469,142 @@ async function socStudioChatCard(from: string, text: string, what: string) {
     to: ["jordan@massageclub.io"],
   });
 }
+// ---------------------------------------------------------------------------
+// Letters (17 Nov 2026, review fix H2): answers to postal letters.
+// Every letter tells studios to write BAJA to this number, and prints a
+// reference. Nothing here sends anything to the studio: Jordan gets a card
+// (with an editable draft from his own WhatsApp), the BAJA is recorded in
+// letter_optouts, and the studio is marked:
+//   - a prospect (not an active partner): partners.opted_out_at, which every
+//     part of the bot already reads as "do not write to this business";
+//   - an active partner: letters only (letter_optouts, scope letters), so its
+//     bookings and links keep working;
+//   - a number we cannot match: recorded unmatched, Jordan matches it in the
+//     letters tool (Opt-outs).
+// A BAJA from one of the bot's test numbers is stored as a test row and
+// touches no studio: it is the proof the letters tool asks for before the
+// BAJA route can be confirmed. A customer with a booking in the last 60 days
+// who writes "baja" without a letter's reference stays in the customer flow.
+// ---------------------------------------------------------------------------
+const LETTER_STUDIO_CHAT_MS = 2 * 86400e3;
+async function letterByRef(refs: string[]): Promise<{ id: string; ref_code: string; partner_id: string | null; status: string } | null> {
+  if (!refs.length) return null;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/letters?ref_code=in.(${refs.map((x) => encodeURIComponent(x)).join(",")})&submitted_at=not.is.null&select=id,ref_code,partner_id,status&limit=3`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+async function letterEnglish(text: string): Promise<string> {
+  if (BAJA_ONLY_RE.test(text)) return "BAJA (unsubscribe)";
+  const out = await aiText("Translate this WhatsApp message from a massage business in Madrid into natural English. Keep names, numbers and references as they are. Return only the translation.", text.slice(0, 600), 400, 10000).catch(() => null);
+  return out ? noDashes(out).trim().slice(0, 1000) : "";
+}
+async function letterStudioCard(from: string, text: string, ref: string, name: string, what: string, en = "") {
+  const who = name || `+${digitsOf(from)}`;
+  await founderCard(`✉️ ${who} ${what}${ref ? ` (Ref. ${ref})` : ""}`, {
+    badge: "ANSWER TO A LETTER", title: `${who} ${what}`,
+    paras: [
+      "The bot said nothing back and kept it out of the customer flow (for 2 days, anything else they write comes to you too). Answer them from your own WhatsApp.",
+      en ? `English: "${en}"` : "",
+    ].filter(Boolean),
+    quote: text, waNum: from, waLabel: "Chat with the studio", prefill: "Hola, soy Jordan, de Massage Club. ",
+    links: [{ href: await socLinksUrl(), label: "Studio links" }],
+    to: ["jordan@massageclub.io"],
+  });
+}
+async function handleLetterReply(from: string, text: string): Promise<boolean> {
+  const digits = digitsOf(from);
+  const refs = letterRefCandidates(text);
+  const baja = letterBajaIntent(text);
+  if (!baja && !refs.length) return false;
+  const letter = refs.length ? await letterByRef(refs).catch(() => null) : null;
+  if (!baja && !letter) return false;
+  const isTest = TEST_PHONES.includes(digits) || FAKE_NUM_RE.test(digits) || /^86\d*997$/.test(digits);
+  const known = isTest ? null : await findPartnerByNumber(digits).catch(() => null);
+  if (!letter && !known && !isTest) {
+    const req = await lastRequestFor(from).catch(() => null);
+    if (req && Date.now() - Date.parse(String(req.created_at || 0)) < 60 * 86400e3) return false;
+  }
+  quietThisTurn = true;
+  const sess = await getSession(from);
+  if (sess.step === "muted") return true;
+  const en = await letterEnglish(text);
+  const now = new Date().toISOString();
+  const ref = letter?.ref_code || "";
+  if (!baja) {
+    const pr = letter?.partner_id ? await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(letter.partner_id)}&select=business_name&limit=1`, { headers: H() }).then((r) => r.json()).catch(() => []) : [];
+    const name = String((Array.isArray(pr) && pr[0]?.business_name) || known?.business_name || "");
+    sess.data.letterStudioAt = Date.now(); sess.data.letterRef = ref; sess.data.letterName = name;
+    await saveSession(sess);
+    await letterStudioCard(from, text, ref, name, "answered a letter on WhatsApp", en);
+    await logEvent(from, "letter_reply", { ref, partner_id: letter?.partner_id || null });
+    return true;
+  }
+  const row: Record<string, unknown> = { channel: "whatsapp", from_ref: `+${digits}`, message: text.slice(0, 1000), message_en: en || null, ref_code: ref || refs[0] || null, test: isTest };
+  let name = "", scope = "", setAt: string | null = null, recorded = true;
+  if (!isTest) {
+    const pid = letter?.partner_id || known?.id || null;
+    const pr = pid ? await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(pid)}&select=id,business_name,status,opted_out_at&limit=1`, { headers: H() }).then((r) => r.json()).catch(() => []) : [];
+    const p = Array.isArray(pr) && pr[0] ? pr[0] : null;
+    if (p) {
+      name = String(p.business_name || "");
+      scope = p.status === "active" ? "letters" : "all";
+      if (scope === "all" && !p.opted_out_at) {
+        const u = await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(p.id)}&opted_out_at=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ opted_out_at: now }) });
+        const ur = await u.json().catch(() => []);
+        if (u.ok && Array.isArray(ur) && ur.length) setAt = now;
+      }
+      Object.assign(row, { partner_id: p.id, matched_by: letter ? "wa-bot (letter reference)" : "wa-bot (studio's number)", matched_at: now, scope, prev_opted_out_at: null, opted_out_set_at: setAt });
+    }
+  }
+  const ins = await fetch(`${SUPABASE_URL}/rest/v1/letter_optouts`, { method: "POST", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(row) }).catch(() => null);
+  if (!ins || !ins.ok) { recorded = false; console.log("[letters] BAJA not recorded", ins ? ins.status : "no answer"); }
+  const who = name || `+${digits}`;
+  const done = isTest
+    ? "A test BAJA from one of your test numbers: no studio was touched. The BAJA route works; you can confirm it in the letters tool, Settings."
+    : !row.partner_id ? "Not matched to a studio (no letter reference, and not a studio's number). Match it in the letters tool, Opt-outs, so it gets no more letters."
+    : scope === "letters" ? `${name} is an active partner, so this stops letters only: its bookings and links keep working. In the letters tool, Opt-outs, you can stop every contact if that is what they meant.`
+    : `${name} gets no more letters and no other contact from us (opted out${setAt ? " now" : " already"}). Unsent letters to them are refused at upload and posting; open Opt-outs in the letters tool to withdraw any that are at Pingen.`;
+  await founderCard(`✋ ${isTest ? "Test BAJA" : "BAJA"} by WhatsApp from ${who}${ref ? ` (Ref. ${ref})` : ""}`, {
+    badge: isTest ? "TEST BAJA (LETTERS)" : "LETTER BAJA", title: `${who} wrote BAJA`,
+    paras: [
+      recorded ? done : `NOT recorded: the letters tables did not answer. Mark it by hand in the letters tool, Opt-outs. ${done}`,
+      en && !BAJA_ONLY_RE.test(text) ? `English: "${en}"` : "",
+      isTest ? "" : `The bot said nothing back. If you want to confirm it, the draft on the button is from your own WhatsApp: "${LETTER_BAJA_ACK_ES.replace(/\n+/g, " ")}" (English: "${LETTER_BAJA_ACK_EN.replace(/\n+/g, " ")}")`,
+    ].filter(Boolean),
+    quote: text, waNum: from, waLabel: "Open the chat", prefill: isTest ? "" : LETTER_BAJA_ACK_ES,
+    to: ["jordan@massageclub.io"],
+  });
+  await logEvent(from, isTest ? "letter_baja_test" : "letter_baja", { ref: ref || null, partner_id: row.partner_id || null, scope: scope || null, recorded });
+  return true;
+}
+
+// Letters (17 Nov 2026, review fix M2): a studio we wrote to by post. The QR
+// on the paper is its signed /socios link, and paper gets left in shared
+// letterboxes or delivered to the wrong door, so on that link every contact
+// detail it fills (WhatsApp, email) is a proposal for Jordan's OK, like a
+// changed one. Times, hours and the address stay as before.
+async function socReachedByLetter(pid: string): Promise<boolean> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/letters?partner_id=eq.${encodeURIComponent(pid)}&submitted_at=not.is.null&select=id&limit=1`, { headers: H() }).catch(() => null);
+  if (!r || !r.ok) return false;
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) && rows.length > 0;
+}
+function socFilledAsProposal(up: SocUpdate): string[] {
+  const moved: string[] = [];
+  for (const f of ["whatsapp", "email", "booking_email", "phone"]) {
+    const v = up.set[f];
+    if (v === undefined) continue;
+    const field = f === "email" ? "booking_email" : f === "phone" ? "whatsapp" : f;
+    if (!up.proposed.changes.some((c) => c.field === field)) up.proposed.changes.push({ field, was: "", now: v });
+    if (f === "whatsapp" || f === "phone") up.proposed.set.whatsapp = up.proposed.set.whatsapp || v;
+    else up.proposed.set.booking_email = up.proposed.set.booking_email || v;
+    delete up.set[f];
+    up.filled = up.filled.filter((x) => x !== f);
+    moved.push(f);
+  }
+  return moved;
+}
+
 async function socRows(path: string): Promise<any[]> {
   return (await socRead(path)) || [];
 }
@@ -8681,6 +8818,9 @@ type SocApplied = {
   // Review (23 Oct): a new booking WhatsApp or email from its own link, until
   // Jordan decides (waiting, then approved or rejected).
   proposed?: SocProposed & { status: "waiting" | "approved" | "rejected"; decided_at?: string; note?: string };
+  // Letters (17 Nov 2026): the studio was written to by post, so the contact
+  // details it filled wait for Jordan too.
+  via_letter?: boolean;
 };
 // Saves a checked submission onto a studio: the dated times through
 // release_slots (source studio_link, evidence the signup id), "every week" as
@@ -8706,6 +8846,9 @@ async function socApply(signup: any, partner: any, plan: SocPlan, via: "socios_l
   const own = via === "socios_link";
   if (own && !socIsTestStudio(partner)) {
     const up = socSignedUpdate(partner, plan.studio);
+    // Letters (17 Nov 2026, review fix M2): written to by post, so even empty
+    // contact fields wait for Jordan's Aprobar.
+    if (await socReachedByLetter(pid)) { if (socFilledAsProposal(up).length) result.via_letter = true; }
     // A new WhatsApp, filled or proposed, is never another studio's or a
     // customer's (socWaBlocked, review 23 Oct).
     if (up.set.whatsapp || up.proposed.set.whatsapp) {
@@ -8845,7 +8988,8 @@ async function socSubmit(p: any, req: Request, L: "es" | "en"): Promise<{ status
         badge: contacts ? "NEW BOOKING CONTACT TO REVIEW" : noPrice ? "STUDIO GAVE TIMES, NO PRICE YET" : "STUDIO GAVE TIMES", title: `${name} signed up on its own link`,
         paras: [`Applied at once (signed link). ${socSeenEn(live, mode, noPrice, plan.minutes)}${told}`, ...socAppliedEn(res.result, nowMs),
           noPrice ? `The draft on the button below, from your own WhatsApp: "${socPriceAskEs(plan.minutes)}" (English: "${socPriceAskEn(plan.minutes)}")` : "",
-          contacts ? "Studio links get forwarded, so whoever holds one could send their bookings, with each customer's name, phone and email, somewhere else. Check with the studio on the number we have before you approve." : ""],
+          contacts ? "Studio links get forwarded, so whoever holds one could send their bookings, with each customer's name, phone and email, somewhere else. Check with the studio on the number we have before you approve." : "",
+          res.result.via_letter ? "We wrote to this studio by post, and the QR on the letter is this link: whoever holds the paper can use it. So even the contact details we had nothing for wait for your OK. Check by phone or in person that it is them." : ""],
         after: socStudioEn(plan),
         links: [...(contacts ? [{ href: await socReviewLink(String(row.id), "yes"), label: "Review the new contact", primary: true }] : []),
           ...(noPrice ? [{ href: `https://wa.me/${askTo}?text=${encodeURIComponent(socPriceAskEs(plan.minutes))}`, label: askTo ? "Ask them for their price (my WhatsApp)" : "Ask them for their price (no WhatsApp on file)", primary: !contacts }] : []),
@@ -11421,6 +11565,13 @@ const handleInner = async (req: Request) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Letters (17 Nov 2026, review fix H2): a studio answering a postal
+    // letter. BAJA (or a message quoting a letter's reference) never reaches
+    // the customer flow, from any number, partner or not.
+    if (text && !replyId && await handleLetterReply(from, text).catch((e) => { console.log("[letters] reply handling failed", String(e)); return false; })) {
+      return new Response("OK", { status: 200 });
+    }
+
     // ---- Studio replies: template button payloads, or free text from a partner number ----
     if (/^arr_(yes|no)_\d+$/.test(replyId)) {
       const partner = await findPartnerByNumber(digitsOf(from));
@@ -11514,6 +11665,15 @@ const handleInner = async (req: Request) => {
       quietThisTurn = true;
       await socStudioChatCard(from, text || btnText || `[${msg.type}]`, "wrote again (a studio from the /socios page)");
       await logEvent(from, "socios_studio_chat", {});
+      return new Response("OK", { status: 200 });
+    }
+    // Letters (17 Nov 2026): a studio that answered a letter in the last 2
+    // days. What it writes next goes to Jordan as a studio, never the
+    // customer flow.
+    if (s.data.letterStudioAt && Date.now() - Number(s.data.letterStudioAt) < LETTER_STUDIO_CHAT_MS && (text || btnText || MEDIA_TYPES.includes(String(msg.type)))) {
+      quietThisTurn = true;
+      await letterStudioCard(from, text || btnText || `[${msg.type}]`, String(s.data.letterRef || ""), String(s.data.letterName || ""), "wrote again after answering a letter");
+      await logEvent(from, "letter_studio_chat", { ref: s.data.letterRef || null });
       return new Response("OK", { status: 200 });
     }
     if (s.step === "blocked") {

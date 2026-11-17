@@ -4514,6 +4514,41 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// Letters (17 Nov 2026, review fix H2): a studio's answer to a postal letter.
+// Every letter says "Escribid BAJA por WhatsApp" and prints "Ref. XXXXXX".
+// These are the messages the bot must take out of the customer flow (BAJA is
+// recorded, Jordan gets a card) and the ones it must leave alone.
+// ---------------------------------------------------------------------------
+{
+  const { letterBajaIntent, letterRefCandidates, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES } = await import("../supabase/functions/wa-bot/letters_reply.ts");
+  const fs = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const botSrc = fs.readFileSync(fileURLToPath(new URL("../supabase/functions/wa-bot/bot.ts", import.meta.url)), "utf8");
+  const G = "letters BAJA";
+  const yes = ["BAJA", "baja", "Baja.", "BAJA K7M2QX", "Baja, gracias", "¡Baja!", "*BAJA*", "baja por favor, no queremos cartas",
+    "Hola, queremos darnos de baja", "Quiero la baja", "No queremos recibir más cartas", "no nos escribáis más", "Por favor, dadnos de baja"];
+  for (const t of yes) check(G, t, letterBajaIntent(t), true, "the letter asks studios to write BAJA");
+  const no = ["Estamos en la planta baja", "Hola, quiero un masaje mañana", "¿Cuánto cuesta?", "baja por maternidad hasta enero, escribid en febrero",
+    "La masajista está de baja, ¿podéis otro día?", "Hi, can I book for today?", "", "x".repeat(300) + " baja"];
+  for (const t of no) check(G, t, letterBajaIntent(t), false, "a customer, or a long message that only mentions the word");
+  check(G + ": only the word", "BAJA.", BAJA_ONLY_RE.test("BAJA."), true, "no translation call needed");
+  check(G + ": not only the word", "Baja, gracias", BAJA_ONLY_RE.test("Baja, gracias"), false, "");
+  check(G + ": references", "Ref. K7M2QX, BAJA", letterRefCandidates("Ref. K7M2QX, BAJA"), ["K7M2QX"], "printed in capitals from the alphabet");
+  check(G + ": references", "hola masaje MASAJE k7m2qx", letterRefCandidates("hola masaje MASAJE k7m2qx"), [], "lower case is not a reference; MASAJE is a word");
+  check(G + ": references", "K7M2Q0 K7M2QXY", letterRefCandidates("K7M2Q0 K7M2QXY"), [], "0 is not in the alphabet; seven characters is not a reference");
+  check(G + ": references", "A2B3C4 y D5E6F7", letterRefCandidates("A2B3C4 y D5E6F7"), ["A2B3C4", "D5E6F7"], "");
+  check(G + ": draft to the studio", "signed", [/Jordan, de Massage Club$/.test(LETTER_BAJA_ACK_ES), /[\u2012-\u2015\u2212]/.test(LETTER_BAJA_ACK_ES)], [true, false], "studio-facing: from Jordan, de Massage Club; no dashes");
+  // The bot routes it before the studio and customer flows, and records it.
+  check(G + ": bot.ts", "routing", [
+    botSrc.includes("await handleLetterReply(from, text)"),
+    botSrc.indexOf("await handleLetterReply(from, text)") < botSrc.indexOf("// ---- Studio replies: template button payloads"),
+    botSrc.includes("`${SUPABASE_URL}/rest/v1/letter_optouts`"),
+    /quietThisTurn = true;\s*const sess = await getSession\(from\);/.test(botSrc),
+    botSrc.includes("if (await socReachedByLetter(pid))"),
+  ], [true, true, true, true, true], "review H2 and M2");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;

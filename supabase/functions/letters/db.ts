@@ -79,9 +79,26 @@ export function createStore(o: { url: string; serviceKey: string; fetch: F }): S
     async countPartnersWithSlug(slug) { return (await get<unknown[]>(`partners?slug=eq.${enc(slug)}&select=id&limit=3`)).length; },
     async setPartnerOptedOut(id, at) {
       const rows = await patch<Partner[]>(`partners?id=eq.${enc(id)}&opted_out_at=is.null&select=${PARTNER_COLS}`, { opted_out_at: at });
-      if (rows.length) return rows[0];
-      return (await get<Partner[]>(`partners?id=eq.${enc(id)}&select=${PARTNER_COLS}`))[0] ?? null;
+      if (rows.length) return { partner: rows[0], previous: null, changed: true };
+      const p = (await get<Partner[]>(`partners?id=eq.${enc(id)}&select=${PARTNER_COLS}`))[0] ?? null;
+      return { partner: p, previous: p?.opted_out_at ?? null, changed: false };
     },
+    async restorePartnerOptedOut(id, previous, current) {
+      const rows = await patch<unknown[]>(`partners?id=eq.${enc(id)}&opted_out_at=eq.${enc(current)}&select=id`, { opted_out_at: previous });
+      return rows.length > 0;
+    },
+    async bumpPartnerLink(id) {
+      // Conditional on the version read, so two bumps never collapse into one.
+      for (let i = 0; i < 3; i++) {
+        const p = (await get<Partner[]>(`partners?id=eq.${enc(id)}&select=id,slots_link_v`))[0];
+        if (!p) return null;
+        const v = Number(p.slots_link_v || 1);
+        const rows = await patch<Partner[]>(`partners?id=eq.${enc(id)}&slots_link_v=eq.${v}&select=id,slots_link_v`, { slots_link_v: v + 1 });
+        if (rows.length) return Number(rows[0].slots_link_v);
+      }
+      return null;
+    },
+    async recipientsForPartners(ids) { return await byIds<Recipient>("letter_recipients", "partner_id", ids); },
 
     async listCampaigns() { return await get<Campaign[]>("letter_campaigns?select=*&order=created_at.desc&limit=200"); },
     async getCampaign(id) { return (await get<Campaign[]>(`letter_campaigns?id=eq.${enc(id)}&select=*`))[0] ?? null; },
@@ -135,6 +152,10 @@ export function createStore(o: { url: string; serviceKey: string; fetch: F }): S
     },
 
     async insertOptout(row) { return (await post<Optout[]>("letter_optouts", row))[0]; },
+    async activeOptoutsFor(ids) { return await byIds<Optout>("letter_optouts", "partner_id", ids, "*", "&undone_at=is.null&test=is.false"); },
+    async latestTestOptout(since) {
+      return (await get<Optout[]>(`letter_optouts?test=is.true&channel=eq.whatsapp&created_at=gte.${enc(since)}&select=*&order=created_at.desc&limit=1`))[0] ?? null;
+    },
     async listOptouts(limit) { return await get<Optout[]>(`letter_optouts?select=*&order=created_at.desc&limit=${limit}`); },
     async getOptout(id) { return (await get<Optout[]>(`letter_optouts?id=eq.${enc(id)}&select=*`))[0] ?? null; },
     async updateOptout(id, p) { await patch(`letter_optouts?id=eq.${enc(id)}`, p); },
@@ -160,6 +181,16 @@ export function createStore(o: { url: string; serviceKey: string; fetch: F }): S
     },
     async deletePdf(path) {
       await o.fetch(`${o.url}/storage/v1/object/${BUCKET}`, { method: "DELETE", body: JSON.stringify({ prefixes: [path] }), headers: { apikey: o.serviceKey, Authorization: `Bearer ${o.serviceKey}`, "Content-Type": "application/json" } });
+    },
+
+    async purgeExpired() {
+      return (await post<Record<string, number>>("rpc/letters_purge_expired", {}, "return=representation")) || {};
+    },
+    async pdfDeletions(limit) {
+      return (await get<{ path: string }[]>(`letter_pdf_deletions?select=path&order=queued_at.asc&limit=${Number(limit)}`)).map((r) => r.path);
+    },
+    async pdfDeleted(path) {
+      await rest(`letter_pdf_deletions?path=eq.${enc(path)}`, { method: "DELETE" }, true);
     },
 
     async funnelStats(partnerIds, since) {

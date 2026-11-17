@@ -20,8 +20,63 @@ test("template: the approved wording passes, Jordan's draft fee sentence is flag
   assert.equal(ok.fee_version, "2026-10-19");
   const draft = validateTemplate(defaultTemplate());
   assert.equal(draft.ok, false);
-  assert.ok(codes(draft).includes("fee_sentence"));
-  assert.ok(draft.errors.some((e) => e.code === "fee_date" && /enero|2026/.test(e.message)));
+  // Review fix (UX M6): one fee problem is one line, not five ("€", "Sin
+  // coste", the year and the month each again).
+  assert.deepEqual(codes(draft), ["fee_sentence"]);
+  // A stray money word next to the draft sentence still shows on its own.
+  const extra = defaultTemplate();
+  extra.body_es = extra.body_es.replace("Nosotros les buscamos centro.", "Nosotros les buscamos centro. Os cobramos poco.");
+  assert.deepEqual(codes(validateTemplate(extra)), ["fee_sentence", "fee_word"]);
+});
+
+test("fee guard (review M4): word stems, figures, and the settings printed on every letter", () => {
+  const base = approved().body_es;
+  const add = (x) => base.replace("Nosotros les buscamos centro.", `Nosotros les buscamos centro. ${x}`);
+  for (const x of ["Os cobramos 5 por visita.", "El primer mes no cuesta nada.", "Luego, una pequeña cantidad mensual.", "Sin cargo.", "Os facturamos al final.", "Pagáis solo si funciona.",
+    "El precio es bajo.", "Una suscripción anual.", "Es gratuitamente.", "Ganaréis dinero.", "Desde 3 visitas, nada.", "Os sale a 4,50 la visita."]) {
+    assert.equal(feeGuard(add(x)).ok, false, x);
+  }
+  // Not money: times, the phone, the price bullet, and look-alike words.
+  for (const x of ["Os escribimos en 2 días.", "Es una cuestión de minutos.", "Lo veis en la página.", "Estamos en la costa."]) {
+    assert.deepEqual(feeGuard(add(x)).errors, [], x);
+  }
+  assert.deepEqual(validateTemplate(approved()).errors, [], "the approved letter: 2 o 3 horas, 15 minutos, 2 minutos, +34 612 474 827, art. 6.1.f, 12 meses");
+  const t = approved();
+  t.optout_es = t.optout_es.replace("Es gratis", "Os cuesta 0. Es gratis");
+  assert.ok(codes(validateTemplate(t)).includes("fee_word"));
+  const priv = approved();
+  priv.privacy_es = priv.privacy_es.replace("12 meses", "24 meses y 3 euros");
+  assert.ok(codes(validateTemplate(priv)).includes("fee_word"));
+  // Settings are printed too: no money words and no links off massageclub.io.
+  for (const [k, v] of [["legal_sender_name", "Remitente S.L., 5 EUR al mes"], ["return_street", "www.otra-web.es, Calle Mayor 1"], ["return_city", "Madrid otra-web.com"], ["return_name", "Escribid a info@gmail.com"]]) {
+    const r = validateSettingsPatch({ [k]: v });
+    assert.equal(r.ok, false, `${k}: ${v}`);
+  }
+  // Street names keep numbers, months and saints.
+  assert.equal(validateSettingsPatch({ return_street: "Calle Dos de Mayo 5, 2º B", return_city: "San Sebastián de los Reyes", legal_sender_name: "Remitente Ejemplo S.L." }).ok, true);
+  // Registered letters are not for marketing letters (review L15).
+  assert.equal(validateSettingsPatch({ delivery_product: "registered" }).ok, false);
+});
+
+test("links (review M4): bare domains, www and emails off massageclub.io are refused; aepd.es is the regulator", () => {
+  const t = approved();
+  for (const x of ["Más en www.otra-web.es", "Visitad otra-web.com", "Escribid a hola@otraweb.es", "https://bit.ly/x"]) {
+    const c = { ...t, body_es: t.body_es.replace("Nosotros les buscamos centro.", `Nosotros les buscamos centro. ${x}.`) };
+    assert.ok(codes(validateTemplate(c)).includes("link_host"), x);
+  }
+  for (const x of ["Más en book.massageclub.io.", "Escribid a hola@massageclub.io."]) {
+    const c = { ...t, body_es: t.body_es.replace("Nosotros les buscamos centro.", `Nosotros les buscamos centro. ${x}`) };
+    assert.ok(!codes(validateTemplate(c)).includes("link_host"), x);
+  }
+  assert.ok(approved().privacy_es.includes("aepd.es"));
+});
+
+test("dashes (review L9): figure dash, quotation dash, minus sign and two- and three-em dashes too", () => {
+  for (const cp of [0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0x2e3a, 0x2e3b]) {
+    const t = approved();
+    t.body_es = t.body_es.replace("Nos gustaría", `Nos gustaría ${String.fromCharCode(cp)} mucho`);
+    assert.ok(codes(validateTemplate(t)).includes("dash"), cp.toString(16));
+  }
 });
 
 test("template: the default is Jordan's draft verbatim and the swap changes only the fee sentence", () => {
@@ -162,7 +217,7 @@ test("csv: quoted fields, header, row errors with line numbers, proof rows", () 
 
 const recip = (o = {}) => ({ id: "r1", kind: "studio", partner_id: "p1", display_name: "Estudio Alfa", greeting_name: "Estudio Alfa", address_lines: ["Estudio Alfa", "Calle 1", "28004 Madrid"], postcode: "28004", town: "Madrid", unit_status: "unit known", confidence: "high", partner_address_at_import: "Calle 1, 28004 Madrid", needs_review: null, active: true, ...o });
 const partner = (o = {}) => ({ id: "p1", business_name: "Estudio Alfa", status: "pending", opted_out_at: null, outreach_status: null, address: "Calle 1, 28004 Madrid", ...o });
-const el = (o = {}) => eligibility({ recipient: recip(o.r), partner: o.p === null ? null : partner(o.p), letters: o.letters || [], campaignStatus: o.cs || {}, cooldownDays: 180, now: new Date("2026-11-17T10:00:00Z"), selfLetterId: o.self });
+const el = (o = {}) => eligibility({ recipient: recip(o.r), partner: o.p === null ? null : partner(o.p), letters: o.letters || [], campaignStatus: o.cs || {}, cooldownDays: 180, now: new Date("2026-11-17T10:00:00Z"), selfLetterId: o.self, optouts: o.optouts });
 
 test("eligibility: every reason", () => {
   assert.equal(el().eligible, true);
@@ -193,7 +248,19 @@ test("eligibility: warnings", () => {
   assert.deepEqual(w({ r: { unit_status: "unit unknown" } }), ["unit_unknown"]);
   assert.deepEqual(w({ r: { confidence: "medium" } }), ["medium_confidence"]);
   assert.deepEqual(w({ r: { greeting_name: "Laura Gómez" } }), ["greeting_looks_like_a_person"]);
-  assert.deepEqual(w({ r: { postcode: "28100" } }), ["postcode_not_hispapost"]);
+  // Review fix (UX M4): decided once at import, they are not ticked again.
+  assert.deepEqual(w({ r: { unit_status: "unit unknown", confidence: "medium", warnings_acked_at: "2026-11-17T10:00:00Z" } }), []);
+  // Each says what to do (UX M5).
+  assert.match(el({ r: { unit_status: "unit unknown" } }).warnings[0].text, /street-level shop.*Reject if it is a flat.*import the list again/s);
+  // Correos is information, not a tick, and makes no cost claim.
+  assert.deepEqual(w({ r: { postcode: "28100" } }), []);
+  assert.deepEqual(el({ r: { postcode: "28100" } }).infos.map((x) => x.code), ["postcode_correos"]);
+  assert.doesNotMatch(el({ r: { postcode: "28100" } }).infos[0].text, /cost more/);
+  // A letters-only BAJA (an active partner's, or any) stops letters.
+  assert.deepEqual(el({ optouts: [{ created_at: "2026-11-18T10:00:00Z", scope: "letters" }] }).reasons.map((x) => x.code), ["opted_out_letters"]);
+  // Names containing test or prueba (review L8).
+  assert.deepEqual(el({ p: { business_name: "Masajes Pruebas" } }).reasons.map((x) => x.code), ["test_studio"]);
+  assert.deepEqual(el({ p: { business_name: "Testing Spa" } }).reasons.map((x) => x.code), ["test_studio"]);
   assert.equal(greetingLooksLikePerson("Laura Gómez"), true);
   assert.equal(greetingLooksLikePerson("Centro Laura Gómez"), false);
   assert.equal(greetingLooksLikePerson("Estudio Ficticio Alfa"), false);

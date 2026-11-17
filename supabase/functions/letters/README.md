@@ -39,7 +39,7 @@ never called.
 | `sign.ts` | hashing and the studio's signed `/socios` link (same construction as wa-bot) |
 | `pingen.ts` | Pingen request builders and client (token cache, upload, create, send, status mapping) |
 | `webhook.ts` | Pingen webhook signature check and event planning |
-| `auth.ts` | Supabase Auth check against the allowlist, CORS, passcode |
+| `auth.ts` | Supabase Auth check (user id allowlist, confirmed email, Google identity), CORS, passcode |
 | `db.ts` | the store over PostgREST and Storage (service role) |
 | `deps.ts` | pinned esm.sh imports |
 | `fonts/` | embedded fonts, licences, `SOURCES.md` |
@@ -52,10 +52,39 @@ Pingen's webhooks carry no JWT; every other call checks the user in code).
 
 `LETTERS_MODE`, `PINGEN_CLIENT_ID`, `PINGEN_CLIENT_SECRET`,
 `PINGEN_ORGANISATION_ID`, `LETTERS_WEBHOOK_SECRET` (20 to 32 characters),
-`LETTERS_PASSCODE` (at least 12), `LETTERS_ADMIN_EMAILS` (optional; exact
-addresses; default: the two in `auth.ts`),
-`MC_SIGN_KEY` (wa-bot's sign key, for the QR links). The page only ever sees
-whether each one is set.
+`LETTERS_PASSCODE` (at least 12), `LETTERS_ADMIN_USER_IDS` (required: the
+Supabase Auth user ids allowed in, comma separated; the account must also have
+a confirmed email and a Google identity for it; unset or with any entry that is
+not a user id, nobody gets in, and the refusal shows the signed-in Google
+account its own id to copy here), `MC_SIGN_KEY` (wa-bot's sign key, for the QR
+links). The page only ever sees whether each one is set. Also check in the
+Supabase dashboard (Authentication, Sign In / Providers, Email) that "Confirm
+email" is on.
+
+## Review fixes (17 Nov)
+
+- Access by user id, not email (above); CORS for https://book.massageclub.io only.
+- BAJA: wa-bot records a WhatsApp BAJA (or a reply quoting a letter's
+  reference) in `letter_optouts` and sends Jordan a card, never the customer
+  flow. A test BAJA from one of the bot's test numbers is stored with
+  `test = true`; Settings can only confirm the BAJA route after one arrived in
+  the last 7 days. For an active partner a BAJA stops letters only
+  (`scope = letters`); for a prospect it also sets `partners.opted_out_at`.
+  `optout_undo` puts back what was there.
+- A letter that comes back undeliverable revokes the studio's signed link
+  (`slots_link_v + 1`). wa-bot treats contact details given on the signed link
+  of a studio we wrote to by post as a proposal for Jordan's OK.
+- Retention: `letters_purge_expired()` (pg_cron daily, and `retention_purge`)
+  keeps the letter's promise of 12 months, and minimises at once after a BAJA.
+  Live posting needs Pingen's retention at 12 months or less (Check the Pingen
+  account) and the privacy page checked (`privacy_check`: the page has the
+  #section of the URL and no FALTA).
+- Live posts the campaign's proof letter first; studio letters only after
+  `campaign_proof_confirm`. A short Pingen credit stops a live post.
+- `letter_preview` no longer marks a letter as looked at: the page calls
+  `letter_seen` after drawing it (full width, readable crops on a phone, or
+  zoomed).
+- The fee guard reads word stems and numbers, and checks the printed settings.
 
 ## Tests
 

@@ -3,7 +3,7 @@
 // reference codes. Pure functions only (no Deno, no network), erasable
 // TypeScript, so Node tests load this file with --experimental-strip-types.
 
-import { FEE_SENTENCES, SIGN_OFF, MISSING } from "./templates.ts";
+import { FEE_SENTENCES, DRAFT_FEE_SENTENCE, SIGN_OFF, MISSING } from "./templates.ts";
 import type { Template } from "./templates.ts";
 
 export type Problem = { field?: string; code: string; message: string; line?: number };
@@ -17,9 +17,13 @@ export type Problem = { field?: string; code: string; message: string; line?: nu
 const INVISIBLE_RE = new RegExp("[" + [[0x00, 0x08], [0x0b, 0x1f], [0x7f, 0x7f], [0x200b, 0x200f], [0x2028, 0x202e], [0x2060, 0x206f], [0xfeff, 0xfeff]]
   .map(([a, b]) => `\\u{${a.toString(16)}}-\\u{${b.toString(16)}}`).join("") + "]", "u");
 // U+2013 and U+2014, built from code points so the source holds neither.
+// Review fix (17 Nov): the check also covers the figure dash U+2012, the
+// quotation dash U+2015, the minus sign U+2212 (Outfit has its glyph, so it
+// would print) and the two- and three-em dashes U+2E3A and U+2E3B.
 export const EN_DASH = String.fromCharCode(0x2013);
 export const EM_DASH = String.fromCharCode(0x2014);
-export const DASH_RE = new RegExp(`[${EN_DASH}${EM_DASH}]`);
+const OTHER_DASHES = [0x2012, 0x2015, 0x2212, 0x2e3a, 0x2e3b].map((c) => String.fromCharCode(c)).join("");
+export const DASH_RE = new RegExp(`[${EN_DASH}${EM_DASH}${OTHER_DASHES}]`);
 export const nfc = (s: unknown): string => String(s ?? "").normalize("NFC").replace(/\r\n?/g, "\n");
 export const squash = (s: string): string => s.replace(/\s+/g, " ").trim();
 // A whole word or phrase, case-insensitive, with letter/digit boundaries that
@@ -104,6 +108,17 @@ export type Settings = {
   cooldown_days: number;
   optout_route_confirmed_at: string | null;
   optout_route_confirmed_by?: string | null;
+  // Review fixes (17 Nov): the privacy page was fetched and has its section
+  // for businesses; Pingen's retention settings were read and are 12 months
+  // or less.
+  privacy_checked_at?: string | null;
+  privacy_checked_url?: string | null;
+  privacy_check_ok?: boolean | null;
+  privacy_check_note?: string | null;
+  pingen_retention_addresses?: number | null;
+  pingen_retention_pdf?: number | null;
+  pingen_retention_checked_at?: string | null;
+  pingen_retention_env?: string | null;
   pingen_price?: number | null;
   pingen_currency?: string | null;
   pingen_checked_at?: string | null;
@@ -169,6 +184,9 @@ export function settingsMissing(s: Settings): string[] {
   return out;
 }
 
+// Free-text settings printed on every letter (the email, WhatsApp and privacy
+// URL have their own exact formats below).
+const SETTINGS_PRINTED_FREE = ["legal_sender_name", "return_name", "return_street", "return_city"];
 const SETTINGS_TEXT = ["legal_sender_name", "legal_sender_nif", "return_name", "return_street", "return_postcode", "return_city", "contact_email", "contact_whatsapp", "privacy_url"];
 const SETTINGS_NUM: Record<string, [number, number]> = {
   price_estimate_eur: [0.01, 10], max_price_per_letter: [0.01, 10], vat_rate: [0, 50],
@@ -185,6 +203,12 @@ export function validateSettingsPatch(patch: Record<string, unknown>): { ok: boo
       if (DASH_RE.test(v)) { errors.push({ field: k, code: "dash", message: "No long dashes (en dash or em dash) in letter copy." }); continue; }
       if (v.length > 120) { errors.push({ field: k, code: "too_long", message: "At most 120 characters." }); continue; }
       if (/[{}<>]/.test(v)) { errors.push({ field: k, code: "bad_chars", message: "Braces and angle brackets are not allowed." }); continue; }
+      // Review fix (17 Nov): what is printed from Settings is checked like the
+      // letter text: no money words and no links off massageclub.io.
+      if (SETTINGS_PRINTED_FREE.includes(k)) {
+        const probs = [...settingsFeeProblems(k, v), ...linkProblems(k, v)];
+        if (probs.length) { errors.push(...probs.map((p) => ({ ...p, message: `${p.message} (Settings print this on every letter.)` }))); continue; }
+      }
       clean[k] = v;
     } else if (k in SETTINGS_NUM) {
       const n = Number(raw);
@@ -198,7 +222,10 @@ export function validateSettingsPatch(patch: Record<string, unknown>): { ok: boo
       if (!["grayscale", "color"].includes(String(raw))) errors.push({ field: k, code: "enum", message: "Grayscale or colour." });
       else clean[k] = String(raw);
     } else if (k === "delivery_product") {
-      if (!["cheap", "fast", "bulk", "premium", "registered"].includes(String(raw))) errors.push({ field: k, code: "enum", message: "Unknown delivery product." });
+      // Review fix (17 Nov): Carta Certificada (registered) looks like an
+      // official notice and costs more, so marketing letters go ordinary.
+      if (String(raw) === "registered") errors.push({ field: k, code: "enum", message: "Registered letters (Carta Certificada) are not for these letters: use the standard letter." });
+      else if (!["cheap", "fast", "bulk", "premium"].includes(String(raw))) errors.push({ field: k, code: "enum", message: "Unknown delivery product." });
       else clean[k] = String(raw);
     } else {
       errors.push({ field: k, code: "unknown_field", message: `${k} cannot be changed here.` });
@@ -231,19 +258,37 @@ export const LIMITS = { body: 1600, greeting: 60, privacy: 1300, optout: 220, ca
 // Words that only the approved fee sentence may contain. "gratis" is checked in
 // the body, greeting and privacy text but not in the opt-out line, whose
 // "Es gratis y no hace falta dar motivos" is about writing BAJA, not the fee.
-const FEE_WORDS = ["eur", "euro", "euros", "iva", "sin coste", "cuota", "cuotas", "comisión", "comision", "comisiones", "tarifa", "tarifas", "descuento", "descuentos", "banco", "bancos", "bancaria", "bancario", "iban"];
+const FEE_WORDS = ["eur", "euro", "euros", "iva", "sin coste", "cuota", "cuotas", "comisión", "comision", "comisiones", "tarifa", "tarifas", "descuento", "descuentos", "banco", "bancos", "bancaria", "bancario", "iban", "cargo", "cargos", "al mes", "por visita", "por cliente"];
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre"];
 const FEE_WORD_RE = wordRe(FEE_WORDS);
-const GRATIS_RE = wordRe(["gratis", "gratuito", "gratuita"]);
+const GRATIS_RE = wordRe(["gratis", "gratuito", "gratuita", "gratuitos", "gratuitas", "gratuitamente"]);
 const MONTH_RE = wordRe(MONTHS);
 const YEAR_RE = /(?<![0-9])20[0-9]{2}(?![0-9])/;
+// Review fix (17 Nov): a keyword list let "Os cobramos 5 por visita", "El
+// primer mes no cuesta nada" and "Luego, una pequeña cantidad mensual"
+// through. Word stems now catch the verb and noun families (cobrar, coste,
+// cuesta, factura, mensual, anual, suscripción, dinero, cantidad, pagar,
+// precio), with the few look-alikes that are not about money left out
+// (costa, cuestión, página).
+const FEE_STEM_RE = /(?<![\p{L}\p{N}])(?:cobr|cost(?!a(?![\p{L}]))|cuest(?!i[oó]n)|factur|mensual|anual|suscrip|dinero|cantidad|pag(?!in|ín)|precio)\p{L}*/iu;
+// The one sentence outside the fee sentence that may talk about paying: the
+// body's bullet that the customer pays the studio, at the studio's price.
+export const PRICE_SENTENCES = ["El cliente paga en vuestro centro, a vuestro precio."];
+// Numbers outside the fee sentence: only phone numbers and times ("15
+// minutos", "2 o 3 horas", "2 minutos"); in the privacy block also the
+// article ("art. 6.1.f") and the retention ("12 meses").
+const DIGIT_OK_RE = /\+\d{1,3}(?: ?\d){8,12}|(?<![\p{L}\p{N}])\d{1,3}(?: (?:o|y|a) \d{1,3})? (?:minutos?|horas?|d[ií]as?|semanas?)(?![\p{L}])/giu;
+const DIGIT_OK_PRIVACY_RE = /(?<![\p{L}\p{N}])art(?:ículo|\.)? ?\d+(?:\.\d+)*(?:\.[a-z])?(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])\d{1,2} meses(?![\p{L}])/giu;
 
-export function feeWordProblems(field: string, text: string, opts: { allowGratis?: boolean } = {}): Problem[] {
+export function feeWordProblems(field: string, text: string, opts: { allowGratis?: boolean; digits?: boolean } = {}): Problem[] {
   const out: Problem[] = [];
-  const t = nfc(text);
-  if (/[€%]/.test(t)) out.push({ field, code: "fee_word", message: `"${t.match(/[€%]/)?.[0]}" may only appear in the approved fee sentence.` });
+  let t = nfc(text);
+  for (const ok of PRICE_SENTENCES) t = t.split(ok).join(" ");
+  if (/[€%$£]/.test(t)) out.push({ field, code: "fee_word", message: `"${t.match(/[€%$£]/)?.[0]}" may only appear in the approved fee sentence.` });
   const w = t.match(FEE_WORD_RE);
   if (w) out.push({ field, code: "fee_word", message: `"${w[0]}" may only appear in the approved fee sentence.` });
+  const st = t.match(FEE_STEM_RE);
+  if (st) out.push({ field, code: "fee_word", message: `"${st[0]}" talks about money: only the approved fee sentence may.` });
   if (!opts.allowGratis) {
     const g = t.match(GRATIS_RE);
     if (g) out.push({ field, code: "fee_word", message: `"${g[0]}" may only appear in the approved fee sentence.` });
@@ -252,11 +297,35 @@ export function feeWordProblems(field: string, text: string, opts: { allowGratis
   if (y) out.push({ field, code: "fee_date", message: `A year (${y[0]}) may only appear in the approved fee sentence.` });
   const m = t.match(MONTH_RE);
   if (m) out.push({ field, code: "fee_date", message: `A month name ("${m[0]}") may only appear in the approved fee sentence.` });
+  if (opts.digits !== false) {
+    let rest = t.replace(/\{\{[^{}]*\}\}/g, " ").replace(DIGIT_OK_RE, " ");
+    if (field.startsWith("privacy")) rest = rest.replace(DIGIT_OK_PRIVACY_RE, " ");
+    const d = rest.match(/\d+(?:[.,]\d+)?/);
+    if (d && !y) out.push({ field, code: "fee_digit", message: `A number ("${d[0]}") may only appear in the approved fee sentence. Elsewhere only phone numbers and times such as "15 minutos" or "2 o 3 horas" are allowed.` });
+  }
+  return out;
+}
+
+// The free-text settings printed on every letter (sender name, return
+// address): no currency, no fee words and no "monthly"-type words. Street
+// names keep their numbers, months and saints ("Calle Dos de Mayo"), so dates
+// and digits are not checked here.
+const SETTINGS_FEE_RE = wordRe(["mensual", "mensuales", "anual", "anuales", "suscripción", "suscripcion", "dinero", "factura", "facturas", "gratis", "gratuito", "gratuita"]);
+export function settingsFeeProblems(field: string, text: string): Problem[] {
+  const t = nfc(text);
+  const out: Problem[] = [];
+  if (/[€%$£]/.test(t)) out.push({ field, code: "fee_word", message: `"${t.match(/[€%$£]/)?.[0]}" may only appear in the approved fee sentence.` });
+  const w = t.match(FEE_WORD_RE) || t.match(SETTINGS_FEE_RE);
+  if (w) out.push({ field, code: "fee_word", message: `"${w[0]}" may only appear in the approved fee sentence.` });
   return out;
 }
 
 // The fee guard: body_es must hold exactly one approved fee sentence, and
-// nothing else in the letter may talk about money or dates.
+// nothing else in the letter may talk about money, dates or numbers.
+// Review fix (17 Nov, UX M6): when the approved sentence is missing because
+// Jordan's draft wording is there, the draft sentence is taken out before the
+// rest is checked, so one fee problem shows as one line (fee_sentence), not
+// as five (the euro sign, "Sin coste", the year and the month each again).
 export function feeGuard(bodyEs: string, others: { field: string; text: string; allowGratis?: boolean }[] = []): { ok: boolean; version: string | null; errors: Problem[] } {
   const body = squash(nfc(bodyEs));
   const errors: Problem[] = [];
@@ -270,23 +339,41 @@ export function feeGuard(bodyEs: string, others: { field: string; text: string; 
   }
   if (!version) {
     errors.push({ field: "body_es", code: "fee_sentence", message: "The fee sentence is not the approved wording. Use the wording from the /socios terms: \"" + FEE_SENTENCES["2026-10-19"].es + "\" (English: \"" + FEE_SENTENCES["2026-10-19"].en + "\")." });
+    const draft = squash(DRAFT_FEE_SENTENCE.es);
+    if (rest.includes(draft)) rest = rest.split(draft).join(" ");
   }
   errors.push(...feeWordProblems("body_es", rest));
   for (const o of others) errors.push(...feeWordProblems(o.field, o.text, { allowGratis: o.allowGratis }));
   return { ok: errors.length === 0, version, errors };
 }
 
-// Every printed link must be on massageclub.io.
+// Every printed link must be on massageclub.io. Review fix (17 Nov): also a
+// bare domain ("www.otra-web.es", "otra-web.com") and any email address not
+// at massageclub.io. aepd.es (the regulator, named in the privacy block) is
+// the one other host that may be printed, as plain text.
+const OK_HOSTS = ["massageclub.io", "book.massageclub.io", "aepd.es", "www.aepd.es"];
+const TLDS = "es|com|net|org|io|eu|info|biz|me|co|app|link|ly|site|online|shop|store|cat|xyz|top|page|dev|ai|club|madrid";
+const DOMAIN_RE = new RegExp(`(?<![\\p{L}\\p{N}@._-])((?:[a-z0-9-]+\\.)+(?:${TLDS}))(?![\\p{L}\\p{N}-])`, "giu");
 export function linkProblems(field: string, text: string): Problem[] {
   const out: Problem[] = [];
   const t = nfc(text);
+  const seen = new Set<string>();
+  const bad = (host: string, what = "Links") => {
+    if (seen.has(host)) return;
+    seen.add(host);
+    out.push({ field, code: "link_host", message: `${what} printed for studios must be on massageclub.io (found ${host}).` });
+  };
   for (const m of t.matchAll(/https?:\/\/([^\s/?#]+)/gi)) {
     const host = m[1].toLowerCase().replace(/[.,;:)]+$/, "");
-    if (host !== "massageclub.io" && host !== "book.massageclub.io") out.push({ field, code: "link_host", message: `Links printed for studios must be on massageclub.io (found ${host}).` });
+    if (!OK_HOSTS.includes(host)) bad(host);
   }
-  for (const m of t.matchAll(/(?<![\w@./-])((?:[a-z0-9-]+\.)+io)\//gi)) {
+  for (const m of t.matchAll(/[a-z0-9._%+-]+@([a-z0-9.-]+\.[a-z]{2,})/gi)) {
+    const host = m[1].toLowerCase().replace(/[.]+$/, "");
+    if (host !== "massageclub.io") bad(host, "Email addresses");
+  }
+  for (const m of t.matchAll(DOMAIN_RE)) {
     const host = m[1].toLowerCase();
-    if (host !== "massageclub.io" && host !== "book.massageclub.io") out.push({ field, code: "link_host", message: `Links printed for studios must be on massageclub.io (found ${host}).` });
+    if (!OK_HOSTS.includes(host)) bad(host);
   }
   return out;
 }
@@ -329,7 +416,7 @@ export function validateTemplate(t: Partial<Template>, opts: { hasGlyph?: (cp: n
     }
   }
   const body = nfc(t.body_es || "");
-  if (body && !squash(body).endsWith(SIGN_OFF)) errors.push({ field: "body_es", code: "sign_off", message: `The letter must end with "${SIGN_OFF}".` });
+  if (body && !squash(body).endsWith(SIGN_OFF)) errors.push({ field: "body_es", code: "sign_off", message: `The letter must end with "${SIGN_OFF}" (Jordan, from Massage Club).` });
   if (body && !body.includes("{{nombre}}")) warnings.push({ field: "body_es", code: "no_name", message: "The letter does not use {{nombre}}, so every studio gets the same greeting." });
   const optout = nfc(t.optout_es || "");
   if (optout && (!/\bBAJA\b/.test(optout) || !(optout.includes("{{whatsapp}}") || optout.includes("{{email_contacto}}")))) {
@@ -385,7 +472,10 @@ export function greetingProblems(g: string): Problem[] {
   if (v.length > LIMITS.greeting) out.push({ field: "greeting_name", code: "too_long", message: `At most ${LIMITS.greeting} characters.` });
   if (DASH_RE.test(v)) out.push({ field: "greeting_name", code: "dash", message: "No long dashes (en dash or em dash)." });
   if (/[{}\n<>]/.test(v)) out.push({ field: "greeting_name", code: "bad_chars", message: "No braces, angle brackets or line breaks." });
-  out.push(...feeWordProblems("greeting_name", v));
+  // Studio names keep their numbers ("Sinergia38") and ordinary words that
+  // only look like money stems ("Precioso"), so the greeting gets the narrow
+  // check that Settings get.
+  out.push(...settingsFeeProblems("greeting_name", v));
   out.push(...linkProblems("greeting_name", v));
   return out;
 }
@@ -429,7 +519,8 @@ export function validateAddressLines(linesIn: string[], postcode: string, town: 
 }
 
 // Madrid city postcodes 28001 to 28055 go by Hispapost (research of 15 Nov);
-// anything else goes by Correos and may cost more.
+// anything else goes by Correos. Pingen prices by country, so this says who
+// delivers, not what it costs.
 export const isHispapostPostcode = (pc: string): boolean => /^280[0-5][0-9]$/.test(pc) && Number(pc) >= 28001 && Number(pc) <= 28055;
 
 // ---------------------------------------------------------------------------
@@ -525,14 +616,17 @@ export type Partner = {
 };
 export type Recipient = {
   id: string; kind: "studio" | "proof"; partner_id: string | null; list_version?: string;
-  display_name: string; greeting_name: string; address_lines: string[]; postcode: string; town: string;
+  display_name: string; greeting_name: string; address_lines: string[] | null; postcode: string; town: string;
   unit_status?: string; confidence?: string; partner_address_at_import?: string | null; needs_review?: string | null;
+  warnings_acked_at?: string | null; warnings_acked_by?: string | null; purged_at?: string | null;
   active: boolean;
 };
 export type LetterLite = { id: string; campaign_id: string; status: string; submitted_at?: string | null; partner_id?: string | null };
 export type Reason = { code: string; text: string };
 
-export const TEST_STUDIO_RE = /\b(test|prueba)\b/i;
+// Review fix (17 Nov): CLAUDE.md says names CONTAINING test or prueba
+// ("Pruebas", "Testing"), so no word boundaries.
+export const TEST_STUDIO_RE = /test|prueba/i;
 // "From approved to submitted": a letter in another open campaign in one of
 // these states means the studio is already being written to.
 export const IN_FLIGHT = ["approved", "uploading", "checking", "ready", "blocked", "sending", "submitted", "error"];
@@ -552,16 +646,22 @@ export function greetingLooksLikePerson(g: string): boolean {
 
 export function eligibility(x: {
   recipient: Recipient | null; partner: Partner | null; letters: LetterLite[]; campaignStatus: Record<string, string>;
-  cooldownDays: number; now: Date; selfLetterId?: string; greeting?: string;
-}): { eligible: boolean; reasons: Reason[]; warnings: Reason[] } {
+  cooldownDays: number; now: Date; selfLetterId?: string; greeting?: string; optouts?: { created_at: string; scope?: string | null }[];
+}): { eligible: boolean; reasons: Reason[]; warnings: Reason[]; infos: Reason[] } {
   const reasons: Reason[] = [];
   const warnings: Reason[] = [];
+  const infos: Reason[] = [];
   const r = x.recipient, p = x.partner;
   if (!r || !r.active) reasons.push({ code: "not_in_list", text: "Not on the verified mailing list." });
   if (r && r.kind === "studio") {
     if (!p) reasons.push({ code: "not_in_list", text: "The studio is no longer in our records." });
     else {
       if (p.opted_out_at || p.outreach_status === "opted_out") reasons.push({ code: "opted_out", text: `Asked not to be contacted${p.opted_out_at ? ` (on ${fmtDate(p.opted_out_at)})` : ""}.` });
+      // Review fix (17 Nov, security M1): a BAJA from an active partner is a
+      // letters-only objection, recorded in letter_optouts and not on the
+      // partner row; it stops letters all the same.
+      const lo = (x.optouts || []).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+      if (lo) reasons.push({ code: "opted_out_letters", text: `Asked for no more letters (BAJA on ${fmtDate(lo.created_at)}).` });
       if (p.status === "suspended" || p.status === "archived") reasons.push({ code: "not_writable", text: "Suspended or archived." });
       if (p.status === "active") reasons.push({ code: "already_partner", text: "Already a Massage Club partner." });
       if (p.outreach_status && ["rejected", "skipped_not_massage", "claimed", "bounced"].includes(p.outreach_status)) reasons.push({ code: "outreach_closed", text: `Closed in outreach (${p.outreach_status}).` });
@@ -573,20 +673,27 @@ export function eligibility(x: {
       if (recent) reasons.push({ code: "recently_written", text: `Already written to on ${fmtDate(String(recent.submitted_at))}.` });
       else if (inFlight) reasons.push({ code: "recently_written", text: "Already in another campaign that is being posted." });
       if (r.partner_address_at_import != null && addrKey(p.address) !== addrKey(r.partner_address_at_import)) {
-        reasons.push({ code: "address_changed", text: "Address changed in our records since the list was checked: re-check it." });
+        reasons.push({ code: "address_changed", text: "Address changed in our records since the list was checked: re-check it, fix the CSV line and import the list again in Settings, Mailing list." });
       }
     }
   }
-  if (r && r.needs_review) reasons.push({ code: "needs_review", text: `Last letter came back: check the address (${r.needs_review}).` });
+  if (r && r.needs_review) reasons.push({ code: "needs_review", text: `Last letter came back: check the address (${r.needs_review}). Fix the CSV line and import the list again in Settings, Mailing list.` });
+  if (r && !r.address_lines?.length) reasons.push({ code: "address_purged", text: "The address was deleted (12 months passed or the studio opted out): import it again to write." });
   if (r) {
-    if (r.unit_status === "unit unknown") warnings.push({ code: "unit_unknown", text: "Floor or door unknown: the postman may not find the studio inside the building." });
-    if (r.confidence && r.confidence !== "high") warnings.push({ code: "medium_confidence", text: `Address confidence is ${r.confidence}.` });
+    // Review fix (17 Nov, UX M4 and M5): unit unknown and medium confidence
+    // are decided once per studio when the list is imported (accepted there,
+    // they are not ticked again on every letter), and each says what to do.
+    const accepted = !!r.warnings_acked_at;
+    if (r.unit_status === "unit unknown" && !accepted) warnings.push({ code: "unit_unknown", text: "Floor or door unknown. Approve if it is a street-level shop or a house. Reject if it is a flat or a unit in a shopping centre with no number; to fix it, correct the line in the CSV and import the list again in Settings, Mailing list (the letter is then prepared again)." });
+    if (r.confidence && r.confidence !== "high" && !accepted) warnings.push({ code: "medium_confidence", text: `Address confidence is ${r.confidence}: check the street and number on Google Maps. If it is wrong, correct the line in the CSV and import the list again in Settings, Mailing list (the letter is then prepared again).` });
     const g = x.greeting ?? r.greeting_name;
-    if (r.kind === "studio" && greetingLooksLikePerson(g)) warnings.push({ code: "greeting_looks_like_a_person", text: `"${g}" looks like a person's name: consider the greeting "Hola, ${g}:" instead of "equipo de".` });
-    if (!isHispapostPostcode(r.postcode)) warnings.push({ code: "postcode_not_hispapost", text: `Postcode ${r.postcode} goes by Correos, not Hispapost: it may cost more.` });
+    if (r.kind === "studio" && greetingLooksLikePerson(g)) warnings.push({ code: "greeting_looks_like_a_person", text: `"${g}" looks like a person's name: consider the greeting "Hola, ${g}:" instead of "equipo de" (edit the greeting below).` });
+    // Not a tick (UX M4): Pingen prices by country, not postcode, so there is
+    // no cost claim here; it only says who delivers it.
+    if (r.postcode && !isHispapostPostcode(r.postcode)) infos.push({ code: "postcode_correos", text: `Postcode ${r.postcode} is outside Madrid city (28001 to 28055), so Correos delivers it rather than Hispapost. Pingen's price shows after the upload.` });
   }
   const uniq = (a: Reason[]) => a.filter((v, i) => a.findIndex((w) => w.code === v.code) === i);
-  return { eligible: reasons.length === 0, reasons: uniq(reasons), warnings: uniq(warnings) };
+  return { eligible: reasons.length === 0, reasons: uniq(reasons), warnings: uniq(warnings), infos: uniq(infos) };
 }
 
 // ---------------------------------------------------------------------------

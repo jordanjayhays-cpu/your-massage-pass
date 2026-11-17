@@ -15,8 +15,15 @@ import { mergedTexts } from "../../supabase/functions/letters/render.ts";
 export const SUPA = "https://proj.supabase.test";
 export const ORG = "11111111-2222-4333-8444-555555555555";
 export const ADMIN = "jordan@massageclub.io";
+export const ADMIN_ID = "d0d0d0d0-0000-4000-8000-00000000000a";
+export const OTHER_ID = "d0d0d0d0-0000-4000-8000-00000000000b";
 export const ADMIN_TOKEN = "tok_admin_aaaaaaaaaaaaaaaaaaaaaaaa";
 export const OTHER_TOKEN = "tok_other_bbbbbbbbbbbbbbbbbbbbbbbb";
+// A Supabase Auth user as GET /auth/v1/user returns it, signed in with Google.
+export const googleUser = (id, email, extra = {}) => ({
+  id, email, email_confirmed_at: "2026-01-01T00:00:00Z",
+  identities: [{ provider: "google", identity_data: { email, email_verified: true } }], ...extra,
+});
 export const PASS = "correct horse battery";
 export const SIGN_KEY = "test-sign-key-not-a-real-one-0123456789";
 export const WH_SECRET = "whsec_test_0123456789abcdef";
@@ -74,15 +81,24 @@ const UPLOADED = ["checking", "ready", "sending", "submitted", "sent", "delivere
 
 export function memStore() {
   const db = {
-    settings: { ...DEFAULT_SETTINGS, optout_route_confirmed_by: null, pingen_price: null, pingen_currency: null, pingen_checked_at: null },
+    settings: {
+      ...DEFAULT_SETTINGS, optout_route_confirmed_by: null, pingen_price: null, pingen_currency: null, pingen_checked_at: null,
+      privacy_checked_at: null, privacy_checked_url: null, privacy_check_ok: null, privacy_check_note: null,
+      pingen_retention_addresses: null, pingen_retention_pdf: null, pingen_retention_checked_at: null, pingen_retention_env: null,
+    },
     partners: partners(), recipients: [], campaigns: [], letters: [], events: [], optouts: [], rate: new Map(), pdfs: new Map(),
-    funnel: [], signups: [],
+    funnel: [], signups: [], pdfDeletions: [],
   };
   let eid = 0;
-  const now = () => new Date().toISOString();
+  // The store's clock: the handler's clock when makeApi sets it (so the
+  // 12-month purge can be tested), else the real time.
+  let clockFn = () => new Date();
+  const nowFn = () => clockFn().toISOString();
+  const now = () => nowFn();
   const clone = (x) => (x == null ? x : structuredClone(x));
   const winStart = (s) => Math.floor(Date.now() / 1000 / s) * s;
 
+  const optedOutLetters = (pid) => db.optouts.some((o) => o.partner_id === pid && !o.undone_at && !o.test);
   // Mirrors letters_guard and the two CHECK constraints.
   function guard(old, next) {
     if (next.status !== old.status && !canTransition(old.status, next.status)) throw Object.assign(new Error(`letters: ${old.status} cannot become ${next.status}`), { db: true });
@@ -92,6 +108,7 @@ export function memStore() {
       if (next.partner_id) {
         const p = db.partners.find((x) => x.id === next.partner_id);
         if (!p || p.opted_out_at || ["suspended", "archived", "active"].includes(p.status) || p.outreach_status === "opted_out") throw new Error("letters: studio is opted out or not writable");
+        if (optedOutLetters(next.partner_id)) throw new Error("letters: studio asked for no more letters (BAJA)");
       }
       if (!next.approved_sha256 || next.approved_sha256 !== next.pdf_sha256) throw new Error("letters: not approved for these bytes");
     }
@@ -117,7 +134,7 @@ export function memStore() {
       const out = rows.map((r) => ({ id: uuid(), imported_at: now(), note: null, ...r }));
       for (const r of out) {
         if (r.active && r.kind === "studio" && db.recipients.some((x) => x.active && x.kind === "studio" && x.partner_id === r.partner_id)) throw new Error("letter_recipients_one_active violated");
-        if (r.address_lines.length < 3 || r.address_lines.length > 7) throw new Error("letter_recipients_lines violated");
+        if (r.address_lines != null && (r.address_lines.length < 3 || r.address_lines.length > 7)) throw new Error("letter_recipients_lines violated");
         db.recipients.push(r);
       }
       return clone(out);
@@ -130,7 +147,20 @@ export function memStore() {
     async updateRecipient(id, p) { Object.assign(db.recipients.find((r) => r.id === id) || {}, p); },
     async getPartners(ids) { return clone(db.partners.filter((p) => ids.includes(p.id))); },
     async countPartnersWithSlug(slug) { return db.partners.filter((p) => p.slug === slug).length; },
-    async setPartnerOptedOut(id, at) { const p = db.partners.find((x) => x.id === id); if (!p) return null; if (!p.opted_out_at) p.opted_out_at = at; return clone(p); },
+    async setPartnerOptedOut(id, at) {
+      const p = db.partners.find((x) => x.id === id);
+      if (!p) return { partner: null, previous: null, changed: false };
+      if (!p.opted_out_at) { p.opted_out_at = at; return { partner: clone(p), previous: null, changed: true }; }
+      return { partner: clone(p), previous: p.opted_out_at, changed: false };
+    },
+    async restorePartnerOptedOut(id, previous, current) {
+      const p = db.partners.find((x) => x.id === id);
+      if (!p || p.opted_out_at !== current) return false;
+      p.opted_out_at = previous;
+      return true;
+    },
+    async bumpPartnerLink(id) { const p = db.partners.find((x) => x.id === id); if (!p) return null; p.slots_link_v = Number(p.slots_link_v || 1) + 1; return p.slots_link_v; },
+    async recipientsForPartners(ids) { return clone(db.recipients.filter((r) => ids.includes(r.partner_id))); },
     async listCampaigns() { return clone([...db.campaigns].reverse()); },
     async getCampaign(id) { return clone(db.campaigns.find((c) => c.id === id) ?? null); },
     async insertCampaign(row) { const c = { id: uuid(), created_at: now(), updated_at: now(), ...row }; db.campaigns.push(c); return clone(c); },
@@ -152,6 +182,7 @@ export function memStore() {
     async insertLetters(rows) {
       const out = rows.map((r) => ({ id: uuid(), ...blankLetter(), created_at: now(), updated_at: now(), ...r }));
       for (const l of out) {
+        if (l.status !== "draft") throw new Error("letters: a new letter starts as draft");
         if (db.letters.some((x) => x.ref_code === l.ref_code)) throw new Error("ref_code unique violated");
         if (db.letters.some((x) => x.campaign_id === l.campaign_id && x.recipient_id === l.recipient_id)) throw new Error("unique (campaign_id, recipient_id) violated");
         db.letters.push(l);
@@ -179,7 +210,9 @@ export function memStore() {
     async listEvents({ campaign_id, letter_id, limit }) {
       return clone(db.events.filter((e) => (!campaign_id || e.campaign_id === campaign_id) && (!letter_id || e.letter_id === letter_id)).reverse().slice(0, limit));
     },
-    async insertOptout(row) { const o = { id: uuid(), created_at: now(), ...row }; db.optouts.push(o); return clone(o); },
+    async insertOptout(row) { const o = { id: uuid(), created_at: now(), test: false, undone_at: null, ...row }; db.optouts.push(o); return clone(o); },
+    async activeOptoutsFor(ids) { return clone(db.optouts.filter((o) => ids.includes(o.partner_id) && !o.undone_at && !o.test)); },
+    async latestTestOptout(since) { return clone([...db.optouts].filter((o) => o.test && o.channel === "whatsapp" && o.created_at >= since).sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null); },
     async listOptouts(limit) { return clone([...db.optouts].reverse().slice(0, limit)); },
     async getOptout(id) { return clone(db.optouts.find((o) => o.id === id) ?? null); },
     async updateOptout(id, p) { Object.assign(db.optouts.find((o) => o.id === id) || {}, p); },
@@ -193,9 +226,37 @@ export function memStore() {
     async putPdf(path, bytes) { db.pdfs.set(path, new Uint8Array(bytes)); },
     async getPdf(path) { const b = db.pdfs.get(path); return b ? new Uint8Array(b) : null; },
     async deletePdf(path) { db.pdfs.delete(path); },
+    // Mirrors letters_purge_expired() in 20261117_letters.sql.
+    async purgeExpired() {
+      const cutoff = new Date(Date.parse(nowFn()) - 365 * 86400e3).toISOString();
+      const busy = ["uploading", "checking", "ready", "blocked", "sending", "submitted", "error"];
+      const done = ["withdrawn", "rejected", "sent", "delivered", "undeliverable", "unprintable", "cancelled"];
+      const out = new Set([...db.partners.filter((p) => p.opted_out_at || p.outreach_status === "opted_out").map((p) => p.id), ...db.optouts.filter((o) => o.partner_id && !o.undone_at && !o.test).map((o) => o.partner_id)]);
+      const r = { withdrawn: 0, pdfs_queued: 0, letters: 0, recipients: 0, optouts: 0, events: 0 };
+      for (const l of db.letters) if (["draft", "review", "approved", "rejected"].includes(l.status) && out.has(l.partner_id)) { l.status = "withdrawn"; l.status_reason = "Studio asked not to be contacted (BAJA)."; r.withdrawn++; }
+      for (const l of db.letters) {
+        if (l.purged_at || busy.includes(l.status)) continue;
+        if (!((l.submitted_at || l.created_at) < cutoff || (done.includes(l.status) && out.has(l.partner_id)))) continue;
+        if (l.pdf_path && !db.pdfDeletions.includes(l.pdf_path)) { db.pdfDeletions.push(l.pdf_path); r.pdfs_queued++; }
+        Object.assign(l, { address_lines: null, greeting_name: null, qr_url: null, pingen_address: null, pdf_path: null, status_reason: null, last_error: null, purged_at: nowFn() });
+        r.letters++;
+      }
+      for (const x of db.recipients) {
+        if (x.purged_at || db.letters.some((l) => l.recipient_id === x.id && busy.includes(l.status))) continue;
+        const old = x.imported_at < cutoff && !db.letters.some((l) => l.recipient_id === x.id && (l.submitted_at || l.created_at) >= cutoff);
+        if (!old && !out.has(x.partner_id)) continue;
+        Object.assign(x, { address_lines: null, postcode: "", town: "", partner_address_at_import: null, needs_review: null, active: false, purged_at: nowFn() });
+        r.recipients++;
+      }
+      for (const o of db.optouts) if (o.created_at < cutoff && (o.message || o.message_en || o.from_ref)) { o.message = null; o.message_en = null; o.from_ref = null; r.optouts++; }
+      for (const e of db.events) if (e.created_at < cutoff && e.detail) { e.detail = null; r.events++; }
+      return r;
+    },
+    async pdfDeletions(limit) { return db.pdfDeletions.slice(0, limit); },
+    async pdfDeleted(path) { db.pdfDeletions = db.pdfDeletions.filter((p) => p !== path); },
     async funnelStats(pids) { return pids.map((pid) => ({ partner_id: pid, opened: db.funnel.filter((f) => f === pid).length, signed_up: db.signups.filter((f) => f === pid).length })); },
   };
-  return { db, store };
+  return { db, store, setClock: (fn) => { clockFn = fn; } };
 }
 
 // A stand-in renderer for the API tests: deterministic bytes that change
@@ -217,7 +278,9 @@ export function stubPayload(bytes) {
 export function mockNet(opts = {}) {
   const calls = [];
   const pingen = { letters: new Map(), uploads: new Map(), webhooks: [], failSendOnce: false, validStatus: "valid", addressOverride: null, tokenCount: 0 };
-  const users = { [ADMIN_TOKEN]: { email: ADMIN, email_confirmed_at: "2026-01-01T00:00:00Z" }, [OTHER_TOKEN]: { email: "someone@example.com", email_confirmed_at: "2026-01-01T00:00:00Z" }, ...(opts.users || {}) };
+  const users = { [ADMIN_TOKEN]: googleUser(ADMIN_ID, ADMIN), [OTHER_TOKEN]: googleUser(OTHER_ID, "someone@example.com"), ...(opts.users || {}) };
+  const org = { name: "Massage Club test org", status: "active", billing_mode: "prepaid", billing_currency: "EUR", billing_balance: 25, missing_credits: 0, default_address_position: "left", data_retention_addresses: 12, data_retention_pdf: 12, ...(opts.org || {}) };
+  const pages = { "https://massageclub.io/privacy": '<!doctype html><html><body><section id="negocios"><h2>Negocios</h2></section></body></html>', ...(opts.pages || {}) };
   const json = (status, body, headers = {}) => new Response(body == null ? null : JSON.stringify(body), { status, headers: { "content-type": "application/json", "x-request-id": `req-${calls.length}`, ...headers } });
   async function fetch(url, init = {}) {
     const method = (init.method || "GET").toUpperCase();
@@ -228,6 +291,7 @@ export function mockNet(opts = {}) {
       return users[tok] ? json(200, users[tok]) : json(401, { msg: "bad jwt" });
     }
     const u = new URL(url);
+    if (/(^|\.)massageclub\.io$/.test(u.hostname)) return pages[url] != null ? new Response(pages[url], { status: 200, headers: { "content-type": "text/html" } }) : new Response("not found", { status: 404 });
     if (u.hostname === "upload.pingen.test") { pingen.uploads.set(url, init.body); return new Response(null, { status: 200 }); }
     if (!/(^|\.)pingen\.com$/.test(u.hostname)) return json(404, { error: "unexpected host " + u.hostname });
     if (u.pathname === "/auth/access-tokens") { pingen.tokenCount++; return json(200, { token_type: "Bearer", expires_in: 43200, access_token: `ptok${pingen.tokenCount}` }); }
@@ -236,14 +300,17 @@ export function mockNet(opts = {}) {
     const m = u.pathname.match(/^\/organisations\/([^/]+)(\/.*)?$/);
     if (!m) return json(404, {});
     const rest = m[2] || "";
-    if (rest === "" && method === "GET") return json(200, { data: { id: ORG, attributes: { name: "Massage Club test org", status: "active", billing_currency: "EUR", billing_balance: 25, missing_credits: 0, default_address_position: "left" } } });
+    if (rest === "" && method === "GET") return json(200, { data: { id: ORG, attributes: org } });
     if (rest === "/webhooks" && method === "GET") return json(200, { data: pingen.webhooks });
     if (rest === "/webhooks" && method === "POST") { const b = JSON.parse(init.body); const w = { id: uuid(), attributes: { event_category: b.data.attributes.event_category, url: b.data.attributes.url } }; pingen.webhooks.push(w); return json(201, { data: w }); }
     if (rest === "/deliveries/letters/price-calculator") return json(200, { data: { attributes: { price: 0.97, currency: "EUR" } } });
     if (rest === "/deliveries/letters" && method === "POST") {
       const b = JSON.parse(init.body).data.attributes;
       const bytes = pingen.uploads.get(b.file_url);
-      const inp = bytes ? stubPayload(bytes) : { addressLines: [] };
+      // The stand-in renderer's bytes carry their inputs; real PDFs (the
+      // screenshot harness) are read through pingen.addressOf when given.
+      let inp = { addressLines: [] };
+      try { inp = bytes ? stubPayload(bytes) : inp; } catch { inp = { addressLines: pingen.addressOf ? await pingen.addressOf(bytes) : [] }; }
       const id = uuid();
       pingen.letters.set(id, { status: "validating", polls: 0, address: (pingen.addressOverride ?? inp.addressLines).join("\n") + "\nSpain", name: b.file_original_name, auto_send: b.auto_send });
       return json(201, { data: { id, type: "letters", attributes: { status: "validating" } } });
@@ -269,15 +336,16 @@ export function mockNet(opts = {}) {
     }
     return json(404, { errors: [{ title: "no route " + method + " " + u.pathname }] });
   }
-  return { fetch, calls, pingen };
+  return { fetch, calls, pingen, org, pages };
 }
 
 export async function makeApi(o = {}) {
   const { createHandler } = await import("../../supabase/functions/letters/api.ts");
-  const { db, store } = memStore();
+  const { db, store, setClock } = memStore();
   const net = mockNet(o);
-  const env = { SUPABASE_URL: SUPA, SUPABASE_SERVICE_ROLE_KEY: "service-role-test", LETTERS_PASSCODE: PASS, MC_SIGN_KEY: SIGN_KEY, LETTERS_WEBHOOK_SECRET: WH_SECRET, ...(o.env || {}) };
+  const env = { SUPABASE_URL: SUPA, SUPABASE_SERVICE_ROLE_KEY: "service-role-test", LETTERS_PASSCODE: PASS, MC_SIGN_KEY: SIGN_KEY, LETTERS_WEBHOOK_SECRET: WH_SECRET, LETTERS_ADMIN_USER_IDS: ADMIN_ID, ...(o.env || {}) };
   let clock = o.now ? new Date(o.now) : new Date("2026-11-17T10:00:00Z");
+  setClock(() => clock);
   const handler = createHandler({
     env: (k) => env[k],
     store,

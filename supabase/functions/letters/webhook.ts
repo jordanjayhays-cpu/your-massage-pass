@@ -55,6 +55,10 @@ export type WebhookPlan = {
   steps: string[];
   patch: Record<string, unknown>;
   recipientReview?: string;
+  // Review fix (17 Nov, security M2): a letter that came back may have been
+  // left somewhere else, and its QR is the studio's signed sign-up link, so
+  // the link is revoked (partners.slots_link_v + 1).
+  revokeLink?: boolean;
   note?: string;
 };
 
@@ -77,9 +81,9 @@ export function planWebhook(ev: WebhookEvent, letter: { status: string } | null,
     case "undeliverable": {
       const patch = { pingen_status: "undeliverable", undeliverable_at: at, status_reason: ev.reason || "Returned as undeliverable." };
       const review = `undeliverable on ${at.slice(0, 10)}${ev.reason ? `: ${ev.reason}` : ""}`.slice(0, 200);
-      if (st === "sent") return { kind: "apply", event: "webhook_undeliverable", steps: ["undeliverable"], patch, recipientReview: review };
-      if (st === "submitted") return { kind: "apply", event: "webhook_undeliverable", steps: ["sent", "undeliverable"], patch: { ...patch, sent_at: at }, recipientReview: review };
-      return { kind: "record", event: "webhook_undeliverable", steps: [], patch: { pingen_status: "undeliverable" }, recipientReview: review };
+      if (st === "sent") return { kind: "apply", event: "webhook_undeliverable", steps: ["undeliverable"], patch, recipientReview: review, revokeLink: true };
+      if (st === "submitted") return { kind: "apply", event: "webhook_undeliverable", steps: ["sent", "undeliverable"], patch: { ...patch, sent_at: at }, recipientReview: review, revokeLink: true };
+      return { kind: "record", event: "webhook_undeliverable", steps: [], patch: { pingen_status: "undeliverable" }, recipientReview: review, revokeLink: true };
     }
     case "delivered": {
       const patch = { pingen_status: "delivered", delivered_at: at };
