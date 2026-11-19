@@ -53,6 +53,7 @@ export const CONSENT_COPY = {
     emailLabel: "Your email",
     emailNeeded: "Add your email first, for example name@gmail.com",
     noThanksNoEmail: "No problem.",
+    notSaved: "We could not save your answer about offers. Please choose again.",
   },
   es: {
     notice:
@@ -67,6 +68,7 @@ export const CONSENT_COPY = {
     emailLabel: "Tu email",
     emailNeeded: "Primero añade tu email, por ejemplo nombre@gmail.com",
     noThanksNoEmail: "Sin problema.",
+    notSaved: "No se ha podido guardar tu respuesta sobre las ofertas. Elige otra vez, por favor.",
   },
 } as const;
 

@@ -28,7 +28,8 @@ import AccountOfferBlock from "@/components/AccountOfferBlock";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { markStudioVisited } from "@/lib/visitedStudios";
-import MarketingOptInCard from "@/app/components/MarketingOptInCard";
+import MarketingOptInCard, { ConsentQuestion } from "@/app/components/MarketingOptInCard";
+import { CONSENT_COPY, consentLang, saveConsent, type ConsentChoice, type SaveConsentInput } from "@/lib/marketingOptIn";
 import StudioPlaceMap from "@/app/components/StudioPlaceMap";
 import { StudioPhoto } from "@/app/components/StudioPhoto";
 import { useStockPhoto } from "@/lib/useStockPhoto";
@@ -982,6 +983,16 @@ function StudioBookingPageInner() {
   // Off by default (2 Nov): a pre-ticked box sent sign-up emails nobody asked for.
   const [createAccount, setCreateAccount] = useState(false);
 
+  // The Kelly rule (19 Nov): the offers question, with two equal buttons and
+  // nothing chosen, on Your details (claimed studios) and next to Send
+  // (unclaimed). null is "not answered" and saves nothing. The booking or
+  // request goes first and never waits for it (LOPDGDD 6.3); the answer is
+  // saved after, through the consent function.
+  const [mkChoice, setMkChoice] = useState<ConsentChoice | null>(null);
+  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | null>(null);
+  // bookings.id of a claimed-studio booking, so a retry is tied to it.
+  const bookingIdRef = useRef<string | null>(null);
+
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
   const [hoAltDate, setHoAltDate] = useState("");
@@ -1823,6 +1834,26 @@ function StudioBookingPageInner() {
   /** Menu price with "for 2" on couples rows and "4 hands" on four-hands rows (F17). */
   const serviceTag = (s: any) => (isForTwo(s) ? sp.forTwo : isFourHands(s) ? sp.fourHands : null);
 
+  // The offers answer, saved once the booking or request exists. Never
+  // awaited by the booking: it runs after, retries once inside saveConsent,
+  // and a failure is tracked, logged and shown on the sent screen.
+  const mkLang = consentLang(lang);
+  const saveMkAnswer = (who: Omit<SaveConsentInput, "choice" | "lang">) => {
+    const choice = mkChoice;
+    if (!choice) return;
+    setMkSave("saving");
+    void saveConsent({ ...who, choice, lang: mkLang }).then((r) => setMkSave(r.ok ? "ok" : "failed"));
+  };
+  // Shown on the sent screen only when the answer could not be saved: says
+  // so, and asks again (a tap saves at once).
+  const mkRetryBlock = (who: { source: "studio_booking" | "studio_request"; email: string; phone: string | null; bookingRef?: string | null }) =>
+    mkSave === "failed" ? (
+      <div className="mt-6 text-left" data-testid="consent-retry">
+        <p role="alert" className="mb-2 text-sm" style={{ color: "#B03A2E" }}>{CONSENT_COPY[mkLang].notSaved}</p>
+        <MarketingOptInCard source={who.source} email={who.email || null} phone={who.phone} bookingRef={who.bookingRef} lang={mkLang} />
+      </div>
+    ) : null;
+
   // ─── Confirmation screen (claimed studios) ───
   if (done) {
     const prettyDate = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : "";
@@ -1900,13 +1931,9 @@ function StudioBookingPageInner() {
               requestId={waRequestIdRef.current}
               source="studio-booking"
             />
-            <MarketingOptInCard
-              className="mt-6"
-              email={email.trim() || null}
-              source="studio_booking"
-              bookingRef={done.ref}
-              lang={lang}
-            />
+            {/* Offers: asked once, on Your details. Here only if that answer
+                could not be saved (the Kelly rule). */}
+            {mkRetryBlock({ source: "studio_booking", email: email.trim(), phone: normalizePhone(phone), bookingRef: bookingIdRef.current })}
             {nearbyBlock && <div className="mt-6">{nearbyList(false)}</div>}
 
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
@@ -2061,6 +2088,9 @@ function StudioBookingPageInner() {
         return;
       }
       waRequestIdRef.current = logged.id;
+      // whatsapp_requests.id cannot be read back by anon, so the answer is
+      // tied to the request by its email and phone and the time.
+      saveMkAnswer({ source: "studio_request", email: hoEmail.trim(), phone: normalizePhone(hoPhone) });
       clarityEvent("req_submit_ok");
       reqTrack("req_submit_ok", { has_phone: phoneTyped, service: servicePrimaryName(hoService), offset: hoDate ? dayOffset(hoDate) : null, hour: hoTime ? Number(String(hoTime).split(":")[0]) : null, attempts: attemptsRef.current });
       trackFunnel("wizard_submit_ok", { ...funnelMeta, request_id: logged.id }, studioSlug);
@@ -2489,6 +2519,7 @@ function StudioBookingPageInner() {
                         </div>
                       )}
                     </div>
+                    <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
                     {hoSendError && (
                       <p role="alert" className="rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>
                         {sp.sendError}
@@ -2541,6 +2572,7 @@ function StudioBookingPageInner() {
                       <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{fill(sp.sentAnswer, { email: hoSentTo })}</li>
                       <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{sp.sentYes}</li>
                     </ul>
+                    {mkRetryBlock({ source: "studio_request", email: hoEmail.trim(), phone: normalizePhone(hoPhone) })}
                     <AccountOfferBlock
                       firstName={splitName(hoFullName).first}
                       lastName={splitName(hoFullName).last || ""}
@@ -2703,7 +2735,7 @@ function StudioBookingPageInner() {
 
 
     try {
-      const { data, error } = await supabase.from("bookings").insert({
+      const bookingRow = {
         ...getSource(),
         client_name: name.trim(),
         client_phone: normalizePhone(phone),
@@ -2739,12 +2771,26 @@ function StudioBookingPageInner() {
         reason_for_visit: customerProfile?.reason_for_visit || null,
         is_first_visit: customerProfile?.is_first_massage ?? null,
         client_preferences: clientPreferences,
-        marketing_opt_in: false,
-        marketing_opt_in_at: null,
+      };
+      // The booking row's flag mirrors a yes given on this page; the record of
+      // every answer (yes, no, with the words shown) is marketing_optins. If the
+      // live insert policy were ever to refuse the flag, the booking still goes
+      // through without it, and the answer is saved by the consent function.
+      const mkYes = mkChoice === "yes";
+      let { data, error } = await supabase.from("bookings").insert({
+        ...bookingRow,
+        marketing_opt_in: mkYes,
+        marketing_opt_in_at: mkYes ? new Date().toISOString() : null,
       }).select("id").single();
-
+      if (error && mkYes && /row-level security|42501/i.test(`${error.message} ${(error as { code?: string }).code || ""}`)) {
+        ({ data, error } = await supabase.from("bookings").insert({
+          ...bookingRow, marketing_opt_in: false, marketing_opt_in_at: null,
+        }).select("id").single());
+      }
 
       if (error) throw new Error(error.message);
+      bookingIdRef.current = data?.id ? String(data.id) : null;
+      saveMkAnswer({ source: "studio_booking", email: email.trim(), phone: normalizePhone(phone), bookingRef: bookingIdRef.current });
 
       // Fire the notification emails directly (more reliable than the DB webhook).
       try {
@@ -3364,6 +3410,7 @@ function StudioBookingPageInner() {
                         </span>
                       </label>
                     )}
+                    <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
                     <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{c.continueLabel}</button>
                   </form>
                 </Section>

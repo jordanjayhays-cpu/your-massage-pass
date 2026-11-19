@@ -9,6 +9,8 @@ import { haversineKm } from "@/lib/nearestStudios";
 import { contactOk, CONTACT_COPY, EMAIL_REQUIRED_COPY, isValidEmail } from "@/lib/contactValidation";
 import { DealsConfirmationLine } from "@/components/DealsLink";
 import AccountOfferBlock from "@/components/AccountOfferBlock";
+import MarketingOptInCard, { ConsentQuestion } from "@/app/components/MarketingOptInCard";
+import { CONSENT_COPY, consentLang, saveConsent, type ConsentChoice } from "@/lib/marketingOptIn";
 import { supabase } from "@/lib/supabase";
 import { useLastBooking } from "@/lib/useLastBooking";
 import { linkRequestToUser } from "@/lib/pendingAccount";
@@ -90,7 +92,7 @@ export const BOOK_FLOW_COPY = {
     // the bot waits for studios to open. Every language.
     promiseBody:
       "We will write to you with the studio's answer. If the time works, tap Yes on the offer to book it. If they cannot fit you, we will send you other studios nearby.",
-    successTitle: "Almost done - send it to us",
+    successTitle: "Almost done. Send it to us",
     successSub: "Tap send in WhatsApp and we'll confirm your time with the studio.",
     sendWhatsApp: "Send my request on WhatsApp",
     noWhatsApp: "No WhatsApp? We'll reply to {contact}.",
@@ -170,7 +172,7 @@ export const BOOK_FLOW_COPY = {
     promiseTitle: "Estamos confirmando con el centro",
     promiseBody:
       "Te escribimos con la respuesta del centro. Si la hora te va bien, toca Sí en la oferta para reservarla. Si no pueden, te mandamos otros centros cerca.",
-    successTitle: "Casi listo - envíanoslo",
+    successTitle: "Casi listo. Envíanoslo",
     successSub: "Dale a enviar en WhatsApp y confirmamos tu hora con el centro.",
     sendWhatsApp: "Enviar mi solicitud por WhatsApp",
     noWhatsApp: "¿No tienes WhatsApp? Te respondemos a {contact}.",
@@ -250,7 +252,7 @@ export const BOOK_FLOW_COPY = {
     promiseTitle: "Nous confirmons avec le centre",
     promiseBody:
       "Nous vous écrivons avec la réponse du centre. Si l'horaire vous convient, touchez Oui sur l'offre pour le réserver. S'ils ne peuvent pas vous prendre, nous vous proposerons d'autres centres à proximité.",
-    successTitle: "Presque terminé - envoyez-le nous",
+    successTitle: "Presque terminé. Envoyez-le nous",
     successSub: "Appuyez sur envoyer dans WhatsApp et nous confirmons votre horaire avec le centre.",
     sendWhatsApp: "Envoyer ma demande sur WhatsApp",
     noWhatsApp: "Pas de WhatsApp ? Nous répondrons à {contact}.",
@@ -330,7 +332,7 @@ export const BOOK_FLOW_COPY = {
     promiseTitle: "Wir klären das gerade mit dem Studio",
     promiseBody:
       "Wir schreiben dir die Antwort des Studios. Wenn die Zeit passt, tippe im Angebot auf Ja, um sie zu buchen. Falls es nicht klappt, schicken wir dir andere Studios in der Nähe.",
-    successTitle: "Fast fertig - schick es uns ab",
+    successTitle: "Fast fertig. Schick es uns ab",
     successSub: "Tippe in WhatsApp auf Senden, und wir bestätigen deine Zeit mit dem Studio.",
     sendWhatsApp: "Meine Anfrage per WhatsApp senden",
     noWhatsApp: "Kein WhatsApp? Wir antworten dir an {contact}.",
@@ -410,7 +412,7 @@ export const BOOK_FLOW_COPY = {
     promiseTitle: "Stiamo confermando con il centro",
     promiseBody:
       "Ti scriviamo con la risposta del centro. Se l'orario ti va bene, tocca Sì sull'offerta per prenotarlo. Se non riescono, ti proponiamo altri centri vicini.",
-    successTitle: "Quasi fatto - invialo",
+    successTitle: "Quasi fatto. Invialo",
     successSub: "Tocca invia su WhatsApp e confermiamo il tuo orario con il centro.",
     sendWhatsApp: "Invia la mia richiesta su WhatsApp",
     noWhatsApp: "Non hai WhatsApp? Ti risponderemo a {contact}.",
@@ -490,7 +492,7 @@ export const BOOK_FLOW_COPY = {
     promiseTitle: "Estamos a confirmar com o estúdio",
     promiseBody:
       "Escrevemos-te com a resposta do estúdio. Se o horário te servir, toca em Sim na oferta para o reservar. Se não conseguirem, enviamos-te outros estúdios perto.",
-    successTitle: "Quase pronto - envia-nos",
+    successTitle: "Quase pronto. Envia-nos",
     successSub: "Toca em enviar no WhatsApp e confirmamos o teu horário com o estúdio.",
     sendWhatsApp: "Enviar o meu pedido no WhatsApp",
     noWhatsApp: "Não tens WhatsApp? Respondemos para {contact}.",
@@ -569,7 +571,7 @@ export const BOOK_FLOW_COPY = {
     sendError: "发送失败，请通过WhatsApp联系我们：+34 613 97 79 00。",
     promiseTitle: "我们正在与门店确认",
     promiseBody: "我们会把门店的答复发给你。时间合适的话，在我们发来的邀约中点击“是”即可预订。如果门店无法安排，我们会为你推荐附近其他门店。",
-    successTitle: "快好了 - 发送给我们",
+    successTitle: "快好了，发送给我们",
     successSub: "点击WhatsApp中的发送，我们会与门店确认你的时间。",
     sendWhatsApp: "通过WhatsApp发送我的请求",
     noWhatsApp: "没有WhatsApp？我们会回复到{contact}。",
@@ -697,6 +699,11 @@ export default function BookFlowWizard({
   const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  // The Kelly rule (19 Nov): the offers answer, optional, saved after the
+  // request went through (never blocks it). null = not answered.
+  const [mkChoice, setMkChoice] = useState<ConsentChoice | null>(null);
+  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | null>(null);
+  const mkLang = consentLang(lang);
   const [hint, setHint] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -1001,6 +1008,14 @@ export default function BookFlowWizard({
         });
         // Already signed in: attach the request to their account, no offer.
         if (signedIn) void linkRequestToUser(null, email.trim() || null);
+        // Same request form as /reserve (the `lead` function), so the same source.
+        if (mkChoice) {
+          setMkSave("saving");
+          void saveConsent({
+            choice: mkChoice, source: "go_page", lang: mkLang, email: email.trim(), phone: phone.trim(),
+            requestId: (data as { id?: string | number }).id ?? null,
+          }).then((r) => setMkSave(r.ok ? "ok" : "failed"));
+        }
         setStatus("success");
         afterStep();
       } else {
@@ -1084,6 +1099,14 @@ export default function BookFlowWizard({
           phone={phone.trim()}
           source={`wizard:${source}`}
         />
+        {/* Offers: asked once, before Send. Here only if that answer could
+            not be saved. */}
+        {mkSave === "failed" && (
+          <div className="mt-6">
+            <p role="alert" className="mb-2 text-sm text-destructive">{CONSENT_COPY[mkLang].notSaved}</p>
+            <MarketingOptInCard source="go_page" email={email.trim()} phone={phone.trim() || null} lang={mkLang} />
+          </div>
+        )}
         <DealsConfirmationLine className="mt-6" />
       </div>
     );
@@ -1373,7 +1396,8 @@ export default function BookFlowWizard({
         <p role="alert" className="mt-3 text-sm text-destructive">{t.sendError}</p>
       )}
 
-      {step === 4 && <p className="mt-6 text-xs text-muted-foreground">{t.consent}</p>}
+      {step === 4 && <ConsentQuestion className="mt-6" lang={mkLang} value={mkChoice} onChange={setMkChoice} />}
+      {step === 4 && <p className="mt-4 text-xs text-muted-foreground">{t.consent}</p>}
 
       <div className="mt-4" ref={continueWrapRef}>
         {step < 4 ? (

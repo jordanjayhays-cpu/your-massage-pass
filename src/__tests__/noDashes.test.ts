@@ -38,6 +38,7 @@ export const FILES: string[] = [
   "src/app/components/MarketingOptInCard.tsx",
   "src/app/components/QuizEmailCapture.tsx",
   "src/lib/marketingOptIn.ts",
+  "src/components/BookFlowWizard.tsx",
   // Added at integration (ux/batch-1):
   "index.html",
   "public/go.html",
