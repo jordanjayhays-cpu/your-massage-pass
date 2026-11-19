@@ -4236,7 +4236,12 @@ async function askForReviews(): Promise<number> {
   const now = Date.now();
   const from = new Date(now - 6 * 3600e3).toISOString();
   const to = new Date(now - 15 * 60e3).toISOString();
-  const url = `${SUPABASE_URL}/rest/v1/bookings?status=eq.confirmed&is_test=is.false&review_requested_at=is.null&end_at=gte.${from}&end_at=lte.${to}&select=id,action_token,spa_name,client_phone,lang&limit=20`;
+  // v219 (19 Nov, #126): bot bookings (wa-<id>) have never had a bookings row,
+  // so this ask has never once gone for one. Once the index fix lands they
+  // would start; they stay out until Jordan sets app_secrets
+  // WA_BOOKING_AFTERCARE to 'on' (the migration's trigger holds them too).
+  const aftercare = String(await appSecret("WA_BOOKING_AFTERCARE")).trim().toLowerCase() === "on";
+  const url = `${SUPABASE_URL}/rest/v1/bookings?status=eq.confirmed&is_test=is.false&review_requested_at=is.null&end_at=gte.${from}&end_at=lte.${to}${aftercare ? "" : "&or=(booking_ref.is.null,booking_ref.not.like.wa-*)"}&select=id,action_token,spa_name,client_phone,lang&limit=20`;
   const rows = await (await fetch(url, { headers: H() })).json().catch(() => []);
   if (!Array.isArray(rows) || !rows.length) return 0;
   let sent = 0;
@@ -7203,8 +7208,12 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     if (!cur || String(cur.partner_id || "") !== String(row.partner_id)) { await say(COPY[L].offerGone); await closeOffer(); return false; }
     const cday = s?.data.offer?.day || cur.confirmed_day || req.day1 || "";
     const cwhen = [cday, row.offered_time].filter(Boolean).join(" ");
-    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ confirmed_time: row.offered_time, confirmed_day: cday || null, customer_flag: null, reconfirmed_at: new Date().toISOString(), stage_updated_at: new Date().toISOString(), studio_reply: `Hora cambiada a ${row.offered_time} por ${studio}, cliente acepta` }) });
+    // v219 (19 Nov, #126): client_confirmed_at records the customer's own tap
+    // (trg_mc_confirmed_start wipes reconfirmed_at when the time changes, not
+    // this), and the bookings row moves to the new time.
+    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ confirmed_time: row.offered_time, confirmed_day: cday || null, customer_flag: null, reconfirmed_at: new Date().toISOString(), client_confirmed_at: new Date().toISOString(), stage_updated_at: new Date().toISOString(), studio_reply: `Hora cambiada a ${row.offered_time} por ${studio}, cliente acepta` }) });
     await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ customer_answer: "yes", customer_answered_at: new Date().toISOString() }) });
+    await ensureBooking(req.id);
     // v212: cwhen is in the customer's language ("Tomorrow 15:30", or the word
     // they typed), so the studio's day is read from the calendar instead: the
     // studio's own "hoy" or "mañana" from when it wrote, else the booking's day.
@@ -7239,7 +7248,11 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   // v199: and never on a request that has since been cancelled or closed.
   const claim = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&stage=not.in.(confirmed,cancelled,dismissed,no_show,needs_review,stale,too_late)`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
-    body: JSON.stringify({ stage: "confirmed", confirmed_day: day || null, confirmed_time: row.offered_time, partner_id: row.partner_id, studio_name: studio, studio_reply: `Cliente acepta ${row.offered_time} (${studio})`, stage_updated_at: new Date().toISOString(),
+    // v219 (19 Nov, #126): client_confirmed_at is the customer's own tap (the
+    // WhatsApp Yes, Yes on the offer page, a released time). Nothing wrote it
+    // since v199, so the watchdog saw every tapped booking as unsettled. The
+    // stage filter above stops a second tap from overwriting it.
+    body: JSON.stringify({ stage: "confirmed", confirmed_day: day || null, confirmed_time: row.offered_time, partner_id: row.partner_id, studio_name: studio, studio_reply: `Cliente acepta ${row.offered_time} (${studio})`, stage_updated_at: new Date().toISOString(), client_confirmed_at: new Date().toISOString(),
       // v215: a released time has an exact start, so confirmed_start is written
       // here and ensureBooking makes the bookings row billing reads. The price
       // only when the studio typed one.
@@ -10041,17 +10054,50 @@ async function dispatchAndTell(s: Session, from: string, L: string, id: number, 
 // Gerome must never receive a Massage Club email, nudge or review ask. Their
 // addresses are also on the Resend suppression list, which covers the
 // functions that live only in the dashboard.
+// ---- bookings row (start) ----
+// tests/request_126.mjs lifts this block (the TEST_* lists, bookingRowFailed
+// and ensureBooking) and runs it against a stubbed fetch.
 const TEST_PHONES = ["15622355063", "17867276503", "34612474827", "34635569364", "8615273855997", "34662680781"];
 const TEST_EMAIL_RE = /@(example|test|testing)\.com$|placeholder\.local$|jordanjayhays@gmail|jordan@massageclub|support@massageclub|jordan\.hays@student\.ie\.edu|jordan@niahconnect|cata\.waack@gmail|elon_yilong@student\.ie\.edu|longyi_elon@outlook|geromin\.nepomuceno@student\.ie\.edu|ritiktulsyan674@gmail|sarfrazsingh@gmail/i;
 const TEST_NAME_RE = /\b(test|prueba|uitest|mctest)\b/i;
+// v219 (19 Nov, #126): every upsert below failed for ten weeks (42P10: the
+// only unique index on booking_ref was partial, which ON CONFLICT cannot
+// infer; supabase/migrations/20261119_bookings_ref_unique.sql) and nobody
+// knew, because ensureBooking never looked at the answer and a failure only
+// reached console.log. Reminders, review asks, the studio's attendance
+// question and the billing ledger never saw a single bot booking. Now any
+// failure is one founder card per request (deduped on a funnel_events
+// booking_row_failed row), so a missing row is noticed the same day.
+async function bookingRowFailed(requestId: number, why: string, phone = ""): Promise<null> {
+  console.log(`[booking] wa-${requestId} NOT saved: ${why}`);
+  try {
+    const seen = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=eq.booking_row_failed&meta->>request_id=eq.${requestId}&select=id&limit=1`, { headers: H() });
+    const rows = await seen.json().catch(() => []);
+    if (Array.isArray(rows) && rows.length) return null; // one alert per request
+    await logEvent(phone || "system", "booking_row_failed", { request_id: String(requestId), why: why.slice(0, 300) });
+    await founderCard(`Booking #${requestId} confirmed, but its booking row was not saved`, {
+      badge: "BOOKING ROW NOT SAVED",
+      title: `Request #${requestId} is confirmed, but the bookings row could not be written`,
+      paras: [
+        "The customer and the studio were told as normal. Nothing that reads the bookings row will happen for this booking until it exists: the review ask, the studio's attendance question, reminders and the billing ledger.",
+        `Database answer: ${why.slice(0, 300)}`,
+      ],
+      waNum: phone, // lets founderCard drop alerts about the 34600000xxx canary
+    });
+  } catch (e) { console.log("[booking] alert failed", String(e)); }
+  return null;
+}
 async function ensureBooking(requestId: number): Promise<string | null> {
   try {
     const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&limit=1&select=id,first_name,last_name,contact_email,client_phone,studio_name,service_name,price,confirmed_start,confirmed_day,confirmed_time,partner_id,languages,area`, { headers: H() });
     const req = ((await rr.json().catch(() => [])) || [])[0];
-    if (!req) return null;
-    if (!req.confirmed_start) { console.log("[booking] no confirmed_start yet for", requestId); return null; }
+    if (!req) return bookingRowFailed(requestId, "request not found");
+    // v219: confirmed_start is written by trg_mc_confirmed_start when the stage
+    // becomes confirmed; it is only missing when the day could not be read,
+    // which is a real problem, so it alerts instead of only logging.
+    if (!req.confirmed_start) return bookingRowFailed(requestId, "no confirmed_start (the day or time could not be read)", digitsOf(req.client_phone || ""));
     const start = new Date(req.confirmed_start);
-    if (isNaN(start.getTime())) return null;
+    if (isNaN(start.getTime())) return bookingRowFailed(requestId, `unreadable confirmed_start ${req.confirmed_start}`, digitsOf(req.client_phone || ""));
     const mins = 60;
     // Madrid local date and time, because that is what the studio and the
     // customer both mean; the column is TEXT and every existing row is local.
@@ -10088,12 +10134,17 @@ async function ensureBooking(requestId: number): Promise<string | null> {
       headers: { ...H(), Prefer: "resolution=merge-duplicates,return=representation" },
       body: JSON.stringify(body),
     });
-    const rows = await res.json().catch(() => []);
+    // v219: read the answer as text, so a 400 (42P10, 23505) is kept for the card.
+    const txt = await res.text().catch(() => "");
+    let rows: any = [];
+    try { rows = JSON.parse(txt); } catch { /* not JSON */ }
     const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
     console.log(`[booking] wa-${requestId} -> booking ${row ? row.id : "?"} status=${res.status}${isTest ? " (test)" : ""}`);
-    return row ? String(row.action_token || "") : null;
-  } catch (e) { console.log("[booking] ensureBooking failed", requestId, String(e)); return null; }
+    if (!res.ok || !row) return bookingRowFailed(requestId, `HTTP ${res.status} ${txt.slice(0, 240)}`, phone);
+    return String(row.action_token || "");
+  } catch (e) { return bookingRowFailed(requestId, String(e)); }
 }
+// ---- bookings row (end) ----
 
 // A studio said yes. Give them the booking and stand the others down.
 async function awardRequest(requestId: number, partnerId: string | null) {
