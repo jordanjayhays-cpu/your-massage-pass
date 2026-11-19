@@ -93,10 +93,17 @@ export type ConsentResult = { ok: boolean; error?: string };
 
 type Deps = { fetchImpl?: typeof fetch; retryDelayMs?: number };
 
+// The consent function refuses the whole answer when a field it is given is
+// malformed (normEmail / normPhone there), so only plausible contacts go: a
+// half-typed phone must not cost us a yes that came with a good email.
+const EMAIL_OK = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/;
+
 /** The body sent to the function, or null when there is no way to tie the answer to a person. */
 export function consentBody(input: SaveConsentInput): Record<string, unknown> | null {
-  const email = (input.email || "").trim().toLowerCase() || undefined;
-  const phone = (input.phone || "").replace(/\D/g, "") || undefined;
+  const e = (input.email || "").trim().toLowerCase();
+  const email = e.length <= 254 && EMAIL_OK.test(e) ? e : undefined;
+  const d = (input.phone || "").replace(/\D/g, "");
+  const phone = d.length >= 6 && d.length <= 15 ? d : undefined;
   const token = (input.token || "").trim() || undefined;
   if (!email && !phone && !token) return null;
   const rid = Number(input.requestId);
@@ -158,12 +165,21 @@ export async function saveConsent(input: SaveConsentInput, deps: Deps = {}): Pro
   return res;
 }
 
-/** One-tap unsubscribe: u is the email or phone from the link, s its signature. */
-export async function withdrawConsent(u: string, s: string, deps: Deps = {}): Promise<ConsentResult> {
+/**
+ * One-tap unsubscribe: u is the email or phone from the link, s its
+ * signature. The page's own words and language go with it, so the withdraw
+ * row records what the person read before tapping.
+ */
+export async function withdrawConsent(
+  u: string,
+  s: string,
+  shown: { lang?: ConsentLang; wording?: string } = {},
+  deps: Deps = {},
+): Promise<ConsentResult> {
   const uu = (u || "").trim();
   const ss = (s || "").trim();
   if (!uu || !/^[0-9a-f]{32}$/i.test(ss)) return { ok: false, error: "bad_link" };
-  const res = await postWithRetry({ action: "withdraw", u: uu, s: ss }, deps);
+  const res = await postWithRetry({ action: "withdraw", u: uu, s: ss, lang: shown.lang, wording: shown.wording }, deps);
   if (res.ok) {
     trackEvent("consent_withdrawn", { meta: { source: "unsubscribe" } });
   } else {

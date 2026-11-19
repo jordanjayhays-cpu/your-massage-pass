@@ -76,7 +76,7 @@ export default function Unsubscribe() {
   const stop = async () => {
     if (state === "saving") return;
     setState("saving");
-    const res = await withdrawConsent(u, s);
+    const res = await withdrawConsent(u, s, { lang: L, wording: c.body });
     if (res.ok) setState("done");
     else setState(/^(bad_link|http_4\d\d)$/.test(res.error || "") ? "broken" : "failed");
   };

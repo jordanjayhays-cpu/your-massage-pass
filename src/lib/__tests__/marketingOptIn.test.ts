@@ -35,6 +35,12 @@ describe("the consent contract", () => {
     });
   });
 
+  it("drops a malformed phone or email instead of losing the answer", () => {
+    expect(consentBody({ choice: "yes", source: "go_page", lang: "en", email: "ok@example.com", phone: "12" })).toMatchObject({ email: "ok@example.com", phone: undefined });
+    expect(consentBody({ choice: "yes", source: "go_page", lang: "en", email: "not-an-email", phone: "+34 600 000 000" })).toMatchObject({ email: undefined, phone: "34600000000" });
+    expect(consentBody({ choice: "yes", source: "go_page", lang: "en", email: "a@b", phone: "1" })).toBeNull();
+  });
+
   it("refuses to post an answer that names nobody", async () => {
     const f = vi.fn();
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -83,10 +89,10 @@ describe("the consent contract", () => {
   it("withdraw posts {action, u, s} and rejects a malformed signature without posting", async () => {
     const f = vi.fn(async () => res(200, { ok: true }));
     const sig = "0123456789abcdef0123456789abcdef";
-    expect((await withdrawConsent("a@b.co", sig, { fetchImpl: f as unknown as typeof fetch, retryDelayMs: 0 })).ok).toBe(true);
-    expect(JSON.parse(String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual({ action: "withdraw", u: "a@b.co", s: sig });
+    expect((await withdrawConsent("a@b.co", sig, { lang: "es", wording: "Toca abajo" }, { fetchImpl: f as unknown as typeof fetch, retryDelayMs: 0 })).ok).toBe(true);
+    expect(JSON.parse(String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual({ action: "withdraw", u: "a@b.co", s: sig, lang: "es", wording: "Toca abajo" });
     f.mockClear();
-    expect(await withdrawConsent("a@b.co", "nope", { fetchImpl: f as unknown as typeof fetch })).toEqual({ ok: false, error: "bad_link" });
+    expect(await withdrawConsent("a@b.co", "nope", {}, { fetchImpl: f as unknown as typeof fetch })).toEqual({ ok: false, error: "bad_link" });
     expect(f).not.toHaveBeenCalled();
   });
 

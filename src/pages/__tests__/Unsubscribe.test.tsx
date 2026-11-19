@@ -26,7 +26,7 @@ describe("/unsubscribe", () => {
     expect(screen.getByText("For s•••@example.com")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Stop offers" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(UNSUBSCRIBE_COPY.en.done));
-    expect(withdraw).toHaveBeenCalledWith("someone@example.com", SIG);
+    expect(withdraw).toHaveBeenCalledWith("someone@example.com", SIG, { lang: "en", wording: UNSUBSCRIBE_COPY.en.body });
   });
 
   it("Spanish with ?lang=es", () => {
