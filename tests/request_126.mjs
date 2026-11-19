@@ -440,6 +440,7 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
   ], [true, true, true, true]);
   const ds = read("supabase/functions/dispatch-studios/index.ts");
   check(G, "dispatch-studios stores the words it asked with", /asked_service: servicioFrase\(r, opts\.serviceBy\?\.\[String\(c\.id\)\] \|\| ""\)\.replace/.test(ds), true);
+  check(G, "the lead-to-studio email says the same words", /\[\/not sure\|no lo sé\|\^massage\$\|massage treatment\/i, "Masaje relajante"\]/.test(read("supabase/functions/notify-whatsapp-request/notify.ts")), true, "it asked 'un masaje de 60 min', the WhatsApp ask 'un masaje relajante de 60 min'");
   check(G, "migration for asked_service", /add column if not exists asked_service text/.test(read("supabase/migrations/20261119_dispatch_asked_service.sql")), true);
 }
 
@@ -516,7 +517,7 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
         waWindowOpen: async () => false, offerLink: async () => "https://book.massageclub.io/bot.html?offer=row-1",
         OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"],
         TEST_PHONES: ["15622355063", "17867276503", "34612474827"], FAKE_NUM_RE: /(^|\D)34600000\d{3}(\D|$)/,
-        TEST_EMAIL_RE: /@(example|test|testing)\.com$|placeholder\.local$|cata\.waack@gmail|elon_yilong@student\.ie\.edu/i, REL_TEST_EMAIL_RE: /\+(mctest|uitest)[^@]*@/i,
+        TEST_EMAIL_RE: /@(example|test|testing)\.com$|placeholder\.local$/i, REL_TEST_EMAIL_RE: /\+(mctest|uitest)[^@]*@/i,
         TEST_NAME_RE: /\b(test|prueba|uitest|mctest)\b/i, heldMail: () => false, heldNum: () => false,
         COPY: O.COPY, madridMidnight: O.madridMidnight, resolveRequestDate: O.resolveRequestDate,
         ...P, madridHourAt: (ms) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).format(new Date(ms))) % 24,
@@ -537,9 +538,10 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
     check(G, "OFFER_NUDGE on, 19 minutes after the offer: one reminder", { n: on.n, resend: on.resend, claims: on.claims }, { n: 1, resend: 1, claims: 1 }, "#126 would have had it at 12:36");
     const late = await sweep("on", M(13, 15));
     check(G, "OFFER_NUDGE on, 15 minutes before the start: none", late.resend, 0);
-    const friend = await sweep("on", M(12, 40), { contact_email: "cata.waack@gmail.com" });
+    const testAddr = await sweep("on", M(12, 40), { contact_email: "cliente+mctest@correo.invalid" });
     const tester = await sweep("on", M(12, 40), { first_name: "Prueba" });
-    check(G, "never to a friend tester or a test contact", [friend.resend, tester.resend], [0, 0]);
+    const canary = await sweep("on", M(12, 40), { client_phone: "34600000126" });
+    check(G, "never to a test address, a test name or the canary", [testAddr.resend, tester.resend, canary.resend], [0, 0, 0], "the friend testers are in TEST_EMAIL_RE and TEST_PHONES, which offerTestCustomer reads");
   }
   check(G, "every sweep returns before sending unless its switch is on", [
     /async function nudgeEmailOffers\(\)[^{]*\{\s*const mode = parseNudgeMode\(await appSecret\("OFFER_NUDGE"\)\);\s*if \(mode === "off"\) return 0;/.test(botSrc),

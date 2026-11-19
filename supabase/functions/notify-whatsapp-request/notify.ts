@@ -79,8 +79,12 @@ const isTestPhone = (p?: string | null) => {
 };
 
 // DB service names are English; studios and Spanish customers must never see them raw.
+// 19 Nov 2026 (#126): "Not sure" and a bare "massage" read "Masaje relajante",
+// as dispatch-studios asks for them (SVC_FRASE) and wa-bot confirms them. The
+// lead-to-studio email asked one studio for "un masaje de 60 min" and the
+// WhatsApp ask 11 minutes later for "un masaje relajante de 60 min".
 export const SVC_ES_MAP: Array<[RegExp, string]> = [
-  [/not sure|no lo sé|^massage$|massage treatment/i, "Masaje"],
+  [/not sure|no lo sé|^massage$|massage treatment/i, "Masaje relajante"],
   [/deep tissue|descontracturante/i, "Masaje descontracturante"],
   [/thai|tailand/i, "Masaje tailandés"],
   [/hot stone|piedras/i, "Masaje de piedras calientes"],
