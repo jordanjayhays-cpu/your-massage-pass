@@ -61,8 +61,17 @@
 //   D. The 4h widen sends notify-whatsapp-request's own offer email (imported,
 //      so the two can never drift apart again), skips studios closed at that
 //      day or time, and copies Jordan on every email.
+// v15 (20 Nov, the consent rule in CLAUDE.md): E. the mid-flow nudge never
+//   goes to someone who said "No thanks" to offers or asked us to stop (STOP,
+//   BAJA, the unsubscribe link, on any of their addresses). A customer who
+//   wrote STOP halfway through a booking was told "you will not get offers or
+//   reminders" and could still get "Your massage booking is saved right where
+//   you left off" hours later. When marketing_status cannot be read, the
+//   nudge is not sent. A, B, C and D are about a request the customer has
+//   open (alternatives, studio reminders), not promotions, and are unchanged.
 //   GET ?key=<CRON_KEY>[&dry=1][&id=<request id>]
 
+import { marketingBlocked } from "../consent/status.ts";
 import { offerEmail, slotsEs, closedReason, cleanFirst, svcConUn, reqMins, requestDate, fechaEs, timeEs, copyToJordan } from "../notify-whatsapp-request/notify.ts";
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
@@ -491,6 +500,12 @@ async function handleRequest(req: Request): Promise<Response> {
       const d = (sess.data && typeof sess.data === "object") ? sess.data : {};
       if (d.flowNudged) continue;
       if (isTestContact(d.known?.email || d.email || null, d.known?.name || d.name || null)) continue;
+      // v15: never to someone who said no or stop to offers, on any address.
+      if (d.mktAnswer === "no" || d.mktAnswer === "withdraw" || await marketingBlocked(SUPABASE_URL, H, { phones: [phone], emails: [d.email, d.known?.email] })) {
+        console.log(`[rescue] flow nudge skipped for ${phone}: said no or stop to offers (or marketing_status unreadable)`);
+        flowReport.push({ phone, step: sess.step, skipped: "offers_stopped" });
+        continue;
+      }
       // Already in the request pipeline? Then timers A-D own the follow-up.
       const reqs = await (await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + phone)}&stage=neq.dismissed&created_at=gt.${cutReq}&select=id&limit=1`, { headers: H })).json().catch(() => []);
       if (Array.isArray(reqs) && reqs.length) continue;
@@ -530,7 +545,7 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   const acted = report.filter((e) => Array.isArray(e.actions) && e.actions.length && !e.actions[0]?.dryPicks);
-  const flowActed = flowReport.filter((e) => !e.dry);
+  const flowActed = flowReport.filter((e) => !e.dry && !e.skipped);
   // v12 (8 Oct, Jordan: "nothing should wait on me"): what the timers did is a
   // log line, not an email. "Rescue acted on 1 stuck booking" went out 16 times
   // in a week and never once asked Jordan to do anything. The daily patrol

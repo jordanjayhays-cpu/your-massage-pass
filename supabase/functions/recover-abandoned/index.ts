@@ -30,7 +30,19 @@
 //    Spanish template now (same rule as wa-bot v188's first message).
 //  - Moved into the repo with no secrets; the deployed loader passes them in.
 //
+// v9 (20 Nov, the consent rule in CLAUDE.md): booking_unfinished_v1 is a
+// marketing template, so it never goes to someone who said "No thanks" to
+// offers or asked us to stop (STOP, BAJA, the unsubscribe link, on any of
+// their addresses). Before this, a customer who wrote STOP halfway through a
+// booking was told "you will not get offers any more" and could still get
+// this template a day later. marketing_status is read through
+// consent/status.ts; when it cannot be read, nobody is sent anything (we do
+// not write to someone we cannot check), so apply
+// supabase/migrations/20261120_marketing_consent.sql before this deploys.
+//
 // GET ?key=<CRON_KEY>[&dry=1][&phone=<one number>]
+
+import { marketingBlocked } from "../consent/status.ts";
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let CRON_KEY = "";
@@ -237,6 +249,13 @@ async function handleRequest(req: Request): Promise<Response> {
     if (!s0) { skipped.push({ phone, why: "no session" }); continue; }
     const data = (s0.data && typeof s0.data === "object") ? s0.data : {};
     if (data.recoverySent) { skipped.push({ phone, why: "already recovered once" }); continue; }
+
+    // v9: never to someone who said no or stop to offers, on any address.
+    if (data.mktAnswer === "no" || data.mktAnswer === "withdraw") { skipped.push({ phone, why: `said ${data.mktAnswer} to offers` }); continue; }
+    if (await marketingBlocked(SUPABASE_URL, H, { phones: [phone], emails: [data.email, data.known?.email] })) {
+      skipped.push({ phone, why: "said no or stop to offers (or marketing_status unreadable)" });
+      continue;
+    }
 
     // Someone who asked for extras gets the standard line and silence, never a
     // marketing template inviting them back.
