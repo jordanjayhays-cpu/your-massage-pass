@@ -840,8 +840,8 @@ export default function FounderDashboard() {
                 : !optin.readable
                   ? `Could not read marketing_status (${optin.error}). Opt-ins cannot be counted here yet, so nobody counts as a yes. The customer list and the CSV below are not a marketing list.`
                   : optinYesPeople === 0
-                    ? `0 customers may get promotions: nobody yet has a verified yes on every address we hold for them.${optinUnconfirmed ? ` ${optinUnconfirmed} said yes from the quiz or the profile, which does not count until they confirm it.` : ""}`
-                    : `${optinYesPeople} customer${optinYesPeople === 1 ? "" : "s"} whose every address reads a verified yes. Only these may get promotions.${optinUnconfirmed ? ` ${optinUnconfirmed} more said yes from the quiz or the profile, which does not count until they confirm it.` : ""}`}
+                    ? `0 customers may get promotions: nobody yet has a verified yes on every address we hold for them.${optinUnconfirmed ? ` ${optinUnconfirmed} said yes from the quiz, which does not count until they confirm it.` : ""}`
+                    : `${optinYesPeople} customer${optinYesPeople === 1 ? "" : "s"} whose every address reads a verified yes. Only these may get promotions.${optinUnconfirmed ? ` ${optinUnconfirmed} more said yes from the quiz, which does not count until they confirm it.` : ""}`}
             </p>
             {consentErrors7d > 0 && (
               <p role="alert" data-testid="consent-errors" className="mb-4 rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>

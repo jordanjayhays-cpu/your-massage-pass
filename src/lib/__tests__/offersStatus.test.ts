@@ -23,8 +23,9 @@ describe("who may get a promotion (dashboard and CSV)", () => {
   it("a yes on one address and nothing on another is not a yes", () => {
     expect(personAnswer({ emails: ["eva@mail.es"], phones: ["34633333333"] }, st)).toBe("partly answered");
   });
-  it("a quiz or profile yes is recorded but does not count", () => {
+  it("a quiz yes is recorded but does not count; a signed-in profile yes does", () => {
     expect(personAnswer({ emails: ["cris@mail.es"] }, st)).toBe("unconfirmed yes");
+    expect(personAnswer({ emails: ["fer@mail.es"] }, indexStatus([{ kind: "email", contact: "fer@mail.es", action: "yes", source: "profile" }]))).toBe("yes");
   });
   it("no, not answered, unknown, test contact", () => {
     expect(personAnswer({ emails: ["dani@mail.es"] }, st)).toBe("no");

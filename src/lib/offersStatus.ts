@@ -16,8 +16,14 @@
 export type OffersAction = "yes" | "no" | "withdraw";
 export type StatusRow = { kind: string; contact: string; action: string; source?: string | null };
 
-/** Sources where the server checked the address against a booking, a request or the WhatsApp sender. */
-export const VERIFIED_SOURCES = ["go_page", "studio_request", "studio_booking", "payment", "review_page", "bot"];
+/**
+ * Sources where the server tied the address to the person: a booking or
+ * request it matched, the review link's booking, the signed-in session
+ * (profile: the consent function saves the account's own email), or the
+ * WhatsApp sender. KEEP IN SYNC with VERIFIED_SOURCES in the bot branch's
+ * supabase/functions/consent/status.ts. A quiz yes is not among them.
+ */
+export const VERIFIED_SOURCES = ["go_page", "studio_request", "studio_booking", "payment", "review_page", "profile", "bot"];
 
 // The CLAUDE.md test contacts (same list as status.ts on the bot branch):
 // Jordan's own addresses and numbers, the friend testers, the fake domains.
@@ -65,7 +71,7 @@ export function indexStatus(rows: StatusRow[]): StatusIndex {
  *   "yes"             every address yes, verified, no test contact: may get promotions
  *   "withdraw" | "no" the blocking answer on any of their addresses
  *   "test contact"    one of the addresses is ours or a tester's
- *   "unconfirmed yes" a yes from the quiz or the profile card (nothing ties the address to the person yet)
+ *   "unconfirmed yes" a yes from the quiz (nothing ties a typed address to the person yet)
  *   "partly answered" a yes on one address, nothing on another
  *   "not answered"    no row at all
  *   "unknown"         marketing_status could not be read
