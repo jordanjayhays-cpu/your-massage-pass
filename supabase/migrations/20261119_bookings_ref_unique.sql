@@ -155,10 +155,10 @@ $function$;
 --                           in an open 24h window. Read by the bot itself.
 --    review-request and askForReviews share review_requested_at, so a booking
 --    is asked for a review once, by whichever runs first.
---    All four ship 'off' (CLAUDE.md: approval before any new outbound
---    automation). Jordan approved the review email for every massage on 19 Nov
---    (CLAUDE.md, ASK BEFORE SENDING): set WA_REVIEW_EMAIL to 'on' when applying
---    if that stands. A held row gets the sentinel 'epoch' (1970-01-01) in that
+--    WA_REVIEW_EMAIL ships 'on': Jordan approved the review email as automatic
+--    for every massage on 19 Nov ("yes each massage cmon, this shoudl be
+--    automatic", CLAUDE.md ASK BEFORE SENDING). The other three ship 'off'
+--    (CLAUDE.md: approval before any new outbound automation). A held row gets the sentinel 'epoch' (1970-01-01) in that
 --    job's "already done" columns, which the job reads as done and which can
 --    never be confused with a real send time. A test booking (is_test, set by
 --    trg_flag_test_booking and by ensureBooking) is held on all four whatever
@@ -167,7 +167,7 @@ $function$;
 --    row: update bookings set review_requested_at = null where booking_ref =
 --    'wa-<id>' and review_requested_at = 'epoch'.
 insert into public.app_secrets (key, value) values
-  ('WA_REVIEW_EMAIL', 'off'),
+  ('WA_REVIEW_EMAIL', 'on'),
   ('WA_ATTENDANCE_EMAIL', 'off'),
   ('WA_REMINDER_EMAILS', 'off'),
   ('WA_REVIEW_WHATSAPP', 'off')

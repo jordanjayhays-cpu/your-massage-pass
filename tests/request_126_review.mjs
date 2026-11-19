@@ -392,7 +392,7 @@ async function forward(nowMs, o = {}) {
   const W = await load(`${stripTypeScriptTypes(words)}\nexport { noteTplOrder };\n`);
   check(G, "a studio we know never gets aviso_centro_v2", [W.noteTplOrder(true, true), W.noteTplOrder(true, false)], [["aviso_centro_v3", "aviso_centro_v1"], ["aviso_centro_v3"]]);
   const mig = read("supabase/migrations/20261119_bookings_ref_unique.sql");
-  check(G, "one after-care switch per job", ["WA_REVIEW_EMAIL", "WA_ATTENDANCE_EMAIL", "WA_REMINDER_EMAILS", "WA_REVIEW_WHATSAPP"].map((k) => new RegExp(`'${k}', 'off'`).test(mig)), [true, true, true, true]);
+  check(G, "one after-care switch per job, review email on (Jordan, 19 Nov)", [["WA_REVIEW_EMAIL", "on"], ["WA_ATTENDANCE_EMAIL", "off"], ["WA_REMINDER_EMAILS", "off"], ["WA_REVIEW_WHATSAPP", "off"]].map(([k, v]) => new RegExp(`'${k}', '${v}'`).test(mig)), [true, true, true, true]);
   // markNoShow and the WhatsApp cancel write only whatsapp_requests: the wa- row
   // would stay 'confirmed' and get "How was your massage?" once the review email is on.
   check(G, "a cancelled or no-show request moves its wa- bookings row", [/create trigger trg_sync_wa_booking_status\s+after update of stage on public\.whatsapp_requests/.test(mig), /set status = case when new\.stage = 'no_show' then 'no_show' else 'cancelled' end/.test(mig), /where booking_ref = 'wa-' \|\| new\.id::text\s+and status in \('pending', 'confirmed'\)/.test(mig)], [true, true, true]);
