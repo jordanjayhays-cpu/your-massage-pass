@@ -3223,11 +3223,11 @@ for (const [msg, want, note] of [
     "Hello, Massage Club. We are a massage business. ",
   ].map((t) => helloRe.test(t)), [true, true, true, true, true, true, true, true, true, true], "");
   check("hook", "a customer's own words never read as the page's hello", ["Hola, Massage Club. Somos dos y queremos un masaje en el centro.", "Hola, somos un negocio de masajes, ¿cómo funciona?", "Hello, Massage Club. We are two people looking for a massage.", "Hola, Massage Club. Somos de Centro, ¿tenéis hueco hoy?"].map((t) => helloRe.test(t)), [false, false, false, false], "only the page's exact opening");
-  // Kelly rule (20 Nov 2026): no email question after a booking promises a
+  // The consent rule (20 Nov 2026): no email question after a booking promises a
   // rate or a membership. memberJoin ("Membership is free ... to lock in the
   // rate") recorded nothing and is no longer sent; consent.ts emailAsk is.
   check("hook", "a released booking's email question promises no rate (review nit)", /await say\(relSlot \? RELEASED_COPY\[L === "es" \? "es" : "en"\]\.emailAsk : MKT_COPY\[L === "es" \? "es" : "en"\]\.emailAsk\);/.test(botSrc), true, "");
-  check("hook", "the Membership is free line is never sent (Kelly rule)", /COPY\[\w+\]\.memberJoin/.test(botSrc.replace(/^\s*\/\/.*$/gm, "")), false, "it promised a membership nothing recorded");
+  check("hook", "the Membership is free line is never sent (the consent rule)", /COPY\[\w+\]\.memberJoin/.test(botSrc.replace(/^\s*\/\/.*$/gm, "")), false, "it promised a membership nothing recorded");
   check("hook", "the times page works before RELEASED is on, and says so", !/Todavía no está activa/.test(botSrc) && /const liveNow = socLiveFor\(mode, isTest\);/.test(botSrc) && /Todavía no las ofrecemos a clientes: las guardamos y os avisamos en cuanto empecemos\./.test(botSrc), true, "Jordan: studios may load times before it is on");
   check("hook", "the page's WhatsApp fallback is read before the studio and customer paths", botSrc.indexOf("if (text && SOCIOS_FALLBACK_RE.test(text)) {") > 0 && botSrc.indexOf("if (text && SOCIOS_FALLBACK_RE.test(text)) {") < botSrc.indexOf("// ---- Studio replies: template button payloads"), true, "");
   const fbRe = new RegExp((botSrc.match(/const SOCIOS_FALLBACK_RE = \/(.*)\/;/) || [])[1]);

@@ -1,10 +1,10 @@
--- 20261120_marketing_consent.sql (20 Nov 2026, the Kelly rule). NOT APPLIED.
+-- 20261120_marketing_consent.sql (20 Nov 2026, the consent rule). NOT APPLIED.
 --
 -- Why: on 19 Nov a customer booked through the homepage form and was never
 -- asked whether she wants offers. The website's opt-in card saved into
 -- marketing_optins, a table that was only ever defined in a repo-root paste
 -- file (supabase-email-capture.sql) that nobody ran, and showed "Done" anyway.
--- Jordan adopted the Kelly rule (CLAUDE.md): every booking path asks, with two
+-- Jordan adopted the consent rule (CLAUDE.md): every booking path asks, with two
 -- equal buttons, nothing pre-selected, the booking goes ahead whatever the
 -- answer (LOPDGDD art. 6.3), and promotions go ONLY to people whose latest
 -- answer is yes (LSSI art. 21.1). This file makes the table the answers go
@@ -39,8 +39,15 @@
 --   marketing_status   the latest action per email and per phone. A sender
 --                      (newsletter, rebooking reminder) looks up EVERY address
 --                      it holds for a person and sends only when each one it
---                      finds says 'yes'. No row means not answered, which is
---                      never a yes.
+--                      finds says 'yes' (supabase/functions/consent/status.ts
+--                      canMarket does exactly that). No row means not
+--                      answered, which is never a yes. A withdrawal is written
+--                      for every address known for the person (the consent
+--                      function and wa-bot both look up the phone that came
+--                      with an email and the emails that came with a phone),
+--                      so a STOP on WhatsApp also stops email and an email
+--                      unsubscribe also stops WhatsApp, even for a sender that
+--                      only checks one address.
 --
 -- Who writes: only the service role (the `consent` edge function for the
 -- website, wa-bot for WhatsApp). RLS is on with NO policies for anon or
@@ -53,6 +60,25 @@
 -- Erasure (GDPR art. 17): the table owner can delete a person's rows by hand.
 -- Keeping a withdraw row for someone who asked never to be contacted again is
 -- expressly lawful (LOPDGDD art. 23), so prefer that to deleting it.
+--
+-- Retention (not enforced here; the privacy page must state it): a proposed
+-- default for the adviser to confirm is to keep a yes or no while it is relied
+-- on and 3 years after it is replaced or the person stops booking (the
+-- longest limitation period for these offences, LSSI art. 45 and LOPDGDD art.
+-- 72), and a withdraw row for as long as it is needed to keep them excluded.
+--
+-- A withdrawal that arrives by email (support@massageclub.io) is one insert
+-- in the SQL editor, with the sender's own words:
+--   insert into public.marketing_optins (email, source, action, wording, wording_lang)
+--   values ('<address, lowercased>', 'unsubscribe', 'withdraw', '<their words>', 'en');
+--
+-- The switch: wa-bot asks the WhatsApp question only while app_secrets
+-- MKT_ASK is 'on'. It is written 'off' below, because the question links the
+-- privacy page and a yes given before that page names the controller, its
+-- address and the retention periods is not an informed yes (GDPR arts. 7 and
+-- 13). Turn it on once the privacy page is complete and live:
+--   update public.app_secrets set value = 'on' where key = 'MKT_ASK';
+-- STOP, BAJA and every other opt-out work whatever the switch says.
 --
 -- Safe to apply more than once, before or after the wa-bot and consent
 -- deploys: wa-bot only asks when it can read marketing_status, so until this
@@ -174,7 +200,12 @@ alter view public.marketing_status set (security_invoker = true);
 revoke all on public.marketing_status from public, anon, authenticated;
 grant select on public.marketing_status to service_role;
 
+-- The ask switch (see the header): off until the privacy page is complete.
+insert into public.app_secrets (key, value) values
+  ('MKT_ASK', 'off')   -- off | on: wa-bot asks the offers question after a booking
+on conflict (key) do nothing;
+
 comment on table public.marketing_optins is
-  'The Kelly rule (19 Nov 2026): one append-only row per marketing answer (yes, no, withdraw) with the exact wording shown, its language, the source and the time. Promotions go only to addresses whose latest action in marketing_status is yes. Written only by the service role (consent edge function, wa-bot).';
+  'The consent rule (19 Nov 2026): one append-only row per marketing answer (yes, no, withdraw) with the exact wording shown, its language, the source and the time. Promotions go only to addresses whose latest action in marketing_status is yes. Written only by the service role (consent edge function, wa-bot).';
 comment on view public.marketing_status is
   'Latest marketing action per email and per phone. Send a promotion only when every address held for the person reads yes here. No row = not answered = no.';

@@ -62,7 +62,7 @@ import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, C
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
-import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply } from "./consent.ts";
+import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply, bareAnswer } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -8021,7 +8021,7 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   // standing between them and any answer. Nobody abandons over an email address
   // once they have a booking in front of them. Sharo J had none of this: no
   // email, no WhatsApp history, five studios asked and nothing we could tell her.
-  // The Kelly rule (20 Nov 2026): the offers question comes after the
+  // The consent rule (20 Nov 2026): the offers question comes after the
   // confirmation, once (mktAskAfterBooking below); with no email yet, after
   // the email question is answered (mktAfterEmailStep).
   let mktNow = false;
@@ -8033,7 +8033,7 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
       await saveSession(s);
       // Review nit (17 Oct): a released time has no rate to lock in and the
       // confirmation has just gone, so its email question promises neither.
-      // Kelly rule: nor does any other. "Membership is free ... to lock in
+      // The consent rule: nor does any other. "Membership is free ... to lock in
       // the rate" (copy.ts memberJoin) promised a membership nothing ever
       // recorded, so it is no longer sent.
       await say(relSlot ? RELEASED_COPY[L === "es" ? "es" : "en"].emailAsk : MKT_COPY[L === "es" ? "es" : "en"].emailAsk);
@@ -8050,8 +8050,8 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     paras: [`${req.first_name || "The customer"} tapped ${relSlot ? `a time ${studio} had released to us, which books it (12 Oct rule; the studio can reject it until ${relHm(Date.parse(String(relSlot.reject_until)))})` : `Yes${via === "web" ? " on the offer page" : " on WhatsApp"}`}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
     waNum: clientDigits, studioNum: digitsOf(row.phone || ""), studioName: studio,
   });
-  // Kelly rule: after everything about the booking itself has gone.
-  if (mktNow) await mktAskAfterBooking(s, from, L, req).catch((e) => console.log("[mkt] ask failed", String(e)));
+  // The consent rule: after everything about the booking itself has gone.
+  if (mktNow) await mktAskAfterBooking(s, from, L, req).catch((e) => mktAskFailed(from, req?.id, e).catch(() => null));
   return true;
 }
 
@@ -9337,8 +9337,9 @@ async function socStudioChatCard(from: string, text: string, what: string) {
 //     letters tool (Opt-outs).
 // A BAJA from one of the bot's test numbers is stored as a test row and
 // touches no studio: it is the proof the letters tool asks for before the
-// BAJA route can be confirmed. A customer with a booking in the last 60 days
-// who writes "baja" without a letter's reference stays in the customer flow.
+// BAJA route can be confirmed. A customer (a request, an offers answer or a
+// booking, at any age) who writes "baja" without a letter's reference is
+// taken off offers instead (mktLetterStop, the consent rule).
 // ---------------------------------------------------------------------------
 const LETTER_STUDIO_CHAT_MS = 2 * 86400e3;
 async function letterByRef(refs: string[]): Promise<{ id: string; ref_code: string; partner_id: string | null; status: string } | null> {
@@ -9374,9 +9375,19 @@ async function handleLetterReply(from: string, text: string): Promise<boolean> {
   if (!baja && !letter) return false;
   const isTest = TEST_PHONES.includes(digits) || FAKE_NUM_RE.test(digits) || /^86\d*997$/.test(digits);
   const known = isTest ? null : await findPartnerByNumber(digits).catch(() => null);
+  // The consent rule (review fix, 20 Nov): this used to let a customer's BAJA
+  // through only when their last request was under 60 days old, and record
+  // anyone else as an unmatched studio, with no opt-out and no answer. The
+  // notice tells customers "puedes darte de baja", and an old customer is who
+  // a "book again" reminder goes to. Now a customer of any age (a request, an
+  // offers answer or a booking) is taken off offers here (mktLetterStop), and
+  // a number we cannot place gets a marketing withdraw next to its letters
+  // card (mktUnknownBaja).
+  let mktNote = "";
   if (!letter && !known && !isTest) {
     const req = await lastRequestFor(from).catch(() => null);
-    if (req && Date.now() - Date.parse(String(req.created_at || 0)) < 60 * 86400e3) return false;
+    if (req || await mktKnownCustomer(digits)) return await mktLetterStop(from, text);
+    mktNote = await mktUnknownBaja(from, text);
   }
   quietThisTurn = true;
   const sess = await getSession(from);
@@ -9422,6 +9433,7 @@ async function handleLetterReply(from: string, text: string): Promise<boolean> {
     badge: isTest ? "TEST BAJA (LETTERS)" : "LETTER BAJA", title: `${who} wrote BAJA`,
     paras: [
       recorded ? done : `NOT recorded: the letters tables did not answer. Mark it by hand in the letters tool, Opt-outs. ${done}`,
+      mktNote,
       en && !BAJA_ONLY_RE.test(text) ? `English: "${en}"` : "",
       isTest ? "" : `The bot said nothing back. If you want to confirm it, the draft on the button is from your own WhatsApp: "${LETTER_BAJA_ACK_ES.replace(/\n+/g, " ")}" (English: "${LETTER_BAJA_ACK_EN.replace(/\n+/g, " ")}")`,
     ].filter(Boolean),
@@ -10989,29 +11001,58 @@ async function ensureBooking(requestId: number): Promise<string | null> {
 // ---- bookings row (end) ----
 
 // ---- marketing consent (start) ----
-// The Kelly rule (Jordan, 19 Nov 2026: "make this the kelly rule"; CLAUDE.md).
-// On 19 Nov a customer booked through the homepage form and was never asked
-// whether she wanted offers, and the bot's own "Membership is free" line after
-// a booking recorded nothing at all. Now:
+// The consent rule (Jordan, 19 Nov 2026; CLAUDE.md). On 19 Nov a customer
+// booked through the homepage form and was never asked whether they wanted
+// offers, and the bot's own "Membership is free" line after a booking recorded
+// nothing at all. Now:
 //   - After a confirmed booking, inside the customer's open 24h window, the bot
-//     asks ONCE per customer (consent.ts: the notice, the privacy link and two
-//     equal buttons, "Yes, send me offers" / "No thanks"). Not when the
-//     customer already answered on any path (marketing_status, by phone or
-//     email), not for test contacts, held customers or customers we write to
-//     in a third language (their words would be machine translated, and the
-//     words shown are what we must be able to prove), and not when the status
-//     cannot be read (a tap we could not save is worse than not asking).
+//     asks once per booking while they have not answered (consent.ts: the
+//     notice, the privacy link and two equal buttons, "Yes, send me offers" /
+//     "No thanks"). Only with app_secrets MKT_ASK = on (default off): the
+//     question links the privacy page, so it waits until that page names the
+//     controller and the retention periods (GDPR art. 13; an uninformed yes is
+//     no yes). Not when the customer already answered on any path
+//     (marketing_status, by phone or email), not for test contacts, held
+//     customers or customers we write to in a third language (their words
+//     would be machine translated, and the words shown are what we must be
+//     able to prove), and not when the status cannot be read (a tap we could
+//     not save is worse than not asking). A typed "yes" or "no" re-sends the
+//     same buttons once.
 //   - A tap writes one marketing_optins row (source bot, the exact wording and
 //     its language, phone, email if known, request id). A row that does not
 //     save is never silent: the customer is told it did not save and Jordan
 //     gets a card. The booking is never touched, whatever the answer.
-//   - A customer who writes STOP (or BAJA, "unsubscribe", "no more offers"...,
-//     consent.ts stopIntent) gets a withdraw row and one reply, signed
-//     Massage Club. The step and the booking stay as they were. Studios never
-//     get here: partner numbers and a letter's BAJA are handled before the
-//     customer flow, and that path is unchanged.
+//   - A customer who asks to stop (STOP, BAJA, "unsubscribe", "no quiero
+//     publicidad", "don't send me offers"..., consent.ts stopIntent) gets a
+//     withdraw row for the phone AND every email we know for them (the
+//     session, their requests, earlier answers), so the opt-out covers both
+//     channels the yes covered. With no request in progress they get one
+//     reply, signed Massage Club. During a live request (an offer, a check-in,
+//     a request still with the studios) the withdraw is recorded and the
+//     message still goes to the booking flow, which reads "stop" or "no
+//     quiero" as a cancel or a change, as it always has; the "no more offers"
+//     reply would contradict the studio offer that comes next. An erasure
+//     request ("borrad mis datos") also gets Jordan a card (GDPR art. 17).
+//   - A BAJA that the letters path sees from a customer, at any age, is the
+//     same opt-out (mktLetterStop); from a number we cannot place, a withdraw
+//     row is recorded next to the letters card. A muted number's STOP is
+//     recorded with no reply. Meta's 131050 (the customer turned off
+//     marketing from us in WhatsApp) is recorded as a withdraw too.
+//   - Nothing promotional reads s.data alone: recover-abandoned and the rescue
+//     job's mid-flow nudge skip a "no" or "withdraw" (consent/status.ts), and
+//     ops "tpl" sends a MARKETING template only to a latest yes.
 // tests/consent_bot.mjs lifts this block and runs it against stubs.
 const MKT_FOLLOW_EMAIL_MS = 23.5 * 3600e3;
+// A request still moving: the booking flow owns the customer's words.
+const MKT_LIVE_STEPS = ["await_go", "await_offer", "await_sameday", "await_change", "await_reconfirm"];
+const MKT_LIVE_STAGES = ["awaiting_go", "new", "studio_asked", "studio_replied", "offered", "bidding", "needs_contact"];
+const MKT_LIVE_MS = 72 * 3600e3;
+const MKT_VERIFIED = ["go_page", "studio_request", "studio_booking", "payment", "review_page", "profile", "bot"];
+function mktLive(s: Session | null, lastReq: any): boolean {
+  if (s && (MKT_LIVE_STEPS.includes(String(s.step)) || s.data?.offer)) return true;
+  if (!lastReq || !MKT_LIVE_STAGES.includes(String(lastReq.stage || ""))) return false;
+  return Date.now() - Date.parse(String(lastReq.created_at || 0)) < MKT_LIVE_MS;
+}
 function mktEmail(x: unknown): string | null {
   const e = String(x || "").trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : null;
@@ -11038,12 +11079,25 @@ async function mktAnswered(phone: string, email: string | null): Promise<boolean
     return false;
   } catch (_e) { return null; }
 }
-// One row, tried twice. Returns why it failed, or "" when saved.
-async function mktSave(row: Record<string, unknown>): Promise<string> {
+// The latest action and its source for a phone, or null when it cannot be
+// read. "" means not answered.
+async function mktLatest(phone: string): Promise<{ action: string; source: string } | null> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/marketing_status?kind=eq.phone&contact=eq.${digitsOf(phone)}&select=action,source&limit=1`, { headers: H() });
+    if (!r.ok) return null;
+    const rows = await r.json().catch(() => null);
+    if (!Array.isArray(rows)) return null;
+    return rows[0] ? { action: String(rows[0].action || ""), source: String(rows[0].source || "") } : { action: "", source: "" };
+  } catch (_e) { return null; }
+}
+// One row (or several, in one insert), tried twice. Returns why it failed,
+// or "" when saved.
+async function mktSave(row: Record<string, unknown> | Array<Record<string, unknown>>): Promise<string> {
   let why = "";
+  const body = Array.isArray(row) ? row.map((x) => ({ channel: "email+whatsapp", source: "bot", ...x })) : { channel: "email+whatsapp", source: "bot", ...row };
   for (let i = 0; i < 2; i++) {
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/marketing_optins`, { method: "POST", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ channel: "email+whatsapp", source: "bot", ...row }) });
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/marketing_optins`, { method: "POST", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(body) });
       if (r.ok) return "";
       why = `HTTP ${r.status} ${(await r.text().catch(() => "")).slice(0, 240)}`;
     } catch (e) { why = String(e).slice(0, 240); }
@@ -11051,16 +11105,72 @@ async function mktSave(row: Record<string, unknown>): Promise<string> {
   console.log("[mkt] NOT saved", why);
   return why || "unknown";
 }
+// A card that must reach Jordan: if the email card cannot go, his WhatsApp.
+async function mktCard(subject: string, o: Parameters<typeof founderCard>[1], fallback: string) {
+  try { await founderCard(subject, o); }
+  catch (e) {
+    console.log("[mkt] card failed", String(e));
+    await notifyJordanWa(fallback, o.waNum).catch((e2) => console.log("[mkt] WhatsApp alert failed too", String(e2)));
+  }
+}
 async function mktNotSavedCard(from: string, what: string, why: string, words: string) {
-  await founderCard(`⚠️ Offers answer NOT saved: ${what} from +${digitsOf(from)}`, {
+  await mktCard(`⚠️ Offers answer NOT saved: ${what} from +${digitsOf(from)}`, {
     badge: "CONSENT NOT SAVED", title: `A customer's ${what} on WhatsApp could not be written`,
     paras: [
-      `Until it is in marketing_optins this person counts as not answered, so they get no offers${what === "STOP" ? " (and they were told they will get none)" : ""}. Add the row by hand, or ask again.`,
+      `Until it is in marketing_optins this person counts as not answered, so they get no offers${what === "STOP" ? " (and they were told they will get none, or they are muted and were told nothing)" : ""}. Add the row by hand, or ask again.`,
       `Database answer: ${why.slice(0, 300)}`,
     ],
     quote: words, waNum: from, waLabel: "Open the chat",
     to: ["jordan@massageclub.io"],
-  }).catch((e) => console.log("[mkt] card failed", String(e)));
+  }, `offers ${what} from +${digitsOf(from)} was NOT saved in marketing_optins (${why.slice(0, 80)}). Add the row by hand.`);
+}
+// Every email we know for this phone: the session's, the latest request's,
+// every request's and every earlier answer's. unread: a lookup failed.
+async function mktLinkedEmails(phone: string, s: Session | null, lastReq: any): Promise<{ emails: string[]; unread: boolean }> {
+  const set = new Set<string>();
+  for (const e of [s?.data?.email, s?.data?.known?.email, lastReq?.contact_email]) { const v = mktEmail(e); if (v) set.add(v); }
+  let unread = false;
+  const reads: Array<[string, string]> = [
+    [`marketing_optins?phone=eq.${phone}&email=not.is.null&select=email&limit=20`, "email"],
+    [`whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + phone)}&contact_email=not.is.null&select=contact_email&limit=20`, "contact_email"],
+  ];
+  for (const [q, col] of reads) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, { headers: H() });
+      const rows = r.ok ? await r.json().catch(() => null) : null;
+      if (!Array.isArray(rows)) { unread = true; continue; }
+      for (const x of rows) { const v = mktEmail(x?.[col]); if (v) set.add(v); }
+    } catch (_e) { unread = true; }
+  }
+  return { emails: [...set].slice(0, 10), unread };
+}
+// The withdraw rows for a phone and its emails, in one insert.
+async function mktRecordWithdraw(s: Session | null, from: string, said: string, lang: string, lastReq: any): Promise<{ why: string; unread: boolean; emails: string[] }> {
+  const phone = digitsOf(from);
+  const { emails, unread } = await mktLinkedEmails(phone, s, lastReq);
+  const wording = String(said || "").trim().slice(0, 500) || "STOP";
+  const rows = [
+    { action: "withdraw", wording, wording_lang: lang, phone, email: emails[0] || null },
+    ...emails.slice(1).map((e) => ({ action: "withdraw", wording, wording_lang: lang, phone: null, email: e })),
+  ];
+  const why = await mktSave(rows.length === 1 ? rows[0] : rows);
+  return { why, unread, emails };
+}
+async function mktUnreadCard(from: string, words: string) {
+  await mktCard(`Offers STOP saved, email not checked: +${digitsOf(from)}`, {
+    badge: "CONSENT: CHECK EMAIL", title: "A STOP was saved for the phone, but their email could not be looked up",
+    paras: ["The withdraw is in marketing_optins for this number. If they have an email with us, add a withdraw row for it by hand (the SQL is in supabase/functions/consent/index.ts), so neither channel sends them offers."],
+    quote: words, waNum: from, waLabel: "Open the chat", to: ["jordan@massageclub.io"],
+  }, `STOP from +${digitsOf(from)} saved for the phone, but their email could not be looked up. Add a withdraw for their email by hand.`);
+}
+async function mktEraseCard(from: string, words: string) {
+  await mktCard(`🗑️ Data deletion request: +${digitsOf(from)}`, {
+    badge: "ERASURE REQUEST", title: "A customer asked us to delete their data",
+    paras: [
+      "Offers are already stopped for them (a withdraw row is saved). GDPR art. 12.3 and 17: answer them within one month. Delete their requests, bookings and messages where the law lets you, and keep only the withdraw row (LOPDGDD art. 23 allows it, so they are never written to again).",
+    ],
+    quote: words, waNum: from, waLabel: "Reply to them", to: ["jordan@massageclub.io"],
+  }, `+${digitsOf(from)} asked us to delete their data ("${words.slice(0, 80)}"). Offers are stopped; answer within a month (GDPR art. 17).`);
 }
 // After a confirmed booking (acceptOffer, or the email question that follows
 // it). Returns true when the question went out.
@@ -11073,7 +11183,16 @@ async function mktAskAfterBooking(s: Session | null, from: string, L: string, re
   // Test contacts: nothing asked, nothing recorded, not even a skip event.
   if (mktTestContact(phone, email, [req?.first_name, s.wa_name, s.data.name])) return false;
   const skip = async (why: string) => { await logEvent(from, "mkt_ask_skipped", { why, request_id: rid }); return false; };
-  if (s.data.mktAskedAt) return await skip("asked_before");
+  // Off until Jordan turns it on: the question links the privacy page, and a
+  // yes given before that page names the controller and the retention periods
+  // is not an informed yes (GDPR arts. 7 and 13). STOP works either way.
+  const sw = String(await appSecret("MKT_ASK").catch(() => "")).trim().toLowerCase();
+  if (sw !== "on") return await skip("switch_off");
+  // Once per booking while they have not answered (the consent rule: existing
+  // customers are asked at their next booking), never twice for one booking.
+  const askedReqs: number[] = Array.isArray(s.data.mktAskedReqs) ? s.data.mktAskedReqs.map(Number) : [];
+  if (rid ? askedReqs.includes(rid) : !!s.data.mktAskedAt) return await skip("asked_before");
+  if (s.data.mktAnswer) return await skip("answered_before");
   if (heldNum(phone) || heldMail(email)) return await skip("held");
   if (s.data.xlang) return await skip("other_language");
   if (!(await waWindowOpen(phone))) return await skip("window_closed");
@@ -11090,6 +11209,7 @@ async function mktAskAfterBooking(s: Session | null, from: string, L: string, re
   const sent = await sendButtons(from, mktAskBody(lang), mktButtons(lang, rid));
   if (!sent) return await skip("send_failed");
   s.data.mktAskedAt = new Date().toISOString();
+  if (rid) s.data.mktAskedReqs = [...askedReqs, rid].slice(-10);
   s.data.mktAsk = { lang, request_id: rid, email, wording: mktWording(lang) };
   await saveSession(s);
   await logEvent(from, "mkt_asked", { request_id: rid, lang });
@@ -11097,17 +11217,31 @@ async function mktAskAfterBooking(s: Session | null, from: string, L: string, re
 }
 // The email question after a confirmation is answered (or skipped): the
 // offers question follows, once, within a day of the booking.
+// Never throws: a question that could not go out is a card, not a log line.
 async function mktAfterEmailStep(s: Session, from: string, L: string): Promise<boolean> {
   const f = s.data.mktAfterEmail;
   if (!f) return false;
-  delete s.data.mktAfterEmail;
-  await saveSession(s);
-  if (!f.request_id || Date.now() - Number(f.at || 0) > MKT_FOLLOW_EMAIL_MS) return false;
-  return await mktAskAfterBooking(s, from, L, { id: f.request_id, contact_email: s.data.email || null });
+  try {
+    delete s.data.mktAfterEmail;
+    await saveSession(s);
+    if (!f.request_id || Date.now() - Number(f.at || 0) > MKT_FOLLOW_EMAIL_MS) return false;
+    return await mktAskAfterBooking(s, from, L, { id: f.request_id, contact_email: s.data.email || null });
+  } catch (e) {
+    await mktAskFailed(from, f.request_id, e);
+    return false;
+  }
+}
+async function mktAskFailed(from: string, rid: unknown, e: unknown) {
+  console.log("[mkt] ask failed", String(e));
+  await mktCard(`Offers question not asked: +${digitsOf(from)} (#${rid || "?"})`, {
+    badge: "CONSENT NOT ASKED", title: "The offers question failed after a booking",
+    paras: [`A confirmed customer was not asked, because the bot hit an error: ${String(e).slice(0, 200)}. They count as not answered and get no offers. You can ask them from bot.html (option B), with your yes to the exact text.`],
+    waNum: from, to: ["jordan@massageclub.io"],
+  }, `the offers question to +${digitsOf(from)} (#${rid || "?"}) failed: ${String(e).slice(0, 80)}`);
 }
 // A customer's tap on the offers question, or their STOP. True when handled
 // (the caller returns); false leaves the message to the booking flow.
-async function mktCustomerTurn(s: Session, from: string, replyId: string, said: string): Promise<boolean> {
+async function mktCustomerTurn(s: Session, from: string, replyId: string, said: string, wamid = ""): Promise<boolean> {
   const tap = mktTap(replyId);
   if (tap) {
     const phone = digitsOf(from);
@@ -11127,36 +11261,145 @@ async function mktCustomerTurn(s: Session, from: string, replyId: string, said: 
     s.data.mktAnswer = tap.action; s.data.mktAnsweredAt = new Date().toISOString(); delete s.data.mktAsk;
     await saveSession(s);
     await sendText(from, reply);
-    await logEvent(from, "mkt_answer", { action: tap.action, request_id: tap.requestId, lang: tap.lang });
+    await logEvent(from, "mkt_answer", { action: tap.action, request_id: tap.requestId, lang: tap.lang, wamid: wamid || null });
     return true;
   }
   const stop = stopIntent(said);
-  if (!stop) return false;
+  if (!stop) return await mktTypedAnswer(s, from, replyId, said);
   const lang = stop.lang || (s.data.lang === "es" ? "es" : "en");
+  return await mktStop(s, from, said, lang, { tier: stop.tier, erase: !!stop.erase, wamid });
+}
+// The opt-out itself. True when the customer was answered here; false when a
+// live request means the booking flow must still read their words.
+async function mktStop(s: Session, from: string, said: string, lang: string, o: { tier?: number; erase?: boolean; wamid?: string; via?: string } = {}): Promise<boolean> {
   const phone = digitsOf(from);
-  const lastReq = s.data.email ? null : await lastRequestFor(from).catch(() => null);
-  const email = mktEmail(s.data.email) || mktEmail(lastReq?.contact_email);
-  if (mktTestContact(phone, email, [s.wa_name, s.data.name, lastReq?.first_name])) { await sendText(from, stopReply(lang)); return true; }
-  const why = await mktSave({ action: "withdraw", wording: String(said).trim().slice(0, 500), wording_lang: lang, phone, email });
+  const lastReq = await lastRequestFor(from).catch(() => null);
+  const live = mktLive(s, lastReq);
+  if (mktTestContact(phone, s.data.email || lastReq?.contact_email, [s.wa_name, s.data.name, lastReq?.first_name])) {
+    if (live) return false;
+    await sendText(from, stopReply(lang));
+    return true;
+  }
+  // Already recorded a moment ago (the letters path saw this same message
+  // first, or a double STOP): not written twice.
+  if (s.data.mktAnswer === "withdraw" && Date.now() - Date.parse(String(s.data.mktAnsweredAt || 0)) < 60e3) {
+    if (live) return false;
+    await sendText(from, stopReply(lang));
+    return true;
+  }
+  const rec = await mktRecordWithdraw(s, from, said, lang, lastReq);
   // The opt-out is theirs the moment they ask: they are told it is done
   // either way, and a row that did not save goes to Jordan to write by hand.
-  if (why) await mktNotSavedCard(from, "STOP", why, String(said));
+  if (rec.why) await mktNotSavedCard(from, "STOP", rec.why, String(said));
+  else if (rec.unread) await mktUnreadCard(from, String(said));
+  if (o.erase) await mktEraseCard(from, String(said));
   s.data.mktAnswer = "withdraw"; s.data.mktAnsweredAt = new Date().toISOString(); delete s.data.mktAsk;
   await saveSession(s);
+  await logEvent(from, "mkt_withdraw", { recorded: !rec.why, lang, step: s.step, live, tier: o.tier || 1, emails: rec.emails.length, via: o.via || "chat", wamid: o.wamid || null });
+  if (live) return false;
   await sendText(from, stopReply(lang));
-  await logEvent(from, "mkt_withdraw", { recorded: !why, lang, step: s.step });
   return true;
 }
-// A muted number (the shutdown rule: no replies and no alerts, ever) that
-// writes STOP: the withdraw is recorded and nothing else happens.
-async function mktMutedStop(from: string, said: string): Promise<boolean> {
+// A typed "yes" or "no" right after the offers question: a tap is the proof,
+// so the same question and buttons go out once more (the words shown stay
+// exactly the ones that are saved). Only where nothing else is waiting.
+async function mktTypedAnswer(s: Session, from: string, replyId: string, said: string): Promise<boolean> {
+  const ask = s.data.mktAsk;
+  if (!ask || replyId || ask.resent || !bareAnswer(said)) return false;
+  if (!["done", "menu", "start"].includes(String(s.step)) || s.data.offer) return false;
+  if (Date.now() - Date.parse(String(s.data.mktAskedAt || 0)) > 24 * 3600e3) return false;
+  const lang = ask.lang === "es" ? "es" : "en";
+  const sent = await sendButtons(from, mktAskBody(lang), mktButtons(lang, ask.request_id));
+  if (!sent) return false;
+  ask.resent = new Date().toISOString();
+  await saveSession(s);
+  await logEvent(from, "mkt_asked_again", { request_id: ask.request_id || null });
+  return true;
+}
+// A muted number (the shutdown rule: no replies to them, ever) that writes
+// STOP: the withdraw is recorded and they hear nothing. Only Jordan hears, and
+// only when it could not be saved.
+async function mktMutedStop(from: string, said: string, force = false): Promise<boolean> {
   const stop = stopIntent(said);
-  if (!stop) return false;
+  if (!stop && !force) return false;
   const phone = digitsOf(from);
   if (mktTestContact(phone, null)) return false;
-  const why = await mktSave({ action: "withdraw", wording: String(said).trim().slice(0, 500), wording_lang: stop.lang || "en", phone });
-  await logEvent(from, "mkt_withdraw", { recorded: !why, muted: true });
-  return !why;
+  const rec = await mktRecordWithdraw(null, from, said, stop?.lang || "es", null);
+  if (rec.why) await mktNotSavedCard(from, "STOP", rec.why, String(said));
+  await logEvent(from, "mkt_withdraw", { recorded: !rec.why, muted: true });
+  return !rec.why;
+}
+// Is this number one of our customers, at any age? (a request, an answer or a
+// booking). Read errors say no: the caller still records the withdraw.
+async function mktKnownCustomer(phone: string): Promise<boolean> {
+  const d = digitsOf(phone);
+  const qs = [
+    `marketing_optins?phone=eq.${d}&select=id&limit=1`,
+    `bookings?or=(client_phone.eq.${encodeURIComponent("+" + d)},client_phone.eq.${d})&select=id&limit=1`,
+  ];
+  for (const q of qs) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${q}`, { headers: H() });
+      const rows = r.ok ? await r.json().catch(() => null) : null;
+      if (Array.isArray(rows) && rows.length) return true;
+    } catch (_e) { /* next */ }
+  }
+  return false;
+}
+// handleLetterReply: a BAJA with no letter reference, from a number that is
+// not a studio's. The notice itself says "darte de baja", so a customer of
+// ANY age who writes it is opting out of offers: recorded and answered like
+// a STOP (a muted one silently).
+async function mktLetterStop(from: string, text: string): Promise<boolean> {
+  const s = await getSession(from);
+  if (s.step === "muted") { await mktMutedStop(from, text, true); return true; }
+  const stop = stopIntent(text);
+  const lang = stop?.lang || "es";
+  const answered = await mktStop(s, from, text, lang, { tier: stop?.tier || 2, erase: !!stop?.erase, via: "letters" });
+  // A live request: the booking flow reads it next (handleLetterReply's
+  // caller carries on into the customer flow when this says false).
+  return answered;
+}
+// handleLetterReply, a number we cannot place at all: the BAJA is recorded as
+// a marketing withdraw too (harmless for a studio, LOPDGDD art. 23), and the
+// line returned goes on Jordan's letters card.
+async function mktUnknownBaja(from: string, text: string): Promise<string> {
+  const why = await mktSave({ action: "withdraw", wording: String(text).trim().slice(0, 500) || "BAJA", wording_lang: "es", phone: digitsOf(from), email: null });
+  await logEvent(from, "mkt_withdraw", { recorded: !why, via: "letters_unmatched" });
+  return why
+    ? `The marketing opt-out for this number could NOT be saved (${why.slice(0, 120)}). If it is a customer, add a withdraw row for it by hand.`
+    : "A marketing opt-out was also recorded for this number (marketing_optins), in case it is a customer rather than a studio.";
+}
+// Meta's 131050: the customer turned off marketing messages from us inside
+// WhatsApp. That is an opt-out like any other.
+async function mktMetaStopped(to: string, err: any): Promise<void> {
+  const phone = digitsOf(to);
+  if (!phone || mktTestContact(phone, null)) return;
+  const why = await mktSave({ action: "withdraw", wording: `WhatsApp: the customer stopped marketing messages from Massage Club (Meta ${err?.code || 131050}: ${String(err?.title || err?.message || "").slice(0, 120)})`, wording_lang: "en", phone, email: null });
+  await logEvent(to, "mkt_withdraw", { recorded: !why, via: "meta_131050" });
+  if (why) await mktNotSavedCard(to, "STOP", why, "Meta 131050 (marketing messages turned off in WhatsApp)");
+}
+// ops "tpl": a MARKETING template (or one whose category cannot be read) goes
+// only to a number whose latest answer is a verified yes. A UTILITY template
+// about a booking is not a promotion and still goes after a STOP.
+async function mktTemplateGate(to: string, name: string, lang: string): Promise<{ ok: boolean; category: string | null; status: string | null; why?: string }> {
+  let category: string | null = null;
+  try {
+    const waba = String((await appSecret("WABA_ID").catch(() => "")) || "");
+    if (waba) {
+      const r = await fetch(`https://graph.facebook.com/v21.0/${waba}/message_templates?name=${encodeURIComponent(name)}&fields=name,language,category&limit=20`, { headers: { Authorization: `Bearer ${WA_TOKEN}` } });
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      const list = Array.isArray(j?.data) ? j.data.filter((t: any) => String(t.name) === name) : [];
+      const t = list.find((x: any) => String(x.language || "").toLowerCase().startsWith(lang.toLowerCase())) || list[0];
+      if (t?.category) category = String(t.category).toUpperCase();
+    }
+  } catch (_e) { /* unread: treated as marketing */ }
+  if (category && category !== "MARKETING") return { ok: true, category, status: null };
+  if (mktTestContact(to, null)) return { ok: false, category, status: null, why: "a test contact never gets a marketing template" };
+  const st = await mktLatest(to);
+  if (!st) return { ok: false, category, status: null, why: "marketing_status could not be read, so a marketing template cannot go" };
+  if (st.action === "yes" && MKT_VERIFIED.includes(st.source)) return { ok: true, category, status: "yes" };
+  return { ok: false, category, status: st.action || "not answered", why: `${category ? "a MARKETING" : "a template whose category could not be read, so treated as a marketing"} template needs a yes; this number's latest answer is ${st.action || "none (not answered)"}` };
 }
 // ---- marketing consent (end) ----
 
@@ -12692,7 +12935,10 @@ const handleInner = async (req: Request) => {
       const params: string[] = Array.isArray(payload.params) ? payload.params.map((x: any) => String(x)) : [];
       const payloads: string[] = Array.isArray(payload.payloads) ? payload.payloads.map((x: any) => String(x)) : [];
       if (!to || !name) return new Response(JSON.stringify({ ok: false, error: "to and name required" }), { status: 200, headers: { "Content-Type": "application/json" } });
-      if (payload.dry) return new Response(JSON.stringify({ ok: true, dry: true, to, name, lang, params, payloads }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+      // The consent rule: a MARKETING template only to a latest yes.
+      const consent = await mktTemplateGate(to, name, lang);
+      if (payload.dry) return new Response(JSON.stringify({ ok: true, dry: true, to, name, lang, params, payloads, consent }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (!consent.ok) return new Response(JSON.stringify({ ok: false, error: consent.why, to, name, category: consent.category, status: consent.status }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
       const sent = await sendTemplate(to, name, lang, params, payloads);
       return new Response(JSON.stringify({ ok: !!sent, to, name, lang, params }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } });
     }
@@ -12727,6 +12973,9 @@ const handleInner = async (req: Request) => {
         const err = Array.isArray(st.errors) && st.errors[0] ? st.errors[0] : {};
         const line = `DELIVERY FAILED (${err.code || "?"}): ${err.title || err.message || "unknown"}${err.error_data?.details ? " · " + String(err.error_data.details).slice(0, 160) : ""}`;
         if (to) await logMsg(to, "out", line, "status_failed");
+        // The consent rule: 131050 means the customer turned off marketing
+        // from us inside WhatsApp, which is an opt-out like a STOP.
+        if (to && Number(err.code) === 131050) await mktMetaStopped(to, err).catch((e) => console.log("[mkt] 131050 not recorded", String(e)));
         // v174: the 34600000xxx numbers are our own fake test customers; their
         // failures are expected and were buzzing Jordan's phone.
         if (to && to !== digitsOf(JORDAN_MAIN_NUMBER) && !/^34600000\d{3}$/.test(to)) await notifyJordanWa(`message to +${to} was NOT delivered: ${err.title || err.code || "unknown"}${Number(err.code) === 131047 ? " (24h window closed, only a template reaches them now)" : ""}.`, to);
@@ -12968,7 +13217,7 @@ const handleInner = async (req: Request) => {
     // the flow from a clean start. Genuine never-contact numbers now use a
     // separate step, "muted", which is the only one that stays silent, so the
     // recovery cannot accidentally reopen a thread Jordan closed on purpose.
-    // Kelly rule (20 Nov): a muted number that writes STOP is still taken off
+    // The consent rule (20 Nov): a muted number that writes STOP is still taken off
     // the offers list, silently (no reply, no alert: the shutdown rule).
     if (s.step === "muted") { await mktMutedStop(from, text).catch(() => null); return new Response("OK", { status: 200 }); }
     // Review fix (17 Oct): a new studio that wrote from the /socios page in the
@@ -13017,11 +13266,12 @@ const handleInner = async (req: Request) => {
       }).catch((e) => console.log("[wa] chat alert failed", String(e)));
     }
 
-    // The Kelly rule (20 Nov 2026): a tap on the offers question, or a
+    // The consent rule (20 Nov 2026): a tap on the offers question, or a
     // customer's STOP. Studios never get this far (partner numbers and a
-    // letter's BAJA are handled above, unchanged). Neither touches the step
-    // or the booking: a customer halfway through a booking carries on.
-    if (await mktCustomerTurn(s, from, replyId, text || (msg.type === "button" ? btnText : "")).catch((e) => { console.log("[mkt] turn failed", String(e)); return false; })) {
+    // letter's BAJA are handled above). Neither touches the step or the
+    // booking: during a live request the withdraw is recorded and the
+    // message still goes on to the booking flow below.
+    if (await mktCustomerTurn(s, from, replyId, text || (msg.type === "button" ? btnText : ""), wamid).catch((e) => { console.log("[mkt] turn failed", String(e)); return false; })) {
       return new Response("OK", { status: 200 });
     }
 
@@ -13301,7 +13551,7 @@ const handleInner = async (req: Request) => {
         // A message that is nothing but the address gets an answer and the
         // question they were on. One that carries other words is saved quietly
         // and carries on being read as whatever else it was.
-        // Kelly rule (20 Nov): the answer to the email question after a
+        // The consent rule (20 Nov): the answer to the email question after a
         // confirmation (await_email_post with mktAfterEmail) lands here too.
         // It used to be thanked and then asked for again (reAsk repeats the
         // email question); now it is thanked plainly and the offers question
@@ -14561,7 +14811,7 @@ const handleInner = async (req: Request) => {
         // welcome + account email via booking-ack.
         if (text && /^(skip|saltar|no)$/i.test(text)) {
           s.step = "done"; await saveSession(s);
-          // Kelly rule: after a confirmation (mktAfterEmail) the studio has
+          // The consent rule: after a confirmation (mktAfterEmail) the studio has
           // already replied, so "as soon as the studio replies" would be wrong.
           await sendText(from, s.data.mktAfterEmail ? MKT_COPY[L === "es" ? "es" : "en"].noEmail : COPY[L].ackReply);
           await mktAfterEmailStep(s, from, L);
@@ -14569,7 +14819,7 @@ const handleInner = async (req: Request) => {
         }
         // v47: a decline or cancellation typed here is not a bad email address.
         if (text && !isEmail(text) && (CANCEL_RE.test(text) || DECLINE_RE.test(text))) {
-          // Kelly rule: no offers question on the way out of a booking.
+          // The consent rule: no offers question on the way out of a booking.
           if (s.data.mktAfterEmail) { delete s.data.mktAfterEmail; await saveSession(s); }
           const cq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&stage=eq.confirmed&order=created_at.desc&limit=1&select=id`, { headers: H() });
           const creq = (await cq.json().catch(() => []))[0] || null;
