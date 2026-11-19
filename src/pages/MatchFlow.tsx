@@ -9,6 +9,8 @@ import { useFlowLang, pickCopy } from "@/lib/flowLang";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import AccountHeaderLink from "@/components/AccountHeaderLink";
 import { MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
+import { ConsentQuestion } from "@/app/components/MarketingOptInCard";
+import { CONSENT_COPY, consentLang, saveConsent, type ConsentChoice } from "@/lib/marketingOptIn";
 
 type NeedKey = "stress" | "sore" | "pamper" | "unsure";
 type WhenKey = "today" | "tomorrow" | "week" | "flexible";
@@ -61,7 +63,6 @@ const COPY = {
     leadTitle: "Email me my matches",
     leadSub: "We send these three studios to your inbox so you can decide later. Reply to the email and we book it for you.",
     leadPlaceholder: "your@email.com",
-    leadOptIn: "Also send me occasional Massage Club updates",
     leadButton: "Send my matches",
     leadSent: "Sent! Check your inbox.",
     leadError: "That did not work, try again",
@@ -107,7 +108,6 @@ const COPY = {
     leadTitle: "Envíame mis coincidencias",
     leadSub: "Te enviamos estos tres estudios a tu correo para que decidas más tarde. Responde al correo y lo reservamos por ti.",
     leadPlaceholder: "tu@email.com",
-    leadOptIn: "Enviarme también novedades ocasionales de Massage Club",
     leadButton: "Enviar mis coincidencias",
     leadSent: "¡Enviado! Revisa tu correo.",
     leadError: "No funcionó, inténtalo otra vez",
@@ -153,7 +153,6 @@ const COPY = {
     leadTitle: "M'envoyer mes correspondances",
     leadSub: "Nous envoyons ces trois centres dans votre boîte mail pour décider plus tard. Répondez au mail et nous réservons pour vous.",
     leadPlaceholder: "votre@email.com",
-    leadOptIn: "M'envoyer aussi les actualités occasionnelles de Massage Club",
     leadButton: "Envoyer mes correspondances",
     leadSent: "Envoyé ! Vérifiez votre boîte mail.",
     leadError: "Cela n'a pas fonctionné, réessayez",
@@ -199,7 +198,6 @@ const COPY = {
     leadTitle: "Meine Treffer per E-Mail erhalten",
     leadSub: "Wir schicken dir diese drei Studios in dein Postfach, damit du später entscheiden kannst. Antworte auf die E-Mail und wir buchen für dich.",
     leadPlaceholder: "deine@email.com",
-    leadOptIn: "Mir auch gelegentliche Massage-Club-Neuigkeiten schicken",
     leadButton: "Meine Treffer senden",
     leadSent: "Gesendet! Schau in dein Postfach.",
     leadError: "Das hat nicht geklappt, versuch es noch einmal",
@@ -245,7 +243,6 @@ const COPY = {
     leadTitle: "Inviami i miei abbinamenti",
     leadSub: "Ti inviamo questi tre centri via email così puoi decidere più tardi. Rispondi all'email e prenotiamo noi per te.",
     leadPlaceholder: "tua@email.com",
-    leadOptIn: "Inviami anche aggiornamenti occasionali di Massage Club",
     leadButton: "Invia i miei abbinamenti",
     leadSent: "Inviato! Controlla la tua casella email.",
     leadError: "Non ha funzionato, riprova",
@@ -291,7 +288,6 @@ const COPY = {
     leadTitle: "Enviem-me as minhas correspondências",
     leadSub: "Enviamos estes três estúdios para o teu email para decidires mais tarde. Responde ao email e nós tratamos da reserva por ti.",
     leadPlaceholder: "teu@email.com",
-    leadOptIn: "Enviem-me também novidades ocasionais do Massage Club",
     leadButton: "Enviar as minhas correspondências",
     leadSent: "Enviado! Vê a tua caixa de email.",
     leadError: "Não funcionou, tenta outra vez",
@@ -336,7 +332,6 @@ const COPY = {
     leadTitle: "把匹配结果发到我的邮箱",
     leadSub: "我们会把这三家按摩中心发到您的邮箱，您可以稍后决定。回复邮件，我们帮您预订。",
     leadPlaceholder: "您的@邮箱.com",
-    leadOptIn: "也发送 Massage Club 的不定期消息",
     leadButton: "发送我的匹配结果",
     leadSent: "已发送！请查收您的邮箱。",
     leadError: "没有成功，请重试",
@@ -411,19 +406,28 @@ const MATCH_LEAD_ENDPOINT = "https://jglftdstrowwckwqmpue.supabase.co/functions/
 
 function MatchLeadCard({
   t,
+  lang,
   cards,
   needLabel,
   whenLabel,
   area,
 }: {
   t: (typeof COPY)["en"];
+  lang: string;
   cards: MatchCard[];
   needLabel: string;
   whenLabel: string;
   area: string | null;
 }) {
   const [email, setEmail] = useState("");
-  const [optIn, setOptIn] = useState(false);
+  // The offers question (the Kelly rule, 19 Nov) replaces the old "Also send
+  // me occasional updates" tick box, which saved match_leads.opt_in with no
+  // wording. Optional: the matches are sent whatever the answer. A yes from
+  // here is source "quiz": recorded, but it does not count for a promotion
+  // until the address is confirmed (nothing ties a typed email to a person).
+  const mkLang = consentLang(lang);
+  const [mkChoice, setMkChoice] = useState<ConsentChoice | null>(null);
+  const [mkFailed, setMkFailed] = useState(false);
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
   const [error, setError] = useState<"invalid" | "failed" | null>(null);
 
@@ -438,6 +442,7 @@ function MatchLeadCard({
           </div>
           <p className="text-sm font-semibold text-foreground">{t.leadSent}</p>
         </div>
+        {mkFailed && <p role="alert" className="mt-3 text-sm text-destructive">{CONSENT_COPY[mkLang].notSaved}</p>}
       </div>
     );
   }
@@ -455,7 +460,8 @@ function MatchLeadCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          opt_in: optIn,
+          // Legacy column, never consent: the answer goes to marketing_optins.
+          opt_in: false,
           answers: { want: needLabel, when: whenLabel, area },
           matches: cards.slice(0, 3).map((c) => ({
             name: c.studio,
@@ -470,6 +476,9 @@ function MatchLeadCard({
       const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
       if (json?.ok) {
         setState("done");
+        if (mkChoice) {
+          void saveConsent({ choice: mkChoice, source: "quiz", lang: mkLang, email: email.trim() }).then((r) => setMkFailed(!r.ok));
+        }
       } else {
         setState("idle");
         setError("failed");
@@ -516,15 +525,7 @@ function MatchLeadCard({
           {t.leadButton}
         </button>
       </div>
-      <label className="mt-3 flex items-start gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={optIn}
-          onChange={(e) => setOptIn(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
-        />
-        <span className="text-xs text-muted-foreground leading-snug">{t.leadOptIn}</span>
-      </label>
+      <ConsentQuestion className="mt-3" lang={mkLang} value={mkChoice} onChange={setMkChoice} />
       {error && (
         <p className="mt-2 text-xs text-destructive">{error === "invalid" ? t.leadInvalid : t.leadError}</p>
       )}
@@ -839,6 +840,7 @@ export default function MatchFlow() {
             {cards.length > 0 && (
               <MatchLeadCard
                 t={t}
+                lang={lang}
                 cards={cards}
                 needLabel={need ? t.needs[need] : t.needs.unsure}
                 whenLabel={when ? t.when[when] : t.when.flexible}

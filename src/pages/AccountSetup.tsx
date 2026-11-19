@@ -35,6 +35,9 @@ type Copy = {
   genericError: string;
 };
 
+// No "first to hear about new studios and perks" line (19 Nov): an account is
+// not a yes to offers. Offers are asked with the two-button question only
+// (the Kelly rule), on the profile page and at booking.
 const COPY: Record<FlowLang, Copy> = {
   en: {
     hello: "Hi {name},",
@@ -45,7 +48,6 @@ const COPY: Record<FlowLang, Copy> = {
       "Book faster next time: your details prefilled and one-tap rebooking",
       "All your bookings and confirmations in one place",
       "Preferences remembered: favourite studios, pressure, massage types",
-      "First to hear about new studios and member perks",
     ],
     email: "Email",
     password: "Password",
@@ -76,7 +78,6 @@ const COPY: Record<FlowLang, Copy> = {
       "Reserva más rápido la próxima vez: tus datos ya rellenos y repetir en un toque",
       "Todas tus reservas y confirmaciones en un solo lugar",
       "Tus preferencias guardadas: centros favoritos, presión, tipos de masaje",
-      "Entérate antes que nadie de nuevos centros y ventajas para miembros",
     ],
     email: "Email",
     password: "Contraseña",
@@ -107,7 +108,6 @@ const COPY: Record<FlowLang, Copy> = {
       "Réserve plus vite la prochaine fois : tes infos préremplies et réservation en un clic",
       "Toutes tes réservations et confirmations au même endroit",
       "Tes préférences enregistrées : studios favoris, pression, types de massage",
-      "Sois le premier informé des nouveaux studios et avantages membres",
     ],
     email: "Email",
     password: "Mot de passe",
@@ -138,7 +138,6 @@ const COPY: Record<FlowLang, Copy> = {
       "Beim nächsten Mal schneller buchen: deine Daten vorausgefüllt, Nachbuchen mit einem Tipp",
       "Alle Buchungen und Bestätigungen an einem Ort",
       "Präferenzen gespeichert: Lieblingsstudios, Druck, Massagearten",
-      "Als Erster von neuen Studios und Mitglieder-Vorteilen erfahren",
     ],
     email: "E-Mail",
     password: "Passwort",
@@ -169,7 +168,6 @@ const COPY: Record<FlowLang, Copy> = {
       "Prenota più velocemente la prossima volta: dati precompilati e riprenotazione con un tocco",
       "Tutte le prenotazioni e conferme in un unico posto",
       "Preferenze salvate: studi preferiti, pressione, tipi di massaggio",
-      "Primo a scoprire nuovi studi e vantaggi per i membri",
     ],
     email: "Email",
     password: "Password",
@@ -200,7 +198,6 @@ const COPY: Record<FlowLang, Copy> = {
       "Reserva mais rápido da próxima vez: dados preenchidos e nova reserva com um toque",
       "Todas as reservas e confirmações num só lugar",
       "Preferências guardadas: estúdios favoritos, pressão, tipos de massagem",
-      "Sê o primeiro a saber de novos estúdios e vantagens para membros",
     ],
     email: "Email",
     password: "Palavra-passe",
@@ -231,7 +228,6 @@ const COPY: Record<FlowLang, Copy> = {
       "下次预约更快：信息自动填好，一键再次预约",
       "所有预约和确认集中在一处",
       "记住你的偏好：喜爱的按摩店、力度、按摩类型",
-      "第一时间了解新入驻按摩店和会员福利",
     ],
     email: "邮箱",
     password: "密码",
