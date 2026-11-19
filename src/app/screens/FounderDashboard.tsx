@@ -7,6 +7,7 @@ import ConciergeTab from "./founder/ConciergeTab";
 import FindStudio from "./founder/FindStudio";
 import BookingWaButtons from "./founder/BookingWaButtons";
 import RecentActivity from "./founder/RecentActivity";
+import RecordStop from "./founder/RecordStop";
 
 
 
@@ -843,6 +844,7 @@ export default function FounderDashboard() {
                     ? `0 customers may get promotions: nobody yet has a verified yes on every address we hold for them.${optinUnconfirmed ? ` ${optinUnconfirmed} said yes from the quiz, which does not count until they confirm it.` : ""}`
                     : `${optinYesPeople} customer${optinYesPeople === 1 ? "" : "s"} whose every address reads a verified yes. Only these may get promotions.${optinUnconfirmed ? ` ${optinUnconfirmed} more said yes from the quiz, which does not count until they confirm it.` : ""}`}
             </p>
+            <RecordStop />
             {consentErrors7d > 0 && (
               <p role="alert" data-testid="consent-errors" className="mb-4 rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>
                 {`${consentErrors7d} offers answer${consentErrors7d === 1 ? "" : "s"} could not be saved in the last 7 days (site_events consent_save_error). Those people count as not answered. Check the consent function's logs and its allowed origins.`}
