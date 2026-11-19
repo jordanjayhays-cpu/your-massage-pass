@@ -153,7 +153,12 @@ const sd = (() => { const i = botSrc.indexOf("const told = lastOut === cl"); ret
 check("source", "stand-down branch reads what was sent", /studioToldEnded\(from, String\(sdrow\.created_at/.test(sd) && /afterEndedAction\(told, freeText\)/.test(sd), true);
 check("source", "STUDIO_THANKS is no longer sent", /sendText\(from, STUDIO_THANKS\)/.test(botSrc), false);
 check("source", "stand-down query selects created_at", /outcome=in\.\(stood_down,lost,declined,expired\)[^`]*select=id,request_id,outcome,created_at/.test(botSrc), true);
-check("source", "a plain ok to a confirmation is quiet", /if \(!req && plainStudioAck\(freeText\)\)[\s\S]{0,900}after: "confirmation"/.test(botSrc), true, "no 'the studio is trying to reach you' ping to the customer");
+check("source", "a plain ok to a confirmation is quiet", /if \(!req && plainStudioAck\(freeText\) && !ourQuestionOpen\(await lastOutTo\(from\), Date\.now\(\)\)\)[\s\S]{0,900}after: "confirmation"/.test(botSrc), true, "no 'the studio is trying to reach you' ping to the customer; review: not when it answers our own open question");
+// Review (19 Nov): an empty word list made every() true, so a negative emoji
+// alone was silenced as an ack. A wordless message is an ack only with a
+// thumbs-up kind of emoji.
+for (const t of ["👎", "❌", "😡", "Vale 👎", "ok ❌", "…", "!!"]) check("plainStudioAck no (review)", t, W.plainStudioAck(t), false, "Jordan sees it");
+for (const t of ["👍", "🙏", "👌", "✅", "De acuerdo", "Muchas gracias"]) check("plainStudioAck yes (review)", t, W.plainStudioAck(t), true);
 
 // ---------------------------------------------------------------------------
 // 3. Only a number we have never written to is introduced.
@@ -161,8 +166,12 @@ check("source", "a plain ok to a confirmation is quiet", /if \(!req && plainStud
 for (const known of [true, false]) for (const v1ok of [true, false]) {
   check("noteTplOrder parity", `${known}/${v1ok}`, W.noteTplOrder(known, v1ok), D.noteTplOrder(known, v1ok));
 }
-check("noteTplOrder", "known studio, v1 can carry it", W.noteTplOrder(true, true), ["aviso_centro_v3", "aviso_centro_v1", "aviso_centro_v2"], "Selvarrosa: no 'soy Jordan' while v1 is live");
+check("noteTplOrder", "known studio, v1 can carry it", W.noteTplOrder(true, true), ["aviso_centro_v3", "aviso_centro_v1"], "Selvarrosa: no 'soy Jordan' while v1 is live");
 check("noteTplOrder", "known studio, never v2 first", W.noteTplOrder(true, false)[0], "aviso_centro_v3");
+// Review (19 Nov): v2 is not the last resort either; a note v1 cannot carry
+// (a question, no clock time) is held for Jordan instead of re-introducing us.
+check("noteTplOrder", "known studio: never v2 at all", [W.noteTplOrder(true, true).includes("aviso_centro_v2"), W.noteTplOrder(true, false).includes("aviso_centro_v2")], [false, false]);
+check("source", "dispatch-studios holds what v1 cannot carry", /if \(v1why\) return await holdNote\(to, text, v1why\);/.test(body(dsSrc, "async function sendStudioNote(")), true);
 check("noteTplOrder", "never written to: introduced", W.noteTplOrder(false, true)[0], "aviso_centro_v2");
 const v3 = "Hola, os escribo por el masaje de {{1}}. {{2}}\\n\\nGracias.";
 check("source", "aviso_centro_v3 body, same in both files", botSrc.includes(`aviso_centro_v3: "${v3}"`) && dsSrc.includes(`aviso_centro_v3: "${v3}"`), true);

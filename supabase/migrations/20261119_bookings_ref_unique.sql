@@ -55,9 +55,16 @@ comment on column public.bookings.booking_ref is
 --    the update fails. A wa- booking is also the studio's own yes for that slot
 --    (BOTH PARTIES TAP), so the website capacity count must not overrule it.
 --    Body below is the live function (read 19 Nov) plus the one marked line.
+--    The header is the live one too: SECURITY DEFINER, search_path public
+--    (pg_get_functiondef, 19 Nov). CREATE OR REPLACE resets whatever it does
+--    not state, and without SECURITY DEFINER the count below would run as the
+--    inserting customer, whose RLS shows only their own bookings, so a full
+--    slot at a capacity-1 studio would take a second website booking.
 create or replace function public.enforce_booking_capacity()
 returns trigger
 language plpgsql
+security definer
+set search_path to 'public'
 as $function$
 declare
   cap int;
@@ -120,23 +127,50 @@ begin
 end;
 $function$;
 
--- 3. After-care switch, default OFF (approval rule for new outbound automation).
---    Once wa- rows exist, four jobs that have never once run for a WhatsApp/web
---    booking start reading them:
---      review-request     (hourly)      review email to the customer, "Jordan at Massage Club"
---      attendance-request (daily 08:00) "¿Vino el cliente?" email to the studio
---      booking-reminders  (every 15 min) 24h / 3h reminder emails to the customer
---      wa-bot askForReviews (settle sweep, every 5 min) WhatsApp review ask
---    Several of them duplicate messages that already go out from whatsapp_requests
---    (booking-guard's T+20 arrival question, wa-bot's day-before reminder). None
---    of them goes out for a wa- booking until Jordan sets the switch to 'on'.
---    Held rows get the sentinel 'epoch' (1970-01-01) in the four "already done"
---    columns, which every one of those jobs reads as done, and which can never be
---    confused with a real send time. Flipping the switch affects new rows only;
---    to release a held row: update bookings set review_requested_at = null ...
---    where review_requested_at = 'epoch' and booking_ref = 'wa-<id>'.
-insert into public.app_secrets (key, value)
-values ('WA_BOOKING_AFTERCARE', 'off')
+-- 3. After-care, one switch per job (review of 19 Nov: one switch for four jobs
+--    meant approving the review email also started three things nobody
+--    approved). Once wa- rows exist, four jobs that have never once run for a
+--    WhatsApp/web booking start reading them. What each would send, and when
+--    (booking_time is read as UTC by the dashboard functions, so "3h after the
+--    end" is about 4h in Madrid winter time):
+--      WA_REVIEW_EMAIL      review-request (dashboard, hourly at :20 UTC): the
+--                           review email to the customer, "How was your massage
+--                           at <studio>?" with five star links, signed "Massage
+--                           Club" (v7, 19 Nov), about 3h after the end, within 14
+--                           days, never for no_show. Column review_requested_at.
+--      WA_ATTENDANCE_EMAIL  attendance-request (dashboard, daily 07:00 UTC):
+--                           "¿Vino el cliente?" email to the studio with Sí, vino
+--                           / No vino links, the morning after. Its subject has an
+--                           em dash between "¿Vino el cliente?" and the date: fix it
+--                           in the dashboard before this is ever 'on'. It duplicates
+--                           booking-guard's T+20 arrival question.
+--                           Column attendance_requested_at.
+--      WA_REMINDER_EMAILS   booking-reminders (dashboard, every 15 min, through
+--                           bookings_needing_reminders()): 24h and 3h reminder
+--                           emails to the customer, which duplicate wa-bot's own
+--                           day-before reminder. Columns reminder_24h_sent_at,
+--                           reminder_3h_sent_at.
+--      WA_REVIEW_WHATSAPP   wa-bot askForReviews (settle sweep, every 5 min): the
+--                           WhatsApp review ask, 15 min to 6 h after the end, only
+--                           in an open 24h window. Read by the bot itself.
+--    review-request and askForReviews share review_requested_at, so a booking
+--    is asked for a review once, by whichever runs first.
+--    All four ship 'off' (CLAUDE.md: approval before any new outbound
+--    automation). Jordan approved the review email for every massage on 19 Nov
+--    (CLAUDE.md, ASK BEFORE SENDING): set WA_REVIEW_EMAIL to 'on' when applying
+--    if that stands. A held row gets the sentinel 'epoch' (1970-01-01) in that
+--    job's "already done" columns, which the job reads as done and which can
+--    never be confused with a real send time. A test booking (is_test, set by
+--    trg_flag_test_booking and by ensureBooking) is held on all four whatever
+--    the switches say: review-request does not read is_test.
+--    A switch affects rows inserted after it changes. To release one held
+--    row: update bookings set review_requested_at = null where booking_ref =
+--    'wa-<id>' and review_requested_at = 'epoch'.
+insert into public.app_secrets (key, value) values
+  ('WA_REVIEW_EMAIL', 'off'),
+  ('WA_ATTENDANCE_EMAIL', 'off'),
+  ('WA_REMINDER_EMAILS', 'off'),
+  ('WA_REVIEW_WHATSAPP', 'off')
 on conflict (key) do nothing;
 
 create or replace function public.mc_hold_wa_aftercare()
@@ -145,13 +179,23 @@ language plpgsql
 security definer
 set search_path = public
 as $function$
+declare
+  on_review  boolean := coalesce((select lower(trim(value)) from public.app_secrets where key = 'WA_REVIEW_EMAIL'), 'off') = 'on';
+  on_attend  boolean := coalesce((select lower(trim(value)) from public.app_secrets where key = 'WA_ATTENDANCE_EMAIL'), 'off') = 'on';
+  on_remind  boolean := coalesce((select lower(trim(value)) from public.app_secrets where key = 'WA_REMINDER_EMAILS'), 'off') = 'on';
+  test_row   boolean := coalesce(new.is_test, false);
 begin
-  if coalesce(new.booking_ref, '') like 'wa-%'
-     and coalesce((select lower(trim(value)) from public.app_secrets where key = 'WA_BOOKING_AFTERCARE'), 'off') <> 'on' then
-    new.review_requested_at     := coalesce(new.review_requested_at, 'epoch'::timestamptz);
-    new.attendance_requested_at := coalesce(new.attendance_requested_at, 'epoch'::timestamptz);
-    new.reminder_24h_sent_at    := coalesce(new.reminder_24h_sent_at, 'epoch'::timestamptz);
-    new.reminder_3h_sent_at     := coalesce(new.reminder_3h_sent_at, 'epoch'::timestamptz);
+  if coalesce(new.booking_ref, '') like 'wa-%' then
+    if test_row or not on_review then
+      new.review_requested_at := coalesce(new.review_requested_at, 'epoch'::timestamptz);
+    end if;
+    if test_row or not on_attend then
+      new.attendance_requested_at := coalesce(new.attendance_requested_at, 'epoch'::timestamptz);
+    end if;
+    if test_row or not on_remind then
+      new.reminder_24h_sent_at := coalesce(new.reminder_24h_sent_at, 'epoch'::timestamptz);
+      new.reminder_3h_sent_at  := coalesce(new.reminder_3h_sent_at, 'epoch'::timestamptz);
+    end if;
   end if;
   return new;
 end;
@@ -162,7 +206,39 @@ create trigger trg_hold_wa_aftercare
   before insert on public.bookings
   for each row execute function public.mc_hold_wa_aftercare();
 -- (On an ON CONFLICT DO UPDATE, PostgREST's merge-duplicates only sets the
--- columns in ensureBooking's payload, so these four are never overwritten.)
+-- columns in ensureBooking's payload, so these four are never overwritten.
+-- trg_hold_wa_aftercare runs after trg_flag_test_booking, triggers of the same
+-- kind firing in name order, so is_test is already set when it reads it.)
+
+-- 3b. (review) A wa- bookings row follows its request when the request is
+--     cancelled or marked no_show. wa-bot's markNoShow and the WhatsApp cancel
+--     at the reminder step write only whatsapp_requests, so the row would stay
+--     'confirmed', and once WA_REVIEW_EMAIL is on review-request (which skips
+--     cancelled and no_show) would ask someone who cancelled, or never came,
+--     how the massage was. bookings has no UPDATE trigger (checked 19 Nov:
+--     studio-email, the capacity and test-flag triggers are INSERT only), so
+--     this sends nothing itself.
+create or replace function public.mc_sync_wa_booking_status()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $function$
+begin
+  if new.stage in ('cancelled', 'no_show') and old.stage is distinct from new.stage then
+    update public.bookings
+       set status = case when new.stage = 'no_show' then 'no_show' else 'cancelled' end
+     where booking_ref = 'wa-' || new.id::text
+       and status in ('pending', 'confirmed');
+  end if;
+  return null;
+end;
+$function$;
+
+drop trigger if exists trg_sync_wa_booking_status on public.whatsapp_requests;
+create trigger trg_sync_wa_booking_status
+  after update of stage on public.whatsapp_requests
+  for each row execute function public.mc_sync_wa_booking_status();
 
 -- 4. OPTIONAL, left commented: the "studio-email" webhook (notify-booking) emails
 --    and Telegrams Jordan "New booking #id" on every INSERT. acceptOffer already

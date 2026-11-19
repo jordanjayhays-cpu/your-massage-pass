@@ -20,6 +20,18 @@
 --   offer_price_eur        the studio-written price the offer carried (null = none).
 --   offer_update_sent_at   the one "price update" email (OFFER_PRICE_UPDATE, default off).
 --   nudged_at              the one reminder email (OFFER_NUDGE, default off).
+--   offer_slot_at          (review) when the offered slot starts, written with the
+--                          claim, so the late-Yes rule reads the day the offer was
+--                          for. It used to be inferred from reply_text, which a
+--                          later message from the studio overwrites ("mañana
+--                          también tenemos hueco" moved a 13:30 today to tomorrow),
+--                          and an email or call tap stores no day word at all.
+--   asked_again_at         (review) a lapsed offer the customer said Yes to was put
+--                          to the studio again (rule 4). The studio's yes then sends
+--                          a fresh offer even inside the last 45 minutes, until the
+--                          start, because this customer has already said they want
+--                          it. wa-bot clears the customer_offered_* columns with it,
+--                          so that fresh offer is not taken for a duplicate.
 --
 -- No deadline column: Jordan decided on 19 Nov that a Yes before the start
 -- books (the customer of #126 tapped Yes at 13:26 for 13:30, came at 13:50 and
@@ -32,7 +44,9 @@ alter table public.request_dispatch
   add column if not exists offer_email_due_at    timestamptz,
   add column if not exists offer_price_eur       numeric(6,2),
   add column if not exists offer_update_sent_at  timestamptz,
-  add column if not exists nudged_at             timestamptz;
+  add column if not exists nudged_at             timestamptz,
+  add column if not exists offer_slot_at         timestamptz,
+  add column if not exists asked_again_at        timestamptz;
 
 do $$ begin
   alter table public.request_dispatch

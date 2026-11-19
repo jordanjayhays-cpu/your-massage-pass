@@ -123,12 +123,16 @@ export { ensureBooking };
   check(G, "time change writes client_confirmed_at and moves the bookings row", /client_confirmed_at: new Date\(\)\.toISOString\(\)[\s\S]{0,600}await ensureBooking\(req\.id\)/.test(tc), true, "the moved time never reached bookings");
   // after-care stays held for bot bookings
   const afr = lift(botSrc, "async function askForReviews(");
-  check(G, "askForReviews leaves wa- bookings alone unless WA_BOOKING_AFTERCARE is on", /appSecret\("WA_BOOKING_AFTERCARE"\)[\s\S]{0,300}=== "on"[\s\S]{0,400}booking_ref\.not\.like\.wa-\*/.test(afr), true, "a working upsert would otherwise start review asks nobody approved");
+  check(G, "askForReviews leaves wa- bookings alone unless WA_REVIEW_WHATSAPP is on", /appSecret\("WA_REVIEW_WHATSAPP"\)[\s\S]{0,300}=== "on"[\s\S]{0,400}booking_ref\.not\.like\.wa-\*/.test(afr), true, "a working upsert would otherwise start review asks nobody approved");
   // the migration
   const mig = read("supabase/migrations/20261119_bookings_ref_unique.sql");
   check(G, "migration: plain unique index, partial one dropped", [/create unique index if not exists bookings_booking_ref_key on public\.bookings \(booking_ref\);/.test(mig), /drop index if exists public\.bookings_booking_ref_uniq;/.test(mig), /bookings_booking_ref_key[^;]*where/i.test(mig)], [true, true, false], "PostgREST's on_conflict=booking_ref can infer only a non-partial index");
   check(G, "migration: capacity trigger lets a wa- upsert through", /if coalesce\(new\.booking_ref, ''\) like 'wa-%' then\s+return new;/.test(mig), true, "BEFORE INSERT runs before the conflict check and counted the row itself");
-  check(G, "migration: WA_BOOKING_AFTERCARE off and the hold trigger", [/\('WA_BOOKING_AFTERCARE', 'off'\)/.test(mig), /create trigger trg_hold_wa_aftercare/.test(mig), /review_requested_at\s+:= coalesce\(new\.review_requested_at, 'epoch'/.test(mig)], [true, true, true]);
+  // Review (19 Nov): one switch per job, all off, and a test booking held on all four.
+  check(G, "migration: one after-care switch per job, all off, and the hold trigger", [["WA_REVIEW_EMAIL", "WA_ATTENDANCE_EMAIL", "WA_REMINDER_EMAILS", "WA_REVIEW_WHATSAPP"].map((k) => new RegExp(`\\('${k}', 'off'\\)`).test(mig)), /create trigger trg_hold_wa_aftercare/.test(mig), /review_requested_at := coalesce\(new\.review_requested_at, 'epoch'/.test(mig), /if test_row or not on_review then/.test(mig) && /if test_row or not on_attend then/.test(mig) && /if test_row or not on_remind then/.test(mig), /WA_BOOKING_AFTERCARE/.test(mig)], [[true, true, true, true], true, true, true, false], "one 'on' must not start four jobs");
+  // Review H1: CREATE OR REPLACE resets what it does not state; the live function is SECURITY DEFINER with search_path public.
+  const capHead = (mig.match(/create or replace function public\.enforce_booking_capacity\(\)[\s\S]*?as \$function\$/) || [""])[0];
+  check(G, "migration: the capacity trigger keeps SECURITY DEFINER and its search_path", [/security definer/.test(capHead), /set search_path to 'public'/.test(capHead)], [true, true], "as SECURITY INVOKER, a customer's RLS hides other bookings from the count and a full slot takes a second booking");
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +142,7 @@ export { ensureBooking };
 const v204 = between(botSrc, "// ---- v204 offer step: pure helpers (start) ----", "// ---- v204 offer step: pure helpers (end) ----");
 const O = await load(`import { askBand, stripAcc, madridMidnight, madridInstant, resolveRequestDate, detectTime, COPY, trSvc } from ${JSON.stringify(copyUrl)};\n`
   + stripTypeScriptTypes(v204) + `\nconst __names = {};\n`
-  + ["yesCall", "YES_HURRY_MS", "HURRY_STUDIO_ES", "offerFitsDay", "offerFitsTime", "offerDayDate", "askWindow", "windowText", "offerBody", "offerButtons", "OFFER_COPY", "offerFar", "offerMissBy", "withLine", "offerSubject", "LATE_COPY", "offerSlotAt", "offerDayLabel", "offerDayPhrase", "studioWordDay", "whenFor", "OFFER_LEAD_MS", "OFFER_DATE_FMT", "MADRID_HM", "offerSchedule", "offerNudgeAt", "parseOfferSwitch", "isAwayMessage", "offerEmailWait", "emailOfferHold"]
+  + ["rowSlotAt", "dayOnly", "yesCall", "YES_HURRY_MS", "HURRY_STUDIO_ES", "offerFitsDay", "offerFitsTime", "offerDayDate", "askWindow", "windowText", "offerBody", "offerButtons", "OFFER_COPY", "offerFar", "offerMissBy", "withLine", "offerSubject", "LATE_COPY", "offerSlotAt", "offerDayLabel", "offerDayPhrase", "studioWordDay", "whenFor", "OFFER_LEAD_MS", "OFFER_DATE_FMT", "MADRID_HM", "offerSchedule", "offerNudgeAt", "parseOfferSwitch", "isAwayMessage", "offerEmailWait", "emailOfferHold"]
     .map((n) => `try { __names.${n} = ${n}; } catch {}`).join("\n")
   + `\nexport { __names, madridMidnight, madridInstant, resolveRequestDate, COPY, trSvc };\n`);
 const P = O.__names;
@@ -200,7 +204,7 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
   }
   // acceptOffer itself, in a sandbox: the web Yes on the offer page.
   const ao = lift(botSrc, "async function acceptOffer(");
-  const parts = [ao, lift(botSrc, "async function offerSlotFor("), lift(botSrc, "async function yesTooLate("), lift(botSrc, "async function reaskStudio("),
+  const parts = [ao, lift(botSrc, "async function offerSlotFor("), lift(botSrc, "async function yesTooLate("), lift(botSrc, "async function reaskStudio("), lift(botSrc, "async function changeTooLate("), lift(botSrc, "async function reopenOfferClaim("),
     lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), lift(botSrc, "function exactTime("), lift(botSrc, "function studioDate("),
     liftArrow("reqDuration"),
     one("studioDayOf"), one("studioSlotDate"), one("studioDateFull"), one("studioAtEs"), one("deDay"), one("eurEs"),
@@ -232,6 +236,7 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
       awardRequest: async () => { log.events.push(["award"]); },
       ensureBooking: async () => { log.events.push(["ensureBooking"]); return "tok"; },
       COPY: O.COPY, madridMidnight: O.madridMidnight, resolveRequestDate: O.resolveRequestDate, trSvc: O.trSvc,
+      OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"],
       ...P,
     };
     const { fns } = sandbox(parts.filter(Boolean), env, ["acceptOffer"]);
@@ -285,13 +290,21 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
   const oldAway = (text, sinceMs) => C.AUTOREPLY_RE.test(text) || (sinceMs < 45_000 && !C.parseOfferedTime(text));
   check(G, "before the fix: both answers read as away messages", [oldAway("76,50€", 14_000), oldAway("si", 40_000)], [true, true], "this is what was thrown away on #126");
   if (blk) {
-    const S = await load(`import { AUTOREPLY_RE, parseQuotedPrice, parseOfferedTime } from ${JSON.stringify(copyUrl)};\n${stripTypeScriptTypes(blk)}\nexport { isAwayMessage, BARE_YES_RE, ourQuestionOpen };\n`);
+    const S = await load(`import { AUTOREPLY_RE, parseQuotedPrice, parseOfferedTime } from ${JSON.stringify(copyUrl)};\n${stripTypeScriptTypes(blk)}\nexport { isAwayMessage, BARE_YES_RE, ourQuestionOpen, ${/function askEcho\(/.test(blk) ? "askEcho" : "isAwayMessage as askEcho"} };\n`);
     for (const [text, since, o, want, note] of [
       ["76,50€", 14_000, {}, false, "#126: the studio's price, 14 s after our message"],
       ["si", 40_000, {}, false, "#126: the other studio's typed yes, 40 s after the ask"],
       ["¡Hola! Gracias por comunicarte con Estudio Tres. En breve te atenderemos.", 16_000, {}, true, "a real autoresponder still is one"],
-      ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 10_000, {}, true, "a long canned line within 45 s, as before"],
-      ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 60_000, {}, false, "after 45 s it is read"],
+      ["Hola buenas, ahora mismo la recepción está cerrada, os escribimos enseguida", 10_000, {}, true, "a long canned line within 45 s, as before"],
+      ["Hola buenas, ahora mismo la recepción está cerrada, os escribimos enseguida", 60_000, {}, false, "after 45 s it is read"],
+      // Review (19 Nov): real answers over 25 characters inside the 45 seconds.
+      ["Sí, tenemos hueco a esa hora, os esperamos", 10_000, {}, false, "opens with a yes"],
+      ["Si podemos, le esperamos sin problema", 10_000, {}, false, "opens with a yes"],
+      ["No podemos a esa hora, lo siento mucho", 10_000, {}, false, "opens with a no"],
+      ["Perfecto, apuntado. ¿Nos pasas su teléfono?", 5_000, {}, false, "asks something, right after our confirmation"],
+      ["Hola, mañana tenemos hueco toda la tarde", 10_000, {}, false, "names a day"],
+      ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 10_000, {}, false, "names a day: read, and Jordan sees it"],
+      ["Sinergia te responderá lo antes posible, gracias", 10_000, {}, true, "a studio name starting with Si is not a yes"],
       ["Sí, a las 13:30 tenemos hueco para ella sin problema", 5_000, {}, false, "a clock time is an answer"],
       ["Le podemos hacer el diez por ciento sin problema", 5_000, { discount: true }, false, "a written discount is never an away message"],
       ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 5_000, { ourQuestion: true }, false, "an answer to our own question"],
@@ -461,7 +474,8 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
       ["No ha llegado", false, "a no-show is never an arrival"], ["no vino", false, ""], ["No llegó nadie", false, ""], ["¿Cuándo llega?", false, "a question about it"], ["Vale, gracias", false, ""]]) check(G, `studioSaysArrived ${t}`, A.studioSaysArrived(t), want, note);
   }
   const hs = lift(botSrc, "async function handleStudioReply(");
-  const iArr = hs.indexOf("if (creq && studioSaysArrived(freeText))"), iTc = hs.indexOf("await forwardTimeChange(creq");
+  // (review: only once the booking has started, and a bare "Sí" to our arrival question counts)
+  const iArr = hs.indexOf("if (creq && started && (studioSaysArrived(freeText) || (BARE_YES_RE.test(freeText) && arrivalAskedLast(await lastOutTo(from), Date.now()))))"), iTc = hs.indexOf("await forwardTimeChange(creq");
   check(G, "an arrival is read before any time change, and a started booking has no time change", [iArr > 0 && iArr < iTc, /const newTime = creq && !started \? parseOfferedTime\(freeText\) : "";/.test(hs)], [true, true], "13:50 after a 13:30 start went to the time-change branch");
   check(G, "the plain ack after a confirmation sits before the live branch", hs.indexOf('after: "confirmation"') > 0 && hs.indexOf('after: "confirmation"') < hs.indexOf("await handleLiveStudioMessage("), true);
   check(G, "no STUDIO_THANKS reply any more", /sendText\(from, STUDIO_THANKS\)/.test(botSrc), false, "a second stand-down after 'Ok'");

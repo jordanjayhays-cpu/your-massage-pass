@@ -1297,7 +1297,7 @@ async function holdNote(to: string, text: string, why: string): Promise<{ how: s
   const studio = await studioNameFor(to);
   const who = studio || `+${to}`;
   await founderEmail(`Studio note not sent to ${who}: send it by hand`, [
-    `This note to <b>${escH(who)}</b> (+${escH(to)}) did not go out. Their 24 hour WhatsApp window is shut, aviso_centro_v2 is not approved yet, and aviso_centro_v1 ${escH(why)}.`,
+    `This note to <b>${escH(who)}</b> (+${escH(to)}) did not go out. Their 24 hour WhatsApp window is shut, the note template for a studio that knows us (aviso_centro_v3) is not approved yet (v2 would introduce us again), and aviso_centro_v1 ${escH(why)}.`,
     `The note:<br><i>${escH(text)}</i>`,
     `Reply to ${escH(who)} as the bot: ${await replyUrl(to)}`,
   ]);
@@ -1344,7 +1344,7 @@ async function sendStudioNote(to: string, text: string, short: string | NoteShor
   // "Hola, soy Jordan, de Massage Club" on its stand-down, as did every one of
   // the nine aviso_centro_v2 notes since 30 Oct. A studio we have written to
   // before (after an ask, always) gets aviso_centro_v3 once Meta approves it,
-  // else v1, and v2 only as the last resort (noteTplOrder).
+  // else v1, never v2; a note neither can carry goes to Jordan (noteTplOrder).
   const prior = await sq(`wa_messages?phone=eq.${to}&direction=eq.out&limit=1&select=id`);
   const known = !Array.isArray(prior) || prior.length > 0;
   let last = "";
@@ -1363,9 +1363,11 @@ async function sendStudioNote(to: string, text: string, short: string | NoteShor
 }
 // v50: which closed-window note template to try, in order. Word for word the
 // same as noteTplOrder in wa-bot/bot.ts (tests/trace_c_check.mjs checks).
+// v51 (review of #126): never v2 for a studio we know, not even last; a note
+// v1 cannot carry is held for Jordan (holdNote).
 function noteTplOrder(known: boolean, v1ok: boolean): string[] {
   if (!known) return v1ok ? ["aviso_centro_v2", "aviso_centro_v1"] : ["aviso_centro_v2"];
-  return v1ok ? ["aviso_centro_v3", "aviso_centro_v1", "aviso_centro_v2"] : ["aviso_centro_v3", "aviso_centro_v2"];
+  return v1ok ? ["aviso_centro_v3", "aviso_centro_v1"] : ["aviso_centro_v3"];
 }
 
 // v48: how an ask ended, in the words a studio reads. One sentence per ending,
