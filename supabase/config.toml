@@ -10,8 +10,9 @@ verify_jwt = false
 verify_jwt = false
 static_files = ["./functions/letters/fonts/*.ttf"]
 
-# Consent (20 Nov 2026, the Kelly rule): the offers answer from every booking
-# path and the one-tap unsubscribe page. No login on those pages, so no JWT;
-# the function checks origin, input and the unsubscribe signature itself.
+# Consent (20 Nov 2026, the consent rule in CLAUDE.md): the offers answer from
+# every booking path and the one-tap unsubscribe page. No login on those pages,
+# so no JWT; the function checks origin, wording, the request or booking the
+# answer belongs to, and the unsubscribe signature itself.
 [functions.consent]
 verify_jwt = false
