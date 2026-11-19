@@ -62,6 +62,7 @@ import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, C
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
+import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -8020,15 +8021,26 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   // standing between them and any answer. Nobody abandons over an email address
   // once they have a booking in front of them. Sharo J had none of this: no
   // email, no WhatsApp history, five studios asked and nothing we could tell her.
+  // The Kelly rule (20 Nov 2026): the offers question comes after the
+  // confirmation, once (mktAskAfterBooking below); with no email yet, after
+  // the email question is answered (mktAfterEmailStep).
+  let mktNow = false;
   if (s) {
     s.data.offer = null;
     if (!req.contact_email && !s.data.emailRefused && from) {
-      s.step = "await_email_post"; await saveSession(s);
+      s.step = "await_email_post";
+      s.data.mktAfterEmail = { request_id: Number(req.id), at: Date.now() };
+      await saveSession(s);
       // Review nit (17 Oct): a released time has no rate to lock in and the
       // confirmation has just gone, so its email question promises neither.
-      await say(relSlot ? RELEASED_COPY[L === "es" ? "es" : "en"].emailAsk : COPY[L].memberJoin);
+      // Kelly rule: nor does any other. "Membership is free ... to lock in
+      // the rate" (copy.ts memberJoin) promised a membership nothing ever
+      // recorded, so it is no longer sent.
+      await say(relSlot ? RELEASED_COPY[L === "es" ? "es" : "en"].emailAsk : MKT_COPY[L === "es" ? "es" : "en"].emailAsk);
     } else {
+      delete s.data.mktAfterEmail;
       s.step = "done"; await saveSession(s);
+      mktNow = true;
     }
   }
   await logEvent(from || "web", "confirmed", { id: req.id, studio, via: relSlot ? "released" : via === "web" ? "offer_page" : "offer", ...(relSlot ? { slot: String(relSlot.id) } : {}) });
@@ -8038,6 +8050,8 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     paras: [`${req.first_name || "The customer"} tapped ${relSlot ? `a time ${studio} had released to us, which books it (12 Oct rule; the studio can reject it until ${relHm(Date.parse(String(relSlot.reject_until)))})` : `Yes${via === "web" ? " on the offer page" : " on WhatsApp"}`}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
     waNum: clientDigits, studioNum: digitsOf(row.phone || ""), studioName: studio,
   });
+  // Kelly rule: after everything about the booking itself has gone.
+  if (mktNow) await mktAskAfterBooking(s, from, L, req).catch((e) => console.log("[mkt] ask failed", String(e)));
   return true;
 }
 
@@ -10974,6 +10988,178 @@ async function ensureBooking(requestId: number): Promise<string | null> {
 }
 // ---- bookings row (end) ----
 
+// ---- marketing consent (start) ----
+// The Kelly rule (Jordan, 19 Nov 2026: "make this the kelly rule"; CLAUDE.md).
+// On 19 Nov a customer booked through the homepage form and was never asked
+// whether she wanted offers, and the bot's own "Membership is free" line after
+// a booking recorded nothing at all. Now:
+//   - After a confirmed booking, inside the customer's open 24h window, the bot
+//     asks ONCE per customer (consent.ts: the notice, the privacy link and two
+//     equal buttons, "Yes, send me offers" / "No thanks"). Not when the
+//     customer already answered on any path (marketing_status, by phone or
+//     email), not for test contacts, held customers or customers we write to
+//     in a third language (their words would be machine translated, and the
+//     words shown are what we must be able to prove), and not when the status
+//     cannot be read (a tap we could not save is worse than not asking).
+//   - A tap writes one marketing_optins row (source bot, the exact wording and
+//     its language, phone, email if known, request id). A row that does not
+//     save is never silent: the customer is told it did not save and Jordan
+//     gets a card. The booking is never touched, whatever the answer.
+//   - A customer who writes STOP (or BAJA, "unsubscribe", "no more offers"...,
+//     consent.ts stopIntent) gets a withdraw row and one reply, signed
+//     Massage Club. The step and the booking stay as they were. Studios never
+//     get here: partner numbers and a letter's BAJA are handled before the
+//     customer flow, and that path is unchanged.
+// tests/consent_bot.mjs lifts this block and runs it against stubs.
+const MKT_FOLLOW_EMAIL_MS = 23.5 * 3600e3;
+function mktEmail(x: unknown): string | null {
+  const e = String(x || "").trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : null;
+}
+function mktTestContact(phone: unknown, email: unknown, names: unknown[] = []): boolean {
+  const d = digitsOf(String(phone || ""));
+  const e = String(email || "").trim().toLowerCase();
+  return TEST_PHONES.includes(d) || FAKE_NUM_RE.test(d) || /^86\d*997$/.test(d)
+    || (!!e && (TEST_EMAIL_RE.test(e) || /\+(mctest|uitest)[^@]*@/.test(e)))
+    || names.some((n) => TEST_NAME_RE.test(String(n || "")));
+}
+// Has this phone or email answered already, on any path? null when it cannot
+// be read (the migration not applied yet, the database down).
+async function mktAnswered(phone: string, email: string | null): Promise<boolean | null> {
+  const asks = [`kind=eq.phone&contact=eq.${digitsOf(phone)}`, ...(email ? [`kind=eq.email&contact=eq.${encodeURIComponent(email)}`] : [])];
+  try {
+    for (const q of asks) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/marketing_status?${q}&select=action&limit=1`, { headers: H() });
+      if (!r.ok) return null;
+      const rows = await r.json().catch(() => null);
+      if (!Array.isArray(rows)) return null;
+      if (rows.length) return true;
+    }
+    return false;
+  } catch (_e) { return null; }
+}
+// One row, tried twice. Returns why it failed, or "" when saved.
+async function mktSave(row: Record<string, unknown>): Promise<string> {
+  let why = "";
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/marketing_optins`, { method: "POST", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ channel: "email+whatsapp", source: "bot", ...row }) });
+      if (r.ok) return "";
+      why = `HTTP ${r.status} ${(await r.text().catch(() => "")).slice(0, 240)}`;
+    } catch (e) { why = String(e).slice(0, 240); }
+  }
+  console.log("[mkt] NOT saved", why);
+  return why || "unknown";
+}
+async function mktNotSavedCard(from: string, what: string, why: string, words: string) {
+  await founderCard(`⚠️ Offers answer NOT saved: ${what} from +${digitsOf(from)}`, {
+    badge: "CONSENT NOT SAVED", title: `A customer's ${what} on WhatsApp could not be written`,
+    paras: [
+      `Until it is in marketing_optins this person counts as not answered, so they get no offers${what === "STOP" ? " (and they were told they will get none)" : ""}. Add the row by hand, or ask again.`,
+      `Database answer: ${why.slice(0, 300)}`,
+    ],
+    quote: words, waNum: from, waLabel: "Open the chat",
+    to: ["jordan@massageclub.io"],
+  }).catch((e) => console.log("[mkt] card failed", String(e)));
+}
+// After a confirmed booking (acceptOffer, or the email question that follows
+// it). Returns true when the question went out.
+async function mktAskAfterBooking(s: Session | null, from: string, L: string, req: any): Promise<boolean> {
+  if (!s || !from) return false;
+  const phone = digitsOf(from);
+  const lang = L === "es" ? "es" : "en";
+  const email = mktEmail(req?.contact_email) || mktEmail(s.data.email);
+  const rid = Number(req?.id) || null;
+  // Test contacts: nothing asked, nothing recorded, not even a skip event.
+  if (mktTestContact(phone, email, [req?.first_name, s.wa_name, s.data.name])) return false;
+  const skip = async (why: string) => { await logEvent(from, "mkt_ask_skipped", { why, request_id: rid }); return false; };
+  if (s.data.mktAskedAt) return await skip("asked_before");
+  if (heldNum(phone) || heldMail(email)) return await skip("held");
+  if (s.data.xlang) return await skip("other_language");
+  if (!(await waWindowOpen(phone))) return await skip("window_closed");
+  const answered = await mktAnswered(phone, email);
+  if (answered === null) {
+    await founderCard(`Offers question not asked: +${phone} (#${rid || "?"})`, {
+      badge: "CONSENT NOT ASKED", title: "The bot could not read marketing_status, so it did not ask",
+      paras: ["A confirmed customer was not asked the offers question, because the answer could not have been saved. Check that supabase/migrations/20261120_marketing_consent.sql is applied."],
+      waNum: from, to: ["jordan@massageclub.io"],
+    }).catch(() => null);
+    return await skip("status_unreadable");
+  }
+  if (answered) return await skip("answered_before");
+  const sent = await sendButtons(from, mktAskBody(lang), mktButtons(lang, rid));
+  if (!sent) return await skip("send_failed");
+  s.data.mktAskedAt = new Date().toISOString();
+  s.data.mktAsk = { lang, request_id: rid, email, wording: mktWording(lang) };
+  await saveSession(s);
+  await logEvent(from, "mkt_asked", { request_id: rid, lang });
+  return true;
+}
+// The email question after a confirmation is answered (or skipped): the
+// offers question follows, once, within a day of the booking.
+async function mktAfterEmailStep(s: Session, from: string, L: string): Promise<boolean> {
+  const f = s.data.mktAfterEmail;
+  if (!f) return false;
+  delete s.data.mktAfterEmail;
+  await saveSession(s);
+  if (!f.request_id || Date.now() - Number(f.at || 0) > MKT_FOLLOW_EMAIL_MS) return false;
+  return await mktAskAfterBooking(s, from, L, { id: f.request_id, contact_email: s.data.email || null });
+}
+// A customer's tap on the offers question, or their STOP. True when handled
+// (the caller returns); false leaves the message to the booking flow.
+async function mktCustomerTurn(s: Session, from: string, replyId: string, said: string): Promise<boolean> {
+  const tap = mktTap(replyId);
+  if (tap) {
+    const phone = digitsOf(from);
+    const c = MKT_COPY[tap.lang];
+    const ask = s.data.mktAsk && s.data.mktAsk.lang === tap.lang ? s.data.mktAsk : null;
+    const email = mktEmail(ask?.email) || mktEmail(s.data.email);
+    const reply = tap.action === "yes" ? c.savedYes : c.savedNo;
+    if (mktTestContact(phone, email, [s.wa_name, s.data.name])) { await sendText(from, reply); return true; }
+    const wording = String(ask?.wording || mktWording(tap.lang));
+    const why = await mktSave({ action: tap.action, wording, wording_lang: tap.lang, phone, email, request_id: tap.requestId || ask?.request_id || null });
+    if (why) {
+      await sendText(from, c.saveFailed);
+      await mktNotSavedCard(from, `"${tap.action}"`, why, wording);
+      await logEvent(from, "mkt_save_failed", { action: tap.action, request_id: tap.requestId, why: why.slice(0, 200) });
+      return true;
+    }
+    s.data.mktAnswer = tap.action; s.data.mktAnsweredAt = new Date().toISOString(); delete s.data.mktAsk;
+    await saveSession(s);
+    await sendText(from, reply);
+    await logEvent(from, "mkt_answer", { action: tap.action, request_id: tap.requestId, lang: tap.lang });
+    return true;
+  }
+  const stop = stopIntent(said);
+  if (!stop) return false;
+  const lang = stop.lang || (s.data.lang === "es" ? "es" : "en");
+  const phone = digitsOf(from);
+  const lastReq = s.data.email ? null : await lastRequestFor(from).catch(() => null);
+  const email = mktEmail(s.data.email) || mktEmail(lastReq?.contact_email);
+  if (mktTestContact(phone, email, [s.wa_name, s.data.name, lastReq?.first_name])) { await sendText(from, stopReply(lang)); return true; }
+  const why = await mktSave({ action: "withdraw", wording: String(said).trim().slice(0, 500), wording_lang: lang, phone, email });
+  // The opt-out is theirs the moment they ask: they are told it is done
+  // either way, and a row that did not save goes to Jordan to write by hand.
+  if (why) await mktNotSavedCard(from, "STOP", why, String(said));
+  s.data.mktAnswer = "withdraw"; s.data.mktAnsweredAt = new Date().toISOString(); delete s.data.mktAsk;
+  await saveSession(s);
+  await sendText(from, stopReply(lang));
+  await logEvent(from, "mkt_withdraw", { recorded: !why, lang, step: s.step });
+  return true;
+}
+// A muted number (the shutdown rule: no replies and no alerts, ever) that
+// writes STOP: the withdraw is recorded and nothing else happens.
+async function mktMutedStop(from: string, said: string): Promise<boolean> {
+  const stop = stopIntent(said);
+  if (!stop) return false;
+  const phone = digitsOf(from);
+  if (mktTestContact(phone, null)) return false;
+  const why = await mktSave({ action: "withdraw", wording: String(said).trim().slice(0, 500), wording_lang: stop.lang || "en", phone });
+  await logEvent(from, "mkt_withdraw", { recorded: !why, muted: true });
+  return !why;
+}
+// ---- marketing consent (end) ----
+
 // A studio said yes. Give them the booking and stand the others down.
 async function awardRequest(requestId: number, partnerId: string | null) {
   try {
@@ -12782,7 +12968,9 @@ const handleInner = async (req: Request) => {
     // the flow from a clean start. Genuine never-contact numbers now use a
     // separate step, "muted", which is the only one that stays silent, so the
     // recovery cannot accidentally reopen a thread Jordan closed on purpose.
-    if (s.step === "muted") return new Response("OK", { status: 200 });
+    // Kelly rule (20 Nov): a muted number that writes STOP is still taken off
+    // the offers list, silently (no reply, no alert: the shutdown rule).
+    if (s.step === "muted") { await mktMutedStop(from, text).catch(() => null); return new Response("OK", { status: 200 }); }
     // Review fix (17 Oct): a new studio that wrote from the /socios page in the
     // last 2 days. Its messages go to Jordan as a studio, never the customer flow.
     if (s.data.socStudioAt && Date.now() - Number(s.data.socStudioAt) < SOC_STUDIO_CHAT_MS && (text || btnText || MEDIA_TYPES.includes(String(msg.type)))) {
@@ -12827,6 +13015,14 @@ const handleInner = async (req: Request) => {
         waNum: num,
         to: [...SUPPORT, ...JORDAN],
       }).catch((e) => console.log("[wa] chat alert failed", String(e)));
+    }
+
+    // The Kelly rule (20 Nov 2026): a tap on the offers question, or a
+    // customer's STOP. Studios never get this far (partner numbers and a
+    // letter's BAJA are handled above, unchanged). Neither touches the step
+    // or the booking: a customer halfway through a booking carries on.
+    if (await mktCustomerTurn(s, from, replyId, text || (msg.type === "button" ? btnText : "")).catch((e) => { console.log("[mkt] turn failed", String(e)); return false; })) {
+      return new Response("OK", { status: 200 });
     }
 
     // v184: every customer free-text message is read by the new reader, in shadow.
@@ -13105,6 +13301,17 @@ const handleInner = async (req: Request) => {
         // A message that is nothing but the address gets an answer and the
         // question they were on. One that carries other words is saved quietly
         // and carries on being read as whatever else it was.
+        // Kelly rule (20 Nov): the answer to the email question after a
+        // confirmation (await_email_post with mktAfterEmail) lands here too.
+        // It used to be thanked and then asked for again (reAsk repeats the
+        // email question); now it is thanked plainly and the offers question
+        // follows, once.
+        if (isEmail(text) && s.step === "await_email_post" && s.data.mktAfterEmail) {
+          s.step = "done"; await saveSession(s);
+          await sendText(from, MKT_COPY[L === "es" ? "es" : "en"].emailAdded(addr));
+          await mktAfterEmailStep(s, from, L);
+          return new Response("OK", { status: 200 });
+        }
         if (isEmail(text)) {
           await sendText(from, COPY[L].emailLate(addr));
           await reAsk(s, from, L);
@@ -14354,11 +14561,16 @@ const handleInner = async (req: Request) => {
         // welcome + account email via booking-ack.
         if (text && /^(skip|saltar|no)$/i.test(text)) {
           s.step = "done"; await saveSession(s);
-          await sendText(from, COPY[L].ackReply);
+          // Kelly rule: after a confirmation (mktAfterEmail) the studio has
+          // already replied, so "as soon as the studio replies" would be wrong.
+          await sendText(from, s.data.mktAfterEmail ? MKT_COPY[L === "es" ? "es" : "en"].noEmail : COPY[L].ackReply);
+          await mktAfterEmailStep(s, from, L);
           break;
         }
         // v47: a decline or cancellation typed here is not a bad email address.
         if (text && !isEmail(text) && (CANCEL_RE.test(text) || DECLINE_RE.test(text))) {
+          // Kelly rule: no offers question on the way out of a booking.
+          if (s.data.mktAfterEmail) { delete s.data.mktAfterEmail; await saveSession(s); }
           const cq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + digitsOf(from))}&stage=eq.confirmed&order=created_at.desc&limit=1&select=id`, { headers: H() });
           const creq = (await cq.json().catch(() => []))[0] || null;
           if (creq) { await handleCustomerReconfirm("cancel", String(creq.id), from, L, s); break; }
@@ -14371,7 +14583,8 @@ const handleInner = async (req: Request) => {
         if (!text || !isEmail(text)) {
           if (text && text.includes("@")) { await sendText(from, COPY[L].emailBad); break; }
           s.step = "done"; await saveSession(s);
-          await sendText(from, L === "es" ? "Sin problema, lo dejamos sin email. Si necesitas algo de tu reserva, escríbeme aquí." : "No problem, we will leave it without an email. If you need anything about your booking, just write here.");
+          await sendText(from, MKT_COPY[L === "es" ? "es" : "en"].noEmail);
+          await mktAfterEmailStep(s, from, L);
           break;
         }
         const email = text.trim().toLowerCase();
@@ -14392,6 +14605,7 @@ const handleInner = async (req: Request) => {
         } catch (e) { console.log("[wa] email-post attach failed", String(e)); }
         await logEvent(from, "email_captured", { when: "post_confirm" });
         await sendText(from, COPY[L].emailSaved);
+        await mktAfterEmailStep(s, from, L);
         break;
       }
       case "await_offer": {
