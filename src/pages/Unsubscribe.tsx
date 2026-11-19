@@ -40,7 +40,7 @@ export const UNSUBSCRIBE_COPY = {
   },
 } as const;
 
-/** "jordan@gmail.com" -> "j•••@gmail.com", "34600123456" -> "•••••••3456". */
+/** "name@example.com" -> "n•••@example.com", "34600123456" -> "•••••••3456". */
 export function maskContact(u: string): string {
   const v = (u || "").trim();
   const at = v.indexOf("@");
