@@ -74,11 +74,12 @@ const FAKE_NUM_RE = /^34600000\\d{3}$/;
 const REL_TEST_STUDIO_RE = /\\b(test|prueba)\\b/i;
 async function logEvent(phone, event, meta) { events.push({ phone, event, meta }); }
 async function founderCard(subject, o) { cards.push({ subject, ...o }); }
+${stripTypeScriptTypes(between(botSrc, "// ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)", "// ---- v219: studio words: pure helpers (end)"))}
 ${stripTypeScriptTypes(block)}
 export { ensureBooking };
 `;
     const B = await load(js);
-    const req = { id: 9126, first_name: "Maria", last_name: "Lopez", contact_email: "cliente9126@correo.invalid", client_phone: null, studio_name: "Estudio Ficticio", service_name: "Relaxing massage", price: null, confirmed_start: "2026-11-19T12:30:00Z", languages: null, partner_id: "p-1" };
+    const req = { id: 9126, first_name: "Maria", last_name: "Lopez", contact_email: "cliente9126@correo.invalid", client_phone: null, studio_name: "Estudio Ficticio", service_name: "Not sure", price: null, confirmed_start: "2026-11-19T12:30:00Z", languages: null, partner_id: "p-1" };
     const stub = (postAnswer, seen = []) => (u, o) => {
       if (u.includes("/whatsapp_requests?")) return res(200, [req]);
       if (u.includes("/funnel_events?")) return res(200, seen);
@@ -108,6 +109,7 @@ export { ensureBooking };
     const body = post ? JSON.parse(post.o.body) : {};
     check(G, "the row written", { ref: body.booking_ref, date: body.booking_date, time: body.booking_time, end: body.end_at, test: body.is_test, lang: body.lang, status: body.status },
       { ref: "wa-9126", date: "2026-11-19", time: "13:30", end: "2026-11-19T13:30:00.000Z", test: false, lang: "en", status: "confirmed" }, "Madrid local date and time");
+    if (/custSvc/.test(block)) check("5 service words", "bookings.massage_type", body.massage_type, "Relaxing massage", "reminders and the invoice line print it");
     // (d) no confirmed_start: an alert, not a silent null
     reset();
     B.setFetch((u, o) => u.includes("/whatsapp_requests?") ? res(200, [{ ...req, confirmed_start: null }]) : u.includes("/funnel_events?") ? res(200, []) : res(404, []));
@@ -201,8 +203,9 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
   const parts = [ao, lift(botSrc, "async function offerSlotFor("), lift(botSrc, "async function yesTooLate("), lift(botSrc, "async function reaskStudio("),
     lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), lift(botSrc, "function exactTime("), lift(botSrc, "function studioDate("),
     liftArrow("reqDuration"),
-    one("studioDayOf"), one("studioSlotDate"), one("studioDateFull"), one("studioAtEs"), one("deDay"), one("eurEs")];
-  check(G, "sandbox parts found", parts.every(Boolean), true);
+    one("studioDayOf"), one("studioSlotDate"), one("studioDateFull"), one("studioAtEs"), one("deDay"), one("eurEs"),
+    between(botSrc, "// ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)", "// ---- v219: studio words: pure helpers (end)")];
+  check(G, "sandbox parts found", parts.slice(0, -1).every(Boolean), true);
   const run = async (nowMs, rowOver = {}) => {
     T.now = nowMs;
     const log = { patches: [], tell: [], mail: [], cards: [], events: [] };
@@ -228,10 +231,9 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
       showNextOffer: async () => false,
       awardRequest: async () => { log.events.push(["award"]); },
       ensureBooking: async () => { log.events.push(["ensureBooking"]); return "tok"; },
-      COPY: O.COPY, madridMidnight: O.madridMidnight, resolveRequestDate: O.resolveRequestDate, trSvc: O.trSvc, askedWhat: undefined,
+      COPY: O.COPY, madridMidnight: O.madridMidnight, resolveRequestDate: O.resolveRequestDate, trSvc: O.trSvc,
       ...P,
     };
-    if (!/askedWhat\(/.test(ao)) delete env.askedWhat;
     const { fns } = sandbox(parts.filter(Boolean), env, ["acceptOffer"]);
     const info = {};
     const booked = await fns.acceptOffer("row-1", "", "en", null, "web", info);
@@ -243,6 +245,7 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
     check(G, "#126 timeline: Yes at 13:26 for 13:30 books", k.booked, true, "the customer came at 13:50 and the massage happened");
     check(G, "#126 timeline: claimed, awarded, bookings row", [k.log.patches.some((p) => p.u.includes("stage=not.in.") && p.body.stage === "confirmed"), k.log.events.some((e) => e[0] === "award"), k.log.events.some((e) => e[0] === "ensureBooking")], [true, true, true]);
     const st = String(k.log.tell[0]?.[3] || "");
+    check("5 service words", "#126 timeline: the studio reads the ask's words and only the price it wrote", [st.includes("masaje relajante de 60 min, 76,50 €. Ya podéis apuntarlo."), /not sure/i.test(st), /Massage Club|descuento|%/.test(st)], [true, false, false], "it read \"not sure de 60 min\"; 76,50 was all the studio wrote, so no Massage Club rate");
     check(G, "#126 timeline: the studio hears they are on their way", [st.includes("Ya podéis apuntarlo. Acaba de confirmar, va de camino."), String(k.log.tell[0]?.[5]?.v2 || "").includes("Acaba de confirmar, va de camino."), String(k.log.tell[0]?.[4] || "").includes("Acaba de confirmar, va de camino")], [true, true, true], "WhatsApp text, aviso v2 and v1 forms");
     const cm = k.log.mail.find((m) => m[0] === "customer");
     check(G, "#126 timeline: the customer's email says head over now", cm?.[6], "Head over now, Estudio Uno expects you at 13:30.");
@@ -408,6 +411,36 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
   check(G, "the settle sweep sends held emails when due", /const heldMails = await sendDueOfferEmails\(\);/.test(botSrc) && /customer_offer_via=eq\.email_pending&offer_email_due_at=lte\./.test(botSrc), true);
   const mig = read("supabase/migrations/20261119_offer_once.sql");
   check(G, "migration: the columns and four switches, all off", [/add column if not exists customer_offered_at/.test(mig), /add column if not exists offer_email_due_at/.test(mig), ["OFFER_NUDGE", "OFFER_PRICE_UPDATE", "OFFER_LAPSE_EMAIL", "ARRIVAL_CHECK"].map((k) => new RegExp(`\\('${k}', 'off'\\)`).test(mig))], [true, true, [true, true, true, true]]);
+}
+
+// ---------------------------------------------------------------------------
+// 5. Service words. The web form's "Not sure" reached the studio as "not sure
+// de 60 min" and the customer as "Not sure" in bold, while the ask had said
+// "un masaje relajante de 60 min". (The parity of askServicio with
+// dispatch-studios' servicioFrase is in tests/trace_c_check.mjs.)
+// ---------------------------------------------------------------------------
+{
+  const G = "5 service words";
+  const blk = between(botSrc, "// ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)", "// ---- v219: studio words: pure helpers (end)");
+  check(G, "studio words block", !!blk, true);
+  if (blk) {
+    const W = await load(`${stripTypeScriptTypes(blk)}\nexport { askServicio, askedWhat, custSvc };\n`);
+    check(G, "the studio's words", [W.askedWhat(null, "Not sure", 60), W.askedWhat(undefined, "Any", 60), W.askedWhat("", "", 90), W.askedWhat("masaje tailandés de 60 min", "Sports massage", 60)],
+      ["masaje relajante de 60 min", "masaje de 60 min", "masaje de 90 min", "masaje tailandés de 60 min"], "#126: 'not sure de 60 min'");
+    check(G, "the customer's words", [W.custSvc("Not sure"), W.custSvc("Help me figure it out"), W.custSvc(""), W.custSvc("Any"), W.custSvc("Deep tissue massage")],
+      ["Relaxing massage", "Relaxing massage", "Massage", "Massage", "Deep tissue massage"], "#126's confirmation email showed 'Not sure' in bold");
+  }
+  const ao = lift(botSrc, "async function acceptOffer(");
+  check(G, "acceptOffer: the ask's words, no raw trSvc of the name", [/askedWhat\(row\.asked_service, req\.service_name, reqDuration\(req\)\)/.test(ao), /trSvc\(req\.service_name/.test(ao)], [true, false]);
+  check(G, "customer-facing places go through custSvc", [
+    /esc\(custSvc\(req\.service_name\)\)/.test(lift(botSrc, "async function customerConfirmEmail(")) && /Confirmed: \$\{custSvc\(req\.service_name\)\}/.test(lift(botSrc, "async function customerConfirmEmail(")),
+    /massage_type: custSvc\(req\.service_name\)/.test(lift(botSrc, "async function ensureBooking(")),
+    /trSvc\(custSvc\(req\.service_name\), L\)/.test(lift(botSrc, "async function offerPage(")),
+    /svc: trSvcLow\(custSvc\(req\.service_name\), L\)/.test(lift(botSrc, "async function forwardOffer(")),
+  ], [true, true, true, true]);
+  const ds = read("supabase/functions/dispatch-studios/index.ts");
+  check(G, "dispatch-studios stores the words it asked with", /asked_service: servicioFrase\(r, opts\.serviceBy\?\.\[String\(c\.id\)\] \|\| ""\)\.replace/.test(ds), true);
+  check(G, "migration for asked_service", /add column if not exists asked_service text/.test(read("supabase/migrations/20261119_dispatch_asked_service.sql")), true);
 }
 
 // ---------------------------------------------------------------------------

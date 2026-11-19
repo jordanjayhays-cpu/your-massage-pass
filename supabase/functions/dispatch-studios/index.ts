@@ -142,6 +142,11 @@
 //   - A read that fails stops the dispatch and hands the request back to the
 //     sweep, rather than guessing who is resting.
 //   - dry_run lists skippedResting and skippedNoYes, with the reasons.
+// v50 (19 Nov, #126): a note to a studio whose 24 hours have passed no longer
+//   opens "Hola, soy Jordan, de Massage Club" when we have written to that
+//   number before (aviso_centro_v3 once approved, else v1, v2 last); and each
+//   ask stores the service words the studio read (request_dispatch.
+//   asked_service), so the confirmation repeats them instead of "not sure".
 //
 // Modes (POST):
 //   { request_id: 42 }              dispatch that request now
@@ -1890,6 +1895,11 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
         method: "PATCH", headers: { Prefer: "return=minimal" },
         body: JSON.stringify(res.ok ? { sent_at: new Date().toISOString() } : { send_error: res.error, outcome: "send_failed" }),
       });
+      // v50 (19 Nov, #126): the service words this studio read, so wa-bot's
+      // confirmation repeats them, a studio's own service included. Its own
+      // PATCH, like km: a database without the column
+      // (20261119_dispatch_asked_service.sql) loses this and nothing else.
+      if (res.ok) await sq(`request_dispatch?id=eq.${rowId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ asked_service: servicioFrase(r, opts.serviceBy?.[String(c.id)] || "").replace(/^(un|una)\s+/i, "") }) }).catch(() => null);
     }
     if (res.ok) messages.push({ name: c.business_name, wa: c.wa, text: String(res.text || "") });
     // Jordan hears once per studio and request. A request that sent nothing is

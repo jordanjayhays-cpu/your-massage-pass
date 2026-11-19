@@ -722,7 +722,7 @@ async function webHandoff(s: Session, from: string, text: string): Promise<boole
   s.step = "done"; await saveSession(s);
   await logEvent(from, "web_handoff", { request_id: req.id, stage: req.stage });
   const name = String(req.first_name || "").split(" ")[0];
-  const svc = trSvcLow(String(req.service_name || "Massage"), s.data.lang);
+  const svc = trSvcLow(custSvc(req.service_name), s.data.lang);
   const where = req.area && !/^(anywhere|me da igual|madrid)$/i.test(String(req.area)) ? (es ? ` cerca de ${req.area}` : ` near ${req.area}`) : "";
   await sendText(from, es
     ? `Perfecto${name ? ", " + name : ""}. Tu solicitud #${req.id} ya está con los centros: ${svc}, ${req.day1 || ""}${where}. Te escribo aquí en cuanto uno diga que sí. No se reserva nada hasta que tú lo confirmes. Massage Club`
@@ -790,7 +790,7 @@ async function resumeFromCode(s: Session, from: string, code: string): Promise<b
   s.step = "await_day";
   await saveSession(s);
   const name = String(req?.first_name || s.data.known?.name || "").split(" ")[0];
-  const svc = trSvcLow(String(req?.service_name || "massage"), L);
+  const svc = trSvcLow(custSvc(req?.service_name), L);
   await sendButtons(from, RESUME_LINE(L, name, svc, String(s.data.area || "")), dayBtns(L));
   await logEvent(from, "resumed_from_email", { code, request_id: req?.id ?? null });
   await founderCard(`\u{1F517} ${name || from} came back from the email (${code})`, {
@@ -1051,7 +1051,7 @@ async function customerPrefill(phone: string): Promise<string> {
     ? "Hola, somos Massage Club. ¿En qué te podemos ayudar?"
     : "Hi, this is Massage Club. How can we help?";
   const when = b.stage === "confirmed" && b.confirmed_day ? [b.confirmed_day, b.confirmed_time].filter(Boolean).join(" ") : [b.day1, b.time1].filter(Boolean).join(" ");
-  const svcN = es ? trSvcLow(b.service_name || "Massage", "es") : String(b.service_name || "massage").toLowerCase();
+  const svcN = es ? trSvcLow(custSvc(b.service_name), "es") : custSvc(b.service_name).toLowerCase();
   return es
     ? `Hola${b.first_name ? " " + b.first_name : ""}, somos Massage Club.\n\nVeo que estás pendiente de tu ${svcN}${when ? " para " + when : ""}. ¿Es así? Te ayudamos ahora.`
     : `Hi${b.first_name ? " " + b.first_name : ""}, this is Massage Club.\n\nI see you need an update on your ${svcN}${when ? " for " + when : ""}. Is that right?`;
@@ -1296,7 +1296,7 @@ async function greet(s: Session, from: string, firstText?: string, preAnswer = "
     if (last.partner_id && !/por asignar/i.test(String(last.studio_name || ""))) {
       s.data.rebookOffer = { service: last.service_name, partner_id: last.partner_id, slug: last.slug, studio_name: last.studio_name, price: last.price };
       s.step = "returning_choice"; await saveSession(s);
-      await sendButtons(from, head + COPY[L].welcomeBack(last.first_name || "", last.service_name ? trSvcLow(last.service_name, L) : (L === "es" ? "un masaje" : "a massage"), last.studio_name || ""), COPY[L].welcomeBackBtns);
+      await sendButtons(from, head + COPY[L].welcomeBack(last.first_name || "", last.service_name ? trSvcLow(custSvc(last.service_name), L) : (L === "es" ? "un masaje" : "a massage"), last.studio_name || ""), COPY[L].welcomeBackBtns);
       return;
     }
     s.step = "returning_choice"; await saveSession(s);
@@ -6593,7 +6593,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     lead: opts.lead || (betterThanLive ? OFFER_COPY[L].better : ""),
     name: String(req.first_name || "").trim(), studio: partner.business_name, where: pc.neighbourhood, time, day,
     band: fits ? "" : (dayOk ? windowText(askWindow(req.time1, req.message_text), L) : OFFER_COPY[L].anyToday),
-    svc: trSvcLow(req.service_name || "massage", L), price: priceLine, above, address: pc.address, far,
+    svc: trSvcLow(custSvc(req.service_name), L), price: priceLine, above, address: pc.address, far,
   });
   let offerVia = "none";
   if (clientNum && await waWindowOpen(clientNum) && await sendButtons(clientNum, offerText, offerButtons(L, rowId, time))) offerVia = "whatsapp";
@@ -7374,10 +7374,10 @@ async function forwardTimeChange(req: any, partner: { id: string; business_name:
 async function customerConfirmEmail(req: any, studio: string, when: string, addr: string, phone: string, extra = "") {
   if (!req.contact_email) return;
   if (heldMail(req.contact_email) || heldNum(req.client_phone)) return;
-  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:26px 34px 0;text-align:center;"><span style="display:inline-block;background:#E6F4EA;color:#1A7F42;font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">CONFIRMED</span><h1 style="margin:16px 0 0;color:${C.ink};font-size:27px;line-height:1.2;font-family:${SERIF};font-weight:700;">${esc(studio)}</h1></td></tr><tr><td style="padding:24px 34px 0;text-align:center;"><table width="100%" cellpadding="0" cellspacing="0" style="background:${C.cream};border-radius:16px;"><tr><td style="padding:22px 20px;text-align:center;"><p style="margin:0;color:${C.clay};font-size:34px;line-height:1.1;font-family:${SERIF};font-weight:700;">${esc(when)}</p><p style="margin:8px 0 0;color:${C.ink};font-size:15px;font-weight:600;">${esc(req.service_name || "Massage")}</p>${addr ? `<p style="margin:8px 0 0;color:${C.muted};font-size:14px;">${esc(addr)}</p>` : ""}${phone ? `<p style="margin:4px 0 0;color:${C.muted};font-size:14px;">${esc(phone)}</p>` : ""}</td></tr></table></td></tr>${extra ? `<tr><td style="padding:18px 34px 0;text-align:center;"><p style="margin:0;color:${C.ink};font-size:16px;font-weight:700;line-height:1.5;">${esc(extra)}</p></td></tr>` : ""}<tr><td style="padding:20px 34px 26px;text-align:center;"><p style="margin:0;color:${C.muted};font-size:14px;line-height:1.6;">You pay the studio directly. No booking fee.<br>Pagas directamente en el centro. Sin comisión.</p><div style="border-top:2px dashed ${C.dash};margin:16px 0;"></div><p style="margin:0;color:#B8AC9E;font-size:12px;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:26px 34px 0;text-align:center;"><span style="display:inline-block;background:#E6F4EA;color:#1A7F42;font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">CONFIRMED</span><h1 style="margin:16px 0 0;color:${C.ink};font-size:27px;line-height:1.2;font-family:${SERIF};font-weight:700;">${esc(studio)}</h1></td></tr><tr><td style="padding:24px 34px 0;text-align:center;"><table width="100%" cellpadding="0" cellspacing="0" style="background:${C.cream};border-radius:16px;"><tr><td style="padding:22px 20px;text-align:center;"><p style="margin:0;color:${C.clay};font-size:34px;line-height:1.1;font-family:${SERIF};font-weight:700;">${esc(when)}</p><p style="margin:8px 0 0;color:${C.ink};font-size:15px;font-weight:600;">${esc(custSvc(req.service_name))}</p>${addr ? `<p style="margin:8px 0 0;color:${C.muted};font-size:14px;">${esc(addr)}</p>` : ""}${phone ? `<p style="margin:4px 0 0;color:${C.muted};font-size:14px;">${esc(phone)}</p>` : ""}</td></tr></table></td></tr>${extra ? `<tr><td style="padding:18px 34px 0;text-align:center;"><p style="margin:0;color:${C.ink};font-size:16px;font-weight:700;line-height:1.5;">${esc(extra)}</p></td></tr>` : ""}<tr><td style="padding:20px 34px 26px;text-align:center;"><p style="margin:0;color:${C.muted};font-size:14px;line-height:1.6;">You pay the studio directly. No booking fee.<br>Pagas directamente en el centro. Sin comisión.</p><div style="border-top:2px dashed ${C.dash};margin:16px 0;"></div><p style="margin:0;color:#B8AC9E;font-size:12px;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
   await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [req.contact_email], reply_to: "support@massageclub.io", subject: `✅ Confirmed: ${studio}, ${when}`, html, text: `Confirmed: ${req.service_name || "massage"} at ${studio}, ${when}.${addr ? " " + addr + "." : ""}${extra ? " " + extra : ""} You pay the studio directly, no fee.` }),
+    body: JSON.stringify({ from: FROM_EMAIL, to: [req.contact_email], reply_to: "support@massageclub.io", subject: `✅ Confirmed: ${studio}, ${when}`, html, text: `Confirmed: ${custSvc(req.service_name)} at ${studio}, ${when}.${addr ? " " + addr + "." : ""}${extra ? " " + extra : ""} You pay the studio directly, no fee.` }),
   }).catch((e) => console.log("[wa] customer email failed", String(e)));
 }
 
@@ -7535,12 +7535,14 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     || studioDate(req);
   const dEs = studioDayOf(dd);
   const atEs = studioAtEs(row.offered_time);
-  const svcEs = String(row.asked_service || trSvc(req.service_name || "Massage", "es")).trim().toLowerCase();
+  // v219 (19 Nov, #126): the service in the words the ask used, never a raw
+  // name ("not sure de 60 min" went to Calma), duration included.
+  const svcWhat = askedWhat(row.asked_service, req.service_name, reqDuration(req));
   const qPrice = Number(row.quoted_price || 0), qPct = Number(row.discount_pct || 0);
   const priceEs = qPrice > 0 ? `, ${eurEs(qPrice)}${qPct > 0 ? `, ya con el ${qPct}% de Massage Club` : ""}` : qPct > 0 ? `, con el ${qPct}% de Massage Club` : "";
   // (A customer writing in a third language is stored as "en" with xlang set.)
   const habla = req.languages === "en" && !s?.data?.xlang ? " Habla inglés." : "";
-  const what = `${svcEs} de ${reqDuration(req)} min${priceEs}`;
+  const what = `${svcWhat}${priceEs}`;
   const waRef = [dEs, atEs].filter(Boolean).join(" ");
   // v215: a released time's confirmation carries the client's name, phone and
   // email (the offer they tapped said the studio gets them) and the 15 minute
@@ -7940,7 +7942,7 @@ async function offerPage(url: URL): Promise<Response> {
   }
   const price = (await offerPriceText(Number(req.id), String(row.partner_id || ""), String(req.service_name || ""), "", L)).replace(/\*/g, "");
   // v219: no deadline earlier than the start (Jordan, 19 Nov), LATE_COPY.tapNote.
-  const body = `${pc.address ? pc.address + "\n\n" : ""}${when}\n${trSvc(req.service_name || "Massage", L)}${price ? "\n" + price : ""}\n\n${LC.tapNote(String(row.offered_time))}`;
+  const body = `${pc.address ? pc.address + "\n\n" : ""}${when}\n${trSvc(custSvc(req.service_name), L)}${price ? "\n" + price : ""}\n\n${LC.tapNote(String(row.offered_time))}`;
   const extra = pillLink(await offerLink(rowId, "yes"), es ? `Sí, reserva ${row.offered_time}` : `Yes, book ${row.offered_time}`, true)
     + pillLink(await offerLink(rowId, "no"), es ? "No, gracias" : "No, thanks", false);
   return pageOut(url, simpleCard(studio, body, extra));
@@ -8297,7 +8299,7 @@ async function releasedRejected(slot: any, via: string): Promise<string> {
     s.step = "await_studio";
     if (next) {
       s.data.relPicks = [next]; await saveSession(s);
-      const line = releasedLine({ studio: next.studio, area: next.area, day: relDayWord(Date.parse(next.start_at), Date.now(), L), hm: next.hm, svc: trSvcLow(req.service_name || "Massage", L), minutes: next.minutes, price: next.price, exact: next.exact }, L);
+      const line = releasedLine({ studio: next.studio, area: next.area, day: relDayWord(Date.parse(next.start_at), Date.now(), L), hm: next.hm, svc: trSvcLow(custSvc(req.service_name), L), minutes: next.minutes, price: next.price, exact: next.exact }, L);
       told = (await sendButtons(ph, c.rejectedNext(first, studio, at, line), releasedButtons(L, [next]))) ? "whatsapp, next released time offered" : "failed";
     } else {
       s.data.relPicks = []; await saveSession(s);
@@ -8636,7 +8638,8 @@ async function slotRejectPage(url: URL): Promise<Response> {
   const startMs = Date.parse(String(slot.start_at));
   const when = [studioDayOf(madridMidnight(new Date(startMs))), `a las ${relHm(startMs)}`].filter(Boolean).join(" ");
   const mins = Math.round((Date.parse(String(slot.end_at)) - startMs) / 60e3);
-  const svc = String(trSvc(req.service_name || "Massage", "es")).toLowerCase();
+  // v219: the same words as the booking's confirmation (askServicio), never a raw "not sure".
+  const svc = askServicio(req.service_name, mins).replace(/^(un|una)\s+/i, "").replace(/ de \d+ min$/, "");
   // Already rejected: the booking for Ana today at 18:00 is cancelled and we let them know. Thanks for telling us.
   const already = () => simpleCard("Ya está rechazada", `La reserva de ${first} ${when} ya está anulada y le avisamos nosotros. Gracias por avisar.`, "", "ok");
   // This booking is no longer active. Nothing for you to do.
@@ -10480,7 +10483,8 @@ async function ensureBooking(requestId: number): Promise<string | null> {
       client_email: req.contact_email || null,
       client_phone: req.client_phone || null,
       spa_name: req.studio_name || "Studio",
-      massage_type: req.service_name || null,
+      // v219: reminders and the ledger print this; never a raw "Not sure".
+      massage_type: custSvc(req.service_name),
       booking_date: bookingDate,
       booking_time: bookingTime,
       duration: mins,
@@ -10827,7 +10831,7 @@ async function sendStatus(to: string, L: string, phone: string) {
   const stageTxt = COPY[L].stages[b.stage === "bidding" ? "studio_replied" : b.stage] || b.stage;
   const when = b.stage === "confirmed" && b.confirmed_day ? `${b.confirmed_day} ${b.confirmed_time || ""}`.trim() : [b.day1, b.time1].filter(Boolean).join(" ");
   const studio = /por asignar/i.test(b.studio_name || "") ? "" : b.studio_name;
-  await sendText(to, COPY[L].statusLine(trSvc(b.service_name || "Massage", L), when, studio, stageTxt));
+  await sendText(to, COPY[L].statusLine(trSvc(custSvc(b.service_name), L), when, studio, stageTxt));
 }
 
 // ---- v206 agent_core: what bot.ts lends it ----
@@ -11246,6 +11250,50 @@ function ourQuestionOpen(last: { msg_type?: unknown; body?: unknown; created_at?
 }
 // ---- v219 studio replies: pure helpers (end) ----
 
+// ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)
+// The service as dispatch-studios put it to the studios: its SVC_FRASE and
+// servicioFrase, word for word (tests/trace_c_check.mjs fails if they drift).
+// #126 (web, service "Not sure") was asked as "un masaje relajante de 60 min"
+// and confirmed as "not sure de 60 min": acceptOffer read row.asked_service, a
+// column that did not exist yet, then copy.ts trSvc, which passes any name it
+// cannot map straight through.
+const ASK_SVC_FRASE: Array<[RegExp, string]> = [
+  [/deep tissue|descontract/i, "un masaje descontracturante"], [/thai|tailand/i, "un masaje tailandés"],
+  [/hot stone|piedras/i, "un masaje con piedras calientes"], [/sport|deportiv/i, "un masaje deportivo"],
+  [/balin/i, "un masaje balinés"], [/shiatsu/i, "un masaje shiatsu"], [/reflexolog/i, "una sesión de reflexología"],
+  [/lymphatic|linf/i, "un drenaje linfático"], [/couples|pareja/i, "un masaje en pareja"],
+  [/kobido|facial/i, "un masaje facial Kobido"], [/prenatal|embaraz/i, "un masaje prenatal"],
+  [/head|scalp|cabeza/i, "un masaje de cabeza"], [/foot|feet|pies/i, "un masaje de pies"],
+  [/four hands|cuatro manos/i, "un masaje a cuatro manos"], [/gua sha/i, "una sesión de gua sha"],
+  [/swedish|sueco/i, "un masaje sueco"],
+  [/relax|relaj|not sure|^massage$|massage treatment|^masaje$/i, "un masaje relajante"],
+];
+function askServicio(name: unknown, mins: number): string {
+  const s = String(name || "").trim();
+  let base = "un masaje";
+  for (const [re, v] of ASK_SVC_FRASE) if (re.test(s)) { base = v; break; }
+  return `${base} de ${mins} min`;
+}
+// What a confirmation to the studio repeats: the words of the ask, without the
+// article ("masaje relajante de 60 min"). request_dispatch.asked_service is
+// written by dispatch-studios at the ask (a studio's own service included);
+// a row asked before that column existed falls back to the same table.
+function askedWhat(asked: unknown, name: unknown, mins: number): string {
+  const a = String(asked || "").replace(/\s+/g, " ").trim();
+  return (a || askServicio(name, mins)).replace(/^(un|una)\s+/i, "");
+}
+// What a customer reads for the service. The web form's "Not sure" was asked
+// as a relaxing massage (the bot books "Help me figure it out" as one,
+// createRequest v40), so it reads as one; "Any" or nothing reads "Massage";
+// anything else is the customer's own words (trSvc translates them for Spanish).
+function custSvc(name: unknown): string {
+  const s = String(name || "").trim();
+  if (/not sure|help me|no lo s[eé]|ay[uú]dame a elegir|^massage$|massage treatment|^masaje$/i.test(s)) return "Relaxing massage";
+  if (!s || /^(any|any massage|anything|cualquiera|me da igual)$/i.test(s)) return "Massage";
+  return s;
+}
+// ---- v219: studio words: pure helpers (end)
+
 const handleInner = async (req: Request) => {
   let payload: any = null;
   try { payload = await req.json(); } catch { return new Response("OK", { status: 200 }); }
@@ -11309,7 +11357,7 @@ const handleInner = async (req: Request) => {
       const pc = await partnerCard(req.partner_id);
       const day = String(req.confirmed_day || req.day1 || ""), time = String(req.confirmed_time || req.time1 || "");
       const when = time && day.includes(time) ? day : [day, time].filter(Boolean).join(L === "es" ? " a las " : " at ");
-      const text = COPY[L].studioConfirmed(String(req.first_name || "").split(" ")[0], req.studio_name || pc.business_name || (L === "es" ? "el centro" : "the studio"), trSvcLow(req.service_name || "massage", L), when) + (pc.address ? `\n📍 ${pc.address}` : "");
+      const text = COPY[L].studioConfirmed(String(req.first_name || "").split(" ")[0], req.studio_name || pc.business_name || (L === "es" ? "el centro" : "the studio"), trSvcLow(custSvc(req.service_name), L), when) + (pc.address ? `\n📍 ${pc.address}` : "");
       const phone = digitsOf(String(req.client_phone || ""));
       let sent = false;
       if (phone && await waWindowOpen(phone)) sent = await sendText(phone, text);
