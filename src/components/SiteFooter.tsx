@@ -74,13 +74,19 @@ export function SiteFooter({ className = "" }: { className?: string }) {
         </div>
 
         <div className={`border-t border-border py-6 flex items-center justify-between gap-6 text-caption font-normal ${QUIET}`}>
-          <p>© {year} Massage Club · Madrid</p>
+          <p>© {year} Kinsol LLC · Massage Club</p>
           <ul className="flex items-center gap-5">
             <li>
               <Link to="/privacy" className={smallLinkCls}>{t.privacy}</Link>
             </li>
             <li>
               <Link to="/terms" className={smallLinkCls}>{t.terms}</Link>
+            </li>
+            <li>
+              <Link to="/legal" className={smallLinkCls}>{t.legal}</Link>
+            </li>
+            <li>
+              <Link to="/unsubscribe" className={smallLinkCls}>{t.stopOffers}</Link>
             </li>
             <li>
               <a href="mailto:support@massageclub.io" className={smallLinkCls}>support@massageclub.io</a>

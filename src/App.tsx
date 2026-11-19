@@ -88,6 +88,7 @@ function Redirect({ to }: { to: string }) {
 import Review from "./pages/Review";
 import Unsubscribe from "./pages/Unsubscribe";
 import Privacy from "./pages/Privacy";
+import LegalNotice from "./pages/LegalNotice";
 import Terms from "./pages/Terms";
 import ForStudios from "./pages/ForStudios";
 import Request from "./pages/Request";
@@ -161,6 +162,8 @@ const App = () => (
             {/* /compare opens from the /studios compare tray: same frame. */}
             <Route path="/compare" element={<Compare />} />
             <Route path="/privacy" element={<Privacy />} />
+            {/* Aviso legal (LSSI art. 10): who runs the site. */}
+            <Route path="/legal" element={<LegalNotice />} />
             <Route path="/terms" element={<Terms />} />
           </Route>
 

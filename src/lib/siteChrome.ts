@@ -25,6 +25,8 @@ export const SITE_COPY: Record<
     studioLogin: string;
     privacy: string;
     terms: string;
+    legal: string;
+    stopOffers: string;
     oneLine: string;
   }
 > = {
@@ -43,6 +45,8 @@ export const SITE_COPY: Record<
     studioLogin: "Studio login",
     privacy: "Privacy",
     terms: "Terms",
+    legal: "Legal notice",
+    stopOffers: "Stop offers",
     oneLine: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
   },
   es: {
@@ -60,6 +64,8 @@ export const SITE_COPY: Record<
     studioLogin: "Acceso para centros",
     privacy: "Privacidad",
     terms: "Términos",
+    legal: "Aviso legal",
+    stopOffers: "Dejar de recibir ofertas",
     oneLine: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
   },
   fr: {
@@ -77,6 +83,8 @@ export const SITE_COPY: Record<
     studioLogin: "Accès centres",
     privacy: "Confidentialité",
     terms: "Conditions",
+    legal: "Mentions légales",
+    stopOffers: "Ne plus recevoir d'offres",
     oneLine: "Massages à Madrid. Vous nous écrivez dans votre langue, nous demandons aux centres en espagnol. Gratuit.",
   },
   de: {
@@ -94,6 +102,8 @@ export const SITE_COPY: Record<
     studioLogin: "Studio-Login",
     privacy: "Datenschutz",
     terms: "AGB",
+    legal: "Impressum",
+    stopOffers: "Keine Angebote mehr",
     oneLine: "Massagen in Madrid. Du schreibst uns in deiner Sprache, wir fragen die Studios auf Spanisch. Kostenlos.",
   },
   it: {
@@ -111,6 +121,8 @@ export const SITE_COPY: Record<
     studioLogin: "Accesso centri",
     privacy: "Privacy",
     terms: "Termini",
+    legal: "Note legali",
+    stopOffers: "Non ricevere più offerte",
     oneLine: "Massaggi a Madrid. Ci scrivi nella tua lingua, noi chiediamo ai centri in spagnolo. Gratis.",
   },
   pt: {
@@ -128,6 +140,8 @@ export const SITE_COPY: Record<
     studioLogin: "Acesso estúdios",
     privacy: "Privacidade",
     terms: "Termos",
+    legal: "Aviso legal",
+    stopOffers: "Deixar de receber ofertas",
     oneLine: "Massagens em Madrid. Dizes-nos no teu idioma, nós perguntamos aos estúdios em espanhol. Grátis.",
   },
   zh: {
@@ -145,6 +159,8 @@ export const SITE_COPY: Record<
     studioLogin: "商家登录",
     privacy: "隐私政策",
     terms: "条款",
+    legal: "法律声明",
+    stopOffers: "停止接收优惠",
     oneLine: "马德里的按摩。您用自己的语言告诉我们，我们用西班牙语询问按摩店。完全免费。",
   },
 };
