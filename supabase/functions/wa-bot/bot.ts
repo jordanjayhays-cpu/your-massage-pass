@@ -4720,6 +4720,79 @@ function offerBody(L: string, o: { lead?: string; name: string; studio: string; 
   const facts = [o.price, o.above, place].filter(Boolean).join("\n");
   return [o.lead || "", head, facts, C.ask(o.svc)].filter(Boolean).join("\n\n");
 }
+// v219 (19 Nov, #126; Jordan's decision the same day). The customer tapped Yes
+// on the offer page at 13:26 for 13:30, arrived at 13:50 and the studio still
+// did the massage, so a deadline before the start would have lost a real,
+// completed booking. One rule for the WhatsApp Yes and Yes on the offer page,
+// while the studio's offer is still open:
+//   before the start                    -> books as normal
+//   in the last 20 minutes before it    -> books, and the confirmation says
+//                                          to head over now (both sides)
+//   at or after the start               -> books nothing (yesTooLate)
+// A start nobody can work out books as normal, as before.
+const YES_HURRY_MS = 20 * 60e3;
+type YesCall = "book" | "hurry" | "late";
+function yesCall(nowMs: number, slotMs: number | null): YesCall {
+  if (slotMs === null || !Number.isFinite(slotMs)) return "book";
+  if (nowMs >= slotMs) return "late";
+  return slotMs - nowMs <= YES_HURRY_MS ? "hurry" : "book";
+}
+// The line a confirmation gains in those last 20 minutes. Studio (Spanish
+// only): "They just confirmed and are on their way."
+const HURRY_STUDIO_ES = "Acaba de confirmar, va de camino.";
+// A line put above the "Massage Club" signature, or at the end when there is none.
+const withLine = (text: string, line: string): string =>
+  !line ? text : /\n\nMassage Club/.test(text) ? text.replace(/\n\nMassage Club/, `\n\n${line}\n\nMassage Club`) : `${text}\n\n${line}`;
+// v219: the offer email's subject with the day in words, and the line under
+// the offer on the email and the page. No deadline earlier than the start is
+// ever printed (Jordan, 19 Nov).
+function offerSubject(L: string, studio: string, time: string, day: string): string {
+  const d = offerDayPhrase(day, L);
+  const dw = /^(that day|ese d[ií]a)$/.test(d) ? "" : d;
+  return L === "es" ? `${studio} puede a las ${time}${dw ? " " + dw : ""}: pulsa Sí para reservar` : `${studio} can do ${time}${dw ? " " + dw : ""}: tap Yes to book`;
+}
+const LATE_COPY: Record<string, any> = {
+  en: {
+    hurry: (studio: string, time: string) => `Head over now, ${studio} expects you at ${time}.`,
+    tapNote: (time: string) => `Tap Yes as soon as you can. The studio is holding ${time} for you, and it is only booked once you tap.`,
+    lateTitle: (time: string) => `${time} has already passed`,
+    late: (n: string, studio: string, time: string) => `${n ? n + ", " : ""}${time} has already passed, so nothing is booked at ${studio}.`,
+    lateNext: "Another studio still has a time for you, and I have just sent it to you.",
+    lateLead: "Here is another studio that can still take you:",
+    lateAsk: "Would a later time or another day work? Tap a day below, or tell me a day and time and I will ask the studios again.",
+    lateAskWeb: "Would a later time or another day work? Reply to this email or message us on WhatsApp, or choose a new time on book.massageclub.io.",
+    reask: (studio: string, time: string) => `${studio} was told it could give ${time} to someone else, so I am asking them again whether it is still free. Nothing is booked yet: if they say yes, you will get the offer again to tap.`,
+    reaskNote: (studio: string, time: string) => `${studio} was told it could give ${time} to someone else. Tap below and we will ask them again; nothing is booked until they say yes and you tap Yes on the new offer.`,
+    reaskBtn: (time: string) => `Ask for ${time} again`,
+    choose: "Choose another time",
+  },
+  es: {
+    // "Head over now, <studio> expects you at <HH:MM>."
+    hurry: (studio: string, time: string) => `Ve para allá ya, ${studio} te espera a las ${time}.`,
+    // "Tap Yes as soon as you can. The studio is holding <HH:MM> for you, and it is only booked once you tap."
+    tapNote: (time: string) => `Pulsa Sí cuanto antes. El centro te guarda las ${time} y solo queda reservado cuando lo pulses.`,
+    // "<HH:MM> has already passed"
+    lateTitle: (time: string) => `Ya han pasado las ${time}`,
+    // "<name>, <HH:MM> has already passed, so nothing is booked at <studio>."
+    late: (n: string, studio: string, time: string) => `${n ? n + ", y" : "Y"}a han pasado las ${time}, así que no hay nada reservado en ${studio}.`,
+    // "Another studio still has a time for you, and I have just sent it to you."
+    lateNext: "Otro centro todavía tiene hora para ti y te la acabo de enviar.",
+    // "This other studio can still see you:"
+    lateLead: "Este otro centro todavía puede atenderte:",
+    // "Would a later time or another day work? Tap a day below, or tell me a day and time and I will ask the studios again."
+    lateAsk: "¿Te vendría bien una hora más tarde u otro día? Toca un día abajo, o dime día y hora y vuelvo a preguntar a los centros.",
+    // "Would a later time or another day work? Reply to this email or message us on WhatsApp, or choose a new time on book.massageclub.io."
+    lateAskWeb: "¿Te vendría bien una hora más tarde u otro día? Contesta a este correo o escríbenos por WhatsApp, o elige otra hora en book.massageclub.io.",
+    // "<studio> was told it could give <HH:MM> to someone else, so I am asking them again whether it is still free. Nothing is booked yet: if they say yes, you will get the offer again to tap."
+    reask: (studio: string, time: string) => `A ${studio} le dijimos que podía dar las ${time} a otra persona, así que le vuelvo a preguntar si sigue libre. Todavía no hay nada reservado: si dice que sí, te llega otra vez la oferta para que la pulses.`,
+    // "<studio> was told it could give <HH:MM> to someone else. Tap below and we will ask them again; nothing is booked until they say yes and you tap Yes on the new offer."
+    reaskNote: (studio: string, time: string) => `A ${studio} le dijimos que podía dar las ${time} a otra persona. Pulsa abajo y se lo volvemos a preguntar; no hay nada reservado hasta que diga que sí y pulses Sí en la nueva oferta.`,
+    // "Ask for <HH:MM> again"
+    reaskBtn: (time: string) => `Volver a pedir las ${time}`,
+    // "Choose another time"
+    choose: "Elegir otra hora",
+  },
+};
 // ---- v204 offer step: pure helpers (end) ----
 
 // ---- v212 studio Spanish: shared helpers ----
@@ -7063,13 +7136,15 @@ async function emailOffer(req: any, L: string, rowId: string, studio: string, ti
   const who = String(req.first_name || "").trim();
   const price = String(priceLine || "").replace(/^\s+/, "").replace(/\*/g, "");
   const lead = es ? `${who ? who + ", b" : "B"}uenas noticias: ${studio} puede darte el masaje.` : `Good news${who ? ", " + who : ""}: ${studio} can do your massage.`;
-  const note = es ? "Todavía no está reservado. Toca el botón, revisa la oferta y pulsa Sí para confirmarla." : "It is not booked yet. Tap the button, check the offer and press Yes to confirm it.";
+  // v219 (19 Nov, #126; Jordan, 19 Nov): no deadline earlier than the start is
+  // ever printed; the note says to tap soon and that only the tap books it.
+  const note = LATE_COPY[es ? "es" : "en"].tapNote(time);
   const btn = es ? "Ver la oferta y confirmar" : "See the offer and confirm";
   const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:22px 34px 0;text-align:center;"><p style="margin:0;color:${C.ink};font-size:15px;line-height:1.6;">${esc(lead)}</p><h1 style="margin:14px 0 0;color:${C.ink};font-size:25px;line-height:1.2;font-family:${SERIF};">${esc(studio)}</h1>${address ? `<p style="margin:6px 0 0;color:${C.muted};font-size:14px;">${esc(address)}</p>` : ""}<p style="margin:14px 0 0;color:${C.clay};font-size:30px;font-family:${SERIF};font-weight:700;">${esc([day, time].filter(Boolean).join(", "))}</p>${price ? `<p style="margin:8px 0 0;color:${C.ink};font-size:14px;">${esc(price)}</p>` : ""}<p style="margin:16px 0 0;color:${C.muted};font-size:14px;line-height:1.6;">${esc(note)}</p></td></tr><tr><td style="padding:22px 34px 0;text-align:center;"><a href="${link}" style="display:inline-block;background:#1FA855;color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:999px;">${esc(btn)}</a></td></tr><tr><td style="padding:22px 34px 26px;"><div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div><p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
   const text = `${lead}\n${studio}${address ? ", " + address : ""}\n${[day, time].filter(Boolean).join(", ")}${price ? "\n" + price : ""}\n\n${note}\n${link}\n\nMassage Club`;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject: es ? `${studio} puede a las ${time}: ¿lo confirmas?` : `${studio} can do ${time}: confirm it?`, html, text }),
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject: offerSubject(L, studio, time, day), html, text }),
   }).catch(() => null);
   const ok = !!res && res.ok;
   if (!ok) console.log("[wa] offer email failed", to);
@@ -7145,13 +7220,15 @@ async function forwardTimeChange(req: any, partner: { id: string; business_name:
   });
 }
 
-async function customerConfirmEmail(req: any, studio: string, when: string, addr: string, phone: string) {
+// v219: extra is one line under the time (the "head over now" line of a Yes in
+// the last 20 minutes before the start), in the customer's language.
+async function customerConfirmEmail(req: any, studio: string, when: string, addr: string, phone: string, extra = "") {
   if (!req.contact_email) return;
   if (heldMail(req.contact_email) || heldNum(req.client_phone)) return;
-  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:26px 34px 0;text-align:center;"><span style="display:inline-block;background:#E6F4EA;color:#1A7F42;font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">CONFIRMED</span><h1 style="margin:16px 0 0;color:${C.ink};font-size:27px;line-height:1.2;font-family:${SERIF};font-weight:700;">${esc(studio)}</h1></td></tr><tr><td style="padding:24px 34px 0;text-align:center;"><table width="100%" cellpadding="0" cellspacing="0" style="background:${C.cream};border-radius:16px;"><tr><td style="padding:22px 20px;text-align:center;"><p style="margin:0;color:${C.clay};font-size:34px;line-height:1.1;font-family:${SERIF};font-weight:700;">${esc(when)}</p><p style="margin:8px 0 0;color:${C.ink};font-size:15px;font-weight:600;">${esc(req.service_name || "Massage")}</p>${addr ? `<p style="margin:8px 0 0;color:${C.muted};font-size:14px;">${esc(addr)}</p>` : ""}${phone ? `<p style="margin:4px 0 0;color:${C.muted};font-size:14px;">${esc(phone)}</p>` : ""}</td></tr></table></td></tr><tr><td style="padding:20px 34px 26px;text-align:center;"><p style="margin:0;color:${C.muted};font-size:14px;line-height:1.6;">You pay the studio directly. No booking fee.<br>Pagas directamente en el centro. Sin comisión.</p><div style="border-top:2px dashed ${C.dash};margin:16px 0;"></div><p style="margin:0;color:#B8AC9E;font-size:12px;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:26px 34px 0;text-align:center;"><span style="display:inline-block;background:#E6F4EA;color:#1A7F42;font-size:11px;font-weight:700;letter-spacing:2.5px;padding:7px 16px;border-radius:999px;">CONFIRMED</span><h1 style="margin:16px 0 0;color:${C.ink};font-size:27px;line-height:1.2;font-family:${SERIF};font-weight:700;">${esc(studio)}</h1></td></tr><tr><td style="padding:24px 34px 0;text-align:center;"><table width="100%" cellpadding="0" cellspacing="0" style="background:${C.cream};border-radius:16px;"><tr><td style="padding:22px 20px;text-align:center;"><p style="margin:0;color:${C.clay};font-size:34px;line-height:1.1;font-family:${SERIF};font-weight:700;">${esc(when)}</p><p style="margin:8px 0 0;color:${C.ink};font-size:15px;font-weight:600;">${esc(req.service_name || "Massage")}</p>${addr ? `<p style="margin:8px 0 0;color:${C.muted};font-size:14px;">${esc(addr)}</p>` : ""}${phone ? `<p style="margin:4px 0 0;color:${C.muted};font-size:14px;">${esc(phone)}</p>` : ""}</td></tr></table></td></tr>${extra ? `<tr><td style="padding:18px 34px 0;text-align:center;"><p style="margin:0;color:${C.ink};font-size:16px;font-weight:700;line-height:1.5;">${esc(extra)}</p></td></tr>` : ""}<tr><td style="padding:20px 34px 26px;text-align:center;"><p style="margin:0;color:${C.muted};font-size:14px;line-height:1.6;">You pay the studio directly. No booking fee.<br>Pagas directamente en el centro. Sin comisión.</p><div style="border-top:2px dashed ${C.dash};margin:16px 0;"></div><p style="margin:0;color:#B8AC9E;font-size:12px;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
   await fetch("https://api.resend.com/emails", {
     method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [req.contact_email], reply_to: "support@massageclub.io", subject: `✅ Confirmed: ${studio}, ${when}`, html, text: `Confirmed: ${req.service_name || "massage"} at ${studio}, ${when}.${addr ? " " + addr + "." : ""} You pay the studio directly, no fee.` }),
+    body: JSON.stringify({ from: FROM_EMAIL, to: [req.contact_email], reply_to: "support@massageclub.io", subject: `✅ Confirmed: ${studio}, ${when}`, html, text: `Confirmed: ${req.service_name || "massage"} at ${studio}, ${when}.${addr ? " " + addr + "." : ""}${extra ? " " + extra : ""} You pay the studio directly, no fee.` }),
   }).catch((e) => console.log("[wa] customer email failed", String(e)));
 }
 
@@ -7176,7 +7253,10 @@ function rowDayLabel(row: any, L: string, now: Date = new Date()): string {
 // email. The studio's yes is what put the offer here. `from` is the customer's
 // number ("" for a web customer with none) and `s` their session, or null when
 // there is none, so the web path never invents a session.
-async function acceptOffer(rowId: string, from: string, L: string, s: Session | null, via: "whatsapp" | "web" = "whatsapp"): Promise<boolean> {
+// v219: info tells the offer page what happened when the answer is false:
+// late (a Yes at or after the start, yesTooLate) or reask (a Yes on a lapsed
+// offer before the start, which asks the studio again).
+async function acceptOffer(rowId: string, from: string, L: string, s: Session | null, via: "whatsapp" | "web" = "whatsapp", info: { late?: boolean; reask?: boolean; next?: boolean } = {}): Promise<boolean> {
   const say = (t: string) => from ? sendText(from, t) : Promise.resolve(false);
   const closeOffer = async () => { if (s) { s.step = "done"; s.data.offer = null; await saveSession(s); } };
   // v212: select=* so the confirmation can give the studio the price it
@@ -7189,17 +7269,36 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   // else got the booking, is not there to accept.
   // v205 (canary, 12 Oct): a Yes on an offer that lapsed was told "we are still
   // on it", but after a lapse nobody is still asking. Say what is true.
-  if (row && String(row.outcome || "") === "expired") {
-    await say(L === "es" ? "Esa hora ya no está disponible y no hay nada reservado. Dime otro día u hora y vuelvo a preguntar a los centros." : "That time is no longer available and nothing is booked. Tell me another day or time and I will ask the studios again.");
-    await closeOffer(); return false;
-  }
-  if (!row || !row.offered_time || ["no", "declined", "stood_down", "expired", "send_failed"].includes(String(row.outcome || ""))) { await say(COPY[L].offerGone); await closeOffer(); return false; }
-  const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,contact_email,client_phone,languages,stage,message_text,created_at,confirmed_day,confirmed_start`, { headers: H() });
+  // v219: a lapsed offer is read below, once the start is known (rule 4).
+  const expiredRow = !!row && String(row.outcome || "") === "expired";
+  const lapsedLine = L === "es" ? "Esa hora ya no está disponible y no hay nada reservado. Dime otro día u hora y vuelvo a preguntar a los centros." : "That time is no longer available and nothing is booked. Tell me another day or time and I will ask the studios again.";
+  if (expiredRow && !row.offered_time) { await say(lapsedLine); await closeOffer(); return false; }
+  if (!row || !row.offered_time || ["no", "declined", "stood_down", "send_failed"].includes(String(row.outcome || ""))) { await say(COPY[L].offerGone); await closeOffer(); return false; }
+  const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,time1,proposed_time,contact_email,client_phone,languages,stage,message_text,created_at,confirmed_day,confirmed_start`, { headers: H() });
   const reqRows = await rr.json().catch(() => []);
   const req = Array.isArray(reqRows) && reqRows[0] ? reqRows[0] : null;
   if (!req) { await say(COPY[L].offerGone); await closeOffer(); return false; }
   const pc = await partnerCard(row.partner_id);
   const studio = pc.business_name || s?.data.offer?.studio || "the studio";
+  // v219 (19 Nov, #126; Jordan, 19 Nov): the start decides what this Yes
+  // means (yesCall). At or after it nothing is booked and the studio hears
+  // nothing; in the last 20 minutes it books with "head over now" on both
+  // confirmations; before that it books as normal. A confirmed booking whose
+  // time the studio moved (below) keeps its own path.
+  const slotMs = req.stage === "confirmed" ? null : await offerSlotFor(row, req, s);
+  const call = yesCall(Date.now(), slotMs);
+  if (call === "late") return await yesTooLate(row, req, studio, from, L, s, via, info);
+  // v219 rule 4: the lapse already told this studio it could give the slot
+  // away, so a Yes before the start does not confirm by itself. The studio is
+  // asked again with its usual ask (dispatch-studios reask), and its yes
+  // sends the customer a fresh offer to tap (BOTH PARTIES TAP). Not when the
+  // slot is under 45 minutes away (no offer ever goes then) or the lapsed
+  // time is not the one the ask carries (a studio's own counter time).
+  if (expiredRow) {
+    if (slotMs !== null && slotMs - Date.now() >= OFFER_LEAD_MS && String(row.offered_time) === exactTime(req) && await reaskStudio(row, req, studio, from, L, s, via)) { info.reask = true; return false; }
+    await say(lapsedLine); await closeOffer(); return false;
+  }
+  const hurry = call === "hurry";
   // v37: the winning studio moved an already confirmed time and the customer said yes.
   if (req.stage === "confirmed") {
     const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&select=partner_id,confirmed_day,confirmed_start,day1,message_text,created_at`, { headers: H() });
@@ -7303,9 +7402,13 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   const mailRef = [studioDateFull(dd), atEs].filter(Boolean).join(" ");
   // ES: "Hola, nueva reserva en una de las horas que nos disteis: Ana, hoy a las 18:00, masaje relajante de 60 min. Paga directamente. Su teléfono es +34... Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: <link>"
   // EN: "Hello, a new booking in one of the times you gave us: Ana, today at 18:00, relaxing massage of 60 min. She pays at the studio. Her phone is +34... You can put it in your diary. If you cannot see her after all, reject it here within the next 15 minutes: <link>"
+  // v219: a Yes in the last 20 minutes before the start adds HURRY_STUDIO_ES
+  // ("They just confirmed and are on their way.") right after "Ya podéis
+  // apuntarlo" on every form of the confirmation.
+  const hurryEs = hurry ? " " + HURRY_STUDIO_ES : "";
   const studioText = relSlot
-    ? `Hola, nueva reserva en una de las horas que nos disteis: ${fn || "nuestro cliente"}, ${waRef ? waRef + ", " : ""}${what}. Paga directamente.${habla}${relWho ? " " + relWho : ""} Ya podéis apuntarlo. Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: ${relLink}`
-    : `Hola, ${fn || "el cliente"} ha dicho que sí, así que queda confirmado: ${waRef ? waRef + ", " : ""}${what}. Ya podéis apuntarlo.${habla} Si necesitáis decirle algo, escribidme por aquí y se lo paso.`;
+    ? `Hola, nueva reserva en una de las horas que nos disteis: ${fn || "nuestro cliente"}, ${waRef ? waRef + ", " : ""}${what}. Paga directamente.${habla}${relWho ? " " + relWho : ""} Ya podéis apuntarlo.${hurryEs} Si al final no podéis atenderle, rechazadla aquí en los próximos 15 minutos: ${relLink}`
+    : `Hola, ${fn || "el cliente"} ha dicho que sí, así que queda confirmado: ${waRef ? waRef + ", " : ""}${what}. Ya podéis apuntarlo.${hurryEs}${habla} Si necesitáis decirle algo, escribidme por aquí y se lo paso.`;
   // Template fallback (aviso_centro_v2 {{2}}, then v1's short). v2 ends on a
   // sentence, not the link, because the template adds its own full stop.
   // v1's short for a released time, ES "ha reservado una de las horas que nos
@@ -7316,12 +7419,12 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   // ES "Ha reservado una de las horas que nos disteis: ... Si al final no podéis atenderle, rechazadla en los próximos 15 minutos aquí: <link> Si no, ya podéis apuntarlo."
   // EN "They booked one of the times you gave us: ... If you cannot see them after all, reject it within the next 15 minutes here: <link> Otherwise, you can put it in your diary."
   const toldWa = relSlot
-    ? await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha reservado una de las horas que nos disteis, ${what}. Ya podéis apuntarlo`, { dayEs: dEs, v2: `Ha reservado una de las horas que nos disteis: ${what}. Paga en el centro.${habla}${relWho ? " " + relWho : ""} Si al final no podéis atenderle, rechazadla en los próximos 15 minutos aquí: ${relLink} Si no, ya podéis apuntarlo.` })
-    : await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha dicho que sí y queda confirmado, ${what}.${habla} Ya podéis apuntarlo`, { dayEs: dEs, v2: `Ha dicho que sí, así que queda confirmado: ${what}.${habla} Ya podéis apuntarlo.` });
+    ? await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha reservado una de las horas que nos disteis, ${what}. Ya podéis apuntarlo${hurry ? ". " + HURRY_STUDIO_ES.replace(/\.$/, "") : ""}`, { dayEs: dEs, v2: `Ha reservado una de las horas que nos disteis: ${what}. Paga en el centro.${habla}${relWho ? " " + relWho : ""} Si al final no podéis atenderle, rechazadla en los próximos 15 minutos aquí: ${relLink} Si no, ya podéis apuntarlo.${hurryEs}` })
+    : await tellStudio(digitsOf(row.phone || ""), fn, String(row.offered_time), studioText, `ha dicho que sí y queda confirmado, ${what}.${habla} Ya podéis apuntarlo${hurry ? ". " + HURRY_STUDIO_ES.replace(/\.$/, "") : ""}`, { dayEs: dEs, v2: `Ha dicho que sí, así que queda confirmado: ${what}.${habla} Ya podéis apuntarlo.${hurryEs}` });
   // Email, ES: "Ana ha reservado una de las horas que nos disteis: el sábado 18 de octubre a las 18:00, ... Paga directamente. Su teléfono es ... Ya podéis apuntarlo. Si al final no podéis atenderle, rechazad la reserva en los próximos 15 minutos con este enlace: <link>". EN: the same, as an email with Jordan's sign-off.
   const studioMail = relSlot
-    ? `${studioMailHead(pc.business_name || "")}\n\n${fn || "Nuestro cliente"} ha reservado una de las horas que nos disteis: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.${relWho ? " " + relWho : ""}\n\nYa podéis apuntarlo. Si al final no podéis atenderle, rechazad la reserva en los próximos 15 minutos con este enlace:\n${relLink}\n\nSi necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`
-    : `${studioMailHead(pc.business_name || String(s?.data.offer?.studio || ""))}\n\n${fn || "Nuestro cliente"} ha dicho que sí a vuestra hora, así que la reserva queda confirmada: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.\n\nYa podéis apuntarlo. Si necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`;
+    ? `${studioMailHead(pc.business_name || "")}\n\n${fn || "Nuestro cliente"} ha reservado una de las horas que nos disteis: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.${relWho ? " " + relWho : ""}\n\nYa podéis apuntarlo.${hurryEs} Si al final no podéis atenderle, rechazad la reserva en los próximos 15 minutos con este enlace:\n${relLink}\n\nSi necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`
+    : `${studioMailHead(pc.business_name || String(s?.data.offer?.studio || ""))}\n\n${fn || "Nuestro cliente"} ha dicho que sí a vuestra hora, así que la reserva queda confirmada: ${mailRef ? mailRef + ", " : ""}${what}.${habla ? " Habla inglés y paga" : " Paga"} directamente en el centro.\n\nYa podéis apuntarlo.${hurryEs} Si necesitáis decirle algo, contestad a este correo y se lo paso.\n\n${STUDIO_MAIL_SIGN}`;
   // Subject: "Reserva nueva: Ana, sábado 18 de octubre a las 18:00" (New booking: ...) for a released time, else "Reserva confirmada: ..." (Booking confirmed: ...).
   const toldMail = (row.channel === "email" || !toldWa || relSlot) ? await emailStudio(String(row.partner_id || ""), `${relSlot ? "Reserva nueva" : "Reserva confirmada"}: ${fn || "nuestro cliente"}${mailRef ? ", " + mailRef.replace(/^el /, "") : ""}`, studioMail) : false;
   // v215 review (17 Oct): the email is the released confirmation's sure
@@ -7344,9 +7447,12 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
   }
   // v215: on a released time the customer also hears that the studio has 15
   // minutes to say no, and that we tell them at once if it does.
-  const accepted = COPY[L].offerAccepted(studio, whenFor(when, L), pc.address, pc.phone);
+  // v219: and in the last 20 minutes, "Head over now, <studio> expects you at
+  // <HH:MM>." on the WhatsApp confirmation and the confirmation email.
+  const hurryLine = hurry ? LATE_COPY[L === "es" ? "es" : "en"].hurry(studio, String(row.offered_time)) : "";
+  const accepted = withLine(COPY[L].offerAccepted(studio, whenFor(when, L), pc.address, pc.phone), hurryLine);
   await say(relSlot ? accepted.replace(/\n\nMassage Club/, `\n\n${RELEASED_COPY[L === "es" ? "es" : "en"].rejectNote}\n\nMassage Club`) : accepted);
-  await customerConfirmEmail(req, studio, whenFor(when, L), pc.address, pc.phone);
+  await customerConfirmEmail(req, studio, whenFor(when, L), pc.address, pc.phone, hurryLine);
   // v81 (Jordan, 12 Sept): the email lands here, at the moment they have just
   // said yes to a real slot, where it buys them the member rate rather than
   // standing between them and any answer. Nobody abandons over an email address
@@ -7370,6 +7476,90 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     paras: [`${req.first_name || "The customer"} tapped ${relSlot ? `a time ${studio} had released to us, which books it (12 Oct rule; the studio can reject it until ${relHm(Date.parse(String(relSlot.reject_until)))})` : `Yes${via === "web" ? " on the offer page" : " on WhatsApp"}`}. ${toldWa || toldMail ? `The studio has the confirmation in writing (${[toldWa ? "WhatsApp" : "", toldMail ? "email" : ""].filter(Boolean).join(" and ")})` : "The studio could NOT be told, see the separate alert"}, the customer was told${req.contact_email ? " (and emailed)" : ""}, and every other studio asked was stood down.`],
     waNum: clientDigits, studioNum: digitsOf(row.phone || ""), studioName: studio,
   });
+  return true;
+}
+
+// v219: when an offer's slot starts. A released time has its own start_at;
+// otherwise the offer's time on its day: the session's slot, the studio's own
+// "hoy" or "mañana" from when it wrote, else the day asked. null when no day
+// can be read.
+async function offerSlotFor(row: any, req: any, s: Session | null): Promise<number | null> {
+  if (row?.channel === "released" && row?.slot_id) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/released_slots?id=eq.${encodeURIComponent(String(row.slot_id))}&select=start_at&limit=1`, { headers: H() });
+      const t = Date.parse(String(((await r.json().catch(() => [])) || [])[0]?.start_at || ""));
+      if (Number.isFinite(t)) return t;
+    } catch (_e) { /* fall back to the time and day below */ }
+  }
+  const sd = (s?.data.offer?.row && String(s.data.offer.row) === String(row?.id) ? studioSlotDate(s.data.offer.slotAt) : null)
+    || studioWordDay(offerDayFromText(String(row?.reply_text || ""), "es"), Date.parse(String(row?.replied_at || row?.offered_at || "")))
+    || studioDate(req);
+  return offerSlotAt(String(row?.offered_time || ""), sd);
+}
+// v219 (19 Nov, #126; Jordan, 19 Nov, rule 3): a Yes at or after the start
+// books nothing. The studio is told nothing (no confirmation, no email), the
+// row is closed with the lapse's own guard, the customer hears plainly that
+// the time has passed and gets the next real option (another studio's open
+// offer, or on WhatsApp the day question), and Jordan gets a card. Never
+// ensureBooking, awardRequest or tellStudio here.
+async function yesTooLate(row: any, req: any, studio: string, from: string, L: string, s: Session | null, via: string, info: { late?: boolean; next?: boolean }): Promise<boolean> {
+  const C = LATE_COPY[L === "es" ? "es" : "en"];
+  const time = String(row.offered_time || "");
+  const first = String(req.first_name || "").trim().split(" ")[0];
+  info.late = true;
+  await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}&outcome=in.(pending,accepted)`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "expired" }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(req.id)}&stage=eq.offered`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ stage: "studio_asked", stage_updated_at: new Date().toISOString() }) });
+  if (s && s.step === "await_offer" && String(s.data.offer?.row || "") === String(row.id)) { s.step = "done"; s.data.offer = null; await saveSession(s); }
+  if (from) await sendText(from, `${C.late(first, studio, time)}\n\nMassage Club`);
+  const next = await showNextOffer(req, row, "any", L, C.lateLead);
+  info.next = next;
+  if (!next && from && s) {
+    s.data.day = null; s.data.dayDate = null; s.data.time = null; s.data.timeBand = null; s.data.timeBandId = null;
+    s.data.prefer = null; s.data.chosen = null; s.data.picks = null;
+    s.step = "await_day"; await saveSession(s);
+    await sendButtons(from, C.lateAsk, dayBtns(L));
+  }
+  const at = MADRID_HM.format(new Date());
+  await logEvent(digitsOf(from || "") || "web", "yes_too_late", { request_id: String(req.id), row: String(row.id), studio, time, at, via, next });
+  await founderCard(`⏱ Yes after the start, nothing booked: ${first || "customer"} · ${studio} ${time} · #${req.id}`, {
+    badge: "YES AFTER THE START",
+    title: `${first || "The customer"} tapped Yes for ${studio} ${time} at ${at}`,
+    paras: [
+      `The Yes came${via === "web" ? " on the offer page" : " on WhatsApp"} at ${at}, at or after the ${time} start, so nothing was booked and ${studio} got no confirmation. It may still be holding the slot: write to it if it needs telling.`,
+      `The customer was told the time had passed and ${next ? "was sent another studio's open offer" : from && s ? "was asked for a later time or another day" : "was shown how to pick a later time"}.`,
+    ],
+    waNum: digitsOf(from || String(req.client_phone || "")), studioNum: digitsOf(String(row.phone || "")), studioName: studio,
+  });
+  return false;
+}
+// v219 (rule 4): a Yes before the start on an offer that lapsed (its studio
+// was told it could give the slot away). The studio gets its usual ask again
+// through dispatch-studios ({ reask }), in its hours, and a yes there sends
+// the customer a fresh offer to tap. False when the ask could not go; the
+// caller then says the time is gone, as before.
+async function reaskStudio(row: any, req: any, studio: string, from: string, L: string, s: Session | null, via: string): Promise<boolean> {
+  let ok = false, why = "";
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/dispatch-studios?key=${OPS_KEY}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reask: { request_id: Number(req.id), partner_id: String(row.partner_id || ""), row: String(row.id) } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    ok = r.ok && j?.ok === true;
+    why = ok ? "" : String(j?.error || j?.reason || r.status);
+  } catch (e) { why = String(e); }
+  await logEvent(digitsOf(from || "") || "web", "yes_after_lapse", { request_id: String(req.id), row: String(row.id), studio, time: row.offered_time, via, asked_again: ok, why: why.slice(0, 200) || null });
+  await founderCard(`↻ Yes on a lapsed offer: ${req.first_name || "customer"} · ${studio} ${row.offered_time} · #${req.id}`, {
+    badge: ok ? "STUDIO ASKED AGAIN" : "YES ON A LAPSED OFFER",
+    title: `${req.first_name || "The customer"} tapped Yes on ${studio} ${row.offered_time} after the offer lapsed`,
+    paras: [ok
+      ? `${studio} had been told it could give the slot away, so nothing is booked. It was asked again with its usual ask; if it says yes, the customer gets a fresh offer to tap.`
+      : `${studio} had been told it could give the slot away, so nothing is booked, and it could not be asked again (${why.slice(0, 160) || "unknown"}). The customer was told the time is no longer available.`],
+    waNum: digitsOf(from || String(req.client_phone || "")), studioNum: digitsOf(String(row.phone || "")), studioName: studio,
+  });
+  if (!ok) return false;
+  if (s) { s.step = "done"; s.data.offer = null; await saveSession(s); }
+  if (from) await sendText(from, LATE_COPY[L === "es" ? "es" : "en"].reask(studio, String(row.offered_time)));
   return true;
 }
 
@@ -7553,9 +7743,9 @@ async function offerPage(url: URL): Promise<Response> {
   const sig = String(url.searchParams.get("sig") || "");
   const a = String(url.searchParams.get("a") || "");
   if (!rowId || sig !== await offerSig(rowId)) return pageOut(url, simpleCard("This link is not valid", "Reply to us on WhatsApp and we will sort it out.", ""), 403);
-  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}&select=id,request_id,partner_id,offered_time,outcome,reply_text,replied_at,offered_at`, { headers: H() });
+  const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}&select=id,request_id,partner_id,offered_time,outcome,reply_text,replied_at,offered_at,channel,slot_id`, { headers: H() });
   const row = ((await dr.json().catch(() => [])) || [])[0] || null;
-  const rr = row ? await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,languages,stage,client_phone,contact_email,partner_id,confirmed_time,message_text`, { headers: H() }) : null;
+  const rr = row ? await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${row.request_id}&select=id,first_name,service_name,day1,time1,proposed_time,languages,stage,client_phone,contact_email,partner_id,confirmed_time,confirmed_start,message_text,created_at`, { headers: H() }) : null;
   const req = rr ? ((await rr.json().catch(() => [])) || [])[0] || null : null;
   if (!row || !req) return pageOut(url, simpleCard("This offer is no longer available", "Reply to us on WhatsApp and we will find you another time.", ""), 404);
   const L = req.languages === "es" ? "es" : "en";
@@ -7568,16 +7758,40 @@ async function offerPage(url: URL): Promise<Response> {
   const phone = digitsOf(String(req.client_phone || ""));
   const booked = () => pageOut(url, simpleCard(es ? "¡Reservado!" : "You're booked!", `${studio}\n${when}${pc.address ? "\n" + pc.address : ""}\n\n${es ? "Te enviamos la confirmación por email. Pagas directamente en el centro." : "We've emailed you the confirmation. You pay the studio directly."}`, "", "ok"));
   if (req.stage === "confirmed" && String(req.partner_id || "") === String(row.partner_id || "") && String(req.confirmed_time || "") === String(row.offered_time || "")) return booked();
-  const open = !!row.offered_time && ["", "pending", "accepted"].includes(String(row.outcome || "")) && !["confirmed", "cancelled", "dismissed", "no_show", "needs_review", "stale", "too_late"].includes(String(req.stage || ""));
-  if (!open) return gone();
+  const reqOpen = !["confirmed", "cancelled", "dismissed", "no_show", "needs_review", "stale", "too_late"].includes(String(req.stage || ""));
+  const open = !!row.offered_time && ["", "pending", "accepted"].includes(String(row.outcome || "")) && reqOpen;
+  // v219 (19 Nov, #126; Jordan, 19 Nov): the page follows the same rule as
+  // acceptOffer. A Yes before the start books (with "head over now" in the
+  // last 20 minutes); at or after the start it books nothing and the page
+  // says so with the next option; a lapsed offer before the start offers to
+  // ask the studio again instead of a Yes that books.
+  const lapsed = !!row.offered_time && String(row.outcome || "") === "expired" && reqOpen;
+  if (!open && !lapsed) return gone();
   const s = phone ? await getSession(phone) : null;
-  if (a === "yes") return (await acceptOffer(rowId, phone, L, s, "web")) ? booked() : gone();
+  const LC = LATE_COPY[L];
+  const slotMs = await offerSlotFor(row, req, s);
+  const first = String(req.first_name || "").trim().split(" ")[0];
+  const lateCard = (next: boolean) => pageOut(url, simpleCard(LC.lateTitle(String(row.offered_time)), `${LC.late(first, studio, String(row.offered_time))}\n\n${next ? LC.lateNext : LC.lateAskWeb}`, next ? "" : pillLink(APP, LC.choose, true)));
+  const canReask = lapsed && slotMs !== null && slotMs - Date.now() >= OFFER_LEAD_MS && String(row.offered_time) === exactTime(req);
+  if (a === "yes") {
+    const info: { late?: boolean; reask?: boolean; next?: boolean } = {};
+    if (await acceptOffer(rowId, phone, L, s, "web", info)) return booked();
+    if (info.late) return lateCard(!!info.next);
+    if (info.reask) return pageOut(url, simpleCard(studio, LC.reask(studio, String(row.offered_time)), ""));
+    return gone();
+  }
+  if (yesCall(Date.now(), slotMs) === "late") return lateCard(false);
+  if (lapsed) {
+    if (!canReask) return gone();
+    return pageOut(url, simpleCard(studio, `${pc.address ? pc.address + "\n\n" : ""}${when}\n\n${LC.reaskNote(studio, String(row.offered_time))}`, pillLink(await offerLink(rowId, "yes"), LC.reaskBtn(String(row.offered_time)), true)));
+  }
   if (a === "no") {
     await declineOffer(rowId, phone, L, s);
     return pageOut(url, simpleCard(es ? "Sin problema" : "No problem", es ? "No lo reservamos. Escríbenos por WhatsApp si quieres otra hora u otro centro." : "We won't book it. Message us on WhatsApp if you'd like another time or studio.", ""));
   }
   const price = (await offerPriceText(Number(req.id), String(row.partner_id || ""), String(req.service_name || ""), "", L)).replace(/\*/g, "");
-  const body = `${pc.address ? pc.address + "\n\n" : ""}${when}\n${trSvc(req.service_name || "Massage", L)}${price ? "\n" + price : ""}\n\n${es ? "Todavía no está reservado. Pulsa Sí para confirmarlo." : "It's not booked yet. Tap Yes to confirm it."}`;
+  // v219: no deadline earlier than the start (Jordan, 19 Nov), LATE_COPY.tapNote.
+  const body = `${pc.address ? pc.address + "\n\n" : ""}${when}\n${trSvc(req.service_name || "Massage", L)}${price ? "\n" + price : ""}\n\n${LC.tapNote(String(row.offered_time))}`;
   const extra = pillLink(await offerLink(rowId, "yes"), es ? `Sí, reserva ${row.offered_time}` : `Yes, book ${row.offered_time}`, true)
     + pillLink(await offerLink(rowId, "no"), es ? "No, gracias" : "No, thanks", false);
   return pageOut(url, simpleCard(studio, body, extra));

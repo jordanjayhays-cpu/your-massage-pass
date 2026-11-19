@@ -148,6 +148,8 @@
 //   { sweep: true }                 dispatch every request still waiting
 //   { won: { request_id, partner_id } }  stand down everyone who did not win
 //   { request_id, dry_run: true }   show who would be asked, send nothing
+//   { reask: { request_id, partner_id, row } }  v50: ask one studio again,
+//                                   with its usual ask, after its offer lapsed
 //
 // Auth: ops key (?key= or body.key) or the service role bearer.
 //
@@ -2134,6 +2136,50 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
     return new Response(JSON.stringify({ ok: true, stood_down: stoodDown }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
+
+  // v50 (19 Nov, #126; Jordan, 19 Nov): a customer tapped Yes before the start
+  // on an offer that had lapsed, after this studio was told it could give the
+  // slot away. That Yes does not confirm by itself (BOTH PARTIES TAP): wa-bot
+  // asks for this, and the studio gets its usual ask again (askOneStudio, the
+  // request's own time, the same buttons). Only the lapsed row, only on a
+  // request still open, only in sending hours and the studio's own hours,
+  // never a real studio for a test customer. The row goes back to pending, so
+  // the studio's yes runs the normal path and the customer gets a fresh offer
+  // to tap. No new kind of message.
+  if (body.reask && typeof body.reask === "object") {
+    const k = body.reask as { request_id?: number; partner_id?: string; row?: string };
+    const json = (o: Record<string, unknown>) => new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (!k.request_id || !k.partner_id) return json({ ok: false, reason: "reask.request_id and reask.partner_id required" });
+    if (!withinSendingHours()) return json({ ok: false, reason: `outside ${OPEN_HOUR}:00-${CLOSE_HOUR}:00 Madrid` });
+    const rqs = await sq(`whatsapp_requests?id=eq.${Number(k.request_id)}&select=*`);
+    const r = (Array.isArray(rqs) && rqs[0] ? rqs[0] : null) as Record<string, unknown> | null;
+    if (!r || !["studio_asked", "studio_replied", "offered", "bidding"].includes(String(r.stage || ""))) return json({ ok: false, reason: "request not open" });
+    const pid = String(k.partner_id).replace(/[^a-fA-F0-9-]/g, "");
+    const rows = await sq(`request_dispatch?request_id=eq.${Number(k.request_id)}&partner_id=eq.${pid}&select=id,outcome&limit=1`);
+    const row = (Array.isArray(rows) && rows[0] ? rows[0] : null) as Record<string, unknown> | null;
+    if (!row || row.outcome !== "expired" || (k.row && String(row.id) !== String(k.row))) return json({ ok: false, reason: "no lapsed row for this studio" });
+    const ps = await sq(`partners?id=eq.${pid}&opted_out_at=is.null&select=id,business_name,neighbourhood,city,whatsapp,phone,opening_hours`);
+    const p = (Array.isArray(ps) && ps[0] ? ps[0] : null) as Record<string, unknown> | null;
+    const wa = p ? toWa(String(p.whatsapp || p.phone || "")) : "";
+    if (!p || wa.length < 9) return json({ ok: false, reason: "studio has no WhatsApp" });
+    if (isTestCustomer(r) && !/\b(test|prueba)\b/i.test(String(p.business_name || ""))) return json({ ok: false, reason: "test customer, real studio" });
+    const shut = closedReason(p.opening_hours, r);
+    if (shut) return json({ ok: false, reason: `studio closed: ${shut}` });
+    const all = await sq(`request_dispatch?request_id=eq.${Number(k.request_id)}&select=sent_at,replied_at,accepted_at,offered_time`);
+    const several = (Array.isArray(all) ? all : []).filter((x: AskRow) => reachedStudio(x)).length > 1;
+    const claim = await sq(`request_dispatch?id=eq.${row.id}&outcome=eq.expired`, {
+      method: "PATCH", headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ outcome: "pending", sent_at: new Date().toISOString(), offered_time: null, accepted_at: null, replied_at: null }),
+    });
+    if (!Array.isArray(claim) || !claim.length) return json({ ok: false, reason: "the row changed meanwhile" });
+    const c: Candidate = { id: String(p.id), business_name: String(p.business_name || ""), area: String(p.neighbourhood || p.city || "") || null, wa, km: null, rank: 1, widened: false, score: 0 };
+    const sent = await askOneStudio(r, c, { several });
+    if (!sent.ok) {
+      await sq(`request_dispatch?id=eq.${row.id}&outcome=eq.pending`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ outcome: "expired" }) });
+      return json({ ok: false, reason: sent.error || "ask not sent" });
+    }
+    return json({ ok: true, studio: c.business_name });
   }
 
   if (!dryRun && !force && !withinSendingHours()) {
