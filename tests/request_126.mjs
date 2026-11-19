@@ -444,6 +444,30 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
 }
 
 // ---------------------------------------------------------------------------
+// 6. Studio acknowledgements and introductions (trace C; the stand-down,
+// plain-ack and template-order checks are in tests/trace_c_check.mjs), and
+// the studio's "Si, llegó a las 13:50", which was not read as an arrival and,
+// with a customer phone, would have become a time change after the visit.
+// ---------------------------------------------------------------------------
+{
+  const G = "6 studio acks";
+  const blk = between(botSrc, "// ---- v219 studio replies: pure helpers (start) ----", "// ---- v219 studio replies: pure helpers (end) ----");
+  const has = /studioSaysArrived/.test(blk);
+  check(G, "studioSaysArrived exists", has, true);
+  if (has) {
+    const A = await load(`import { AUTOREPLY_RE, parseQuotedPrice, parseOfferedTime } from ${JSON.stringify(copyUrl)};\n${stripTypeScriptTypes(blk)}\nexport { studioSaysArrived };\n`);
+    for (const [t, want, note] of [["Si, llegó a las 13:50☺️", true, "#126, 14:53"], ["Si, llego a las 13:50", true, "no accent"], ["Ya está aquí", true, ""], ["Ha llegado, gracias", true, ""], ["Llegó tarde pero la atendimos", true, ""],
+      ["No ha llegado", false, "a no-show is never an arrival"], ["no vino", false, ""], ["No llegó nadie", false, ""], ["¿Cuándo llega?", false, "a question about it"], ["Vale, gracias", false, ""]]) check(G, `studioSaysArrived ${t}`, A.studioSaysArrived(t), want, note);
+  }
+  const hs = lift(botSrc, "async function handleStudioReply(");
+  const iArr = hs.indexOf("if (creq && studioSaysArrived(freeText))"), iTc = hs.indexOf("await forwardTimeChange(creq");
+  check(G, "an arrival is read before any time change, and a started booking has no time change", [iArr > 0 && iArr < iTc, /const newTime = creq && !started \? parseOfferedTime\(freeText\) : "";/.test(hs)], [true, true], "13:50 after a 13:30 start went to the time-change branch");
+  check(G, "the plain ack after a confirmation sits before the live branch", hs.indexOf('after: "confirmation"') > 0 && hs.indexOf('after: "confirmation"') < hs.indexOf("await handleLiveStudioMessage("), true);
+  check(G, "no STUDIO_THANKS reply any more", /sendText\(from, STUDIO_THANKS\)/.test(botSrc), false, "a second stand-down after 'Ok'");
+  check(G, "aviso_centro_v3 in both files", [botSrc.includes('aviso_centro_v3: "Hola, os escribo por el masaje de {{1}}. {{2}}\\n\\nGracias."'), read("supabase/functions/dispatch-studios/index.ts").includes('aviso_centro_v3: "Hola, os escribo por el masaje de {{1}}. {{2}}\\n\\nGracias."')], [true, true], "a studio we have written to is not introduced again");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 fs.rmSync(tmp, { recursive: true, force: true });

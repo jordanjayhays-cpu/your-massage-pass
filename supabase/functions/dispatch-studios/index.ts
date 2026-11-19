@@ -1104,6 +1104,9 @@ const TPL_BODY: Record<string, string> = {
   solicitud_intro_v2: "Hola, buenas. Somos Massage Club, un servicio de reservas de masajes en Madrid; el cliente paga directamente en el centro. ¿Tenéis hueco {{1}} para {{2}}? El cliente se llama {{3}}.\n{{4}} Si podéis hacerle un 10% como cliente de Massage Club, decídmelo.\n\nJordan, de Massage Club",
   solicitud_reserva_v3: "Hola, tengo un cliente para un masaje {{1}}. Se llama {{2}} y lo quiere el {{3}}. ¿Tenéis hueco?\nEstoy preguntando a varios centros de la zona.\n\nJordan, de Massage Club",
   aviso_centro_v2: "Hola, soy Jordan, de Massage Club. Os escribo por el masaje de {{1}}. {{2}}\n\nGracias.",
+  // v50: v2 without the introduction, for studios that know us. To be
+  // submitted to Meta; until it is approved, sends fall through to v1.
+  aviso_centro_v3: "Hola, os escribo por el masaje de {{1}}. {{2}}\n\nGracias.",
   aviso_centro_v1: "Aviso de Massage Club sobre la cita de {{1}} a las {{2}}: {{3}}. Gracias por vuestra paciencia.",
   solicitud_socio_v3: "Hola, otro cliente para vosotros: un masaje {{1}} para {{2}}, el {{3}}. ¿Tenéis hueco?",
   nota_centro_v1: "Hola, os escribimos de Massage Club sobre una reserva:\n\n{{1}}\n\nPodéis responder aquí mismo. Gracias.",
@@ -1333,21 +1336,36 @@ async function sendStudioNote(to: string, text: string, short: string | NoteShor
   const name = nombreDe(rq) || "nuestro cliente";
   const hour = noteHour(rq, row);
   const p2 = [param([name, refEs(rq, hour)].filter(Boolean).join(" "), 120), param(forms.v2, 700)];
-  const r2 = await sendTemplate(to, "aviso_centro_v2", p2, []);
-  if (r2.ok) return await noteSent(to, renderedTpl("aviso_centro_v2", p2));
-  if (!TPL_NOT_LIVE.test(r2.out)) {
-    console.log("[dispatch] studio note template failed", r2.status, r2.out.slice(0, 200));
-    return { how: "template", ok: false, why: `aviso_centro_v2 ${r2.status}` };
-  }
   const v1 = forms.v1.replace(/\s+/g, " ").trim();
-  if (!hour) return await holdNote(to, text, "needs a clock time and this request has none");
-  if (!v1 || /\?$/.test(v1)) return await holdNote(to, text, "cannot carry a question");
+  const v1why = !hour ? "needs a clock time and this request has none" : (!v1 || /\?$/.test(v1)) ? "cannot carry a question" : "";
   const dd = deDia(diaFrase(rq));
   const p1 = [param(`${name}${dd ? " " + dd : ""}`, 60), hour, param(v1, 300)];
-  const r1 = await sendTemplate(to, "aviso_centro_v1", p1, []);
-  if (r1.ok) return await noteSent(to, renderedTpl("aviso_centro_v1", p1));
-  console.log("[dispatch] studio note template failed", r1.status, r1.out.slice(0, 200));
-  return { how: "template", ok: false, why: `aviso_centro_v1 ${r1.status}` };
+  // v50 (19 Nov, #126): Selvarrosa, written to 32 times since 6 Sept, read
+  // "Hola, soy Jordan, de Massage Club" on its stand-down, as did every one of
+  // the nine aviso_centro_v2 notes since 30 Oct. A studio we have written to
+  // before (after an ask, always) gets aviso_centro_v3 once Meta approves it,
+  // else v1, and v2 only as the last resort (noteTplOrder).
+  const prior = await sq(`wa_messages?phone=eq.${to}&direction=eq.out&limit=1&select=id`);
+  const known = !Array.isArray(prior) || prior.length > 0;
+  let last = "";
+  for (const tpl of noteTplOrder(known, !v1why)) {
+    const ps = tpl === "aviso_centro_v1" ? p1 : p2;
+    const r = await sendTemplate(to, tpl, ps, []);
+    if (r.ok) return await noteSent(to, renderedTpl(tpl, ps));
+    last = `${tpl} ${r.status}`;
+    if (!TPL_NOT_LIVE.test(r.out)) {
+      console.log("[dispatch] studio note template failed", tpl, r.status, r.out.slice(0, 200));
+      return { how: "template", ok: false, why: last };
+    }
+  }
+  if (v1why) return await holdNote(to, text, v1why);
+  return { how: "template", ok: false, why: last || "no note template is live" };
+}
+// v50: which closed-window note template to try, in order. Word for word the
+// same as noteTplOrder in wa-bot/bot.ts (tests/trace_c_check.mjs checks).
+function noteTplOrder(known: boolean, v1ok: boolean): string[] {
+  if (!known) return v1ok ? ["aviso_centro_v2", "aviso_centro_v1"] : ["aviso_centro_v2"];
+  return v1ok ? ["aviso_centro_v3", "aviso_centro_v1", "aviso_centro_v2"] : ["aviso_centro_v3", "aviso_centro_v2"];
 }
 
 // v48: how an ask ended, in the words a studio reads. One sentence per ending,

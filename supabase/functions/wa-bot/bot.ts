@@ -2076,6 +2076,9 @@ function prettyLogged(body: string): string {
 // the chat, the inbox and Jordan's copy show what the studio read. Blanks are
 // filled the way sendTemplate sends them (tp: one line).
 const NOTE_TPL: Record<string, string> = {
+  // v219: v2 without the introduction, for studios that know us. To be
+  // submitted to Meta; until it is approved, sends fall through to v1.
+  aviso_centro_v3: "Hola, os escribo por el masaje de {{1}}. {{2}}\n\nGracias.",
   aviso_centro_v2: "Hola, soy Jordan, de Massage Club. Os escribo por el masaje de {{1}}. {{2}}\n\nGracias.",
   aviso_centro_v1: "Aviso de Massage Club sobre la cita de {{1}} a las {{2}}: {{3}}. Gracias por vuestra paciencia.",
   nota_centro_v2: "Hola, soy Jordan, de Massage Club. {{1}}\n\nGracias.",
@@ -2699,12 +2702,43 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // v37: a studio changing the time on a booking it already won. Baan Bua
     // did exactly this (12:15 became 12:45) and it landed as a plain note.
     if (!req && drow) {
-      const rc = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${drow.request_id}&stage=eq.confirmed&partner_id=eq.${encodeURIComponent(partner.id)}&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,client_phone,languages,contact_email,area,message_text`, { headers: H() });
+      const rc = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${drow.request_id}&stage=eq.confirmed&partner_id=eq.${encodeURIComponent(partner.id)}&limit=1&select=id,first_name,service_name,studio_name,day1,time1,confirmed_day,confirmed_time,confirmed_start,arrival_status,client_phone,languages,contact_email,area,message_text`, { headers: H() });
       const rcs = await rc.json().catch(() => []);
       const creq = Array.isArray(rcs) && rcs[0] ? rcs[0] : null;
-      const newTime = creq ? parseOfferedTime(freeText) : "";
+      // v219 (19 Nov, #126): the studio answered the arrival question with
+      // "Si, llegó a las 13:50". ARRIVED_RE (copy.ts, pinned) has "ha llegado"
+      // but not "llegó", so it was not recorded (arrival_status is what makes
+      // a visit billable), and with a customer phone the 13:50 in it would
+      // have been sent to the customer as a time change after the visit. An
+      // arrival from the studio holding the booking is recorded as the
+      // "Sí, ha llegado" button records it, before any time is read.
+      if (creq && studioSaysArrived(freeText)) {
+        await recordArrival(creq, partner.business_name, from, "text");
+        return;
+      }
+      // v219: and a time once the booking has started is never a time change.
+      const startedMs = creq?.confirmed_start ? Date.parse(String(creq.confirmed_start)) : NaN;
+      const started = Number.isFinite(startedMs) && startedMs <= Date.now();
+      const newTime = creq && !started ? parseOfferedTime(freeText) : "";
       if (creq && newTime && creq.client_phone && newTime !== String(creq.confirmed_time || "")) {
         await forwardTimeChange(creq, partner, String(drow.id), newTime, freeText, from);
+        return;
+      }
+    }
+    // v219 (19 Nov, #126): a plain "ok", "vale" or "perfecto" from a studio
+    // with no open ask is an answer to a confirmation or a stand-down. It gets
+    // nothing back: no reply, no ping to the customer (handleLiveStudioMessage
+    // would send "the studio is trying to reach you" with "Ok" in it), no card.
+    // A stand-down not yet sent is still sent below (studioToldEnded).
+    // A row still open on another request is not this: that "ok" may answer
+    // the ask, so it goes on to Jordan as before.
+    if (!req && plainStudioAck(freeText)) {
+      const which = drow ? `id=eq.${Number(drow.request_id)}` : `stage_updated_at=gte.${new Date(Date.now() - 14 * 24 * 3600e3).toISOString()}`;
+      const hq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?${which}&partner_id=eq.${encodeURIComponent(partner.id)}&stage=in.(confirmed,no_show)&limit=1&select=id`, { headers: H() });
+      const holds = ((await hq.json().catch(() => [])) || [])[0] || null;
+      if (holds) {
+        quietThisTurn = true;
+        await logEvent(from, "studio_ack_quiet", { id: holds.id, after: "confirmation" });
         return;
       }
     }
@@ -2745,7 +2779,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     }
     if (!req && !liveBooking) {
       const since = new Date(Date.now() - 48 * 3600e3).toISOString();
-      const sd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(stood_down,lost,declined,expired)&created_at=gte.${since}&order=created_at.desc&limit=1&select=id,request_id,outcome`, { headers: H() });
+      const sd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(stood_down,lost,declined,expired)&created_at=gte.${since}&order=created_at.desc&limit=1&select=id,request_id,outcome,created_at`, { headers: H() });
       const sdr = await sd.json().catch(() => []);
       const sdrow = Array.isArray(sdr) && sdr[0] ? sdr[0] : null;
       if (sdrow && !AUTOREPLY_RE.test(freeText)) {
@@ -2788,13 +2822,22 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         }
         // v214 (17 Oct): Natura Spaces answered the covered line with "Vale, no
         // te preocupes, quedo super atenta para cuando quieras agendar 🥰" and
-        // got the same covered line again. Said once; a friendly answer to it
-        // gets one short thanks, and after that only Jordan hears.
+        // got the same covered line again. Said once; after that only Jordan
+        // hears, and not even Jordan for a plain "ok".
         const cl = coveredLine(sdStage, sd0 ? String(sd0.first_name || "") : "", sd0?.customer_flag === "cancelled", sd0 ? studioDayEs(sd0) : "");
         const lastOut = await coreLastOutbound(from);
-        if (lastOut === cl || lastOut === STUDIO_THANKS) {
-          if (studioAck(freeText)) {
-            if (lastOut === cl) await sendText(from, STUDIO_THANKS);
+        // v219 (19 Nov, #126): "told" is read off everything we sent this
+        // studio since the ask, not only coveredLine's own words: the
+        // stand-down is usually dispatch-studios' note. Chalalai answered it
+        // with "Ok" and got coveredLine as a second stand-down. A plain "ok"
+        // gets nothing back (v87: a thank-you needs no reply), the holding
+        // line included; STUDIO_THANKS is no longer sent.
+        const told = lastOut === cl || lastOut === STUDIO_THANKS || await studioToldEnded(from, String(sdrow.created_at || ""));
+        const act = afterEndedAction(told, freeText);
+        if (act !== "covered") {
+          if (act === "quiet") {
+            quietThisTurn = true;
+            await logEvent(from, "studio_ack_quiet", { id: sdrow.request_id, after: "stand_down" });
           } else {
             await founderCard(`${partner.business_name} wrote again after the stand-down · #${sdrow.request_id}`, {
               badge: "STUDIO MESSAGE", title: `${partner.business_name} wrote again about a request that is closed`,
@@ -2871,7 +2914,10 @@ const reqTime = (r: any): string => {
   return String(r.confirmed_time || r.time1 || "");
 };
 // v212 (16 Oct): a note about one booking to a studio whose 24 hours have
-// passed. aviso_centro_v2 first ("Hola, soy Jordan, de Massage Club. Os
+// passed. v219: to a studio we have written to before (always, after an
+// ask), aviso_centro_v3 when Meta has approved it, else v1, and v2 only as
+// the last resort; to a number we never wrote to, v2 then v1 (noteTplOrder).
+// aviso_centro_v2 ("Hola, soy Jordan, de Massage Club. Os
 // escribo por el masaje de {{1}}. {{2}}\n\nGracias.", {{1}} the client, day
 // and hour, {{2}} whole sentences). While Meta has not approved it, the
 // approved aviso_centro_v1, filled the one way dispatch-studios fills it:
@@ -2888,10 +2934,17 @@ async function studioAviso(to: string, o: { name: string; dayEs?: string; time: 
   const name = nm && !/^el cliente$/i.test(nm) ? nm : "nuestro cliente";
   const dd = deDay(o.dayEs || "");
   const p2 = [[name, dd, hour ? `a las ${hour}` : ""].filter(Boolean).join(" "), noteSentences(o.v2 || o.short)];
-  if (await sendTemplate(to, "aviso_centro_v2", "es", p2, [], renderNoteTpl("aviso_centro_v2", p2, 700), 700)) return true;
-  if (!TPL_NOT_LIVE.test(lastWaError)) return false;
   const v1 = noteShort(o.short, name);
   const why = !hour ? "this note has no clock time for it" : (!v1 || /\?$/.test(v1)) ? "it cannot carry a question" : "";
+  const p1 = [`${name}${dd ? " " + dd : ""}`.slice(0, 60), hour, v1];
+  // v219 (19 Nov, #126): Selvarrosa, 32 messages from us since 6 Sept, read
+  // "Hola, soy Jordan, de Massage Club" on its stand-down. Only a number we
+  // have never written to is introduced (noteTplOrder).
+  for (const tpl of noteTplOrder(await studioKnown(to), !why)) {
+    const ps = tpl === "aviso_centro_v1" ? p1 : p2;
+    if (await sendTemplate(to, tpl, "es", ps, [], renderNoteTpl(tpl, ps, tpl === "aviso_centro_v1" ? 300 : 700), tpl === "aviso_centro_v1" ? undefined : 700)) return true;
+    if (!TPL_NOT_LIVE.test(lastWaError)) return false;
+  }
   if (why) {
     if (o.hold !== false) {
       await founderCard(`Note not sent to a studio: send it by hand`, {
@@ -2903,8 +2956,8 @@ async function studioAviso(to: string, o: { name: string; dayEs?: string; time: 
     }
     return false;
   }
-  const p1 = [`${name}${dd ? " " + dd : ""}`.slice(0, 60), hour, v1];
-  return sendTemplate(to, "aviso_centro_v1", "es", p1, [], renderNoteTpl("aviso_centro_v1", p1));
+  // Every template the note could go in was tried and none is live.
+  return false;
 }
 // Free text in the studio's window, the aviso templates outside it. `freeText`
 // is the whole message; `shortEs` the same news in a few words for the
@@ -2982,6 +3035,15 @@ async function handleLiveStudioMessage(live: any, partner: { id: string; busines
   }
   await notifyJordanWa(`${studio} about ${name || "the customer"}'s ${time}: "${text.slice(0, 140)}". ${pinged ? "Customer pinged automatically." : pingedRecently ? "Customer already pinged in the last 30 min." : "Could not ping the customer."}`, cust || from);
 }
+// The studio says the customer came: the "Sí, ha llegado" button, or (v219)
+// the same thing in its own words ("Si, llegó a las 13:50").
+async function recordArrival(req: any, studio: string, from: string, via: "button" | "text") {
+  await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ arrival_status: "arrived", customer_flag: null }) });
+  // v153: the studio's "ha llegado" is what makes a booking billable.
+  await fetch(`${SUPABASE_URL}/rest/v1/bookings?booking_ref=eq.wa-${req.id}&completed_at=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ completed_at: new Date().toISOString(), completed_source: "studio" }) });
+  await sendText(from, "¡Gracias! Que vaya bien.");
+  await logEvent(digitsOf(req.client_phone || from), "arrived", { id: req.id, studio, via });
+}
 async function handleArrival(from: string, replyId: string, partner: { id: string; business_name: string } | null) {
   const m = replyId.match(/^arr_(yes|no)_(\d+)$/);
   if (!m) return;
@@ -2989,14 +3051,7 @@ async function handleArrival(from: string, replyId: string, partner: { id: strin
   const req = (await rr.json().catch(() => []))[0] || null;
   if (!req) return;
   const studio = partner?.business_name || req.studio_name || "";
-  if (m[1] === "yes") {
-    await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ arrival_status: "arrived", customer_flag: null }) });
-    // v153: the studio's "ha llegado" is what makes a booking billable.
-    await fetch(`${SUPABASE_URL}/rest/v1/bookings?booking_ref=eq.wa-${req.id}&completed_at=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ completed_at: new Date().toISOString(), completed_source: "studio" }) });
-    await sendText(from, "¡Gracias! Que vaya bien.");
-    await logEvent(digitsOf(req.client_phone || from), "arrived", { id: req.id, studio });
-    return;
-  }
+  if (m[1] === "yes") { await recordArrival(req, studio, from, "button"); return; }
   if (req.arrival_status === "no_show" || req.stage === "no_show") { await sendText(from, "Gracias, ya lo tenía apuntado."); return; }
   await markNoShow(req, studio, from, "studio tapped No ha venido");
 }
@@ -11248,6 +11303,14 @@ function ourQuestionOpen(last: { msg_type?: unknown; body?: unknown; created_at?
   const at = Date.parse(String(last.created_at || ""));
   return Number.isFinite(at) && nowMs - at < 30 * 60e3 && String(last.body || "").includes("?");
 }
+// v219 (19 Nov, #126): a studio saying in its own words that the customer
+// came. "Si, llegó a las 13:50" was not read (ARRIVED_RE in the pinned copy.ts
+// has "ha llegado", not "llegó"). Kept here, since copy.ts stays pinned. A
+// "no" before the verb, or a no-show phrase, is never an arrival.
+// (Letter edges by hand: \b does not see "ó" or "í" as letters.)
+const ARRIVED_TEXT_RE = /(^|[^a-zñáéíóúü])(ha llegado|lleg[oó]|ya est[aá] aqu[ií]|acaba de llegar|ha venido|vino)(?![a-zñáéíóúü])/i;
+const NOT_ARRIVED_RE = /\bno\s+(ha\s+)?(lleg|vino|venido|ha venido|se present|aparec)|no[- ]show|no ha aparecido|no se ha presentado/i;
+const studioSaysArrived = (t: string): boolean => ARRIVED_TEXT_RE.test(String(t || "")) && !NOT_ARRIVED_RE.test(String(t || ""));
 // ---- v219 studio replies: pure helpers (end) ----
 
 // ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)
@@ -11292,7 +11355,62 @@ function custSvc(name: unknown): string {
   if (!s || /^(any|any massage|anything|cualquiera|me da igual)$/i.test(s)) return "Massage";
   return s;
 }
+// A studio's plain acknowledgement and nothing else: "Ok", "Vale, gracias",
+// "Perfecto 👍", "De acuerdo". After a stand-down or a confirmation it gets no
+// reply. Narrower than studioAck on purpose: "Vale, tenemos hueco mañana"
+// carries news, so Jordan sees it (still with nothing said back).
+const ACK_PHRASES_RE = /\b(?:no te preocupes|no pasa nada|sin problema|de acuerdo|muchas gracias|mil gracias|a vosotros|a ti|muy bien|buen dia|buenos dias|buenas tardes|buenas noches|un saludo|quedo atent[ao]s?|quedamos atent[ao]s?|thank you)\b/g;
+const ACK_WORDS = new Set(["ok", "okay", "okey", "oki", "vale", "gracias", "perfecto", "perfecta", "perfect", "genial", "entendido", "entendida", "recibido", "igualmente", "estupendo", "saludos", "bien", "thanks", "great", "y"]);
+function plainStudioAck(t: unknown): boolean {
+  const raw = String(t || "").trim();
+  if (!raw || raw.length > 80 || /[?¿\d]/.test(raw)) return false;
+  const words = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[^a-zñ\s]/g, " ").replace(/\s+/g, " ").replace(ACK_PHRASES_RE, " ")
+    .split(/\s+/).filter(Boolean);
+  return words.every((w) => ACK_WORDS.has(w));
+}
+// Every way a studio is told an ask is over, from either function:
+// dispatch-studios standDownNote and standDownEmail (and their template forms)
+// and coveredLine and the "Ya no hace falta" quick reply here. A studio got
+// dispatch-studios' "lo de ... ya está cubierto" at 13:26 on 19 Nov, answered
+// "Ok", and got coveredLine as a second stand-down, because only coveredLine's
+// exact text counted as having told them.
+const STUDIO_ENDED_RE = /ya est[aá] cubierto|lo ha cubierto otro centro|ya ha reservado en otro centro|se ha quedado con otra oferta|no sigue adelante|ha cambiado de plan|ha cancelado|ya est[aá] cerrad[ao]|ya no lo necesita|no hace falta que le guard[eé]is hueco/i;
+const endedToldIn = (bodies: unknown[]): boolean => bodies.some((b) => STUDIO_ENDED_RE.test(String(b || "")));
+// What a studio's message after a closed ask gets: the stand-down once, if it
+// never heard it ("covered"); after that nothing, with Jordan shown anything
+// that is more than a plain acknowledgement ("card").
+function afterEndedAction(told: boolean, text: unknown): "covered" | "quiet" | "card" {
+  if (!told) return "covered";
+  return plainStudioAck(text) ? "quiet" : "card";
+}
+// Which closed-window note template to try, in order. A studio we have written
+// to before is never introduced again: aviso_centro_v2 opens "Hola, soy Jordan,
+// de Massage Club", and all nine v2 notes sent from 30 Oct to 19 Nov went to
+// studios with 18 to 43 earlier messages from us. aviso_centro_v3 is v2
+// without the introduction ("Hola, os escribo por el masaje de {{1}}. {{2}}
+// Gracias."); until Meta approves it, aviso_centro_v1. v2 stays the last
+// resort, because a note that reaches the studio beats one that does not.
+function noteTplOrder(known: boolean, v1ok: boolean): string[] {
+  if (!known) return v1ok ? ["aviso_centro_v2", "aviso_centro_v1"] : ["aviso_centro_v2"];
+  return v1ok ? ["aviso_centro_v3", "aviso_centro_v1", "aviso_centro_v2"] : ["aviso_centro_v3", "aviso_centro_v2"];
+}
 // ---- v219: studio words: pure helpers (end)
+// Have we ever written to this number? Any outbound row in wa_messages.
+async function studioKnown(phone: string): Promise<boolean> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.out&limit=1&select=id`, { headers: H() }).catch(() => null);
+  const rows = r ? await r.json().catch(() => null) : null;
+  // Unknown (the read failed) counts as known: no introduction is the safer miss.
+  return !Array.isArray(rows) || rows.length > 0;
+}
+// Did this studio hear that the ask is over, since we asked it? Read from what
+// we actually sent, whichever function sent it.
+async function studioToldEnded(phone: string, sinceIso: string): Promise<boolean> {
+  const since = sinceIso && !isNaN(Date.parse(sinceIso)) ? `&created_at=gte.${encodeURIComponent(sinceIso)}` : "";
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.out${since}&order=created_at.desc&limit=30&select=body`, { headers: H() }).catch(() => null);
+  const rows = r ? await r.json().catch(() => []) : [];
+  return Array.isArray(rows) && endedToldIn(rows.map((m: any) => m?.body));
+}
 
 const handleInner = async (req: Request) => {
   let payload: any = null;
