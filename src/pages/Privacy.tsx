@@ -14,8 +14,9 @@ import { LEGAL_ENTITY, postalAddress } from "@/lib/legalEntity";
  *
  * Before this page goes live (each is outside this file):
  *   - the EU representative (GDPR art. 27) is named in legalEntity.ts;
- *   - Telegram alerts carry only the request number (notify-whatsapp-request
- *     and notify-booking still send the name and WhatsApp number);
+ *   - (19 Nov) section 4 now says what the Telegram alerts really carry
+ *     (request number, name, WhatsApp number). If notify-whatsapp-request and
+ *     notify-booking are trimmed to the request number, update both lines;
  *   - the processor agreements with the providers in section 4 are in place
  *     (Supabase's is signed in its dashboard);
  *   - a Spanish data-protection adviser has read sections 3 (health data) and
@@ -238,7 +239,7 @@ export const SECTIONS: { id: string; title: Record<L, string>; body: Record<L, R
             <li>Supabase, base de datos y funciones del servidor.</li>
             <li>Vercel, alojamiento de la web.</li>
             <li>Anthropic, inteligencia artificial que lee los mensajes de WhatsApp y prepara las respuestas.</li>
-            <li>Telegram, avisos internos a Massage Club: solo el número de la solicitud, sin tu nombre ni tus datos de contacto.</li>
+            <li>Telegram, avisos internos a Massage Club cuando llega una solicitud o una reserva: el número de la solicitud, tu nombre y tu número de WhatsApp, para que podamos atenderte rápido.</li>
             <li>Google (Google Fonts), que sirve los tipos de letra de la web y recibe la dirección IP de tu dispositivo al abrir la página.</li>
             <li>Google (medición de anuncios de Google Ads) y Microsoft (Clarity), solo si aceptas las cookies.</li>
           </List>
@@ -264,7 +265,7 @@ export const SECTIONS: { id: string; title: Record<L, string>; body: Record<L, R
             <li>Supabase, the database and server functions.</li>
             <li>Vercel, website hosting.</li>
             <li>Anthropic, the AI that reads WhatsApp messages and drafts the replies.</li>
-            <li>Telegram, internal alerts to Massage Club: only the request number, without your name or contact details.</li>
+            <li>Telegram, internal alerts to Massage Club when a request or booking comes in: the request number, your name and your WhatsApp number, so we can look after you quickly.</li>
             <li>Google (Google Fonts), which serves the website's typefaces and receives your device's IP address when the page opens.</li>
             <li>Google (Google Ads measurement) and Microsoft (Clarity), only if you accept cookies.</li>
           </List>
