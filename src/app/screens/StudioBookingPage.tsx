@@ -1903,9 +1903,9 @@ function StudioBookingPageInner() {
             <MarketingOptInCard
               className="mt-6"
               email={email.trim() || null}
-              userId={userId}
-              source="booking_success"
+              source="studio_booking"
               bookingRef={done.ref}
+              lang={lang}
             />
             {nearbyBlock && <div className="mt-6">{nearbyList(false)}</div>}
 

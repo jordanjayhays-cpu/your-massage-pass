@@ -1430,8 +1430,7 @@ export default function Profile() {
             <MarketingOptInCard
               className="mt-4"
               email={user?.email ?? null}
-              userId={user?.id ?? null}
-              source="profile_setup"
+              source="profile"
             />
           </div>
         </div>
