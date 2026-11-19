@@ -13,7 +13,7 @@ import { consentEmail, consentLang, consentPhone, stopByContact, withdrawConsent
  *   With a link: /unsubscribe#u=<u>&s=<sig> (or ?u=&s=, as the consent
  *   function's unsubscribeUrl() builds it). u is the sealed token or the
  *   address, s its signature. The page reads them once and strips them from
- *   the address bar at once, so they stay out of history, and neither the
+ *   the address bar right after, so they stay out of history, and neither the
  *   Google tag nor Clarity ever loads on this path (index.html,
  *   src/lib/clarity.ts NO_TAG_PATHS). One button: a POST, never a GET, so a
  *   mail scanner that opens links unsubscribes nobody.
@@ -72,9 +72,9 @@ export type UnsubLink = { u: string; s: string; lang: string | null; tried: bool
 
 /**
  * Reads u and s from the fragment (preferred: never sent to any server) or
- * the query, then removes them from the address bar, keeping only ?lang.
+ * the query. Pure, so React may call it twice (Strict Mode).
  */
-export function readAndStripLink(): UnsubLink {
+export function readLink(): UnsubLink {
   if (typeof window === "undefined") return { u: "", s: "", lang: null, tried: false };
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(window.location.search);
@@ -82,21 +82,26 @@ export function readAndStripLink(): UnsubLink {
   const u = pick("u");
   const s = pick("s");
   const lang = hash.get("lang") || query.get("lang");
-  const tried = !!(u || s);
-  if (tried || window.location.hash) {
-    try {
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`);
-    } catch {
-      /* an old browser keeps the address; the tags still never load here */
-    }
+  return { u, s, lang, tried: !!(u || s) };
+}
+
+/** Removes the link from the address bar (and so from history), keeping only ?lang. */
+export function stripLink(lang: string | null): void {
+  if (typeof window === "undefined") return;
+  const q = new URLSearchParams(window.location.search);
+  if (!q.has("u") && !q.has("s") && !window.location.hash) return;
+  try {
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`);
+  } catch {
+    /* an old browser keeps the address; the tags still never load here */
   }
-  return { u, s, lang, tried };
 }
 
 type State = "idle" | "saving" | "done" | "failed" | "broken" | "formFailed";
 
 export default function Unsubscribe() {
-  const [link] = useState<UnsubLink>(readAndStripLink);
+  const [link] = useState<UnsubLink>(readLink);
+  useEffect(() => stripLink(link.lang), [link.lang]);
   const flowLang = useFlowLang();
   const L = consentLang(link.lang || flowLang);
   const c = UNSUBSCRIBE_COPY[L];
