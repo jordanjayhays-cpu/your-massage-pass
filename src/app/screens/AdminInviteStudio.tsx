@@ -39,37 +39,12 @@ export default function AdminInviteStudio() {
       const link = `${APP_URL}/studio-setup?token=${data.token}`;
       setInviteLink(link);
 
-      // 2. Send email via Resend
-      const response = await fetch("https://api.resend.com/emails/parse", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${import.meta.env.VITE_RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Massage Club <onboarding@massagepass.app>",
-          to: [email],
-          subject: `You're invited to join Massage Club, ${studioName}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-              <h2 style="color: #211C1A;">You're invited! 🎉</h2>
-              <p>Hi team at <strong>${studioName}</strong>,</p>
-              <p>You've been invited to join <strong>Massage Club</strong> — the curated directory of massage studios in Madrid.</p>
-              <p>Click below to set up your studio profile and start receiving bookings:</p>
-              <a href="${link}" style="display: inline-block; background: #C4622D; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 16px 0;">Set Up My Studio →</a>
-              <p style="font-size: 12px; color: #666; margin-top: 24px;">This link expires in 30 days. If you didn't expect this email, ignore it.</p>
-            </div>
-          `,
-        }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.message || "Email failed to send");
-      }
+      // 2. No email from the browser. The old code sent it with a Resend key
+      // shipped inside the website bundle, which exposed the key to every
+      // visitor. Copy the link and send it to the studio yourself.
 
       setSent(true);
-      toast.success(`Invite sent to ${email}`);
+      toast.success("Invite link ready. Copy it and send it to the studio.");
     } catch (err: any) {
       setError(err.message || "Something went wrong");
       toast.error(err.message || "Something went wrong");
@@ -91,9 +66,9 @@ export default function AdminInviteStudio() {
             <div className="h-16 w-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h2 className="font-display text-2xl font-bold mb-2">Invite Sent!</h2>
+            <h2 className="font-display text-2xl font-bold mb-2">Invite link ready</h2>
             <p className="text-muted-foreground text-sm mb-6">
-              {studioName} ({email}) can now complete their setup.
+              Copy this link and send it to {studioName} ({email}) so they can complete their setup.
             </p>
 
             <div className="bg-muted rounded-xl p-4 text-left mb-4">
@@ -110,7 +85,7 @@ export default function AdminInviteStudio() {
               Copy Link
             </Button>
             <Button onClick={() => { setSent(false); setEmail(""); setStudioName(""); }} variant="outline" className="w-full">
-              Send Another Invite
+              Create another invite
             </Button>
           </CardContent>
         </Card>
@@ -132,7 +107,7 @@ export default function AdminInviteStudio() {
             <Building2 className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="font-display text-3xl font-bold text-foreground">Invite a Studio</h1>
-          <p className="text-muted-foreground mt-2">Send an invite link to onboard a new studio partner</p>
+          <p className="text-muted-foreground mt-2">Create an invite link to onboard a new studio partner</p>
         </div>
 
         <Card className="bg-card border-border shadow-elegant">
@@ -174,9 +149,9 @@ export default function AdminInviteStudio() {
                 className="w-full h-12 bg-gradient-royal text-primary-foreground hover:opacity-90"
               >
                 {loading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending…</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating…</>
                 ) : (
-                  <><Send className="h-4 w-4 mr-2" /> Send Invite</>
+                  <><Send className="h-4 w-4 mr-2" /> Create invite link</>
                 )}
               </Button>
             </form>
