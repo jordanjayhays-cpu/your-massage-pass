@@ -6,6 +6,7 @@
 - Jordan often works very late or very early. Do not assume the time of day.
 
 ## Who / what
+- Legal entity (Jordan, 19 Nov): Massage Club is operated by Kinsol LLC, a US company. The privacy page names "Kinsol LLC, trading as Massage Club" as the data controller. Its postal address and state of registration are still to come from Jordan; never invent them.
 - Jordan Hays runs Massage Club (book.massageclub.io), a Madrid massage concierge for English speakers. WhatsApp Business +34 612 474 827. Emails: jordan@massageclub.io, jordanjayhays@gmail.com, support@massageclub.io (Workspace admin), jordan.hays@student.ie.edu (student).
 - Frontend built with Lovable (project 13ab3b1d-1034-4ac7-b40c-8e51807e553c) deploying to this repo's main; Supabase project jglftdstrowwckwqmpue for DB and edge functions.
 
