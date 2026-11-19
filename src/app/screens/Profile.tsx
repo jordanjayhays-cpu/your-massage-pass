@@ -1413,6 +1413,7 @@ export default function Profile() {
           email={user?.email ?? null}
           source="profile"
           lang={i18n.language}
+          getAccessToken={async () => (await supabase.auth.getSession()).data.session?.access_token ?? null}
         />
       </div>
 

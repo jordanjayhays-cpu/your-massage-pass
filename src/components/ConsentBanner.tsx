@@ -116,7 +116,8 @@ function setHeightVar(el: HTMLElement | null) {
  *   is padded by it, and anything fixed to the bottom sits above it.
  * - Read in the useState initialiser, so it never flashes in after first paint.
  * - Hidden entirely for visitors with the personal opt-out flag (mc_nt).
- * - Denied defaults are set in index.html before the tag loads; this only upgrades them.
+ * - Denied defaults are set in index.html, and the Google tag loads only after
+ *   Accept (window.__mcLoadGtag, basic consent mode, 19 Nov 2026).
  */
 export default function ConsentBanner() {
   const lang = useFlowLang();
@@ -162,7 +163,13 @@ export default function ConsentBanner() {
         ad_personalization: "granted",
         analytics_storage: "granted",
       });
-      // Start session replay right away, no reload needed.
+      // The Google tag loads only now (basic consent mode, index.html), and
+      // session replay starts right away, no reload needed.
+      try {
+        (window as unknown as { __mcLoadGtag?: () => void }).__mcLoadGtag?.();
+      } catch {
+        /* ignore */
+      }
       loadClarity();
     }
     setVisible(false);

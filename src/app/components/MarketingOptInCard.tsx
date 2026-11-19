@@ -134,6 +134,10 @@ type CardProps = {
   requestId?: number | string | null;
   /** Page language; anything but Spanish shows the English notice. */
   lang?: string | null;
+  /** Profile: the session's access token, sent so the function can check the account. */
+  getAccessToken?: () => Promise<string | null>;
+  /** Called once the answer is saved (a retry card hides its error line). */
+  onSaved?: (choice: ConsentChoice) => void;
   className?: string;
 };
 
@@ -150,19 +154,26 @@ export default function MarketingOptInCard({
   bookingRef,
   requestId,
   lang,
+  getAccessToken,
+  onSaved,
   className = "",
 }: CardProps) {
   const flowLang = useFlowLang();
   const L = consentLang(lang ?? flowLang);
   const saver = useConsentSaver();
   if (!email && !phone && !token) return null;
+  const pick = async (v: ConsentChoice) => {
+    const accessToken = getAccessToken ? await getAccessToken().catch(() => null) : null;
+    const ok = await saver.save({ choice: v, source, lang: L, email, phone, token, bookingRef, requestId, accessToken });
+    if (ok) onSaved?.(v);
+  };
   return (
     <ConsentSaveView
       className={className}
       lang={L}
       choice={saver.choice}
       state={saver.state}
-      onPick={(v) => void saver.save({ choice: v, source, lang: L, email, phone, token, bookingRef, requestId })}
+      onPick={(v) => void pick(v)}
     />
   );
 }

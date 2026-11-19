@@ -1,4 +1,5 @@
 import { trackEvent } from "@/lib/siteVisit";
+import { normalizePhone } from "@/lib/contactValidation";
 
 /**
  * THE KELLY RULE (Jordan, 19 Nov; CLAUDE.md). Every booking path asks, with
@@ -10,7 +11,13 @@ import { trackEvent } from "@/lib/siteVisit";
  *
  * Contract shared with the bot (supabase/functions/consent/index.ts):
  *   POST {choice, source, wording, lang, email?, phone?, token?, booking_ref?, request_id?}
- *   POST {action: "withdraw", u, s}
+ *   POST {action: "withdraw", u, s}       the signed link in a promotion
+ *   POST {action: "stop", u, lang, wording}  /unsubscribe with no link: the
+ *                                         person types their email or phone
+ *                                         (GDPR art. 7.3: withdraw where you
+ *                                         consented). Needs the consent
+ *                                         function to accept it; until then
+ *                                         the page says to write to support.
  *   -> {ok: true} on success; anything else is a failure.
  * The browser never writes the table: RLS gives anon no policy on it.
  *
@@ -87,23 +94,39 @@ export type SaveConsentInput = {
   token?: string | null;
   bookingRef?: string | null;
   requestId?: number | string | null;
+  /** The signed-in user's access token (profile answers): sent as Authorization, never in the body. */
+  accessToken?: string | null;
 };
 
 export type ConsentResult = { ok: boolean; error?: string };
 
-type Deps = { fetchImpl?: typeof fetch; retryDelayMs?: number };
+type Deps = { fetchImpl?: typeof fetch; retryDelayMs?: number; accessToken?: string | null };
 
 // The consent function refuses the whole answer when a field it is given is
 // malformed (normEmail / normPhone there), so only plausible contacts go: a
 // half-typed phone must not cost us a yes that came with a good email.
 const EMAIL_OK = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/;
 
+/** A typed email, lowercased, or undefined when it is not one. */
+export function consentEmail(raw?: string | null): string | undefined {
+  const e = (raw || "").trim().toLowerCase();
+  return e.length <= 254 && EMAIL_OK.test(e) ? e : undefined;
+}
+
+/**
+ * A typed phone as the digits every other path stores (country code
+ * included): "612 345 678" and "0034 612 345 678" both become 34612345678,
+ * the form the bot's STOP and the consent function match on.
+ */
+export function consentPhone(raw?: string | null): string | undefined {
+  const d = (normalizePhone(raw) || "").replace(/\D/g, "");
+  return d.length >= 6 && d.length <= 15 ? d : undefined;
+}
+
 /** The body sent to the function, or null when there is no way to tie the answer to a person. */
 export function consentBody(input: SaveConsentInput): Record<string, unknown> | null {
-  const e = (input.email || "").trim().toLowerCase();
-  const email = e.length <= 254 && EMAIL_OK.test(e) ? e : undefined;
-  const d = (input.phone || "").replace(/\D/g, "");
-  const phone = d.length >= 6 && d.length <= 15 ? d : undefined;
+  const email = consentEmail(input.email);
+  const phone = consentPhone(input.phone);
   const token = (input.token || "").trim() || undefined;
   if (!email && !phone && !token) return null;
   const rid = Number(input.requestId);
@@ -120,16 +143,21 @@ export function consentBody(input: SaveConsentInput): Record<string, unknown> | 
   };
 }
 
-async function postOnce(body: Record<string, unknown>, fetchImpl: typeof fetch): Promise<ConsentResult> {
+async function postOnce(body: Record<string, unknown>, fetchImpl: typeof fetch, accessToken?: string | null): Promise<ConsentResult> {
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    // The signed-in user's session, so the function can check that a profile
+    // answer comes from the account it names (CORS already allows it).
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
     const r = await fetchImpl(CONSENT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j && (j as { ok?: unknown }).ok === true) return { ok: true };
-    return { ok: false, error: `http_${r.status}` };
+    const why = j && typeof (j as { error?: unknown }).error === "string" ? `:${(j as { error: string }).error}` : "";
+    return { ok: false, error: `http_${r.status}${why}`.slice(0, 80) };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message || e || "network").slice(0, 80) };
   }
@@ -138,10 +166,13 @@ async function postOnce(body: Record<string, unknown>, fetchImpl: typeof fetch):
 /** POST, and once more after a short pause if the first try failed. */
 async function postWithRetry(body: Record<string, unknown>, deps: Deps): Promise<ConsentResult> {
   const fetchImpl = deps.fetchImpl ?? fetch;
-  const first = await postOnce(body, fetchImpl);
+  const first = await postOnce(body, fetchImpl, deps.accessToken);
   if (first.ok) return first;
+  // A refusal (bad input, signature, no matching request, too many) will not
+  // change on a second try; only a server or network failure is retried.
+  if (/^http_4\d\d/.test(first.error || "")) return first;
   await new Promise((ok) => setTimeout(ok, deps.retryDelayMs ?? 1500));
-  return postOnce(body, fetchImpl);
+  return postOnce(body, fetchImpl, deps.accessToken);
 }
 
 /**
@@ -155,7 +186,7 @@ export async function saveConsent(input: SaveConsentInput, deps: Deps = {}): Pro
     console.error("[consent] no email, phone or booking token to save the answer with");
     return { ok: false, error: "no_contact" };
   }
-  const res = await postWithRetry(body, deps);
+  const res = await postWithRetry(body, { ...deps, accessToken: deps.accessToken ?? input.accessToken ?? null });
   if (res.ok) {
     trackEvent("consent_saved", { meta: { source: input.source, choice: input.choice } });
   } else {
@@ -185,6 +216,30 @@ export async function withdrawConsent(
   } else {
     trackEvent("consent_save_error", { meta: { source: "unsubscribe", choice: "withdraw", error: res.error } });
     console.error("[consent] the unsubscribe was not saved", res.error);
+  }
+  return res;
+}
+
+/**
+ * /unsubscribe without a link: the person types the email or phone we write
+ * to (GDPR art. 7.3 and EDPB 05/2020 para 114: withdrawing must be possible
+ * where the yes was given, without switching channels). A forged stop can
+ * only stop messages, never start them.
+ */
+export async function stopByContact(
+  typed: string,
+  shown: { lang: ConsentLang; wording: string },
+  deps: Deps = {},
+): Promise<ConsentResult> {
+  const raw = (typed || "").trim();
+  const u = raw.includes("@") ? consentEmail(raw) : consentPhone(raw);
+  if (!u) return { ok: false, error: "bad_contact" };
+  const res = await postWithRetry({ action: "stop", u, lang: shown.lang, wording: shown.wording }, deps);
+  if (res.ok) {
+    trackEvent("consent_withdrawn", { meta: { source: "unsubscribe", via: "form" } });
+  } else {
+    trackEvent("consent_save_error", { meta: { source: "unsubscribe", choice: "withdraw", via: "form", error: res.error } });
+    console.error("[consent] the typed unsubscribe was not saved", res.error);
   }
   return res;
 }

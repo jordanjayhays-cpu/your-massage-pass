@@ -8,7 +8,9 @@ import {
   CONSENT_URL,
   consentBody,
   consentLang,
+  consentPhone,
   saveConsent,
+  stopByContact,
   withdrawConsent,
 } from "@/lib/marketingOptIn";
 // Same rule as src/__tests__/noDashes.test.ts (importing it would re-run its suites here).
@@ -93,6 +95,44 @@ describe("the consent contract", () => {
     expect(JSON.parse(String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual({ action: "withdraw", u: "a@b.co", s: sig, lang: "es", wording: "Toca abajo" });
     f.mockClear();
     expect(await withdrawConsent("a@b.co", "nope", {}, { fetchImpl: f as unknown as typeof fetch })).toEqual({ ok: false, error: "bad_link" });
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("stores every phone the way the bot and the consent function match it", () => {
+    // A Spanish mobile typed without +34 (the /book wizard accepts it), or with 00.
+    expect(consentPhone("612 345 678")).toBe("34612345678");
+    expect(consentPhone("0034 612 345 678")).toBe("34612345678");
+    expect(consentPhone("+34 612-345-678")).toBe("34612345678");
+    expect(consentPhone("+44 7700 900123")).toBe("447700900123");
+    expect(consentPhone("12")).toBeUndefined();
+    expect(consentBody({ choice: "yes", source: "go_page", lang: "en", phone: "612345678" })).toMatchObject({ phone: "34612345678" });
+  });
+
+  it("a refusal (4xx) is not retried; the reason travels in the error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const f = vi.fn(async () => res(403, { ok: false, error: "not_linked" }));
+    const r = await saveConsent({ choice: "yes", source: "go_page", lang: "en", email: "a@b.co" }, { fetchImpl: f as unknown as typeof fetch, retryDelayMs: 0 });
+    expect(r).toEqual({ ok: false, error: "http_403:not_linked" });
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it("a profile answer carries the session as Authorization, never in the body", async () => {
+    const f = vi.fn(async () => res(200, { ok: true }));
+    await saveConsent({ choice: "yes", source: "profile", lang: "en", email: "a@b.co", accessToken: "jwt.abc" }, { fetchImpl: f as unknown as typeof fetch, retryDelayMs: 0 });
+    const init = (f.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer jwt.abc");
+    expect(String(init.body)).not.toMatch(/jwt\.abc/);
+  });
+
+  it("the typed stop posts {action: stop, u, lang, wording} with the address in its stored form", async () => {
+    const f = vi.fn(async () => res(200, { ok: true }));
+    expect((await stopByContact(" Some@Example.com ", { lang: "en", wording: "Type the email" }, { fetchImpl: f as unknown as typeof fetch, retryDelayMs: 0 })).ok).toBe(true);
+    expect(JSON.parse(String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual({ action: "stop", u: "some@example.com", lang: "en", wording: "Type the email" });
+    f.mockClear();
+    await stopByContact("612 345 678", { lang: "es", wording: "Escribe" }, { fetchImpl: f as unknown as typeof fetch, retryDelayMs: 0 });
+    expect(JSON.parse(String((f.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toMatchObject({ u: "34612345678" });
+    f.mockClear();
+    expect(await stopByContact("nope", { lang: "en", wording: "x" }, { fetchImpl: f as unknown as typeof fetch })).toEqual({ ok: false, error: "bad_contact" });
     expect(f).not.toHaveBeenCalled();
   });
 

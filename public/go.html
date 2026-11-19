@@ -580,7 +580,8 @@ body{padding-bottom:var(--consent-h,0px)}
         <button type="button" class="addlink" id="noteOpen" aria-expanded="false" aria-controls="noteBox"><span aria-hidden="true">+</span> <span data-t="noteAdd"></span></button>
         <div class="field" id="noteBox" style="margin-top:16px" hidden>
           <label for="note"><span data-t="note"></span><span class="count" id="noteCount" aria-hidden="true"></span></label>
-          <textarea id="note" rows="2" maxlength="240" enterkeyhint="done" data-ph="notePh" aria-describedby="noteErr"></textarea>
+          <textarea id="note" rows="2" maxlength="240" enterkeyhint="done" data-ph="notePh" aria-describedby="noteHelp noteErr"></textarea>
+          <p class="help" id="noteHelp" data-t="noteHelp"></p>
           <p class="ferr" id="noteErr" role="alert"></p>
         </div>
         <button type="button" class="tog" id="remind" role="switch" aria-checked="false"><span class="box"></span><span data-t="remind"></span></button>
@@ -744,6 +745,8 @@ const T = {
     therapist: "Who gives the massage?", therapistHelp: "We ask the studio for you.",
     people: "How many people?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 or more"]],
     noteAdd: "Anything the studio should know?", note: "Anything the studio should know? (optional)", notePh: "For example: strong pressure, 90 minutes",
+    // Health data (GDPR art. 9): we do not need it, and the note goes to every studio asked.
+    noteHelp: "Please do not write health details here. You can tell the therapist at the studio. The note goes to the studios we ask.",
     blocked: "We book therapeutic massage at licensed studios, nothing else.",
     remind: "Remind me in a month to book again",
     consent: "Massage Club will message you on WhatsApp or email in a month, when it's time to book again. To stop it, reply STOP on WhatsApp or write to support@massageclub.io.",
@@ -752,7 +755,7 @@ const T = {
     mkYes: "Yes, send me offers", mkNo: "No thanks", mkPrivacy: "Privacy",
     mkFail: "We could not save your answer about offers.", mkRetry: "Try again", mkSaved: "Saved. Thank you.",
     send: "Send my request", sending: "Sending…", sendErr: "That didn't go through. Try again, or <a>message us on WhatsApp</a>.",
-    privacy: "We use your details for this request, and to send offers only if you say yes. <a>Privacy</a>", privacyRemind: "We use your details for this request, for the reminder you asked for, and to send offers only if you say yes. <a>Privacy</a>",
+    privacy: "Massage Club (Kinsol LLC) uses your details for this request, and to send offers only if you say yes. To see, correct or delete them, write to support@massageclub.io. <a>Privacy</a>", privacyRemind: "Massage Club (Kinsol LLC) uses your details for this request, for the reminder you asked for, and to send offers only if you say yes. To see, correct or delete them, write to support@massageclub.io. <a>Privacy</a>",
     doneTitle: "Request sent. We're asking the studios now.",
     req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kWho: "Who gives it", kPrice: "Price", kRemind: "Reminder", remindVal: "In a month",
     priceDone: "60 min · usually €50 to €85, paid at the studio", priceDoneCouples: "60 min · usually €50 to €85 per person, paid at the studio",
@@ -773,7 +776,7 @@ const T = {
     fOne: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
     fMassages: "Massages", fMassagesList: [["/reserve?src=footer", "Book a massage"], ["/studios", "All studios"], ["/how-it-works", "How it works"]],
     fStudios: "Studios", fStudiosList: [["/for-studios", "For studios"], ["/partner/login", "Studio login"]],
-    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"]],
+    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"], ["/legal", "Legal notice"], ["/unsubscribe", "Stop offers"]],
   },
   es: {
     h1: "Tu masaje en Madrid", docTitle: "Tu masaje en Madrid · Massage Club",
@@ -794,6 +797,7 @@ const T = {
     therapist: "¿Quién te da el masaje?", therapistHelp: "Se lo preguntamos al centro.",
     people: "¿Cuántas personas?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 o más"]],
     noteAdd: "¿Algo que deba saber el centro?", note: "¿Algo que deba saber el centro? (opcional)", notePh: "Por ejemplo: presión fuerte, 90 minutos",
+    noteHelp: "Por favor, no escribas aquí datos de salud. Puedes contárselo al terapeuta en el centro. La nota llega a los centros a los que preguntamos.",
     blocked: "Reservamos masajes terapéuticos en centros con licencia, nada más.",
     remind: "Recuérdame en un mes para volver a reservar",
     consent: "Massage Club te escribirá por WhatsApp o email dentro de un mes, cuando toque volver. Para pararlo, responde STOP por WhatsApp o escribe a support@massageclub.io.",
@@ -801,7 +805,7 @@ const T = {
     mkYes: "Sí, quiero ofertas", mkNo: "No, gracias", mkPrivacy: "Privacidad",
     mkFail: "No se ha podido guardar tu respuesta sobre las ofertas.", mkRetry: "Inténtalo de nuevo", mkSaved: "Guardado. Gracias.",
     send: "Enviar mi solicitud", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o <a>escríbenos por WhatsApp</a>.",
-    privacy: "Usamos tus datos para esta solicitud y, solo si dices que sí, para enviarte ofertas. <a>Privacidad</a>", privacyRemind: "Usamos tus datos para esta solicitud, para el recordatorio que pediste y, solo si dices que sí, para enviarte ofertas. <a>Privacidad</a>",
+    privacy: "Massage Club (Kinsol LLC) usa tus datos para esta solicitud y, solo si dices que sí, para enviarte ofertas. Para verlos, corregirlos o borrarlos, escribe a support@massageclub.io. <a>Privacidad</a>", privacyRemind: "Massage Club (Kinsol LLC) usa tus datos para esta solicitud, para el recordatorio que pediste y, solo si dices que sí, para enviarte ofertas. Para verlos, corregirlos o borrarlos, escribe a support@massageclub.io. <a>Privacidad</a>",
     doneTitle: "Solicitud enviada. Ya estamos preguntando a los centros.",
     req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kWho: "Quién te lo da", kPrice: "Precio", kRemind: "Recordatorio", remindVal: "Dentro de un mes",
     priceDone: "60 min · normalmente entre 50 y 85 €, se paga en el centro", priceDoneCouples: "60 min · normalmente entre 50 y 85 € por persona, se paga en el centro",
@@ -820,7 +824,7 @@ const T = {
     fOne: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
     fMassages: "Masajes", fMassagesList: [["/reserve?src=footer", "Reservar un masaje"], ["/studios", "Todos los centros"], ["/how-it-works", "Cómo funciona"]],
     fStudios: "Centros", fStudiosList: [["/for-studios", "Para centros"], ["/partner/login", "Acceso para centros"]],
-    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"]],
+    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"], ["/legal", "Aviso legal"], ["/unsubscribe", "Dejar de recibir ofertas"]],
   },
 };
 
@@ -961,7 +965,7 @@ function paintChrome() {
   $("sfMassagesList").innerHTML = links(t("fMassagesList"));
   $("sfStudios").textContent = t("fStudios");
   $("sfStudiosList").innerHTML = links(t("fStudiosList"));
-  $("sfCopy").textContent = `© ${madridNow().getFullYear()} Massage Club · Madrid`;
+  $("sfCopy").textContent = `© ${madridNow().getFullYear()} Kinsol LLC · Massage Club`;
   $("sfLegal").innerHTML = links(t("fLegal")) + `<li><a href="mailto:support@massageclub.io">support@massageclub.io</a></li>`;
 }
 $("back").querySelector(".ic").innerHTML = svg(ICONS.back);
@@ -1033,9 +1037,10 @@ function paint() {
 
 // ---------- Cookie choice, Clarity and the Google tag ----------
 // Same key, copy and rules as the website's ConsentBanner (src/components/
-// ConsentBanner.tsx) and index.html: Consent Mode defaults are "denied", the
-// Google tag loads after the page is up (so a gclid from an ad is seen),
-// Clarity only after Accept, and nothing at all for ?nt=1 (mc_nt).
+// ConsentBanner.tsx) and index.html: Consent Mode defaults are "denied", and
+// the Google tag and Clarity both load only after Accept (basic consent mode,
+// 19 Nov 2026: before a choice Google receives nothing, as the privacy page
+// says), and nothing at all for ?nt=1 (mc_nt).
 const CONSENT_KEY = "mc_consent";
 const CB = {
   en: { body: "We use cookies to see how the site is used and to measure our ads.", accept: "Accept", decline: "Decline", privacy: "Privacy", label: "Cookie choice" },
@@ -1052,7 +1057,7 @@ if (!noTrack) {
   if (consentGranted()) gtag("consent", "update", GRANT);
 }
 function loadGtag() {
-  if (noTrack || window.__mcGtag) return;
+  if (noTrack || window.__mcGtag || !consentGranted()) return;
   window.__mcGtag = 1;
   const sc = document.createElement("script");
   sc.async = true; sc.src = "https://www.googletagmanager.com/gtag/js?id=AW-18401185487";
@@ -1087,7 +1092,7 @@ $("cbar").onclick = (e) => {
   const b = e.target.closest("[data-c]"); if (!b) return;
   const yes = b.dataset.c === "1";
   try { localStorage.setItem(CONSENT_KEY, yes ? "granted" : "denied"); } catch {}
-  if (yes) { gtag("consent", "update", GRANT); loadClarity(); }
+  if (yes) { gtag("consent", "update", GRANT); loadGtag(); loadClarity(); }
   cookieOpen = false; paintCookieBar();
 };
 if (typeof ResizeObserver !== "undefined") new ResizeObserver(setConsentH).observe($("cbar"));

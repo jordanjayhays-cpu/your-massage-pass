@@ -27,10 +27,21 @@ function hasConsent(): boolean {
   }
 }
 
+/**
+ * Pages whose address carries a person's token or contact (an unsubscribe
+ * link, a review link, a WhatsApp booking card). Neither Clarity nor the
+ * Google tag ever runs there (index.html keeps the same list).
+ */
+export const NO_TAG_PATHS = ["/unsubscribe", "/review", "/r/"];
+export function isNoTagPath(path: string): boolean {
+  return NO_TAG_PATHS.some((p) => (p.endsWith("/") ? path.startsWith(p) : path === p || path.startsWith(p + "/")));
+}
+
 /** Injects the Clarity tag once, only when consent is granted and not opted out. */
 export function loadClarity(): void {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   if (optedOut() || !hasConsent()) return;
+  if (isNoTagPath(window.location.pathname)) return;
   const w = window as unknown as { clarity?: ClarityFn };
   if (w.clarity) return;
   if (document.querySelector(`script[src*="clarity.ms/tag/"]`)) return;

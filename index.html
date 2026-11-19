@@ -68,7 +68,14 @@
     <link rel="icon" type="image/png" href="/brand/mc-avatar-terracotta.png">
     <link rel="apple-touch-icon" href="/brand/mc-avatar-terracotta.png">
 
-    <!-- Google Consent Mode v2: denied defaults MUST run before the gtag script -->
+    <!-- Google tag, basic consent mode (19 Nov 2026). The tag itself
+         (gtag.js) loads only after the visitor taps "Accept" on the cookie
+         notice: before that, Google receives nothing, not even a cookieless
+         ping with the page address. The privacy page (section 9) says so, and
+         it must stay true. ConsentBanner calls window.__mcLoadGtag() on Accept.
+         Never on pages whose address carries a person's token or contact
+         (/unsubscribe, /review, /r/...): those addresses must not reach Google.
+         KEEP IN SYNC with public/go.html and src/lib/clarity.ts (NO_TAG_PATHS). -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
@@ -80,34 +87,45 @@
         wait_for_update: 500
       });
 
-      // Honour the personal analytics opt-out (?nt=1 → localStorage "mc_nt"):
-      // when set, the Google tag is never loaded at all.
       (function () {
-        try {
-          var p = new URLSearchParams(window.location.search).get('nt');
-          if (p === '1') localStorage.setItem('mc_nt', '1');
-          else if (p === '0') localStorage.removeItem('mc_nt');
-          if (localStorage.getItem('mc_nt') === '1') return;
-        } catch (e) { /* ignore */ }
-
-        // Re-apply a previously granted consent choice before the tag loads.
-        try {
-          if (localStorage.getItem('mc_consent') === 'granted') {
-            gtag('consent', 'update', {
-              ad_storage: 'granted',
-              ad_user_data: 'granted',
-              ad_personalization: 'granted',
-              analytics_storage: 'granted'
-            });
-          }
-        } catch (e) { /* ignore */ }
-
-        var s = document.createElement('script');
-        s.async = true;
-        s.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18401185487';
-        document.head.appendChild(s);
-        gtag('js', new Date());
-        gtag('config', 'AW-18401185487');
+        function noTagPath() {
+          var p = window.location.pathname;
+          return p === '/unsubscribe' || p.indexOf('/unsubscribe/') === 0 || p === '/review' || p.indexOf('/review/') === 0 || p.indexOf('/r/') === 0;
+        }
+        function optedOut() {
+          // The personal analytics opt-out (?nt=1 sets localStorage "mc_nt").
+          try {
+            var p = new URLSearchParams(window.location.search).get('nt');
+            if (p === '1') localStorage.setItem('mc_nt', '1');
+            else if (p === '0') localStorage.removeItem('mc_nt');
+            return localStorage.getItem('mc_nt') === '1';
+          } catch (e) { return false; }
+        }
+        function granted() {
+          try {
+            var v = localStorage.getItem('mc_consent');
+            return v === 'granted' || v === 'accepted';
+          } catch (e) { return false; }
+        }
+        var nt = optedOut();
+        window.__mcLoadGtag = function () {
+          if (nt || window.__mcGtag || noTagPath() || !granted()) return;
+          window.__mcGtag = 1;
+          gtag('consent', 'update', {
+            ad_storage: 'granted',
+            ad_user_data: 'granted',
+            ad_personalization: 'granted',
+            analytics_storage: 'granted'
+          });
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18401185487';
+          document.head.appendChild(s);
+          gtag('js', new Date());
+          gtag('config', 'AW-18401185487');
+        };
+        // A choice made on an earlier visit.
+        window.__mcLoadGtag();
       })();
     </script>
 </head>
