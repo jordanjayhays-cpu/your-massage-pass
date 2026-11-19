@@ -776,7 +776,7 @@ const T = {
     fOne: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
     fMassages: "Massages", fMassagesList: [["/reserve?src=footer", "Book a massage"], ["/studios", "All studios"], ["/how-it-works", "How it works"]],
     fStudios: "Studios", fStudiosList: [["/for-studios", "For studios"], ["/partner/login", "Studio login"]],
-    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"], ["/legal", "Legal notice"], ["/unsubscribe", "Stop offers"]],
+    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"], ["/legal", "Legal notice"], ["/unsubscribe", "Unsubscribe"]],
   },
   es: {
     h1: "Tu masaje en Madrid", docTitle: "Tu masaje en Madrid · Massage Club",
@@ -824,7 +824,7 @@ const T = {
     fOne: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
     fMassages: "Masajes", fMassagesList: [["/reserve?src=footer", "Reservar un masaje"], ["/studios", "Todos los centros"], ["/how-it-works", "Cómo funciona"]],
     fStudios: "Centros", fStudiosList: [["/for-studios", "Para centros"], ["/partner/login", "Acceso para centros"]],
-    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"], ["/legal", "Aviso legal"], ["/unsubscribe", "Dejar de recibir ofertas"]],
+    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"], ["/legal", "Aviso legal"], ["/unsubscribe", "Darse de baja"]],
   },
 };
 
@@ -1338,6 +1338,9 @@ $("mkBtns").onclick = (e) => {
 // with the answer (GDPR art. 7). One retry; a failure is tracked, logged and
 // shown on the sent screen with a Try again, never silent.
 const CONSENT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/consent";
+// KEEP IN SYNC with EMAIL_RE in supabase/functions/consent/index.ts and
+// EMAIL_OK in src/lib/marketingOptIn.ts.
+const CONSENT_EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/;
 async function postConsent(payload) {
   try {
     const r = await fetch(CONSENT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -1352,7 +1355,8 @@ async function saveMk() {
   if (!p) return;
   sent.mk = "saving";
   let res = await postConsent(p);
-  if (!res.ok) { await new Promise((ok) => setTimeout(ok, 1500)); res = await postConsent(p); }
+  // Only a server or network failure is retried: a refusal (4xx) would not change.
+  if (!res.ok && !/^http_4/.test(res.why)) { await new Promise((ok) => setTimeout(ok, 1500)); res = await postConsent(p); }
   if (res.ok) {
     sent.mk = sent.mkRetried ? "saved" : "ok";
     track("consent_saved", { source: p.source, choice: p.choice, retried: !!sent.mkRetried });
@@ -1436,9 +1440,15 @@ $("youForm").onsubmit = async (ev) => {
     // Only an answer the customer gave is saved; no answer saves nothing.
     if (S.mk === "yes" || S.mk === "no") {
       const rid = Number(j.id);
+      // The consent function's own email check (normEmail there) is stricter
+      // than the form's: an address it would refuse is left out, so the answer
+      // still goes with the phone instead of failing whole.
+      const mkEmail = String(email || "").trim().toLowerCase();
+      const mkPhone = phone ? phone.replace(/\D/g, "") : "";
       sent.mkPayload = {
-        choice: S.mk, source: "go_page", wording: T[L].mkQ, lang: L, email,
-        phone: phone ? phone.replace(/\D/g, "") : undefined,
+        choice: S.mk, source: "go_page", wording: T[L].mkQ, lang: L,
+        email: mkEmail.length <= 254 && CONSENT_EMAIL_RE.test(mkEmail) ? mkEmail : undefined,
+        phone: mkPhone.length >= 6 && mkPhone.length <= 15 ? mkPhone : undefined,
         request_id: Number.isSafeInteger(rid) && rid > 0 ? rid : undefined,
       };
       void saveMk();

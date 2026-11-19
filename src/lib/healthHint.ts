@@ -19,3 +19,24 @@ export function noteHealthHint(lang?: string | null): string {
   const k = String(lang || "en").slice(0, 2).toLowerCase();
   return NOTE_HEALTH_HINT[k] || NOTE_HEALTH_HINT.en;
 }
+
+/**
+ * The first layer of the privacy information, next to every booking form's
+ * contact fields (LOPDGDD art. 11.2: who is responsible, what for, and that
+ * you can exercise your rights). public/go.html carries the same en/es words
+ * (privacy, privacyRemind).
+ */
+export const PRIVACY_FIRST_LAYER: Record<string, string> = {
+  en: "Massage Club (Kinsol LLC) uses your details for this request, and to send offers only if you say yes. To see, correct or delete them, write to support@massageclub.io.",
+  es: "Massage Club (Kinsol LLC) usa tus datos para esta solicitud y, solo si dices que sí, para enviarte ofertas. Para verlos, corregirlos o borrarlos, escribe a support@massageclub.io.",
+  fr: "Massage Club (Kinsol LLC) utilise vos données pour cette demande et, seulement si vous dites oui, pour vous envoyer des offres. Pour les consulter, les corriger ou les supprimer, écrivez à support@massageclub.io.",
+  de: "Massage Club (Kinsol LLC) nutzt deine Daten für diese Anfrage und, nur wenn du Ja sagst, um dir Angebote zu schicken. Um sie einzusehen, zu korrigieren oder zu löschen, schreib an support@massageclub.io.",
+  it: "Massage Club (Kinsol LLC) usa i tuoi dati per questa richiesta e, solo se dici di sì, per inviarti offerte. Per vederli, correggerli o cancellarli, scrivi a support@massageclub.io.",
+  pt: "O Massage Club (Kinsol LLC) usa os teus dados para este pedido e, só se disseres que sim, para te enviar ofertas. Para os veres, corrigires ou apagares, escreve para support@massageclub.io.",
+  zh: "Massage Club（Kinsol LLC）将你的信息用于本次请求；只有在你同意后，才会向你发送优惠。如需查看、更正或删除，请写信至 support@massageclub.io。",
+};
+
+export function privacyFirstLayer(lang?: string | null): string {
+  const k = String(lang || "en").slice(0, 2).toLowerCase();
+  return PRIVACY_FIRST_LAYER[k] || PRIVACY_FIRST_LAYER.en;
+}

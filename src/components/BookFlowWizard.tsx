@@ -11,6 +11,7 @@ import { DealsConfirmationLine } from "@/components/DealsLink";
 import AccountOfferBlock from "@/components/AccountOfferBlock";
 import MarketingOptInCard, { ConsentQuestion } from "@/app/components/MarketingOptInCard";
 import { CONSENT_COPY, consentLang, saveConsent, type ConsentChoice } from "@/lib/marketingOptIn";
+import { privacyFirstLayer } from "@/lib/healthHint";
 import { supabase } from "@/lib/supabase";
 import { useLastBooking } from "@/lib/useLastBooking";
 import { linkRequestToUser } from "@/lib/pendingAccount";
@@ -702,7 +703,8 @@ export default function BookFlowWizard({
   // The Kelly rule (19 Nov): the offers answer, optional, saved after the
   // request went through (never blocks it). null = not answered.
   const [mkChoice, setMkChoice] = useState<ConsentChoice | null>(null);
-  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | null>(null);
+  // "retried": the answer failed, then the retry card saved it.
+  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | "retried" | null>(null);
   const mkLang = consentLang(lang);
   const [hint, setHint] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
@@ -1101,10 +1103,10 @@ export default function BookFlowWizard({
         />
         {/* Offers: asked once, before Send. Here only if that answer could
             not be saved. */}
-        {mkSave === "failed" && (
+        {(mkSave === "failed" || mkSave === "retried") && (
           <div className="mt-6">
-            <p role="alert" className="mb-2 text-sm text-destructive">{CONSENT_COPY[mkLang].notSaved}</p>
-            <MarketingOptInCard source="go_page" email={email.trim()} phone={phone.trim() || null} lang={mkLang} />
+            {mkSave === "failed" && <p role="alert" className="mb-2 text-sm text-destructive">{CONSENT_COPY[mkLang].notSaved}</p>}
+            <MarketingOptInCard source="go_page" email={email.trim()} phone={phone.trim() || null} lang={mkLang} onSaved={() => setMkSave("retried")} />
           </div>
         )}
         <DealsConfirmationLine className="mt-6" />
@@ -1397,7 +1399,9 @@ export default function BookFlowWizard({
       )}
 
       {step === 4 && <ConsentQuestion className="mt-6" lang={mkLang} value={mkChoice} onChange={setMkChoice} />}
-      {step === 4 && <p className="mt-4 text-xs text-muted-foreground">{t.consent}</p>}
+      {/* First layer of the privacy information (LOPDGDD art. 11), in place
+          of "By booking you agree we can contact you": booking needs no consent. */}
+      {step === 4 && <p className="mt-4 text-xs text-muted-foreground">{privacyFirstLayer(lang)}</p>}
 
       <div className="mt-4" ref={continueWrapRef}>
         {step < 4 ? (

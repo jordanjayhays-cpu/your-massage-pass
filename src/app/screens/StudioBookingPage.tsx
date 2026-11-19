@@ -28,7 +28,7 @@ import AccountOfferBlock from "@/components/AccountOfferBlock";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { markStudioVisited } from "@/lib/visitedStudios";
-import { noteHealthHint } from "@/lib/healthHint";
+import { noteHealthHint, privacyFirstLayer } from "@/lib/healthHint";
 import MarketingOptInCard, { ConsentQuestion } from "@/app/components/MarketingOptInCard";
 import { CONSENT_COPY, consentLang, saveConsent, type ConsentChoice, type SaveConsentInput } from "@/lib/marketingOptIn";
 import StudioPlaceMap from "@/app/components/StudioPlaceMap";
@@ -990,7 +990,8 @@ function StudioBookingPageInner() {
   // request goes first and never waits for it (LOPDGDD 6.3); the answer is
   // saved after, through the consent function.
   const [mkChoice, setMkChoice] = useState<ConsentChoice | null>(null);
-  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | null>(null);
+  // "retried": the answer failed, then the retry card below saved it.
+  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | "retried" | null>(null);
   // bookings.id of a claimed-studio booking, so a retry is tied to it.
   const bookingIdRef = useRef<string | null>(null);
 
@@ -1847,11 +1848,12 @@ function StudioBookingPageInner() {
   };
   // Shown on the sent screen only when the answer could not be saved: says
   // so, and asks again (a tap saves at once).
+  // Once the retry saves, its own "Done" stays and the red line goes.
   const mkRetryBlock = (who: { source: "studio_booking" | "studio_request"; email: string; phone: string | null; bookingRef?: string | null }) =>
-    mkSave === "failed" ? (
+    mkSave === "failed" || mkSave === "retried" ? (
       <div className="mt-6 text-left" data-testid="consent-retry">
-        <p role="alert" className="mb-2 text-sm" style={{ color: "#B03A2E" }}>{CONSENT_COPY[mkLang].notSaved}</p>
-        <MarketingOptInCard source={who.source} email={who.email || null} phone={who.phone} bookingRef={who.bookingRef} lang={mkLang} />
+        {mkSave === "failed" && <p role="alert" className="mb-2 text-sm" style={{ color: "#B03A2E" }}>{CONSENT_COPY[mkLang].notSaved}</p>}
+        <MarketingOptInCard source={who.source} email={who.email || null} phone={who.phone} bookingRef={who.bookingRef} lang={mkLang} onSaved={() => setMkSave("retried")} />
       </div>
     ) : null;
 
@@ -2522,7 +2524,10 @@ function StudioBookingPageInner() {
                         </div>
                       )}
                     </div>
-                    <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
+                    <div>
+                      <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
+                      <p className="mt-2 text-xs leading-snug" style={{ color: "#8a7460" }}>{privacyFirstLayer(lang)}</p>
+                    </div>
                     {hoSendError && (
                       <p role="alert" className="rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>
                         {sp.sendError}
@@ -2775,21 +2780,12 @@ function StudioBookingPageInner() {
         is_first_visit: customerProfile?.is_first_massage ?? null,
         client_preferences: clientPreferences,
       };
-      // The booking row's flag mirrors a yes given on this page; the record of
-      // every answer (yes, no, with the words shown) is marketing_optins. If the
-      // live insert policy were ever to refuse the flag, the booking still goes
-      // through without it, and the answer is saved by the consent function.
-      const mkYes = mkChoice === "yes";
-      let { data, error } = await supabase.from("bookings").insert({
-        ...bookingRow,
-        marketing_opt_in: mkYes,
-        marketing_opt_in_at: mkYes ? new Date().toISOString() : null,
-      }).select("id").single();
-      if (error && mkYes && /row-level security|42501/i.test(`${error.message} ${(error as { code?: string }).code || ""}`)) {
-        ({ data, error } = await supabase.from("bookings").insert({
-          ...bookingRow, marketing_opt_in: false, marketing_opt_in_at: null,
-        }).select("id").single());
-      }
+      // The offers answer lives only in marketing_optins (the consent
+      // function, below). bookings.marketing_opt_in is a legacy flag: it is
+      // never written from here, because a copy that a withdrawal never clears
+      // would say "yes" for someone who stopped (review, 19 Nov). Nothing may
+      // read it to decide who gets a promotion.
+      const { data, error } = await supabase.from("bookings").insert(bookingRow).select("id").single();
 
       if (error) throw new Error(error.message);
       bookingIdRef.current = data?.id ? String(data.id) : null;
@@ -3415,7 +3411,10 @@ function StudioBookingPageInner() {
                         </span>
                       </label>
                     )}
-                    <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
+                    <div>
+                      <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
+                      <p className="mt-2 text-xs leading-snug" style={{ color: "#8a7460" }}>{privacyFirstLayer(lang)}</p>
+                    </div>
                     <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{c.continueLabel}</button>
                   </form>
                 </Section>
