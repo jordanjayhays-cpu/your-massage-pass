@@ -136,7 +136,7 @@ export { ensureBooking };
 const v204 = between(botSrc, "// ---- v204 offer step: pure helpers (start) ----", "// ---- v204 offer step: pure helpers (end) ----");
 const O = await load(`import { askBand, stripAcc, madridMidnight, madridInstant, resolveRequestDate, detectTime, COPY, trSvc } from ${JSON.stringify(copyUrl)};\n`
   + stripTypeScriptTypes(v204) + `\nconst __names = {};\n`
-  + ["yesCall", "YES_HURRY_MS", "HURRY_STUDIO_ES", "withLine", "offerSubject", "LATE_COPY", "offerSlotAt", "offerDayLabel", "offerDayPhrase", "studioWordDay", "whenFor", "OFFER_LEAD_MS", "OFFER_DATE_FMT", "MADRID_HM", "offerSchedule", "offerNudgeAt", "parseOfferSwitch", "isAwayMessage", "offerEmailWait", "emailOfferHold"]
+  + ["yesCall", "YES_HURRY_MS", "HURRY_STUDIO_ES", "offerFitsDay", "offerFitsTime", "offerDayDate", "askWindow", "windowText", "offerBody", "offerButtons", "OFFER_COPY", "offerFar", "offerMissBy", "withLine", "offerSubject", "LATE_COPY", "offerSlotAt", "offerDayLabel", "offerDayPhrase", "studioWordDay", "whenFor", "OFFER_LEAD_MS", "OFFER_DATE_FMT", "MADRID_HM", "offerSchedule", "offerNudgeAt", "parseOfferSwitch", "isAwayMessage", "offerEmailWait", "emailOfferHold"]
     .map((n) => `try { __names.${n} = ${n}; } catch {}`).join("\n")
   + `\nexport { __names, madridMidnight, madridInstant, resolveRequestDate, COPY, trSvc };\n`);
 const P = O.__names;
@@ -322,6 +322,92 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
   }
   const so = between(botSrc, 'if (payload?.ops === "studio_offer") {', 'if (payload?.ops === "reset_chat")');
   check(G, "ops studio_offer keeps the typed price", /quoted_price: Number\(payload\.price\)/.test(so), true, "studio-times sends eur= from its check page");
+}
+
+// ---------------------------------------------------------------------------
+// 4. One offer email per studio offer. The studio's WhatsApp yes (12:20:51)
+// and its tap in our earlier offer email (12:21:37) both ran forwardOffer on
+// the same row, and the customer, with no WhatsApp session, got the same
+// offer email twice. The first email also went 22 seconds before the price.
+// ---------------------------------------------------------------------------
+{
+  const G = "4 one offer email";
+  check(G, "offerEmailWait exists", typeof P.offerEmailWait, "function");
+  if (typeof P.offerEmailWait === "function") {
+    check(G, "offerEmailWait", [P.offerEmailWait(M(13, 30), M(12, 20, 51), false, true), P.offerEmailWait(M(13, 0), M(12, 21), false, true), P.offerEmailWait(M(13, 30), M(12, 21), true, true), P.offerEmailWait(M(13, 30), M(12, 21), false, false), P.offerEmailWait(null, M(12, 21), false, true)],
+      [180000, 0, 0, 0, 180000], "#126: 13:30 tapped at 12:20 waits up to 3 min; under an hour away it never waits; a written price or no price ask never waits");
+  }
+  const fo = lift(botSrc, "async function forwardOffer(");
+  const sh = lift(botSrc, "async function sendHeldOfferEmail(");
+  const run = async () => {
+    T.now = M(12, 20, 51);
+    const state = { offered_at: null, offered_time_c: null, via: null, quoted_price: null };
+    const emails = [];
+    const row = () => ({ id: "row-1", request_id: 9126, partner_id: "p-1", phone: "34600000001", offered_time: "13:30", outcome: "accepted", reply_text: "Sí, tengo hueco (botón)", replied_at: new Date(M(12, 20, 51)).toISOString(), customer_answer: null, customer_offered_at: state.offered_at, customer_offered_time: state.offered_time_c, customer_offer_via: state.via, quoted_price: state.quoted_price, discount_pct: null });
+    const req = { id: 9126, first_name: "Maria", service_name: "Relaxing massage", day1: "Thursday 19 Nov, 13:30", time1: "13:30", proposed_time: "13:30", contact_email: "cliente9126@correo.invalid", client_phone: null, languages: null, stage: "studio_asked", message_text: "Quiere: Not sure", created_at: new Date(M(12, 9)).toISOString(), area: "Chamberí" };
+    const env = {
+      Date: FakeDate, SUPABASE_URL: "https://db.invalid", H: () => ({}),
+      fetch: async (u, o = {}) => {
+        u = decodeURIComponent(String(u));
+        const body = JSON.parse(o.body || "{}");
+        if (o.method === "PATCH" && u.includes("request_dispatch?id=eq.row-1")) {
+          if (u.includes("&or=(customer_offered_at.is.null,customer_offered_time.neq.")) {
+            const t = u.match(/customer_offered_time\.neq\.([^)]*)\)/)[1];
+            if (state.offered_at && state.offered_time_c === t) return res(200, []);
+          }
+          if (u.includes("customer_offer_via=eq.email_pending") && state.via !== "email_pending") return res(200, []);
+          if ("customer_offered_at" in body) state.offered_at = body.customer_offered_at;
+          if ("customer_offered_time" in body) state.offered_time_c = body.customer_offered_time;
+          if ("customer_offer_via" in body) state.via = body.customer_offer_via;
+          return res(200, [row()]);
+        }
+        if (u.includes("request_dispatch?id=eq.row-1")) return res(200, [row()]);
+        if (u.includes("whatsapp_requests?id=eq.")) return res(200, [req]);
+        return res(200, []);
+      },
+      digitsOf: (x) => String(x || "").replace(/[^0-9]/g, ""),
+      getSession: async () => ({ step: "", data: {} }),
+      partnerCard: async () => ({ business_name: "Estudio Uno", address: "Calle Inventada 1", phone: "", neighbourhood: "Chamberí" }),
+      dispatchRowFor: async () => row(),
+      emailOffer: async (...a) => { emails.push(a); return true; },
+      waWindowOpen: async () => false,
+      resolveRequestDate: O.resolveRequestDate, madridMidnight: O.madridMidnight, COPY: O.COPY, trSvc: O.trSvc, trSvcLow: (n) => String(n || "").toLowerCase(),
+      dayLabelFor: () => "Today", parseQuotedPrice: C2.parseQuotedPrice, parseOfferedTimes: () => [],
+      OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"],
+      FAKE_NUM_RE: /(^|\D)34600000\d{3}(\D|$)/, TEST_NAME_RE: /\b(test|prueba|uitest|mctest)\b/i,
+      ...P,
+    };
+    const { fns } = sandbox([fo, sh, lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), one("isSameDayReq")].filter(Boolean), env, sh ? ["forwardOffer", "sendHeldOfferEmail"] : ["forwardOffer"]);
+    return { fns, state, emails };
+  };
+  const C2 = await import(copyUrl);
+  if (fo) {
+    // Two taps from two channels, no price ask: one email.
+    const a = await run();
+    const first = await a.fns.forwardOffer({ ...{ id: 9126, first_name: "Maria", service_name: "Relaxing massage", day1: "Thursday 19 Nov, 13:30", time1: "13:30", proposed_time: "13:30", contact_email: "cliente9126@correo.invalid", client_phone: null, languages: null, stage: "studio_asked", message_text: "Quiere: Not sure", created_at: new Date(M(12, 9)).toISOString(), area: "Chamberí" } }, { id: "p-1", business_name: "Estudio Uno" }, "row-1", "13:30", "Sí, tengo hueco (botón)", "34600000001");
+    T.now = M(12, 21, 37);
+    const second = await a.fns.forwardOffer({ id: 9126, first_name: "Maria", service_name: "Relaxing massage", day1: "Thursday 19 Nov, 13:30", time1: "13:30", proposed_time: "13:30", contact_email: "cliente9126@correo.invalid", client_phone: null, languages: null, stage: "studio_asked", message_text: "Quiere: Not sure", created_at: new Date(M(12, 9)).toISOString(), area: "Chamberí" }, { id: "p-1", business_name: "Estudio Uno" }, "row-1", "13:30", "Sí, a las 13:30 (email)", "", { dayHint: "", ownOption: true });
+    check(G, "the WhatsApp tap then the email tap on the same row", { first, second, emails: a.emails.length }, { first: "email", second: "already", emails: 1 }, "#126: two offer emails 40 seconds apart");
+    // The tap path asks for the price: the email waits, and goes once with it.
+    if (a.fns.sendHeldOfferEmail) {
+      const b = await run();
+      const held = await b.fns.forwardOffer({ id: 9126, first_name: "Maria", service_name: "Relaxing massage", day1: "Thursday 19 Nov, 13:30", time1: "13:30", proposed_time: "13:30", contact_email: "cliente9126@correo.invalid", client_phone: null, languages: null, stage: "studio_asked", message_text: "Quiere: Not sure", created_at: new Date(M(12, 9)).toISOString(), area: "Chamberí" }, { id: "p-1", business_name: "Estudio Uno" }, "row-1", "13:30", "Sí, tengo hueco (botón)", "34600000001", { willAskPrice: true });
+      check(G, "held for the price", { held, emails: b.emails.length, via: b.state.via }, { held: "email_pending", emails: 0, via: "email_pending" });
+      b.state.quoted_price = 76.5;
+      T.now = M(12, 21, 20);
+      const went = await b.fns.sendHeldOfferEmail("row-1", "price");
+      const again = await b.fns.sendHeldOfferEmail("row-1", "timer");
+      check(G, "the price arrives: one email, with the studio's price", { went, again, emails: b.emails.length, price: String(b.emails[0]?.[7] || "") }, { went: true, again: false, emails: 1, price: b.emails[0] ? O.COPY.en.priceLine(76.5, 60, false) : "" }, "#126 would have had one email at 12:21:20 with 76.50 EUR");
+      check(G, "the price line claims no Massage Club rate the studio did not give", /Massage Club/i.test(String(b.emails[0]?.[7] || "")), false, "the studio only wrote 76,50");
+    }
+  }
+  const so = between(botSrc, 'if (payload?.ops === "studio_offer") {', 'if (payload?.ops === "reset_chat")');
+  check(G, "ops studio_offer: the same time on the same row goes nowhere again", /customer_offered_time[\s\S]{0,600}already: true/.test(so), true);
+  check(G, "forwardOffer claims the row before any email", /customer_offered_at\.is\.null[\s\S]{0,15000}emailOffer\(/.test(fo), true);
+  check(G, "the price capture sends a held email", /customer_offer_via === "email_pending"\) await sendHeldOfferEmail\(String\(pdr\.id\), "price"\)/.test(botSrc), true);
+  check(G, "the settle sweep sends held emails when due", /const heldMails = await sendDueOfferEmails\(\);/.test(botSrc) && /customer_offer_via=eq\.email_pending&offer_email_due_at=lte\./.test(botSrc), true);
+  const mig = read("supabase/migrations/20261119_offer_once.sql");
+  check(G, "migration: the columns and four switches, all off", [/add column if not exists customer_offered_at/.test(mig), /add column if not exists offer_email_due_at/.test(mig), ["OFFER_NUDGE", "OFFER_PRICE_UPDATE", "OFFER_LAPSE_EMAIL", "ARRIVAL_CHECK"].map((k) => new RegExp(`\\('${k}', 'off'\\)`).test(mig))], [true, true, [true, true, true, true]]);
 }
 
 // ---------------------------------------------------------------------------

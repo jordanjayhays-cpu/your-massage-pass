@@ -2510,11 +2510,14 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
         const drow = await dispatchRowFor(requestId, partner.id, from);
         if (drow && drow.outcome !== "won") {
           if (drow.outcome !== "accepted") await patchDispatch(drow.id, { outcome: "accepted", accepted_at: new Date().toISOString(), replied_at: new Date().toISOString() });
-          const fwd = await forwardOffer(req, partner, String(drow.id), exactTime(req), "Sí, tengo hueco (botón)", from);
+          const fwd = await forwardOffer(req, partner, String(drow.id), exactTime(req), "Sí, tengo hueco (botón)", from, { willAskPrice: !drow.quoted_price });
           // v204 review (12 Oct): never right after "no os guardéis el hueco"
           // (a time too close, a dearer one) or about a request just closed
           // (muted). Only while the time is still in play.
-          if (!drow.quoted_price && ["whatsapp", "email", "none", "queued", "held_window", "held"].includes(fwd)) await sendText(from, priceAsk(req, await severalAsked(requestId)));
+          // v219: "email_pending" is an offer going by email in a moment, so
+          // the price is asked; "already" (the offer was with the customer
+          // before, from this studio's other channel) is not asked twice.
+          if (!drow.quoted_price && ["whatsapp", "email", "email_pending", "none", "queued", "held_window", "held"].includes(fwd)) await sendText(from, priceAsk(req, await severalAsked(requestId)));
           await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name, time: exactTime(req) });
           return;
         }
@@ -2610,11 +2613,16 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     if (quotedNow !== null) {
       try {
         const sinceP = new Date(Date.now() - 48 * 3600e3).toISOString();
-        const pd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${sinceP}&order=created_at.desc&limit=1&select=id`, { headers: H() });
+        // v219: select=* so a held offer email (customer_offer_via) is seen,
+        // and a database without that column still captures the price.
+        const pd = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${sinceP}&order=created_at.desc&limit=1&select=*`, { headers: H() });
         const pdr = (await pd.json().catch(() => []))[0] || null;
         if (pdr) {
           await patchDispatch(pdr.id, { quoted_price: quotedNow, replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500) });
           console.log("[studio] quoted price", quotedNow, "from", partner.business_name);
+          // v219 (19 Nov, #126): the offer email was waiting for exactly this
+          // (email_pending): it goes now, once, with the studio's own price.
+          if (pdr.customer_offer_via === "email_pending") await sendHeldOfferEmail(String(pdr.id), "price");
         }
       } catch (e) { console.log("[studio] price capture failed", String(e)); }
     }
@@ -4773,6 +4781,18 @@ function yesCall(nowMs: number, slotMs: number | null): YesCall {
 // The line a confirmation gains in those last 20 minutes. Studio (Spanish
 // only): "They just confirmed and are on their way."
 const HURRY_STUDIO_ES = "Acaba de confirmar, va de camino.";
+// v219 (19 Nov, #126): the first offer email went 22 seconds before the
+// studio's price, which the bot asks for right after forwarding. When the
+// offer goes by email, the studio wrote no price and the bot is about to ask
+// for one, the email waits up to 3 minutes for it (the price capture sends it
+// at once when it comes; the settle sweep sends it without one after that).
+// Never when the slot is under an hour away. The same email, a little later.
+const OFFER_EMAIL_WAIT_MS = 3 * 60e3;
+function offerEmailWait(slotMs: number | null, nowMs: number, hasPrice: boolean, willAskPrice: boolean): number {
+  if (hasPrice || !willAskPrice) return 0;
+  if (slotMs !== null && slotMs - nowMs < 60 * 60e3) return 0;
+  return OFFER_EMAIL_WAIT_MS;
+}
 // A line put above the "Massage Club" signature, or at the end when there is none.
 const withLine = (text: string, line: string): string =>
   !line ? text : /\n\nMassage Club/.test(text) ? text.replace(/\n\nMassage Club/, `\n\n${line}\n\nMassage Club`) : `${text}\n\n${line}`;
@@ -6274,7 +6294,9 @@ const socPriceAskEn = (minutes = 60): string => `Hi, this is Jordan from Massage
 // again, and anything said to the studio goes through studioNoteSure, inside its
 // hours, because it is no longer an answer to something the studio just wrote.
 // opts.lead is a line above the offer ("No problem. Here is the next option:").
-async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean; fromQueue?: boolean; lead?: string } = {}): Promise<string> {
+// v219: willAskPrice says the caller asks this studio for its price straight
+// after (the "Sí, tenemos hueco" tap), so an email offer may wait for it.
+async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean; fromQueue?: boolean; lead?: string; willAskPrice?: boolean } = {}): Promise<string> {
   const clientNum = digitsOf(req.client_phone || "");
   if (!opts.fromQueue) {
     await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
@@ -6478,6 +6500,32 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     });
     return "held";
   }
+  // v219 (19 Nov, #126): one offer per studio offer. The customer got the same
+  // studio's 13:30 by email twice, 40 seconds apart: the studio said yes on
+  // WhatsApp and then tapped a time in our earlier offer email, both paths
+  // landed on the same dispatch row, and the only duplicate guard lived in the
+  // WhatsApp session, which an email-only customer does not have. The row is
+  // claimed first: if this row and time already reached the customer, nothing
+  // goes again. A queued offer shown on purpose (fromQueue) always goes. Before
+  // the 20261119_offer_once.sql columns exist the claim errors and the offer
+  // goes as before.
+  const claimFilter = opts.fromQueue ? "" : `&or=(customer_offered_at.is.null,customer_offered_time.neq.${encodeURIComponent(time)})`;
+  const claimRes = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}${claimFilter}`, {
+    method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
+    body: JSON.stringify({ customer_offered_at: new Date().toISOString(), customer_offered_time: time }),
+  }).catch(() => null);
+  const claimed = !!claimRes && claimRes.ok;
+  if (claimed) {
+    const got = await claimRes!.json().catch(() => null);
+    if (Array.isArray(got) && !got.length) {
+      console.log(`[wa] offer already with the customer: ${partner.business_name} ${time}, req=${req.id}, row=${rowId}`);
+      await logEvent(clientNum || "web", "offer_dup_skipped", { request_id: req.id, row: rowId, studio: partner.business_name, time });
+      // The studio's second yes (its other channel) gets Jordan's v81 line
+      // again on WhatsApp; an email tap has its own page.
+      if (studioFrom) await toStudio(`Vale, gracias. Lo confirmo con ${who} y os digo algo en cuanto me conteste.`);
+      return "already";
+    }
+  }
   // v204: "offered" only once something is really going to the customer. It
   // used to be set before the checks above, so a withheld or queued time
   // still marked the request as offered.
@@ -6494,10 +6542,12 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   // that carried this offer. No confirmed price means no price in the message.
   let priceLine = "";
   let priceNum = 0;
+  let written = false; // v219: a price this studio wrote, not a listed one
   try {
     const dsp = await dispatchRowFor(req.id, partner.id, studioFrom);
     const quoted = Number((dsp && dsp.quoted_price) || parseQuotedPrice(freeText) || 0);
     if (quoted > 0) {
+      written = true;
       // whatsapp_requests has no duration column; 60 is the standard booking and
       // the length the studios quote against.
       const pct = dsp && dsp.discount_pct ? Number(dsp.discount_pct) : 0;
@@ -6553,7 +6603,26 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
       const er = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${req.id}&select=contact_email`, { headers: H() });
       email = String(((await er.json().catch(() => [])) || [])[0]?.contact_email || "").trim();
     }
-    if (email && await emailOffer({ ...req, contact_email: email }, L, rowId, partner.business_name, time, day, pc.address, priceLine)) offerVia = "email";
+    // v219: held up to 3 minutes for the price the caller is about to ask
+    // for (offerEmailWait), when the claim above worked. The price capture
+    // or the settle sweep sends it (sendHeldOfferEmail).
+    const wait = email && claimed ? offerEmailWait(slotAt, now.getTime(), written, !!opts.willAskPrice) : 0;
+    if (wait > 0) {
+      const hold = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
+        method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+        body: JSON.stringify({ customer_offer_via: "email_pending", offer_email_due_at: new Date(now.getTime() + wait).toISOString() }),
+      }).catch(() => null);
+      if (hold && hold.ok) offerVia = "email_pending";
+    }
+    if (offerVia === "none" && email && await emailOffer({ ...req, contact_email: email }, L, rowId, partner.business_name, time, day, pc.address, priceLine)) offerVia = "email";
+  }
+  // v219: what carried it, on the claimed row; a send that reached nobody
+  // gives the claim back, so a later path can try again.
+  if (claimed && offerVia !== "email_pending") {
+    await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${rowId}`, {
+      method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
+      body: JSON.stringify(offerVia === "none" ? { customer_offered_at: null, customer_offered_time: null } : { customer_offer_via: offerVia, ...(written ? { offer_price_eur: priceNum } : {}) }),
+    }).catch(() => null);
   }
   // v204 review (12 Oct): the offer this one replaces ("Better news"). Its
   // studio was told "Lo confirmo con ... y os digo algo", and once the session
@@ -6613,7 +6682,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   await founderCard(`⏰ ${partner.business_name} offers ${time} · #${req.id}`, {
     badge: "OFFER FORWARDED",
     title: `${partner.business_name} can do ${time} ${day}`,
-    paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : "with Yes / Another time / Closer or cheaper buttons"}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
+    paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : offerVia === "email_pending" ? "by email with a Yes / No page, held up to 3 minutes so it can carry the price the studio is being asked for" : "with Yes / Another time / Closer or cheaper buttons"}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
     quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
   });
   return offerVia;
@@ -7183,6 +7252,53 @@ async function emailOffer(req: any, L: string, rowId: string, studio: string, ti
   if (!ok) console.log("[wa] offer email failed", to);
   else await logEvent(digitsOf(req.client_phone || "") || "web", "offer_emailed", { request_id: req.id, row: rowId, studio, time });
   return ok;
+}
+// v219 (19 Nov, #126): an offer email forwardOffer held for the studio's price
+// (customer_offer_via 'email_pending'). The claim (email_pending -> email) is
+// the guard, so the price capture and the settle sweep can never both send
+// it. It carries the price the studio wrote if there is one by now, else the
+// listed-price line, exactly as forwardOffer would have. A row that is no
+// longer open sends nothing.
+async function sendHeldOfferEmail(rowId: string, why: string): Promise<boolean> {
+  const cl = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}&customer_offer_via=eq.email_pending`, {
+    method: "PATCH", headers: { ...H(), Prefer: "return=representation" },
+    body: JSON.stringify({ customer_offer_via: "email", customer_offered_at: new Date().toISOString() }),
+  }).catch(() => null);
+  const row = cl && cl.ok ? ((await cl.json().catch(() => [])) || [])[0] || null : null;
+  if (!row) return false;
+  const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(row.request_id)}&select=id,first_name,service_name,day1,message_text,created_at,contact_email,client_phone,languages,stage`, { headers: H() });
+  const req = ((await rq.json().catch(() => [])) || [])[0] || null;
+  if (!req || !OPEN_STAGES.includes(String(req.stage || "")) || !["pending", "accepted"].includes(String(row.outcome || "")) || row.customer_answer) {
+    console.log(`[wa] held offer email for row ${rowId} not sent: no longer open`);
+    return false;
+  }
+  const L = req.languages === "es" ? "es" : "en";
+  const pc = await partnerCard(String(row.partner_id || ""));
+  const studio = pc.business_name || (L === "es" ? "el centro" : "the studio");
+  const time = String(row.customer_offered_time || row.offered_time || "");
+  const day = rowDayLabel(row, L) || offerDayFromText(String(row.reply_text || ""), L) || dayLabelFor(req.day1, req.message_text, L) || (L === "es" ? "ese día" : "that day");
+  const quoted = Number(row.quoted_price || 0);
+  let priceLine = quoted > 0 ? COPY[L].priceLine(quoted, 60, Number(row.discount_pct || 0) > 0) : "";
+  if (!priceLine) { const lp = await listedPrice(String(row.partner_id || ""), String(req.service_name || "")); if (lp) priceLine = listedPriceLine(L, lp); }
+  const ok = await emailOffer(req, L, String(row.id), studio, time, day, pc.address, priceLine);
+  await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(ok ? (quoted > 0 ? { offer_price_eur: quoted } : {}) : { customer_offered_at: null, customer_offered_time: null, customer_offer_via: null }) }).catch(() => null);
+  await logEvent(digitsOf(String(req.client_phone || "")) || "web", "offer_email_released", { request_id: String(req.id), row: String(row.id), why, price: quoted > 0 ? quoted : null, sent: ok });
+  if (!ok) {
+    await founderCard(`⚠️ ${studio} offered ${time} but the held offer email did not go · #${req.id}`, {
+      badge: "OFFER NOT DELIVERED", title: `${studio} can do ${time} ${day}, and the offer email failed`,
+      paras: ["The offer email waited for the studio's price and then could not be sent. Nothing is confirmed. Tell the customer yourself, or reply below."],
+      waNum: digitsOf(String(req.client_phone || "")), studioNum: digitsOf(String(row.phone || "")), studioName: studio,
+    });
+  }
+  return ok;
+}
+// v219: the settle sweep's half: held offer emails whose 3 minutes are up.
+async function sendDueOfferEmails(): Promise<number> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?customer_offer_via=eq.email_pending&offer_email_due_at=lte.${new Date().toISOString()}&limit=20&select=id`, { headers: H() }).catch(() => null);
+  const rows = r && r.ok ? await r.json().catch(() => []) : [];
+  let sent = 0;
+  for (const x of Array.isArray(rows) ? rows : []) if (await sendHeldOfferEmail(String(x.id), "timer")) sent++;
+  return sent;
 }
 // v199: the written confirmation for a studio that took the request by email.
 async function emailStudio(partnerId: string, subject: string, text: string): Promise<boolean> {
@@ -11160,13 +11276,15 @@ const handleInner = async (req: Request) => {
       // once, then let go honestly before the studio is left holding it.
       const released = await releaseHeldOffers();
       const offers = await chaseOffers();
+      // v219: offer emails held for a studio's price go once their 3 minutes are up.
+      const heldMails = await sendDueOfferEmails();
       // v204 (change 3): a request that reached no studio pages Jordan after 10
       // minutes, and one nothing came back on is told so and offered another day.
       const watched = await watchRequests();
       // v204 review: studio notes that were refused for the hour or the
       // studio's own hours go out once it is open (studioNoteSure).
       const notes = await flushStudioNotes();
-      return new Response(JSON.stringify({ ok: true, settled, reviewed, reminded, released, chased: offers.chased, lapsed: offers.lapsed, stuck: watched.stuck, told_no_offer: watched.told, studio_notes: notes }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, settled, reviewed, reminded, released, chased: offers.chased, lapsed: offers.lapsed, held_offer_emails: heldMails, stuck: watched.stuck, told_no_offer: watched.told, studio_notes: notes }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     // v192 (9 Oct, live): William made request #110 on the website, then wrote
     // here "Can you send me the offers here?" and was told "I'll message you
@@ -11247,6 +11365,15 @@ const handleInner = async (req: Request) => {
       });
       const row = (await ins.json().catch(() => []))[0];
       if (!row?.id) return out({ ok: false, reason: "could not record the offer" });
+      // v219 (19 Nov, #126): the studio's WhatsApp yes had already put this
+      // row and time in front of the customer 40 seconds before its email tap
+      // arrived here, and the customer got the same offer email twice. The
+      // same time on the same row goes nowhere again (forwardOffer's claim
+      // says the same; this answers studio-times without calling it).
+      if (row.customer_offered_at && String(row.customer_offered_time || "") === time) {
+        await logEvent(digitsOf(String(req.client_phone || "")) || "web", "offer_dup_skipped", { request_id: id, row: String(row.id), studio: p.business_name, time, via: channel });
+        return out({ ok: true, row: row.id, time, offer: "already", already: true });
+      }
       // v203: an emailed time is one of the options we put to the studio. A time
       // said on the phone can be any hour, so it gets the v122 window check like
       // a WhatsApp yes, and "instead of" when it is not what was asked.
@@ -11257,7 +11384,7 @@ const handleInner = async (req: Request) => {
         if (sent === "withheld_mismatch") {
           // The phone has no thread to answer on, so nobody tells the studio.
           await notifyJordanWa(`${p.business_name} said on the phone they can do ${time} for ${req.first_name || "the customer"}'s request #${id}, outside the ${String(req.time1 || "time")} asked for. Not shown to the customer. Nothing booked.`, digitsOf(String(req.client_phone || "")));
-        } else if (!row.quoted_price && studioWa && ["whatsapp", "email", "none", "queued", "held_window", "held"].includes(sent)) {
+        } else if (!row.quoted_price && studioWa && ["whatsapp", "email", "email_pending", "none", "queued", "held_window", "held"].includes(sent)) {
           // A WhatsApp yes is asked for the 10% Massage Club rate in writing
           // (priceAsk); the call never mentions a discount, so this does. The
           // aviso templates carry it when their 24h window is shut.
