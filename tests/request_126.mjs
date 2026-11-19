@@ -468,6 +468,90 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
 }
 
 // ---------------------------------------------------------------------------
+// 7. The default-OFF switches. Nobody wrote to the customer for an hour; an
+// email-only offer never lapsed (the studio held the room 65 minutes); a price
+// that came after the email never reached her; nobody asked the studio
+// whether she came. Each new message is behind app_secrets, off by default.
+// ---------------------------------------------------------------------------
+{
+  const G = "7 switches";
+  check(G, "switch parsers exist", [typeof P.parseOfferSwitch, typeof P.offerNudgeAt], ["function", "function"]);
+  if (typeof P.parseOfferSwitch === "function") {
+    const Pn = await load(`import { askBand, stripAcc, madridMidnight, madridInstant, resolveRequestDate, detectTime, COPY } from ${JSON.stringify(copyUrl)};\n${stripTypeScriptTypes(v204)}\nexport { parseNudgeMode, nudgeCopy, priceUpdateCopy };\n`);
+    check(G, "parseOfferSwitch", [undefined, "", "yes", "true", "ON ", "on"].map(P.parseOfferSwitch), ["off", "off", "off", "off", "on", "on"], "missing or unknown is off");
+    check(G, "parseNudgeMode", [undefined, "", "true", "ON", "shadow", " Shadow "].map(Pn.parseNudgeMode), ["off", "off", "off", "on", "shadow", "shadow"]);
+    check(G, "offerNudgeAt", [P.offerNudgeAt(M(12, 21), M(13, 30)), P.offerNudgeAt(M(12, 55), M(13, 30)), P.offerNudgeAt(M(13, 0), M(13, 30)), P.offerNudgeAt(M(12, 21), null)],
+      [M(12, 36), M(13, 10), null, null], "#126: 12:36; never closer than 20 minutes to the start");
+    const nc = Pn.nudgeCopy("en", "Maria", "Estudio Uno", "13:30", "today", O.COPY.en.priceLine(76.5, 60, false));
+    const ncEs = Pn.nudgeCopy("es", "Maria", "Estudio Uno", "13:30", "hoy", O.COPY.es.priceLine(76.5, 60, false));
+    const pu = Pn.priceUpdateCopy("en", "Estudio Uno", "13:30", "today", O.COPY.en.priceLine(76.5, 60, false));
+    const puEs = Pn.priceUpdateCopy("es", "Estudio Uno", "13:30", "hoy", O.COPY.es.priceLine(76.5, 60, false));
+    check(G, "reminder and price update subjects", [nc.subject, ncEs.subject, pu.subject, puEs.subject], ["Still free: Estudio Uno at 13:30 today", "Sigue libre: Estudio Uno a las 13:30 hoy", "Price update: Estudio Uno at 13:30 today", "Precio actualizado: Estudio Uno a las 13:30 hoy"]);
+    const allCopy = JSON.stringify([nc, ncEs, pu, puEs]);
+    check(G, "copy: no dash, no deadline, no Massage Club rate the studio did not give", [dash(allCopy), /\bby \d|como tarde/.test(allCopy), /Massage Club rate|tarifa Massage Club/.test(allCopy)], [false, false, false]);
+  }
+  // The reminder sweep itself, in a sandbox, for each switch value.
+  const parts = ["async function nudgeEmailOffers(", "async function openEmailOffers(", "async function offerMail(", "function offerTestCustomer(", "async function offerSlotFor(", "function offerDayFromText(", "function studioDate("].map((h) => lift(botSrc, h));
+  check(G, "sweep parts found", parts.every(Boolean), true);
+  if (parts.every(Boolean)) {
+    const sweep = async (mode, nowMs, reqOver = {}) => {
+      T.now = nowMs;
+      const log = { resend: 0, events: [], claims: 0 };
+      const row = { id: "row-1", request_id: 9126, partner_id: "p-1", phone: "34600000001", offered_time: "13:30", customer_offered_time: "13:30", customer_offered_at: new Date(M(12, 21)).toISOString(), customer_offer_via: "email", outcome: "accepted", customer_answer: null, nudged_at: null, quoted_price: 76.5, discount_pct: null, reply_text: "Sí, a las 13:30 (email)", replied_at: new Date(M(12, 21)).toISOString() };
+      const req = { id: 9126, first_name: "Maria", last_name: "Lopez", day1: "Thursday 19 Nov, 13:30", time1: "13:30", message_text: "Quiere: Not sure", created_at: new Date(M(12, 9)).toISOString(), contact_email: "cliente9126@correo.invalid", client_phone: null, languages: null, stage: "offered", confirmed_start: null, ...reqOver };
+      const env = {
+        Date: FakeDate, SUPABASE_URL: "https://db.invalid", H: () => ({}), RESEND_API_KEY: "k", FROM_EMAIL: "x", LOGO_URL: "x", SANS: "x", C: new Proxy({}, { get: () => "#000" }), esc: (x) => String(x),
+        appSecret: async (k) => (k === "OFFER_NUDGE" ? mode : ""),
+        fetch: async (u, o = {}) => {
+          u = decodeURIComponent(String(u));
+          if (u.startsWith("https://api.resend.com")) { log.resend++; return res(200, {}); }
+          if (u.includes("request_dispatch?customer_offer_via=eq.email")) return res(200, [row]);
+          if (u.includes("whatsapp_requests?id=eq.")) return res(200, [req]);
+          if (o.method === "PATCH" && u.includes("nudged_at=is.null")) { log.claims++; return res(200, [row]); }
+          return res(200, []);
+        },
+        digitsOf: (x) => String(x || "").replace(/[^0-9]/g, ""),
+        logEvent: async (p, e, m) => { log.events.push(e); },
+        partnerCard: async () => ({ business_name: "Estudio Uno", address: "", phone: "", neighbourhood: "" }),
+        waWindowOpen: async () => false, offerLink: async () => "https://book.massageclub.io/bot.html?offer=row-1",
+        OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"],
+        TEST_PHONES: ["15622355063", "17867276503", "34612474827"], FAKE_NUM_RE: /(^|\D)34600000\d{3}(\D|$)/,
+        TEST_EMAIL_RE: /@(example|test|testing)\.com$|placeholder\.local$|cata\.waack@gmail|elon_yilong@student\.ie\.edu/i, REL_TEST_EMAIL_RE: /\+(mctest|uitest)[^@]*@/i,
+        TEST_NAME_RE: /\b(test|prueba|uitest|mctest)\b/i, heldMail: () => false, heldNum: () => false,
+        COPY: O.COPY, madridMidnight: O.madridMidnight, resolveRequestDate: O.resolveRequestDate,
+        ...P, madridHourAt: (ms) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).format(new Date(ms))) % 24,
+        offerRelDay: (s, n, L) => (L === "es" ? "hoy" : "today"),
+        studioWordDay: P.studioWordDay, offerDayLabel: P.offerDayLabel, parseNudgeMode: (v) => { const x = String(v ?? "").trim().toLowerCase(); return x === "on" || x === "shadow" ? x : "off"; },
+      };
+      const { fns } = sandbox([...parts, lift(botSrc, "function nudgeCopy("), one("writtenPriceLine")], env, ["nudgeEmailOffers"]);
+      const n = await fns.nudgeEmailOffers();
+      return { n, ...log };
+    };
+    const off = await sweep("", M(12, 40));
+    check(G, "OFFER_NUDGE off (default): nothing", { n: off.n, resend: off.resend, claims: off.claims }, { n: 0, resend: 0, claims: 0 });
+    const shadow = await sweep("shadow", M(12, 40));
+    check(G, "OFFER_NUDGE shadow: logged, nothing sent", { resend: shadow.resend, claims: shadow.claims, logged: shadow.events.includes("offer_nudge_shadow") }, { resend: 0, claims: 0, logged: true });
+    const early = await sweep("on", M(12, 30));
+    check(G, "OFFER_NUDGE on, 9 minutes after the offer: not yet", early.resend, 0);
+    const on = await sweep("on", M(12, 40));
+    check(G, "OFFER_NUDGE on, 19 minutes after the offer: one reminder", { n: on.n, resend: on.resend, claims: on.claims }, { n: 1, resend: 1, claims: 1 }, "#126 would have had it at 12:36");
+    const late = await sweep("on", M(13, 15));
+    check(G, "OFFER_NUDGE on, 15 minutes before the start: none", late.resend, 0);
+    const friend = await sweep("on", M(12, 40), { contact_email: "cata.waack@gmail.com" });
+    const tester = await sweep("on", M(12, 40), { first_name: "Prueba" });
+    check(G, "never to a friend tester or a test contact", [friend.resend, tester.resend], [0, 0]);
+  }
+  check(G, "every sweep returns before sending unless its switch is on", [
+    /async function nudgeEmailOffers\(\)[^{]*\{\s*const mode = parseNudgeMode\(await appSecret\("OFFER_NUDGE"\)\);\s*if \(mode === "off"\) return 0;/.test(botSrc),
+    /async function offerPriceUpdate\(row: any\)[^{]*\{\s*if \(parseOfferSwitch\(await appSecret\("OFFER_PRICE_UPDATE"\)\) !== "on"\) return false;/.test(botSrc),
+    /async function askArrivalNoPhone\(\)[^{]*\{\s*if \(parseOfferSwitch\(await appSecret\("ARRIVAL_CHECK"\)\) !== "on"\) return 0;/.test(botSrc),
+    /const on = parseOfferSwitch\(await appSecret\("OFFER_LAPSE_EMAIL"\)\) === "on";[\s\S]{0,1600}if \(on\) \{[\s\S]{0,300}await lapseOffer\("", /.test(lift(botSrc, "async function lapseEmailOffers(")),
+  ], [true, true, true, true]);
+  check(G, "with OFFER_LAPSE_EMAIL off: Jordan hears once after 30 minutes, the studio nothing", /now < sent \+ 30 \* 60e3[\s\S]{0,400}offer_hold_alert[\s\S]{0,800}badge: "STUDIO HOLDING A SLOT"/.test(lift(botSrc, "async function lapseEmailOffers(")) && !/studioNoteSure|tellStudio|emailStudio/.test(lift(botSrc, "async function lapseEmailOffers(")), true);
+  check(G, "the settle sweep runs them", /const nudged = await nudgeEmailOffers\(\)/.test(botSrc) && /const emailLapse = await lapseEmailOffers\(\)/.test(botSrc) && /const arrivalAsked = await askArrivalNoPhone\(\)/.test(botSrc), true);
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 fs.rmSync(tmp, { recursive: true, force: true });

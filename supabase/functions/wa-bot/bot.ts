@@ -2626,6 +2626,9 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
           // v219 (19 Nov, #126): the offer email was waiting for exactly this
           // (email_pending): it goes now, once, with the studio's own price.
           if (pdr.customer_offer_via === "email_pending") await sendHeldOfferEmail(String(pdr.id), "price");
+          // v219: the email went before the price: one labelled update, only
+          // with app_secrets OFFER_PRICE_UPDATE on (default off).
+          else if (pdr.customer_offer_via === "email") await offerPriceUpdate({ ...pdr, quoted_price: quotedNow }).catch(() => false);
         }
       } catch (e) { console.log("[studio] price capture failed", String(e)); }
     }
@@ -4847,6 +4850,51 @@ function offerEmailWait(slotMs: number | null, nowMs: number, hasPrice: boolean,
   if (hasPrice || !willAskPrice) return 0;
   if (slotMs !== null && slotMs - nowMs < 60 * 60e3) return 0;
   return OFFER_EMAIL_WAIT_MS;
+}
+// v219 (19 Nov, #126): new automatic messages ship OFF (CLAUDE.md: approval
+// before any new outbound automation). app_secrets OFFER_PRICE_UPDATE,
+// OFFER_LAPSE_EMAIL and ARRIVAL_CHECK: "on" turns one on; missing, blank or
+// anything else is off. OFFER_NUDGE also has "shadow": the exact email is
+// logged (offer_nudge_shadow) and nothing is sent.
+type OfferSwitch = "off" | "on";
+function parseOfferSwitch(v: unknown): OfferSwitch { return String(v ?? "").trim().toLowerCase() === "on" ? "on" : "off"; }
+type NudgeMode = "off" | "shadow" | "on";
+function parseNudgeMode(v: unknown): NudgeMode {
+  const x = String(v ?? "").trim().toLowerCase();
+  return x === "on" || x === "shadow" ? x : "off";
+}
+// v219 (OFFER_NUDGE): nobody wrote to the #126 customer for an hour after her
+// same-day offer email. One reminder, 15 minutes after the offer went, and
+// only if that moment is at least 20 minutes before the start (null: none).
+// For #126: offer 12:21 for 13:30, reminder 12:36.
+const OFFER_NUDGE_AFTER_MS = 15 * 60e3;
+function offerNudgeAt(sentMs: number, slotMs: number | null): number | null {
+  if (!Number.isFinite(sentMs) || slotMs === null || !Number.isFinite(slotMs)) return null;
+  const t = sentMs + OFFER_NUDGE_AFTER_MS;
+  return t <= slotMs - YES_HURRY_MS ? t : null;
+}
+// The reminder and the price update, signed Massage Club, no deadline earlier
+// than the start, no pressure (v214.1). priceLine is COPY.priceLine of a
+// price the studio wrote, so "Massage Club rate" only appears when the studio
+// confirmed the discount in writing. dayW is offerDayPhrase ("today", "on
+// Saturday 21 November").
+function nudgeCopy(L: string, first: string, studio: string, time: string, dayW: string, priceLine: string): { subject: string; lines: string[]; btn: string } {
+  const d = dayW ? " " + dayW : "";
+  return L === "es"
+    ? { subject: `Sigue libre: ${studio} a las ${time}${d}`, btn: "Ver la oferta y confirmar",
+      // "<name>, <studio> still has <HH:MM> free for you <day>. It is not booked yet: if you want it, tap Yes as soon as you can. If another time suits you better, just reply to this email."
+      lines: [`${first ? first + ", " : ""}${studio} sigue teniendo libres las ${time} para ti${d}.`, priceLine, "Todavía no está reservado: si lo quieres, pulsa Sí cuanto antes. Si te va mejor otra hora, contesta a este correo."].filter(Boolean) }
+    : { subject: `Still free: ${studio} at ${time}${d}`, btn: "See the offer and confirm",
+      lines: [`${first ? first + ", " : ""}${studio} still has ${time} free for you${d}.`, priceLine, "It is not booked yet: if you want it, tap Yes as soon as you can. If another time suits you better, just reply to this email."].filter(Boolean) };
+}
+function priceUpdateCopy(L: string, studio: string, time: string, dayW: string, priceLine: string): { subject: string; lines: string[]; btn: string } {
+  const d = dayW ? " " + dayW : "";
+  return L === "es"
+    ? { subject: `Precio actualizado: ${studio} a las ${time}${d}`, btn: "Ver la oferta y confirmar",
+      // "<studio> has now told us the price for your <HH:MM> <day>. Nothing else has changed and it is still not booked: if you want it, tap Yes as soon as you can."
+      lines: [`${studio} ya nos ha dicho el precio de tus ${time}${d}.`, priceLine, "Lo demás no cambia y todavía no está reservado: si lo quieres, pulsa Sí cuanto antes."].filter(Boolean) }
+    : { subject: `Price update: ${studio} at ${time}${d}`, btn: "See the offer and confirm",
+      lines: [`${studio} has now told us the price for your ${time}${d}.`, priceLine, "Nothing else has changed and it is still not booked: if you want it, tap Yes as soon as you can."].filter(Boolean) };
 }
 // A line put above the "Massage Club" signature, or at the end when there is none.
 const withLine = (text: string, line: string): string =>
@@ -7354,6 +7402,184 @@ async function sendDueOfferEmails(): Promise<number> {
   let sent = 0;
   for (const x of Array.isArray(rows) ? rows : []) if (await sendHeldOfferEmail(String(x.id), "timer")) sent++;
   return sent;
+}
+// ---- v219 (19 Nov, #126): the default-OFF sweeps ----
+// Each is a new kind of automatic message, so each stays off until Jordan
+// sets its app_secrets switch (migration 20261119_offer_once.sql writes them
+// as 'off'; missing reads as off too). None ever writes to CLAUDE.md's test
+// contacts (Jordan's numbers and addresses, the test domains, +mctest and
+// +uitest, names with test or prueba, the 34600000xxx canary), the friend
+// testers (Cata, Yi) or a held customer.
+function offerTestCustomer(req: any): boolean {
+  const ph = digitsOf(String(req?.client_phone || ""));
+  const em = String(req?.contact_email || "").trim().toLowerCase();
+  return TEST_PHONES.includes(ph) || FAKE_NUM_RE.test(ph) || /^86\d*997$/.test(ph) || TEST_EMAIL_RE.test(em) || REL_TEST_EMAIL_RE.test(em)
+    || TEST_NAME_RE.test(`${req?.first_name || ""} ${req?.last_name || ""}`) || heldMail(em) || heldNum(ph);
+}
+// One plain customer email in the offer email's style, with the offer link.
+async function offerMail(req: any, subject: string, lines: string[], btn: string, link: string): Promise<boolean> {
+  const to = String(req?.contact_email || "").trim();
+  if (!to || !RESEND_API_KEY || offerTestCustomer(req)) return false;
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.page};padding:36px 14px;font-family:${SANS};"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#fff;border-radius:20px;border:1px solid ${C.line};overflow:hidden;"><tr><td style="padding:26px 34px 0;text-align:center;"><img src="${LOGO_URL}" alt="" width="34" height="34" style="border-radius:50%;display:inline-block;"><p style="margin:9px 0 0;color:${C.ink};font-size:12px;font-weight:700;letter-spacing:3px;">MASSAGE&nbsp;CLUB</p></td></tr><tr><td style="padding:22px 34px 0;text-align:center;">${lines.map((l) => `<p style="margin:0 0 12px;color:${C.ink};font-size:15px;line-height:1.6;">${esc(l)}</p>`).join("")}</td></tr><tr><td style="padding:10px 34px 0;text-align:center;"><a href="${link}" style="display:inline-block;background:#1FA855;color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:999px;">${esc(btn)}</a></td></tr><tr><td style="padding:22px 34px 26px;"><div style="border-top:2px dashed ${C.dash};margin-bottom:12px;"></div><p style="margin:0;color:#B8AC9E;font-size:11.5px;text-align:center;">Massage Club · Madrid · book.massageclub.io</p></td></tr></table></td></tr></table>`;
+  const text = `${lines.join("\n\n")}\n${link}\n\nMassage Club`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], reply_to: "support@massageclub.io", subject, html, text }),
+  }).catch(() => null);
+  return !!res && res.ok;
+}
+// The offer's price line for these emails: only a price the studio wrote.
+const writtenPriceLine = (row: any, L: string): string => Number(row?.quoted_price || 0) > 0 ? COPY[L].priceLine(Number(row.quoted_price), 60, Number(row.discount_pct || 0) > 0) : "";
+// Open email offers (sent by email, not answered, still open), with their
+// request, for the three sweeps below.
+async function openEmailOffers(sinceMs: number): Promise<Array<{ row: any; req: any }>> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?customer_offer_via=eq.email&customer_answer=is.null&outcome=in.(pending,accepted)&customer_offered_at=gte.${new Date(sinceMs).toISOString()}&order=customer_offered_at.asc&limit=50&select=*`, { headers: H() }).catch(() => null);
+  const rows = r && r.ok ? await r.json().catch(() => []) : [];
+  const out: Array<{ row: any; req: any }> = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(row.request_id)}&select=id,first_name,last_name,service_name,day1,time1,proposed_time,message_text,created_at,contact_email,client_phone,languages,stage,confirmed_start,confirmed_day`, { headers: H() });
+    const req = ((await rq.json().catch(() => [])) || [])[0] || null;
+    if (req && OPEN_STAGES.includes(String(req.stage || ""))) out.push({ row, req });
+  }
+  return out;
+}
+// OFFER_NUDGE (off | shadow | on, default off): one reminder email per
+// request, 15 minutes after a same-day offer went by email, only while that is
+// at least 20 minutes before the start, 08:00 to 22:00 Madrid, never when the
+// customer's WhatsApp window is open (the WhatsApp chase covers them).
+// Claimed with nudged_at=is.null before sending.
+async function nudgeEmailOffers(): Promise<number> {
+  const mode = parseNudgeMode(await appSecret("OFFER_NUDGE"));
+  if (mode === "off") return 0;
+  const now = Date.now();
+  const h = madridHourAt(now);
+  if (h < 8 || h >= 22) return 0;
+  let n = 0;
+  const nudgedReq = new Set<string>();
+  for (const { row, req } of await openEmailOffers(now - 6 * 3600e3)) {
+    if (row.nudged_at || nudgedReq.has(String(req.id)) || offerTestCustomer(req)) continue;
+    const sent = Date.parse(String(row.customer_offered_at || ""));
+    const slot = await offerSlotFor(row, req, null);
+    const at = offerNudgeAt(sent, slot);
+    if (at === null || slot === null || now < at || now > slot - YES_HURRY_MS) continue;
+    if (madridMidnight(new Date(slot)).getTime() !== madridMidnight(new Date(sent)).getTime()) continue; // same day only
+    const other = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${Number(req.id)}&nudged_at=not.is.null&limit=1&select=id`, { headers: H() }).then((x) => x.json()).catch(() => []);
+    if (Array.isArray(other) && other.length) { nudgedReq.add(String(req.id)); continue; }
+    const ph = digitsOf(String(req.client_phone || ""));
+    if (ph && await waWindowOpen(ph)) continue;
+    const L = req.languages === "es" ? "es" : "en";
+    const pc = await partnerCard(String(row.partner_id || ""));
+    const time = String(row.customer_offered_time || row.offered_time || "");
+    const c = nudgeCopy(L, String(req.first_name || "").trim().split(" ")[0], pc.business_name || (L === "es" ? "el centro" : "the studio"), time, offerRelDay(slot, now, L), writtenPriceLine(row, L));
+    nudgedReq.add(String(req.id));
+    if (mode === "shadow") {
+      const seen = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=eq.offer_nudge_shadow&meta->>row=eq.${encodeURIComponent(String(row.id))}&select=id&limit=1`, { headers: H() }).then((x) => x.json()).catch(() => []);
+      if (!(Array.isArray(seen) && seen.length)) await logEvent(ph || "web", "offer_nudge_shadow", { request_id: String(req.id), row: String(row.id), subject: c.subject, text: c.lines.join(" ") });
+      continue;
+    }
+    if (mode !== "on") continue;
+    const cl = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}&nudged_at=is.null&customer_answer=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ nudged_at: new Date().toISOString() }) }).then((x) => x.json()).catch(() => []);
+    if (!Array.isArray(cl) || !cl.length) continue;
+    const ok = await offerMail(req, c.subject, c.lines, c.btn, await offerLink(String(row.id)));
+    await logEvent(ph || "web", "offer_nudged", { request_id: String(req.id), row: String(row.id), sent: ok });
+    if (ok) n++;
+  }
+  return n;
+}
+// OFFER_PRICE_UPDATE (off | on, default off): the studio's price came after
+// the offer email had gone. At most one clearly labelled update per offer,
+// claimed on the row, only while the offer is open and at least 20 minutes
+// before the start. With the switch off nothing is sent; the offer page reads
+// the price live from quoted_price either way.
+async function offerPriceUpdate(row: any): Promise<boolean> {
+  if (parseOfferSwitch(await appSecret("OFFER_PRICE_UPDATE")) !== "on") return false;
+  if (row?.customer_offer_via !== "email" || row?.offer_price_eur || row?.offer_update_sent_at || row?.customer_answer) return false;
+  const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(row.request_id)}&select=id,first_name,last_name,day1,time1,proposed_time,message_text,created_at,contact_email,client_phone,languages,stage,confirmed_start,confirmed_day`, { headers: H() });
+  const req = ((await rq.json().catch(() => [])) || [])[0] || null;
+  if (!req || !OPEN_STAGES.includes(String(req.stage || "")) || offerTestCustomer(req)) return false;
+  const slot = await offerSlotFor(row, req, null);
+  if (slot === null || Date.now() > slot - YES_HURRY_MS) return false;
+  const cl = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}&offer_update_sent_at=is.null&offer_price_eur=is.null&customer_answer=is.null&outcome=in.(pending,accepted)`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ offer_update_sent_at: new Date().toISOString() }) }).then((x) => x.json()).catch(() => []);
+  const fresh = Array.isArray(cl) && cl[0] ? cl[0] : null;
+  if (!fresh) return false;
+  const L = req.languages === "es" ? "es" : "en";
+  const pc = await partnerCard(String(row.partner_id || ""));
+  const c = priceUpdateCopy(L, pc.business_name || (L === "es" ? "el centro" : "the studio"), String(fresh.customer_offered_time || fresh.offered_time || ""), offerRelDay(slot, Date.now(), L), writtenPriceLine(fresh, L));
+  const ok = await offerMail(req, c.subject, c.lines, c.btn, await offerLink(String(row.id)));
+  if (ok) await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ offer_price_eur: Number(fresh.quoted_price) || null }) }).catch(() => null);
+  await logEvent(digitsOf(String(req.client_phone || "")) || "web", "offer_price_update", { request_id: String(req.id), row: String(row.id), sent: ok });
+  return ok;
+}
+// OFFER_LAPSE_EMAIL (off | on, default off). An offer emailed to a customer
+// with no WhatsApp session never lapsed, so the studio held the room (#126:
+// 65 minutes) without a word. On: it lapses at the WhatsApp lapse time
+// (offerSchedule) and the studio gets the approved v204 lapse note
+// (lapseOffer, quiet towards the customer, who gets nothing new). Off (Jordan,
+// 19 Nov): the offer stays bookable until the start, and Jordan is told once
+// when a studio has held a same-day slot for an email-only customer for 30
+// minutes with no answer.
+async function lapseEmailOffers(): Promise<{ lapsed: number; alerted: number }> {
+  const out = { lapsed: 0, alerted: 0 };
+  const on = parseOfferSwitch(await appSecret("OFFER_LAPSE_EMAIL")) === "on";
+  const now = Date.now();
+  for (const { row, req } of await openEmailOffers(now - 24 * 3600e3)) {
+    const ph = digitsOf(String(req.client_phone || ""));
+    // A WhatsApp session carrying this offer is chaseOffers' to lapse.
+    if (ph) { const cs = await getSession(ph); if (cs.step === "await_offer" && String(cs.data.offer?.row || "") === String(row.id)) continue; }
+    const sent = Date.parse(String(row.customer_offered_at || ""));
+    const slot = await offerSlotFor(row, req, null);
+    if (!Number.isFinite(sent) || slot === null || now >= slot) continue;
+    const L = req.languages === "es" ? "es" : "en";
+    const pc = await partnerCard(String(row.partner_id || ""));
+    const studio = pc.business_name || "the studio";
+    const time = String(row.customer_offered_time || row.offered_time || "");
+    if (on) {
+      const lapseAt = offerSchedule(sent, slot).lapseAt;
+      if (lapseAt === null || now < lapseAt) continue;
+      if (await lapseOffer("", { time, studio, slotAt: new Date(slot).toISOString() }, row, req, L, true)) out.lapsed++;
+      continue;
+    }
+    const sameDay = madridMidnight(new Date(slot)).getTime() === madridMidnight(new Date(sent)).getTime();
+    if (!sameDay || now < sent + 30 * 60e3) continue;
+    const seen = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=eq.offer_hold_alert&meta->>row=eq.${encodeURIComponent(String(row.id))}&select=id&limit=1`, { headers: H() }).then((x) => x.json()).catch(() => []);
+    if (Array.isArray(seen) && seen.length) continue;
+    await logEvent(ph || "web", "offer_hold_alert", { request_id: String(req.id), row: String(row.id), studio, time });
+    await founderCard(`⏳ ${studio} is holding ${time} for ${req.first_name || "a customer"} with no answer · #${req.id}`, {
+      badge: "STUDIO HOLDING A SLOT",
+      title: `${studio} has held ${time} for 30 minutes for an email-only customer`,
+      paras: [`The offer went by email ${Math.round((now - sent) / 60e3)} minutes ago and the customer has not answered. Nothing is booked. The studio was told we are checking with the client, and it stays bookable until ${time}. OFFER_LAPSE_EMAIL is off, so nobody tells the studio it can give the slot away: write to it if you want it released.`],
+      waNum: ph, studioNum: digitsOf(String(row.phone || "")), studioName: studio,
+    });
+    out.alerted++;
+  }
+  return out;
+}
+// ARRIVAL_CHECK (off | on, default off). booking-guard's T+20 arrival
+// question skips every request with no customer phone (its isTestReq reads
+// no phone as a test), so nobody asked the #126 studio whether the customer
+// came. This asks the studio holding a confirmed booking with no customer
+// phone, once, 20 minutes to 3 hours after the start, the same question in
+// words ("¿ha llegado ...?"); its answer is read by studioSaysArrived.
+async function askArrivalNoPhone(): Promise<number> {
+  if (parseOfferSwitch(await appSecret("ARRIVAL_CHECK")) !== "on") return 0;
+  const now = Date.now();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?stage=eq.confirmed&arrival_status=is.null&arrival_asked_at=is.null&confirmed_start=gte.${new Date(now - 3 * 3600e3).toISOString()}&confirmed_start=lte.${new Date(now - 20 * 60e3).toISOString()}&limit=20&select=id,first_name,last_name,client_phone,contact_email,partner_id,studio_name,confirmed_start,confirmed_time`, { headers: H() }).catch(() => null);
+  const rows = r && r.ok ? await r.json().catch(() => []) : [];
+  let n = 0;
+  for (const req of Array.isArray(rows) ? rows : []) {
+    if (digitsOf(String(req.client_phone || "")).length >= 9 || !req.partner_id) continue; // booking-guard asks these
+    if (offerTestCustomer(req) && !REL_TEST_STUDIO_RE.test(String(req.studio_name || ""))) continue;
+    const cl = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(req.id)}&arrival_asked_at=is.null&arrival_status=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify({ arrival_asked_at: new Date().toISOString() }) }).then((x) => x.json()).catch(() => []);
+    if (!Array.isArray(cl) || !cl.length) continue;
+    const studioNum = await studioNumberFor(req);
+    const first = String(req.first_name || "").trim().split(" ")[0];
+    const hm = studioHour(req);
+    // "Hello, has <name> arrived for their <HH:MM> appointment? Thank you."
+    const ok = await tellStudio(studioNum, first, hm, `Hola, ¿ha llegado ${first || "el cliente"} a su cita${hm ? " de las " + hm : ""}? Gracias.`, "¿ha llegado ya a su cita?", { dayEs: studioDayEs(req), v2: "¿Ha llegado ya a su cita?" });
+    await logEvent(studioNum || "system", "arrival_asked", { id: req.id, studio: req.studio_name, sent: !!ok, via: "no_phone" });
+    if (ok) n++;
+  }
+  return n;
 }
 // v199: the written confirmation for a studio that took the request by email.
 async function emailStudio(partnerId: string, subject: string, text: string): Promise<boolean> {
@@ -11444,13 +11670,21 @@ const handleInner = async (req: Request) => {
       const offers = await chaseOffers();
       // v219: offer emails held for a studio's price go once their 3 minutes are up.
       const heldMails = await sendDueOfferEmails();
+      // v219: the default-OFF sweeps (each returns at once while its switch
+      // is off): the one reminder email (OFFER_NUDGE), the email-offer lapse
+      // or, while OFFER_LAPSE_EMAIL is off, Jordan's 30 minute "studio is
+      // holding a slot" card, and the arrival question for bookings with no
+      // customer phone (ARRIVAL_CHECK).
+      const nudged = await nudgeEmailOffers().catch((e) => { console.log("[wa] nudge sweep failed", String(e)); return 0; });
+      const emailLapse = await lapseEmailOffers().catch((e) => { console.log("[wa] email lapse sweep failed", String(e)); return { lapsed: 0, alerted: 0 }; });
+      const arrivalAsked = await askArrivalNoPhone().catch((e) => { console.log("[wa] arrival sweep failed", String(e)); return 0; });
       // v204 (change 3): a request that reached no studio pages Jordan after 10
       // minutes, and one nothing came back on is told so and offered another day.
       const watched = await watchRequests();
       // v204 review: studio notes that were refused for the hour or the
       // studio's own hours go out once it is open (studioNoteSure).
       const notes = await flushStudioNotes();
-      return new Response(JSON.stringify({ ok: true, settled, reviewed, reminded, released, chased: offers.chased, lapsed: offers.lapsed, held_offer_emails: heldMails, stuck: watched.stuck, told_no_offer: watched.told, studio_notes: notes }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, settled, reviewed, reminded, released, chased: offers.chased, lapsed: offers.lapsed, held_offer_emails: heldMails, nudged, email_lapsed: emailLapse.lapsed, hold_alerts: emailLapse.alerted, arrival_asked: arrivalAsked, stuck: watched.stuck, told_no_offer: watched.told, studio_notes: notes }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     // v192 (9 Oct, live): William made request #110 on the website, then wrote
     // here "Can you send me the offers here?" and was told "I'll message you
