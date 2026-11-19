@@ -8,8 +8,8 @@
 --
 -- Profile.tsx uploads to avatars/<auth.uid()>/avatar.jpg with upsert: true, which needs
 -- INSERT plus SELECT and UPDATE on the caller's own object; remove() needs DELETE (and
--- SELECT). SELECT is already covered by avatars_public_read (the bucket is public), which
--- is left unchanged. Service-role callers bypass RLS.
+-- SELECT). SELECT is already covered by avatars_public_read (SELECT to public), which is
+-- left unchanged. Service-role callers bypass RLS.
 --
 -- Depends on 20261119120000_scope_studio_photos_storage_policies.sql for effect: until the
 -- " studio-photos 1vsuhk_*" policies (USING / WITH CHECK = true, no bucket filter) are
