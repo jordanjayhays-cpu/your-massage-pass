@@ -268,6 +268,63 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
 }
 
 // ---------------------------------------------------------------------------
+// 3. Dropped studio replies. A studio's "76,50€" and another studio's "si"
+// were silenced as away messages; a stray holding line went to a studio for a
+// tap already answered twice (the turn flags were module globals reset by a
+// concurrent request); a price typed on our own check page was ignored.
+// ---------------------------------------------------------------------------
+{
+  const G = "3 studio replies";
+  const blk = between(botSrc, "// ---- v219 studio replies: pure helpers (start) ----", "// ---- v219 studio replies: pure helpers (end) ----");
+  check(G, "isAwayMessage block", !!blk, true);
+  // What the bot did before: the expression at the old call site.
+  const C = await import(copyUrl);
+  const oldAway = (text, sinceMs) => C.AUTOREPLY_RE.test(text) || (sinceMs < 45_000 && !C.parseOfferedTime(text));
+  check(G, "before the fix: both answers read as away messages", [oldAway("76,50€", 14_000), oldAway("si", 40_000)], [true, true], "this is what was thrown away on #126");
+  if (blk) {
+    const S = await load(`import { AUTOREPLY_RE, parseQuotedPrice, parseOfferedTime } from ${JSON.stringify(copyUrl)};\n${stripTypeScriptTypes(blk)}\nexport { isAwayMessage, BARE_YES_RE, ourQuestionOpen };\n`);
+    for (const [text, since, o, want, note] of [
+      ["76,50€", 14_000, {}, false, "#126: the studio's price, 14 s after our message"],
+      ["si", 40_000, {}, false, "#126: the other studio's typed yes, 40 s after the ask"],
+      ["¡Hola! Gracias por comunicarte con Estudio Tres. En breve te atenderemos.", 16_000, {}, true, "a real autoresponder still is one"],
+      ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 10_000, {}, true, "a long canned line within 45 s, as before"],
+      ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 60_000, {}, false, "after 45 s it is read"],
+      ["Sí, a las 13:30 tenemos hueco para ella sin problema", 5_000, {}, false, "a clock time is an answer"],
+      ["Le podemos hacer el diez por ciento sin problema", 5_000, { discount: true }, false, "a written discount is never an away message"],
+      ["Hola buenas, ahora mismo la recepción está cerrada, mañana os escribimos", 5_000, { ourQuestion: true }, false, "an answer to our own question"],
+    ]) check(G, `isAwayMessage ${JSON.stringify(text)} ${since}`, S.isAwayMessage(text, since, o), want, note);
+    for (const [t, want] of [["si", true], ["Sí", true], ["sii", true], ["Sí, tenemos hueco", true], ["claro", true], ["si a las 14:00", false], ["sí pero mañana", false], ["Sí, ¿cuánto cuesta?", false]]) check(G, `BARE_YES_RE ${t}`, S.BARE_YES_RE.test(t), want);
+    const now = Date.parse("2026-11-19T11:21:20Z");
+    check(G, "ourQuestionOpen", [
+      S.ourQuestionOpen({ msg_type: "text", body: "Por cierto, ¿qué precio final le dejaríais por 60 min?", created_at: "2026-11-19T11:21:03Z" }, now),
+      S.ourQuestionOpen({ msg_type: "template", body: "Hola, ¿tenéis hueco hoy a las 13:30...?", created_at: "2026-11-19T11:20:05Z" }, now),
+      S.ourQuestionOpen({ msg_type: "text", body: "¿Qué otra hora le podríais dar?", created_at: "2026-11-19T10:21:03Z" }, now),
+      S.ourQuestionOpen({ msg_type: "text", body: "Recibido, gracias. Lo miro y, si hace falta, os contesto por aquí.", created_at: "2026-11-19T11:21:06Z" }, now),
+    ], [true, false, false, false], "the price ask, not the template ask, not an hour later, not the holding line");
+  }
+  check(G, "the call site uses isAwayMessage and routes a bare yes", /const autoReply = isAwayMessage\(text, sinceMs, \{ ourQuestion, discount: parseDiscount\(text\) !== null \}\);/.test(botSrc) && /else if \(yesAsk\) await handleStudioReply\(from, `studio_confirm_\$\{yesAsk\}`/.test(botSrc), true);
+  // Turn state: each request its own pair.
+  check(G, "no module-level reset in handler", /const handler = async[\s\S]{0,400}sentThisTurn = false/.test(botSrc), false, "a concurrent request reset the flags mid-turn");
+  check(G, "handler runs each request in its own turn", /const handler = \(req: Request\) => TURN\.run\(\{ sent: false, quiet: false \}, \(\) => handleTurn\(req\)\);/.test(botSrc) && /import \{ AsyncLocalStorage \} from "node:async_hooks";/.test(botSrc), true);
+  check(G, "a duplicate delivery is quiet", /duplicate webhook for[\s\S]{0,200}quietThisTurn = true;/.test(botSrc), true, "it returned without quiet and got the holding line");
+  const turnSrc = botSrc.slice(botSrc.indexOf("const TURN = "), botSrc.indexOf("\n", botSrc.indexOf('Object.defineProperty(globalThis, "quietThisTurn"')) + 1);
+  if (botSrc.includes("const TURN = ")) {
+    const { AsyncLocalStorage } = await import("node:async_hooks");
+    const make = new Function("AsyncLocalStorage", `${stripTypeScriptTypes(turnSrc)}\nreturn TURN;`);
+    const TURN = make(AsyncLocalStorage);
+    const tick = () => new Promise((r) => setTimeout(r, 5));
+    // Turn A sends (a studio's tap answered), then a status webhook (turn B) starts while A is still running.
+    const a = TURN.run({ sent: false, quiet: false }, async () => { globalThis.sentThisTurn = true; await tick(); await tick(); return globalThis.sentThisTurn; });
+    const b = TURN.run({ sent: false, quiet: false }, async () => { await tick(); const seen = globalThis.sentThisTurn; globalThis.quietThisTurn = true; return seen; });
+    const [aSent, bSaw] = await Promise.all([a, b]);
+    check(G, "two overlapping turns keep their own flags", { aSent, bSaw }, { aSent: true, bSaw: false }, "turn A still knows it sent, so no holding line; B starts clean");
+    delete globalThis.sentThisTurn; delete globalThis.quietThisTurn;
+  }
+  const so = between(botSrc, 'if (payload?.ops === "studio_offer") {', 'if (payload?.ops === "reset_chat")');
+  check(G, "ops studio_offer keeps the typed price", /quoted_price: Number\(payload\.price\)/.test(so), true, "studio-times sends eur= from its check page");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 fs.rmSync(tmp, { recursive: true, force: true });

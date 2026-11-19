@@ -60,6 +60,7 @@
 
 import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/6715b8a/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
@@ -207,12 +208,29 @@ async function logEvent(phone: string, event: string, meta: Record<string, unkno
 // for twelve days, including a partner studio complaining about a no-show. The
 // rule is worthless as a memo, so it is enforced: every send flips this, and the
 // handler checks it before it finishes. Reset per webhook, not per process.
-let sentThisTurn = false;
+// (sentThisTurn)
 // v204 (12 Oct): a turn where saying nothing is the decision: the customer is
 // answering Jordan and the bot is not sure (founderContextTurn), or a second
 // voice note failed inside ten minutes and the first already got the line.
 // Jordan has been pinged either way, so the fallback below stays out of it.
-let quietThisTurn = false;
+// (quietThisTurn)
+// v219 (19 Nov, #126): both used to be module globals that handler reset to
+// false at the start of EVERY request. Deno.serve runs requests side by side,
+// so a Meta delivery-status webhook for our own reply reset them in the middle
+// of a studio's turn: the turn ended "nothing sent", and the studio got the
+// holding line for a tap it had just been answered on twice. That stray line
+// is what put its price 14 seconds later inside the away-message window. Each
+// request now has its own pair (AsyncLocalStorage, handler below). The names
+// stay the same: they are accessors on globalThis that read and write the
+// current request's pair, so every "quietThisTurn = true" works unchanged.
+// Outside a request (none today) they fall back to one shared pair, which is
+// exactly the old behaviour.
+declare global { var sentThisTurn: boolean; var quietThisTurn: boolean; }
+const TURN = new AsyncLocalStorage<{ sent: boolean; quiet: boolean }>();
+const TURN_OUTSIDE = { sent: false, quiet: false };
+const turnNow = () => TURN.getStore() || TURN_OUTSIDE;
+Object.defineProperty(globalThis, "sentThisTurn", { configurable: true, get: () => turnNow().sent, set: (v: boolean) => { turnNow().sent = !!v; } });
+Object.defineProperty(globalThis, "quietThisTurn", { configurable: true, get: () => turnNow().quiet, set: (v: boolean) => { turnNow().quiet = !!v; } });
 // v209 (Jordan, 15 Oct: "dont' send anything to brandon, keep sending for
 // Brandon to top tier massage places in Salamanca"). A held customer gets
 // nothing automatic from the bot, WhatsApp or email. Studio offers for them go
@@ -2385,6 +2403,21 @@ function exactTime(req: any): string {
 }
 
 // A studio replied (template button or free text). Never enters the customer flow.
+// v219 (19 Nov, #126): a studio typed "si" 40 seconds after our 13:30 ask and
+// was never treated as having said yes. A bare yes counts as the "Sí, tenemos
+// hueco" button only when it can be about one ask: this studio has exactly one
+// unanswered ask from the last 12 hours, and our last message to its number is
+// that ask's template. The request id, or null.
+async function bareYesAsk(partnerId: string, phone: string): Promise<number | null> {
+  const since = new Date(Date.now() - 12 * 3600e3).toISOString();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partnerId)}&outcome=eq.pending&sent_at=gte.${since}&replied_at=is.null&order=sent_at.desc&limit=2&select=request_id,sent_at`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  if (!Array.isArray(rows) || rows.length !== 1) return null;
+  const m = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(phone))}&direction=eq.out&order=created_at.desc&limit=1&select=msg_type,created_at`, { headers: H() });
+  const last = ((await m.json().catch(() => [])) || [])[0] || null;
+  if (!last || String(last.msg_type || "") !== "template" || Date.parse(String(last.created_at || "")) < Date.parse(String(rows[0].sent_at || "")) - 120e3) return null;
+  return Number(rows[0].request_id) || null;
+}
 async function handleStudioReply(from: string, payloadId: string, btnText: string, freeText: string, partner: { id: string; business_name: string } | null) {
   const m = payloadId.match(/^studio_(confirm|other|no)_(\d+)$/);
   if (m) {
@@ -10917,9 +10950,11 @@ function coreCtx(): CoreCtx {
 // thank-you needs no reply, a muted number gets nothing ever, and a reaction or
 // a delivery receipt is not a message. Jordan hears about every one of these,
 // because a fallback firing means a branch somewhere answered nothing.
-const handler = async (req: Request) => {
-  sentThisTurn = false;
-  quietThisTurn = false;
+// v219 (19 Nov, #126): each request runs with its own sentThisTurn and
+// quietThisTurn (TURN, top of the file), both false at the start, so a
+// request running alongside can no longer reset them mid-turn.
+const handler = (req: Request) => TURN.run({ sent: false, quiet: false }, () => handleTurn(req));
+const handleTurn = async (req: Request) => {
   // v139: the founder's reply-as-bot page. Not a Meta webhook, so it is routed
   // before the webhook body is read and never reaches the fallback below.
   const url = new URL(req.url);
@@ -11059,6 +11094,42 @@ const studioAck = (t: string): boolean => {
     /(vale|\bok\b|okay|gracias|perfecto|genial|entendido|de acuerdo|no te preocupes|no pasa nada|sin problema|igualmente|quedo|quedamos|atent[ao]s?|saludos?|buen d[ií]a|buenas tardes|👍|🙏|😊|🥰|❤|😘|🤗|🙌)/i.test(s);
 };
 
+// ---- v219 studio replies: pure helpers (start) ----
+// v219 (19 Nov, #126): the away-message guess threw away two real answers on
+// one request. A studio's price ("76,50€", 14 seconds after our stray holding
+// line, in answer to our price question) and another studio's typed "si" to
+// the 13:30 ask (40 seconds after it) both came inside 45 seconds of our last
+// message, carried no clock time, and were silenced before anything read
+// them. Autoresponders are long canned sentences; these were not. So:
+//   - a written price or discount is never an away message;
+//   - neither is an answer while we are waiting on our own question;
+//   - neither is a short reply (25 characters or fewer: "si", "ok", "vale");
+//   - AUTOREPLY_RE still marks an away message whatever its timing;
+//   - otherwise, as before: under 45 seconds after our last message and no time.
+// sinceMs now counts from our last message to them, not from any message in
+// either direction. tests/request_126.mjs lifts this block.
+const AWAY_GAP_MS = 45_000;
+function isAwayMessage(text: string, sinceMs: number, o: { ourQuestion?: boolean; discount?: boolean } = {}): boolean {
+  const t = String(text || "").trim();
+  if (o.ourQuestion) return false;
+  if (o.discount || parseQuotedPrice(t) !== null) return false;
+  if (AUTOREPLY_RE.test(t)) return true;
+  if (t.length <= 25) return false;
+  return sinceMs < AWAY_GAP_MS && !parseOfferedTime(t);
+}
+// v219: a typed yes to our ask ("si", "sí, tenemos hueco", "claro"), which
+// only the "Sí, tenemos hueco" button used to count as.
+const BARE_YES_RE = /^\s*(s[ií]+|s[ií],? (tenemos hueco|hay hueco|podemos)|claro( que s[ií])?)[.!\s]*$/i;
+// v219: our last message to a studio was a question we are waiting on (the
+// price ask, "¿Qué otra hora...?"): free text with a "?", in the last 30
+// minutes. A template ask is not one: it is what fires autoresponders.
+function ourQuestionOpen(last: { msg_type?: unknown; body?: unknown; created_at?: unknown } | null, nowMs: number): boolean {
+  if (!last || String(last.msg_type || "") === "template") return false;
+  const at = Date.parse(String(last.created_at || ""));
+  return Number.isFinite(at) && nowMs - at < 30 * 60e3 && String(last.body || "").includes("?");
+}
+// ---- v219 studio replies: pure helpers (end) ----
+
 const handleInner = async (req: Request) => {
   let payload: any = null;
   try { payload = await req.json(); } catch { return new Response("OK", { status: 200 }); }
@@ -11166,9 +11237,13 @@ const handleInner = async (req: Request) => {
       if (!time) return out({ ok: false, reason: "no exact time to offer" });
       const dayRaw = String(payload.day || "").replace(/,?\s*([01]?\d|2[0-3])[:.]([0-5]\d)\s*$/, "").trim();
       const now = new Date().toISOString();
+      // v219 (19 Nov, #126): a price the studio typed on our own check page
+      // (studio-times sends it as payload.price) is a figure it wrote, the
+      // only kind Jordan's 19 Sept rule lets us show. It used to be dropped.
+      const typedPrice = Number(payload.price);
       const ins = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?on_conflict=request_id,partner_id`, {
         method: "POST", headers: { ...H(), Prefer: "resolution=merge-duplicates,return=representation" },
-        body: JSON.stringify({ request_id: id, partner_id: pid, phone: digitsOf(String(p.whatsapp || p.phone || "")), outcome: "accepted", accepted_at: now, replied_at: now, channel }),
+        body: JSON.stringify({ request_id: id, partner_id: pid, phone: digitsOf(String(p.whatsapp || p.phone || "")), outcome: "accepted", accepted_at: now, replied_at: now, channel, ...(typedPrice >= 1 && typedPrice <= 500 ? { quoted_price: Number(payload.price) } : {}) }),
       });
       const row = (await ins.json().catch(() => []))[0];
       if (!row?.id) return out({ ok: false, reason: "could not record the offer" });
@@ -11732,6 +11807,9 @@ const handleInner = async (req: Request) => {
         const rows = await claim.json().catch(() => null);
         if (claim.ok && Array.isArray(rows) && !rows.length) {
           console.log(`[wa] duplicate webhook for ${wamid} from ${from}, already handled`);
+          // v219: the first delivery answers it; this one must not add the
+          // holding line on top (the fallback reads quietThisTurn).
+          quietThisTurn = true;
           return new Response("OK", { status: 200 });
         }
       } catch (_e) { /* a dedupe we cannot reach must not silence the bot */ }
@@ -11860,15 +11938,23 @@ const handleInner = async (req: Request) => {
         if (text) {
           // v36: an away message is not an answer. Studios fire one within
           // seconds of our template ("gracias por contactar, te responderemos").
-          const sinceMs = priorLastAt === null ? Infinity : Date.now() - priorLastAt;
+          // v219 (19 Nov, #126): counted from our last message to them, not
+          // from the last message either way (priorLastAt), and read by
+          // isAwayMessage, which never drops a price, a discount, a short
+          // reply or the answer to a question we asked.
+          const lastOut = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(from)}&direction=eq.out&order=created_at.desc&limit=1&select=msg_type,body,created_at`, { headers: H() }).then((r) => r.json()).then((r) => (Array.isArray(r) && r[0]) || null).catch(() => null);
+          const lastOutAt = lastOut ? Date.parse(String(lastOut.created_at || "")) : NaN;
+          const sinceMs = Number.isFinite(lastOutAt) ? Date.now() - lastOutAt : (priorLastAt === null ? Infinity : Date.now() - priorLastAt);
           const awayText = AUTOREPLY_RE.test(text);
           // Review fix (17 Oct): when our last message to them asked them
           // something about their released times ("¿Cuál se os ha
           // llenado?", "¿Me confirmáis que al final no podéis atenderle?"),
           // their answer is never an away message, however fast it comes and
           // even when it says "no podemos atenderle".
-          const ourQuestion = (awayText || sinceMs < 45_000) ? await ocupadoQuestionOpen(from).catch(() => false) : false;
-          const autoReply = !ourQuestion && (awayText || (sinceMs < 45_000 && !parseOfferedTime(text)));
+          const ourQuestion = (awayText || sinceMs < 45_000) ? (ourQuestionOpen(lastOut, Date.now()) || await ocupadoQuestionOpen(from).catch(() => false)) : false;
+          const autoReply = isAwayMessage(text, sinceMs, { ourQuestion, discount: parseDiscount(text) !== null });
+          // v219: a typed "si" to our ask is the same yes as the button.
+          const yesAsk = !autoReply && BARE_YES_RE.test(text) ? await bareYesAsk(partner.id, from).catch(() => null) : null;
           // v216: «ocupado» about one of its released times (no open ask, no
           // booking of theirs it could be about). Review fix (17 Oct): read
           // BEFORE the 45 second away-message guess, which dropped a studio's
@@ -11887,7 +11973,8 @@ const handleInner = async (req: Request) => {
             if (em) {
               await fetch(`${SUPABASE_URL}/rest/v1/partners?id=eq.${encodeURIComponent(partner.id)}&booking_email=is.null`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ booking_email: em[0].toLowerCase() }) }).catch(() => {});
             }
-          } else await handleStudioReply(from, "", "", text, partner);
+          } else if (yesAsk) await handleStudioReply(from, `studio_confirm_${yesAsk}`, text, "", partner);
+          else await handleStudioReply(from, "", "", text, partner);
         }
         else if (MEDIA_TYPES.includes(String(msg.type))) {
           // v55: a studio's photo, voice note or PDF used to vanish into the log
