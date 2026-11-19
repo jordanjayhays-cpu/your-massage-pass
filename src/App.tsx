@@ -86,6 +86,7 @@ function Redirect({ to }: { to: string }) {
 
 
 import Review from "./pages/Review";
+import Unsubscribe from "./pages/Unsubscribe";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ForStudios from "./pages/ForStudios";
@@ -149,6 +150,10 @@ const App = () => (
           <Route path="/account/setup" element={<AccountSetup />} />
 
           <Route path="/review" element={<Review />} />
+          {/* One-tap stop for offers (the Kelly rule, 19 Nov): every
+              promotional email links here. A static path, so it wins over the
+              /:studioId catch-all on every host. */}
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
           {/* Desktop frame (F11, F12): SiteHeader and SiteFooter from 900px on
               these customer pages. Phones keep each page's own header. The app
               shell (AppLayout) draws its own header and footer. */}
