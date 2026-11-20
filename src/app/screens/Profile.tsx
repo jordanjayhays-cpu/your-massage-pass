@@ -1404,6 +1404,17 @@ export default function Profile() {
             </label>
           </div>
         </div>
+
+        {/* Offers (the Kelly rule, 19 Nov): the same two equal buttons as at
+            booking, saved on tap. Also the place to change your mind: the
+            latest answer is the one that counts. */}
+        <MarketingOptInCard
+          className="mt-5"
+          email={user?.email ?? null}
+          source="profile"
+          lang={i18n.language}
+          getAccessToken={async () => (await supabase.auth.getSession()).data.session?.access_token ?? null}
+        />
       </div>
 
       {/* Save success card */}
@@ -1427,12 +1438,6 @@ export default function Profile() {
             >
               {t("app.profile.keepEditing")}
             </button>
-            <MarketingOptInCard
-              className="mt-4"
-              email={user?.email ?? null}
-              userId={user?.id ?? null}
-              source="profile_setup"
-            />
           </div>
         </div>
       )}

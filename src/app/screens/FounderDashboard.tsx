@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { indexStatus, personAnswer, type PersonAnswer, type StatusIndex, type StatusRow } from "@/lib/offersStatus";
 import FounderAgentChat from "./FounderAgentChat";
 import StudioPipeline from "./founder/StudioPipeline";
 import ConciergeTab from "./founder/ConciergeTab";
 import FindStudio from "./founder/FindStudio";
 import BookingWaButtons from "./founder/BookingWaButtons";
 import RecentActivity from "./founder/RecentActivity";
+import RecordStop from "./founder/RecordStop";
 
 
 
@@ -247,6 +249,14 @@ export default function FounderDashboard() {
   const [events, setEvents] = useState<SiteEvent[]>([]);
   const [waRequests, setWaRequests] = useState<WaRequest[]>([]);
   const [contacts, setContacts] = useState<CustomerContact[]>([]);
+  // The Kelly rule (19 Nov): who said yes to offers, from marketing_status
+  // (latest answer per email and per phone). Never a fallback count: when it
+  // cannot be read, the page says so.
+  const [optin, setOptin] = useState<{
+    readable: boolean;
+    index: StatusIndex | null;
+    error?: string;
+  } | null>(null);
 
 
 
@@ -281,6 +291,7 @@ export default function FounderDashboard() {
         { data: eventRows },
         { data: waRows },
         { data: contactRows },
+        statusRes,
       ] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("bookings").select("*").order("created_at", { ascending: false }).limit(500),
@@ -292,6 +303,7 @@ export default function FounderDashboard() {
         supabase.from("site_events").select("event,visitor_key,day,partner_slug").gte("day", since14).limit(20000),
         supabase.from("whatsapp_requests").select("*").gte("created_at", since90).order("created_at", { ascending: false }).limit(2000),
         supabase.from("customer_contacts").select("email,bookings,has_account,marketing_opt_in").limit(10000),
+        supabase.from("marketing_status").select("kind,contact,action,source").limit(20000),
       ]);
       setProfileCount(profCount ?? 0);
       setBookings(bks ?? []);
@@ -302,6 +314,11 @@ export default function FounderDashboard() {
       setEvents((eventRows as SiteEvent[]) ?? []);
       setWaRequests((waRows as WaRequest[]) ?? []);
       setContacts((contactRows as CustomerContact[]) ?? []);
+      if (statusRes.error) {
+        setOptin({ readable: false, index: null, error: statusRes.error.message || String(statusRes.error.code || "error") });
+      } else {
+        setOptin({ readable: true, index: indexStatus((statusRes.data as StatusRow[]) ?? []) });
+      }
       const distinct = new Set<string>();
       for (const r of (allEmailRows as any[]) ?? []) {
         const e = (r?.client_email || "").toLowerCase().trim();
@@ -486,7 +503,21 @@ export default function FounderDashboard() {
   const contactsTotal = contacts.length;
   const contactsWithBookings = contacts.filter((c) => (c.bookings ?? 0) > 0).length;
   const contactsWithAccounts = contacts.filter((c) => c.has_account === true).length;
-  const contactsOptedIn = contacts.filter((c) => c.marketing_opt_in === true).length;
+  // Offers (the Kelly rule): a customer counts as yes only when EVERY address
+  // of theirs reads a latest, verified yes and none is a test contact; any
+  // "no" or "withdraw" on any address is what shows (src/lib/offersStatus.ts,
+  // the same rule as the senders' canMarket). People are counted, not rows.
+  const offersAnswer = (c: { email: string | null; phone: string | null }): PersonAnswer | "" => {
+    if (!optin) return "";
+    return personAnswer({ emails: [c.email], phones: [c.phone] }, optin.readable ? optin.index : null);
+  };
+  const optinYesPeople = optin?.readable ? marketingContacts.filter((c) => offersAnswer(c) === "yes").length : 0;
+  const optinUnconfirmed = optin?.readable ? marketingContacts.filter((c) => offersAnswer(c) === "unconfirmed yes").length : 0;
+  // Offers answers that never reached the consent function, or that it
+  // refused (network, CORS, a 4xx), are only visible here: one site_events
+  // row per visitor and day (event consent_save_error).
+  const since7 = dayKey(Date.now() - 7 * DAY_MS);
+  const consentErrors7d = events.filter((e) => e.event === "consent_save_error" && String(e.day || "") >= since7).length;
 
 
   // Source filter
@@ -802,20 +833,35 @@ export default function FounderDashboard() {
               <Stat label="Total contacts" value={contactsTotal || totalDistinctEmails} />
               <Stat label="With bookings" value={contactsWithBookings} />
               <Stat label="With accounts" value={contactsWithAccounts} />
-              <Stat label="Marketing opt-ins" value={contactsOptedIn || marketingContacts.length} />
+              <Stat label="Said yes to offers" value={optin == null ? "…" : optin.readable ? optinYesPeople : "?"} />
             </div>
+            <p className="mb-4 text-sm text-[#5a4736]" data-testid="optin-line">
+              {optin == null
+                ? "Reading who said yes to offers…"
+                : !optin.readable
+                  ? `Could not read marketing_status (${optin.error}). Opt-ins cannot be counted here yet, so nobody counts as a yes. The customer list and the CSV below are not a marketing list.`
+                  : optinYesPeople === 0
+                    ? `0 customers may get promotions: nobody yet has a verified yes on every address we hold for them.${optinUnconfirmed ? ` ${optinUnconfirmed} said yes from the quiz, which does not count until they confirm it.` : ""}`
+                    : `${optinYesPeople} customer${optinYesPeople === 1 ? "" : "s"} whose every address reads a verified yes. Only these may get promotions.${optinUnconfirmed ? ` ${optinUnconfirmed} more said yes from the quiz, which does not count until they confirm it.` : ""}`}
+            </p>
+            <RecordStop />
+            {consentErrors7d > 0 && (
+              <p role="alert" data-testid="consent-errors" className="mb-4 rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>
+                {`${consentErrors7d} offers answer${consentErrors7d === 1 ? "" : "s"} could not be saved in the last 7 days (site_events consent_save_error). Those people count as not answered. Check the consent function's logs and its allowed origins.`}
+              </p>
+            )}
 
             <div className="flex justify-end mb-3">
               <button
                 onClick={() => {
-                  const header = ["name","email","phone","lang","bookings","last_booking_at"];
+                  const header = ["name","email","phone","lang","bookings","last_booking_at","offers_answer_every_address"];
                   const escape = (v: any) => {
                     const s = v == null ? "" : String(v);
                     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
                   };
                   const lines = [header.join(",")];
                   for (const c of marketingContacts) {
-                    lines.push([c.name, c.email, c.phone, c.lang, c.bookings, c.last_booking_at].map(escape).join(","));
+                    lines.push([c.name, c.email, c.phone, c.lang, c.bookings, c.last_booking_at, offersAnswer(c)].map(escape).join(","));
                   }
                   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
                   const url = URL.createObjectURL(blob);
@@ -829,7 +875,7 @@ export default function FounderDashboard() {
                 }}
                 className="text-xs font-semibold px-4 h-9 rounded-full text-white"
                 style={{ background: "#C4622D" }}
-              >Exportar CSV</button>
+              >Export CSV: all customers (not a marketing list)</button>
             </div>
             <div className="max-h-96 overflow-auto rounded-xl border border-[#E5DDD3]">
               <table className="w-full text-sm">
@@ -840,6 +886,7 @@ export default function FounderDashboard() {
                     <th className="px-3 py-2">Phone</th>
                     <th className="px-3 py-2">Bookings</th>
                     <th className="px-3 py-2">Last booking</th>
+                    <th className="px-3 py-2">Offers</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0E7DB]">
@@ -850,10 +897,11 @@ export default function FounderDashboard() {
                       <td className="px-3 py-2 text-[#7A7068]">{c.phone || "—"}</td>
                       <td className="px-3 py-2">{c.bookings ?? 0}</td>
                       <td className="px-3 py-2 text-[#7A7068]">{c.last_booking_at ? new Date(c.last_booking_at).toLocaleDateString() : "—"}</td>
+                      <td className={`px-3 py-2 ${offersAnswer(c) === "yes" ? "font-semibold text-[#2F5E33]" : "text-[#7A7068]"}`}>{offersAnswer(c)}</td>
                     </tr>
                   ))}
                   {marketingContacts.length === 0 && (
-                    <tr><td colSpan={5} className="px-3 py-6 text-center text-[#7A7068]">Aún no hay clientes con opt-in.</td></tr>
+                    <tr><td colSpan={6} className="px-3 py-6 text-center text-[#7A7068]">No customers yet.</td></tr>
                   )}
                 </tbody>
               </table>

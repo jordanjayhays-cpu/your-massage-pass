@@ -5,6 +5,7 @@ import {
   COMPLIMENT_TAGS, ISSUE_TAGS, reviewTagLabel, suggestDisplayName,
 } from "@/lib/reviews";
 import { toFlowLang, type FlowLang } from "@/lib/flowLang";
+import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 
 const FN_URL = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/review";
 
@@ -585,6 +586,13 @@ export default function Review() {
           </div>
           <h1 className="font-display text-3xl font-bold text-[#3D2B1F]">{t.thanksTitle}</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#5C5349]">{t.thanksBody}</p>
+          {/* The Kelly rule (19 Nov): customers who booked before the question
+              existed (and bot bookings) are asked here, inside a page they chose
+              to open, never by a separate promotional message. The booking
+              token is the only credential: the consent function reads the
+              email and booking_ref from the booking itself. Spanish pages get
+              the Spanish notice, every other language the English one. */}
+          <MarketingOptInCard className="mt-6" source="review_page" token={token} lang={lang} />
           <a
             href={t.bookAgainWa}
             target="_blank"

@@ -33,6 +33,10 @@
     needs one) and an optional WhatsApp number. Send is never silently
     disabled: it checks on tap and says what is missing, next to the field.
   - The reminder is one opt-in toggle, off by default.
+  - The offers question (the Kelly rule, 19 Nov): a notice naming Massage
+    Club, the channels and how to stop, with two equal buttons and nothing
+    chosen. Optional: the request goes whatever the answer. After the request
+    is saved, the answer goes to the `consent` function (marketing_optins).
   - The sent screen shows the request number and what happens next. The
     WhatsApp button only shows with a phone, because the bot joins a web
     request by its "(#id)" plus the same phone (wa-bot WEB_HANDOFF_RE).
@@ -176,6 +180,16 @@ h2{font-size:clamp(30px,8.6vw,38px);margin:4px 0 6px}
 .cta.wa{background:#15803D;box-shadow:0 12px 28px rgba(21,128,61,.30)}
 .skip{display:block;width:100%;text-align:center;margin-top:14px;font-weight:700;color:var(--muted);padding:6px}
 .consent{font-size:13px;color:var(--muted);line-height:1.45;margin:10px 4px 0}
+/* Offers question (the Kelly rule, 19 Nov): a notice and two equal buttons,
+   nothing pre-selected, optional. The request goes whatever the answer. */
+.mk{margin-top:20px;background:rgba(255,253,251,.72);border:1px solid var(--line);border-radius:18px;padding:14px 14px 12px}
+.mk p{font-size:14px;line-height:1.45;color:var(--ink);margin:0 2px 10px}
+.mk p a{color:inherit;text-decoration:underline;text-underline-offset:3px;font-weight:600}
+.mk .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mk .chip{width:100%;text-align:center;padding:11px 10px;line-height:1.25}
+.mkfail{font-size:14px;line-height:1.45;color:var(--bad);margin:14px 4px 0}
+.mkfail.ok{color:var(--muted)}
+.mkfail button{font-weight:700;color:var(--clay-d);text-decoration:underline;text-underline-offset:3px;padding:10px 2px;margin:-10px 0}
 .err{color:var(--bad);font-size:14px;margin-top:10px;text-align:center}
 .err:empty{display:none}
 
@@ -372,6 +386,8 @@ body{padding-bottom:var(--consent-h,0px)}
   .tog[aria-checked="true"]{border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action);background:var(--brand-tint)}
   .tog[aria-checked="true"] .box{background:var(--action);border-color:var(--action)}
   .consent,.privacy,.err{text-align:left;margin-left:0;margin-right:0;max-width:62ch}
+  .mk{background:var(--card);border-color:var(--line);border-radius:12px;max-width:62ch}
+  .mkfail{margin-left:0;margin-right:0}
 
   /* Buttons: sized to the label, the design system's action colour, no glow. */
   .cta{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:220px;height:52px;padding:0 32px;font-size:17px;font-weight:600;background:var(--action);box-shadow:none;transition:background-color .2s,transform .12s}
@@ -564,11 +580,20 @@ body{padding-bottom:var(--consent-h,0px)}
         <button type="button" class="addlink" id="noteOpen" aria-expanded="false" aria-controls="noteBox"><span aria-hidden="true">+</span> <span data-t="noteAdd"></span></button>
         <div class="field" id="noteBox" style="margin-top:16px" hidden>
           <label for="note"><span data-t="note"></span><span class="count" id="noteCount" aria-hidden="true"></span></label>
-          <textarea id="note" rows="2" maxlength="240" enterkeyhint="done" data-ph="notePh" aria-describedby="noteErr"></textarea>
+          <textarea id="note" rows="2" maxlength="240" enterkeyhint="done" data-ph="notePh" aria-describedby="noteHelp noteErr"></textarea>
+          <p class="help" id="noteHelp" data-t="noteHelp"></p>
           <p class="ferr" id="noteErr" role="alert"></p>
         </div>
         <button type="button" class="tog" id="remind" role="switch" aria-checked="false"><span class="box"></span><span data-t="remind"></span></button>
         <p class="consent" id="consent" data-t="consent" hidden></p>
+        <!-- Offers (the Kelly rule): optional, two equal buttons, none chosen. -->
+        <div class="mk" role="group" aria-labelledby="mkQ">
+          <p id="mkQ"></p>
+          <div class="two" id="mkBtns">
+            <button type="button" class="chip" data-mk="yes" aria-pressed="false"></button>
+            <button type="button" class="chip" data-mk="no" aria-pressed="false"></button>
+          </div>
+        </div>
         <div class="err" id="sendErr" role="alert"></div>
         <button type="submit" class="cta" id="send" data-t="send"></button>
         <p class="privacy" id="privacy"></p>
@@ -587,6 +612,7 @@ body{padding-bottom:var(--consent-h,0px)}
         <ol id="steps"></ol>
       </div>
       <p class="mail" id="mail"></p>
+      <p class="mkfail" id="mkFail" role="status" hidden></p>
       <div id="waSlot"></div>
       <p class="fine" data-t="fine"></p>
     </section>
@@ -718,12 +744,18 @@ const T = {
     errName: "What should we call you?", errEmail: "Check your email, for example name@gmail.com", errPhone: "Add the country code, for example +34",
     therapist: "Who gives the massage?", therapistHelp: "We ask the studio for you.",
     people: "How many people?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 or more"]],
-    noteAdd: "Anything the studio should know?", note: "Anything the studio should know? (optional)", notePh: "For example: strong pressure, 90 minutes, pregnant",
+    noteAdd: "Anything the studio should know?", note: "Anything the studio should know? (optional)", notePh: "For example: strong pressure, 90 minutes",
+    // Health data (GDPR art. 9): we do not need it, and the note goes to every studio asked.
+    noteHelp: "Please do not write health details here. You can tell the therapist at the studio. The note goes to the studios we ask.",
     blocked: "We book therapeutic massage at licensed studios, nothing else.",
     remind: "Remind me in a month to book again",
-    consent: "Massage Club will message you on WhatsApp or email in a month, when it's time to book again. Reply STOP anytime.",
+    consent: "Massage Club will message you on WhatsApp or email in a month, when it's time to book again. To stop it, reply STOP on WhatsApp or write to support@massageclub.io.",
+    // The Kelly rule (19 Nov). mkQ is saved word for word with the answer.
+    mkQ: "Can Massage Club send you offers and reminders to book again, by email and WhatsApp? You can stop any time with one tap, or by writing to support@massageclub.io.",
+    mkYes: "Yes, send me offers", mkNo: "No thanks", mkPrivacy: "Privacy",
+    mkFail: "We could not save your answer about offers.", mkRetry: "Try again", mkSaved: "Saved. Thank you.",
     send: "Send my request", sending: "Sending…", sendErr: "That didn't go through. Try again, or <a>message us on WhatsApp</a>.",
-    privacy: "We use your details only for this request. <a>Privacy</a>", privacyRemind: "We use your details only for this request and the reminder you asked for. <a>Privacy</a>",
+    privacy: "Massage Club (Kinsol LLC) uses your details for this request, and to send offers only if you say yes. To see, correct or delete them, write to support@massageclub.io. <a>Privacy</a>", privacyRemind: "Massage Club (Kinsol LLC) uses your details for this request, for the reminder you asked for, and to send offers only if you say yes. To see, correct or delete them, write to support@massageclub.io. <a>Privacy</a>",
     doneTitle: "Request sent. We're asking the studios now.",
     req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kWho: "Who gives it", kPrice: "Price", kRemind: "Reminder", remindVal: "In a month",
     priceDone: "60 min · usually €50 to €85, paid at the studio", priceDoneCouples: "60 min · usually €50 to €85 per person, paid at the studio",
@@ -744,7 +776,7 @@ const T = {
     fOne: "Massages in Madrid. You tell us in English, we ask the studios in Spanish. Free to use.",
     fMassages: "Massages", fMassagesList: [["/reserve?src=footer", "Book a massage"], ["/studios", "All studios"], ["/how-it-works", "How it works"]],
     fStudios: "Studios", fStudiosList: [["/for-studios", "For studios"], ["/partner/login", "Studio login"]],
-    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"]],
+    fLegal: [["/privacy", "Privacy"], ["/terms", "Terms"], ["/legal", "Legal notice"], ["/unsubscribe", "Unsubscribe"]],
   },
   es: {
     h1: "Tu masaje en Madrid", docTitle: "Tu masaje en Madrid · Massage Club",
@@ -764,12 +796,16 @@ const T = {
     errName: "¿Cómo te llamamos?", errEmail: "Revisa tu email, por ejemplo nombre@gmail.com", errPhone: "Añade el prefijo, por ejemplo +34",
     therapist: "¿Quién te da el masaje?", therapistHelp: "Se lo preguntamos al centro.",
     people: "¿Cuántas personas?", peopleOpts: [["1", "1"], ["2", "2"], ["3", "3 o más"]],
-    noteAdd: "¿Algo que deba saber el centro?", note: "¿Algo que deba saber el centro? (opcional)", notePh: "Por ejemplo: presión fuerte, 90 minutos, embarazada",
+    noteAdd: "¿Algo que deba saber el centro?", note: "¿Algo que deba saber el centro? (opcional)", notePh: "Por ejemplo: presión fuerte, 90 minutos",
+    noteHelp: "Por favor, no escribas aquí datos de salud. Puedes contárselo al terapeuta en el centro. La nota llega a los centros a los que preguntamos.",
     blocked: "Reservamos masajes terapéuticos en centros con licencia, nada más.",
     remind: "Recuérdame en un mes para volver a reservar",
-    consent: "Massage Club te escribirá por WhatsApp o email dentro de un mes, cuando toque volver. Responde STOP cuando quieras.",
+    consent: "Massage Club te escribirá por WhatsApp o email dentro de un mes, cuando toque volver. Para pararlo, responde STOP por WhatsApp o escribe a support@massageclub.io.",
+    mkQ: "¿Puede Massage Club enviarte ofertas y recordatorios para volver a reservar, por email y WhatsApp? Puedes darte de baja cuando quieras con un toque o escribiendo a support@massageclub.io.",
+    mkYes: "Sí, quiero ofertas", mkNo: "No, gracias", mkPrivacy: "Privacidad",
+    mkFail: "No se ha podido guardar tu respuesta sobre las ofertas.", mkRetry: "Inténtalo de nuevo", mkSaved: "Guardado. Gracias.",
     send: "Enviar mi solicitud", sending: "Enviando…", sendErr: "No se ha enviado. Inténtalo de nuevo o <a>escríbenos por WhatsApp</a>.",
-    privacy: "Solo usamos tus datos para esta solicitud. <a>Privacidad</a>", privacyRemind: "Solo usamos tus datos para esta solicitud y para el recordatorio que pediste. <a>Privacidad</a>",
+    privacy: "Massage Club (Kinsol LLC) usa tus datos para esta solicitud y, solo si dices que sí, para enviarte ofertas. Para verlos, corregirlos o borrarlos, escribe a support@massageclub.io. <a>Privacidad</a>", privacyRemind: "Massage Club (Kinsol LLC) usa tus datos para esta solicitud, para el recordatorio que pediste y, solo si dices que sí, para enviarte ofertas. Para verlos, corregirlos o borrarlos, escribe a support@massageclub.io. <a>Privacidad</a>",
     doneTitle: "Solicitud enviada. Ya estamos preguntando a los centros.",
     req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kWho: "Quién te lo da", kPrice: "Precio", kRemind: "Recordatorio", remindVal: "Dentro de un mes",
     priceDone: "60 min · normalmente entre 50 y 85 €, se paga en el centro", priceDoneCouples: "60 min · normalmente entre 50 y 85 € por persona, se paga en el centro",
@@ -788,7 +824,7 @@ const T = {
     fOne: "Masajes en Madrid. Nos lo cuentas en tu idioma y preguntamos a los centros en español. Gratis.",
     fMassages: "Masajes", fMassagesList: [["/reserve?src=footer", "Reservar un masaje"], ["/studios", "Todos los centros"], ["/how-it-works", "Cómo funciona"]],
     fStudios: "Centros", fStudiosList: [["/for-studios", "Para centros"], ["/partner/login", "Acceso para centros"]],
-    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"]],
+    fLegal: [["/privacy", "Privacidad"], ["/terms", "Términos"], ["/legal", "Aviso legal"], ["/unsubscribe", "Darse de baja"]],
   },
 };
 
@@ -857,6 +893,8 @@ const ORDER = ["massage", "day", "time", "where", "you", "done"];
 const S = {
   massage: null, day: null, times: [], multi: false, area: null, loc: null, other: false,
   therapist: "any", remind: false, people: "1",
+  // Offers answer: null (not answered), "yes" or "no". Never defaults to yes.
+  mk: null,
 };
 // The bot's "special massage" pattern (wa-bot copy.ts EROTIC_RE). A match in
 // the note gets the standard line and nothing is sent, then or later.
@@ -927,7 +965,7 @@ function paintChrome() {
   $("sfMassagesList").innerHTML = links(t("fMassagesList"));
   $("sfStudios").textContent = t("fStudios");
   $("sfStudiosList").innerHTML = links(t("fStudiosList"));
-  $("sfCopy").textContent = `© ${madridNow().getFullYear()} Massage Club · Madrid`;
+  $("sfCopy").textContent = `© ${madridNow().getFullYear()} Kinsol LLC · Massage Club`;
   $("sfLegal").innerHTML = links(t("fLegal")) + `<li><a href="mailto:support@massageclub.io">support@massageclub.io</a></li>`;
 }
 $("back").querySelector(".ic").innerHTML = svg(ICONS.back);
@@ -983,6 +1021,13 @@ function paint() {
   $("remind").setAttribute("aria-checked", String(S.remind));
   $("remind").querySelector(".box").innerHTML = TICK;
   $("consent").hidden = !S.remind;
+  $("mkQ").innerHTML = `${esc(t("mkQ"))} <a href="${langHref("/privacy")}">${esc(t("mkPrivacy"))}</a>`;
+  $("mkBtns").querySelectorAll("[data-mk]").forEach((b) => {
+    const on = S.mk === b.dataset.mk;
+    b.textContent = t(b.dataset.mk === "yes" ? "mkYes" : "mkNo");
+    b.classList.toggle("sel", on);
+    b.setAttribute("aria-pressed", String(on));
+  });
   // Field errors that are showing follow the language too.
   for (const k of ["name", "email", "phone"]) if ($(k).classList.contains("bad")) setErr(k, true);
   if ($("emailTypo").innerHTML) showTypo();
@@ -992,9 +1037,10 @@ function paint() {
 
 // ---------- Cookie choice, Clarity and the Google tag ----------
 // Same key, copy and rules as the website's ConsentBanner (src/components/
-// ConsentBanner.tsx) and index.html: Consent Mode defaults are "denied", the
-// Google tag loads after the page is up (so a gclid from an ad is seen),
-// Clarity only after Accept, and nothing at all for ?nt=1 (mc_nt).
+// ConsentBanner.tsx) and index.html: Consent Mode defaults are "denied", and
+// the Google tag and Clarity both load only after Accept (basic consent mode,
+// 19 Nov 2026: before a choice Google receives nothing, as the privacy page
+// says), and nothing at all for ?nt=1 (mc_nt).
 const CONSENT_KEY = "mc_consent";
 const CB = {
   en: { body: "We use cookies to see how the site is used and to measure our ads.", accept: "Accept", decline: "Decline", privacy: "Privacy", label: "Cookie choice" },
@@ -1011,7 +1057,7 @@ if (!noTrack) {
   if (consentGranted()) gtag("consent", "update", GRANT);
 }
 function loadGtag() {
-  if (noTrack || window.__mcGtag) return;
+  if (noTrack || window.__mcGtag || !consentGranted()) return;
   window.__mcGtag = 1;
   const sc = document.createElement("script");
   sc.async = true; sc.src = "https://www.googletagmanager.com/gtag/js?id=AW-18401185487";
@@ -1046,7 +1092,7 @@ $("cbar").onclick = (e) => {
   const b = e.target.closest("[data-c]"); if (!b) return;
   const yes = b.dataset.c === "1";
   try { localStorage.setItem(CONSENT_KEY, yes ? "granted" : "denied"); } catch {}
-  if (yes) { gtag("consent", "update", GRANT); loadClarity(); }
+  if (yes) { gtag("consent", "update", GRANT); loadGtag(); loadClarity(); }
   cookieOpen = false; paintCookieBar();
 };
 if (typeof ResizeObserver !== "undefined") new ResizeObserver(setConsentH).observe($("cbar"));
@@ -1277,6 +1323,50 @@ for (const k of ["name", "email", "phone"]) $(k).addEventListener("blur", () => 
 
 $("therapist").onclick = (e) => { const b = e.target.closest("[data-v]"); if (b) { S.therapist = b.dataset.v; paint(); } };
 $("remind").onclick = () => { S.remind = !S.remind; paint(); };
+// A second tap on the chosen answer takes it back to "not answered".
+$("mkBtns").onclick = (e) => {
+  const b = e.target.closest("[data-mk]"); if (!b) return;
+  S.mk = S.mk === b.dataset.mk ? null : b.dataset.mk;
+  once("mk_" + (S.mk || "clear"));
+  save(); paint();
+};
+
+// ---------- The offers answer (the Kelly rule, 19 Nov) ----------
+// Saved by the `consent` function into marketing_optins, only after the
+// request itself went through: the booking never waits for this and never
+// depends on it (LOPDGDD 6.3). The exact words shown and their language go
+// with the answer (GDPR art. 7). One retry; a failure is tracked, logged and
+// shown on the sent screen with a Try again, never silent.
+const CONSENT = "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/consent";
+// KEEP IN SYNC with EMAIL_RE in supabase/functions/consent/index.ts and
+// EMAIL_OK in src/lib/marketingOptIn.ts.
+const CONSENT_EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/;
+async function postConsent(payload) {
+  try {
+    const r = await fetch(CONSENT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && j && j.ok === true ? { ok: true } : { ok: false, why: "http_" + r.status };
+  } catch (e) {
+    return { ok: false, why: String(e && e.message || e).slice(0, 80) || "network" };
+  }
+}
+async function saveMk() {
+  const p = sent && sent.mkPayload;
+  if (!p) return;
+  sent.mk = "saving";
+  let res = await postConsent(p);
+  // Only a server or network failure is retried: a refusal (4xx) would not change.
+  if (!res.ok && !/^http_4/.test(res.why)) { await new Promise((ok) => setTimeout(ok, 1500)); res = await postConsent(p); }
+  if (res.ok) {
+    sent.mk = sent.mkRetried ? "saved" : "ok";
+    track("consent_saved", { source: p.source, choice: p.choice, retried: !!sent.mkRetried });
+  } else {
+    sent.mk = "failed";
+    track("consent_save_error", { source: p.source, choice: p.choice, error: res.why });
+    console.error("[consent] the offers answer was not saved", res.why);
+  }
+  if (cur === ORDER.indexOf("done")) renderDone();
+}
 
 // The same words the website wizard sends, so studios read one format.
 const hm = (hs) => hs.join(" / ");
@@ -1347,6 +1437,22 @@ $("youForm").onsubmit = async (ev) => {
     forget();
     btn.textContent = t("send"); btn.disabled = false;
     done(j.id, name, phone || "", email);
+    // Only an answer the customer gave is saved; no answer saves nothing.
+    if (S.mk === "yes" || S.mk === "no") {
+      const rid = Number(j.id);
+      // The consent function's own email check (normEmail there) is stricter
+      // than the form's: an address it would refuse is left out, so the answer
+      // still goes with the phone instead of failing whole.
+      const mkEmail = String(email || "").trim().toLowerCase();
+      const mkPhone = phone ? phone.replace(/\D/g, "") : "";
+      sent.mkPayload = {
+        choice: S.mk, source: "go_page", wording: T[L].mkQ, lang: L,
+        email: mkEmail.length <= 254 && CONSENT_EMAIL_RE.test(mkEmail) ? mkEmail : undefined,
+        phone: mkPhone.length >= 6 && mkPhone.length <= 15 ? mkPhone : undefined,
+        request_id: Number.isSafeInteger(rid) && rid > 0 ? rid : undefined,
+      };
+      void saveMk();
+    }
   } catch (e) {
     track("req_submit_error", { error: String(e && e.message || e).slice(0, 120) });
     $("sendErr").innerHTML = t("sendErr").replace("<a>", `<a href="https://wa.me/${BOT}">`);
@@ -1387,6 +1493,17 @@ function renderDone() {
   // The full address, so a typo can still be seen: it is the customer's own
   // screen, seconds after they typed it.
   $("mail").innerHTML = email ? `${MAIL}<span>${esc(t("mail").replace("{m}", email))}</span>` : "";
+  // The offers answer, only when its save failed (or was saved on a retry).
+  const mkEl = $("mkFail");
+  if (sent.mk === "failed" || (sent.mk === "saving" && sent.mkRetried)) {
+    mkEl.hidden = false; mkEl.className = "mkfail";
+    mkEl.innerHTML = `${esc(t("mkFail"))} <button type="button" id="mkRetry"${sent.mk === "saving" ? " disabled" : ""}>${esc(t("mkRetry"))}</button>`;
+    $("mkRetry").onclick = () => { if (sent.mk === "saving") return; sent.mkRetried = true; sent.mk = "saving"; renderDone(); void saveMk(); };
+  } else if (sent.mk === "saved") {
+    mkEl.hidden = false; mkEl.className = "mkfail ok"; mkEl.textContent = t("mkSaved");
+  } else {
+    mkEl.hidden = true; mkEl.textContent = "";
+  }
   // The bot joins this request only by its number plus the same phone, so
   // the button shows only when both exist. "(#id)" must follow "website" or
   // "la web" directly (wa-bot WEB_HANDOFF_RE).

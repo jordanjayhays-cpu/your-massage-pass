@@ -28,7 +28,9 @@ import AccountOfferBlock from "@/components/AccountOfferBlock";
 import { BookAgainBanner } from "@/app/components/BookAgain";
 import { tagLabel } from "@/lib/tagLabel";
 import { markStudioVisited } from "@/lib/visitedStudios";
-import MarketingOptInCard from "@/app/components/MarketingOptInCard";
+import { noteHealthHint, privacyFirstLayer } from "@/lib/healthHint";
+import MarketingOptInCard, { ConsentQuestion } from "@/app/components/MarketingOptInCard";
+import { CONSENT_COPY, consentLang, saveConsent, type ConsentChoice, type SaveConsentInput } from "@/lib/marketingOptIn";
 import StudioPlaceMap from "@/app/components/StudioPlaceMap";
 import { StudioPhoto } from "@/app/components/StudioPhoto";
 import { useStockPhoto } from "@/lib/useStockPhoto";
@@ -158,7 +160,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "Pick a massage first to choose these options.", chooseMassage: "Choose a massage",
     comfort: "Comfort", pressure: "Pressure", focusAreas: "Focus areas", makeItYours: "Make it yours",
     extrasNote: "Extras this studio offers. Added to your total.", notesForTherapist: "Notes for your therapist",
-    notesPlaceholder: "Anything we should know? Injuries, allergies, preferences.",
+    notesPlaceholder: "Anything we should know? For example the pressure you like.",
     giveContact: "Give us an email or a WhatsApp number so we can reach you.",
     createAccount: "Create my free Massage Club account",
     createAccountSub: "Track your booking and rebook faster. We'll email you a one-tap sign-in link, no password.",
@@ -214,7 +216,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "Elige antes un masaje para usar estas opciones.", chooseMassage: "Elegir masaje",
     comfort: "Confort", pressure: "Presión", focusAreas: "Zonas", makeItYours: "Hazlo tuyo",
     extrasNote: "Extras que ofrece este centro. Se añaden a tu total.", notesForTherapist: "Notas para tu terapeuta",
-    notesPlaceholder: "¿Algo que debamos saber? Lesiones, alergias, preferencias.",
+    notesPlaceholder: "¿Algo que debamos saber? Por ejemplo, la presión que prefieres.",
     giveContact: "Déjanos un email o un WhatsApp para poder contactarte.",
     createAccount: "Crear mi cuenta gratis de Massage Club",
     createAccountSub: "Sigue tu reserva y repite más rápido. Te enviamos un enlace de acceso de un toque, sin contraseña.",
@@ -270,7 +272,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "Choisissez d'abord un massage pour utiliser ces options.", chooseMassage: "Choisir un massage",
     comfort: "Confort", pressure: "Pression", focusAreas: "Zones à cibler", makeItYours: "Personnalisez",
     extrasNote: "Extras proposés par ce centre. Ajoutés à votre total.", notesForTherapist: "Notes pour votre thérapeute",
-    notesPlaceholder: "Quelque chose à savoir ? Blessures, allergies, préférences.",
+    notesPlaceholder: "Quelque chose à savoir ? Par exemple, la pression que vous préférez.",
     giveContact: "Laissez-nous un email ou un numéro WhatsApp pour vous contacter.",
     createAccount: "Créer mon compte gratuit Massage Club",
     createAccountSub: "Suivez votre réservation et réservez plus vite. On vous envoie un lien de connexion en un clic, sans mot de passe.",
@@ -326,7 +328,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "Wähle zuerst eine Massage, um diese Optionen zu nutzen.", chooseMassage: "Massage wählen",
     comfort: "Komfort", pressure: "Druck", focusAreas: "Problemzonen", makeItYours: "Mach es dir passend",
     extrasNote: "Extras, die dieses Studio anbietet. Werden zu deinem Total addiert.", notesForTherapist: "Notizen für deinen Therapeuten",
-    notesPlaceholder: "Sollten wir etwas wissen? Verletzungen, Allergien, Vorlieben.",
+    notesPlaceholder: "Sollten wir etwas wissen? Zum Beispiel, welchen Druck du magst.",
     giveContact: "Gib uns eine E-Mail oder eine WhatsApp-Nummer, damit wir dich erreichen können.",
     createAccount: "Mein kostenloses Massage-Club-Konto erstellen",
     createAccountSub: "Verfolge deine Buchung und buche schneller erneut. Wir schicken dir einen Ein-Klick-Login-Link, ohne Passwort.",
@@ -382,7 +384,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "Scegli prima un massaggio per usare queste opzioni.", chooseMassage: "Scegli un massaggio",
     comfort: "Comfort", pressure: "Pressione", focusAreas: "Zone da trattare", makeItYours: "Personalizzalo",
     extrasNote: "Extra offerti da questo centro. Si aggiungono al tuo totale.", notesForTherapist: "Note per il tuo terapeuta",
-    notesPlaceholder: "C'è qualcosa che dovremmo sapere? Lesioni, allergie, preferenze.",
+    notesPlaceholder: "C'è qualcosa che dovremmo sapere? Per esempio, la pressione che preferisci.",
     giveContact: "Lasciaci un'email o un numero WhatsApp per poterti contattare.",
     createAccount: "Crea il mio account gratuito Massage Club",
     createAccountSub: "Segui la tua prenotazione e prenota di nuovo più velocemente. Ti mandiamo un link di accesso con un tocco, senza password.",
@@ -438,7 +440,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "Escolhe primeiro uma massagem para usar estas opções.", chooseMassage: "Escolher massagem",
     comfort: "Conforto", pressure: "Pressão", focusAreas: "Zonas a tratar", makeItYours: "Personaliza",
     extrasNote: "Extras que este estúdio oferece. Somam-se ao teu total.", notesForTherapist: "Notas para o teu terapeuta",
-    notesPlaceholder: "Algo que devamos saber? Lesões, alergias, preferências.",
+    notesPlaceholder: "Algo que devamos saber? Por exemplo, a pressão que preferes.",
     giveContact: "Deixa-nos um email ou um número de WhatsApp para te contactarmos.",
     createAccount: "Criar a minha conta gratuita Massage Club",
     createAccountSub: "Acompanha a tua reserva e reserva mais rápido. Enviamos-te um link de acesso de um toque, sem palavra-passe.",
@@ -494,7 +496,7 @@ const PAGE_COPY: Record<FlowLang, Record<string, string>> = {
     pickMassageFirst: "请先选择一项按摩以使用这些选项。", chooseMassage: "选择按摩",
     comfort: "舒适度", pressure: "力度", focusAreas: "重点部位", makeItYours: "个性化选项",
     extrasNote: "该门店提供的附加服务,会加到您的总价中。", notesForTherapist: "给治疗师的备注",
-    notesPlaceholder: "有什么我们需要知道的吗?伤病、过敏、偏好等。",
+    notesPlaceholder: "有什么我们需要知道的吗?例如你喜欢的力度。",
     giveContact: "请留下邮箱或WhatsApp号码以便我们联系您。",
     createAccount: "创建我的免费Massage Club账户",
     createAccountSub: "追踪您的预约并更快地再次预约。我们会给您发送一个一键登录链接,无需密码。",
@@ -981,6 +983,17 @@ function StudioBookingPageInner() {
   // Passwordless account creation, offered to visitors who are not signed in.
   // Off by default (2 Nov): a pre-ticked box sent sign-up emails nobody asked for.
   const [createAccount, setCreateAccount] = useState(false);
+
+  // The Kelly rule (19 Nov): the offers question, with two equal buttons and
+  // nothing chosen, on Your details (claimed studios) and next to Send
+  // (unclaimed). null is "not answered" and saves nothing. The booking or
+  // request goes first and never waits for it (LOPDGDD 6.3); the answer is
+  // saved after, through the consent function.
+  const [mkChoice, setMkChoice] = useState<ConsentChoice | null>(null);
+  // "retried": the answer failed, then the retry card below saved it.
+  const [mkSave, setMkSave] = useState<"saving" | "ok" | "failed" | "retried" | null>(null);
+  // bookings.id of a claimed-studio booking, so a retry is tied to it.
+  const bookingIdRef = useRef<string | null>(null);
 
   const [hoDate, setHoDate] = useState("");
   const [hoTime, setHoTime] = useState("");
@@ -1823,6 +1836,27 @@ function StudioBookingPageInner() {
   /** Menu price with "for 2" on couples rows and "4 hands" on four-hands rows (F17). */
   const serviceTag = (s: any) => (isForTwo(s) ? sp.forTwo : isFourHands(s) ? sp.fourHands : null);
 
+  // The offers answer, saved once the booking or request exists. Never
+  // awaited by the booking: it runs after, retries once inside saveConsent,
+  // and a failure is tracked, logged and shown on the sent screen.
+  const mkLang = consentLang(lang);
+  const saveMkAnswer = (who: Omit<SaveConsentInput, "choice" | "lang">) => {
+    const choice = mkChoice;
+    if (!choice) return;
+    setMkSave("saving");
+    void saveConsent({ ...who, choice, lang: mkLang }).then((r) => setMkSave(r.ok ? "ok" : "failed"));
+  };
+  // Shown on the sent screen only when the answer could not be saved: says
+  // so, and asks again (a tap saves at once).
+  // Once the retry saves, its own "Done" stays and the red line goes.
+  const mkRetryBlock = (who: { source: "studio_booking" | "studio_request"; email: string; phone: string | null; bookingRef?: string | null }) =>
+    mkSave === "failed" || mkSave === "retried" ? (
+      <div className="mt-6 text-left" data-testid="consent-retry">
+        {mkSave === "failed" && <p role="alert" className="mb-2 text-sm" style={{ color: "#B03A2E" }}>{CONSENT_COPY[mkLang].notSaved}</p>}
+        <MarketingOptInCard source={who.source} email={who.email || null} phone={who.phone} bookingRef={who.bookingRef} lang={mkLang} onSaved={() => setMkSave("retried")} />
+      </div>
+    ) : null;
+
   // ─── Confirmation screen (claimed studios) ───
   if (done) {
     const prettyDate = date ? `${dayShort(date, lang)} ${date.getDate()} ${monShort(date, lang)}` : "";
@@ -1900,13 +1934,9 @@ function StudioBookingPageInner() {
               requestId={waRequestIdRef.current}
               source="studio-booking"
             />
-            <MarketingOptInCard
-              className="mt-6"
-              email={email.trim() || null}
-              userId={userId}
-              source="booking_success"
-              bookingRef={done.ref}
-            />
+            {/* Offers: asked once, on Your details. Here only if that answer
+                could not be saved (the Kelly rule). */}
+            {mkRetryBlock({ source: "studio_booking", email: email.trim(), phone: normalizePhone(phone), bookingRef: bookingIdRef.current })}
             {nearbyBlock && <div className="mt-6">{nearbyList(false)}</div>}
 
             <div className="mt-6 text-xs" style={{ color: "#8a7460" }}>
@@ -2061,6 +2091,9 @@ function StudioBookingPageInner() {
         return;
       }
       waRequestIdRef.current = logged.id;
+      // whatsapp_requests.id cannot be read back by anon, so the answer is
+      // tied to the request by its email and phone and the time.
+      saveMkAnswer({ source: "studio_request", email: hoEmail.trim(), phone: normalizePhone(hoPhone) });
       clarityEvent("req_submit_ok");
       reqTrack("req_submit_ok", { has_phone: phoneTyped, service: servicePrimaryName(hoService), offset: hoDate ? dayOffset(hoDate) : null, hour: hoTime ? Number(String(hoTime).split(":")[0]) : null, attempts: attemptsRef.current });
       trackFunnel("wizard_submit_ok", { ...funnelMeta, request_id: logged.id }, studioSlug);
@@ -2452,8 +2485,10 @@ function StudioBookingPageInner() {
                         id="ho-notes"
                         value={hoNotes}
                         onChange={(e) => setHoNotes(e.target.value)}
+                        aria-describedby="ho-notes-help"
                         className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-base focus:outline-none focus:border-[#B85C38] resize-none h-24"
                       />
+                      <p id="ho-notes-help" className="mt-1.5 text-xs" style={{ color: "#8a7460" }}>{noteHealthHint(lang)}</p>
                     </div>
                     <div>
                       {!hoPeopleOpen ? (
@@ -2488,6 +2523,10 @@ function StudioBookingPageInner() {
                           </p>
                         </div>
                       )}
+                    </div>
+                    <div>
+                      <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
+                      <p className="mt-2 text-xs leading-snug" style={{ color: "#8a7460" }}>{privacyFirstLayer(lang)}</p>
                     </div>
                     {hoSendError && (
                       <p role="alert" className="rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: "#FBEAE7", color: "#B03A2E" }}>
@@ -2541,6 +2580,7 @@ function StudioBookingPageInner() {
                       <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{fill(sp.sentAnswer, { email: hoSentTo })}</li>
                       <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#B85C38" }} aria-hidden="true" />{sp.sentYes}</li>
                     </ul>
+                    {mkRetryBlock({ source: "studio_request", email: hoEmail.trim(), phone: normalizePhone(hoPhone) })}
                     <AccountOfferBlock
                       firstName={splitName(hoFullName).first}
                       lastName={splitName(hoFullName).last || ""}
@@ -2703,7 +2743,7 @@ function StudioBookingPageInner() {
 
 
     try {
-      const { data, error } = await supabase.from("bookings").insert({
+      const bookingRow = {
         ...getSource(),
         client_name: name.trim(),
         client_phone: normalizePhone(phone),
@@ -2739,12 +2779,17 @@ function StudioBookingPageInner() {
         reason_for_visit: customerProfile?.reason_for_visit || null,
         is_first_visit: customerProfile?.is_first_massage ?? null,
         client_preferences: clientPreferences,
-        marketing_opt_in: false,
-        marketing_opt_in_at: null,
-      }).select("id").single();
-
+      };
+      // The offers answer lives only in marketing_optins (the consent
+      // function, below). bookings.marketing_opt_in is a legacy flag: it is
+      // never written from here, because a copy that a withdrawal never clears
+      // would say "yes" for someone who stopped (review, 19 Nov). Nothing may
+      // read it to decide who gets a promotion.
+      const { data, error } = await supabase.from("bookings").insert(bookingRow).select("id").single();
 
       if (error) throw new Error(error.message);
+      bookingIdRef.current = data?.id ? String(data.id) : null;
+      saveMkAnswer({ source: "studio_booking", email: email.trim(), phone: normalizePhone(phone), bookingRef: bookingIdRef.current });
 
       // Fire the notification emails directly (more reliable than the DB webhook).
       try {
@@ -3265,7 +3310,9 @@ function StudioBookingPageInner() {
                   <p className="text-xs font-semibold text-gray-500 mb-2 min-[900px]:text-xl min-[900px]:mb-3">{c.notesForTherapist}</p>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)}
                     placeholder={c.notesPlaceholder}
+                    aria-describedby="notes-health-help"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#C4622D] resize-none h-24 min-[900px]:text-base min-[900px]:h-28" />
+                  <p id="notes-health-help" className="mt-1.5 text-xs text-gray-500">{noteHealthHint(lang)}</p>
                 </Section>
                 <WizardNav onBack={() => goStep(2)} onNext={() => goStep(4)} skip={() => goStep(4)} />
               </div>
@@ -3364,6 +3411,10 @@ function StudioBookingPageInner() {
                         </span>
                       </label>
                     )}
+                    <div>
+                      <ConsentQuestion lang={mkLang} value={mkChoice} onChange={setMkChoice} />
+                      <p className="mt-2 text-xs leading-snug" style={{ color: "#8a7460" }}>{privacyFirstLayer(lang)}</p>
+                    </div>
                     <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{c.continueLabel}</button>
                   </form>
                 </Section>

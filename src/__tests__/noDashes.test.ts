@@ -36,6 +36,17 @@ export const FILES: string[] = [
   "src/components/DealsLink.tsx",
   "src/components/AccountOfferBlock.tsx",
   "src/app/components/MarketingOptInCard.tsx",
+  "src/app/components/QuizEmailCapture.tsx",
+  "src/lib/marketingOptIn.ts",
+  "src/components/BookFlowWizard.tsx",
+  "src/pages/Unsubscribe.tsx",
+  "src/pages/Privacy.tsx",
+  // Added in the consent review fixes (19 Nov).
+  "src/pages/LegalNotice.tsx",
+  "src/lib/legalEntity.ts",
+  "src/lib/healthHint.ts",
+  "src/components/SiteFooter.tsx",
+  "src/lib/siteChrome.ts",
   // Added at integration (ux/batch-1):
   "index.html",
   "public/go.html",

@@ -1,10 +1,10 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LocationAskProvider } from "@/lib/locationConsent";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AppLayout from "./app/AppLayout";
 import Login from "./app/screens/Login";
@@ -79,6 +79,20 @@ function Redirect({ to }: { to: string }) {
   return <Navigate to={`${to}${search}${hash}`} replace />;
 }
 
+/**
+ * Old contact forms retired on 19 Nov 2026 (the Kelly rule): /request,
+ * /notify and /landing collected an email or phone without the offers
+ * question, and /notify and /landing promised news to everyone who typed an
+ * address. Nothing on the site links to them; a visitor with an old link
+ * lands on the request form (/reserve, public/go.html), which asks.
+ */
+function ToReserve({ src }: { src: string }) {
+  useEffect(() => {
+    window.location.replace(`/reserve?src=${src}`);
+  }, [src]);
+  return null;
+}
+
 
 
 
@@ -86,15 +100,15 @@ function Redirect({ to }: { to: string }) {
 
 
 import Review from "./pages/Review";
+import Unsubscribe from "./pages/Unsubscribe";
 import Privacy from "./pages/Privacy";
+import LegalNotice from "./pages/LegalNotice";
 import Terms from "./pages/Terms";
 import ForStudios from "./pages/ForStudios";
-import Request from "./pages/Request";
 import BookFlow from "./pages/BookFlow";
 import FbLanding from "./pages/FbLanding";
 
 import HowItWorks from "./pages/HowItWorks";
-import Notify from "./pages/Notify";
 import MassageInEnglishMadrid from "./pages/guides/MassageInEnglishMadrid";
 import MassagePricesMadrid from "./pages/guides/MassagePricesMadrid";
 import MassagePricesMadridStudy from "./pages/guides/MassagePricesMadridStudy";
@@ -149,6 +163,10 @@ const App = () => (
           <Route path="/account/setup" element={<AccountSetup />} />
 
           <Route path="/review" element={<Review />} />
+          {/* One-tap stop for offers (the Kelly rule, 19 Nov): every
+              promotional email links here. A static path, so it wins over the
+              /:studioId catch-all on every host. */}
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
           {/* Desktop frame (F11, F12): SiteHeader and SiteFooter from 900px on
               these customer pages. Phones keep each page's own header. The app
               shell (AppLayout) draws its own header and footer. */}
@@ -156,6 +174,8 @@ const App = () => (
             {/* /compare opens from the /studios compare tray: same frame. */}
             <Route path="/compare" element={<Compare />} />
             <Route path="/privacy" element={<Privacy />} />
+            {/* Aviso legal (LSSI art. 10): who runs the site. */}
+            <Route path="/legal" element={<LegalNotice />} />
             <Route path="/terms" element={<Terms />} />
           </Route>
 
@@ -176,8 +196,8 @@ const App = () => (
 
 
           <Route element={<SiteChromeLayout />}>
-          <Route path="/request" element={<Request />} />
-          <Route path="/notify" element={<Notify />} />
+          <Route path="/request" element={<ToReserve src="request" />} />
+          <Route path="/notify" element={<ToReserve src="notify" />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
 
           {/* SEO guide pages (static paths win over the /:studioId dynamic route) */}
@@ -264,7 +284,7 @@ const App = () => (
             <Route path="bookings" element={<MyBookings />} />
             <Route path="profile" element={<Profile />} />
           </Route>
-          <Route path="/landing" element={<Index />} />
+          <Route path="/landing" element={<ToReserve src="landing" />} />
           {/* Partner Portal Routes */}
           <Route path="/partner/onboarding" element={<PartnerOnboarding />} />
           <Route path="/partner" element={<PartnerLogin />} />
