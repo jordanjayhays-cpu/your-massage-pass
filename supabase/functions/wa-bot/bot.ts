@@ -3184,24 +3184,9 @@ function detectDuration(text: string): number | null {
   if (/una hora\b|one hour|60 ?min|sesenta min|sixty min|\b1 ?h(ora|our)?\b/.test(t)) return 60;
   return null;
 }
-// v10 (22 Nov): without a "Duración:" line, the customer's own words count, so a
-// website note like "Relaxing, 120 mins preferred" is 120, not 60 (#127). Same
-// rules as dispatch-studios durationFromWords. Clock times never match.
-function durationFromWords(text: string): number | null {
-  const d = detectDuration(text);
-  if (d) return d;
-  const m = String(text || "").toLowerCase().match(/(?<![\d:.,])(\d{2,3}) ?(?:min|mins|minutes|minutos)\b/);
-  if (m) {
-    const n = parseInt(m[1], 10);
-    if (n >= 30 && n <= 180 && n % 15 === 0) return n;
-  }
-  return null;
-}
 const reqDuration = (req: any): number => {
-  const text = String(req?.message_text || "");
-  const m = text.match(/Duraci[oó]n: (\d{2,3}) min/);
-  if (m) return parseInt(m[1], 10);
-  return durationFromWords(text) ?? 60;
+  const m = String(req?.message_text || "").match(/Duraci[oó]n: (\d{2,3}) min/);
+  return m ? parseInt(m[1], 10) : 60;
 };
 // v81: partner_id is not a reliable key for a tap. A studio with more than one
 // partner row, or an offer that went out against a different row, leaves the
