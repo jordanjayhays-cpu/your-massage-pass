@@ -331,9 +331,28 @@ function servicioFrase(r: Record<string, unknown>, own = ""): string {
 }
 // v9: wa-bot writes "Duración: 90 min" into message_text when the customer asked
 // for more than an hour. Anything else is the usual 60.
+// v10 (22 Nov): without a "Duración:" line, the customer's own words count. The
+// website form had no length field, so "Relaxing, 120 mins preferred" in the
+// note was asked for at 60 min (#127; #125 asked 90 the same way). The rules are
+// the bot's (wa-bot detectDuration), plus any other "N min" from 30 to 180.
+// Clock times ("16:00") never match.
+function durationFromWords(text: string): number | null {
+  const t = String(text || "").toLowerCase();
+  if (/hora y media|hour and a half|90 ?min|noventa min|ninety min|1[.,]5 ?h(ours?)?\b/.test(t)) return 90;
+  if (/dos horas|two hours|120 ?min|\b2 ?h(oras|ours)?\b/.test(t)) return 120;
+  if (/una hora\b|one hour|60 ?min|sesenta min|sixty min|\b1 ?h(ora|our)?\b/.test(t)) return 60;
+  const m = t.match(/(?<![\d:.,])(\d{2,3}) ?(?:min|mins|minutes|minutos)\b/);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    if (n >= 30 && n <= 180 && n % 15 === 0) return n;
+  }
+  return null;
+}
 const reqDuration = (r: Record<string, unknown>): number => {
-  const m = String(r.message_text || "").match(/Duraci[oó]n: (\d{2,3}) min/);
-  return m ? parseInt(m[1], 10) : 60;
+  const text = String(r.message_text || "");
+  const m = text.match(/Duraci[oó]n: (\d{2,3}) min/);
+  if (m) return parseInt(m[1], 10);
+  return durationFromWords(text) ?? 60;
 };
 
 function madridHour(): number {
