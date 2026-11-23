@@ -2528,7 +2528,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
           // v219: "email_pending" is an offer going by email in a moment, so
           // the price is asked; "already" (the offer was with the customer
           // before, from this studio's other channel) is not asked twice.
-          if (!drow.quoted_price && ["whatsapp", "email", "email_pending", "none", "queued", "held_window", "held"].includes(fwd)) await sendText(from, priceAsk(req, await severalAsked(requestId)));
+          if (!drow.quoted_price && ["whatsapp", "email", "email_pending", "none", "queued", "held_window", "held"].includes(fwd)) await sendText(from, priceAsk(req, await severalAsked(requestId), askedMins(drow, req)));
           await logEvent(req.client_phone || from, "studio_accepted", { id: requestId, studio: partner.business_name, time: exactTime(req) });
           return;
         }
@@ -2646,7 +2646,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     const pct = parseDiscount(freeText);
     if (pct !== null) {
       const since48 = new Date(Date.now() - 48 * 3600e3).toISOString();
-      const od = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted)&created_at=gte.${since48}&order=created_at.desc&limit=1&select=id,request_id,outcome,accepted_at`, { headers: H() });
+      const od = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted)&created_at=gte.${since48}&order=created_at.desc&limit=1&select=id,request_id,outcome,accepted_at,asked_service`, { headers: H() });
       const odr = (await od.json().catch(() => []))[0] || null;
       if (odr) {
         await patchDispatch(odr.id, { discount_pct: pct, ...(quotedNow !== null ? { quoted_price: quotedNow } : {}), outcome: "accepted", accepted_at: odr.accepted_at || new Date().toISOString(), replied_at: new Date().toISOString(), reply_text: freeText.slice(0, 500), offer_note: freeText.slice(0, 200) });
@@ -2660,7 +2660,7 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
           // second 10% ask after a 5%, and "los otros centros" only when there
           // are others.
           const waitLine = (await severalAsked(rqrow.id)) ? "Estoy esperando a los otros centros y en unos minutos os digo algo." : "En unos minutos os digo algo.";
-          await sendText(from, quotedNow !== null ? `Gracias, apuntado: ${pct}% de descuento, ${eurEs(quotedNow)}. ${waitLine}` : `Gracias, apuntado el ${pct}%. ¿Qué precio final le quedaría por ${reqDuration(rqrow)} min? ${waitLine}`);
+          await sendText(from, quotedNow !== null ? `Gracias, apuntado: ${pct}% de descuento, ${eurEs(quotedNow)}. ${waitLine}` : `Gracias, apuntado el ${pct}%. ¿Qué precio final le quedaría por ${askedMins(odr, rqrow)} min? ${waitLine}`);
           return;
         }
       }
@@ -3161,9 +3161,9 @@ const BID_WINDOW_MS = 10 * 60 * 1000;
 // decimos en cuanto nos lo digáis" (untrue for a held customer, and the offer
 // is already with the customer) and the signature are gone. "Estoy
 // preguntando a varios centros" only when two or more really were asked.
-const priceAsk = (req: any, several: boolean) => several
-  ? `Por cierto, ¿qué precio final le dejaríais por ${reqDuration(req)} min? Estoy preguntando a varios centros y se queda con la mejor oferta, así que si podéis hacerle un 10% como cliente de Massage Club, decídmelo.`
-  : `Por cierto, ¿qué precio final le dejaríais por ${reqDuration(req)} min? Si podéis hacerle un 10% como cliente de Massage Club, decídmelo.`;
+const priceAsk = (req: any, several: boolean, mins: number = reqDuration(req)) => several
+  ? `Por cierto, ¿qué precio final le dejaríais por ${mins} min? Estoy preguntando a varios centros y se queda con la mejor oferta, así que si podéis hacerle un 10% como cliente de Massage Club, decídmelo.`
+  : `Por cierto, ¿qué precio final le dejaríais por ${mins} min? Si podéis hacerle un 10% como cliente de Massage Club, decídmelo.`;
 // True when two or more studios were really asked about this request.
 async function severalAsked(requestId: number | string): Promise<boolean> {
   try {
@@ -3189,12 +3189,15 @@ const reqDuration = (req: any): number => {
   return m ? parseInt(m[1], 10) : 60;
 };
 // 23 Nov (#127): every offer and price line said "for 60 minutes" whatever
-// length was asked. The length an offer states is the one the studio said yes
-// to: the length in its ask ("masaje relajante de 90 min"), else the request's
-// own length, else 60.
+// length was asked. One length for a studio's offer, everywhere: the length in
+// its ask row ("masaje relajante de 90 min"), else the request's own length,
+// else 60. The same value is used to ask the studio its price (priceAsk) and to
+// tell the customer, so the two can never state different lengths. A studio's
+// own service name with hours in it ("1 h 30 min") is not read as minutes.
 const askedMins = (row: any, req?: any): number => {
-  const m = String(row?.asked_service || "").match(/(\d{2,3}) ?min/i);
-  const n = m ? parseInt(m[1], 10) : NaN;
+  const a = String(row?.asked_service || "");
+  const toks = a.match(/\d{2,3} ?min/gi) || [];
+  const n = toks.length === 1 && !/\d\s*h(?:oras?|ours?|rs?)?\b/i.test(a) ? parseInt(toks[0], 10) : NaN;
   if (Number.isFinite(n) && n >= 30 && n <= 180) return n;
   return req ? reqDuration(req) : 60;
 };
@@ -6747,6 +6750,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   let priceNum = 0;
   let written = false; // v219: a price this studio wrote, not a listed one
   let dspRow: any = null;
+  let statedMins = 60; // 23 Nov: the length this studio was asked for
   try {
     const dsp = await dispatchRowFor(req.id, partner.id, studioFrom);
     dspRow = dsp;
@@ -6767,13 +6771,16 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     const lp = await listedPrice(partner.id, String(req.service_name || ""), askedMins(dspRow, req));
     if (lp) { priceLine = listedPriceLine(L, lp); priceNum = lp.price; }
   }
+  statedMins = askedMins(dspRow, req);
   // v204: when the price is above the range this customer was quoted, say so
   // in the offer. The opener says 50 to 60 EUR on some days, and the studio that
   // answers most lists 85. Willy (#107) tapped "Mejor precio" after seeing
   // Sinergia38 at 59 and Calma at 85, and the offer that came was Calma with no
   // price at all. The range is read off what we actually sent them.
   let above = "";
-  if (priceNum > 0 && clientNum) {
+  // 23 Nov: the range the opener quoted is for 60 minutes, so a 90 or 120
+  // minute price is never compared with it.
+  if (priceNum > 0 && clientNum && Math.abs(statedMins - 60) <= 5) {
     const qr = await quotedRangeFor(clientNum);
     if (qr && priceNum > qr.hi) above = OFFER_COPY[L].above(qr.lo, qr.hi);
   }
@@ -10953,7 +10960,7 @@ async function bookingRowFailed(requestId: number, why: string, phone = ""): Pro
 }
 async function ensureBooking(requestId: number): Promise<string | null> {
   try {
-    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&limit=1&select=id,first_name,last_name,contact_email,client_phone,studio_name,service_name,price,confirmed_start,confirmed_day,confirmed_time,partner_id,languages,area`, { headers: H() });
+    const rr = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${requestId}&limit=1&select=id,first_name,last_name,contact_email,client_phone,studio_name,service_name,price,confirmed_start,confirmed_day,confirmed_time,partner_id,languages,area,message_text`, { headers: H() });
     const req = ((await rr.json().catch(() => [])) || [])[0];
     if (!req) return bookingRowFailed(requestId, "request not found");
     // v219: confirmed_start is written by trg_mc_confirmed_start when the stage
@@ -10962,7 +10969,10 @@ async function ensureBooking(requestId: number): Promise<string | null> {
     if (!req.confirmed_start) return bookingRowFailed(requestId, "no confirmed_start (the day or time could not be read)", digitsOf(req.client_phone || ""));
     const start = new Date(req.confirmed_start);
     if (isNaN(start.getTime())) return bookingRowFailed(requestId, `unreadable confirmed_start ${req.confirmed_start}`, digitsOf(req.client_phone || ""));
-    const mins = 60;
+    // 23 Nov (#127): the booked length, not always 60 (reminders and the
+    // calendar invite read bookings.duration).
+    const bookedRow = req.partner_id ? await dispatchRowFor(requestId, String(req.partner_id)).catch(() => null) : null;
+    const mins = askedMins(bookedRow, req);
     // Madrid local date and time, because that is what the studio and the
     // customer both mean; the column is TEXT and every existing row is local.
     const fmt = (opt: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", ...opt }).format(start);
@@ -11444,9 +11454,10 @@ async function reshowOffer(s: Session, from: string, L: string, why: string): Pr
   // v182: "how much?" and "where?" about an offer get both, every time.
   let price = "";
   if (d.partner_id) {
-    const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(o.request || 0)}&select=service_name`, { headers: H() });
-    const svcName = String(((await rq.json().catch(() => [])) || [])[0]?.service_name || "");
-    price = await offerPriceText(Number(o.request || 0), String(d.partner_id), svcName, "", L);
+    const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(o.request || 0)}&select=service_name,message_text`, { headers: H() });
+    const rqRow = ((await rq.json().catch(() => [])) || [])[0] || null;
+    const svcName = String(rqRow?.service_name || "");
+    price = await offerPriceText(Number(o.request || 0), String(d.partner_id), svcName, "", L, rqRow || undefined);
   }
   let body = es
     ? `Tu oferta sigue en pie: *${pc.business_name || o.studio}* a las *${o.time}*${o.day ? ` (${o.day})` : ""}.${where ? `\nDirección: ${where}` : ""}${price ? `\n${price}` : ""}\n\n¿Te la reservo?`
@@ -11838,7 +11849,7 @@ async function coreBookingFacts(s: Session, L: string): Promise<CoreBooking> {
       const where = [pc?.address, pc?.neighbourhood && !String(pc?.address || "").includes(pc.neighbourhood) ? pc.neighbourhood : ""].filter(Boolean).join(", ");
       out.offer = {
         row: String(o.row), studio: String(pc?.business_name || o.studio || ""), time: String(o.time || d.offered_time || ""), day: String(o.day || ""), address: where,
-        price_text: d.partner_id ? await offerPriceText(Number(o.request || 0), String(d.partner_id), String(out.live?.massage || ""), "", L) : "",
+        price_text: d.partner_id ? await offerPriceText(Number(o.request || 0), String(d.partner_id), String(out.live?.massage || ""), "", L, req && Number(req.id) === Number(o.request) ? req : undefined) : "",
       };
     }
   }
