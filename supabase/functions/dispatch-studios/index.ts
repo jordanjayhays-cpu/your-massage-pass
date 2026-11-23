@@ -166,7 +166,8 @@
 //  - A studio that opted out (partners.opted_out_at, or in its own words) is
 //    never asked; one with 5 asks and no yes rests until Jordan brings it back.
 //  - Only studios with a yes on record, or brought back by Jordan, are asked.
-//  - At most 4 studios per request, whatever the waves.
+//  - At most 4 studios per request, whatever the waves, unless Jordan lifts
+//    it by hand for studios he names (v51, max_asks, at most 10).
 
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let OPS_KEY = Deno.env.get("OPS_KEY") || "";
@@ -216,10 +217,12 @@ const MAX_WAVE = 4;
 const MAX_ASKS_PER_REQUEST = 4;
 // v51 (23 Nov, #127; Jordan: "we need alternatives to PhilThai ... send out
 // via whatsap for Marcel"): Jordan can lift the four on one request by hand,
-// for studios he has named. Ops key only (wa-bot and the crons use the
-// service key and never get it), only with a request_id, a second wave
-// (extra) and an explicit partner_ids list, and never past ten asks on the
-// request. Everything else (opt-outs, closed hours, sending hours, the
+// for studios he has named. The key alone does not tell him apart: wa-bot
+// calls with the ops key too. What lifts it is max_asks together with a
+// request_id, a second wave (extra) and an explicit partner_ids list, and no
+// bot path sends max_asks (its widen has no list, its dispatchRequest no
+// extra). Never add max_asks to a bot or cron call. Never past ten asks on
+// the request. Everything else (opt-outs, closed hours, sending hours, the
 // customer's cancel words, test customers) still applies.
 const MAX_ASKS_OVERRIDE = 10;
 
@@ -2072,6 +2075,8 @@ async function handleRequest(req: Request): Promise<Response> {
   // v49: not any more. A widen is at most two eligible studios, and nothing
   // is wider than MAX_WAVE (dispatchOne also caps a second wave at
   // WIDEN_FANOUT and the whole request at MAX_ASKS_PER_REQUEST, four).
+  // v51: except a wave Jordan lifted by hand (max_asks), which is the
+  // studios he named, up to MAX_ASKS_OVERRIDE on the request.
   const fanout = Math.max(1, Math.min(Number(body.fanout || (body.widen === true ? WIDEN_FANOUT : DEFAULT_FANOUT)), MAX_WAVE));
   const dryRun = body.dry_run === true;
   const force = body.force === true;
@@ -2087,8 +2092,8 @@ async function handleRequest(req: Request): Promise<Response> {
   // a row for this request, and tells the customer "N more studios".
   const extra = body.extra === true || body.widen === true;
   const partnerIds = Array.isArray(body.partner_ids) ? (body.partner_ids as unknown[]).map(String).filter(Boolean) : [];
-  // v51: see MAX_ASKS_OVERRIDE. Only the ops key, never the service key the
-  // bot and the crons call with.
+  // v51: see MAX_ASKS_OVERRIDE. The ops key, a request_id, extra and a named
+  // list, all four; a service-key call never lifts it.
   const opsCall = !!OPS_KEY && key === OPS_KEY;
   const askCapIn = Math.floor(Number(body.max_asks));
   const askCap = opsCall && !!body.request_id && extra && partnerIds.length > 0 && Number.isFinite(askCapIn) && askCapIn > MAX_ASKS_PER_REQUEST
