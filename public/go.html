@@ -464,6 +464,31 @@ body{padding-bottom:var(--consent-h,0px)}
   .page{gap:48px}
   .app{padding:28px 32px 32px}
 }
+
+/* How it works (23 Nov, Jordan: "put this on the website so people can see
+   how it works", "in a few different places"). The 22 s film opens in a
+   sheet and loads only when someone opens it; the four steps sit under the
+   massage choices, so the first question stays where it was. */
+.hiwbtn{display:inline-flex;align-items:center;gap:8px;margin:-6px 0 16px;padding:6px 14px 6px 6px;min-height:40px;border-radius:999px;background:var(--ink);color:#fff;font-size:14px;font-weight:700;box-shadow:0 8px 20px rgba(38,32,25,.18)}
+.hiwbtn .pl{width:28px;height:28px;border-radius:50%;background:var(--clay);display:grid;place-items:center;flex:none}
+.hiwbtn .pl svg{width:11px;height:11px;margin-left:2px}
+.hiw{margin:22px 0 0;padding:18px 16px;border-radius:22px;background:rgba(255,255,255,.72);border:1px solid var(--line)}
+.hiw h3{font-family:'Fraunces',Georgia,serif;font-size:20px;line-height:1.15;margin:0 0 12px}
+.hiwsteps{list-style:none;padding:0;margin:0;display:grid;gap:12px;counter-reset:h}
+.hiwsteps li{display:flex;gap:12px;counter-increment:h;font-size:15px;line-height:1.35}
+.hiwsteps li:before{content:counter(h);width:26px;height:26px;border-radius:50%;background:var(--clay);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;flex:none}
+.hiwsteps b{display:block;font-weight:700}
+.hiwsteps small{display:block;color:var(--muted);font-size:13.5px;margin-top:1px}
+.hiw .hiwbtn,.next + .hiwbtn{margin:14px 0 0}
+.vmodal{position:fixed;inset:0;z-index:60;background:rgba(20,16,13,.94);display:flex;align-items:center;justify-content:center;padding:16px}
+.vbox{position:relative;width:min(360px,100%);display:flex;flex-direction:column;align-items:center}
+.vbox video{display:block;width:100%;max-height:calc(100vh - 120px);aspect-ratio:9/16;border-radius:20px;background:#F7F4F0;object-fit:contain}
+.vclose{position:absolute;top:-10px;right:-10px;width:44px;height:44px;border-radius:50%;background:#fff;color:var(--ink);font-size:24px;line-height:1;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:1}
+.vnote{color:#F3E9DF;font-size:13px;text-align:center;margin-top:10px;line-height:1.4;max-width:320px}
+.avid{display:block;position:relative;width:100%;margin:0 0 18px;border-radius:12px;overflow:hidden;aspect-ratio:16/10;background:#F7F4F0 url(/media/how-it-works.jpg) center 34%/cover no-repeat;border:1px solid var(--line)}
+.avid > span{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:10px 12px;background:linear-gradient(transparent,rgba(33,28,26,.72));color:#fff;font-weight:700;font-size:14px;text-align:left}
+.avid .pl{width:28px;height:28px;border-radius:50%;background:var(--clay);display:grid;place-items:center;flex:none}
+.avid .pl svg{width:11px;height:11px;margin-left:2px}
 </style>
 </head>
 <body>
@@ -498,12 +523,18 @@ body{padding-bottom:var(--consent-h,0px)}
       <h1 class="hero" id="hero" data-t="h1" hidden></h1>
       <p class="price" data-price></p>
       <p class="sub how" data-t="how"></p>
+      <button class="hiwbtn" type="button" data-video="top"><span class="pl" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z" fill="#fff"/></svg></span><span data-t="hiwBtn"></span></button>
       <div class="s1q">
         <div class="kicker" data-t="k1"></div>
         <h2 data-t="q1"></h2>
       </div>
       <div class="grid" id="massages"></div>
       <ul class="trust" id="trust"></ul>
+      <section class="hiw" aria-labelledby="hiwTitle">
+        <h3 id="hiwTitle" data-t="hiwTitle"></h3>
+        <ol class="hiwsteps" id="hiwSteps"></ol>
+        <button class="hiwbtn" type="button" data-video="steps"><span class="pl" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z" fill="#fff"/></svg></span><span data-t="hiwBtn"></span></button>
+      </section>
       <nav class="foot" id="foot" aria-label="Massage Club"></nav>
     </section>
 
@@ -611,6 +642,7 @@ body{padding-bottom:var(--consent-h,0px)}
         <h3 data-t="nextTitle"></h3>
         <ol id="steps"></ol>
       </div>
+      <button class="hiwbtn" type="button" data-video="done"><span class="pl" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z" fill="#fff"/></svg></span><span data-t="hiwWait"></span></button>
       <p class="mail" id="mail"></p>
       <p class="mkfail" id="mkFail" role="status" hidden></p>
       <div id="waSlot"></div>
@@ -623,6 +655,7 @@ body{padding-bottom:var(--consent-h,0px)}
 <!-- 900px and up: the right column. Sticky, so it stays in view. -->
 <aside class="aside" id="aside" aria-labelledby="asideTitle">
   <div class="acard">
+    <button class="avid" type="button" data-video="aside"><span><span class="pl" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z" fill="#fff"/></svg></span><em data-t="hiwBtn" style="font-style:normal"></em></span></button>
     <h2 id="asideTitle" data-t="nextTitle"></h2>
     <ol class="asteps" id="asideSteps"></ol>
     <p class="price" data-price></p>
@@ -650,6 +683,14 @@ body{padding-bottom:var(--consent-h,0px)}
 </footer>
 
 <div class="cbar" id="cbar" role="dialog" aria-live="polite" hidden></div>
+
+<div class="vmodal" id="vmodal" role="dialog" aria-modal="true" hidden>
+  <div class="vbox">
+    <button class="vclose" id="vclose" type="button">×</button>
+    <video id="hiwVideo" playsinline controls preload="none" poster="/media/how-it-works.jpg"></video>
+    <p class="vnote" data-t="hiwNote"></p>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -760,6 +801,10 @@ const T = {
     req: "Request #{n}", kMassage: "Massage", kWhen: "When", kWhere: "Where", kWho: "Who gives it", kPrice: "Price", kRemind: "Reminder", remindVal: "In a month",
     priceDone: "60 min · usually €50 to €85, paid at the studio", priceDoneCouples: "60 min · usually €50 to €85 per person, paid at the studio",
     nextTitle: "What happens next",
+    hiwBtn: "Watch how it works · 22 s", hiwWait: "While you wait: watch how it works · 22 s",
+    hiwTitle: "How Massage Club works",
+    hiwSteps: [["Tell us what you want", "Massage, day, time and area. One request."], ["We ask several studios for you", "In Spanish, so you don't have to."], ["The studios send their offers", "Each one with space answers with a time and its price."], ["You get the best offer", "Nothing is booked until you tap Yes. You pay at the studio."]],
+    hiwNote: "Made-up example. Real offers show the studio's real price.", hiwClose: "Close", hiwLabel: "Video: how Massage Club works",
     next1: "<b>Now:</b> we ask several studios near {area}, in Spanish.", next1Any: "<b>Now:</b> we ask several studios across Madrid, in Spanish.",
     next2: "<b>Next:</b> their times come to you by email.", next2Phone: "<b>Next:</b> their times come to you by email. Tap below to get them on WhatsApp too.",
     next3: "<b>Then:</b> you tap Yes on the one you want. Only then is it booked.",
@@ -810,6 +855,10 @@ const T = {
     req: "Solicitud #{n}", kMassage: "Masaje", kWhen: "Cuándo", kWhere: "Dónde", kWho: "Quién te lo da", kPrice: "Precio", kRemind: "Recordatorio", remindVal: "Dentro de un mes",
     priceDone: "60 min · normalmente entre 50 y 85 €, se paga en el centro", priceDoneCouples: "60 min · normalmente entre 50 y 85 € por persona, se paga en el centro",
     nextTitle: "Qué pasa ahora",
+    hiwBtn: "Mira cómo funciona · 22 s", hiwWait: "Mientras esperas: mira cómo funciona · 22 s",
+    hiwTitle: "Cómo funciona Massage Club",
+    hiwSteps: [["Nos dices qué quieres", "Masaje, día, hora y zona. Una sola petición."], ["Preguntamos a varios centros por ti", "Para que no tengas que hacerlo tú."], ["Los centros mandan sus ofertas", "Cada uno con hueco responde con una hora y su precio."], ["Te llega la mejor oferta", "No se reserva nada hasta que tocas Sí. Pagas en el centro."]],
+    hiwNote: "Ejemplo inventado, vídeo en inglés. Las ofertas reales muestran el precio real del centro.", hiwClose: "Cerrar", hiwLabel: "Vídeo: cómo funciona Massage Club",
     next1: "<b>Ahora:</b> preguntamos a varios centros cerca de {area}.", next1Any: "<b>Ahora:</b> preguntamos a varios centros de todo Madrid.",
     next2: "<b>Después:</b> te llegan sus horas por email.", next2Phone: "<b>Después:</b> te llegan sus horas por email. Toca abajo para recibirlas también por WhatsApp.",
     next3: "<b>Luego:</b> tocas Sí en la que quieras. Solo entonces queda reservado.",
@@ -981,6 +1030,9 @@ function paint() {
   $("otherIn").setAttribute("aria-label", t("otherLabel"));
   document.querySelectorAll("[data-price]").forEach((el) => { el.innerHTML = `${EURO}<span>${esc(t("price"))}</span>`; });
   $("trust").innerHTML = t("trust").map((x) => `<li>${CHECK}<span>${esc(x)}</span></li>`).join("");
+  $("hiwSteps").innerHTML = t("hiwSteps").map(([a, b]) => `<li><div><b>${esc(a)}</b><small>${esc(b)}</small></div></li>`).join("");
+  $("vmodal").setAttribute("aria-label", t("hiwLabel"));
+  $("vclose").setAttribute("aria-label", t("hiwClose"));
   $("foot").innerHTML = t("foot").map(([p, x]) => `<a href="${langHref(p)}">${esc(x)}</a>`).join("");
 
   $("massages").innerHTML = MASSAGES.map((m) => `<button class="tile${S.massage === m.v ? " sel" : ""}" data-v="${esc(m.v)}"><span class="e" aria-hidden="true">${m.e}</span>${ic(m.i)}<b>${m[L][0]}</b><small>${m[L][1]}</small></button>`).join("");
@@ -1138,6 +1190,32 @@ window.addEventListener("popstate", () => {
 $("back").onclick = () => { if (armed) history.back(); else show(Math.max(0, cur - 1), true); };
 const setLang = (l) => { L = l; try { localStorage.setItem("mm-lang", L); } catch {} paint(); };
 $("lang").onclick = () => setLang(L === "es" ? "en" : "es");
+
+// How it works: the film in a sheet. Its file is fetched the first time the
+// sheet opens, never before. Esc, the close button or a tap outside close it.
+let vmBack = null;
+const openVideo = (from) => {
+  const v = $("hiwVideo");
+  vmBack = document.activeElement;
+  if (!v.getAttribute("src")) v.setAttribute("src", "/media/how-it-works.mp4");
+  $("vmodal").hidden = false;
+  document.body.style.overflow = "hidden";
+  try { v.currentTime = 0; } catch (e) { /* not loaded yet */ }
+  v.play().catch(() => { /* the controls are there */ });
+  $("vclose").focus();
+  track("how_video_open", { from });
+};
+const closeVideo = () => {
+  if ($("vmodal").hidden) return;
+  $("hiwVideo").pause();
+  $("vmodal").hidden = true;
+  document.body.style.overflow = "";
+  if (vmBack && vmBack.focus) vmBack.focus();
+};
+document.querySelectorAll("[data-video]").forEach((b) => { b.onclick = () => openVideo(b.dataset.video); });
+$("vclose").onclick = closeVideo;
+$("vmodal").onclick = (e) => { if (e.target === $("vmodal")) closeVideo(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeVideo(); });
 $("shLangs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b && b.dataset.l !== L) setLang(b.dataset.l); };
 
 // Answers survive a reload (sessionStorage, this tab only). Cleared once the

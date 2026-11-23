@@ -12,6 +12,7 @@ import { logWhatsappRequest } from "@/lib/whatsappLog";
 import { trackEvent } from "@/lib/siteVisit";
 import { setWaBubbleContext, clearWaBubbleContext } from "@/app/components/WhatsAppBubble";
 import NotFound from "./NotFound";
+import HowItWorksVideo from "@/components/HowItWorksVideo";
 
 
 /**
@@ -139,6 +140,19 @@ export default function MassageTypePage({ slug: slugProp }: { slug?: string }) {
         <div className="mt-6 rounded-3xl border border-[#E6DCCF] bg-white p-5 min-[900px]:p-7">
           <MassageTypeBody type={type} es={es} />
         </div>
+
+        {/* 23 Nov (Jordan): the how-it-works film, so people see how booking works. */}
+        <section className="mt-8 rounded-3xl border border-[#E6DCCF] bg-white p-5 min-[900px]:p-7">
+          <h2 className="text-center font-display text-xl text-[#2b2b2b]">
+            {es ? "Cómo funciona Massage Club" : "How Massage Club works"}
+          </h2>
+          <p className="mx-auto mt-1 max-w-md text-center text-sm text-[#8a7460]">
+            {es
+              ? "Nos dices qué quieres, preguntamos a varios centros, ellos mandan sus ofertas y te llega la mejor."
+              : "You tell us what you want, we ask several studios, they send their offers and you get the best one."}
+          </p>
+          <HowItWorksVideo lang={es ? "es" : "en"} where={`massage-type:${type.slug}`} className="mt-5" />
+        </section>
 
         {matches.length > 0 && (
           <section id="mc-type-studios" ref={studiosRef} className="mt-8 scroll-mt-6">

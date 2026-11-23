@@ -1,4 +1,5 @@
 import LiteYouTube from "@/components/LiteYouTube";
+import HowItWorksVideo from "@/components/HowItWorksVideo";
 import GuideLayout, { CalmaCard, GuideLinks } from "./GuideLayout";
 
 const FAQS: { q: string; a: string }[] = [
@@ -75,6 +76,7 @@ export default function MassageInEnglishMadrid() {
         </p>
 
         <h2 className="font-display text-2xl text-foreground mt-8">How Massage Club fixes it</h2>
+        <HowItWorksVideo lang="en" where="guide:massage-in-english-madrid" className="mt-4" />
         <ul className="mt-3 space-y-2 text-sm text-foreground/85">
           <li>
             <strong className="text-foreground">Browse in English.</strong> Real menus with real
