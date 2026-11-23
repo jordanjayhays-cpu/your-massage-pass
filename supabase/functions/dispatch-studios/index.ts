@@ -214,6 +214,14 @@ const WIDEN_FANOUT = 2;
 // empty.
 const MAX_WAVE = 4;
 const MAX_ASKS_PER_REQUEST = 4;
+// v51 (23 Nov, #127; Jordan: "we need alternatives to PhilThai ... send out
+// via whatsap for Marcel"): Jordan can lift the four on one request by hand,
+// for studios he has named. Ops key only (wa-bot and the crons use the
+// service key and never get it), only with a request_id, a second wave
+// (extra) and an explicit partner_ids list, and never past ten asks on the
+// request. Everything else (opt-outs, closed hours, sending hours, the
+// customer's cancel words, test customers) still applies.
+const MAX_ASKS_OVERRIDE = 10;
 
 const OPEN_HOUR = 9;
 const CLOSE_HOUR = 21;
@@ -1659,7 +1667,7 @@ function askedWhere(studios: Array<{ area: string | null; km: number | null }>, 
   return "";
 }
 
-async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean; introIds?: string[]; serviceBy?: Record<string, string>; force?: boolean }) {
+async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; fanout: number; cheapest: boolean; extra?: boolean; partnerIds?: string[]; quiet?: boolean; introIds?: string[]; serviceBy?: Record<string, string>; force?: boolean; askCap?: number }) {
   const requestId = Number(r.id);
   const area = String(r.area || "");
   // v38: a request for a day that has already been and gone reaches nobody.
@@ -1721,12 +1729,21 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
   // (send_failed) do not count.
   const priorRows = await sq(`request_dispatch?request_id=eq.${requestId}&select=partner_id,sent_at,replied_at,accepted_at,offered_time`);
   const prior = (Array.isArray(priorRows) ? priorRows : []) as AskRow[];
-  const room = Math.max(0, MAX_ASKS_PER_REQUEST - prior.filter(reachedStudio).length);
-  const fanout = Math.min(isSameDay ? Math.max(opts.fanout, SAMEDAY_FANOUT) : opts.fanout, opts.extra ? WIDEN_FANOUT : MAX_WAVE, room);
+  // v51: Jordan's override (handleRequest only passes askCap with the ops
+  // key, a request_id, extra and a named list): the ceiling is his number
+  // and this wave is the studios he named, nothing wider.
+  const lifted = !!opts.askCap && opts.askCap > MAX_ASKS_PER_REQUEST && !!opts.extra && !!opts.partnerIds?.length;
+  const ceiling = lifted ? Math.min(MAX_ASKS_OVERRIDE, Math.floor(Number(opts.askCap))) : MAX_ASKS_PER_REQUEST;
+  const reached = prior.filter(reachedStudio).length;
+  const room = Math.max(0, ceiling - reached);
+  const fanout = lifted
+    ? Math.min(opts.partnerIds!.length, room)
+    : Math.min(isSameDay ? Math.max(opts.fanout, SAMEDAY_FANOUT) : opts.fanout, opts.extra ? WIDEN_FANOUT : MAX_WAVE, room);
   if (fanout <= 0) {
-    console.log(`[dispatch] req=${requestId} already asked ${MAX_ASKS_PER_REQUEST - room} studios, the most one request gets`);
-    return { requestId, sent: 0, reason: "max_asks", asked: MAX_ASKS_PER_REQUEST - room, keepClaim: true };
+    console.log(`[dispatch] req=${requestId} already asked ${reached} studios, the most this request gets (${ceiling})`);
+    return { requestId, sent: 0, reason: "max_asks", asked: reached, ceiling, keepClaim: true };
   }
+  if (lifted) console.log(`[dispatch] req=${requestId} ask ceiling lifted by hand to ${ceiling} (${reached} asked so far), this wave at most ${fanout}`);
   // v10: never ask the same studio twice for one request. v49: an explicit
   // partner list on a second wave too. v49 review: on a first wave as well,
   // apart from a studio the ask never reached (send_failed), which is tried
@@ -1966,7 +1983,9 @@ async function dispatchOne(r: Record<string, unknown>, opts: { dryRun: boolean; 
     });
     const clientPhone = toWa(String(r.client_phone || ""));
     // A single added studio is not news to the customer.
-    if (clientPhone && !testCustomer && sent >= 2) {
+    // v51: customer_note: false keeps this wave quiet as well (Jordan is
+    // talking to the customer himself, or their window has closed).
+    if (clientPhone && !testCustomer && sent >= 2 && !opts.quiet) {
       const sess = await sq(`wa_sessions?phone=eq.${clientPhone}&select=data`);
       const sessLang = Array.isArray(sess) && sess[0]?.data ? String(sess[0].data.lang || "") : "";
       const es = (sessLang || String(r.languages || "")).toLowerCase().startsWith("es");
@@ -2068,6 +2087,13 @@ async function handleRequest(req: Request): Promise<Response> {
   // a row for this request, and tells the customer "N more studios".
   const extra = body.extra === true || body.widen === true;
   const partnerIds = Array.isArray(body.partner_ids) ? (body.partner_ids as unknown[]).map(String).filter(Boolean) : [];
+  // v51: see MAX_ASKS_OVERRIDE. Only the ops key, never the service key the
+  // bot and the crons call with.
+  const opsCall = !!OPS_KEY && key === OPS_KEY;
+  const askCapIn = Math.floor(Number(body.max_asks));
+  const askCap = opsCall && !!body.request_id && extra && partnerIds.length > 0 && Number.isFinite(askCapIn) && askCapIn > MAX_ASKS_PER_REQUEST
+    ? Math.min(MAX_ASKS_OVERRIDE, askCapIn) : 0;
+  if (body.max_asks !== undefined && !askCap) console.log(`[dispatch] max_asks ignored: it needs the ops key, request_id, extra and partner_ids`);
   // v41: wa-bot passes customer_note: false and says what happened itself.
   const quiet = body.customer_note === false;
   // v43: opt-in intro template and per-studio service, manual request_id calls only.
@@ -2380,7 +2406,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // claim below is handed back.
     let outcome: Record<string, unknown>;
     try {
-      outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet, introIds, serviceBy, force: forceDispatch });
+      outcome = await dispatchOne(r, { dryRun, fanout, cheapest, extra, partnerIds, quiet, introIds, serviceBy, force: forceDispatch, askCap: askCap || undefined });
     } catch (e) {
       console.log(`[dispatch] req=${r.id} dispatch failed`, String(e));
       outcome = { requestId: r.id, sent: 0, reason: "error", error: String(e) };
