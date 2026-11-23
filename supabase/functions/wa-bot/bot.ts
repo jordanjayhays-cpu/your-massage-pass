@@ -3188,6 +3188,16 @@ const reqDuration = (req: any): number => {
   const m = String(req?.message_text || "").match(/Duraci[oó]n: (\d{2,3}) min/);
   return m ? parseInt(m[1], 10) : 60;
 };
+// 23 Nov (#127): every offer and price line said "for 60 minutes" whatever
+// length was asked. The length an offer states is the one the studio said yes
+// to: the length in its ask ("masaje relajante de 90 min"), else the request's
+// own length, else 60.
+const askedMins = (row: any, req?: any): number => {
+  const m = String(row?.asked_service || "").match(/(\d{2,3}) ?min/i);
+  const n = m ? parseInt(m[1], 10) : NaN;
+  if (Number.isFinite(n) && n >= 30 && n <= 180) return n;
+  return req ? reqDuration(req) : 60;
+};
 // v81: partner_id is not a reliable key for a tap. A studio with more than one
 // partner row, or an offer that went out against a different row, leaves the
 // partner lookup pointing somewhere the dispatch was never written. The phone
@@ -3195,7 +3205,7 @@ const reqDuration = (req: any): number => {
 // A dropped tap is invisible and costs a booking, so this never returns empty
 // quietly: if nothing matches at all, it says so in the log.
 async function dispatchRowFor(requestId: number, partnerId: string, fromDigits = ""): Promise<any | null> {
-  const sel = "id,outcome,phone,discount_pct,quoted_price,accepted_at,partner_id";
+  const sel = "id,outcome,phone,discount_pct,quoted_price,accepted_at,partner_id,asked_service";
   if (partnerId) {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${requestId}&partner_id=eq.${encodeURIComponent(partnerId)}&order=created_at.desc&limit=1&select=${sel}`, { headers: H() });
     const rows = await r.json().catch(() => []);
@@ -6736,24 +6746,25 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   let priceLine = "";
   let priceNum = 0;
   let written = false; // v219: a price this studio wrote, not a listed one
+  let dspRow: any = null;
   try {
     const dsp = await dispatchRowFor(req.id, partner.id, studioFrom);
+    dspRow = dsp;
     const quoted = Number((dsp && dsp.quoted_price) || parseQuotedPrice(freeText) || 0);
     if (quoted > 0) {
       written = true;
-      // whatsapp_requests has no duration column; 60 is the standard booking and
-      // the length the studios quote against.
+      // 23 Nov: the length the studio was asked for (askedMins), not 60.
       const pct = dsp && dsp.discount_pct ? Number(dsp.discount_pct) : 0;
       // "Massage Club rate" only when this same studio also confirmed the
       // discount in writing. A studio that gave a price and ducked the discount
       // gets the plain line: "we asked and they said no" makes us look weak.
-      priceLine = COPY[L].priceLine(quoted, 60, pct > 0);
+      priceLine = COPY[L].priceLine(quoted, askedMins(dsp, req), pct > 0);
       priceNum = quoted;
     }
   } catch (e) { console.log("[wa] price line skipped", String(e)); }
   // v182: no confirmed figure means the studio's listed price, labelled as such.
   if (!priceLine) {
-    const lp = await listedPrice(partner.id, String(req.service_name || ""));
+    const lp = await listedPrice(partner.id, String(req.service_name || ""), askedMins(dspRow, req));
     if (lp) { priceLine = listedPriceLine(L, lp); priceNum = lp.price; }
   }
   // v204: when the price is above the range this customer was quoted, say so
@@ -6974,7 +6985,7 @@ async function queuedOffers(req: any, declined: any, mode: "time" | "alt" | "any
   const sameDay = isSameDayReq(req) || (!!asked && asked.getTime() === madridMidnight(now).getTime());
   const priced = async (x: any) => {
     if (Number(x?.quoted_price) > 0) return Number(x.quoted_price);
-    const lp = x?.partner_id ? await listedPrice(String(x.partner_id), String(req.service_name || "")) : null;
+    const lp = x?.partner_id ? await listedPrice(String(x.partner_id), String(req.service_name || ""), askedMins(x, req)) : null;
     return lp ? lp.price : null;
   };
   const kmOf = (x: any) => (x?.km === null || x?.km === undefined || !Number.isFinite(Number(x.km)) ? null : Number(x.km));
@@ -7107,7 +7118,7 @@ async function releaseHeldOffers(only = ""): Promise<number> {
       const slot = meta.slot_at ? Date.parse(String(meta.slot_at)) : NaN;
       if (Number.isFinite(slot) && slot - now < OFFER_LEAD_MS) continue;
       const otherDay = Number.isFinite(slot) && madridMidnight(new Date(slot)).getTime() !== today;
-      const lp = Number(x.quoted_price) > 0 ? null : await listedPrice(String(x.partner_id || ""), String(req.service_name || ""));
+      const lp = Number(x.quoted_price) > 0 ? null : await listedPrice(String(x.partner_id || ""), String(req.service_name || ""), askedMins(x, req));
       cands.push({ x, meta, miss: offerMissBy(String(x.offered_time || ""), w) + (otherDay ? 24 * 60 : 0), price: Number(x.quoted_price) > 0 ? Number(x.quoted_price) : (lp ? lp.price : null) });
     }
     cands.sort((a, b) => a.miss - b.miss || (a.price ?? 1e9) - (b.price ?? 1e9));
@@ -7471,8 +7482,8 @@ async function sendHeldOfferEmail(rowId: string, why: string): Promise<boolean> 
   const time = String(row.customer_offered_time || row.offered_time || "");
   const day = rowDayLabel(row, L) || offerDayFromText(String(row.reply_text || ""), L) || dayLabelFor(req.day1, req.message_text, L) || (L === "es" ? "ese día" : "that day");
   const quoted = Number(row.quoted_price || 0);
-  let priceLine = quoted > 0 ? COPY[L].priceLine(quoted, 60, Number(row.discount_pct || 0) > 0) : "";
-  if (!priceLine) { const lp = await listedPrice(String(row.partner_id || ""), String(req.service_name || "")); if (lp) priceLine = listedPriceLine(L, lp); }
+  let priceLine = quoted > 0 ? COPY[L].priceLine(quoted, askedMins(row, req), Number(row.discount_pct || 0) > 0) : "";
+  if (!priceLine) { const lp = await listedPrice(String(row.partner_id || ""), String(req.service_name || ""), askedMins(row, req)); if (lp) priceLine = listedPriceLine(L, lp); }
   const ok = await emailOffer(req, L, String(row.id), studio, time, day, pc.address, priceLine);
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(ok ? (quoted > 0 ? { offer_price_eur: quoted } : {}) : { customer_offered_at: null, customer_offered_time: null, customer_offer_via: null }) }).catch(() => null);
   await logEvent(digitsOf(String(req.client_phone || "")) || "web", "offer_email_released", { request_id: String(req.id), row: String(row.id), why, price: quoted > 0 ? quoted : null, sent: ok });
@@ -7519,7 +7530,7 @@ async function offerMail(req: any, subject: string, lines: string[], btn: string
   return !!res && res.ok;
 }
 // The offer's price line for these emails: only a price the studio wrote.
-const writtenPriceLine = (row: any, L: string): string => Number(row?.quoted_price || 0) > 0 ? COPY[L].priceLine(Number(row.quoted_price), 60, Number(row.discount_pct || 0) > 0) : "";
+const writtenPriceLine = (row: any, L: string, req?: any): string => Number(row?.quoted_price || 0) > 0 ? COPY[L].priceLine(Number(row.quoted_price), askedMins(row, req), Number(row.discount_pct || 0) > 0) : "";
 // Open email offers (sent by email, not answered, still open), with their
 // request, for the three sweeps below.
 async function openEmailOffers(sinceMs: number): Promise<Array<{ row: any; req: any }>> {
@@ -7560,7 +7571,7 @@ async function nudgeEmailOffers(): Promise<number> {
     const L = req.languages === "es" ? "es" : "en";
     const pc = await partnerCard(String(row.partner_id || ""));
     const time = String(row.customer_offered_time || row.offered_time || "");
-    const c = nudgeCopy(L, String(req.first_name || "").trim().split(" ")[0], pc.business_name || (L === "es" ? "el centro" : "the studio"), time, offerRelDay(slot, now, L), writtenPriceLine(row, L));
+    const c = nudgeCopy(L, String(req.first_name || "").trim().split(" ")[0], pc.business_name || (L === "es" ? "el centro" : "the studio"), time, offerRelDay(slot, now, L), writtenPriceLine(row, L, req));
     nudgedReq.add(String(req.id));
     if (mode === "shadow") {
       const seen = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?event=eq.offer_nudge_shadow&meta->>row=eq.${encodeURIComponent(String(row.id))}&select=id&limit=1`, { headers: H() }).then((x) => x.json()).catch(() => []);
@@ -7594,7 +7605,7 @@ async function offerPriceUpdate(row: any): Promise<boolean> {
   if (!fresh) return false;
   const L = req.languages === "es" ? "es" : "en";
   const pc = await partnerCard(String(row.partner_id || ""));
-  const c = priceUpdateCopy(L, pc.business_name || (L === "es" ? "el centro" : "the studio"), String(fresh.customer_offered_time || fresh.offered_time || ""), offerRelDay(slot, Date.now(), L), writtenPriceLine(fresh, L));
+  const c = priceUpdateCopy(L, pc.business_name || (L === "es" ? "el centro" : "the studio"), String(fresh.customer_offered_time || fresh.offered_time || ""), offerRelDay(slot, Date.now(), L), writtenPriceLine(fresh, L, req));
   const ok = await offerMail(req, c.subject, c.lines, c.btn, await offerLink(String(row.id)));
   if (ok) await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(String(row.id))}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ offer_price_eur: Number(fresh.quoted_price) || null }) }).catch(() => null);
   await logEvent(digitsOf(String(req.client_phone || "")) || "web", "offer_price_update", { request_id: String(req.id), row: String(row.id), sent: ok });
@@ -8415,7 +8426,7 @@ async function offerPage(url: URL): Promise<Response> {
     await declineOffer(rowId, phone, L, s);
     return pageOut(url, simpleCard(es ? "Sin problema" : "No problem", es ? "No lo reservamos. Escríbenos por WhatsApp si quieres otra hora u otro centro." : "We won't book it. Message us on WhatsApp if you'd like another time or studio.", ""));
   }
-  const price = (await offerPriceText(Number(req.id), String(row.partner_id || ""), String(req.service_name || ""), "", L)).replace(/\*/g, "");
+  const price = (await offerPriceText(Number(req.id), String(row.partner_id || ""), String(req.service_name || ""), "", L, req)).replace(/\*/g, "");
   // v219: no deadline earlier than the start (Jordan, 19 Nov), LATE_COPY.tapNote.
   const body = `${pc.address ? pc.address + "\n\n" : ""}${when}\n${trSvc(custSvc(req.service_name), L)}${price ? "\n" + price : ""}\n\n${LC.tapNote(String(row.offered_time))}`;
   const extra = pillLink(await offerLink(rowId, "yes"), es ? `Sí, reserva ${row.offered_time}` : `Yes, book ${row.offered_time}`, true)
@@ -11458,7 +11469,8 @@ const ADDRESS_Q_RE = /((?<![a-zñáéíóú])(calle|direcci[oó]n|d[oó]nde (est
 // booking wins; without one, the price on its menu for this massage, labelled
 // as its listed price and never as anything we negotiated. A 60-minute row
 // under 30 EUR is a partial or promo price we cannot stand behind, so skipped.
-async function listedPrice(partnerId: string, svcName: string): Promise<{ price: number; duration: number } | null> {
+// 23 Nov: the menu row closest to the length asked (mins), not to 60.
+async function listedPrice(partnerId: string, svcName: string, mins = 60): Promise<{ price: number; duration: number } | null> {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/partner_services?partner_id=eq.${encodeURIComponent(partnerId)}&is_active=eq.true&price=gt.0&select=name,name_en,type,duration,price`, { headers: H() });
     const rows = await r.json().catch(() => []);
@@ -11468,7 +11480,7 @@ async function listedPrice(partnerId: string, svcName: string): Promise<{ price:
     const scored = rows.map((x: any) => {
       const label = stripAcc(`${x.type || ""} ${x.name || ""} ${x.name_en || ""}`).toLowerCase();
       const dur = Number(x.duration) || 60;
-      return { price: Number(x.price), duration: dur, miss: kind && !label.includes(kind) ? 1 : 0, gap: Math.abs(dur - 60) };
+      return { price: Number(x.price), duration: dur, miss: kind && !label.includes(kind) ? 1 : 0, gap: Math.abs(dur - (Number(mins) > 0 ? Number(mins) : 60)) };
     }).filter((x: any) => x.price > 0 && !(x.duration >= 50 && x.price < 30));
     scored.sort((a: any, b: any) => a.miss - b.miss || a.gap - b.gap || a.price - b.price);
     return scored[0] ? { price: scored[0].price, duration: scored[0].duration } : null;
@@ -11479,13 +11491,15 @@ function listedPriceLine(L: string, p: { price: number; duration: number }): str
     ? `Precio: unos ${euro(p.price)} por ${p.duration} minutos, la tarifa publicada del centro. Pagas allí, sin comisión.`
     : `Price: about ${euro(p.price)} for ${p.duration} minutes, the studio's listed price. You pay there, no fee.`;
 }
-async function offerPriceText(requestId: number, partnerId: string, svcName: string, freeText: string, L: string): Promise<string> {
+async function offerPriceText(requestId: number, partnerId: string, svcName: string, freeText: string, L: string, req?: any): Promise<string> {
+  let dspRow: any = null;
   try {
     const dsp = requestId ? await dispatchRowFor(requestId, partnerId) : null;
+    dspRow = dsp;
     const quoted = Number((dsp && dsp.quoted_price) || parseQuotedPrice(freeText) || 0);
-    if (quoted > 0) return COPY[L].priceLine(quoted, 60, !!(dsp && Number(dsp.discount_pct) > 0));
+    if (quoted > 0) return COPY[L].priceLine(quoted, askedMins(dsp, req), !!(dsp && Number(dsp.discount_pct) > 0));
   } catch (_e) { /* fall through to the listed price */ }
-  const lp = await listedPrice(partnerId, svcName);
+  const lp = await listedPrice(partnerId, svcName, askedMins(dspRow, req));
   return lp ? listedPriceLine(L, lp) : "";
 }
 
@@ -11809,7 +11823,7 @@ async function coreBookingFacts(s: Session, L: string): Promise<CoreBooking> {
       const pc = req.partner_id ? await partnerCard(String(req.partner_id)) : null;
       out.confirmed = {
         id, studio: String(pc?.business_name || req.studio_name || ""), day: String(req.confirmed_day || req.day1 || ""), time: String(req.confirmed_time || req.time1 || ""),
-        address: String(pc?.address || ""), price_text: req.partner_id ? await offerPriceText(id, String(req.partner_id), String(req.service_name || ""), "", L) : "",
+        address: String(pc?.address || ""), price_text: req.partner_id ? await offerPriceText(id, String(req.partner_id), String(req.service_name || ""), "", L, req) : "",
         startMs: coreConfirmedStart(req, createdMs), createdMs,
       };
     } else out.returning = { name: String(s.data.known?.name || ""), last: `#${id}, ${req.service_name || "massage"}, ${req.day1 || ""}, ${stage}` };
