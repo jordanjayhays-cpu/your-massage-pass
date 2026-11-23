@@ -74,6 +74,8 @@ const FAKE_NUM_RE = /^34600000\\d{3}$/;
 const REL_TEST_STUDIO_RE = /\\b(test|prueba)\\b/i;
 async function logEvent(phone, event, meta) { events.push({ phone, event, meta }); }
 async function founderCard(subject, o) { cards.push({ subject, ...o }); }
+${stripTypeScriptTypes(botSrc.slice(botSrc.indexOf("\nconst reqDuration = "), botSrc.indexOf("\n// v81: partner_id is not a reliable key")))}
+async function dispatchRowFor() { return null; }
 ${stripTypeScriptTypes(between(botSrc, "// ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)", "// ---- v219: studio words: pure helpers (end)"))}
 ${stripTypeScriptTypes(block)}
 export { ensureBooking };
@@ -393,7 +395,7 @@ const liftArrow = (name) => { const i = botSrc.indexOf(`\nconst ${name} = `); re
       FAKE_NUM_RE: /(^|\D)34600000\d{3}(\D|$)/, TEST_NAME_RE: /\b(test|prueba|uitest|mctest)\b/i,
       ...P,
     };
-    const { fns } = sandbox([fo, sh, lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), one("isSameDayReq")].filter(Boolean), env, sh ? ["forwardOffer", "sendHeldOfferEmail"] : ["forwardOffer"]);
+    const { fns } = sandbox([fo, sh, lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), one("isSameDayReq"), liftArrow("reqDuration"), liftArrow("askedMins")].filter(Boolean), env, sh ? ["forwardOffer", "sendHeldOfferEmail"] : ["forwardOffer"]);
     return { fns, state, emails };
   };
   const C2 = await import(copyUrl);
