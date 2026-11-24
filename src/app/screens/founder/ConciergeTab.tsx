@@ -195,7 +195,8 @@ export default function ConciergeTab({ refreshTick }: { refreshTick?: number }) 
     setLoading(true);
     const [waRes, partnerRes] = await Promise.all([
       supabase.from("whatsapp_requests").select("*").order("created_at", { ascending: false }).limit(200),
-      supabase.from("partners").select("*").in("status", ["active", "pending"]).limit(500),
+      // The PartnerRow fields only: select("*") on partners is refused since the 24 Nov column lock.
+      supabase.from("partners").select("id, business_name, slug, status, phone, whatsapp, email, address, auto_confirm_bookings, price_from").in("status", ["active", "pending"]).limit(500),
     ]);
     setRows(((waRes.data as any[]) || []) as WaRow[]);
     setPartners(((partnerRes.data as any[]) || []) as PartnerRow[]);

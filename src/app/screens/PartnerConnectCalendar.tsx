@@ -41,7 +41,7 @@ export default function PartnerConnectCalendar() {
 
     const { data } = await supabase
       .from("partners")
-      .select("id, business_name, google_calendar_connected, google_calendar_id, auto_confirm_bookings")
+      .select("id, business_name, google_calendar_connected, auto_confirm_bookings")
       .eq("id", user.id)
       .single();
 
@@ -93,16 +93,10 @@ export default function PartnerConnectCalendar() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
-      .from("partners")
-      .update({
-        google_calendar_connected: false,
-        google_access_token: null,
-        google_refresh_token: null,
-        google_token_expiry: null,
-        google_calendar_id: null,
-      })
-      .eq("id", user.id);
+    // Since the 24 Nov column lock a studio can neither read nor write its
+    // Google token columns. This function wipes them (and sets connected to
+    // false) on the caller's own row only.
+    const { error } = await supabase.rpc("partner_disconnect_calendar");
 
     setDisconnecting(false);
     if (error) {
@@ -172,7 +166,7 @@ export default function PartnerConnectCalendar() {
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   {isConnected
-                    ? t("partner.connectCalendar.connectedDesc", { calendar: partner.google_calendar_id || t("partner.connectCalendar.yourGoogleCalendar") })
+                    ? t("partner.connectCalendar.connectedDesc", { calendar: t("partner.connectCalendar.yourGoogleCalendar") })
                     : t("partner.connectCalendar.notConnectedDesc")}
                 </p>
               </div>

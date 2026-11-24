@@ -35,7 +35,6 @@ type Partner = {
   business_name: string;
   address: string;
   google_calendar_connected?: boolean;
-  google_calendar_id?: string;
   auto_confirm_bookings?: boolean;
 };
 
@@ -84,7 +83,7 @@ export default function PartnerDashboard() {
     setShareUrl(`https://book.massageclub.io/${user.id}`);
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
-      supabase.from("partners").select("business_name, address, google_calendar_connected, google_calendar_id, auto_confirm_bookings, slug").eq("id", user.id).single(),
+      supabase.from("partners").select("business_name, address, google_calendar_connected, auto_confirm_bookings, slug").eq("id", user.id).single(),
       supabase.from("bookings").select("*").eq("partner_id", user.id).order("booking_date", { ascending: false }).limit(20),
     ]);
 
@@ -402,7 +401,7 @@ export default function PartnerDashboard() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {partner?.google_calendar_connected
-                    ? t("partner.dashboard.calendarConnectedDesc", { calendar: partner.google_calendar_id || t("partner.dashboard.googleCalendarDefault") })
+                    ? t("partner.dashboard.calendarConnectedDesc", { calendar: t("partner.dashboard.googleCalendarDefault") })
                     : t("partner.dashboard.calendarSetupDesc")
                   }
                 </p>

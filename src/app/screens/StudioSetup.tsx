@@ -467,11 +467,11 @@ function StudioSetupInner() {
     if (mode === "claim") {
       if (!claimToken) { setSourceError(t("partner.studioSetup.claimNoTokenError")); setValidatingSource(false); return; }
       (async () => {
-        const { data: partner, error } = await supabase
-          .from("partners")
-          .select("*")
-          .eq("claim_token", claimToken)
-          .maybeSingle();
+        // Since the 24 Nov column lock the public key cannot filter on
+        // claim_token. claim_lookup returns only the fields this page uses
+        // (pending or active studios, the rows the page could see before).
+        const { data: rows, error } = await supabase.rpc("claim_lookup", { p_claim_token: claimToken });
+        const partner: any = Array.isArray(rows) ? rows[0] ?? null : null;
         if (error || !partner) {
           setSourceError(t("partner.studioSetup.claimInvalidError"));
           setValidatingSource(false);

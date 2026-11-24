@@ -14,19 +14,16 @@ export default function ClaimShortLink() {
     if (!slug) { setError("Invalid link."); return; }
     let cancelled = false;
     (async () => {
-      const { data, error: err } = await supabase
-        .from("partners")
-        .select("claim_token, status")
-        .eq("slug", slug)
-        .maybeSingle();
+      // Since the 24 Nov column lock the public key cannot read claim_token.
+      // claim_token_for_slug returns it for a pending studio only, so an
+      // already-claimed (active) studio resolves to "not found" here.
+      const { data: token, error: err } = await supabase.rpc("claim_token_for_slug", { p_slug: slug });
       if (cancelled) return;
-      if (err || !data?.claim_token) {
-        // RLS only exposes pending partners to anon, so an already-claimed
-        // studio resolves to "not found" here.
+      if (err || typeof token !== "string" || !token) {
         setError("This link is invalid or the studio has already been claimed. If that's you, log in at massageclub → Partner login.");
         return;
       }
-      navigate(`/studio-setup?claim=${data.claim_token}`, { replace: true });
+      navigate(`/studio-setup?claim=${encodeURIComponent(token)}`, { replace: true });
     })();
     return () => { cancelled = true; };
   }, [slug, navigate]);
