@@ -4553,6 +4553,45 @@ for (const [msg, want, note] of [
 }
 
 // ---------------------------------------------------------------------------
+// Bot number (Jordan, 24 Nov: "i shouldn't have to report everything from my
+// convos, this should be rare not expectations"). Our own surfaces send
+// studios to the bot number, which the bot can read, never to Jordan's own
+// 827 phone, which it cannot. Only the surfaces repointed so far are checked
+// here; bot.html, /studio-setup, the letters and the rescue email still use
+// 827 on purpose until the bot can handle what arrives (relay spec, part C).
+// ---------------------------------------------------------------------------
+{
+  const fs = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const read = (p) => fs.readFileSync(fileURLToPath(new URL(p, import.meta.url)), "utf8");
+  const botSrc = read("../supabase/functions/wa-bot/bot.ts");
+  const socios = read("../public/socios.html");
+  const G = "bot number (24 Nov)";
+  const own827 = /34612474827|612[ \u00a0]474[ \u00a0]827|612&nbsp;474&nbsp;827|612\\u00a0474\\u00a0827/;
+  const waNum = (socios.match(/const WA_NUM = "(\d+)";/) || [])[1] || "";
+  check(G + ": socios.html", "every WhatsApp button goes to the bot number", waNum, "34613977900", "waLink builds every wa.me link on the page from WA_NUM");
+  check(G + ": socios.html", "no 827 left, in any spelling", own827.test(socios), false, "the contact button, the fallback times and the «ocupado» line");
+  check(G + ": socios.html", "the shown number is the bot number, ES and EN", [
+    socios.includes("WhatsApp +34&nbsp;613&nbsp;97&nbsp;79&nbsp;00"),
+    socios.includes("Escribid «ocupado» y la hora al +34\\u00a0613\\u00a097\\u00a079\\u00a000."),
+    socios.includes("Write \\\"ocupado\\\" (taken) and the time to +34\\u00a0613\\u00a097\\u00a079\\u00a000."),
+  ], [true, true, true], "a studio partner's «ocupado» on the bot number reaches studioOcupado");
+  const label = "Write from your own phone (the bot will not see their answer)";
+  check(G + ": founder cards", "the small own-phone link says the bot will not see the answer, in the email and its plain text", [
+    botSrc.includes(`const ownPhoneLabel = "${label}";`),
+    botSrc.includes("${esc(ownPhoneLabel)}</a>"),
+    botSrc.includes("waHref ? `${ownPhoneLabel}: ${waHref}` : \"\""),
+    botSrc.includes("Or write from your own WhatsApp"),
+    /[\u2012-\u2015\u2212]/.test(label),
+  ], [true, true, true, false, false], "");
+  check(G + ": founder cards", "no card tells Jordan to jump in from his main number, or that a customer was promised a reply from it", [
+    botSrc.includes("jump in from your main number"),
+    botSrc.includes("will reply from ${JORDAN_MAIN_NUMBER}"),
+    botSrc.includes("you can watch live or reply as the bot below."),
+  ], [false, false, true], "v39: the bot never hands off to a representative");
+}
+
+// ---------------------------------------------------------------------------
 // Report
 // ---------------------------------------------------------------------------
 const total = pass + failures.length;
