@@ -34,11 +34,16 @@
 --      caller's own WhatsApp and email). Now the pending row is merged into
 --      the caller's row only when the caller proved control of the email
 --      already on file for that studio: the account email equals it, is
---      confirmed, and this session signed in with Google or an emailed link
---      or code (JWT amr oauth, otp, magiclink or email/signup; a password
---      sign-in proves nothing while sign-ups may be auto-confirmed). Any
+--      confirmed, the account has no password, and this session signed in
+--      with Google (JWT amr oauth). Why so strict (fresh review, 24 Nov):
+--      mailer_autoconfirm is on live, so anyone can pre-register a studio's
+--      email with a password, and the real studio's later magic link or
+--      Google sign-in lands in that account; GoTrue also gives magic-link
+--      sign-ups a random password, so no emailed link proves anything. Any
 --      other claim still saves the studio's own row as today, but the
---      merge waits in public.claim_reviews for Jordan, who merges by hand.
+--      merge waits in public.claim_reviews for Jordan, who merges by hand
+--      only with proof from outside the site (a WhatsApp from the studio's
+--      number on file): a parked row whose email matches proves nothing.
 --      The proper emailed-code claim (design S0-3, claim-start/claim-finish)
 --      replaces this later.
 --   * claim_release_prebuilt: service role only from here (the design's
@@ -128,7 +133,7 @@ create table if not exists public.claim_reviews (
   created_at timestamptz not null default now(),
   claimer_id uuid not null,   -- the signed-in studio's own partners row (auth uid)
   prebuilt_id uuid not null,  -- the pending studio row it asked to take over
-  reason text not null,       -- no_email_on_file | email_mismatch | sign_in_method
+  reason text not null,       -- no_email_on_file | email_mismatch | password_account | sign_in_method
   resolved_at timestamptz,
   unique (claimer_id, prebuilt_id)
 );
@@ -190,9 +195,16 @@ begin
     reason := 'no_email_on_file';
   elsif my_email is null or my_email <> pre_email then
     reason := 'email_mismatch';
+  elsif exists (select 1 from auth.users u
+                 where u.id = uid and coalesce(u.encrypted_password, '') <> '') then
+    -- Under mailer_autoconfirm anyone can pre-register a studio's email with
+    -- a password; the real studio's later magic link or Google sign-in then
+    -- lands in that account. GoTrue gives magic-link sign-ups a random
+    -- password too, so only a Google-only account merges automatically.
+    reason := 'password_account';
   elsif not exists (
     select 1 from jsonb_array_elements(amr) a
-     where coalesce(a ->> 'method', a #>> '{}') in ('oauth', 'otp', 'magiclink', 'email/signup')
+     where coalesce(a ->> 'method', a #>> '{}') = 'oauth'
   ) then
     reason := 'sign_in_method';
   end if;
