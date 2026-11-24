@@ -12,8 +12,10 @@
 // - named request_update_v1, and "Other options" instead of "Closer or
 //   cheaper", so Meta reads it as an update on a request (UTILITY), not a
 //   promotion (implementation critique M12);
-// - the greeting is one variable ("Hi Marcel" / "Hola Marcel", or "Hi there"
-//   / "Hola" with no name), so the Spanish never reads "Hola hola";
+// - the greeting word is fixed text and only the name is {{1}} ("Hi Marcel" /
+//   "Hola Marcel"; with no name "Hi there" / "Hola de nuevo", EN "Hello
+//   again"), because Meta rejects a body that starts with a placeholder
+//   (24 Nov: every approved template of ours starts with fixed text);
 // - the price line never names a discount or the Massage Club rate: the
 //   customer hears about a discount only on the confirmation (CLAUDE.md,
 //   discounts; rules critique major 11);
@@ -32,11 +34,11 @@ export function parseOfferTplMode(v: unknown): OfferTplMode {
 // The bodies exactly as they would be submitted. renderOfferTpl fills them
 // in for the log, so the inbox shows what the customer read.
 export const OFFER_TPL_TEXT: Record<"en" | "es", string> = {
-  en: "{{1}}, here is news on your massage request.\n\n{{2}} can take you on {{3}} at {{4}}: {{5}}.\nPrice: {{6}}. You pay at the studio, no fee.\n\nNothing is booked until you tap Yes.\n\nMassage Club",
+  en: "Hi {{1}}, here is news on your massage request.\n\n{{2}} can take you on {{3}} at {{4}}: {{5}}.\nPrice: {{6}}. You pay at the studio, no fee.\n\nNothing is booked until you tap Yes.\n\nMassage Club",
   // EN: "{{1}}, we are writing with news about your massage request. {{2}} can
   // see you on {{3}} at {{4}}: {{5}}. Price: {{6}}. You pay at the studio, no
   // fee. Nothing is booked until you tap Yes. Massage Club"
-  es: "{{1}}, te escribimos con novedades sobre tu solicitud de masaje.\n\n{{2}} puede atenderte el {{3}} a las {{4}}: {{5}}.\nPrecio: {{6}}. Pagas en el centro, sin comisión.\n\nNo se reserva nada hasta que toques Sí.\n\nMassage Club",
+  es: "Hola {{1}}, te escribimos con novedades sobre tu solicitud de masaje.\n\n{{2}} puede atenderte el {{3}} a las {{4}}: {{5}}.\nPrecio: {{6}}. Pagas en el centro, sin comisión.\n\nNo se reserva nada hasta que toques Sí.\n\nMassage Club",
 };
 // Quick replies, 25 characters at most. ES in English: "Yes, book it",
 // "Another time", "Other options".
@@ -65,7 +67,7 @@ export function offerTplParams(L: string, o: OfferTplInput, longDate: (ms: numbe
   const es = L === "es";
   if (o.slotAtMs === null || !Number.isFinite(o.slotAtMs) || !/^\d{1,2}:\d{2}$/.test(String(o.time || ""))) return null;
   const first = one(String(o.firstName || "").split(/\s+/)[0] || "", 40);
-  const p1 = es ? (first ? `Hola ${first}` : "Hola") : (first ? `Hi ${first}` : "Hi there");
+  const p1 = first || (es ? "de nuevo" : "there");
   const where = one(o.neighbourhood || "", 60);
   const p2 = one(`${o.studio}${where && !String(o.studio).toLowerCase().includes(where.toLowerCase()) ? ` (${where})` : ""}`, 120);
   const p3 = one(longDate(o.slotAtMs, es ? "es" : "en").replace(/,/g, ""), 60);
@@ -100,7 +102,7 @@ export function offerTplAudience(mode: OfferTplMode, c: { phone: string; testCus
 // quick replies. Run it with dry: true first.
 export function offerTplSubmission(L: "en" | "es"): { ops: string; name: string; lang: string; category: string; body: string; buttons: string[]; examples: string[]; dry: boolean } {
   const examples = L === "es"
-    ? ["Hola Lucía", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "55 € (confirmado por el centro)"]
-    : ["Hi Lucy", "Example Studio (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "55 EUR (confirmed by the studio)"];
+    ? ["Lucía", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "55 € (confirmado por el centro)"]
+    : ["Lucy", "Example Studio (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "55 EUR (confirmed by the studio)"];
   return { ops: "tplnew", name: OFFER_TPL_NAME, lang: L, category: "UTILITY", body: OFFER_TPL_TEXT[L], buttons: OFFER_TPL_BUTTONS[L], examples, dry: true };
 }

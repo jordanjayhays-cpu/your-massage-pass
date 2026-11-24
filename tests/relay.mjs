@@ -755,12 +755,12 @@ const FIX = [
   const base = { firstName: "Lucia Ejemplo", studio: "Estudio Ejemplo", neighbourhood: "Chamberí", slotAtMs: slot, time: "18:00", svc: "relaxing massage", mins: 60, price: null, listed: null };
   const p = (L, o) => OT.offerTplParams(L, { ...base, ...(L === "es" ? { svc: "masaje relajante" } : {}), ...o }, long);
   const cases = [
-    ["en", { price: 55 }, ["Hi Lucia", "Estudio Ejemplo (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "55 EUR (confirmed by the studio)"]],
-    ["en", { listed: 55 }, ["Hi Lucia", "Estudio Ejemplo (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "about 55 EUR (the studio's listed price)"]],
-    ["en", { firstName: "" }, ["Hi there", "Estudio Ejemplo (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "not confirmed yet"]],
-    ["es", { price: 76.5 }, ["Hola Lucia", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "76,50 € (confirmado por el centro)"]],
-    ["es", { listed: 55, firstName: "" }, ["Hola", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "unos 55 € (precio publicado del centro)"]],
-    ["es", {}, ["Hola Lucia", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "aún sin confirmar"]],
+    ["en", { price: 55 }, ["Lucia", "Estudio Ejemplo (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "55 EUR (confirmed by the studio)"]],
+    ["en", { listed: 55 }, ["Lucia", "Estudio Ejemplo (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "about 55 EUR (the studio's listed price)"]],
+    ["en", { firstName: "" }, ["there", "Estudio Ejemplo (Chamberí)", "Thursday 26 November", "18:00", "relaxing massage, 60 minutes", "not confirmed yet"]],
+    ["es", { price: 76.5 }, ["Lucia", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "76,50 € (confirmado por el centro)"]],
+    ["es", { listed: 55, firstName: "" }, ["de nuevo", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "unos 55 € (precio publicado del centro)"]],
+    ["es", {}, ["Lucia", "Estudio Ejemplo (Chamberí)", "jueves 26 de noviembre", "18:00", "masaje relajante, 60 minutos", "aún sin confirmar"]],
   ];
   for (const [L, o, want] of cases) check(G, `offerTplParams ${L} ${JSON.stringify(o)}`, p(L, o), want);
   check(G, "no start known: no template", p("en", { slotAtMs: null }), null);
@@ -789,7 +789,8 @@ const FIX = [
     const comps = out.spec?.components || [];
     check(G, `tplnew dry ${L}: UTILITY, 6 examples, 3 quick replies, no network`, [out.dry, out.spec?.category, out.spec?.language, out.spec?.name, comps[0]?.example?.body_text?.[0]?.length, comps[1]?.buttons?.map((b) => b.type), db.network.length], [true, "UTILITY", L, "request_update_v1", 6, ["QUICK_REPLY", "QUICK_REPLY", "QUICK_REPLY"], 0]);
   }
-  check(G, "the submission examples use invented names", OT.offerTplSubmission("en").examples.slice(0, 2), ["Hi Lucy", "Example Studio (Chamberí)"]);
+  check(G, "the submission examples use invented names", OT.offerTplSubmission("en").examples.slice(0, 2), ["Lucy", "Example Studio (Chamberí)"]);
+  for (const L of ["en", "es"]) check(G, `the ${L} body never starts or ends with a placeholder (Meta rejects it)`, [/^\s*\{\{/.test(OT.OFFER_TPL_TEXT[L]), /\}\}\s*$/.test(OT.OFFER_TPL_TEXT[L])], [false, false]);
 }
 {
   const G = "10 template sends";
