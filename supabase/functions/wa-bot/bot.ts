@@ -13391,9 +13391,14 @@ const handleInner = async (req: Request) => {
             body: JSON.stringify({ therapist_gender: g }),
           });
           const gL = s.data.lang === "es" ? "es" : "en";
+          // 24 Nov (Jordan, pop-up "Yes, change it"): the old line promised
+          // "we will not book you anywhere that cannot do it", but studios
+          // read "prefiere" and offers did not wait for the studio to confirm
+          // the gender (#127, Calma). Say only what is true until the
+          // must-be/prefer build makes it a real promise.
           await sendText(from, gL === "es"
-            ? `Anotado: masajista ${g === "male" ? "chico" : "chica"}. Se lo pregunto al centro y te digo algo en cuanto me contesten. No te reservamos en un sitio que no pueda.`
-            : `Noted, a ${g === "male" ? "man" : "woman"} therapist. We are asking the studio now and will not book you anywhere that cannot do it.`);
+            ? `Anotado: masajista ${g === "male" ? "chico" : "chica"}. Se lo pedimos a los centros.`
+            : `Noted, a ${g === "male" ? "male" : "female"} therapist. We ask the studios for that.`);
           await notifyJordanWa(`${s.wa_name || "+" + digitsOf(from)} asked for a ${g} therapist on request #${greq.id}. The studios still need asking.`, from);
           await logEvent(from, "therapist_gender_on_request", { id: greq.id, gender: g });
           return new Response("OK", { status: 200 });
@@ -13402,9 +13407,10 @@ const handleInner = async (req: Request) => {
         // question we were on; finalizeBooking puts it on the request.
         if (bareAny) {
           const gL = s.data.lang === "es" ? "es" : "en";
+          // 24 Nov: same honest line as above (no "only book you where they can").
           await sendText(from, gL === "es"
-            ? `Anotado: masajista ${g === "male" ? "chico" : "chica"}. Se lo pedimos a los centros y solo te reservamos donde puedan.`
-            : `Noted, a ${g === "male" ? "man" : "woman"} therapist. We ask the studios for that and only book you where they can.`);
+            ? `Anotado: masajista ${g === "male" ? "chico" : "chica"}. Se lo pedimos a los centros.`
+            : `Noted, a ${g === "male" ? "male" : "female"} therapist. We ask the studios for that.`);
           if (s.step === "await_studio" && s.data.offerMode) { if (!(await offerStudios(s, from, gL))) await reAsk(s, from, gL); }
           else await reAsk(s, from, gL);
           return new Response("OK", { status: 200 });
