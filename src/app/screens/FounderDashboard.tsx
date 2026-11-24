@@ -303,7 +303,10 @@ export default function FounderDashboard() {
         supabase.from("site_events").select("event,visitor_key,day,partner_slug").gte("day", since14).limit(20000),
         supabase.from("whatsapp_requests").select("*").gte("created_at", since90).order("created_at", { ascending: false }).limit(2000),
         supabase.from("customer_contacts").select("email,bookings,has_account,marketing_opt_in").limit(10000),
-        supabase.from("marketing_status").select("kind,contact,action,source").limit(20000),
+        // marketing_status is service-role only (the consent list never reaches a
+        // browser); founders read it through this founder-only function, which
+        // refuses any other signed-in email (20261120_founder_marketing_status.sql).
+        supabase.rpc("founder_marketing_status"),
       ]);
       setProfileCount(profCount ?? 0);
       setBookings(bks ?? []);
@@ -839,7 +842,7 @@ export default function FounderDashboard() {
               {optin == null
                 ? "Reading who said yes to offers…"
                 : !optin.readable
-                  ? `Could not read marketing_status (${optin.error}). Opt-ins cannot be counted here yet, so nobody counts as a yes. The customer list and the CSV below are not a marketing list.`
+                  ? `Could not read who said yes to offers (${optin.error}). Opt-ins cannot be counted here yet, so nobody counts as a yes. The customer list and the CSV below are not a marketing list.`
                   : optinYesPeople === 0
                     ? `0 customers may get promotions: nobody yet has a verified yes on every address we hold for them.${optinUnconfirmed ? ` ${optinUnconfirmed} said yes from the quiz, which does not count until they confirm it.` : ""}`
                     : `${optinYesPeople} customer${optinYesPeople === 1 ? "" : "s"} whose every address reads a verified yes. Only these may get promotions.${optinUnconfirmed ? ` ${optinUnconfirmed} more said yes from the quiz, which does not count until they confirm it.` : ""}`}
