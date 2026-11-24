@@ -64,8 +64,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply, bareAnswer } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
-import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, type RelayMode, type RelayCand, type RelayId } from "./relay.ts";
-import { offerTplParams, renderOfferTpl, offerTplAudience, offerTplPayloads, parseOfferTplMode, OFFER_TPL_NAME, type OfferTplMode } from "./offer_tpl.ts";const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
+import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, type RelayMode, type RelayCand, type RelayId } from "./relay.ts";
+import { offerTplParams, renderOfferTpl, offerTplAudience, offerTplPayloads, parseOfferTplMode, OFFER_TPL_NAME, type OfferTplMode } from "./offer_tpl.ts";
+const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const AI_MODEL = "claude-haiku-4-5-20251001";
@@ -116,13 +117,22 @@ const GRAPH = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 const svc = () => Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const H = () => ({ apikey: svc(), Authorization: `Bearer ${svc()}`, "Content-Type": "application/json" });
 
-async function logMsg(phone: string, direction: "in" | "out", body: string, msg_type = "text", reply_id = "") {
+// Relay review M1: wantId returns the new row's id (the relay acts on the
+// row its own turn logged, never "the newest waiting one"). Every other
+// caller is unchanged: return=minimal, and null back.
+async function logMsg(phone: string, direction: "in" | "out", body: string, msg_type = "text", reply_id = "", wantId = false): Promise<number | null> {
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/wa_messages`, {
-      method: "POST", headers: { ...H(), Prefer: "return=minimal" },
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages${wantId ? "?select=id" : ""}`, {
+      method: "POST", headers: { ...H(), Prefer: wantId ? "return=representation" : "return=minimal" },
       body: JSON.stringify({ phone, direction, msg_type, body: body.slice(0, 2000), reply_id: reply_id || null }),
     });
+    if (wantId && r.ok) {
+      const rows = await r.json().catch(() => []);
+      const id = Number(Array.isArray(rows) && rows[0] ? rows[0].id : NaN);
+      return Number.isFinite(id) && id > 0 ? id : null;
+    }
   } catch (e) { console.log("[wa] log failed", String(e)); }
+  return null;
 }
 
 // v163 (5 Oct): voice notes. Four customers sent them this week and all the
@@ -7545,7 +7555,9 @@ async function sendHeldOfferEmail(rowId: string, why: string): Promise<boolean> 
   }).catch(() => null);
   const row = cl && cl.ok ? ((await cl.json().catch(() => [])) || [])[0] || null : null;
   if (!row) return false;
-  const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(row.request_id)}&select=id,first_name,service_name,day1,message_text,created_at,contact_email,client_phone,languages,stage`, { headers: H() });
+  // last_name too (review m8): the template audience's test-name check reads
+  // first and last name, as offerTestCustomer does everywhere else.
+  const rq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${Number(row.request_id)}&select=id,first_name,last_name,service_name,day1,message_text,created_at,contact_email,client_phone,languages,stage`, { headers: H() });
   const req = ((await rq.json().catch(() => [])) || [])[0] || null;
   if (!req || !OPEN_STAGES.includes(String(req.stage || "")) || !["pending", "accepted"].includes(String(row.outcome || "")) || row.customer_answer) {
     console.log(`[wa] held offer email for row ${rowId} not sent: no longer open`);
@@ -7961,6 +7973,16 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     if (String(req.confirmed_time || "") === String(row.offered_time || "")) {
       await logEvent(from || "web", "offer_yes_again", { id: req.id, row: rowId, via });
       await closeOffer();
+      // Review m1: one line back, and nothing else this turn, so the webhook's
+      // holding line ("Got it, thank you...") and Jordan's ping never follow a
+      // second Yes. ES: "Ya tienes la reserva: <studio>, a las <hora>. No
+      // tienes que hacer nada más." (EN: "You already have the booking:
+      // <studio>, at <time>. You do not need to do anything else.")
+      if (from) {
+        quietThisTurn = true;
+        const t = String(row.offered_time || "");
+        await say(L === "es" ? `Ya tienes la reserva: ${studio}${t ? ", a las " + t : ""}. No tienes que hacer nada más.` : `You're already booked: ${studio}${t ? " at " + t : ""}. Nothing more to do.`);
+      }
       return true;
     }
     const cday = s?.data.offer?.day || cur.confirmed_day || req.day1 || "";
@@ -12240,6 +12262,12 @@ const RELAY_ASK_MS = 10 * 60e3;
 const RELAY_CAND_MS = 72 * 3600e3;
 const RELAY_ASK_TEXT = "Send me their contact card, or type their number.";
 const RELAY_MEDIA_TEXT = "I can read text and voice notes only. Forward the text instead.";
+const RELAY_NOLOG_TEXT = "I could not save that forward, so I did nothing with it. Forward it again in a minute.";
+// Review M2: what a freeze (customer_flag change_requested) really stops, and
+// what it does not. Readers of the flag: dispatch-studios' hour-and-price chase
+// and its widen (both skip it from this change on), stuck-booking-rescue, and
+// the released-time reject path. forwardOffer and settleBids do not read it.
+const RELAY_FREEZE_WORDS = "dispatch-studios then stops asking the studios on it for an hour or a price and stops asking more studios, the stuck-booking rescue leaves it alone, and the standing approvals A and C skip it by rule. It does not stop the bot sending the customer an offer if a studio says yes or a bidding window closes, so reply to them as the bot to settle it.";
 const RELAY_UNVERIFIED_TEXT = "I got a relay message but could not check that it came from WhatsApp, so I did nothing. The relay needs META_APP_SECRET (or RELAY_HOOK_KEY on the webhook relay) set.";
 const RELAY_REQ_COLS = "id,first_name,last_name,client_phone,contact_email,day1,time1,proposed_time,message_text,created_at,stage,stage_updated_at,partner_id,confirmed_time,confirmed_start,therapist_gender,languages,service_name,customer_flag";
 const RELAY_OPEN_REQ = ["new", "needs_contact", "awaiting_go", "studio_asked", "studio_replied", "offered", "bidding", "confirmed"];
@@ -12364,15 +12392,22 @@ function relayStudioAud(name: string, req: any, mode: RelayMode): "write" | "tes
   // A friend tester's or a held customer's request: never listed, in any mode.
   const friendReq = !!req && (releasedAudience({ phone: req.client_phone, email: req.contact_email }) === "none" || heldNum(req.client_phone) || heldMail(req.contact_email));
   if (friendReq) return "refuse";
-  if (mode === "test") return testStudio ? "write" : "testcard";
+  // Review m3: in test mode a test studio's answer is recorded only on a test
+  // customer's request (or with no request at all), so a recorded yes can
+  // never reach a real customer through the bot's normal steps.
+  if (mode === "test") return testStudio && (!req || testReq) ? "write" : "testcard";
   return testStudio || testReq ? "refuse" : "write";
 }
 function relayCustomerAud(req: any, mode: RelayMode): "write" | "testcard" | "refuse" {
   if (heldNum(req?.client_phone) || heldMail(req?.contact_email)) return "refuse";
   const a = releasedAudience({ phone: req?.client_phone, email: req?.contact_email, name: `${req?.first_name || ""} ${req?.last_name || ""}` });
   if (a === "none") return "refuse";
-  if (mode === "test") return a === "test" ? "write" : "testcard";
-  return a === "test" ? "refuse" : "write";
+  // Review m4: offerTestCustomer as well (the studio side's rule), so the
+  // TEST_PHONES and TEST_EMAIL_RE testers releasedAudience calls real are
+  // test customers here too: written in test mode, never listed in on mode.
+  const test = a === "test" || offerTestCustomer(req);
+  if (mode === "test") return test ? "write" : "testcard";
+  return test ? "refuse" : "write";
 }
 function relayStageWords(req: any, day: { short: string }): string {
   const st = String(req?.stage || "");
@@ -12430,7 +12465,7 @@ async function relayCandidates(from: string, mode: RelayMode, nowMs: number): Pr
   }
   return out;
 }
-async function relayTurn(o: { from: string; msg: any; text: string; replyId: string; voice: { path: string | null; transcript: string } | null; relayIn: boolean; mode: RelayMode }): Promise<boolean> {
+async function relayTurn(o: { from: string; msg: any; text: string; replyId: string; voice: { path: string | null; transcript: string } | null; relayIn: boolean; mode: RelayMode; rowId?: number | null }): Promise<boolean> {
   const from = digitsOf(o.from);
   if (o.mode === "off" || !JORDAN_OWN.includes(from)) return false;
   const tap = /^rly_/.test(o.replyId);
@@ -12453,9 +12488,16 @@ async function relayTurn(o: { from: string; msg: any; text: string; replyId: str
     return true;
   }
   if (!OPS_KEY) { console.log("[relay] no ops key, nothing done"); return true; }
-  if (askAnchor) { await relayResolveNumber(from, askAnchor, askNum, o.mode); return true; }
+  if (askAnchor) {
+    // Review m5: a forwarded contact card that answers "Someone else" is
+    // logged as a relayed row of its own; it is handled here, so it never
+    // waits to be quoted in the next burst.
+    if (o.relayIn && o.rowId) await relayPatch(`wa_messages?id=eq.${Number(o.rowId)}&phone=eq.${from}&msg_type=eq.relayed&reply_id=is.null`, { reply_id: `rly:${Number(o.rowId)}:card` });
+    await relayResolveNumber(from, askAnchor, askNum, o.mode, String(o.msg?.type) === "contacts" ? "card" : "typed");
+    return true;
+  }
   if (tap) { await relayTap(from, o.replyId, o.mode); return true; }
-  await relayForwarded(from, String(o.msg?.type || ""), o.mode);
+  await relayForwarded(from, String(o.msg?.type || ""), o.mode, o.rowId);
   return true;
 }
 function relayNumberFrom(msg: any, text: string): string {
@@ -12479,22 +12521,34 @@ async function relayAskOpen(from: string): Promise<number> {
 async function relayAskClear(from: string, a: number): Promise<void> {
   await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.rly:${a}:ask`, { reply_id: `rly:${a}:listed` });
 }
-async function relayForwarded(from: string, type: string, mode: RelayMode): Promise<void> {
-  const mine = (await relayGet(`wa_messages?phone=eq.${from}&direction=eq.in&msg_type=eq.relayed&reply_id=is.null&order=id.desc&limit=1&select=id,body,created_at`))[0]; // A0: words (Jordan's own relayed rows)
-  if (!mine) return;
-  if (type !== "text" && type !== "audio") {
-    await relayPatch(`wa_messages?id=eq.${Number(mine.id)}&reply_id=is.null`, { reply_id: `rly:${Number(mine.id)}:ignored`, body: `[relay: ${type || "media"}, not read]` });
-    if (!(await sentRecently(from, RELAY_MEDIA_TEXT, 60e3))) await relaySay(from, RELAY_MEDIA_TEXT);
-    await logEvent(from, "relay_media", { type });
+// Review M1: each turn acts on the row it logged itself (rowId, from logMsg),
+// never "the newest waiting row": a photo forwarded with a text used to mark
+// the text's row as the photo, or leave the text waiting with no list.
+async function relayForwarded(from: string, type: string, mode: RelayMode, rowId: number | null | undefined): Promise<void> {
+  const own = Number(rowId || 0);
+  if (!own) {
+    // The forward could not be logged, so there is nothing to read or list.
+    if (!(await sentRecently(from, RELAY_NOLOG_TEXT, 60e3))) await relaySay(from, RELAY_NOLOG_TEXT);
+    await logEvent(from, "relay_not_logged", { type });
     return;
   }
+  if (type !== "text" && type !== "audio") {
+    await relayPatch(`wa_messages?id=eq.${own}&phone=eq.${from}&msg_type=eq.relayed&reply_id=is.null`, { reply_id: `rly:${own}:ignored`, body: `[relay: ${type || "media"}, not read]` });
+    if (!(await sentRecently(from, RELAY_MEDIA_TEXT, 60e3))) await relaySay(from, RELAY_MEDIA_TEXT);
+    await logEvent(from, "relay_media", { type });
+    // No return: a text forwarded with it still gets its list (below).
+  }
   // Jordan often forwards several at once, each its own webhook: only the
-  // newest of the burst sends the list, 4 seconds after it arrived.
+  // newest waiting forward of the burst sends the list, 4 seconds after it
+  // arrived. A photo's turn sends it too when the text's own check ran while
+  // the photo was still waiting (its row is not waiting any more).
   await relayBackground(async () => {
     await relaySleep(RELAY_DEBOUNCE_MS);
-    const newer = await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&id=gt.${Number(mine.id)}&select=id&limit=1`);
+    const newer = await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=is.null&id=gt.${own}&select=id&limit=1`);
     if (newer.length) return;
-    await relaySendList(from, mine, mode);
+    const since = new Date(Date.now() - RELAY_BATCH_MS).toISOString();
+    const head = (await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=is.null&id=lte.${own}&created_at=gte.${since}&order=id.desc&limit=1&select=id,body,created_at`))[0];
+    if (head) await relaySendList(from, head, mode);
   });
 }
 async function relaySendList(from: string, anchorRow: any, mode: RelayMode): Promise<void> {
@@ -12521,7 +12575,17 @@ async function relaySendList(from: string, anchorRow: any, mode: RelayMode): Pro
   listRows.push({ id: await relaySigned(relayBase("i", a)), title: "Ignore", description: "Forget it and delete the text" });
   const extra = w.voiceNoText !== null && w.voiceNoText !== undefined ? `I could not transcribe the voice note.${w.voiceNoText ? ` Listen: ${SUPABASE_URL}/functions/v1/wa-bot?media=${encodeURIComponent(w.voiceNoText)}&sig=${await replySig(from)}` : ""}` : "";
   const body = relayListBody({ n: rows.length, quote, en, enFailed: needEn && !en, mode, ref: a, none: !ranked.length, extra });
-  await sendList(from, body, "Who wrote this?", listRows, { manual: true });
+  if (!(await sendList(from, body, "Who wrote this?", listRows, { manual: true }))) {
+    // Review m2: the list did not go, so Jordan is told in plain text, never
+    // left with silence. The rows are closed and blanked as an Ignore is (it
+    // could be anyone's words), so forwarding it again starts a clean burst
+    // instead of quoting the same message twice.
+    const failed = await relayClaim(from, a, "listed", "failed");
+    if (failed.length) await relayForget(from, a, "failed", failed);
+    await relaySay(from, `WhatsApp did not take the "Who wrote this?" list, so nothing was saved. Forward it again in a minute. Ref R${a}`);
+    await logEvent(from, "relay_list_failed", { anchor: a, rows: rows.length, mode });
+    return;
+  }
   await logEvent(from, "relay_listed", { anchor: a, rows: rows.length, cands: ranked.length, mode });
 }
 async function relayTap(from: string, replyId: string, mode: RelayMode): Promise<void> {
@@ -12566,10 +12630,17 @@ async function relayPick(from: string, id: RelayId, mode: RelayMode): Promise<vo
   }
   if (id.kind === "x") {
     const rows = await relayClaim(from, a, "listed", "ask");
+    // Review m8: only the newest "Someone else" can be answered, so an older
+    // one still asking goes back to its list (pick again from it) instead of
+    // being stranded.
+    if (rows.length) {
+      const olds = await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=like.rly:*:ask&select=reply_id&limit=50`);
+      for (const old of new Set(olds.map((x) => String(x.reply_id || "").match(/^rly:(\d+):ask$/)?.[1]).filter((x) => x && Number(x) !== a))) await relayAskClear(from, Number(old));
+    }
     await relaySay(from, rows.length ? RELAY_ASK_TEXT : "That forward is already handled.");
     return;
   }
-  await relayPickPerson(from, id.kind === "s" ? "s" : "c", id.target, a, mode, false);
+  await relayPickPerson(from, id.kind === "s" ? "s" : "c", id.target, a, mode, "");
 }
 // The studio side of a card: the row, its request and the studio.
 async function relayStudioCtx(rowId: string): Promise<{ row: any; req: any; p: any; phone: string; name: string } | null> {
@@ -12625,7 +12696,18 @@ function relayFill(o: Record<string, unknown> | undefined, nowIso: string): Reco
   for (const [k, v] of Object.entries(o || {})) out[k] = v === "@now" ? nowIso : v;
   return out;
 }
-async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; phone: string; name: string }, w: RelayWords, a: number, aud: "write" | "testcard", lead = "", verified = false): Promise<void> {
+// How the person was found: "" (picked from the list), "card" (the contact
+// card Jordan sent) or "typed" (the number he typed). Review m8: the card says
+// which, and says so when a studio reached only by email has no chat to save
+// the words in (relayCopyExternal skips it).
+type RelayHow = "" | "card" | "typed";
+function relaySavedLine(name: string, phone: string, aud: "write" | "testcard", how: RelayHow, text: string): string {
+  const quote = `"${text || "(no text)"}"`;
+  if (digitsOf(phone).length < 9) return `Not saved in a chat: ${name} has no WhatsApp number on file. Their words: ${quote}`;
+  const via = how === "card" ? ", number checked from your contact card" : how === "typed" ? ", the number you typed" : "";
+  return `${aud === "testcard" ? "Would be saved" : "Saved"} in ${name}'s chat (${relayLast4(phone)}${via}): ${quote}`;
+}
+async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; phone: string; name: string }, w: RelayWords, a: number, aud: "write" | "testcard", lead = "", how: RelayHow = ""): Promise<void> {
   const v = await relayStudioView(ctx, w);
   const { f, plan, day } = v;
   const req = ctx.req;
@@ -12635,7 +12717,7 @@ async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; 
   const lines: string[] = [];
   if (aud === "testcard") lines.push("TEST MODE: nothing recorded or sent. This is what would happen:");
   if (lead) lines.push(lead);
-  lines.push(`${aud === "testcard" ? "Would be saved" : "Saved"} in ${ctx.name}'s chat (${relayLast4(ctx.phone)}${verified ? ", number checked from your contact card" : ""}): "${w.text || "(no text)"}"`);
+  lines.push(relaySavedLine(ctx.name, ctx.phone, aud, how, w.text));
   if (needEn) lines.push(en ? `(EN: "${en}")` : "(English not available: the translation failed.)");
   lines.push(`Request #${req.id}: ${who}, ${day.en || "day not known"}, ${f.askTime ? `asked for ${f.askTime}` : "no exact hour asked"}.`);
   lines.push(`I read: ${relayReadText(plan.kinds, plan, euro)}.`);
@@ -12643,8 +12725,8 @@ async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; 
   if (rel.length && day.en) lines.push(`They wrote "${rel[0]}". A forward carries no time, so I read it as the request's own day, ${day.en}, and store it that way. If they meant another day, do not record it.`);
   if (f.source === "voice") lines.push(`A voice note is not their writing, so I will not record a yes, a time, a price or a discount from it. Ask them to write it to the bot: ${await replyUrl(ctx.phone)}`);
   if (w.echo) lines.push("I left out the messages that were our own words.");
-  if (plan.kinds.includes("hours") && plan.hours && !socHoursWritable(plan.hours)) lines.push(`Their hours read as "${plan.hours}", which the asks cannot use as they are, so nothing is saved.`);
-  if (plan.kinds.includes("hours") && f.hoursOnFile && plan.hours && f.hoursOnFile !== plan.hours) lines.push(`Hours on file: "${f.hoursOnFile}". Theirs now: "${plan.hours}".`);
+  if (plan.kinds.includes("hours") && plan.hours && !socHoursWritable(plan.hours)) lines.push(`Their hours read as "${relayHoursShown(plan.hours)}", which the asks cannot use as they are, so nothing is saved.`);
+  if (plan.kinds.includes("hours") && f.hoursOnFile && plan.hours && f.hoursOnFile !== plan.hours) lines.push(`Hours on file: "${relayHoursShown(f.hoursOnFile)}". Theirs now: "${relayHoursShown(plan.hours)}".`);
   if (plan.kinds.includes("stop") && !v.acts.includes("stop")) lines.push(ctx.p.opted_out_at ? "They are already opted out." : `${ctx.name} is an active partner, so a BAJA means letters only. Record it in the letters tool, Opt-outs, if that is what they meant.`);
   if (f.confirmedHere) lines.push(plan.kinds.includes("arrived") ? "The booking has started. Nothing is recorded from here: the arrival makes the visit billable, so it comes from the studio's own tap or words to the bot." : plan.kinds.includes("time_change") ? "This is a new time on a booking already confirmed with them. Nothing moves without the customer's own tap. Reply to them as the bot to settle it." : "They hold the confirmed booking. Nothing is changed from here.");
   else if (!f.open) lines.push(`The request is ${req.stage || "closed"}, so nothing is recorded on it.`);
@@ -12674,7 +12756,7 @@ async function relayCustomerView(ctx: { req: any; offers: any[]; phone: string }
   for (const x of acts) hashes[x] = await relayHash({ a: x, req: String(ctx.req.id), stage: ctx.req.stage || null, flag: f.flagged, text: w.text });
   return { lo, f, plan, acts, hashes };
 }
-async function relayCustomerCard(from: string, ctx: { req: any; offers: any[]; phone: string; name: string }, w: RelayWords, a: number, aud: "write" | "testcard", verified = false, lead = ""): Promise<void> {
+async function relayCustomerCard(from: string, ctx: { req: any; offers: any[]; phone: string; name: string }, w: RelayWords, a: number, aud: "write" | "testcard", how: RelayHow = "", lead = ""): Promise<void> {
   const v = await relayCustomerView(ctx, w);
   const req = ctx.req;
   const day = relayReqDay(req);
@@ -12685,7 +12767,7 @@ async function relayCustomerCard(from: string, ctx: { req: any; offers: any[]; p
   const lines: string[] = [];
   if (aud === "testcard") lines.push("TEST MODE: nothing recorded or sent. This is what would happen:");
   if (lead) lines.push(lead);
-  lines.push(`${aud === "testcard" ? "Would be saved" : "Saved"} in ${ctx.name}'s chat (${relayLast4(ctx.phone)}${verified ? ", number checked from your contact card" : ""}): "${w.text || "(no text)"}"`);
+  lines.push(relaySavedLine(ctx.name, ctx.phone, aud, how, w.text));
   if (needEn) lines.push(en ? `(EN: "${en}")` : "(English not available: the translation failed.)");
   lines.push(`Request #${req.id}: ${relayStageWords(req, day)}${day.en ? ", " + day.en : ""}.${v.lo ? ` Offer waiting: ${studio} ${v.lo.customer_offered_time || ""}, sent by ${v.lo.customer_offer_via === "whatsapp" ? "WhatsApp" : "email"}.` : ""}`);
   lines.push(`Their WhatsApp window with the bot is ${open ? "open" : "closed (only a template or an email reaches them)"}.`);
@@ -12694,7 +12776,7 @@ async function relayCustomerCard(from: string, ctx: { req: any; offers: any[]; p
   if (k("yes")) lines.push(`Nothing is booked. Only their own tap on Yes books it. ${open ? "Their window is open: reply to them as the bot and say to tap Yes on the offer." : `Their window is closed: the offer they got ${v.lo?.customer_offer_via === "whatsapp" ? "on WhatsApp" : "by email"} has the Yes they can tap.`}`);
   if (k("attend_yes")) lines.push("Nothing is written and the studio is not told: only their own tap or words to the bot confirm they are coming.");
   if (k("no")) lines.push("Nothing is recorded: a no to an offer comes from their own tap. Reply as the bot to show them the next option.");
-  if (k("cancel") || k("change")) lines.push(`${v.acts.includes("freeze") ? (aud === "testcard" ? "It would be frozen" : "Freeze it marks the request") + " (customer_flag change_requested): nothing new is promised to the studio and standing approvals A and C leave it alone. " : v.f.flagged === "change_requested" ? "It is frozen (customer_flag change_requested): nothing new is promised to the studio and standing approvals A and C leave it alone. " : ""}Nothing is sent to anyone. To cancel it for real, ask them to tap cancel on the bot number, or reply to them as the bot.`);
+  if (k("cancel") || k("change")) lines.push(`${v.acts.includes("freeze") ? (aud === "testcard" ? "It would be frozen" : "Freeze it marks the request") + ` (customer_flag change_requested). ${RELAY_FREEZE_WORDS} ` : v.f.flagged === "change_requested" ? `It is frozen (customer_flag change_requested). ${RELAY_FREEZE_WORDS} ` : ""}Nothing is sent to anyone. To cancel it for real, ask them to tap cancel on the bot number, or reply to them as the bot.`);
   if (k("stop")) lines.push(v.acts.includes("optout") ? "Record opt-out takes them off offers. Nothing is sent to them." : "That is your own number, so nothing is recorded.");
   if (k("offmenu")) lines.push(v.acts.includes("mute") ? "Mute them: the bot never answers this number again. The standard shutdown line is not sent from here." : "That is your own number, so it is not muted.");
   lines.push(`Nothing is sent to them from here. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`);
@@ -12724,7 +12806,7 @@ async function relayCopyExternal(rows: any[], target: string, a: number): Promis
     await logMsg(target, "in", body, "external", `rly:${a}`);
   }
 }
-async function relayPickPerson(from: string, kind: "s" | "c", target: string, a: number, mode: RelayMode, verified: boolean): Promise<void> {
+async function relayPickPerson(from: string, kind: "s" | "c", target: string, a: number, mode: RelayMode, how: RelayHow): Promise<void> {
   const sctx = kind === "s" ? await relayStudioCtx(target) : null;
   const cctx = kind === "c" ? await relayCustomerCtx(target) : null;
   if (!sctx && !cctx) { await relaySay(from, "I cannot find that request any more. Nothing was saved."); return; }
@@ -12750,11 +12832,11 @@ async function relayPickPerson(from: string, kind: "s" | "c", target: string, a:
       }
     }
   }
-  if (sctx) await relayStudioCard(from, sctx, w, a, aud, "", verified);
-  else await relayCustomerCard(from, cctx!, w, a, aud, verified, lead);
+  if (sctx) await relayStudioCard(from, sctx, w, a, aud, "", how);
+  else await relayCustomerCard(from, cctx!, w, a, aud, how, lead);
   await logEvent(from, "relay_picked", { anchor: a, kind, target, test: mode === "test", aud, rows: rows.length });
 }
-async function relayResolveNumber(from: string, a: number, num: string, mode: RelayMode): Promise<void> {
+async function relayResolveNumber(from: string, a: number, num: string, mode: RelayMode, how: RelayHow = "typed"): Promise<void> {
   const d = digitsOf(num);
   const back = async () => { await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.rly:${a}:ask`, { reply_id: `rly:${a}:listed` }); };
   const forget = async (why: string) => {
@@ -12767,7 +12849,7 @@ async function relayResolveNumber(from: string, a: number, num: string, mode: Re
   const partner = await findPartnerByNumber(d).catch(() => null);
   if (partner) {
     const row = (await relayGet(`request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&sent_at=gte.${new Date(Date.now() - RELAY_CAND_MS).toISOString()}&order=sent_at.desc&limit=1&select=id`))[0];
-    if (row) { await back(); await relayPickPerson(from, "s", String(row.id), a, mode, true); return; }
+    if (row) { await back(); await relayPickPerson(from, "s", String(row.id), a, mode, how); return; }
     const aud = relayStudioAud(partner.business_name, null, mode);
     if (aud !== "write") { await relaySay(from, `${partner.business_name} has no ask from us in the last 3 days${aud === "testcard" ? ", and in TEST MODE nothing is saved for a real studio" : ""}. Nothing was saved.`); await back(); return; }
     const rows = await relayClaim(from, a, "ask", `x:${d}`);
@@ -12776,7 +12858,7 @@ async function relayResolveNumber(from: string, a: number, num: string, mode: Re
     return;
   }
   const req = (await relayGet(`whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + d)}&stage=in.(${RELAY_OPEN_REQ.join(",")})&order=id.desc&limit=1&select=id`))[0];
-  if (req) { await back(); await relayPickPerson(from, "c", String(req.id), a, mode, true); return; }
+  if (req) { await back(); await relayPickPerson(from, "c", String(req.id), a, mode, how); return; }
   await forget(`No studio or open request matches +${d}, so nothing was saved and the text is deleted.`);
 }
 // An action from a card. It acts only on what the card showed: the hash in
@@ -12832,15 +12914,16 @@ async function relayApplyStudio(ctx: { row: any; req: any; p: any; phone: string
     const u = await relayPatch(`partners?id=eq.${encodeURIComponent(ctx.p.id)}${action === "hours" ? "&opening_hours=is.null" : ""}`, relayFill(wr.partner, nowIso));
     if (u === null) return "";
     if (!u.length) return `The hours on file for ${ctx.name} changed in the meantime, so nothing was saved. Forward it again to compare.`;
-    return `Saved ${ctx.name}'s opening hours: ${v.plan.hours}. ${(STUDIO_FOLLOWS[action] || []).join(" ")} Nothing was sent to them.`;
+    return `Saved ${ctx.name}'s opening hours: ${relayHoursShown(v.plan.hours)}. ${(STUDIO_FOLLOWS[action] || []).join(" ")} Nothing was sent to them.`;
   }
   if (!wr?.dispatch) return "";
   const body = relayFill(wr.dispatch, nowIso);
   const u = await relayPatch(`request_dispatch?id=eq.${encodeURIComponent(String(ctx.row.id))}`, body);
   if (!u || !u.length) return "";
   // A yes on a row that had lapsed or was declined is a new offer, not the
-  // old one again (forwardOffer's "already"), as the live tap path does.
-  if ((action === "yes" || action === "rate") && OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || ""))) await reopenOfferClaim(String(ctx.row.id));
+  // old one again (forwardOffer's "already"), as the live tap path does. A
+  // rate alone leaves the ask as it was (review M3), so it reopens nothing.
+  if (action === "yes" && OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || ""))) await reopenOfferClaim(String(ctx.row.id));
   return `Recorded for ${what}: ${relayActionWords(action, v.plan, euro, v.f.source === "voice")}. Nothing was sent to the studio or the customer. ${(STUDIO_FOLLOWS[action] || []).join(" ")}`.trim();
 }
 async function relayApplyCustomer(ctx: { req: any; offers: any[]; phone: string; name: string }, v: Awaited<ReturnType<typeof relayCustomerView>>, action: string, w: RelayWords): Promise<string> {
@@ -12854,7 +12937,7 @@ async function relayApplyCustomer(ctx: { req: any; offers: any[]; phone: string;
   if (action === "freeze") {
     const u = await relayPatch(`whatsapp_requests?id=eq.${Number(ctx.req.id)}&stage=in.(${RELAY_OPEN_REQ.join(",")})`, customerWrites("freeze")!.request!);
     if (!u || !u.length) return "";
-    return `Frozen: #${ctx.req.id} is marked change requested. Nothing new is promised to the studio, and nothing was sent to anyone. Reply to ${ctx.name} as the bot to settle it: ${await replyUrl(ctx.phone)}`;
+    return `Frozen: #${ctx.req.id} is marked change requested. ${RELAY_FREEZE_WORDS} Nothing was sent to anyone. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`;
   }
   if (action === "mute") {
     const s = await getSession(ctx.phone);
@@ -13879,7 +13962,9 @@ const handleInner = async (req: Request) => {
     else if (relayFwd.forwarded) console.log(`[wa] forwarded ${msg.type} from ${digitsOf(from)} (not Jordan's number: the normal flow reads it)`);
     const typeLogged = relayIn ? "relayed" : msg.type;
     const bodyLogged = msg.type === "contacts" && relayIn ? "[contacts]" : msg.type === "image" || msg.type === "document" || msg.type === "sticker" || msg.type === "video" ? (relayIn ? `[${msg.type}]` : "") : "";
-    await logMsg(from, "in", bodyLogged || ((voice ? `[voice note${voice.path ? " " + voice.path : ""}]${voice.transcript ? " " + voice.transcript : ""}` : "") || (text || btnText || (msg.type === "reaction" ? `[reaction ${reactionEmoji}]`.trim() : "") || (loc ? `[location ${loc.latitude},${loc.longitude}]` : `[tap: ${replyId}]`)) + (ref ? ` [via ad]` : "")), typeLogged, replyId);
+    // A relayed row's id comes back (review M1), so the relay acts on this
+    // turn's own row; every other message is logged exactly as before.
+    const loggedId = await logMsg(from, "in", bodyLogged || ((voice ? `[voice note${voice.path ? " " + voice.path : ""}]${voice.transcript ? " " + voice.transcript : ""}` : "") || (text || btnText || (msg.type === "reaction" ? `[reaction ${reactionEmoji}]`.trim() : "") || (loc ? `[location ${loc.latitude},${loc.longitude}]` : `[tap: ${replyId}]`)) + (ref ? ` [via ad]` : "")), typeLogged, replyId, relayIn);
 
     // A reaction (someone tapping a thumbs up on our message) is not an answer.
     if (msg.type === "reaction") return new Response("OK", { status: 200 });
@@ -13904,7 +13989,7 @@ const handleInner = async (req: Request) => {
     // of his test bookings.
     if (rMode !== "off") {
       try {
-        if (await relayTurn({ from: digitsOf(from), msg, text, replyId, voice, relayIn, mode: rMode })) return new Response("OK", { status: 200 });
+        if (await relayTurn({ from: digitsOf(from), msg, text, replyId, voice, relayIn, mode: rMode, rowId: loggedId })) return new Response("OK", { status: 200 });
       } catch (e) {
         console.log("[relay] turn failed", String(e));
         if (relayIn || /^rly_/.test(replyId)) {
@@ -13913,6 +13998,12 @@ const handleInner = async (req: Request) => {
           return new Response("OK", { status: 200 });
         }
       }
+    } else if (relayFwd.jordan && /^rly_/.test(replyId)) {
+      // Review m6: a tap on an old relay list or card after RELAY was
+      // switched off. It is never read as one of his test bookings.
+      quietThisTurn = true;
+      await sendText(digitsOf(from), "The relay is switched off, so that button does nothing now.", { manual: true }).catch(() => false);
+      return new Response("OK", { status: 200 });
     }
 
     // v216: the message the /socios page prefills when its save cannot be

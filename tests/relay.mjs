@@ -227,7 +227,7 @@ function relayWorld(o = {}) {
     digitsOf, ...C, stopIntent: K.stopIntent, letterBajaIntent: LR.letterBajaIntent, BAJA_ONLY_RE: LR.BAJA_ONLY_RE,
     parseRelayMode: R.parseRelayMode, JORDAN_OWN: R.JORDAN_OWN, detectRelay: R.detectRelay, relayBase: R.relayBase, relayParse: R.relayParse, relayRank: R.relayRank, relayRowText: R.relayRowText, relayListBody: R.relayListBody,
     studioRelayPlan: R.studioRelayPlan, studioActions: R.studioActions, studioWrites: R.studioWrites, customerRelayPlan: R.customerRelayPlan, customerActions: R.customerActions, customerWrites: R.customerWrites,
-    relayStoredText: R.relayStoredText, relayRelativeWords: R.relayRelativeWords, relayNeedsEnglish: R.relayNeedsEnglish, relayReadText: R.relayReadText, relayActionWords: R.relayActionWords, RELAY_LABELS: R.RELAY_LABELS, OUR_LINE_RE: R.OUR_LINE_RE, STUDIO_FOLLOWS: R.STUDIO_FOLLOWS, RELAY_MAX_CANDS: R.RELAY_MAX_CANDS,
+    relayStoredText: R.relayStoredText, relayRelativeWords: R.relayRelativeWords, relayHoursShown: R.relayHoursShown, relayNeedsEnglish: R.relayNeedsEnglish, relayReadText: R.relayReadText, relayActionWords: R.relayActionWords, RELAY_LABELS: R.RELAY_LABELS, OUR_LINE_RE: R.OUR_LINE_RE, STUDIO_FOLLOWS: R.STUDIO_FOLLOWS, RELAY_MAX_CANDS: R.RELAY_MAX_CANDS,
     appSecret: async (k) => String((db.t.app_secrets.find((x) => x.key === k) || {}).value || ""),
     aiText: async (_sys, text) => `EN[${text}]`,
     sendText: async (to, body) => { sent.push({ to: digitsOf(to), kind: "text", body }); outRow(to, body, "text"); return true; },
@@ -252,18 +252,30 @@ function relayWorld(o = {}) {
     lift(botSrc, "async function waWindowOpen("), lift(botSrc, "function exactTime("), lift(botSrc, "function studioDate("), lift(botSrc, "function parseDiscount("), lift(botSrc, "async function replySig("), lift(botSrc, "async function replyUrl("),
     lift(botSrc, "async function reopenOfferClaim("), lift(botSrc, "function offerTestCustomer("), lift(botSrc, "function dispatchHours("), lift(botSrc, "function socHoursWritable(")];
   const { fns, calls } = sandbox(parts.filter(Boolean), env, ["relayTurn", "relayMode", "relayVerified", "relayWords", "relayCandidates"]);
+  // A forward as the webhook runs it: logged first (logMsg hands back the
+  // row's id, review M1), then the relay's turn for that same row.
+  let nextRow = 7000;
+  const logRow = (body) => { const id = nextRow++; db.t.wa_messages.push({ id, phone: JORDAN, direction: "in", msg_type: "relayed", body, reply_id: null, created_at: iso(T.now) }); return id; };
+  const turnFor = (rowId, text, type = "text", extra = {}) => fns.relayTurn({ from: JORDAN, msg: { type, context: { forwarded: true }, ...(extra.msg || {}) }, text, replyId: "", voice: extra.voice || null, relayIn: true, mode: extra.mode || o.mode || "test", rowId });
   const forward = async (text, extra = {}) => {
-    const mode = extra.mode || o.mode || "test";
     const body = extra.voice ? `[voice note ${JORDAN}/1700000000000.ogg] ${text}` : text;
-    db.t.wa_messages.push({ id: 7000 + db.t.wa_messages.length, phone: JORDAN, direction: "in", msg_type: "relayed", body, reply_id: null, created_at: iso(T.now) });
-    if (extra.onlyLog) return;
-    return fns.relayTurn({ from: JORDAN, msg: { type: extra.voice ? "audio" : "text", context: { forwarded: true } }, text, replyId: "", voice: extra.voice ? { path: `${JORDAN}/1700000000000.ogg`, transcript: text } : null, relayIn: true, mode });
+    const rowId = logRow(body);
+    if (extra.onlyLog) return rowId;
+    return turnFor(rowId, text, extra.voice ? "audio" : "text", { mode: extra.mode, voice: extra.voice ? { path: `${JORDAN}/1700000000000.ogg`, transcript: text } : null });
   };
   const tap = (replyId, mode = o.mode || "test", msg = { type: "interactive" }) => fns.relayTurn({ from: JORDAN, msg, text: "", replyId, voice: null, relayIn: false, mode });
   const type = (text, mode = o.mode || "test", msg = { type: "text" }) => fns.relayTurn({ from: JORDAN, msg, text, replyId: "", voice: null, relayIn: false, mode });
-  return { db, sent, spies, env, fns, calls, forward, tap, type, turn };
+  return { db, sent, spies, env, fns, calls, forward, tap, type, turn, logRow, turnFor };
 }
 const lastTo = (w, to) => [...w.sent].reverse().find((s) => s.to === to);
+// A card over 1000 characters goes as its text, then "What should I record?"
+// with the buttons: read the two as one card.
+const lastCard = (w) => {
+  const toJ = w.sent.filter((s) => s.to === JORDAN);
+  const last = toJ[toJ.length - 1];
+  if (last?.kind === "buttons" && last.body === "What should I record?" && toJ.length > 1) return { kind: "buttons", body: toJ[toJ.length - 2].body, buttons: last.buttons, split: true };
+  return last;
+};
 const toOthers = (w) => w.sent.filter((s) => s.to !== JORDAN);
 
 // ---------------------------------------------------------------------------
@@ -313,7 +325,7 @@ const toOthers = (w) => w.sent.filter((s) => s.to !== JORDAN);
     const env = {
       detectRelay: R.detectRelay, digitsOf, Response,
       relayMode: async () => { log.modeReads++; return o.mode; },
-      logMsg: async (phone, dir, body, type, reply) => { log.logged.push({ phone, dir, body, type, reply }); },
+      logMsg: async (phone, dir, body, type, reply, wantId) => { log.logged.push({ phone, dir, body, type, reply, wantId: !!wantId }); return wantId ? 4242 : null; },
       relayTurn: async (x) => { log.turns.push(x); if (o.throws) throw new Error("boom"); return o.turnSays ?? (x.relayIn || /^rly_/.test(x.replyId)); },
       sendText: async (to, t) => { log.said.push([to, t]); return true; },
     };
@@ -327,6 +339,12 @@ const toOthers = (w) => w.sent.filter((s) => s.to !== JORDAN);
   check(G, "RELAY off, a forward from 827: logged as text, the relay never runs, the flow carries on", [off.out, off.log.logged[0]?.type, off.log.turns.length, off.log.modeReads], ["continued", "text", 0, 1], "today's behaviour: his test-customer flow reads it");
   const on = await run({ mode: "on", msg: fwd, from: JORDAN, text: "Sí, a las 18:00" });
   check(G, "RELAY on, a forward from 827: logged as relayed and handled by the relay", [on.out, on.log.logged[0]?.type, on.log.turns[0]?.relayIn, on.log.logged[0]?.reply], ["answered", "relayed", true, ""]);
+  check(G, "review M1: the relayed row's own id comes back from logMsg and goes to relayTurn; other rows are logged as before", [on.log.logged[0]?.wantId, on.log.turns[0]?.rowId, off.log.logged[0]?.wantId], [true, 4242, false]);
+  // Review m6: a tap on an old relay list or card with RELAY off.
+  const oldTap = await run({ mode: "off", msg: { type: "interactive" }, from: JORDAN, text: "", replyId: "rly_i_7001_0123456789abcdef" });
+  check(G, "review m6: RELAY off, an old rly_ tap from Jordan is swallowed with one line, never his test flow", [oldTap.out, oldTap.log.turns.length, oldTap.log.said.length, /relay is switched off/.test(oldTap.log.said[0]?.[1] || "")], ["answered", 0, 1, true]);
+  const custTap = await run({ mode: "off", msg: { type: "interactive" }, from: "34699000302", text: "", replyId: "rly_i_7001_0123456789abcdef" });
+  check(G, "an rly_ id from anyone else: the normal flow (it is not Jordan's)", [custTap.out, custTap.log.said.length], ["continued", 0]);
   const other = await run({ mode: "on", msg: fwd, from: "34699000302", text: "Sí, a las 18:00" });
   check(G, "a forwarded message from a customer's number: the normal customer flow", [other.out, other.log.logged[0]?.type, other.log.turns.length, other.log.modeReads], ["continued", "text", 0, 0], "the switch is not even read");
   const quoted = await run({ mode: "on", msg: { type: "text", context: { id: "wamid.q" } }, from: JORDAN, text: "page", turnSays: false });
@@ -364,7 +382,7 @@ const REAL_ROW = "d0000000-0000-4000-8000-000000000202";
   await w.tap(pick.id);
   const ext = w.db.t.wa_messages.filter((m) => m.msg_type === "external");
   check(G, "the words are saved in the studio's chat as external, unchanged", ext.map((m) => [m.phone, m.direction, m.body, m.reply_id]), [["34911000101", "in", "Sí, a las 18:00, 45€", `rly:${relayed[0].id}`]]);
-  const card = lastTo(w, JORDAN);
+  const card = lastCard(w);
   if (process.env.RELAY_SHOW) console.log(`\n--- list ---\n${list.body}\n${rows.map((r) => `  [${r.title}] ${r.description}`).join("\n")}\n--- studio card ---\n${card.body}\n  buttons: ${card.buttons.map((b) => b.title).join(" / ")}\n`);
   check(G, "the card: what was read, in English, and the buttons", [card?.kind, /I read: yes at the hour asked, 18:00; price 45 EUR\./.test(card?.body || ""), /\(EN: "EN\[/.test(card?.body || ""), (card?.buttons || []).map((b) => b.title)], ["buttons", true, true, ["Record yes", "Not theirs"]]);
   check(G, "the card says nothing is sent, and what may follow", [/Nothing is sent to the studio or the customer from here/.test(card?.body || ""), /The offer is not sent from here/.test(card?.body || "")], [true, true]);
@@ -411,9 +429,9 @@ const REAL_ROW = "d0000000-0000-4000-8000-000000000202";
 
   // A burst of two: one list, for both.
   const b = relayWorld({ mode: "test" });
-  await b.forward("Hola", { onlyLog: true });
+  const holaRow = await b.forward("Hola", { onlyLog: true });
   await b.forward("a las 18:00 sí");
-  await b.fns.relayTurn({ from: JORDAN, msg: { type: "text", context: { forwarded: true } }, text: "Hola", replyId: "", voice: null, relayIn: true, mode: "test" });
+  await b.turnFor(holaRow, "Hola");
   const lists = b.sent.filter((s) => s.kind === "list");
   check(G, "two forwards in a burst: one list for both", [lists.length, /Who wrote these 2 messages\?/.test(lists[0]?.body || "")], [1, true]);
 
@@ -445,7 +463,7 @@ const REAL_ROW = "d0000000-0000-4000-8000-000000000202";
   await se2.forward("Sí, a las 18:00");
   await se2.tap(lastTo(se2, JORDAN).rows.find((r) => r.title === "Someone else").id);
   await se2.type("x", "test", { type: "contacts", contacts: [{ name: { formatted_name: "Estudio" }, phones: [{ phone: "+34 911 00 01 01", wa_id: "34911000101" }] }] });
-  check(G, "a contact card that is a studio's number: that studio's card, marked as checked", [/number checked from your contact card/.test(lastTo(se2, JORDAN).body || ""), se2.db.t.wa_messages.filter((m) => m.msg_type === "external").map((m) => m.phone)], [true, ["34911000101"]]);
+  check(G, "a contact card that is a studio's number: that studio's card, marked as checked", [/number checked from your contact card/.test(lastCard(se2).body || ""), se2.db.t.wa_messages.filter((m) => m.msg_type === "external").map((m) => m.phone)], [true, ["34911000101"]]);
   const se3 = relayWorld({ mode: "test" });
   await se3.forward("hola");
   await se3.tap(lastTo(se3, JORDAN).rows.find((r) => r.title === "Someone else").id);
@@ -530,7 +548,7 @@ const REAL_ROW = "d0000000-0000-4000-8000-000000000202";
   check(G, "the customer with the offer waiting is listed, with the offer", [!!cust, /Estudio Sol 19:00 offer waiting/.test(cust?.description || "")], [true, true]);
   check(G, "on mode: test studios and test customers are not listed", rows.some((r) => /Prueba|Lucia/.test(r.title)), false);
   await w.tap(cust.id);
-  const card = lastTo(w, JORDAN);
+  const card = lastCard(w);
   if (process.env.RELAY_SHOW) console.log(`\n--- customer card ---\n${card.body}\n  buttons: ${card.buttons.map((b) => b.title).join(" / ")}\n`);
   check(G, "the card: nothing is booked, only their tap books; the only button is Not theirs", [/Nothing is booked\. Only their own tap on Yes books it\./.test(card.body), card.buttons.map((b) => b.title)], [true, ["Not theirs"]]);
   check(G, "saved in the customer's chat as external", w.db.t.wa_messages.filter((m) => m.msg_type === "external").map((m) => [m.phone, m.body]), [["34699000302", "yes"]]);
@@ -542,7 +560,7 @@ const REAL_ROW = "d0000000-0000-4000-8000-000000000202";
   const c = relayWorld({ mode: "on" });
   await c.forward("I need to cancel, sorry");
   await c.tap(lastTo(c, JORDAN).rows.find((r) => r.title.startsWith("Tomas")).id);
-  const cc = lastTo(c, JORDAN);
+  const cc = lastCard(c);
   check(G, "a cancel: frozen at the pick (customer_flag change_requested), the stage untouched, nothing sent", [c.db.t.whatsapp_requests.find((r) => r.id === 9302).customer_flag, c.db.t.whatsapp_requests.find((r) => r.id === 9302).stage, toOthers(c).length, cc.body.startsWith("I froze the request at once"), /It is frozen/.test(cc.body), cc.buttons.map((b) => b.title)], ["change_requested", "offered", 0, true, true, ["Not theirs"]]);
   await c.tap(cc.buttons[0].id);
   check(G, "Not theirs unfreezes it and takes the words back", [c.db.t.whatsapp_requests.find((r) => r.id === 9302).customer_flag, c.db.t.wa_messages.filter((m) => m.msg_type === "external").length], [null, 0]);
@@ -845,26 +863,210 @@ const FIX = [
   const ao = lift(botSrc, "async function acceptOffer(");
   const parts = [ao, lift(botSrc, "async function offerSlotFor("), lift(botSrc, "async function yesTooLate("), lift(botSrc, "async function changeTooLate("), lift(botSrc, "async function reaskStudio("), lift(botSrc, "async function reopenOfferClaim("), lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), lift(botSrc, "function exactTime("), lift(botSrc, "function studioDate("), liftArrow("reqDuration"), one("studioDayOf"), one("studioAtEs"), one("deDay"), one("eurEs"), words].filter(Boolean);
   const run = async (rowOver = {}) => {
+    const o = { L: rowOver.L };
+    delete rowOver.L;
     T.now = M(12, 0);
     const log = { tell: [], mail: [], said: [], patches: [] };
     const row = { id: "row-1", request_id: 9601, partner_id: "p-1", phone: "34911000601", offered_time: "18:00", outcome: "won", channel: null, reply_text: "Sí", replied_at: iso(M(11, 0)), offered_at: iso(M(11, 0)), quoted_price: 50, discount_pct: null, ...rowOver };
     const req = { id: 9601, first_name: "Lucia", service_name: "Relaxing massage", day1: "Thursday 26 Nov, 18:00", time1: "18:00", proposed_time: "18:00", contact_email: "lucia@correo.invalid", client_phone: "+34699000601", languages: "en", stage: "confirmed", message_text: "", created_at: iso(M(9, 0)), confirmed_day: "Thursday 26 November", confirmed_time: "18:00", confirmed_start: iso(M(18, 0, 2)), partner_id: "p-1" };
     const env = {
-      Date: FakeDate, SUPABASE_URL: "https://db.invalid", OPS_KEY: "k", H: () => ({}),
+      Date: FakeDate, SUPABASE_URL: "https://db.invalid", OPS_KEY: "k", H: () => ({}), quietThisTurn: false, sentThisTurn: false,
       fetch: async (u, opt = {}) => { u = String(u); if (opt.method === "PATCH") log.patches.push(u); if (u.includes("/request_dispatch?id=eq.") && !opt.method) return res(200, [row]); if (u.includes("/whatsapp_requests?id=eq.") && !opt.method) return res(200, [req]); return res(200, []); },
       digitsOf, partnerCard: async () => ({ business_name: "Estudio Uno", address: "Calle Inventada 1", phone: "", neighbourhood: "" }),
-      tellStudio: async (...a) => { log.tell.push(a); return true; }, customerConfirmEmail: async (...a) => { log.mail.push(a); }, sendText: async (to, t) => { log.said.push(t); return true; },
+      tellStudio: async (...a) => { log.tell.push(a); return true; }, customerConfirmEmail: async (...a) => { log.mail.push(a); }, sendText: async (to, t) => { log.said.push(t); env.sentThisTurn = true; return true; },
       saveSession: async () => {}, founderCard: async () => {}, logEvent: async () => {}, notifyJordanWa: async () => {}, ensureBooking: async () => "tok",
       COPY: O.COPY, madridMidnight: O.madridMidnight, resolveRequestDate: O.resolveRequestDate, trSvc: O.trSvc, OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"], ...P,
     };
     const { fns } = sandbox(parts, env, ["acceptOffer"]);
-    const booked = await fns.acceptOffer("row-1", "34699000601", "en", { phone: "34699000601", step: "await_offer", data: { offer: { row: "row-1" } } }, "whatsapp", {});
-    return { booked, log };
+    const booked = await fns.acceptOffer("row-1", "34699000601", o.L || "en", { phone: "34699000601", step: "await_offer", data: { offer: { row: "row-1" } } }, "whatsapp", {});
+    // The webhook's holding line runs only when nothing went out and the
+    // turn was not marked quiet (handler, "!sentThisTurn && !quietThisTurn").
+    return { booked, log, fallback: !env.sentThisTurn && !env.quietThisTurn, quiet: env.quietThisTurn };
   };
   const again = await run();
-  check(G, "a second Yes on the confirmed booking (email Yes, then the template's): it stands, nothing to anyone", [again.booked, again.log.tell.length, again.log.mail.length, again.log.said.length, again.log.patches.length], [true, 0, 0, 0, 0], "before: the studio was told 'acepta el cambio' and the customer confirmed again");
+  check(G, "a second Yes on the confirmed booking (email Yes, then the template's): it stands, nothing to the studio, one line to them", [again.booked, again.log.tell.length, again.log.mail.length, again.log.said, again.log.patches.length], [true, 0, 0, ["You're already booked: Estudio Uno at 18:00. Nothing more to do."], 0], "before: the studio was told 'acepta el cambio' and the customer confirmed again");
+  check(G, "review m1: over the whole turn, no holding line and no ping to Jordan after it", [again.fallback, again.quiet, /if \(m && from && !sentThisTurn && !quietThisTurn && !isReaction/.test(botSrc)], [false, true, true]);
+  const againEs = await run({ L: "es" });
+  check(G, "the same in Spanish, no dash", [againEs.log.said, dash(againEs.log.said[0])], [["Ya tienes la reserva: Estudio Uno, a las 18:00. No tienes que hacer nada más."], false]);
   const moved = await run({ id: "row-1", offered_time: "18:30", outcome: "accepted" });
   check(G, "a real time change still goes through", [moved.booked, moved.log.tell.length], [true, 1]);
+}
+
+// ---------------------------------------------------------------------------
+// 11. The review of 16243161 (24 Nov): M1-M3, m2-m8.
+// ---------------------------------------------------------------------------
+// Timers held until fired, so two webhooks can interleave as they do live.
+const heldTimers = (w) => { const q = []; w.env.setTimeout = (f) => { q.push(f); return 0; }; return q; };
+const until = async (cond) => { for (let i = 0; i < 400 && !cond(); i++) await new Promise((r) => setImmediate(r)); };
+const fireAll = async (q) => { while (q.length) { const n = q.length; q.shift()(); await until(() => q.length < n - 1 || q.length === 0); for (let i = 0; i < 50; i++) await new Promise((r) => setImmediate(r)); } };
+const relayedRows = (w) => w.db.t.wa_messages.filter((m) => m.msg_type === "relayed").map((m) => [m.id, m.reply_id, m.body]);
+{
+  const G = "11 M1 text and photo";
+  // (a) text, then a photo; the text's 4-second check runs after the photo's turn.
+  {
+    const w = relayWorld({ mode: "test" });
+    const q = heldTimers(w);
+    const t = w.logRow("Sí, a las 18:00");
+    const pt = w.turnFor(t, "Sí, a las 18:00");
+    await until(() => q.length === 1);
+    const p = w.logRow("[image]");
+    const pp = w.turnFor(p, "", "image");
+    await until(() => q.length === 2);
+    await fireAll(q);
+    await pt; await pp;
+    const lists = w.sent.filter((s) => s.kind === "list");
+    check(G, "text then photo: one list, quoting the text; the photo marked not read; the text listed", [lists.length, lists[0]?.body.includes('"Sí, a las 18:00"'), relayedRows(w)], [1, true, [[t, `rly:${t}:listed`, "Sí, a las 18:00"], [p, `rly:${p}:ignored`, "[relay: image, not read]"]]]);
+    check(G, "and Jordan is told the photo is not read", w.sent.some((s) => s.body === "I can read text and voice notes only. Forward the text instead."), true);
+  }
+  // (b) text, then a photo; the text's check runs while the photo is still waiting.
+  {
+    const w = relayWorld({ mode: "test" });
+    const q = heldTimers(w);
+    const t = w.logRow("Sí, a las 18:00");
+    const pt = w.turnFor(t, "Sí, a las 18:00");
+    await until(() => q.length === 1);
+    const p = w.logRow("[image]");
+    await fireAll(q); // the text's check sees the photo waiting and leaves the list to it
+    await pt;
+    check(G, "text check first: no list yet, the text still waiting", [w.sent.filter((s) => s.kind === "list").length, relayedRows(w)[0][1]], [0, null]);
+    const pp = w.turnFor(p, "", "image");
+    await until(() => q.length === 1);
+    await fireAll(q);
+    await pp;
+    const lists = w.sent.filter((s) => s.kind === "list");
+    check(G, "the photo's turn then sends the text's list (it no longer waits forever)", [lists.length, lists[0]?.body.includes('"Sí, a las 18:00"'), relayedRows(w).map((r) => r[1])], [1, true, [`rly:${t}:listed`, `rly:${p}:ignored`]]);
+  }
+  // (c) photo logged, then text logged, then the photo's turn (the race).
+  {
+    const w = relayWorld({ mode: "test" });
+    const p = w.logRow("[image]");
+    const t = w.logRow("Sí, a las 18:00");
+    await w.turnFor(p, "", "image");
+    await w.turnFor(t, "Sí, a las 18:00");
+    const lists = w.sent.filter((s) => s.kind === "list");
+    check(G, "photo then text: the photo's turn marks its own row only; the words survive and are listed", [relayedRows(w), lists.length, lists[0]?.body.includes('"Sí, a las 18:00"'), /Who wrote this\?/.test(lists[0]?.body || "")], [[[p, `rly:${p}:ignored`, "[relay: image, not read]"], [t, `rly:${t}:listed`, "Sí, a las 18:00"]], 1, true, true]);
+  }
+  // (d) a forward whose log failed (no row id): nothing read, Jordan told.
+  {
+    const w = relayWorld({ mode: "test" });
+    w.logRow("Sí");
+    await w.turnFor(null, "Sí");
+    check(G, "no row id: no list, nothing claimed, one plain line", [w.sent.filter((s) => s.kind === "list").length, relayedRows(w)[0][1], lastTo(w, JORDAN)?.body], [0, null, "I could not save that forward, so I did nothing with it. Forward it again in a minute."]);
+  }
+}
+{
+  const G = "11 M3 the rate";
+  const w = relayWorld({ mode: "test" });
+  const req = w.db.t.whatsapp_requests.find((r) => r.id === 9301);
+  req.stage = "bidding"; req.settle_after = iso(T.now - 60e3);
+  await w.forward("Os hacemos un 10% de descuento");
+  await w.tap(lastTo(w, JORDAN).rows.find((r) => r.title.startsWith("Estudio Prueba")).id);
+  const card = lastCard(w);
+  check(G, "the card offers Record the rate, and says the ask stays open", [card.buttons.map((b) => b.title), /Their ask stays open: a rate is not a yes to an hour/.test(card.body)], [["Record the rate", "Not theirs"], true]);
+  await w.tap(card.buttons[0].id);
+  const row = w.db.t.request_dispatch.find((d) => d.id === TEST_ROW);
+  check(G, "Record the rate: discount and answered only, the ask still pending (no accepted, no hour)", [row.outcome, row.discount_pct, !!row.replied_at, row.accepted_at, row.offered_time], ["pending", 10, true, null, null]);
+  // dispatch-studios' hour-and-price chase reads accepted rows with no hour.
+  const ds = read("supabase/functions/dispatch-studios/index.ts");
+  const chaseQ = (ds.match(/request_dispatch\?outcome=eq\.accepted&offered_time=is\.null&chased_at=is\.null/) || [""])[0];
+  const chased = chaseQ ? await (await w.db.fetch(`https://db.invalid/rest/v1/${chaseQ}&select=id`)).json() : null;
+  check(G, "the chase A query finds nothing to chase", [!!chaseQ, chased], [true, []]);
+  // settleBids, lifted, on the same database.
+  const sb = sandbox([lift(botSrc, "async function settleBids(")], { fetch: w.db.fetch, SUPABASE_URL: "https://db.invalid", H: () => ({}), digitsOf, Date: FakeDate, awardWinner: async () => { w.spies.awardWinner++; return true; } }, ["settleBids"]);
+  await sb.fns.settleBids();
+  check(G, "the bidding settle offers nothing from the rate alone", w.spies.awardWinner, 0, "before the fix it awarded the asked hour to the customer");
+  check(G, "studioWrites rate: no outcome", R.studioWrites("rate", R.studioRelayPlan("un 10% de descuento", facts(), SP), facts(), "NOW", "[s]", "un 10% de descuento"), { dispatch: { replied_at: "NOW", reply_text: "[s]", discount_pct: 10, offer_note: "un 10% de descuento" } });
+  check(G, "the card no longer points Jordan at ops studio_offer (review M5)", Object.values(R.STUDIO_FOLLOWS).flat().some((x) => /studio_offer/.test(x)), false);
+}
+{
+  const G = "11 M2 freeze";
+  const c = relayWorld({ mode: "on" });
+  await c.forward("I need to cancel, sorry");
+  await c.tap(lastTo(c, JORDAN).rows.find((r) => r.title.startsWith("Tomas")).id);
+  const cc = lastCard(c);
+  check(G, "the card says what the freeze stops and what it does not", [/dispatch-studios then stops asking the studios on it for an hour or a price and stops asking more studios/.test(cc.body), /It does not stop the bot sending the customer an offer if a studio says yes or a bidding window closes/.test(cc.body), /nothing new is promised to the studio/.test(cc.body)], [true, true, false]);
+  const ds = read("supabase/functions/dispatch-studios/index.ts");
+  const chase = lift(ds, "async function chaseOpenAsks(");
+  const aPart = chase.slice(chase.indexOf("// A: they said yes"));
+  check(G, "dispatch-studios chase A skips a frozen request before any note", [/const FROZEN_FLAGS = \["change_requested", "cancelled"\];/.test(ds), /customer_flag&limit=1/.test(aPart), aPart.indexOf("FROZEN_FLAGS.includes(String(rq.customer_flag") > 0 && aPart.indexOf("FROZEN_FLAGS.includes(String(rq.customer_flag") < aPart.indexOf("await sendStudioNote(to, line")], [true, true, true]);
+  const widen = between(ds, "} else if (body.widen === true) {", "requests = open;");
+  check(G, "and its widen skips one too", widen.indexOf("FROZEN_FLAGS.includes(String(r.customer_flag") > 0 && widen.indexOf("FROZEN_FLAGS.includes(String(r.customer_flag") < widen.indexOf("const live = await sq("), true);
+}
+{
+  const G = "11 minors";
+  // m2: a list WhatsApp refused: the rows wait again and Jordan is told.
+  const f = relayWorld({ mode: "test" });
+  f.env.sendList = async () => false;
+  const id = await (async () => { const r = f.logRow("Sí, a las 18:00"); await f.turnFor(r, "Sí, a las 18:00"); return r; })();
+  check(G, "m2: a list that did not go: Jordan is told, the rows are closed and blanked", [relayedRows(f)[0], /did not take the "Who wrote this\?" list, so nothing was saved/.test(lastTo(f, JORDAN)?.body || ""), f.db.t.funnel_events.some((e) => e.event === "relay_list_failed" && e.meta.anchor === id)], [[id, `rly:${id}:failed`, "[relay ignored]"], true, true]);
+  f.env.sendList = async (to, body, button, rows) => { f.sent.push({ to: digitsOf(to), kind: "list", body, button, rows }); return true; };
+  await f.forward("Sí, a las 18:00");
+  check(G, "m2: forwarding it again lists it once, not twice", /^Who wrote this\? "Sí, a las 18:00"/.test(f.sent.filter((s) => s.kind === "list").slice(-1)[0]?.body || ""), true);
+  // m3: test mode, a test studio on a real customer's request: card only.
+  const m3 = relayWorld({ mode: "test" });
+  m3.db.t.request_dispatch.push({ id: "d0000000-0000-4000-8000-000000000502", request_id: 9302, partner_id: "p-test", phone: "34911000101", sent_at: iso(T.now - 3600e3), created_at: iso(T.now - 3600e3), replied_at: null, outcome: "pending", offered_time: null, chased_at: null, quoted_price: null, discount_pct: null, accepted_at: null, customer_offered_at: null, customer_answer: null, customer_offer_via: null, channel: null });
+  await m3.forward("Sí, a las 19:00");
+  const m3row = lastTo(m3, JORDAN).rows.find((r) => r.title.startsWith("Estudio Prueba") && /#9302/.test(r.description || ""));
+  check(G, "m3: the test studio's ask on a real request is listed without (test)", [!!m3row, /\(test\)/.test(m3row?.description || "")], [true, false]);
+  await m3.tap(m3row.id);
+  check(G, "m3: picking it gives the TEST MODE card; nothing saved or written", [lastTo(m3, JORDAN).body.startsWith("TEST MODE: nothing recorded or sent."), m3.db.t.wa_messages.filter((m) => m.msg_type === "external").length, m3.db.writes("request_dispatch").length], [true, 0, 0]);
+  // m4: a TEST_PHONES tester that releasedAudience calls real.
+  const m4 = relayWorld({ mode: "on" });
+  m4.db.t.whatsapp_requests.push({ id: 9305, first_name: "Probador", last_name: "", client_phone: "+34635569364", contact_email: "", day1: "Thursday 26 Nov, 12:00", time1: "12:00", proposed_time: "12:00", message_text: "", created_at: iso(T.now - 3600e3), stage: "studio_asked", stage_updated_at: iso(T.now - 3600e3), partner_id: null, therapist_gender: null, languages: "en", service_name: "Massage", customer_flag: null });
+  await m4.forward("I need to cancel");
+  check(G, "m4: on mode never lists a TEST_PHONES tester", lastTo(m4, JORDAN).rows.some((r) => /#9305/.test(r.description || "")), false);
+  const m4t = relayWorld({ mode: "test" });
+  m4t.db.t.whatsapp_requests.push({ ...m4.db.t.whatsapp_requests.find((r) => r.id === 9305) });
+  await m4t.forward("I need to cancel");
+  const m4row = lastTo(m4t, JORDAN).rows.find((r) => /#9305/.test(r.description || ""));
+  check(G, "m4: test mode writes for them (marked test)", [!!m4row, /\(test\)/.test(m4row?.description || "")], [true, true]);
+  // m5: a forwarded contact card answering "Someone else" is handled, never quoted later.
+  const m5 = relayWorld({ mode: "test" });
+  await m5.forward("Sí, a las 18:00");
+  await m5.tap(lastTo(m5, JORDAN).rows.find((r) => r.title === "Someone else").id);
+  const cardRow = m5.logRow("[contacts]");
+  await m5.turnFor(cardRow, "", "contacts", { msg: { contacts: [{ phones: [{ phone: "+34 911 00 01 01", wa_id: "34911000101" }] }] } });
+  check(G, "m5: the contact card's own row is marked handled", m5.db.t.wa_messages.find((m) => m.id === cardRow)?.reply_id, `rly:${cardRow}:card`);
+  await m5.forward("Otra cosa");
+  const m5list = m5.sent.filter((s) => s.kind === "list").slice(-1)[0];
+  check(G, "m5: the next burst quotes only its own words", [/Who wrote this\? "Otra cosa"/.test(m5list?.body || ""), /contacts/.test(m5list?.body || "")], [true, false]);
+  // m8: a typed number is said as typed; an email-only studio has no chat.
+  const ty = relayWorld({ mode: "test" });
+  await ty.forward("Sí, a las 18:00");
+  await ty.tap(lastTo(ty, JORDAN).rows.find((r) => r.title === "Someone else").id);
+  await ty.type("+34 911 000 101");
+  check(G, "m8: a typed number: 'the number you typed', not the contact card", [/the number you typed/.test(lastCard(ty).body), /contact card/.test(lastCard(ty).body)], [true, false]);
+  const em = relayWorld({ mode: "test" });
+  em.db.t.request_dispatch.find((d) => d.id === TEST_ROW).phone = "";
+  await em.forward("Sí, a las 18:00");
+  await em.tap(lastTo(em, JORDAN).rows.find((r) => r.title.startsWith("Estudio Prueba") && /#9301/.test(r.description || "")).id);
+  check(G, "m8: an email-only studio: 'Not saved in a chat', and nothing saved", [/^Not saved in a chat: Estudio Prueba Norte has no WhatsApp number on file\./.test(lastCard(em).body), em.db.t.wa_messages.filter((m) => m.msg_type === "external").length], [true, 0]);
+  // m8: hours with English beside the Spanish day names.
+  check(G, "m8: hours shown with English", [R.relayHoursShown("Lun-Sab 10:00-21:00"), R.relayHoursShown("Lun-Dom 10:00-20:30"), R.relayHoursShown("10:00-21:00"), R.relayActionWords("hours", { hours: "Mié-Sáb 10:00-14:00" }, String)], ["Lun-Sab 10:00-21:00 (EN: Mon-Sat 10:00-21:00)", "Lun-Dom 10:00-20:30 (EN: Mon-Sun 10:00-20:30)", "10:00-21:00", "their opening hours, Mié-Sáb 10:00-14:00 (EN: Wed-Sat 10:00-14:00)"]);
+  const hr = relayWorld({ mode: "test" });
+  await hr.forward("Abrimos de lunes a sábado de 10 a 21");
+  await hr.tap(lastTo(hr, JORDAN).rows.find((r) => r.title.startsWith("Estudio Prueba")).id);
+  check(G, "m8: the hours card reads them in English too", /I read: opening hours Lun-Sab 10:00-21:00 \(EN: Mon-Sat 10:00-21:00\)/.test(lastCard(hr).body), true);
+  // m8: an older "Someone else" goes back to its list when a newer one is picked.
+  const ol = relayWorld({ mode: "test" });
+  await ol.forward("Primero");
+  const firstList = lastTo(ol, JORDAN);
+  await ol.tap(firstList.rows.find((r) => r.title === "Someone else").id);
+  T.now += 5 * 60e3;
+  await ol.forward("Segundo");
+  await ol.tap(lastTo(ol, JORDAN).rows.find((r) => r.title === "Someone else").id);
+  check(G, "m8: only one 'Someone else' open at a time; the older burst is listed again", relayedRows(ol).map((r) => String(r[1]).replace(/\d+/, "N")), ["rly:N:listed", "rly:N:ask"]);
+  await ol.tap(firstList.rows.find((r) => r.title === "Ignore").id);
+  check(G, "m8: and its list works again", lastTo(ol, JORDAN).body, "Forgotten. The text is deleted.");
+  // m8: the import line no longer runs into the next statement.
+  check(G, "m8: bot.ts import line ends before const SUPABASE_URL", /from "\.\/offer_tpl\.ts";\nconst SUPABASE_URL = /.test(botSrc), true);
+  // m8: the held email's request select carries last_name.
+  check(G, "m8: sendHeldOfferEmail reads last_name", /select=id,first_name,last_name,service_name,day1/.test(lift(botSrc, "async function sendHeldOfferEmail(")), true);
+}
+{
+  const G = "11 M4 socios";
+  const html = read("public/socios.html");
+  check(G, "the /socios page sends studios to the bot number (SOCIOS_FALLBACK_RE, SOCIOS_HELLO_RE and «ocupado» are read there), never 827", [/const WA_NUM = "34613977900";/.test(html), /612\D?474\D?827|612\\u00a0474/.test(html), /WhatsApp \+34&nbsp;613&nbsp;977&nbsp;900/.test(html)], [true, false, true]);
 }
 
 // ---------------------------------------------------------------------------

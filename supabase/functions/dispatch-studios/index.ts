@@ -1295,6 +1295,9 @@ function noteHour(rq: Record<string, unknown>, row?: Record<string, unknown>): s
   return clockOf(row?.offered_time) || (winner ? clockOf(rq.confirmed_time) : "") || horaPedida(rq);
 }
 const RQ_NOTE_COLS = "id,first_name,day1,time1,proposed_time,confirmed_time,partner_id,service_name,message_text,created_at";
+// customer_flag values that freeze a request (wa-bot's change path, and the
+// relay's Freeze): the hour-and-price chase and the widen leave it alone.
+const FROZEN_FLAGS = ["change_requested", "cancelled"];
 async function noteSent(to: string, shown: string): Promise<{ how: string; ok: boolean }> {
   await logMsg(to, shown);
   const studio = await studioNameFor(to);
@@ -1549,9 +1552,14 @@ async function chaseOpenAsks(dryRun: boolean): Promise<Record<string, unknown>> 
   // A: they said yes, we never got an hour out of them.
   const yesRows = await sq(`request_dispatch?outcome=eq.accepted&offered_time=is.null&chased_at=is.null&created_at=gte.${since}&created_at=lte.${ripe}&order=created_at.desc&limit=20&select=id,request_id,partner_id,phone,quoted_price,offered_time`);
   for (const d of (Array.isArray(yesRows) ? yesRows : [])) {
-    const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=${RQ_NOTE_COLS},stage,client_phone&limit=1`))[0];
+    const rq = (await sq(`whatsapp_requests?id=eq.${Number(d.request_id)}&select=${RQ_NOTE_COLS},stage,client_phone,customer_flag&limit=1`))[0];
     if (!rq || !["new", "dispatching", "studio_asked", "studio_replied", "bidding", "offered"].includes(String(rq.stage || ""))) continue;
     if (isTestCustomer(rq)) continue;
+    // Relay review M2 (24 Nov; CLAUDE.md: nothing new is promised to a studio
+    // on a frozen request): a customer who asked to change or cancel
+    // (customer_flag change_requested or cancelled) freezes it, so the studio
+    // is not asked for an hour or a price on it.
+    if (FROZEN_FLAGS.includes(String(rq.customer_flag || ""))) { skipped.push(`#${d.request_id} frozen (${rq.customer_flag})`); continue; }
     const to = digits(String(d.phone || ""));
     if (!to || JORDAN_NUMBERS.includes(to)) continue;
     // v48: the hour the ask printed is the hour their yes was to, so only the
@@ -2277,6 +2285,12 @@ async function handleRequest(req: Request): Promise<Response> {
     const cand = await sq(`whatsapp_requests?dispatched_at=lte.${cutoff}&dispatched_at=gte.${floor}&widened_at=is.null&partner_id=is.null&dispatch_count=gt.0&stage=in.(new,dispatching,studio_asked,studio_replied)&order=id.desc&limit=10&select=*`);
     const open: Record<string, unknown>[] = [];
     for (const r of (Array.isArray(cand) ? cand : [])) {
+      // Relay review M2: a frozen request (the customer asked to change or
+      // cancel) is never widened to more studios.
+      if (FROZEN_FLAGS.includes(String(r.customer_flag || ""))) {
+        console.log(`[dispatch] widen skipped #${r.id}: frozen (customer_flag ${r.customer_flag})`);
+        continue;
+      }
       const live = await sq(`request_dispatch?request_id=eq.${Number(r.id)}&or=(offered_time.not.is.null,outcome.eq.won)&limit=1&select=id`);
       if (Array.isArray(live) && live.length) {
         console.log(`[dispatch] widen skipped #${r.id}: a studio has already offered a time`);

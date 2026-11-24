@@ -281,7 +281,12 @@ export function studioWrites(action: string, p: StudioPlan, f: StudioFacts & { a
   const accept = f.outcome === "won" ? {} : { outcome: "accepted", accepted_at: f.acceptedAt || nowIso };
   if (action === "yes") return p.time ? { dispatch: { ...accept, ...answered, offered_time: p.time, offered_times: [p.time], ...price, ...rate, ...gender } } : null;
   if (action === "price") return p.price !== null ? { dispatch: { ...answered, ...price, ...gender } } : null;
-  if (action === "rate") return p.pct !== null && Object.keys(rate).length ? { dispatch: { ...accept, ...answered, ...rate, ...price, ...gender } } : null;
+  // Review M3: a rate on its own is not a yes to an hour, so the ask stays
+  // open (no outcome accepted). An accepted row with no hour would set off
+  // dispatch-studios' hour-and-price chase to the studio within 45 minutes,
+  // and on a request in bidding settleBids would offer the asked hour to the
+  // customer, both from one tap. A rate that comes with a yes goes with "yes".
+  if (action === "rate") return p.pct !== null && Object.keys(rate).length ? { dispatch: { ...answered, ...rate, ...price, ...gender } } : null;
   if (action === "gender") return p.gender !== null ? { dispatch: { ...answered, ...gender } } : null;
   if (action === "no") return f.outcome === "won" ? null : { dispatch: { outcome: "declined", ...answered } };
   if (action === "answered") return { dispatch: answered };
@@ -375,6 +380,16 @@ export function relayHoursText(text: string): string {
   } else if (/(lunes|martes|miercoles|jueves|viernes|sabado|domingo)/.test(t) && !/todos los dias/.test(t)) return "";
   return `${days} ${open}-${close}`;
 }
+// Review m8: the hours as saved are Spanish day names ("Lun-Sab 10:00-21:00"),
+// and CLAUDE.md wants English beside any Spanish shown to Jordan:
+// "Lun-Sab 10:00-21:00 (EN: Mon-Sat 10:00-21:00)". Text with no Spanish day
+// name comes back unchanged.
+const DAY_EN: Record<string, string> = { lun: "Mon", mar: "Tue", mie: "Wed", jue: "Thu", vie: "Fri", sab: "Sat", dom: "Sun" };
+export function relayHoursShown(h: string): string {
+  const s = String(h || "");
+  const en = s.replace(/(^|[^A-Za-zÁÉÍÓÚáéíóúñ])(Lun|Mar|Mi[eé]|Jue|Vie|S[aá]b|Dom)(?![A-Za-zÁÉÍÓÚáéíóúñ])/g, (_a: string, pre: string, d: string) => pre + (DAY_EN[norm(d)] || d));
+  return en === s ? s : `${s} (EN: ${en})`;
+}
 // The text as stored on the dispatch row: marked as relayed, and any "hoy",
 // "mañana", "today" or "tomorrow" replaced by the request's own date, because a
 // forward carries no time and the bot's later readers resolve those words
@@ -402,12 +417,12 @@ export function relayActionWords(action: string, p: { time?: string; price?: num
   switch (action) {
     case "yes": return `their yes at ${p.time}${extras ? ", with " + extras : ""}, on their ask`;
     case "price": return `their price, ${p.price !== null && p.price !== undefined ? euro(p.price) : "?"}`;
-    case "rate": return `their ${p.pct}% Massage Club rate${p.price !== null && p.price !== undefined ? `, price ${euro(p.price)}` : ""}`;
+    case "rate": return `their ${p.pct}% Massage Club rate${p.price !== null && p.price !== undefined ? `, price ${euro(p.price)}` : ""} (their ask stays open: not a yes)`;
     case "gender": return p.gender ? "that they can give the therapist asked for" : "that they cannot give the therapist asked for";
     case "no": return "their no: their ask is closed";
     case "answered": return "that they answered (their ask stays open)";
-    case "hours": return `their opening hours, ${p.hours}`;
-    case "hoursx": return `their opening hours, ${p.hours}, in place of the ones on file`;
+    case "hours": return `their opening hours, ${relayHoursShown(p.hours || "")}`;
+    case "hoursx": return `their opening hours, ${relayHoursShown(p.hours || "")}, in place of the ones on file`;
     case "stop": return "their opt-out from everything we send studios";
     case "freeze": return "the request as frozen (customer_flag change_requested)";
     case "optout": return "their opt-out from offers";
@@ -436,7 +451,7 @@ export function relayReadText(kinds: string[], p: { time?: string; price?: numbe
     else if (k === "price" && p.price !== null && p.price !== undefined) out.push(`price ${euro(p.price)}`);
     else if (k === "discount" && p.pct) out.push(`a ${p.pct}% Massage Club rate`);
     else if (k === "gender") out.push(p.gender ? "the therapist asked for is fine" : "they cannot give the therapist asked for");
-    else if (k === "hours") out.push(p.hours ? `opening hours ${p.hours}` : "opening hours (in words I cannot save as they are)");
+    else if (k === "hours") out.push(p.hours ? `opening hours ${relayHoursShown(p.hours)}` : "opening hours (in words I cannot save as they are)");
     else if (k === "arrived") out.push("the customer arrived");
     else if (k === "time_change") out.push(`a new time on a confirmed booking, ${p.time}`);
     else if (k === "stop") out.push("they want no more messages from us");
@@ -459,9 +474,11 @@ export function relayReadText(kinds: string[], p: { time?: string; price?: numbe
 export const STUDIO_FOLLOWS: Record<string, string[]> = {
   yes: [
     "The offer is not sent from here, and nothing sends it on its own, except two of the bot's normal steps: if the customer has another offer open, this one waits behind it and is shown if they turn that one down (the studio then gets the usual note that the client is looking at it); and a bidding window that closes on the request can offer it.",
-    "Otherwise it stays recorded until it is sent with ops studio_offer. The studio is not chased for its hour any more, because the hour is recorded.",
+    // Review M5: ops studio_offer is an ops-key call, not something Jordan
+    // can run from his phone, so the card no longer points him at it.
+    "Otherwise it stays recorded, and nothing goes to the customer until you ask Claude to send the offer. The studio is not chased for its hour any more, because the hour is recorded.",
   ],
-  rate: ["The rate is printed on any offer the bot later sends for this studio, as the studio's confirmed Massage Club rate. The offer itself is not sent from here."],
+  rate: ["Their ask stays open: a rate is not a yes to an hour, so nothing is offered to the customer and the studio is not asked for its hour or price because of this tap. The rate is printed on any offer the bot later sends for this studio, as the studio's confirmed Massage Club rate. Their ask counts as answered, so standing approval A does not chase them."],
   price: ["The price is printed on any offer the bot later sends for this studio. An offer email already waiting for it goes when its 3 minutes are up, as it would for any studio price."],
   no: ["Their ask is closed. If every studio asked has now said no or been silent for 3 hours, standing approval C can ask up to 3 more studios."],
   answered: ["Their ask counts as answered, so standing approval A does not chase them."],
