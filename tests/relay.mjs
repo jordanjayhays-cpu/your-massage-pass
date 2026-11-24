@@ -610,6 +610,348 @@ const REAL_ROW = "d0000000-0000-4000-8000-000000000202";
 }
 
 // ---------------------------------------------------------------------------
+// 16 (fixtures). 24 Nov, the adversary round after the strict reading: every
+// message an adversary found read as a given discount (ADV_GIVEN: none may be
+// given, on relay.ts, the relay plan or the live handler), and the other
+// misreadings (ADV_OTHER). Checked in 16.L (group 6's live harness) and 16.
+// The ask is Thursday 26 Nov at 18:00 for a relaxing massage of 60 minutes.
+// [text, English]
+const ADV_GIVEN = [
+  ["Os hacemos el 10%. Uy perdona, me he equivocado de chat", "We give you 10%. Oops sorry, I got the wrong chat"],
+  ["Os hacemos el 10%... uy perdona, era el 5, me equivoqué", "We give you 10%... oops sorry, it was 5, I made a mistake"],
+  ["Le hacemos el 10%. Perdón, quería decir 5", "We give her 10%. Sorry, I meant 5"],
+  ["Os hacemos el 10%. Rectifico: tarifa normal", "We give you 10%. Correction: normal rate"],
+  ["Os hacemos el 10%. Olvida lo anterior, era para otra clienta", "We give you 10%. Forget the above, it was for another client"],
+  ["Os hacemos el 10% jaja es broma, precio normal 50€", "We give you 10% haha just kidding, normal price 50 EUR"],
+  ["Te hacemos el 10%... bueno al final mi jefa dice q tarifa normal", "We give you 10%... well in the end my boss says normal rate"],
+  ["Le hacemos el 10%. Anulo lo dicho, me he liado", "We give her 10%. I take back what I said, I got muddled"],
+  ["Eso de q os hacemos el 10% era antes, ya se acabó", "That thing about us giving you 10% was before, it's over now"],
+  ["Lo de q os hacemos el 10% era una promo q ya terminó", "The thing about us giving you 10% was a promo that has already ended"],
+  ["Os hacemos el 10%. Uy nop, perdona, me lié", "We give you 10%. Oops nope, sorry, I got mixed up"],
+  ["Le hacemos el 10% en su prox visita", "We give her 10% on her next visit"],
+  ["Le hacemos el 10% la sig vez", "We give her 10% next time"],
+  ["Te hacemos el 10% pa la otra", "We'll give you 10% for the next one"],
+  ["Le hacemos el 10% a la vuelta", "We give her 10% when she comes back"],
+  ["Os hacemos el 10% el mes q viene", "We give you 10% next month"],
+  ["La semana q viene os hacemos el 10%", "Next week we give you 10%"],
+  ["Os hacemos el 10% en enero", "We give you 10% in January"],
+  ["Os hacemos el 10% dsd el lunes q viene", "We give you 10% from next Monday"],
+  ["Os hacemos el 10% en la 2da sesión", "We give you 10% at the 2nd session"],
+  ["Te hacemos el 10% en la 2a", "We give you 10% on the 2nd one"],
+  ["Le hacemos el 10% en la prosima", "We give her 10% on the next one (typo for próxima)"],
+  ["Os hacemos el 10% cuando abramos el nuevo local", "We give you 10% when we open the new place"],
+  ["Hoy no. Mañana os hacemos el 10%", "Not today. Tomorrow we give you 10%"],
+  ["Este finde no puede ser. El q viene os hacemos el 10%", "This weekend is not possible. Next one we give you 10%"],
+  ["Esta semana imposible. La q viene le hacemos el 10%", "This week impossible. Next one we give her 10%"],
+  ["Igual os podemos hacer el 10%", "Maybe we can give you 10%"],
+  ["Lo mismo os hacemos el 10%, ya veremos", "We might give you 10%, we'll see"],
+  ["Posiblemente le hacemos el 10%", "Possibly we give her 10%"],
+  ["Probablemente os hacemos el 10%", "Probably we give you 10%"],
+  ["Creo q os podemos hacer el 10%", "I think we can give you 10%"],
+  ["En principio os hacemos el 10%", "In principle we give you 10%"],
+  ["Os hacemos el 10% en teoria", "We give you 10% in theory"],
+  ["Kizas os hacemos el 10%", "Maybe (typo) we give you 10%"],
+  ["Os hacemos el 10% supongo", "We give you 10% I suppose"],
+  ["Os hacemos el 10%, t confirmo luego", "We give you 10%, I'll confirm later"],
+  ["Te hacemos el 10% pero tengo q preguntar a mi jefa", "We give you 10% but I have to ask my boss"],
+  ["Os hacemos el 10%, x confirmar", "We give you 10%, to be confirmed"],
+  ["Os hacemos el 10%, pendiente de confirmar", "We give you 10%, pending confirmation"],
+  ["Os hacemos el 10%, déjame q lo mire", "We give you 10%, let me look at it"],
+  ["Le hacemos el 10%, te aviso", "We give her 10%, I'll let you know"],
+  ["Os hacemos el 10% pero lo tengo q hablar con el jefe", "We give you 10% but I have to talk it over with the boss"],
+  ["Te hago el 10%, ahora t digo", "I give you 10%, I'll tell you in a moment"],
+  ["Os hacemos el 10% siempre q reserven 2 sesiones", "We give you 10% as long as they book 2 sessions"],
+  ["Os hacemos el 10% con tal q nos dejen reseña", "We give you 10% as long as they leave us a review"],
+  ["Os hacemos el 10% por la mañana", "We give you 10% in the morning"],
+  ["Os hacemos el 10% menos sábados", "We give you 10% except Saturdays"],
+  ["Os hacemos el 10% a estudiantes", "We give 10% to students"],
+  ["Os hacemos el 10% solo pa clientes registrados", "We give you 10% only for registered clients"],
+  ["Tp os podemos hacer el 10%", "We can't give you 10% either"],
+  ["Tampco os podemos hacer el 10%", "We can't give you 10% either (typo)"],
+  ["Le aplicamos un 10% de recargo por ser festivo", "We apply a 10% surcharge because it is a holiday"],
+  ["Le ponemos un 10% más por ser domingo", "We add 10% more because it is Sunday"],
+  ["Os damos un 10% de comisión por cliente", "We give you a 10% commission per client"],
+  ["Son 50€ y le aplicamos el 21% de IVA", "It's 50 EUR and we apply 21% VAT"],
+  ["Nooo el 10% os lo hacemos el finde q viene", "Nooo, the 10% we do for you next weekend"],
+  ["Os hacemos el 10% en metálico", "We give you 10% in cash"],
+  ["Os hacemos el 10% con bizum", "We give you 10% if paid by Bizum"],
+  ["Os hacemos el 10% en el de 90", "We give you 10% on the 90-minute one"],
+  ["Os hacemos el 10% pa parejas", "We give you 10% for couples"],
+  ["Os hacemos el 10%... espera, q me dice mi compañera q eso era la promo de octubre", "We give you 10%... wait, my colleague says that was the October promo"],
+  ["Os hacemos el 10%. Bueno, mejor hablamos", "We give you 10%. Well, better we talk"],
+  ["Os hacemos el 10%. Mejor llámame", "We give you 10%. Better call me"],
+  ["Mi jefe dice q os hacemos el 10%, pero espera a q él te lo confirme", "My boss says we give you 10%, but wait for him to confirm it to you"],
+  ["Le aplicamos un 15% de suplemento", "We apply a 15% supplement"],
+  ["Le hacemos el 10% de recargo x ser festivo", "We charge her a 10% surcharge for it being a holiday"],
+  ["Te hacemos el 10% en tu sgte cita", "We give you 10% at your next appointment"],
+  ["Os hacemos el 10% en la proxim cita", "We give you 10% at the next (clipped) appointment"],
+  ["Os hacemos el 10% a partir d la 2da", "We give you 10% from the 2nd one"],
+  ["No, esta vez no. Le hacemos el 10% en otra", "No, not this time. We give her 10% on another one"],
+  ["De momento tarifa normal. Os hacemos el 10% cuando tengamos más clientes vuestros", "For now normal rate. We give you 10% when we have more of your clients"],
+  ["Le hacemos el 10% en navidades", "We give her 10% at Christmas"],
+  ["Os hacemos el 10% en temporada baja", "We give you 10% in low season"],
+  ["Os hacemos el 10% en 2027", "We give you 10% in 2027"],
+  ["Os hacemos el 10% el año q viene", "We give you 10% next year"],
+  ["Os hacemos el 10% tras la primera visita", "We give you 10% after the first visit"],
+  ["Os hacemos el 10% pero tengo q confirmarlo", "We give you 10% but I have to confirm it"],
+  ["Le hacemos el 10% mientras dure la oferta, q acaba hoy a las 14", "We give her 10% while the offer lasts, which ends today at 14"],
+  ["Os hacemos el 10% en sesiones de mañana", "We give you 10% on morning sessions"],
+  ["Os hacemos el 10% d lunes a jueves", "We give you 10% Monday to Thursday"],
+  ["Os hacemos el 10% lun-jue", "We give you 10% Mon-Thu"],
+  ["Vale, el 10%... déjame preguntar", "OK, the 10%... let me ask"],
+  ["Sí, el 10%, tengo q confirmar con la jefa", "Yes, the 10%, I have to confirm with the boss"],
+  ["Vale, el 10%, pero lo confirma mi jefe", "OK, the 10%, but my boss confirms it"],
+  ["Sí al 10%, a falta de q lo apruebe el encargado", "Yes to the 10%, pending the manager's approval"],
+  ["Con el 10% sería 45€ pero eso lo decide la jefa", "With 10% it would be 45 EUR but the boss decides that"],
+  ["Con el 10% quedaría en 45€ en la 2da sesión", "With 10% it would come to 45 EUR at the 2nd session"],
+  ["Os hacemos el 10%, ahora te lo paso por escrito cuando hable con la dueña", "We give you 10%, I'll send it in writing once I talk to the owner"],
+  ["Os hacemos el 10% en cuanto lo autorice la dueña", "We give you 10% as soon as the owner authorises it"],
+  ["Sí, a las 18:00. 60€ (IVA 21% incluido)", "Yes, at 18:00. 60 EUR (21% VAT included)"],
+  ["Son 60€, incluido el 21% de IVA", "It's 60 EUR, including 21% VAT"],
+  ["Sí, son 60€ con el 21% de IVA", "Yes, it's 60 EUR with the 21% VAT"],
+  ["60€ con el 21% de IVA incluido, a las 18:00 perfecto", "60 EUR with 21% VAT included, 18:00 is perfect"],
+  ["Yes at 18:00, it is 60€ with the 21% VAT", "Yes at 18:00, it is 60 EUR with the 21% VAT"],
+  ["Yes, price is 60€ including the 21% VAT", "Yes, price is 60 EUR including the 21% VAT"],
+  ["Sí, a las 18:00. Le aplicamos el 21% de IVA, total 60€", "Yes, at 18:00. We apply 21% VAT, total 60 EUR"],
+  ["Yes, with a 20% deposit", "Yes, with a 20% deposit"],
+  ["Sí, con el 20% de señal", "Yes, with a 20% deposit"],
+  ["66€ con el 10% de suplemento", "66 EUR with the 10% supplement"],
+  ["Yes, 66€ with the 10% surcharge for late hours", "Yes, 66 EUR with the 10% surcharge for late hours"],
+  ["Sí, un 10% más por ser festivo", "Yes, 10% more because it's a public holiday"],
+  ["We'll apply a 20% surcharge for late bookings", "We'll apply a 20% surcharge for late bookings"],
+  ["Os damos un 10% de comisión por cada cliente", "We'll give you a 10% commission per client"],
+  ["We can give you 10% commission per client", "We can give you 10% commission per client"],
+  ["Creo que sí, os hacemos el 10%", "I think so, we'll give you 10%"],
+  ["En principio sí, el 10%", "In principle yes, the 10%"],
+  ["Supongo que sí, os hacemos el 10%", "I suppose so, we'll give you 10%"],
+  ["Seguramente os podemos hacer el 10%", "We can most likely do 10% for you"],
+  ["Os hacemos el 10% en teoría", "In theory we'll give you 10%"],
+  ["I think we can do 10%", "I think we can do 10%"],
+  ["I guess we can do 10%", "I guess we can do 10%"],
+  ["Probably we can do 10%", "Probably we can do 10%"],
+  ["Hopefully we can do 10%", "Hopefully we can do 10%"],
+  ["In principle we can do 10%", "In principle we can do 10%"],
+  ["We can do 10%, but I have to confirm with my manager first", "We can do 10%, but I have to confirm with my manager first"],
+  ["We can do 10%. The owner will confirm tomorrow", "We can do 10%. The owner will confirm tomorrow"],
+  ["We can do 10%, let me ask the boss", "We can do 10%, let me ask the boss"],
+  ["We can do 10%, I'll double check", "We can do 10%, I'll double check"],
+  ["We can do 10%, I will ask the manager", "We can do 10%, I will ask the manager"],
+  ["We can do 10% pending manager approval", "We can do 10% pending manager approval"],
+  ["Yes!! We can do 10%. But the boss has the last word", "Yes!! We can do 10%. But the boss has the last word"],
+  ["Os podemos hacer el 10%, pero tengo que confirmarlo con la jefa", "We can give you 10%, but I have to confirm it with the boss"],
+  ["Os hacemos el 10%, déjame preguntar", "We'll give you 10%, let me ask"],
+  ["Os hacemos el 10%, tengo que preguntar a mi jefa", "We'll give you 10%, I have to ask my boss"],
+  ["Os hacemos el 10%, espera que lo compruebo", "We'll give you 10%, hold on, let me check"],
+  ["Os hacemos el 10% pero lo tengo que hablar con la dueña", "We'll give you 10% but I have to talk it over with the owner"],
+  ["Tengo que consultarlo con mi jefa. Os hacemos el 10%.", "I have to check it with my boss. We'll give you 10%."],
+  ["Pregunto a la jefa y te digo. Sí, el 10%", "I'll ask the boss and let you know. Yes, the 10%"],
+  ["Only for members. We can do 10%.", "Only for members. We can do 10%."],
+  ["Solo para socios. Os hacemos el 10%.", "Members only. We'll give you 10%."],
+  ["Next time. We can do 10%.", "Next time. We can do 10%."],
+  ["Next visit! Sí, os hacemos el 10%", "Next visit! Yes, we'll give you 10%"],
+  ["If cash. 10% ok", "If cash. 10% ok"],
+  ["Cash only! 10% ok", "Cash only! 10% ok"],
+  ["For 90 min. We can do 10%", "For 90 min. We can do 10%"],
+  ["Os hacemos el 10% el mes que viene", "We'll give you 10% next month"],
+  ["Os hacemos el 10% la semana que viene", "We'll give you 10% next week"],
+  ["We can do 10% in December", "We can do 10% in December"],
+  ["Os hacemos el 10% en diciembre", "We'll give you 10% in December"],
+  ["We can do 10% from Monday", "We can do 10% from Monday"],
+  ["Ok, 10% for Massage Club clients from 2027", "Ok, 10% for Massage Club clients from 2027"],
+  ["We can do 10% on Sunday", "We can do 10% on Sunday"],
+  ["Os hacemos el 10% el martes", "We'll give you 10% on Tuesday"],
+  ["We can do 10% every Tuesday", "We can do 10% every Tuesday"],
+  ["Os hacemos el 10% cada martes", "We'll give you 10% every Tuesday"],
+  ["We can do 10% in the morning", "We can do 10% in the morning"],
+  ["We can do 10% with a review on Google", "We can do 10% with a review on Google"],
+  ["Os hacemos el 10% con una reseña en Google", "We'll give you 10% with a review on Google"],
+  ["We can do 10% in exchange for a review", "We can do 10% in exchange for a review"],
+  ["Le hacemos el 10% por una reseña de 5 estrellas", "We'll give them 10% for a 5-star review"],
+  ["Yes, for the 10% we need a review", "Yes, for the 10% we need a review"],
+  ["We can do 10% on 90-minute massages", "We can do 10% on 90-minute massages"],
+  ["Os hacemos el 10% en masajes de 90 minutos", "We'll give you 10% on 90-minute massages"],
+  ["Os hacemos el 10% para sesiones de 90 minutos", "We'll give you 10% for 90-minute sessions"],
+  ["We can do 10% assuming 90 minutes", "We can do 10% assuming 90 minutes"],
+  ["We can do 10% providing they book 90 min", "We can do 10% providing they book 90 min"],
+  ["We can do 10% so long as they pay cash", "We can do 10% so long as they pay cash"],
+  ["We can do 10% on condition that they pay cash", "We can do 10% on condition that they pay cash"],
+  ["We can do 10% for cash payment", "We can do 10% for cash payment"],
+  ["We can do 10% for 2 people", "We can do 10% for 2 people"],
+  ["Os hacemos el 10% siendo dos", "We'll give you 10% if there are two of you"],
+  ["Sí, el 10% para dos personas", "Yes, the 10% for two people"],
+  ["We can do 10% for bookings over 80€", "We can do 10% for bookings over 80 EUR"],
+  ["We can do 10% on the 2nd session", "We can do 10% on the 2nd session"],
+  ["We can do 10% with a coupon code", "We can do 10% with a coupon code"],
+  ["We can do 10% with student ID", "We can do 10% with student ID"],
+  ["We can do 10% for Madrid residents", "We can do 10% for Madrid residents"],
+  ["Os hacemos el 10% con reserva anticipada", "We'll give you 10% with advance booking"],
+  ["We can do 10% when you send us more clients", "We can do 10% when you send us more clients"],
+  ["El 10% os lo hacemos cuando firmemos el acuerdo", "We'll give you the 10% when we sign the agreement"],
+  ["Sí, el 10% Massage Club cuando tengamos el acuerdo firmado", "Yes, the 10% Massage Club rate once we have the agreement signed"],
+  ["We can do 10% once we sign the agreement", "We can do 10% once we sign the agreement"],
+  ["We can give her 10% off our oils and creams", "We can give her 10% off our oils and creams"],
+  ["Le hacemos un 10% en los productos", "We'll give them 10% on products"],
+  ["Le hacemos un 10% en la tarjeta regalo", "We'll give them 10% on the gift card"],
+  ["Sí, a las 18:00, 50€ (IVA 21% incluido)", "Yes, at 18:00, 50 EUR (21% VAT included)"],
+  ["Sí, 45€ IVA 10% incluido", "Yes, 45 EUR, 10% VAT included"],
+  ["Sí, 45€ con el 21% de IVA", "Yes, 45 EUR with the 21% VAT"],
+  ["Sí, el 21% de IVA va aparte", "Yes, the 21% VAT is extra"],
+  ["Sí, 60€, con un 20% de señal", "Yes, 60 EUR, with a 20% deposit"],
+  ["Sí, el 50% se paga por adelantado", "Yes, 50% is paid in advance"],
+  ["Vale, el 50% de señal", "OK, the 50% deposit"],
+  ["Sí, con el 5% de comisión para vosotros", "Yes, with the 5% commission for you"],
+  ["Te hacemos el 10% a ti como comisión", "We give YOU (Jordan) 10% as a commission"],
+  ["We'll give you 10% commission per booking", "We'll give you 10% commission per booking"],
+  ["66€ con el 10% de suplemento por ser domingo", "66 EUR with the 10% surcharge for it being Sunday"],
+  ["Sí, 50€ con el 15% de recargo nocturno", "Yes, 50 EUR with the 15% night surcharge"],
+  ["66€ con el 10% de propina", "66 EUR with the 10% tip"],
+  ["Sí, 10/ persona", "Yes, 10/ person"],
+  ["Sí, 60€. Con el 10% quedaría en 54€, pero eso lo decide la dueña", "Yes, 60 EUR. With the 10% it would come to 54 EUR, but the owner decides that"],
+  ["No podemos. El 10% sí", "We can't. The 10% yes"],
+  ["No tenemos hueco. Os hacemos el 10%.", "We don't have a slot. We give you 10%."],
+  ["No podemos (botón)\nOs hacemos el 10%", "We can't (button)\nWe give you 10%"],
+  ["Completo. Le hacemos el 10% cuando quiera", "Full. We'll give you 10% whenever you like"],
+  ["Lo siento, estamos completos. Os hacemos el 10% para compensar", "Sorry, we are full. We give you 10% to make up for it"],
+  ["Otra hora. Con el 10% queda en 45€", "Another time. With the 10% it comes to 45 EUR"],
+  ["Os hacemos el 10% en el masaje tailandés", "We give you 10% on the Thai massage (the booking is a relaxing massage)"],
+  ["Le hacemos el 10% en el masaje de 90 minutos", "We give you 10% on the 90 minute massage (the booking is 60 min)"],
+  ["Os hacemos el 10% en la depilación", "We give you 10% on waxing"],
+  ["Le hacemos el 10% en productos", "We give you 10% on products"],
+  ["Os hacemos el 10% en el masaje en pareja", "We give you 10% on the couples massage"],
+  ["Os hacemos el 10% en la tarjeta regalo", "We give you 10% on the gift card"],
+  ["We can do 10% on the 90 minute massage", "We can do 10% on the 90 minute massage"],
+  ["We can do 10% off products", "We can do 10% off products"],
+  ["Le hacemos el 10% a su amiga", "We give her friend 10%"],
+  ["Os hacemos el 10% el viernes", "We give you 10% on Friday (the booking is Thursday)"],
+  ["Os hacemos el 10% para la cita del sábado", "We give you 10% for the Saturday appointment"],
+  ["We can do 10% on Friday", "We can do 10% on Friday"],
+  ["Os hacemos el 10% hasta el 15 de noviembre", "We give you 10% until 15 November (already past on 24 Nov)"],
+  ["Os hacemos el 10% en Black Friday", "We give you 10% on Black Friday (27 Nov; the booking is 26 Nov)"],
+  ["Os hacemos el 10%, pero tiene que ser por la mañana", "We give you 10%, but it has to be in the morning (the booking is 18:00)"],
+  ["Os hacemos el 10% (sujeto a disponibilidad)", "We give you 10% (subject to availability)"],
+  ["Os hacemos el 10%... bueno, ya veremos", "We give you 10%... well, we'll see"],
+  ["Os hacemos el 10% creo", "We give you 10% I think"],
+  ["Supongo que os podemos hacer el 10%", "I suppose we can give you 10%"],
+  ["Os hacemos el 10% seguramente", "We'll probably give you 10%"],
+  ["Os hacemos el 10%, tengo que preguntarlo", "We give you 10%, I have to ask"],
+  ["Os hacemos el 10%, es broma jaja", "We give you 10%, just kidding haha"],
+  ["We can do 10% I think", "We can do 10% I think"],
+  ["We can do 10%, to be confirmed", "We can do 10%, to be confirmed"],
+  ["We'll do 10% probably", "We'll do 10% probably"],
+  // Our own, in the same vein: another hour than the one asked (18:00), a joke face.
+  ["Sí, a las 19:00, os hacemos el 10%", "Yes, at 19:00, we give you 10%"],
+  ["Mejor a las 19:30, os hacemos el 10%", "Better at 19:30, we give you 10%"],
+  ["Os hacemos el 10% 😂", "We give you 10% (laughing face)"],
+  ["Os hacemos el 10% a las 20h", "We give you 10% at 20h"],
+  ["Os hacemos el 10% ❌", "We give you 10% (cross mark)"],
+  ["Os hacemos el 10% 👎", "We give you 10% (thumbs down)"],
+  ["Os hacemos el 10% 🤔", "We give you 10% (thinking face)"],
+  ["Os hacemos el 10% 🤷‍♀️", "We give you 10% (shrug)"],
+  ["Os hacemos el 10% 🎁", "We give you 10% (gift)"],
+  ["Os hacemos el 10%, un saludo, Marta", "We give you 10%, regards, Marta (a name is a word this reading does not know)"],
+  ["Sí, os hacemos el 10%. ¿A qué hora?", "Yes, we give you 10%. At what time?"],
+  ["Os hacemos el 10% para la de 90", "We give you 10% for the 90 one"],
+];
+// [text, English, want]. want: "given" (a discount, and not a no), "yes" (not
+// a no on the relay, and a yes at the hour asked), "notno" (the relay no
+// longer reads a no; it still needs Jordan to read it), "unclear" (no longer
+// refused: a limit, not a no), or "open" (left as it is, never given).
+const ADV_OTHER = [
+  ["Os hacemos tb el 10%", "We also give you 10%", "given"],
+  ["Si os hacemos el 10%", "Yes, we give you 10% (no accent)", "open"],
+  ["Claro q si os hacemos el 10%", "Of course yes, we give you 10%", "given"],
+  ["Si q si, el 10% se lo hacemos", "Yes, yes, the 10% we do it for her", "given"],
+  ["Si tenemos hueco a las 18 y os hacemos el 10%", "Yes we have a slot at 18 and we give you 10%", "open"],
+  ["Sí, si os viene bien a las 18 os hacemos el 10%", "Yes, if 18 suits you we give you 10%", "open"],
+  ["Hacemos el 10% a la clienta sin problema", "We do 10% for the client, no problem", "given"],
+  ["Perfecto. 10% de descuento para ella", "Perfect. 10% discount for her", "given"],
+  ["Sí! El 10%", "Yes! The 10%", "given"],
+  ["10% sin problema", "10%, no problem", "given"],
+  ["El 10% sin problema", "The 10%, no problem", "given"],
+  ["Ningún problema con el 10%", "No problem with the 10%", "given"],
+  ["Aceptamos el 10%", "We accept the 10%", "given"],
+  ["Nos parece bien el 10%", "The 10% is fine with us", "given"],
+  ["De acuerdo con el 10%", "Agreed on the 10%", "given"],
+  ["Ok al 10%", "OK to the 10%", "given"],
+  ["Os hacemos un desc del 10%", "We give you a disc. of 10%", "given"],
+  ["Os aplicamos un dto. del 10%", "We apply a disc. of 10% for you", "given"],
+  ["Os hacemos el 10% xo solo esta vez", "We give you 10% but only this time", "given"],
+  ["Os hacemos el 5% como mucho", "We give you 5% at most", "unclear"],
+  ["Os hacemos el 10%. Os esperamos a las 18, no tardéis", "We give you 10%. We expect you at 18, don't be late", "given"],
+  ["Le hacemos el 10%. No hace falta q traiga nada", "We give her 10%. She doesn't need to bring anything", "given"],
+  ["Le hacemos el 10%, no hay inconveniente", "We give her 10%, no inconvenience", "given"],
+  ["Le hacemos el 10% sin ningún tipo de problema", "We give her 10% without any kind of problem", "given"],
+  ["Os hacemos el 10% y el aceite de regalo, sin coste", "We give you 10% and the oil as a gift, no charge", "open"],
+  ["Sí, el 10% no es problema", "Yes, the 10% is not a problem", "given"],
+  ["Si, a las 18 no hay pb", "Yes, at 18 no prob", "yes"],
+  ["Sí, a las 18:00, no hay inconveniente", "Yes, at 18:00, no inconvenience", "yes"],
+  ["Si, a las 18 no hay fallo", "Yes, at 18, no worries", "yes"],
+  ["Sí tenemos, no hay problemaa", "Yes we have, no problemm", "yes"],
+  ["Si claro, no hay ningún inconveniente", "Yes of course, no inconvenience at all", "notno"],
+  ["Si, a las 18 no hay drama", "Yes, at 18, no drama", "yes"],
+  ["Sí! A las 18 tenemos hueco, no hay prob", "Yes! At 18 we have a slot, no prob", "yes"],
+  ["We can do 10%, don't worry", "We can do 10%, don't worry", "given"],
+  ["Of course we can do 10%, why not", "Of course we can do 10%, why not", "given"],
+  ["Os hacemos el 10%, cómo no", "We'll give you 10%, of course", "given"],
+  ["Claro, cómo no, os hacemos el 10%", "Sure, of course, we'll give you 10%", "given"],
+  ["Os hacemos el 10%, no hay inconveniente", "We'll give you 10%, no problem at all", "given"],
+  ["Os hacemos el 10% sin ningún inconveniente", "We'll give you 10% with no trouble at all", "given"],
+  ["Os hacemos el 10% sin problema ninguno", "We'll give you 10%, no problem whatsoever", "given"],
+  ["Os hacemos el 10%, no faltaría más", "We'll give you 10%, of course, it goes without saying", "given"],
+  ["Yes we can do 10%, no doubt", "Yes we can do 10%, no doubt", "given"],
+  ["We can do 10%, no stress", "We can do 10%, no stress", "given"],
+  ["Sure, we can do 10%, no problemo", "Sure, we can do 10%, no problem", "given"],
+  ["No prob, we can do 10%", "No problem, we can do 10%", "given"],
+  ["We can only do 10%", "We can only do 10%", "given"],
+  ["Sorry, we can only do 10%", "Sorry, we can only do 10%", "open"],
+  ["Solo podemos hacer el 10%", "We can only do 10%", "given"],
+  ["Yes, we do 10% for all Massage Club clients", "Yes, we do 10% for all Massage Club clients", "given"],
+  ["Hi! Yes we can do el 10% para vosotros", "Hi! Yes we can do the 10% for you", "open"],
+  ["Ok perfect, 10% discount for the client", "Ok perfect, 10% discount for the client", "given"],
+  ["10% is fine", "10% is fine", "given"],
+  ["Ok 10%", "Ok 10%", "given"],
+  ["Te lo dejo en un 10%", "I'll leave it at 10% for you", "given"],
+  ["We can do 10% until December", "We can do 10% until December", "open"],
+  ["Sorry for the late reply. Yes ok", "Sorry for the late reply. Yes ok", "notno"],
+  ["Lo siento por la tardanza. Sí, perfecto", "Sorry for the delay. Yes, perfect", "notno"],
+  ["Sorry!! Yes we can", "Sorry!! Yes we can", "notno"],
+  ["Hi, sorry for the wait. Yes 18:00 ok", "Hi, sorry for the wait. Yes 18:00 ok", "yes"],
+  ["Sorry for the late answer. Yes, we can do 10%", "Sorry for the late answer. Yes, we can do 10%", "given"],
+  ["No hay inconveniente, a las 18:00 perfecto", "No problem, 18:00 is perfect", "yes"],
+  ["No tenemos problema, a las 18 bien", "We have no problem, 18 is fine", "yes"],
+  ["Yes we have 18:00. No hay parking cerca", "Yes we have 18:00. There's no parking nearby", "yes"],
+  ["Sí, a las 18:00. No tenemos datáfono, solo efectivo", "Yes, at 18:00. We have no card machine, cash only", "yes"],
+  ["Sí, masaje completo de 60 min a las 18:00", "Yes, full-body massage of 60 min at 18:00", "yes"],
+  ["Sí, a las 18:00. Estamos casi completos, así que mejor confirmar pronto", "Yes, at 18:00. We're almost full, so better to confirm soon", "yes"],
+  ["Yes at 18:00, imposible antes", "Yes at 18:00, impossible any earlier", "yes"],
+  ["Os hacemos el 10%, el 15% no podemos", "We give you 10%, the 15% we can't", "open"],
+  ["No podemos hacer el 15%, pero sí el 10%", "We can't do 15%, but yes the 10%", "open"],
+  ["El 15% no, pero el 10% sí os lo hacemos", "Not 15%, but the 10% yes, we do it for you", "open"],
+  ["We can't do 15% but we can do 10%", "We can't do 15% but we can do 10%", "open"],
+  ["Os hacemos el 10% (antes hacíamos el 15%)", "We give you 10% (we used to do 15%)", "open"],
+  ["Os hacemos el 15% en lugar del 10%", "We give you 15% instead of 10%", "open"],
+  ["Precio 60€ + 21% de IVA, os hacemos el 10%", "Price 60 EUR + 21% VAT, we give you 10%", "open"],
+  ["45€ con el 10%, 50€ sin él", "45 EUR with the 10%, 50 EUR without it", "open"],
+  ["Con el 10% queda en 54€, sin el 10% serían 60€", "With the 10% it comes to 54 EUR, without the 10% it would be 60 EUR", "open"],
+  ["50€ sin descuento, 45€ con el 10%", "50 EUR without discount, 45 EUR with the 10%", "open"],
+  ["Precio normal 60€. Con el 10% para Massage Club, 54€.", "Normal price 60 EUR. With the 10% for Massage Club, 54 EUR.", "open"],
+  ["A las 18 no, pero a las 20:00 os hacemos el 10%", "Not at 18, but at 20:00 we give you 10%", "open"],
+  ["Os hacemos el 10%, no hay de qué", "We give you 10%, you're welcome", "given"],
+  ["Sí, os hacemos el 10% y no hay que pagar señal", "Yes, we give you 10% and there is no deposit to pay", "given"],
+  ["Claro, os hacemos el 10%, ¡no faltaba más!", "Of course, we give you 10%, it goes without saying!", "given"],
+  ["Sí, os hacemos el 10%. No dudéis en escribirnos", "Yes, we give you 10%. Don't hesitate to write to us", "given"],
+  ["Os hacemos el 10%, nada que agradecer", "We give you 10%, nothing to thank us for", "given"],
+  ["We can do 10%, why not", "We can do 10%, why not", "given"],
+  ["Sorry for the late reply! Yes, 18:00 works", "Sorry for the late reply! Yes, 18:00 works", "yes"],
+  ["Lo siento por la espera. Sí, a las 18:00", "Sorry for the wait. Yes, at 18:00", "yes"],
+  ["Sí, tenemos hueco, no hay que pagar por adelantado", "Yes, we have a slot, there is no need to pay in advance", "yes"],
+  ["Sí, podemos a las 18:00. No hay que traer nada", "Yes, we can at 18:00. There is no need to bring anything", "yes"],
+  ["Sí, a las 18:00, no hay ningún inconveniente", "Yes, at 18:00, there is no inconvenience at all", "yes"],
+  ["Claro, no tenemos ningún inconveniente", "Of course, we have no problem with it", "yes"],
+  ["Sí, os esperamos a las 18:00. Lo siento, no vi el mensaje antes", "Yes, we'll expect you at 18:00. Sorry, I didn't see the message earlier", "yes"],
+];
+
+// ---------------------------------------------------------------------------
 // 6. What a studio's words say (relay.ts), and parity with the live handler.
 // ---------------------------------------------------------------------------
 const SP = { parseOfferedTime: C.parseOfferedTime, parseQuotedPrice: C.parseQuotedPrice, strongSpanish: C.strongSpanish, studioGenderReply: C.studioGenderReply, AUTOREPLY_RE: C.AUTOREPLY_RE, HOURS_STATEMENT_RE: C.HOURS_STATEMENT_RE, stopIntent: K.stopIntent, bajaIntent: (t) => LR.letterBajaIntent(t) || LR.BAJA_ONLY_RE.test(t) };
@@ -753,6 +1095,27 @@ const FIX = [
   const gate = hs.indexOf('const pct = pctSeen !== null && pctRead && pctRead.stance === "given" && pctRead.pct === pctSeen ? pctSeen : null;');
   const writes = [hs.indexOf("discount_pct: pct"), hs.indexOf("mc_discount_pct: pct"), hs.indexOf("await awardWinner(rqrow, partner, from, pct)")];
   check(GL, "handleStudioReply: parseDiscount is read once, and every discount write and award is after the gate", [(hs.match(/parseDiscount\(/g) || []).length, gate > 0, writes.every((i) => i > gate), (hs.match(/(?<!mc_)discount_pct:/g) || []).length, (hs.match(/mc_discount_pct:/g) || []).length], [1, true, true, 1, 1]);
+  // ---- 16.L The adversary round, on the live handler ----
+  const GA = "16.L live: no adversary message gives a discount";
+  for (const t of [...new Set(ADV_GIVEN.map(([x]) => x))]) {
+    const l = await live(t);
+    check(GA, `${JSON.stringify(t)}: no discount_pct, no offer_note, no mc_discount_pct, no award on it`, [l.discount_pct, l.offer_note, l.mc, l.mcAt, l.awardPct], [null, null, null, null, null]);
+  }
+  // An hour other than the one asked: handled as the same words without the
+  // percentage (their own hour goes to the customer, with no discount).
+  for (const [t, bare] of [["Sí, a las 19:00, os hacemos el 10%", "Sí, a las 19:00"], ["Mejor a las 19:30, os hacemos el 10%", "Mejor a las 19:30"]]) {
+    const l = await live(t);
+    const b = await live(bare);
+    check(GA, `${JSON.stringify(t)} is handled as ${JSON.stringify(bare)}`, [l.discount_pct, l.awardPct, l.outcome, l.forward, l.said], [null, null, b.outcome, b.forward, b.said]);
+  }
+  // The ones now read as given: written, saved for the studio and awarded.
+  for (const [t] of ADV_OTHER.filter(([, , w]) => w === "given")) {
+    const l = await live(t);
+    const want = RB.parseDiscount(t);
+    check(GA, `${JSON.stringify(t)}: given, written, saved and awarded at ${want}`, [l.discount_pct, l.mc, !!l.mcAt, l.awardPct, l.cards.filter((c) => /not taken as a discount/.test(c.subject || "")).length], [want, want, true, want, 0]);
+  }
+  // The hour asked is read from the row the discount would be written on.
+  check(GA, "handleStudioReply reads the asked hour before the gate and passes it", [/relayDiscountRead\(freeText, pctAsk\)/.test(hs), hs.indexOf("pctAsk = ") > 0 && hs.indexOf("pctAsk = ") < gate], [true, true]);
 }
 
 // ---------------------------------------------------------------------------
@@ -1630,7 +1993,9 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
   // 1. A percentage counts as given only in a positive phrase. Before:
   // parseDiscount's figure was taken whatever the words around it said.
   const G = "14.1 discount: given only in a positive phrase";
-  const stance = (t) => (R.relayDiscountStance ? R.relayDiscountStance(t) : "(none)");
+  // The ask is Thursday 26 Nov at 18:00, as in facts(); an hour other than the
+  // one asked makes a percentage unclear (relayDiscountRead point 7).
+  const stance = (t) => (R.relayDiscountStance ? R.relayDiscountStance(t, "18:00") : "(none)");
   // 24 Nov (made strict, group 15): "un 10% de descuento", "Aplicamos el
   // 10%", "No podemos a las 18, pero a las 19 sí, con el 10%" and "Os hacemos
   // el 10%, no más" were given here; they are unclear now (in NOT below).
@@ -1866,7 +2231,7 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
 // ---------------------------------------------------------------------------
 {
   const G = "15 discount stance";
-  const read = (t) => (R.relayDiscountRead ? R.relayDiscountRead(t) : { stance: "(none)", why: "", pct: null });
+  const read = (t) => (R.relayDiscountRead ? R.relayDiscountRead(t, "18:00") : { stance: "(none)", why: "", pct: null });
   const FIX15 = [
     // The ones asked for, with the stance each must have.
     ["Sí a las 18:00. Normalmente hacemos el 10% pero hoy no", ["unclear", "refused"]],
@@ -1896,7 +2261,7 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
     ["With the 10% it is 45 euros", ["given"]],
     ["Hola! Sí, os hacemos el 10% encantados", ["given"]],
     ["Vale, el 10%", ["given"]],
-    ["No podemos a las 18. A las 19 sí, y os hacemos el 10%", ["given"], "the no is in an earlier sentence, about the hour"],
+    ["No podemos a las 18. A las 19 sí, y os hacemos el 10%", ["unclear"], "24 Nov, adversary round: was given, but the live path offers the asked hour, so it would have offered the declined 18:00 at 10%; an hour other than the one asked makes it unclear"],
     // Our own, not given.
     ["Os hacemos el 10% la próxima vez", ["unclear"]],
     ["El 10% es para socios", ["unclear"]],
@@ -1927,7 +2292,7 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
     ["Os dejamos el 10%. No tenemos hueco a las 18, solo a las 19.", ["unclear"]],
     ["Os hacemos el 10% siempre que paguen en efectivo", ["unclear"]],
     ["We usually do 10%", ["unclear"]],
-    ["Sorry for the delay, we can do 10%", ["unclear"]],
+    ["Sorry for the delay, we can do 10%", ["given"], "24 Nov, adversary round: an apology for the wait is about the wait, not the discount"],
     ["Nunca hacemos el 10%", ["refused"]],
     ["Os hacemos el 10% en la segunda sesión", ["unclear"]],
     ["Le hacemos el 10% si viene otra vez", ["unclear"]],
@@ -1970,7 +2335,7 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
     check(G, `a reason exactly when not given: ${JSON.stringify(t)}`, r.stance === "given" ? r.why === "" && r.pct !== null : r.why.length > 0, true);
   }
   check(G, "at least 30 fixtures of our own, both ways", [FIX15.length - 13 >= 30, FIX15.slice(13).some(([, w]) => w.includes("given")), FIX15.slice(13).some(([, w]) => !w.includes("given"))], [true, true, true]);
-  check(G, "relayDiscountStance is relayDiscountRead's stance", FIX15.every(([t]) => R.relayDiscountStance(t) === read(t).stance), true);
+  check(G, "relayDiscountStance is relayDiscountRead's stance", FIX15.every(([t]) => R.relayDiscountStance(t, "18:00") === read(t).stance), true);
   // Every reason and the note shown to Jordan: no dash, English beside Spanish.
   const notes = FIX15.map(([t]) => read(t)).filter((r) => r.stance !== "given").map((r) => R.relayDiscountNote(10, r));
   check(G, "the note to Jordan: no dash, names the figure, the Spanish example has its English", [notes.some(dash), notes.every((n) => /They wrote 10%/.test(n)), notes.filter((n) => /os hacemos el 10%/.test(n)).every((n) => /"os hacemos el 10%" \(EN: "we give you 10%"\)/.test(n))], [false, true, true]);
@@ -1999,6 +2364,54 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
     console.log("| # | Studio text | Stance | Why (when not given) |\n|---|---|---|---|");
     table.forEach((r, i) => console.log(`| ${i + 1} | ${r.t.replace(/\|/g, "/")} | ${r.stance} | ${[r.why, r.note].filter(Boolean).join("; ")} |`));
   }
+}
+
+// ---------------------------------------------------------------------------
+// 16. The adversary round (24 Nov): relay.ts and the relay plan. Word lists
+// alone always miss a word, so given also needs every other word to be
+// harmless and every hour to be the one asked (relayDiscountRead 6 and 7).
+// ---------------------------------------------------------------------------
+{
+  const G = "16 adversary round";
+  const read = (t) => R.relayDiscountRead(t, "18:00");
+  const seen = new Set();
+  for (const [t, en] of ADV_GIVEN) {
+    if (seen.has(t)) continue;
+    seen.add(t);
+    const r = read(t);
+    const p = R.studioRelayPlan(t, facts(), SP);
+    const acts = R.studioActions(p, facts());
+    const wy = R.studioWrites("yes", p, facts(), "NOW", "[s]", t);
+    const wr = R.studioWrites("rate", p, facts(), "NOW", "[s]", t);
+    check(G, `not given: ${JSON.stringify(t)} (EN: ${JSON.stringify(en)})`, [r.stance !== "given", r.why.length > 0, p.pct, p.kinds.includes("discount"), p.pctSeen === null || p.pctBlocked, acts.includes("rate"), wy?.dispatch?.discount_pct, wr], [true, true, null, false, true, false, undefined, null], `got ${r.stance} (${r.why}); kinds ${p.kinds}`);
+  }
+  // Every reason Jordan can be shown: no dash, and the note names the figure.
+  const notes = [...seen].map((t) => read(t)).filter((r) => r.stance !== "given").map((r) => R.relayDiscountNote(10, r));
+  check(G, "every note to Jordan: no dash, names the figure", [notes.some(dash), notes.every((n) => /They wrote 10%/.test(n))], [false, true]);
+  for (const [t, en, want] of ADV_OTHER) {
+    const r = read(t);
+    const no = R.relayStudioNo(t);
+    const p = R.studioRelayPlan(t, facts(), SP);
+    const label = `${want}: ${JSON.stringify(t)} (EN: ${JSON.stringify(en)})`;
+    const note = `got ${r.stance} (${r.why}); relayStudioNo ${no}; kinds ${p.kinds}`;
+    if (want === "given") check(G, label, [r.stance, r.pct, no, p.kinds.includes("discount"), p.kinds.includes("no")], ["given", RB.parseDiscount(t), false, true, false], note);
+    else if (want === "yes") check(G, label, [no, p.kinds.includes("no"), p.kinds.includes("yes_ask"), p.time], [false, false, true, "18:00"], note);
+    else if (want === "notno") check(G, label, [no, p.kinds.includes("no")], [false, false], note);
+    else if (want === "unclear") check(G, label, r.stance, "unclear", note);
+    else check(G, `left open, never given: ${JSON.stringify(t)} (EN: ${JSON.stringify(en)})`, r.stance !== "given" && !p.kinds.includes("discount"), true, note);
+  }
+  // Still given: friendly emoji, a price, the booking's own words.
+  for (const t of ["Os hacemos el 10% 👍", "Os hacemos el 10% 😊🙏", "Os hacemos el 10% de 60€", "Le hacemos el 10% a la clienta", "Sí, os hacemos el 10%. Os esperamos a las 18:00, gracias"]) check(G, `given: ${JSON.stringify(t)}`, read(t).stance, "given");
+  // A no-problem phrase is not a yes to the slot: "Vale, no pasa nada" (EN:
+  // "OK, no worries") is how a studio answers a stand-down. And "imposible
+  // antes" (EN: "impossible earlier") is set aside only at the end of a clause.
+  check(G, "a stand-down answer is not a yes", R.studioRelayPlan("Vale, no pasa nada", facts(), SP).kinds.includes("yes_ask"), false);
+  check(G, "\"Imposible antes de mañana\" (EN: \"Impossible before tomorrow\") is still a no", R.relayStudioNo("Imposible antes de mañana"), true);
+  // An apology for the wait is still a no when nothing in the message says yes.
+  for (const t of ["Lo siento por la tardanza", "Sorry for the delay, we are full", "Lo siento por la espera, estamos completos", "Sorry! We are fully booked", "Sorry, we can't"]) check(G, `still a no: ${JSON.stringify(t)}`, R.relayStudioNo(t), true);
+  // Every hour written must be the hour asked; with no hour asked, any hour makes it unclear.
+  check(G, "the hour asked", [R.relayDiscountStance("Sí, a las 18:00, os hacemos el 10%", "18:00"), R.relayDiscountStance("Sí, a las 18, os hacemos el 10%", "18:00"), R.relayDiscountStance("Sí, a las 18:00, os hacemos el 10%", "19:00"), R.relayDiscountStance("Sí, a las 18:00, os hacemos el 10%", ""), R.relayDiscountStance("Sí, os hacemos el 10%", ""), R.relayDiscountStance("Sí, 12.50€ con el 10%", "")], ["given", "given", "unclear", "unclear", "given", "given"]);
+  check(G, "the relay plan reads it against the request's own hour", [R.studioRelayPlan("Sí, a las 19:00, os hacemos el 10%", facts(), SP).pct, R.studioRelayPlan("Sí, a las 19:00, os hacemos el 10%", facts({ askTime: "19:00" }), SP).pct], [null, 10]);
 }
 
 // ---------------------------------------------------------------------------

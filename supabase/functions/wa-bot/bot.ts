@@ -2734,8 +2734,27 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // discount. Any other is handled as a reply with no discount (the price,
     // yes and time steps below run unchanged) and Jordan gets a card with the
     // percentage seen and why it was not taken. Buttons never come here.
+    // v221 (24 Nov, adversary round): relayDiscountRead also needs every other
+    // word to be harmless and every hour written to be the hour asked, because
+    // awardWinner offers the customer exactTime(req): "No podemos a las 18. A
+    // las 19 sí, y os hacemos el 10%" (EN: "We can't at 18. At 19 yes, and we
+    // give you 10%") would have offered the 18:00 they declined, at 10%. The
+    // hour asked is that of the row the discount would be written on (the
+    // same query as below); unread, it is "" and any hour makes it unclear.
     const pctSeen = parseDiscount(freeText);
-    const pctRead = pctSeen !== null ? relayDiscountRead(freeText) : null;
+    let pctAsk = "";
+    if (pctSeen !== null) {
+      try {
+        const sinceA = new Date(Date.now() - 48 * 3600e3).toISOString();
+        const ad = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted)&created_at=gte.${sinceA}&order=created_at.desc&limit=1&select=request_id`, { headers: H() }).then((x) => x.json()).catch(() => []);
+        const arid = Array.isArray(ad) && ad[0] ? Number(ad[0].request_id) || 0 : 0;
+        if (arid) {
+          const aq = await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?id=eq.${arid}&limit=1&select=time1,proposed_time`, { headers: H() }).then((x) => x.json()).catch(() => []);
+          pctAsk = Array.isArray(aq) && aq[0] ? exactTime(aq[0]) : "";
+        }
+      } catch (e) { console.log("[studio] asked hour unread", String(e)); }
+    }
+    const pctRead = pctSeen !== null ? relayDiscountRead(freeText, pctAsk) : null;
     const pct = pctSeen !== null && pctRead && pctRead.stance === "given" && pctRead.pct === pctSeen ? pctSeen : null;
     if (pctSeen !== null && pct === null) await discountNotTakenCard(partner, from, freeText, pctSeen, pctRead).catch((e) => console.log("[studio] discount card failed", String(e)));
     if (pct !== null) {

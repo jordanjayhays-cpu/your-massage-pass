@@ -231,36 +231,62 @@ export type StudioPlan = { kinds: string[]; time: string; price: number | null; 
 // discount costs a little; a false one breaks the rule. Unclear means no
 // discount_pct, no mc_discount_pct, no award on it, and Jordan is shown the
 // percentage seen and why (relayDiscountNote).
+// 24 Nov, after the adversary round (tests/relay.mjs group 16): a word list
+// always misses a word. "Os hacemos el 10%. Uy perdona, me he equivocado de
+// chat" (EN: "We give you 10%. Oops sorry, I got the wrong chat"), "Igual os
+// podemos hacer el 10%" (EN: "Maybe we can give you 10%"), "Son 50€ y le
+// aplicamos el 21% de IVA" (EN: "It's 50 EUR and we apply 21% VAT") and "Le
+// hacemos el 10% la sig vez" (EN: "We give her 10% next time") were all given.
+// So given now also needs every other word of the message to be one this
+// reading knows is harmless (point 6), and an hour in it to be the hour asked
+// (point 7). The word lists stay, to name the reason for Jordan.
 //   1. The words that only look like a no come out first: "no hay problema"
-//      (EN: "no problem"), "sin problema" (EN: "no problem"), "no pasa nada"
-//      (EN: "it's fine"), "no problem", "no worries". "Por supuesto" (EN: "of
-//      course") and "claro que sí" (EN: "of course") read as a plain yes.
-//   2. What is read starts at the first sentence that holds the percentage
-//      and runs to the end of the message. A sentence before it is about
-//      something else ("No podemos a las 18. A las 19 sí, os hacemos el 10%"
-//      (EN: "We can't at 18. At 19 yes, we give you 10%") is given).
-//   3. A negation or retraction anywhere in that span (no, sin, ni, tampoco,
-//      nada, ningún, imposible, nunca, not, can't, without, never; EN: no,
-//      without, nor, neither, nothing, none, impossible, never) makes it not
-//      given, whatever "pero", "but", "y", "and", "aunque" or "though" stands
-//      between them. It is "refused" when the negation is in the same clause
-//      as the percentage, or comes after it with no hour or day word in its
-//      clause ("Os hacemos el 10%. Bueno no, perdona, no podemos." (EN: "We
-//      give you 10%. Well no, sorry, we can't.")); otherwise "unclear" (a no
-//      before it in the same sentence, or a no about an hour after it: "Os
-//      hacemos el 10%, pero no a las 18" (EN: "We give you 10%, but not at
-//      18")). "Lo siento" and "sorry" anywhere in the span make it unclear.
-//   4. A deferral, a habit or a condition makes it unclear: "la próxima vez"
-//      (EN: "next time"), "otra ocasión" (EN: "another occasion"), "cuando
-//      vuelva" (EN: "when they come back"), "la segunda" (EN: "the second
-//      one"), "socios" or "miembros" (EN: "members"), "si repite" (EN: "if
-//      they come back"), "solo entre semana" (EN: "weekdays only"), "a
-//      partir de" or "desde el" (EN: "from"), "más adelante" (EN: "later"),
-//      "normalmente" or "habitualmente" (EN: "usually": habitual practice is
-//      not a written offer for this booking), "haríamos" or "podríamos" (EN:
-//      "we would", "we could"), "lo consulto" (EN: "I'll check"), next time,
-//      members, if, only, usually, could, would. So does a question about it,
-//      or two different percentages.
+//      (EN: "no problem"), "sin problema" (EN: "no problem"), "no hay
+//      inconveniente" (EN: "no trouble"), "no pasa nada" (EN: "it's fine"),
+//      "cómo no" (EN: "of course"), "no hay de qué" (EN: "you're welcome"),
+//      "no problem", "no worries", "don't worry", "why not". "Por supuesto"
+//      (EN: "of course"), "claro que sí" (EN: "of course") and "sí que sí" (EN:
+//      "yes, yes") read as a plain yes. Words that are neither a yes nor a no
+//      are set aside: an apology for the wait ("perdona la tardanza" (EN:
+//      "sorry for the delay")), "no hay parking" (EN: "there is no parking"),
+//      "no hay que pagar señal" (EN: "no deposit to pay"), "masaje completo"
+//      (EN: "full-body massage"), "solo esta vez" (EN: "only this time").
+//   2. Every sentence is read. A no in a sentence before the percentage
+//      makes it unclear ("No tenemos hueco. Os hacemos el 10%." (EN: "We have
+//      no slot. We give you 10%.") has no booking to discount).
+//   3. A negation anywhere from the sentence that holds the percentage to the
+//      end (no, nop, sin, ni, tampoco, tp, nada, ningún, imposible, nunca,
+//      not, can't, without, never) makes it not given, whatever "pero",
+//      "but", "y", "and", "aunque" or "though" stands between them. It is
+//      "refused" when the negation is in the same clause as the percentage,
+//      or comes after it with no hour or day word in its clause ("Os hacemos
+//      el 10%. Bueno no, perdona, no podemos." (EN: "We give you 10%. Well no,
+//      sorry, we can't.")); otherwise "unclear" ("Os hacemos el 10%, pero no a
+//      las 18" (EN: "We give you 10%, but not at 18")).
+//   4. Unclear, each with its reason: a correction, a joke or a retraction
+//      ("perdona" (EN: "sorry"), "me equivoqué" (EN: "I made a mistake"), "es
+//      broma" (EN: "just kidding"), "tarifa normal" (EN: "normal rate")); a
+//      tax, deposit, surcharge, commission or tip ("IVA" (EN: "VAT"), "señal"
+//      (EN: "deposit"), "recargo" (EN: "surcharge"), "comisión" (EN:
+//      "commission"), "un 10% más" (EN: "10% more")); something else
+//      ("productos" (EN: "products"), "tarjeta regalo" (EN: "gift card"), "el
+//      de 90" (EN: "the 90-minute one"), "su amiga" (EN: "her friend")); a
+//      deferral or a date ("la próxima vez" (EN: "next time"), "la sig vez"
+//      (EN: "next time"), "el mes que viene" (EN: "next month"), "en enero"
+//      (EN: "in January"), "desde el lunes" (EN: "from Monday"), "en la 2da"
+//      (EN: "at the 2nd")); members, regulars or a pack; habit ("normalmente"
+//      (EN: "usually")); a hedge ("igual" (EN: "maybe"), "creo" (EN: "I
+//      think"), "en principio" (EN: "in principle"), would, could, probably);
+//      a condition ("si nos deja una reseña" (EN: "if they leave us a
+//      review"), "en efectivo" (EN: "in cash"), "los martes" (EN: "on
+//      Tuesdays"), "por la mañana" (EN: "in the morning"), "a estudiantes" (EN:
+//      "to students"), only, until, as long as); someone else still to agree
+//      or a check first ("lo consulto" (EN: "I'll check"), "tengo que
+//      preguntar a mi jefa" (EN: "I have to ask my boss"), "pendiente de
+//      confirmar" (EN: "pending confirmation"), "te aviso" (EN: "I'll let you
+//      know")); an apology ("lo siento" (EN: "sorry")); a limit ("no más" (EN:
+//      "no more"), "no acumulable" (EN: "cannot be combined")); a question
+//      about it; two different percentages.
 //   5. Given needs a phrase that gives it for THIS booking: "os/le/te hacemos
 //      el 10%" (EN: "we give you 10%"), "le dejamos un 10%" (EN: "we leave you
 //      10%"), "le aplicamos el 10%" (EN: "we apply 10% for you"), "le podemos
@@ -268,68 +294,119 @@ export type StudioPlan = { kinds: string[]; time: string; price: number | null; 
 //      "the 10%, we do it for you"), "con el 10% queda en 45€" (EN: "with the
 //      10% it comes to 45 EUR"), "45€ con el 10%" (EN: "45 EUR with the
 //      10%"), "sí al 10%" (EN: "yes to the 10%"), "sí, el 10%" (EN: "yes, the
-//      10%"), "incluido el 10%" (EN: "the 10% included"), "we can do 10%",
-//      "we'll give you 10%", "with the 10% it is 45", "yes to the 10%".
-//      A percentage on its own ("un 10% de descuento" (EN: "a 10% discount"),
-//      "10% off") is unclear: it does not say they give it, and the ask itself
-//      names the 10%. So is a verb with no "os", "le" or "te" and no yes in
-//      front of it ("Aplicamos el 10%" (EN: "We apply 10%") can be their
-//      general policy); "Sí, aplicamos el 10%" (EN: "Yes, we apply 10%") is
-//      given.
+//      10%"), "el 10% sin problema" (EN: "the 10%, no problem"), "aceptamos el
+//      10%" (EN: "we accept the 10%"), "we can do 10%", "we'll give you 10%",
+//      "with the 10% it is 45", "yes to the 10%", "10% is fine". A percentage
+//      on its own ("un 10% de descuento" (EN: "a 10% discount"), "10% off")
+//      is unclear: it does not say they give it, and the ask itself names the
+//      10%. So is a verb with no "os", "le" or "te" and no yes in front of it
+//      ("Aplicamos el 10%" (EN: "We apply 10%") can be their general policy).
+//   6. And nothing else in the message but harmless words: a yes, a greeting
+//      or thanks, a price, the hour asked, "tenemos hueco" (EN: "we have a
+//      slot"), "os esperamos" (EN: "we expect you"), "de descuento" (EN:
+//      "off"), "para Massage Club" (EN: "for Massage Club"), articles,
+//      pronouns and the booking's own nouns (masaje, sesión, cita (EN:
+//      massage, session, appointment)). Any other word (a date, a length, a
+//      product, a person, a correction, a hedge, a typo of any of them) makes
+//      it unclear.
+//   7. An hour in the message that is not the hour asked makes it unclear.
+//      The live path offers the customer the asked hour (awardWinner), so
+//      "No podemos a las 18. A las 19 sí, y os hacemos el 10%" (EN: "We can't
+//      at 18. At 19 yes, and we give you 10%") would have offered the 18:00
+//      they declined, at 10%. With no hour asked, any hour makes it unclear.
 export type DiscountStance = "given" | "refused" | "unclear";
 export type DiscountRead = { stance: DiscountStance; why: string; pct: number | null };
 const PCT_WORDS = "cinco|diez|quince|veinte|veinticinco|treinta";
 // The percentage itself, written so it cannot be anything else.
 const PCT_ANCHOR_RE = new RegExp(`(\\d{1,2})\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:^|[^a-z])(${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|de\\s+(?:descuento|dto))|(?:descuento|dto)\\s+(?:del?|de\\s+un)\\s+(\\d{1,2}|${PCT_WORDS})(?![0-9a-z])`, "g");
 const PCT_WORD_N: Record<string, number> = { cinco: 5, diez: 10, quince: 15, veinte: 20, veinticinco: 25, treinta: 30 };
+const FIG = `(?:\\d{1,2}\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|percent))`;
 // A clause about the discount ("a las diez" (EN: "at ten") is not one).
-const PCT_MARK_RE = new RegExp(`\\d{1,2}\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:^|[^a-z])(?:descuento|descuentos|dto|discount|discounts|rebaja|rate)(?![a-z])|(?:^|[^a-z])(?:${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|de\\s+(?:descuento|dto))`);
+const PCT_MARK_RE = new RegExp(`\\d{1,2}\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:^|[^a-z])(?:descuento|descuentos|dto|desc|discount|discounts|rebaja|rate)(?![a-z])|(?:^|[^a-z])(?:${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|de\\s+(?:descuento|dto))`);
 // The text as these rules read it: an accented "sí" (yes) is kept apart from
-// "si" (if) as "si_", then accents go, then the words that only look like a
-// no become "~" and "of course" a yes.
-const NOT_A_NO_RE = /(^|[^a-z0-9_'])(no hay (?:ningun )?problemas?|sin (?:ningun )?problemas?|ningun problema|no pasa nada|no problem|not a problem|no worries|no te preocupes|no os preocupeis|no se preocupe|no se preocupen|sin compromiso)(?![a-z0-9'])/g;
-const OF_COURSE_RE = /(^|[^a-z0-9_'])(por supuesto|claro que si_?|of course)(?![a-z0-9'])/g;
+// "si" (if) as "si_", then accents go, then the words that are neither a yes
+// nor a no become "=", the words that only look like a no "~" and "of
+// course" a yes. A laughing or winking face is read as "jaja" (a joke), a
+// cross, a no-entry sign or a thumbs down as "no", a thinking face or a shrug
+// as "quizás" (EN: "maybe"); any other emoji but a friendly few is a word
+// this reading does not know (point 6).
+// An apology for the wait, and one for not seeing the message: about the
+// delay, not the discount or the slot.
+const DELAY_SORRY = "(?:(?:lo |le |te |os )?siento|lo sentimos|sentimos|perdon|perdona|perdone|perdonad|perdonen|disculpa|disculpe|disculpad|disculpen|disculpas|mil disculpas|sorry|so sorry|apologies)(?: mucho| muchisimo| so much)?\\s*,?\\s*(?:(?:por|for|x)\\s+)?(?:(?:el|la|the|my|our|mi|nuestra|nuestro|this|tanta)\\s+)?(?:retraso|tardanza|espera|demora|delay|late (?:reply|answer|response)|wait|waiting|delayed (?:reply|answer|response)|slow (?:reply|answer|response)|tardar(?: tanto)?|haber tardado|contestar tarde|responder tarde|no (?:contestar|responder|haber contestado|haber respondido) antes)";
+const SEEN_SORRY = "(?:lo siento|sorry|perdon|perdona|disculpa|disculpad|disculpe)\\s*,?\\s*(?:no (?:vi|habia visto|he visto|lei|habia leido) (?:el|tu|vuestro|su) mensaje(?: antes| hasta ahora)?|i (?:didn't|didnt|did not) see (?:the|your) message(?: earlier| before)?)";
+const NEUTRAL_RE = new RegExp(`(^|[^a-z0-9_'])(buenos dias|buenas tardes|buenas noches|buenas|no hay (?:parking|aparcamiento|ascensor)(?: cerca)?|no tenemos (?:datafono|tpv|parking|aparcamiento|ascensor)|no hay que (?:pagar|traer|llevar|abonar)(?: (?:nada|senal|ninguna senal|por adelantado))*|no hace falta (?:que |q )?(?:traiga|traigan|traigais|traer|llevar)(?: nada)?|no (?:tardeis|tardes|tarden|llegueis tarde|lleguen tarde|llegues tarde)|no (?:dudeis|dudes|dude|duden) en (?:escribirnos|contactarnos|llamarnos|preguntar|preguntarnos|escribir)|don'?t hesitate to (?:contact|write to|call|ask|message) us|(?:masaje|cuerpo|tratamiento) completo|casi (?:complet|llen)[oa]s?|imposible (?:antes|mas temprano|mas pronto)(?=\s*(?:[,.!;)]|$))|(?:xo |pero )?(?:solo|solamente) (?:por )?esta vez|just this once|only this time|${DELAY_SORRY}|${SEEN_SORRY})(?![a-z0-9'])`, "g");
+const NOT_A_NO_RE = /(^|[^a-z0-9_'])(no hay (?:ningun )?(?:problema+s?|pb|prob|probl|problem|problemo|inconvenientes?|fallo|drama|lio)|no es (?:ningun )?(?:problema|molestia)|no tenemos (?:ningun )?(?:problemas?|inconvenientes?)|sin (?:ningun (?:tipo de )?)?(?:problema+s?|inconvenientes?)(?: ningun[oa]?)?|ningun (?:problema|inconveniente)|no pasa nada|no problem(?:o|s)?|not a problem|no probs?|no worries|no te preocupes|no os preocupeis|no se preocupe|no se preocupen|don'?t worry|no stress|no doubt|why not|no faltaria mas|no faltaba mas|como no(?=\s*(?:[,.!;)]|$))|no hay de que|nada que agradecer|de nada|sin compromiso)(?![a-z0-9'])/g;
+const OF_COURSE_RE = /(^|[^a-z0-9_'])(por supuesto|claro (?:que|q) si_?|si_? (?:que|q) si_?|of course)(?![a-z0-9'])/g;
+const JOKE_FACE_RE = /[\u{1F602}\u{1F923}\u{1F605}\u{1F606}\u{1F61C}\u{1F61D}\u{1F61B}\u{1F643}\u{1F60F}\u{1F609}\u{1F92A}\u{1F92D}]/gu;
+const NO_FACE_RE = /[\u{274C}\u{274E}\u{2716}\u{1F6AB}\u{26D4}\u{1F44E}\u{1F645}]/gu;
+const HEDGE_FACE_RE = /[\u{1F914}\u{1F937}\u{1F62C}\u{1F644}\u{1F928}\u{1F615}\u{1F61F}\u{1F610}\u{1F611}]/gu;
+// The friendly few (thumbs up, OK hand, smiles, thanks, a tick, hearts, a
+// wave, a massage), with their modifiers.
+const SAFE_EMOJI = new Set([..."\u{1F44D}\u{1F44C}\u{1F642}\u{1F60A}\u{1F600}\u{1F603}\u{1F604}\u{1F601}\u{1F64F}\u{2705}\u{1F4AA}\u{2764}\u{2665}\u{1F338}\u{2728}\u{1F44B}\u{1F917}\u{1F60D}\u{1F970}\u{1F486}\u{1F33F}\u{263A}\u{1F49A}\u{1F499}\u{1F49C}\u{1F9E1}\u{1F49B}\u{1F64C}\u{1F44F}\u{1F389}\u{1F60C}\u{2640}\u{2642}"]);
 function stanceText(text: string): string {
-  const s = String(text || "").replace(/[’‘`´]/g, "'").replace(/(^|[^A-Za-zÀ-ÿ])[sS][íÍ](?![A-Za-zÀ-ÿ])/g, "$1si_ ");
-  return norm(s).replace(NOT_A_NO_RE, "$1 ~ ").replace(OF_COURSE_RE, "$1 si_ ");
+  const s = String(text || "").replace(/[’‘`´]/g, "'").replace(JOKE_FACE_RE, " jaja ").replace(NO_FACE_RE, " no ").replace(HEDGE_FACE_RE, " quizas ").replace(/(^|[^A-Za-zÀ-ÿ])[sS][íÍ](?![A-Za-zÀ-ÿ])/g, "$1si_ ");
+  return norm(s).replace(/(^|[^a-z])como mucho(?![a-z])/g, "$1como maximo").replace(NEUTRAL_RE, "$1 = ").replace(NOT_A_NO_RE, "$1 ~ ").replace(OF_COURSE_RE, "$1 si_ ");
 }
 // Sentences: a full stop that is not inside a number ("18.15", "76.50").
 const sentencesOf = (t: string) => t.split(/(?<=[!?;\n])|(?<=\.)(?!\d)/).map((s) => s.trim()).filter(Boolean);
 // Clauses, only to tell "refused" from "unclear": a comma not inside a number,
 // brackets, a colon not inside an hour, and the joining words.
-const CLAUSE_SPLIT_RE = /,(?!\d)|\(|\)|:(?!\d)|(?:^|\s)(?:pero|but|y|and|aunque|though|although|sino|however|sin embargo)(?=\s|$)/;
-const PCT_NO_RE = /(^|[^a-z0-9'_])(no|sin|ni|nada|ningun|ninguno|ninguna|tampoco|imposible|nunca|jamas|demasiado|mucho|not|without|cannot|can't|cant|couldn't|couldnt|don't|dont|doesn't|doesnt|didn't|didnt|won't|wont|isn't|isnt|aren't|arent|wasn't|wasnt|unable|impossible|never|nothing|none|neither|nor|too much|too high|no longer)(?![a-z0-9'])/;
+const CLAUSE_SPLIT_RE = /,(?!\d)|\(|\)|:(?!\d)|(?:^|\s)(?:pero|xo|but|y|and|aunque|though|although|sino|however|sin embargo)(?=\s|$)/;
+const PCT_NO_RE = /(^|[^a-z0-9'_])(no+|nop|nope|nah|nanai|sin|ni|nada|ningun|ninguno|ninguna|tampoco|tampco|tampoc[a-z]*|tp|imposible|nunca|jamas|demasiado|mucho|ni hablar|para nada|not|without|cannot|can't|cant|couldn't|couldnt|don't|dont|doesn't|doesnt|didn't|didnt|won't|wont|isn't|isnt|aren't|arent|wasn't|wasnt|unable|impossible|never|nothing|none|neither|nor|too much|too high|no longer|no way)(?![a-z0-9'])/;
 const PCT_SORRY_RE = /(^|[^a-z_])(lo siento|lo sentimos|siento|sentimos|lamentablemente|desgraciadamente|por desgracia|me temo|nos tememos|sorry|unfortunately|i'm afraid|im afraid|we're afraid)(?![a-z])/;
 // A no that sets a ceiling ("no más" (EN: "no more")) is not a no to it.
 const PCT_LIMIT_RE = /(^|[^a-z])(no mas|nada mas|ni uno mas|no more|not more|nothing more|maximo|como maximo|at most|tope|no acumulable|no combinable|not combinable|cannot be combined)(?![a-z])/;
 // An hour or a day in a clause with a no after the percentage: the no may be
 // about the hour, not the discount, so it is unclear, not refused.
 const PCT_TIME_RE = /\d{1,2}[:.h]\d{2}|\d{1,2}\s*h(?![a-z])|(^|[^a-z])(a las|las \d|hueco|huecos|hora|horas|horario|cita|citas|turno|tarde|tardes|noche|manana|mananas|hoy|dia|dias|semana|finde|fin de semana|lunes|martes|miercoles|jueves|viernes|sabado|domingo|slot|slots|time|times|hour|hours|today|tonight|tomorrow|morning|afternoon|evening|day|at \d)(?![a-z])/;
-// Point 4, in four kinds, each with its reason for Jordan.
-const PCT_LATER_RE = /(^|[^a-z_])(proxim[oa]s?|siguientes?|otra ocasion|otras ocasiones|otra vez|otra visita|otra reserva|otra cita|otro dia|otros dias|mas adelante|en adelante|futur[oa]s?|cuando (?:vuelv|veng|repit|reserv|regres)[a-z]*|segund[oa]s?|a partir del?|desde el|desde la|desde los|desde las|next|future|later|another time|another day|another visit|second|returning|repeat|from now on|starting|as of)(?![a-z])/;
-const PCT_MEMBERS_RE = /(^|[^a-z_])(socios?|socias?|miembros?|membresia|abonad[oa]s?|abonos?|bonos?|packs?|paquetes?|tarjeta de cliente|fidelidad|habituales|regulars|members?|membership|loyalty|card holders?)(?![a-z])/;
-const PCT_HABIT_RE = /(^|[^a-z_])(normalmente|habitualmente|generalmente|por lo general|en general|solemos|soleis|suele|suelen|a veces|usually|normally|generally|typically|sometimes)(?![a-z])/;
-const PCT_HEDGE_RE = /(^|[^a-z_])(depende|dependiendo|quizas?|tal vez|a lo mejor|puede que|intentaremos|intentamos|intentare|hariamos|haria|harian|podriamos|podria|podrian|dejariamos|dejaria|aplicariamos|aplicaria|dariamos|daria|pondriamos|ofreceriamos|maybe|perhaps|might|could|would|depends|depending)(?![a-z])/;
+// Point 4, each kind with its reason for Jordan.
+const PCT_RETRACT_RE = /(^|[^a-z_])(perdona|perdon|perdone|perdonad|perdonen|disculpa|disculpe|disculpad|me equivoque|me he equivocado|equivocad[oa]s?|equivocacion|me lie|me he liado|me lio|rectifico|rectificamos|rectificacion|corrijo|correccion|queria decir|quise decir|queriamos decir|olvida|olvidalo|olvidad|olvidadlo|olvide|anulo|anulamos|lo retiro|retiro lo|es broma|era broma|de broma|broma|jaja[a-z]*|jeje[a-z]*|jiji[a-z]*|haha[a-z]*|hehe[a-z]*|lol|just kidding|kidding|joking|jk|wrong chat|wrong person|wrong number|i meant|my mistake|mistake|scratch that|ignore that|correction|al final|tarifa normal|precio normal|normal price|normal rate|full price|precio completo|tarifa completa|era antes|era una promo|se acabo|se termino|ya termino|termino|terminado|terminada|acabado|acabada|caducad[oa]s?|expirad[oa]s?|expired|ended|is over|era para otr[oa]|otra clienta|otro cliente|espera|wait|hold on|dice mi|me dice|me dicen|me comenta)(?![a-z])/;
+const PCT_NOT_DISC_RE = new RegExp(`(^|[^a-z_])(iva|i\\.v\\.a|vat|tax|taxes|impuestos?|senal|deposit|deposito|fianza|adelantado|anticipo|prepago|prepay|prepayment|upfront|in advance|comision|comisiones|commission|commissions|recargos?|suplementos?|surcharges?|supplements?|propinas?|tips?|gratuity|aparte|a parte|on top|encima|cobramos|cobrar|cobra|charge|charged|extras?|plus)(?![a-z])|${FIG}\\s+(?:mas|more|extra)(?![a-z])`);
+const PCT_OTHER_RE = /(^|[^a-z0-9_])(productos?|products?|tarjetas? regalo|gift ?cards?|gift vouchers?|vouchers?|bonos? regalo|cheques? regalo|aceites?|cremas?|oils?|creams?|cosmetica|cosmetics|depilacion|waxing|tailandes|thai|facial(?:es)?|manicura|pedicura|tratamientos?|treatments?|otros? servicios?|other services?|amig[oa]s?|friends?|acompanante|parejas?|couples?|duo|dos personas|\d+ personas|two people|\d+ people|siendo (?:dos|tres|\d+)|por persona|per person|persona|\d{2,3}\s*-?\s*(?:min|mins|minutos|minute|minutes)|el de \d{2,3})(?![a-z0-9])/;
+const PCT_OTHER_HOUR_RE = /(^|[^a-z_])(otra hora|otro momento|other time|another hour|different time)(?![a-z])/;
+const PCT_LATER_RE = /(^|[^a-z0-9_])(prox[a-z]*|prosim[a-z]*|sig|sigte|sgte|siguientes?|pa la otra|la otra|en otra|otra ocasion|otras ocasiones|otra vez|otra visita|otra reserva|otra cita|otro dia|otros dias|a la vuelta|vuelta|(?:que|q) viene|mas adelante|en adelante|futur[oa]s?|cuando|en cuanto|una vez|segund[oa]s?|a partir|desde|dsd|tras|despues|luego|(?<!la |de )manana|mes|meses|ano|anos|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|navidad(?:es)?|reyes|semana santa|verano|invierno|primavera|otono|temporada|black friday|cyber monday|20\d\d|\d+(?:ª|º|a|o|er|era|da|do|ra|ro|nd|rd|th|st)|next|future|later|another time|another day|another visit|second|returning|repeat|from now on|from|starting|as of|once|when|whenever|after|afterwards|tomorrow|month|months|year|years|january|february|march|april|june|july|august|september|october|november|december|christmas|season)(?![a-z0-9])/;
+const PCT_MEMBERS_RE = /(^|[^a-z_])(socios?|socias?|miembros?|membresia|abonad[oa]s?|abonos?|bonos?|packs?|paquetes?|tarjeta de cliente|fidelidad|habituales|vip|regulars|members?|membership|loyalty|card holders?)(?![a-z])/;
+const PCT_HABIT_RE = /(^|[^a-z_])(normalmente|habitualmente|generalmente|por lo general|en general|solemos|soleis|suele|suelen|a veces|siempre|como siempre|usually|normally|generally|typically|sometimes|always)(?![a-z])/;
+const PCT_HEDGE_RE = /(^|[^a-z_])(depende|dependiendo|quizas?|kizas?|kiza|tal vez|a lo mejor|igual|lo mismo|puede que|puede|posiblemente|probablemente|seguramente|creo|creemos|supongo|suponemos|imagino|en principio|en teoria|teoricamente|ya veremos|veremos|a ver|no se|no estoy segur[oa]|intentaremos|intentamos|intentare|hariamos|haria|harian|podriamos|podria|podrian|dejariamos|dejaria|aplicariamos|aplicaria|dariamos|daria|pondriamos|ofreceriamos|maybe|perhaps|might|could|would|should|depends|depending|i think|we think|i guess|i suppose|i believe|probably|possibly|hopefully|likely|in principle|in theory|theoretically|we'll see|we will see|let's see|lets see|not sure)(?![a-z])/;
 // A condition. "si" with no accent and a word after it is "if" ("si nos deja
 // una reseña" (EN: "if they leave us a review")), unless the word is a yes
 // ("si claro" (EN: "yes, of course")) or "al" ("si al 10%" (EN: "yes to the
-// 10%")); a "sí" with its accent is read as yes (stanceText). Time windows and
-// groups are conditions too: "entre semana" (EN: "on weekdays"), "los martes"
-// (EN: "on Tuesdays"), "hasta las 16" (EN: "until 16"), "para estudiantes"
-// (EN: "for students"), "en la 2ª sesión" (EN: "at the second session").
-const PCT_IF_RE = /(^|[^a-z0-9_])(si (?!(?:claro|vale|perfecto|perfecta|ok|okay|genial|de acuerdo|si_?|al)(?![a-z]))[a-z]+|\d+\s*(?:ª|º|a|o|er|era)\s+(?:sesion|sesiones|visita|visitas|reserva|reservas|vez|cita|citas|session|visit|booking)|solo (?:los|las|entre|para|con|si|en|de|el|la|a|por|cuando|hoy|manana|este|esta|fines|festivos|primera|primer|lunes|martes|miercoles|jueves|viernes|sabado|domingo)|solamente|unicamente|exclusivamente|excepto|salvo|menos los|menos las|para (?:grupos|estudiantes|residentes|jubilados|parejas|empresas|ninos|menores|mayores)|en grupo|entre semana|fines? de semana|laborables|festivos|de (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo) a|los (?:lunes|martes|miercoles|jueves|viernes|sabados|domingos)|por las mananas|por las tardes|por las noches|hasta las|antes de las|despues de las|en horario|horario de|hora valle|horas valle|siempre que|siempre y cuando|con tal de|en caso de|a condicion|condicion|condiciones|como minimo|minimo|al menos|pagando|en efectivo|reservando|repitiendo|if|only|unless|except|for groups|for (?:students|couples|seniors|locals)|provided|as long as|subject to|at least|minimum|in cash|weekdays?|weekends?|on (?:mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)|mornings|afternoons|evenings|until|before|after|happy hour|off-peak|off peak)(?![a-z0-9])/;
-const PCT_PENDING_RE = /(^|[^a-z])(lo consulto|consultarlo|consultare|consultamos|consultar|lo pregunto|lo preguntare|preguntare|pregunto|lo miro|lo miramos|lo mirare|lo vemos|lo veo|lo hablo|lo hablamos|lo confirmo|te confirmo|os confirmo|le confirmo|confirmare|te digo|os digo|le digo|te dire|os dire|le dire|let me check|i'll check|ill check|we'll check|will check|check with|get back|let you know|confirm later|ask the owner|ask my)(?![a-z])/;
+// 10%")); a "sí" with its accent is read as yes (stanceText). Time windows,
+// days, payment, groups and reviews are conditions too: "entre semana" (EN:
+// "on weekdays"), "el martes" (EN: "on Tuesday"), "por la mañana" (EN: "in
+// the morning"), "hasta las 16" (EN: "until 16"), "con bizum" (EN: "by
+// Bizum"), "a estudiantes" (EN: "to students"), "con una reseña" (EN: "with a
+// review"), "en la 2ª sesión" (EN: "at the second session").
+const PCT_IF_RE = /(^|[^a-z0-9_])(si (?!(?:claro|vale|perfecto|perfecta|ok|okay|genial|de acuerdo|si_?|al)(?![a-z]))[a-z]+|\d+\s*(?:ª|º|a|o|er|era)\s+(?:sesion|sesiones|visita|visitas|reserva|reservas|vez|cita|citas|session|visit|booking)|solo (?:los|las|entre|para|pa|con|si|en|de|el|la|a|por|cuando|hoy|manana|este|esta|fines|festivos|primera|primer|lunes|martes|miercoles|jueves|viernes|sabado|domingo|clientes|clientas|socios|estudiantes|residentes)|solamente|unicamente|exclusivamente|excepto|salvo|menos|para (?:grupos|estudiantes|residentes|jubilados|parejas|empresas|ninos|menores|mayores|sesiones|masajes|dos|tres|\d+)|pa (?:grupos|estudiantes|residentes|jubilados|parejas|empresas|dos|\d+)|en grupo|entre semana|fines? de semana|finde|laborables|festivos?|(?:de|d) (?:lunes|martes|miercoles|jueves|viernes|sabado|domingo) a|lunes|martes|miercoles|jueves|viernes|sabados?|domingos?|mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?|(?:lun|mar|mie|jue|vie|sab|dom|mon|tue|wed|thu|fri|sat|sun)\s*-\s*(?:lun|mar|mie|jue|vie|sab|dom|mon|tue|wed|thu|fri|sat|sun)|por las? (?:mananas?|tardes?|noches?)|de (?:manana|tarde|noche)|mananas|tardes|noches|en horario|horario de|hora valle|horas valle|hasta|antes de|despues de|temporada (?:baja|alta)|low season|high season|siempre (?:que|q|y cuando)|con tal (?:de|que|q)|en caso de|a condicion|condicion|condiciones|como minimo|minimo|al menos|mas de \d+|pagando|pago|pagan|paguen|efectivo|metalico|bizum|tarjeta|transferencia|paypal|reservando|reserven|reserva anticipada|con antelacion|antelacion|repitiendo|registrad[oa]s|estudiantes?|universitari[oa]s|carnet|residentes|empadronad[oa]s|jubilad[oa]s|pensionistas|cupon(?:es)?|codigo|resenas?|estrellas|google|tripadvisor|instagram|a cambio|sujet[oa] a|if|only(?! (?:do|give|offer)(?![a-z]))|unless|except|for groups|for (?:students|couples|seniors|locals|residents|members|groups|bookings|sessions|\d+)|students?|residents?|locals|seniors|coupons?|code|reviews?|stars|provided|providing|so long as|as long as|assuming|on condition|conditions?|subject to|at least|minimum|over \d+|more than \d+|above \d+|cash|card payment|paying|pay|weekdays?|weekends?|mornings?|afternoons?|evenings?|nights?|in the (?:morning|afternoon|evening)|at night|until|till|before|after|happy hour|off-peak|off peak|in exchange|exchange|advance booking|book early|early booking)(?![a-z0-9])/;
+const PCT_PENDING_RE = /(^|[^a-z])(lo consulto|consult[a-z]*|lo pregunto|pregunt[a-z]*|lo miro|lo miramos|lo mirare|lo mire|mirarlo|mirar|miro|lo vemos|lo veo|lo hablo|lo hablamos|habl[a-z]*|confirm[a-z]*|te digo|os digo|le digo|t digo|te dire|os dire|le dire|te aviso|os aviso|le aviso|t aviso|aviso|avisamos|avisare|compruebo|comprob[a-z]*|pendiente[a-z]*|a falta de|aprueb[a-z]*|aprob[a-z]*|autori[a-z]*|decid[a-z]*|decide|llamame|llamadme|llameme|llamanos|jefa|jefe|jefes|encargad[oa]s?|duen[oa]s?|gerente|responsable|propietari[oa]s?|let me check|i'll check|ill check|we'll check|will check|check with|double check|checking|get back|let you know|ask the|ask my|let me ask|i'll ask|will ask|pending|approval|approve|tbc|call me|give me a call|manager|boss|owner|last word)(?![a-z])/;
+const PCT_UNCLEAR: Array<[RegExp, string]> = [
+  [PCT_RETRACT_RE, "they take it back, correct it, joke about it or say it was for someone else"],
+  [PCT_NOT_DISC_RE, "the percentage is a tax, a deposit, a surcharge, a commission or a tip, not a discount"],
+  [PCT_OTHER_RE, "it is for something else: products, a gift card, another service, another length or other people"],
+  [PCT_OTHER_HOUR_RE, "they turn down the hour asked"],
+  [PCT_PENDING_RE, "they say they will check first, or someone else still has to agree"],
+  [PCT_LATER_RE, "it is put off to another visit or a later date, not given for this booking"],
+  [PCT_MEMBERS_RE, "it is for members, regulars or a pack, not said for this booking"],
+  [PCT_HABIT_RE, "it is what they usually do, not a written offer for this booking"],
+  [PCT_HEDGE_RE, "it is only a maybe (would, could, perhaps, I think, it depends)"],
+  [PCT_IF_RE, "it comes with a condition"],
+  [PCT_SORRY_RE, "an apology (\"lo siento\" (EN: \"sorry\")) is in the message"],
+  [PCT_LIMIT_RE, "a limit or a small-print note comes with it"],
+];
+// Point 7: the hours written in the message, as HH:MM. A clock time, "a las
+// 18" (EN: "at 18"), "at 18" or "18h"; never a price ("12.50€").
+const HOUR_RE = /(?<![0-9:.,a-z])([01]?\d|2[0-3])\s*(?:[:.]|h)\s*([0-5]\d)(?![0-9])(?!\s*(?:€|eur|euros|e(?![a-z])))(?:\s*(?:h|hs|hrs|horas)(?![a-z]))?|(?<![a-z])(?:a las|a la|las|at|sobre las|hacia las|para las)\s+([01]?\d|2[0-3])(?![0-9]|[:.,]\d)(?!\s*(?:€|eur|euros|e(?![a-z])|%|\/|min|minutos|minutes|mins|personas|people|sesiones|sessions))\s*(?:h|hs|hrs|horas)?(?![a-z])|(?<![0-9:.,a-z])([01]?\d|2[0-3])\s*(?:h|hs|hrs|horas)(?![a-z0-9])/g;
+const hhmm = (h: string, m = "00") => `${String(Number(h)).padStart(2, "0")}:${m}`;
 // The phrases that give it for this booking (point 5), each tied to the
 // percentage itself.
-const FIG = `(?:\\d{1,2}\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|percent))`;
-const TARGET_ES = `(?:(?:el|un|una|del|de un|al)\\s+)?(?:(?:descuento|dto\\.?|rebaja)\\s+(?:del?\\s+|de\\s+un\\s+)?)?${FIG}`;
+const TARGET_ES = `(?:(?:el|un|una|del|de un|al)\\s+)?(?:(?:descuento|dto\\.?|desc\\.?|rebaja)\\s+(?:del?\\s+|de\\s+un\\s+)?)?${FIG}`;
 const TARGET_EN = `(?:(?:the|a|an)\\s+)?(?:discount\\s+of\\s+)?${FIG}`;
 const GIVE_V = "hacemos|hago|haremos|hare|dejamos|dejo|dejaremos|dejare|aplicamos|aplico|aplicaremos|aplicare|ofrecemos|ofrezco|ofreceremos|damos|doy|daremos|ponemos|pongo|pondremos|respetamos|respeto|mantenemos|mantengo|incluimos|incluyo|descontamos|descuento|rebajamos|rebajo";
-const YES_W = "si_|si|vale|ok|okay|perfecto|perfecta|de acuerdo|claro|genial|hecho";
+const YES_W = "si_|si|vale|ok|okay|okey|perfecto|perfecta|de acuerdo|claro|genial|hecho|yes|yep|yeah|sure|perfect|great";
 const PRICE = `\\d{1,3}(?:[.,]\\d{1,2})?\\s*(?:€|e|eur|euros)(?![a-z])`;
 const PCT_GIVE_RES: RegExp[] = [
   // os hacemos el 10%, le dejamos un 10%, te podemos hacer un descuento del 10%
-  new RegExp(`(?:^|[^a-z])(?:os|le|les|te|se lo|se la)\\s+(?:${GIVE_V}|podemos\\s+(?:hacer|dejar|aplicar|ofrecer|dar|poner|mantener|respetar)|puedo\\s+(?:hacer|dejar|aplicar|ofrecer|dar|poner))\\s+(?:(?:ya|encantados|encantadas|con gusto|gustosamente|tambien|igualmente|~)\\s+)?${TARGET_ES}`),
+  new RegExp(`(?:^|[^a-z])(?:os|le|les|te|se lo|se la)\\s+(?:${GIVE_V}|podemos\\s+(?:hacer|dejar|aplicar|ofrecer|dar|poner|mantener|respetar)|puedo\\s+(?:hacer|dejar|aplicar|ofrecer|dar|poner))\\s+(?:(?:ya|encantados|encantadas|con gusto|gustosamente|tambien|tb|tmb|igualmente|~)\\s+)?${TARGET_ES}`),
   // podemos hacerle un 15%, vamos a dejaros el 10%
   new RegExp(`(?:^|[^a-z])(?:podemos|puedo|vamos a|voy a)\\s+(?:hacer|dejar|aplicar|ofrecer|dar|poner)(?:le|les|os|te)(?:lo|la)?\\s+${TARGET_ES}`),
   // el 10% se lo hacemos, el 10% os lo aplicamos, el 10% lo hacemos encantados
@@ -338,33 +415,71 @@ const PCT_GIVE_RES: RegExp[] = [
   new RegExp(`(?:^|[^a-z])con\\s+(?:el|un|una)\\s+(?:(?:descuento|dto\\.?|rebaja)\\s+(?:del?\\s+|de\\s+un\\s+)?)?${FIG}(?:\\s+de\\s+(?:descuento|dto))?(?:\\s+(?:ya\\s+)?(?:aplicado|incluido|descontado))?\\s*,?\\s*(?:(?:se|te|le|os|les)\\s+)?(?:queda|quedan|quedaria|quedarian|sale|salen|saldria|saldrian|seria|serian|son|es|sera|seran|total|precio|cuesta|cuestan|\\d)`),
   // 45€ con el 10%, 45€, con un 10% de descuento
   new RegExp(`${PRICE}\\s*,?\\s*\\(?\\s*con\\s+(?:el|un|una)\\s+(?:(?:descuento|dto\\.?|rebaja)\\s+(?:del?\\s+|de\\s+un\\s+)?)?${FIG}`),
-  // sí al 10%, sí, el 10%, sí, un descuento del 10%, vale, el 10%
-  new RegExp(`(?:^|[^a-z])(?:si_\\s*[,!:]?\\s*|(?:${YES_W})\\s*[,!:]\\s*|si\\s+(?=al\\s))(?:(?:al|el|un|una|con el|con un|con una|a un)\\s+)?(?:(?:descuento|dto\\.?|rebaja)\\s+(?:del?\\s+|de\\s+un\\s+)?)?${FIG}`),
+  // sí al 10%, sí, el 10%, sí, un descuento del 10%, vale, el 10%, sí! el 10%
+  new RegExp(`(?:^|[^a-z])(?:si_\\s*[,!:.]*\\s*|(?:${YES_W})\\s*[,!:.]+\\s*|(?:si|ok|okay|vale)\\s+(?=al\\s))(?:(?:al|el|un|una|con el|con un|con una|a un)\\s+)?(?:(?:descuento|dto\\.?|rebaja)\\s+(?:del?\\s+|de\\s+un\\s+)?)?${FIG}`),
   // el 10%, vale. / el 10% sí (only at the end of a clause: "el 10% si
-  // puede" is "if they can")
-  new RegExp(`${FIG}(?:\\s+de\\s+(?:descuento|dto))?\\s*[,!:]?\\s*(?:${YES_W})(?=\\s*(?:[,.!;)]|$))`),
+  // puede" is "if they can"); el 10% sin problema
+  new RegExp(`${FIG}(?:\\s+de\\s+(?:descuento|dto))?\\s*[,!:]?\\s*(?:${YES_W}|~)(?=\\s*(?:[,.!;)]|$))`),
   // sí, aplicamos el 10% (a verb with no pronoun counts after a yes)
   new RegExp(`(?:^|[^a-z])(?:si_|(?:${YES_W})\\s*[,!:])\\s*(?:${GIVE_V})\\s+${TARGET_ES}`),
   // incluido el 10%, 10% incluido, ya incluye el descuento del 10%
   new RegExp(`(?:^|[^a-z])(?:incluido|incluida|incluye|incluyendo|aplicado|aplicada|descontado|descontada)\\s+(?:ya\\s+)?(?:el|un|del)\\s+(?:(?:descuento|dto)\\s+(?:del?\\s+)?)?${FIG}`),
   new RegExp(`${FIG}(?:\\s+de\\s+(?:descuento|dto))?\\s+(?:ya\\s+)?(?:incluido|incluida|aplicado|aplicada|descontado|descontada)(?![a-z])`),
-  // we can do 10%, we'll give you 10% off, I can give you a 10% discount
-  new RegExp(`(?:^|[^a-z])(?:we|i)\\s*(?:'ll|ll|will|can|are happy to|'re happy to|re happy to|am happy to|'m happy to|m happy to|are glad to|'re glad to|re glad to)\\s+(?:do|give|offer|apply|include|honou?r|leave)\\s+(?:(?:you|them|her|him|the client|the customer|your client|your customer)\\s+)?${TARGET_EN}`),
+  // ningún problema con el 10%, aceptamos el 10%, nos parece bien el 10%,
+  // de acuerdo con el 10%, te lo dejo en un 10%, solo podemos hacer el 10%,
+  // hacemos el 10% a la clienta, ok 10%
+  new RegExp(`~\\s*,?\\s*con\\s+(?:el|un|una)\\s+${FIG}`),
+  new RegExp(`(?:^|[^a-z])(?:aceptamos|acepto)\\s+(?:el|un)\\s+${FIG}`),
+  new RegExp(`(?:^|[^a-z])(?:nos|me)\\s+parece\\s+(?:bien|perfecto|genial|correcto)\\s+(?:el|un)\\s+${FIG}`),
+  new RegExp(`(?:^|[^a-z])de acuerdo con\\s+(?:el|un)\\s+${FIG}`),
+  new RegExp(`(?:^|[^a-z])(?:te|os|le|les|se)\\s+lo\\s+(?:dejo|dejamos)\\s+(?:en|a)\\s+${TARGET_ES}`),
+  new RegExp(`(?:^|[^a-z])solo\\s+(?:(?:os|le|te)\\s+)?(?:podemos|puedo)\\s+(?:hacer|dejar|aplicar|ofrecer|dar)(?:os|le|les|te)?\\s+${TARGET_ES}`),
+  new RegExp(`(?:^|[^a-z])(?:hacemos|aplicamos|dejamos)\\s+${TARGET_ES}\\s+(?:a la clienta|al cliente|a la cliente|a tu clienta|a tu cliente|a vuestra clienta|a vuestro cliente)(?![a-z])`),
+  new RegExp(`(?:^|[^a-z])(?:ok|okay|vale|yes|sure|perfecto|perfect|claro)\\s+(?:(?:al|el|un|the|a)\\s+)?${FIG}`),
+  // we can do 10%, we'll give you 10% off, I can give you a 10% discount, we
+  // can only do 10%
+  new RegExp(`(?:^|[^a-z])(?:we|i)\\s*(?:'ll|ll|will|can|are happy to|'re happy to|re happy to|am happy to|'m happy to|m happy to|are glad to|'re glad to|re glad to)\\s+(?:only\\s+)?(?:do|give|offer|apply|include|honou?r|leave)\\s+(?:(?:you|them|her|him|the client|the customer|your client|your customer)\\s+)?${TARGET_EN}`),
   // happy to do 10%
   new RegExp(`(?:^|[^a-z])(?:happy|glad) to (?:do|give|offer|apply)\\s+(?:(?:you|them|her|him|the client|the customer)\\s+)?${TARGET_EN}`),
-  // we give you 10%
+  // we give you 10%; yes, we do 10%
   new RegExp(`(?:^|[^a-z])(?:we|i)\\s+(?:give|offer|apply|do)\\s+(?:you|them|her|him|the client|the customer|your client|your customer)\\s+${TARGET_EN}`),
+  new RegExp(`(?:^|[^a-z])yes\\s*[,!.]*\\s*we\\s+do\\s+${TARGET_EN}`),
   // with the 10% it is 45, with the 10% discount that's 45
   new RegExp(`(?:^|[^a-z])with\\s+(?:the|a|an|your)\\s+(?:discount\\s+of\\s+)?${FIG}(?:\\s+discount)?(?:\\s+(?:applied|included|off))?\\s*,?\\s*(?:it(?:'s|s| is| comes to)?|that(?:'s|s| is| comes to)|the total|total|comes to|=|the price is|price|\\d)`),
   // 45 EUR with the 10%
   new RegExp(`${PRICE}\\s*,?\\s*with\\s+(?:the|a|an|your)\\s+${FIG}`),
   // yes to the 10%, yes, with the 10% discount
   new RegExp(`(?:^|[^a-z])yes(?![a-z])[^a-z0-9]*(?:(?:to|with|for)\\s+)?(?:(?:the|a|an)\\s+)?(?:discount\\s+of\\s+)?${FIG}`),
-  // including the 10%, 10% included
+  // including the 10%, 10% included, 10% is fine
   new RegExp(`(?:^|[^a-z])(?:including|includes|included)\\s+(?:the|a|an|your)\\s+${FIG}`),
   new RegExp(`${FIG}\\s+(?:discount\\s+)?(?:off\\s+)?(?:already\\s+)?(?:included|applied)(?![a-z])`),
+  new RegExp(`${FIG}\\s+(?:is fine|is ok|is okay|is good|is perfect|works|esta bien|nos va bien|nos parece bien)(?![a-z])`),
 ];
-export function relayDiscountRead(text: string): DiscountRead {
+const PCT_GIVE_G = PCT_GIVE_RES.map((re) => new RegExp(re.source, "g"));
+// Point 6: what may stand beside the giving words. The phrases first, then
+// single words; anything left over makes it unclear.
+const RES_PRICE_RE = new RegExp(`(?<![a-z0-9_'])(?:(?:(?:se|te|os|le|les)\\s+)?(?:(?:lo|la)\\s+)?(?:queda|quedan|quedaria|quedarian|sale|salen|saldria|saldrian|seria|serian|son|es|sera|seran|total|cuesta|cuestan|dejamos|dejo|it is|it's|its|that's|thats|that is|comes to|total is)\\s*:?\\s*)?(?:(?:en|a)\\s+)?${PRICE}`, "g");
+const RES_SAFE_RE = /(?<![a-z0-9_'])(?:muchas gracias|mil gracias|thank you(?: very much| so much)?|un saludo|un abrazo|best regards|kind regards|good morning|good afternoon|good evening|(?:os|le|la|les|te|los|las) esperamos|we'll see you|we will see you|see you(?: then| there| soon)?|nos vemos|tenemos hueco|hay hueco|tenemos sitio|we have (?:a |the )?(?:slot|space|room|availability)|de descuento|de dto|para (?:massage club|mc|vosotros|vosotras|ti|usted|ella|la clienta|el cliente|tu clienta|tu cliente|vuestra clienta|vuestro cliente|vuestros clientes|vuestras clientas|(?:los |las |todos los |todas las )?(?:clientes|clientas) de (?:massage club|mc))|for (?:you|them|her|him|the client|your client|the customer|your customer|massage club|mc|(?:all )?(?:the )?(?:massage club|mc) (?:clients|customers)|your clients|your customers)|massage club|yes we can)(?![a-z0-9_'])/g;
+const RES_OK = new Set(("si si_ yes yeah yep yup ok okay okey oki vale perfecto perfecta perfect claro genial hecho sure great "
+  + "encantados encantadas encantado encantada gustosamente hola holaa holaaa holi hi hello hey gracias thanks saludos regards "
+  + "y e and tambien igualmente tb tmb too also ya "
+  + "descuento dto desc rebaja discount off incluido incluida aplicado aplicada descontado descontada included applied "
+  + "el la los las un una al del de a en para con the an of to for with on "
+  + "os le les te se lo nos you we i them her him us your su tu vuestra vuestro vuestros vuestras vosotros vosotras ella ti usted "
+  + "cliente clienta clientes clientas client clients customer customers massage club mc masaje sesion reserva cita session booking appointment "
+  + "tenemos hueco podemos puedo disponible available libre").split(" "));
+function residualWords(t: string): string[] {
+  const blank = new Array(t.length).fill(false);
+  const mark = (re: RegExp) => { for (const m of t.matchAll(re)) for (let i = m.index ?? 0; i < (m.index ?? 0) + m[0].length; i++) blank[i] = true; };
+  for (const re of PCT_GIVE_G) mark(re);
+  mark(HOUR_RE);
+  mark(RES_PRICE_RE);
+  mark(RES_SAFE_RE);
+  const left = Array.from({ length: t.length }, (_, i) => (blank[i] ? " " : t[i])).join("");
+  const odd = [...left.matchAll(/\p{Extended_Pictographic}/gu)].map((m) => m[0]).filter((e) => !SAFE_EMOJI.has(e));
+  return [...left.split(/[^a-z0-9_']+/).map((w) => w.replace(/^'+|'+$/g, "")).filter((w) => w && !RES_OK.has(w)), ...odd];
+}
+export function relayDiscountRead(text: string, askTime = ""): DiscountRead {
   const t = stanceText(text);
   const figs = new Set<number>();
   for (const m of t.matchAll(PCT_ANCHOR_RE)) {
@@ -375,17 +490,15 @@ export function relayDiscountRead(text: string): DiscountRead {
   const sents = sentencesOf(t);
   const first = sents.findIndex((s) => PCT_MARK_RE.test(s));
   if (first < 0) return { stance: "unclear", why: "it is not written as a discount", pct };
-  let refused = "", unclear = "", given = false, seenMark = false;
-  for (const s of sents.slice(first)) {
-    const mark = PCT_MARK_RE.test(s);
-    if (mark && /[?¿]/.test(s)) unclear ||= "it is a question";
-    if (PCT_LATER_RE.test(s)) unclear ||= "it is put off to another visit or a later date, not given for this booking";
-    if (PCT_MEMBERS_RE.test(s)) unclear ||= "it is for members, regulars or a pack, not said for this booking";
-    if (PCT_HABIT_RE.test(s)) unclear ||= "it is what they usually do, not a written offer for this booking";
-    if (PCT_HEDGE_RE.test(s)) unclear ||= "it is only a maybe (would, could, perhaps, it depends)";
-    if (PCT_IF_RE.test(s)) unclear ||= "it comes with a condition";
-    if (PCT_PENDING_RE.test(s)) unclear ||= "they say they will check first";
-    if (PCT_SORRY_RE.test(s)) unclear ||= "an apology (\"lo siento\" (EN: \"sorry\")) is in or after it";
+  let refused = "", unclear = "", seenMark = false;
+  // A no to the booking itself anywhere ("Completo." (EN: "Full."), "No
+  // tenemos hueco." (EN: "We have no slot.")): there is no booking to discount.
+  if (NO_RE.test(t)) unclear = "they also say they cannot take the booking (no slot, full, cannot)";
+  for (const [re, why] of PCT_UNCLEAR) if (!unclear && re.test(t)) unclear = why;
+  sents.forEach((s, i) => {
+    if (PCT_MARK_RE.test(s) && /[?¿]/.test(s)) unclear ||= "it is a question";
+    // Point 2: a no before the sentence that holds the percentage.
+    if (i < first) { if (PCT_NO_RE.test(s)) unclear ||= "a no comes before it, in an earlier sentence"; return; }
     for (const c of s.split(CLAUSE_SPLIT_RE)) {
       if (!c) continue;
       const cm = PCT_MARK_RE.test(c);
@@ -396,17 +509,23 @@ export function relayDiscountRead(text: string): DiscountRead {
       }
       if (cm) seenMark = true;
     }
-    if (mark && PCT_GIVE_RES.some((re) => re.test(s))) given = true;
-  }
+  });
   if (refused) return { stance: "refused", why: refused, pct };
   if (!figs.size) unclear ||= "no percentage is written as one";
   if (figs.size > 1) unclear ||= "two different percentages";
+  // Point 7: every hour written is the hour asked.
+  const am = String(askTime || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  const ask = am ? hhmm(am[1], am[2]) : "";
+  const other = [...t.matchAll(HOUR_RE)].map((m) => (m[1] ? hhmm(m[1], m[2]) : hhmm(m[3] || m[4]))).find((h) => h !== ask);
+  if (other) unclear ||= ask ? `it is written beside another hour (${other}), not the ${ask} asked, and an offer goes at the hour asked` : `it is written beside an hour (${other}), and the request has no hour to check it against`;
   if (unclear) return { stance: "unclear", why: unclear, pct };
-  if (!given) return { stance: "unclear", why: "no words say they give it for this booking", pct };
+  if (!PCT_GIVE_RES.some((re) => re.test(t))) return { stance: "unclear", why: "no words say they give it for this booking", pct };
+  // Point 6: nothing else in the message but harmless words.
+  if (residualWords(t).length) return { stance: "unclear", why: "other words come with it that I cannot be sure of (a date, a condition, a correction, a hedge or another service may be among them)", pct };
   return { stance: "given", why: "", pct };
 }
-export function relayDiscountStance(text: string): DiscountStance {
-  return relayDiscountRead(text).stance;
+export function relayDiscountStance(text: string, askTime = ""): DiscountStance {
+  return relayDiscountRead(text, askTime).stance;
 }
 // What Jordan is told when a studio's percentage was seen and not taken, on
 // the live path (bot.ts handleStudioReply) as on the relay card.
@@ -419,14 +538,22 @@ export function relayDiscountNote(seen: number, r: { stance: string; why?: strin
 // "No hay problema" (EN: "no problem") is not a no. "Lo siento" and "sorry"
 // are a no only when the same sentence has no hour or availability word:
 // "Tenemos hueco a las 18:00, lo siento por la tardanza" (EN: "We have a slot
-// at 18:00, sorry for the delay") is a yes.
-const NO_RE = /(^|[^a-zñáéíóúü])(no (podemos|puedo|tenemos|hay|nos (da|va|viene))|imposible|complet[oa]s?|llen[oa]s?|ocupad[oa]s?|no disponible|sin hueco|no queda|no nos queda)(?![a-zñáéíóúü])/i;
+// at 18:00, sorry for the delay") is a yes. An apology for the wait, or a
+// bare "Sorry!" in its own sentence, is a no only when nothing in the
+// message says yes: "Sorry for the late reply. Yes, 18:00 works" is a yes,
+// "Lo siento por la espera" (EN: "Sorry for the wait") on its own is a no.
+const NO_RE = /(^|[^a-zñáéíóúü])(no (podemos|puedo|tenemos|hay|nos (da|va|viene))|imposible|complet[oa]s?|llen[oa]s?|ocupad[oa]s?|no disponible|sin hueco|no queda|no nos queda|we are full|we're full|fully booked|booked up|no availability|not available|no slots?)(?![a-zñáéíóúü])/i;
 const NO_SORRY_RE = /(^|[^a-z_])(lo siento|lo sentimos|sorry)(?![a-z])/;
 const NO_AVAIL_RE = /\d{1,2}[:.h]\d{2}|(^|[^a-z_])(hueco|huecos|hora|horas|tenemos|a las|puedo|podemos|slot|slots|at|disponible|libre)(?![a-z])/;
+const STUDIO_YES_RE = /(^|[^a-z_])(si_|yes|yeah|yep|vale|claro|perfecto|perfecta|ok|okay|sure|de acuerdo|genial|podemos|tenemos hueco|hay hueco|we can|works|os esperamos|le esperamos|la esperamos)(?![a-z'])/;
+const DELAY_SORRY_RE = new RegExp(`(^|[^a-z_])(?:${DELAY_SORRY}|${SEEN_SORRY})(?![a-z])`);
+const BARE_SORRY_RE = /^[^a-z0-9]*(?:sorry|lo siento|lo sentimos|perdon|perdona|perdone|disculpa|disculpe|disculpad)[^a-z0-9]*$/;
 export function relayStudioNo(text: string): boolean {
   const t = stanceText(text);
   if (NO_RE.test(t)) return true;
-  return sentencesOf(t).some((s) => NO_SORRY_RE.test(s) && !NO_AVAIL_RE.test(s));
+  const yes = STUDIO_YES_RE.test(t);
+  if (!yes && DELAY_SORRY_RE.test(norm(String(text || "").replace(/[’‘`´]/g, "'")))) return true;
+  return sentencesOf(t).some((s) => NO_SORRY_RE.test(s) && !NO_AVAIL_RE.test(s) && !(yes && BARE_SORRY_RE.test(s)));
 }
 const OTHER_RE = /(^|[^a-zñáéíóúü])(otra hora|otro d[ií]a|otro momento|m[aá]s tarde|m[aá]s temprano)(?![a-zñáéíóúü])/i;
 const YES_OPEN_RE = /^\s*[¡]?\s*(s[ií]|claro|perfecto|perfecta|vale|ok|okay|de acuerdo|genial)(?![a-zñáéíóúü])/i;
@@ -463,9 +590,11 @@ export function studioRelayPlan(text: string, f: StudioFacts, P: StudioParsers):
       // 10%") is a no, "un 10% de descuento" (EN: "a 10% discount") on its
       // own is unclear), at the figure parseDiscount found, and only in the
       // studio's own writing: one forwarded text message, with none of our
-      // own lines in the batch. Anything else is shown, never recorded.
+      // own lines in the batch. Anything else is shown, never recorded. An
+      // hour in the words other than the one asked makes it unclear, as on
+      // the live path (relayDiscountRead point 7).
       plan.pctSeen = pct;
-      const read = relayDiscountRead(t);
+      const read = relayDiscountRead(t, f.askTime);
       const stance: DiscountStance = read.stance === "given" && read.pct !== pct ? "unclear" : read.stance;
       if (stance !== "given") { plan.pctBlocked = true; plan.pctWhy = stance; plan.pctReason = read.stance === "given" ? "the percentage read is not the one written" : read.why; }
       else if (f.source === "text" && f.single && !f.echo) { plan.kinds.push("discount"); plan.pct = pct; }
