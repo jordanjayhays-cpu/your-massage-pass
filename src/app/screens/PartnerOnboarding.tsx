@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
+import OnboardingAiFill, { type AutofillFields } from "../components/OnboardingAiFill";
 import {
   MapPin, Euro, Check, Loader2, Plus, Trash2, Sparkles, Zap,
   Users, Clock, Shield, Instagram, Globe, Phone, Building2, ArrowLeft
@@ -28,6 +29,10 @@ const DAYS = [
   { num: 1, label: "Mon" }, { num: 2, label: "Tue" }, { num: 3, label: "Wed" },
   { num: 4, label: "Thu" }, { num: 5, label: "Fri" }, { num: 6, label: "Sat" }, { num: 0, label: "Sun" },
 ];
+
+// 24 Nov (Jordan): what the studio needs from us, and how it books today.
+const BOOKING_TOOLS = ["whatsapp_phone", "google_calendar", "outlook", "apple", "treatwell", "fresha", "booksy", "paper", "other"] as const;
+const AI_DAY: Record<string, number> = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 };
 
 type Service = { name: string; category: string; type: string; duration: number; price: number; buffer_after: number; description: string };
 type DayHours = { closed: boolean; open: string; close: string; breakStart: string; breakEnd: string };
@@ -90,6 +95,12 @@ export default function PartnerOnboarding() {
   const [cancellationHours, setCancellationHours] = useState(24);
   const [depositRequired, setDepositRequired] = useState(false);
   const [depositPct, setDepositPct] = useState(20);
+
+  // ─── What they need, how they book today (24 Nov) ───
+  // Jordan, 24 Nov: "what if they want both?" Either card, or both, can be ticked.
+  const [needs, setNeeds] = useState<("fill_gaps" | "full_system")[]>([]);
+  const partnerNeed = needs.length === 2 ? "both" : needs[0] || "";
+  const [bookingTools, setBookingTools] = useState<string[]>([]);
 
   // ─── Account ───
   const [email, setEmail] = useState("");
@@ -167,6 +178,50 @@ export default function PartnerOnboarding() {
   const updateTherapist = (i: number, patch: Partial<Therapist>) =>
     setTherapists(therapists.map((t, idx) => idx === i ? { ...t, ...patch } : t));
 
+  // "Use AI": fill only what is still empty or untouched, never overwrite what
+  // the studio typed, and say what was filled so they can check it.
+  const applyAutofill = (f: AutofillFields): string[] => {
+    const filled: string[] = [];
+    const add = (label: string) => { if (!filled.includes(label)) filled.push(label); };
+    const L = (k: string, o?: Record<string, unknown>) => String(t(`partner.onboarding.${k}`, o));
+    const next = { ...studio };
+    const take = (key: "business_name" | "address" | "postal_code" | "phone" | "website" | "instagram" | "description", val?: string, label?: string) => {
+      if (val && !String(next[key] || "").trim()) { next[key] = val; if (label) add(label); }
+    };
+    take("business_name", f.business_name, L("aiName"));
+    take("address", f.address, L("aiAddress"));
+    take("postal_code", f.postal_code, L("aiAddress"));
+    take("phone", f.phone || f.whatsapp, L("aiPhone"));
+    take("website", f.website);
+    take("instagram", f.instagram, L("aiInstagram"));
+    take("description", f.description, L("aiDescription"));
+    if (f.city && (!next.city.trim() || (next.city === "Madrid" && f.city !== "Madrid"))) next.city = f.city;
+    if (next.address !== studio.address || next.postal_code !== studio.postal_code || next.city !== studio.city) {
+      next.latitude = 0; next.longitude = 0; next.formatted = ""; setGeoStatus("idle");
+    }
+    setStudio(next);
+
+    if (f.opening_hours && Object.keys(f.opening_hours).length && JSON.stringify(hours) === JSON.stringify(defaultHours())) {
+      const h = defaultHours();
+      for (const [day, v] of Object.entries(f.opening_hours)) {
+        const n = AI_DAY[day];
+        if (n === undefined || !v) continue;
+        h[n] = v.closed ? { ...h[n], closed: true } : { closed: false, open: v.open, close: v.close, breakStart: "", breakEnd: "" };
+      }
+      setHours(h);
+      add(L("aiHours"));
+    }
+    const priced = (f.services || []).filter((x) => x.name && x.price);
+    if (priced.length && JSON.stringify(services) === JSON.stringify(DEFAULT_SERVICES)) {
+      setServices(priced.map((x) => ({ name: x.name, category: x.category || "Massage", type: x.type || "Other", duration: x.duration || 60, price: x.price || 0, buffer_after: 15, description: x.description || "" })));
+      add(L("aiServices", { count: priced.length }));
+    }
+    if (f.languages?.length && JSON.stringify(languages) === JSON.stringify(["Spanish", "English"])) { setLanguages(f.languages); add(L("aiLanguages")); }
+    if (f.amenities?.length && !amenities.length) { setAmenities(f.amenities); add(L("aiAmenities")); }
+    if (f.service_location && f.service_location !== "in_studio" && serviceLocation === "in_studio") setServiceLocation(f.service_location);
+    return filled;
+  };
+
   const businessName = studio.business_name.trim();
   const openDays = DAYS.filter(d => !hours[d.num].closed);
 
@@ -229,6 +284,8 @@ export default function PartnerOnboarding() {
         website: studio.website,
         instagram: studio.instagram || null,
         description: studio.description,
+        partner_need: partnerNeed || null,
+        booking_tools: bookingTools.length ? bookingTools : null,
         city: studio.city,
         country: studio.country,
         latitude,
@@ -362,6 +419,36 @@ export default function PartnerOnboarding() {
             </div>
           ))}
         </div>
+
+        {/* 24 Nov (Jordan): fill it in from their website */}
+        <OnboardingAiFill initialUrl={studio.website} onFill={applyAutofill} />
+
+        {/* 24 Nov (Jordan): what they need from us, and how they book today */}
+        <Card className="mb-4 border-0 shadow-sm">
+          <CardContent className="p-5">
+            <h2 className="text-base font-semibold text-foreground">{t("partner.onboarding.needTitle")}</h2>
+            <p className="text-xs text-muted-foreground mb-3">{t("partner.onboarding.needPick")}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(["fill_gaps", "full_system"] as const).map((v) => (
+                <button key={v} type="button" aria-pressed={needs.includes(v)}
+                  onClick={() => setNeeds((n) => n.includes(v) ? n.filter((x) => x !== v) : [...n, v])}
+                  className={`text-left rounded-xl border-2 p-3 transition ${needs.includes(v) ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}>
+                  <span className="block font-semibold text-sm text-foreground">{t(v === "fill_gaps" ? "partner.onboarding.needFillGaps" : "partner.onboarding.needFull")}</span>
+                  <span className="block text-xs text-muted-foreground mt-1">{t(v === "fill_gaps" ? "partner.onboarding.needFillGapsHelp" : "partner.onboarding.needFullHelp")}</span>
+                </button>
+              ))}
+            </div>
+            <h3 className="text-sm font-semibold text-foreground mt-5">{t("partner.onboarding.toolsTitle")}</h3>
+            <p className="text-xs text-muted-foreground mb-2">{t("partner.onboarding.toolsHelp")}</p>
+            <div className="flex flex-wrap gap-2">
+              {BOOKING_TOOLS.map((k) => (
+                <button key={k} type="button" aria-pressed={bookingTools.includes(k)}
+                  onClick={() => setBookingTools((b) => b.includes(k) ? b.filter((x) => x !== k) : [...b, k])}
+                  className={chip(bookingTools.includes(k))}>{t(`partner.onboarding.tool_${k}`)}</button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* ─── STEP 1: BUSINESS DETAILS ─── */}
         <Card className="mb-4 border-0 shadow-sm">
