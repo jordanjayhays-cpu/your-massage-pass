@@ -3,10 +3,11 @@
 // reach them without Jordan writing from his own phone (827). Pure: no
 // imports, no fetch, no clock; tests/relay.mjs runs it.
 //
-// NOT SUBMITTED to Meta and NOT SENT. Jordan approves the wording first, and
-// separately whether the bot may send it on its own (ASK BEFORE SENDING lists
-// the automations he approved; this is not one yet). Until both, app_secrets
-// OFFER_TEMPLATE stays off and nothing here runs.
+// Jordan, 24 Nov (pop-up "Yes, automatic"): the bot may send it on its own
+// once Meta approves it, so it no longer needs his OK each time. It is still
+// NOT SUBMITTED to Meta and NOT DEPLOYED: it needs Meta's approval and a
+// deploy of wa-bot, and app_secrets OFFER_TEMPLATE stays off (the default
+// here, and for anything missing or unknown) until both are done.
 //
 // Wording, after the two critiques of the spec:
 // - named request_update_v1, and "Other options" instead of "Closer or
@@ -97,7 +98,7 @@ export function offerTplAudience(mode: OfferTplMode, c: { phone: string; testCus
   if (mode === "test") return JORDAN.includes(d);
   return !c.testCustomer;
 }
-// The ops tplnew payload, for when Jordan says yes to the wording: UTILITY,
+// The ops tplnew payload, for submitting the wording to Meta: UTILITY,
 // one example per placeholder (invented names, the repo is public), three
 // quick replies. Run it with dry: true first.
 export function offerTplSubmission(L: "en" | "es"): { ops: string; name: string; lang: string; category: string; body: string; buttons: string[]; examples: string[]; dry: boolean } {

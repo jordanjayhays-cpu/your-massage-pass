@@ -64,7 +64,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply, bareAnswer } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
-import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, type RelayMode, type RelayCand, type RelayId } from "./relay.ts";
+import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, relayYesSend, relayYesWords, relayYesDone, type RelayMode, type RelayCand, type RelayId, type YesFacts } from "./relay.ts";
 import { offerTplParams, renderOfferTpl, offerTplAudience, offerTplPayloads, parseOfferTplMode, OFFER_TPL_NAME, type OfferTplMode } from "./offer_tpl.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -12237,10 +12237,16 @@ export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: stri
 //   parsers (relay.ts) and shows Jordan a card: what was read, in English, and
 //   what each button would record, including what the bot's normal steps may
 //   do after it (critique major 3).
-// - v1 records only (critique X3, X6): no offer, price ask, stand-down or any
-//   other message to a studio or a customer is sent from here. A customer's
-//   "yes" never confirms anything (BOTH PARTIES TAP): nothing in this block
-//   books, awards or confirms.
+// - It records only (critique X3, X6), with one exception: Record yes on a
+//   studio's answer. Jordan, 24 Nov (pop-up "Yes, my tap = studio's tap"):
+//   his tap is the studio's tap under BOTH PARTIES TAP, so the customer then
+//   gets the normal offer by the path ops studio_offer uses: the ask recorded
+//   as accepted with the hour and price, then forwardOffer with no studio
+//   number (relayYesOffer). Never on a frozen or closed request, never to a
+//   test contact, never twice. No price ask, stand-down or other message to a
+//   studio is sent from here, and a customer's relayed "yes" never confirms
+//   anything: nothing in this block books, awards or confirms. The booking
+//   is made only by the customer's own tap (acceptOffer).
 // - Every list row and button id is signed (relaySig), and a request is acted
 //   on only once it is proven to come from Meta or from our webhook relay
 //   (relayVerified): the function is reachable with the public key (critique
@@ -12266,8 +12272,9 @@ const RELAY_NOLOG_TEXT = "I could not save that forward, so I did nothing with i
 // Review M2: what a freeze (customer_flag change_requested) really stops, and
 // what it does not. Readers of the flag: dispatch-studios' hour-and-price chase
 // and its widen (both skip it from this change on), stuck-booking-rescue, and
-// the released-time reject path. forwardOffer and settleBids do not read it.
-const RELAY_FREEZE_WORDS = "dispatch-studios then stops asking the studios on it for an hour or a price and stops asking more studios, the stuck-booking rescue leaves it alone, and the standing approvals A and C skip it by rule. It does not stop the bot sending the customer an offer if a studio says yes or a bidding window closes, so reply to them as the bot to settle it.";
+// the released-time reject path. forwardOffer and settleBids do not read it;
+// the relay's own Record yes does (relayYesSend), and sends nothing on it.
+const RELAY_FREEZE_WORDS = "dispatch-studios then stops asking the studios on it for an hour or a price and stops asking more studios, the stuck-booking rescue leaves it alone, and the standing approvals A and C skip it by rule. It does not stop the bot sending the customer an offer if a studio says yes or a bidding window closes, though a studio's yes you relay is only recorded while it is frozen, so reply to them as the bot to settle it.";
 const RELAY_UNVERIFIED_TEXT = "I got a relay message but could not check that it came from WhatsApp, so I did nothing. The relay needs META_APP_SECRET (or RELAY_HOOK_KEY on the webhook relay) set.";
 const RELAY_REQ_COLS = "id,first_name,last_name,client_phone,contact_email,day1,time1,proposed_time,message_text,created_at,stage,stage_updated_at,partner_id,confirmed_time,confirmed_start,therapist_gender,languages,service_name,customer_flag";
 const RELAY_OPEN_REQ = ["new", "needs_contact", "awaiting_go", "studio_asked", "studio_replied", "offered", "bidding", "confirmed"];
@@ -12687,9 +12694,78 @@ async function relayStudioView(ctx: { row: any; req: any; p: any; phone: string;
   if (String(ctx.p.status || "") === "active" || ctx.p.opted_out_at) acts = acts.filter((x) => x !== "stop");
   const writes: Record<string, any> = {};
   for (const x of acts) writes[x] = studioWrites(x, plan, f, "@now", stamped, w.text);
+  // Jordan, 24 Nov: what Record yes then does for the customer. It is in the
+  // yes button's hash, so a tap after any of it changed (a freeze, their
+  // window closing, another offer reaching them) shows the new card instead.
+  const yes = acts.includes("yes") ? await relayYesFacts(ctx, plan, f.open) : null;
   const hashes: Record<string, string> = {};
-  for (const x of acts) hashes[x] = await relayHash({ a: x, row: String(ctx.row.id), w: writes[x], outcome: f.outcome, replied: ctx.row.replied_at || null, via: ctx.row.customer_offer_via || null, hours: f.hoursOnFile, opt: ctx.p.opted_out_at || null, status: ctx.p.status || null, text: w.text });
-  return { f, plan, day, nowIso, stamped, acts, writes, hashes };
+  for (const x of acts) hashes[x] = await relayHash({ a: x, row: String(ctx.row.id), w: writes[x], outcome: f.outcome, replied: ctx.row.replied_at || null, via: ctx.row.customer_offer_via || null, hours: f.hoursOnFile, opt: ctx.p.opted_out_at || null, status: ctx.p.status || null, text: w.text, offer: x === "yes" && yes ? { s: yes.send, o: yes.windowOpen, e: yes.email, t: yes.template, l: yes.liveRow, m: yes.muted } : null });
+  return { f, plan, day, nowIso, stamped, acts, writes, hashes, yes };
+}
+// A customer the relay never sends anything to: CLAUDE.md's test contacts
+// (offerTestCustomer) and anyone releasedAudience does not call real (the
+// friend testers, the test numbers, addresses and names).
+function relayTestCustomer(req: any): boolean {
+  const phone = digitsOf(String(req?.client_phone || ""));
+  return offerTestCustomer(req) || releasedAudience({ phone, email: req?.contact_email, name: `${req?.first_name || ""} ${req?.last_name || ""}` }) !== "real";
+}
+// Record yes, worked out the same way for the card and for the tap.
+async function relayYesFacts(ctx: { row: any; req: any; p: any; name: string }, plan: { time: string; price: number | null }, open: boolean): Promise<YesFacts & { liveRow: string }> {
+  const req = ctx.req;
+  const phone = digitsOf(String(req.client_phone || ""));
+  const email = String(req.contact_email || "").trim();
+  // As forwardOffer reads it: this row and hour already reached them. A row
+  // that had lapsed or was declined is a new offer (reopenOfferClaim).
+  const already = !OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || "")) && !!ctx.row.customer_offered_at && String(ctx.row.customer_offered_time || "") === String(plan.time || "");
+  const testCust = relayTestCustomer(req);
+  // Review m3's rule, kept here too: a test studio's yes never reaches a real customer.
+  const testStudio = !testCust && REL_TEST_STUDIO_RE.test(ctx.name);
+  const send = relayYesSend({ open, flag: String(req.customer_flag || ""), test: testCust || testStudio, already });
+  const price = plan.price !== null && plan.price !== undefined ? Number(plan.price) : Number(ctx.row.quoted_price) > 0 ? Number(ctx.row.quoted_price) : null;
+  const out = { send, customer: String(req.first_name || "").trim().split(/\s+/)[0] || "", studio: ctx.name, time: String(plan.time || ""), day: relayReqDay(req).en, price, windowOpen: false, email, template: false, live: null as { studio: string; time: string } | null, muted: false, stage: String(req.stage || ""), testStudio, liveRow: "" };
+  if (send !== "offer") return out;
+  if (phone) {
+    out.windowOpen = await waWindowOpen(phone);
+    out.muted = (await getSession(phone)).step === "muted";
+    let tm = "off";
+    try { tm = String((await offerTplMode()) || "off"); } catch (_e) { tm = "off"; }
+    out.template = !out.windowOpen && (tm === "on" || tm === "test") && !!offerTplAudience(tm as OfferTplMode, { phone, testCustomer: false, held: heldNum(phone) || heldMail(email), muted: out.muted });
+  }
+  // Another offer in front of them (forwardOffer queues this one behind it).
+  const offers = await relayGet(`request_dispatch?request_id=eq.${Number(req.id)}&id=neq.${encodeURIComponent(String(ctx.row.id))}&customer_offered_at=not.is.null&customer_answer=is.null&outcome=in.(pending,accepted)&limit=5&select=id,partner_id,outcome,customer_answer,customer_offered_at,customer_offered_time,customer_offer_via,offer_slot_at`);
+  const lo = relayLiveOffer(offers, Date.now());
+  if (lo) { out.live = { studio: String((await partnerCard(String(lo.partner_id || ""))).business_name || "another studio"), time: String(lo.customer_offered_time || "") }; out.liveRow = String(lo.id); }
+  return out;
+}
+// Jordan, 24 Nov: the yes is recorded (relayApplyStudio), so the customer
+// gets the normal offer by the path ops studio_offer uses: forwardOffer on the
+// request as it is now, with no studio number, because the studio wrote to
+// Jordan's phone and nothing is said to it from the bot. Every guard is read
+// again first: a request that closed or froze in the meantime, or a test
+// contact, gets nothing. forwardOffer keeps its own: one live offer at a time
+// (this one queues), never twice for the same row and hour, the 45 minutes,
+// the customer's day and hours, a dearer price, held and muted customers.
+async function relayYesOffer(ctx: { row: any; req: any; p: any; phone: string; name: string }, v: Awaited<ReturnType<typeof relayStudioView>>): Promise<string> {
+  const y = v.yes;
+  const words = (res: string, o: { email?: string; template?: boolean; stage?: string } = {}) => relayYesDone(res, { customer: y?.customer || "", studio: ctx.name, time: v.plan.time, email: o.email ?? (y?.email || ""), template: !!o.template, stage: o.stage ?? (y?.stage || "") });
+  if (!y) return words("closed");
+  if (y.send !== "offer") return words(y.send);
+  const fresh = (await relayGet(`whatsapp_requests?id=eq.${Number(ctx.req.id)}&select=*`))[0];
+  const again: string = fresh ? relayYesSend({ open: OPEN_STAGES.includes(String(fresh.stage || "")), flag: String(fresh.customer_flag || ""), test: relayTestCustomer(fresh) || REL_TEST_STUDIO_RE.test(ctx.name), already: false }) : "closed";
+  if (again !== "offer") return words(again, { stage: String(fresh?.stage || "") });
+  const phone = digitsOf(String(fresh.client_phone || ""));
+  let res = "";
+  try { res = await forwardOffer(fresh, { id: String(ctx.p.id), business_name: ctx.name }, String(ctx.row.id), v.plan.time, v.stamped, "", {}); }
+  catch (e) { console.log("[relay] the offer step failed", String(e)); res = ""; }
+  // forwardOffer says "whatsapp" for the buttons and for the template alone,
+  // and "email" with or without the template: the session says which.
+  let template = false;
+  if (phone && (res === "whatsapp" || res === "email")) {
+    const so = (await getSession(phone)).data?.offer;
+    template = !!so && String(so.row) === String(ctx.row.id) && so.via === "template";
+  }
+  await logEvent(phone || "web", "studio_accepted", { id: Number(fresh.id), studio: ctx.name, time: v.plan.time, via: "relay", offer: res || "error" });
+  return words(res || "error", { email: String(fresh.contact_email || "").trim(), template });
 }
 function relayFill(o: Record<string, unknown> | undefined, nowIso: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -12734,10 +12810,16 @@ async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; 
   const next: string[] = [];
   for (const x of v.acts) {
     if (x === "undo") continue;
-    next.push(`${RELAY_LABELS[x]} ${aud === "testcard" ? "would record" : "records"} ${relayActionWords(x, plan, euro, f.source === "voice")}. ${(STUDIO_FOLLOWS[x] || []).join(" ")}`.trim());
+    // Jordan, 24 Nov: Record yes is the studio's tap, and the card says what
+    // it then sends the customer (or why it sends nothing), before the tap.
+    const yesWords = x === "yes" && v.yes ? ` ${relayYesWords(v.yes, euro)}` : "";
+    next.push(`${RELAY_LABELS[x]} ${aud === "testcard" ? "would record" : "records"} ${relayActionWords(x, plan, euro, f.source === "voice")}.${yesWords} ${(STUDIO_FOLLOWS[x] || []).join(" ")}`.trim());
   }
   lines.push(next.length ? `Next:\n${next.join("\n")}` : "Next: nothing to record. Reply to them as the bot if it needs an answer.");
-  lines.push(`Nothing is sent to the studio or the customer from here. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`);
+  const yesSends = aud === "write" && v.acts.includes("yes") && v.yes?.send === "offer" && !v.yes.muted;
+  lines.push(yesSends
+    ? `Nothing is sent to the studio from here, and nothing to the customer unless you tap Record yes. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`
+    : `Nothing is sent to the studio or the customer from here. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`);
   const text = noDashes(lines.join("\n\n"));
   if (aud === "testcard") { await relaySay(from, text); return; }
   const btns: Array<{ id: string; title: string }> = [];
@@ -12924,6 +13006,15 @@ async function relayApplyStudio(ctx: { row: any; req: any; p: any; phone: string
   // old one again (forwardOffer's "already"), as the live tap path does. A
   // rate alone leaves the ask as it was (review M3), so it reopens nothing.
   if (action === "yes" && OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || ""))) await reopenOfferClaim(String(ctx.row.id));
+  // Jordan, 24 Nov: the recorded yes is the studio's tap, so the customer
+  // now gets the normal offer (or the reply says why not). The yes stays
+  // recorded whatever the offer step says, so this never returns "".
+  if (action === "yes") {
+    let offered = "";
+    try { offered = await relayYesOffer(ctx, v); }
+    catch (e) { console.log("[relay] the offer step failed", String(e)); offered = relayYesDone("error", { customer: v.yes?.customer || "", studio: ctx.name, time: v.plan.time, email: "", template: false, stage: "" }); }
+    return `Recorded for ${what}: ${relayActionWords(action, v.plan, euro, v.f.source === "voice")}. ${offered} ${(STUDIO_FOLLOWS[action] || []).join(" ")}`.trim();
+  }
   return `Recorded for ${what}: ${relayActionWords(action, v.plan, euro, v.f.source === "voice")}. Nothing was sent to the studio or the customer. ${(STUDIO_FOLLOWS[action] || []).join(" ")}`.trim();
 }
 async function relayApplyCustomer(ctx: { req: any; offers: any[]; phone: string; name: string }, v: Awaited<ReturnType<typeof relayCustomerView>>, action: string, w: RelayWords): Promise<string> {
