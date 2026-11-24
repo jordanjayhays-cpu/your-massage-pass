@@ -97,7 +97,9 @@ export default function PartnerOnboarding() {
   const [depositPct, setDepositPct] = useState(20);
 
   // ─── What they need, how they book today (24 Nov) ───
-  const [partnerNeed, setPartnerNeed] = useState<"fill_gaps" | "full_system" | "">("");
+  // Jordan, 24 Nov: "what if they want both?" Either card, or both, can be ticked.
+  const [needs, setNeeds] = useState<("fill_gaps" | "full_system")[]>([]);
+  const partnerNeed = needs.length === 2 ? "both" : needs[0] || "";
   const [bookingTools, setBookingTools] = useState<string[]>([]);
 
   // ─── Account ───
@@ -424,11 +426,13 @@ export default function PartnerOnboarding() {
         {/* 24 Nov (Jordan): what they need from us, and how they book today */}
         <Card className="mb-4 border-0 shadow-sm">
           <CardContent className="p-5">
-            <h2 className="text-base font-semibold text-foreground mb-3">{t("partner.onboarding.needTitle")}</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("partner.onboarding.needTitle")}</h2>
+            <p className="text-xs text-muted-foreground mb-3">{t("partner.onboarding.needPick")}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {(["fill_gaps", "full_system"] as const).map((v) => (
-                <button key={v} type="button" onClick={() => setPartnerNeed(v)} aria-pressed={partnerNeed === v}
-                  className={`text-left rounded-xl border-2 p-3 transition ${partnerNeed === v ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}>
+                <button key={v} type="button" aria-pressed={needs.includes(v)}
+                  onClick={() => setNeeds((n) => n.includes(v) ? n.filter((x) => x !== v) : [...n, v])}
+                  className={`text-left rounded-xl border-2 p-3 transition ${needs.includes(v) ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/40"}`}>
                   <span className="block font-semibold text-sm text-foreground">{t(v === "fill_gaps" ? "partner.onboarding.needFillGaps" : "partner.onboarding.needFull")}</span>
                   <span className="block text-xs text-muted-foreground mt-1">{t(v === "fill_gaps" ? "partner.onboarding.needFillGapsHelp" : "partner.onboarding.needFullHelp")}</span>
                 </button>
