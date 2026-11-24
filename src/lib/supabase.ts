@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { STOCK_PHOTOS, assignStockSlots, type StockSlotInput } from "./studioImages";
 import { getSource } from "./attribution";
+import { PARTNER_PUBLIC_COLUMNS } from "./partnerColumns";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 // Your Supabase project URL (safe to expose).
@@ -294,12 +295,14 @@ export async function fetchShops(): Promise<Shop[]> {
   // Try real data first
   const { data: partners, error } = await supabase
     .from("partners")
-    .select("*")
+    .select(PARTNER_PUBLIC_COLUMNS)
     .in("status", ["active", "pending"])
     // 31 Oct (Jordan: "deploy all of them"): a studio that told us it is not
     // interested ("No me interesa", "BAJA") is never shown with a Book button.
     .is("opted_out_at", null)
-    .limit(200);
+    .limit(200)
+    // A computed column list types every row as an error; keep the old any.
+    .overrideTypes<any[], { merge: false }>();
 
   if (error) {
     console.error("[fetchShops] could not read partners:", error.message);
@@ -408,11 +411,12 @@ export async function fetchStudioProfile(partnerId: string): Promise<StudioProfi
   if (!partnerId) return null;
   const { data: partner } = await supabase
     .from("partners")
-    .select("*")
+    .select(PARTNER_PUBLIC_COLUMNS)
     .eq("id", partnerId)
     .in("status", ["active", "pending"])
     .is("opted_out_at", null)
-    .single();
+    .single()
+    .overrideTypes<any, { merge: false }>();
   if (!partner) return null;
 
   const [{ data: services }, { data: availability }, { data: therapists }, { data: addons }] = await Promise.all([
@@ -443,11 +447,12 @@ export async function fetchShopById(id: string): Promise<Shop | null> {
   const stockReady = loadStockPhotos();
   const { data: partner } = await supabase
     .from("partners")
-    .select("*")
+    .select(PARTNER_PUBLIC_COLUMNS)
     .eq("id", partnerId)
     .in("status", ["active", "pending"])
     .is("opted_out_at", null)
-    .single();
+    .single()
+    .overrideTypes<any, { merge: false }>();
 
   if (!partner) return null;
   await stockReady;

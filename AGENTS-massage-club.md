@@ -24,6 +24,25 @@ massage-madrid-magic.lovable.app is the Lovable preview, not production. UNSURE 
 | shadcn primitives | `src/components/ui/*` — do not edit, these are generated |
 | SQL schema files | `supabase-*.sql` at repo root |
 
+## partners table: column lock (24 Nov 2026). Read before touching partners
+
+The public key and signed-in studios may read only the columns in
+`src/lib/partnerColumns.ts` and write only the INSERT/UPDATE list in
+`supabase/migrations/20261124e_partners_column_lock.sql`. Why: `select("*")` on
+partners handed every studio's claim code, hours code and Google tokens to
+anyone with the public key.
+- Never `select("*")` or `select()` on partners. Name the columns, or use
+  `PARTNER_PUBLIC_COLUMNS`. A `select("*")` builds fine and then fails live
+  (42501), and the homepage directory silently shows no studios.
+- A new partners column is invisible to the site until a migration GRANTs it.
+  Never grant a token, code or secret column (claim_token, hours_token,
+  hours_code, google_*), and never run a table-level GRANT on partners.
+- Claims: `/claim/<slug>` opens `/studio-setup?claim_slug=<slug>`. The claim
+  token is never read in the browser; the merge of the pre-built row is
+  `rpc("claim_release_verified")`, which needs proof of the email on file.
+- `npm run build` runs `src/__tests__/partnersColumnLock.test.ts` first
+  (prebuild) and fails on any of the above.
+
 ## i18n — READ THIS, IT'S THE #1 SOURCE OF BUGS
 
 Setup: `i18next` + `react-i18next` + browser language detector.
