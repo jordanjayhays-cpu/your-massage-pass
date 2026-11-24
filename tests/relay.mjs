@@ -228,7 +228,7 @@ function relayWorld(o = {}) {
     parseRelayMode: R.parseRelayMode, JORDAN_OWN: R.JORDAN_OWN, detectRelay: R.detectRelay, relayBase: R.relayBase, relayParse: R.relayParse, relayRank: R.relayRank, relayRowText: R.relayRowText, relayListBody: R.relayListBody,
     studioRelayPlan: R.studioRelayPlan, studioActions: R.studioActions, studioWrites: R.studioWrites, customerRelayPlan: R.customerRelayPlan, customerActions: R.customerActions, customerWrites: R.customerWrites,
     relayStoredText: R.relayStoredText, relayRelativeWords: R.relayRelativeWords, relayHoursShown: R.relayHoursShown, relayNeedsEnglish: R.relayNeedsEnglish, relayReadText: R.relayReadText, relayActionWords: R.relayActionWords, RELAY_LABELS: R.RELAY_LABELS, OUR_LINE_RE: R.OUR_LINE_RE, STUDIO_FOLLOWS: R.STUDIO_FOLLOWS, RELAY_MAX_CANDS: R.RELAY_MAX_CANDS,
-    relayYesSend: R.relayYesSend, relayYesWords: R.relayYesWords, relayYesDone: R.relayYesDone, relayYesPreview: R.relayYesPreview, relayStudioAdvice: R.relayStudioAdvice, yesAsAnswer: R.yesAsAnswer, relayOtherDay: R.relayOtherDay,
+    relayYesSend: R.relayYesSend, relayYesWords: R.relayYesWords, relayYesDone: R.relayYesDone, relayYesPreview: R.relayYesPreview, relayStudioAdvice: R.relayStudioAdvice, yesAsAnswer: R.yesAsAnswer, relayYesAnswerOnly: R.relayYesAnswerOnly, relayOtherDay: R.relayOtherDay, parseOfferTplMode: OT.parseOfferTplMode,
     offerTplAudience: OT.offerTplAudience, offerTplMode: async () => o.tplMode || "off", offerTplParams: OT.offerTplParams, renderOfferTpl: OT.renderOfferTpl, offerTplPayloads: OT.offerTplPayloads, OFFER_TPL_NAME: OT.OFFER_TPL_NAME,
     // What relayOfferPreview reads, as forwardOffer reads it (the real
     // forwardOffer, in real mode below, gets the very same).
@@ -274,7 +274,7 @@ function relayWorld(o = {}) {
       founderCard: async (subject, x) => { (spies.cards ||= []).push({ subject, ...x }); }, notifyJordanWa: async (t) => { (spies.alerts ||= []).push(t); },
     });
   }
-  const { fns, calls } = sandbox(parts.filter(Boolean), env, ["relayTurn", "relayMode", "relayVerified", "relayWords", "relayCandidates"]);
+  const { fns, calls } = sandbox(parts.filter(Boolean), env, ["relayTurn", "relayMode", "relayVerified", "relayWords", "relayCandidates", "reopenOfferClaim", "relaySwitchesOps"]);
   // A forward as the webhook runs it: logged first (logMsg hands back the
   // row's id, review M1), then the relay's turn for that same row.
   let nextRow = 7000;
@@ -842,7 +842,7 @@ const FIX = [
           Object.assign(st.row, body); return res(200, [st.row]);
         }
         if (u.includes("request_dispatch?id=eq.row-1")) return res(200, [st.row]);
-        if (u.includes("whatsapp_requests?id=eq.")) return res(200, [req]);
+        if (u.includes("whatsapp_requests?id=eq.")) return res(200, [o.dbReq ? { ...req, ...o.dbReq } : req]);
         if (/graph\.facebook|resend|anthropic/.test(u)) throw new Error("network");
         return res(200, []);
       },
@@ -893,12 +893,12 @@ const FIX = [
   const ao = lift(botSrc, "async function acceptOffer(");
   const parts = [ao, lift(botSrc, "async function offerSlotFor("), lift(botSrc, "async function yesTooLate("), lift(botSrc, "async function changeTooLate("), lift(botSrc, "async function reaskStudio("), lift(botSrc, "async function reopenOfferClaim("), lift(botSrc, "function offerDayFromText("), lift(botSrc, "function rowDayLabel("), lift(botSrc, "function exactTime("), lift(botSrc, "function studioDate("), liftArrow("reqDuration"), one("studioDayOf"), one("studioAtEs"), one("deDay"), one("eurEs"), words].filter(Boolean);
   const run = async (rowOver = {}) => {
-    const o = { L: rowOver.L };
-    delete rowOver.L;
+    const o = { L: rowOver.L, REQ: rowOver.REQ };
+    delete rowOver.L; delete rowOver.REQ;
     T.now = M(12, 0);
     const log = { tell: [], mail: [], said: [], patches: [] };
     const row = { id: "row-1", request_id: 9601, partner_id: "p-1", phone: "34911000601", offered_time: "18:00", outcome: "won", channel: null, reply_text: "Sí", replied_at: iso(M(11, 0)), offered_at: iso(M(11, 0)), quoted_price: 50, discount_pct: null, ...rowOver };
-    const req = { id: 9601, first_name: "Lucia", service_name: "Relaxing massage", day1: "Thursday 26 Nov, 18:00", time1: "18:00", proposed_time: "18:00", contact_email: "lucia@correo.invalid", client_phone: "+34699000601", languages: "en", stage: "confirmed", message_text: "", created_at: iso(M(9, 0)), confirmed_day: "Thursday 26 November", confirmed_time: "18:00", confirmed_start: iso(M(18, 0, 2)), partner_id: "p-1" };
+    const req = { id: 9601, first_name: "Lucia", service_name: "Relaxing massage", day1: "Thursday 26 Nov, 18:00", time1: "18:00", proposed_time: "18:00", contact_email: "lucia@correo.invalid", client_phone: "+34699000601", languages: "en", stage: "confirmed", message_text: "", created_at: iso(M(9, 0)), confirmed_day: "Thursday 26 November", confirmed_time: "18:00", confirmed_start: iso(M(18, 0, 2)), partner_id: "p-1", ...(o.REQ || {}) };
     const env = {
       Date: FakeDate, SUPABASE_URL: "https://db.invalid", OPS_KEY: "k", H: () => ({}), quietThisTurn: false, sentThisTurn: false,
       fetch: async (u, opt = {}) => { u = String(u); if (opt.method === "PATCH") log.patches.push(u); if (u.includes("/request_dispatch?id=eq.") && !opt.method) return res(200, [row]); if (u.includes("/whatsapp_requests?id=eq.") && !opt.method) return res(200, [req]); return res(200, []); },
@@ -920,6 +920,18 @@ const FIX = [
   check(G, "the same in Spanish, no dash", [againEs.log.said, dash(againEs.log.said[0])], [["Ya tienes la reserva: Estudio Uno, a las 18:00. No tienes que hacer nada más."], false]);
   const moved = await run({ id: "row-1", offered_time: "18:30", outcome: "accepted" });
   check(G, "a real time change still goes through", [moved.booked, moved.log.tell.length], [true, 1]);
+  // Review of ef19cdd (8): the second-Yes line only for the SAME slot (the
+  // offer's start against confirmed_start), not just the same clock time.
+  // Before: 18:00 on Friday, tapped on a booking for 18:00 on Thursday, got
+  // "You're already booked" and nothing changed.
+  const sameSlot = await run({ offer_slot_at: iso(M(18, 0, 2)) });
+  check(G, "8: offer_slot_at equal to confirmed_start: the second-Yes line", [sameSlot.booked, sameSlot.log.tell.length, sameSlot.log.said], [true, 0, ["You're already booked: Estudio Uno at 18:00. Nothing more to do."]]);
+  const otherDay = await run({ offer_slot_at: iso(M(18, 0, 3)) });
+  check(G, "8: same clock time on another day: not the second-Yes line, the old path (a time change, the studio told)", [otherDay.booked, otherDay.log.tell.length, otherDay.log.said.some((x) => /already booked|Ya tienes la reserva/.test(x)), otherDay.log.patches.length > 0], [true, 1, false, true]);
+  const otherDayEs = await run({ offer_slot_at: iso(M(18, 0, 3)), L: "es" });
+  check(G, "8: the same in Spanish: no 'Ya tienes la reserva' for another day", otherDayEs.log.said.some((x) => /Ya tienes la reserva/.test(x)), false);
+  const noStart = await run({ REQ: { confirmed_start: null } });
+  check(G, "8: no confirmed_start on the booking: not taken for the same slot (the old path)", [noStart.log.tell.length, noStart.log.said.some((x) => /already booked/.test(x))], [1, false]);
 }
 
 // ---------------------------------------------------------------------------
@@ -1153,7 +1165,7 @@ const confirmWrites = (w) => w.db.writes("whatsapp_requests").filter((x) => x.bo
   if (process.env.RELAY_SHOW) console.log(`\n--- Record yes card (real customer, window closed, email) ---\n${card.body}\n  buttons: ${card.buttons.map((b) => b.title).join(" / ")}\n`);
   check(G, "the card: Record yes and Not theirs", card.buttons.map((b) => b.title), ["Record yes", "Not theirs"]);
   check(G, "the card says, before the tap, that it is the studio's tap and the customer gets the normal offer, how, and with what", /Record yes records their yes at 18:00, with the price 45 EUR, on their ask\. It counts as Estudio Sol's tap \(your rule of 24 Nov\), so Marta then gets the normal offer, the same message a studio's own yes sends: Estudio Sol, Thursday 26 November, at 18:00, with the price they wrote \(45 EUR\), by email to marta@correo\.invalid with Yes and No on its offer page, since their 24 hours with the bot are closed\./.test(card.body), true);
-  check(G, "the card says the exact words follow, that nothing is booked until the customer taps, and that the studio is told nothing", [/The exact words are below\./.test(card.body) && !/As with any studio yes, it is not sent if/.test(card.body), /Nothing is booked until the customer taps Yes themselves; only then does the studio get the confirmation in writing/.test(card.body), /Nothing is sent to Estudio Sol from here: tell them on your phone that you are checking with Marta\./.test(card.body), /Nothing is sent to the studio from here, and nothing to the customer unless you tap Record yes\./.test(card.body)], [true, true, true, true]);
+  check(G, "the card says the exact words follow, that nothing is booked until the customer taps, and that the studio is told nothing", [/The exact words are below\./.test(card.body) && !/As with any studio yes, it is not sent if/.test(card.body), /Nothing is booked until the customer taps Yes themselves; only then does the studio get the confirmation in writing/.test(card.body), /Nothing is sent to Estudio Sol from here: reply to them as the bot that you are checking with Marta\./.test(card.body) && !/your phone|your own phone/.test(card.body), /Nothing is sent to the studio from here, and nothing to the customer unless you tap Record yes\./.test(card.body)], [true, true, true, true]);
   check(G, "the old 'not sent from here, ask Claude' copy is gone", [/The offer is not sent from here/.test(card.body), /ask Claude to send the offer/.test(card.body), Object.values(R.STUDIO_FOLLOWS).flat().some((x) => /not sent from here|ask Claude/.test(x))], [false, false, false]);
   check(G, "before the tap: nothing offered, nothing written, nothing to anyone else", [w.spies.forwardOffer, w.db.writes("request_dispatch").length, toOthers(w).length], [0, 0, 0]);
   await w.tap(yesBtn(card).id);
@@ -1164,7 +1176,7 @@ const confirmWrites = (w) => w.db.writes("whatsapp_requests").filter((x) => x.bo
   check(G, "forwardOffer's arguments: the request as it is now, the studio, the row, the hour, the stored words, no studio number, and the words in English for Jordan's card", [a[0]?.id, a[0]?.stage, a[0]?.contact_email, a[1], a[2], a[3], a[4], a[5], a[6]], [9306, "studio_asked", "marta@correo.invalid", { id: "p-real", business_name: "Estudio Sol" }, YES_ROW, "18:00", "[reenviado por Jordan, jueves 26 de noviembre] Sí, a las 18:00, 45€", "", { quoteEn: "EN[[reenviado por Jordan, jueves 26 de noviembre] Sí, a las 18:00, 45€]" }]);
   const reply = lastTo(w, JORDAN)?.body || "";
   if (process.env.RELAY_SHOW) console.log(`--- after the tap ---\n${reply}\n`);
-  check(G, "Jordan is told what was recorded and what went to the customer", /^Recorded for Estudio Sol on #9306: their yes at 18:00, with the price 45 EUR, on their ask\. Sent Marta the normal offer by email to marta@correo\.invalid, with Yes and No on its offer page\. Nothing was sent to Estudio Sol: tell them on your phone that you are checking with Marta\. Nothing is booked until the customer taps Yes themselves/.test(reply), true);
+  check(G, "Jordan is told what was recorded and what went to the customer", /^Recorded for Estudio Sol on #9306: their yes at 18:00, with the price 45 EUR, on their ask\. Sent Marta the normal offer by email to marta@correo\.invalid, with Yes and No on its offer page\. Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) that you are checking with Marta\. Nothing is booked until the customer taps Yes themselves/.test(reply), true);
   check(G, "logged as studio_accepted via relay, as studio_offer logs it", w.db.t.funnel_events.filter((e) => e.event === "studio_accepted").map((e) => [e.meta.id, e.meta.via, e.meta.offer]), [[9306, "relay", "email"]]);
   check(G, "nothing books, awards or confirms: only the customer's own tap does", [w.spies.acceptOffer, w.spies.awardRequest, w.spies.ensureBooking, w.spies.awardWinner, confirmWrites(w), w.spies.tellStudio, w.spies.studioNoteSure], [0, 0, 0, 0, 0, 0, 0]);
   // A double tap on the same button.
@@ -1205,13 +1217,13 @@ const confirmWrites = (w) => w.db.writes("whatsapp_requests").filter((x) => x.bo
   check(G, "OFFER_TEMPLATE off (the default): no template on the card", /request_update_v1/.test((await pickYes(tplOff)).body), false);
   const live = yesWorld({ live: true, forward: () => "queued" });
   const lc = await pickYes(live);
-  check(G, "another offer open: the card says this one waits behind it, and what to tell the studio", [/so Marta gets the normal offer \(Estudio Sol, Thursday 26 November, at 18:00, with the price they wrote \(45 EUR\)\), but not yet: they already have Estudio Luna 19:00 open, so this one waits behind it and is shown if they turn that one down\./.test(lc.body), /tell them on your phone not to hold it yet\. If it is shown to Marta later, the bot sends Estudio Sol its usual note then, inside its hours\./.test(lc.body), /Exactly what Marta gets/.test(lc.body)], [true, true, false]);
+  check(G, "another offer open: the card says this one waits behind it, and what to tell the studio", [/so Marta gets the normal offer \(Estudio Sol, Thursday 26 November, at 18:00, with the price they wrote \(45 EUR\)\), but not yet: they already have Estudio Luna 19:00 open, so this one waits behind it and is shown if they turn that one down\./.test(lc.body), /reply to them as the bot that you are checking with Marta and that they should not hold it yet\. If it is shown to Marta later, the bot sends Estudio Sol its usual note then, inside its hours\./.test(lc.body), /Exactly what Marta gets/.test(lc.body)], [true, true, false]);
   await live.tap(yesBtn(lc).id);
   check(G, "and the reply says it is queued", [live.spies.forwardOffer, /Marta has another offer open, so this one waits behind it and is shown if they turn that one down\./.test(lastTo(live, JORDAN).body)], [1, true]);
   const muted = yesWorld({ muted: true, forward: () => "muted" });
   const mc = await pickYes(muted);
   check(G, "a muted customer: the card says nothing goes and the request closes, as for any studio yes", [/but Marta is muted \(off-menu requests\), so, as for any studio yes, nothing is sent to them and the bot closes the request\./.test(mc.body), /nothing to the customer unless you tap Record yes/.test(mc.body)], [true, false]);
-  for (const [res, re] of [["withheld_too_soon", /Not sent to Marta: 18:00 starts in under 45 minutes\. Nothing was sent to Estudio Sol: tell them on your phone not to hold it\./], ["withheld_mismatch", /Not sent to Marta: 18:00 is outside the day or hours they asked for\. Nothing was sent to Estudio Sol: ask them on your phone for a time inside the hours Marta asked for\./], ["held_window", /Held for up to 15 minutes: 18:00 is outside the hours Marta asked for today.*Nothing was sent to Estudio Sol: tell them on your phone not to hold it yet\./], ["withheld_dearer", /Not sent to Marta: they already have a cheaper offer open\. Nothing was sent to Estudio Sol: tell them on your phone not to hold it\./], ["queued", /Nothing was sent to Estudio Sol: tell them on your phone not to hold it yet\./], ["none", /see the OFFER NOT DELIVERED card\. Nothing was sent to Estudio Sol: tell them on your phone that it is not booked yet and there is no need to hold it\./], ["muted", /dispatch-studios tells Estudio Sol, inside its hours, that it is not going ahead/]]) {
+  for (const [res, re] of [["withheld_too_soon", /Not sent to Marta: 18:00 starts in under 45 minutes\. Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) that they should not hold it\./], ["withheld_mismatch", /Not sent to Marta: 18:00 is outside the day or hours they asked for\. Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) and ask them for a time inside the hours Marta asked for\./], ["held_window", /Held for up to 15 minutes: 18:00 is outside the hours Marta asked for today.*Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) that you are checking with Marta and that they should not hold it yet\./], ["withheld_dearer", /Not sent to Marta: they already have a cheaper offer open\. Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) that they should not hold it\./], ["queued", /Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) that you are checking with Marta and that they should not hold it yet\./], ["none", /see the OFFER NOT DELIVERED card\. Nothing was sent to Estudio Sol: reply to them as the bot \(https:\/\/\S+\?reply=34911000202&sig=[0-9a-f]+\) that it is not booked yet and there is no need to hold it\./], ["muted", /dispatch-studios tells Estudio Sol, inside its hours, that it is not going ahead/]]) {
     const x = yesWorld({ forward: () => res });
     await x.tap(yesBtn(await pickYes(x)).id);
     check(G, `forwardOffer says ${res}: the reply says so`, [x.spies.forwardOffer, re.test(lastTo(x, JORDAN).body), yesRow(x).outcome], [1, true, "accepted"]);
@@ -1232,12 +1244,15 @@ const confirmWrites = (w) => w.db.writes("whatsapp_requests").filter((x) => x.bo
   // Frozen before the card.
   const fz = yesWorld({ flag: "change_requested" });
   const fc = await pickYes(fz);
-  check(G, "frozen: the card says nothing new is sent, the yes is only recorded", [/but the request is frozen \(Marta asked to change or cancel it\), so nothing new is sent to them: the yes is only recorded\./.test(fc.body), /Nothing is sent to the studio or the customer from here\./.test(fc.body)], [true, true]);
+  // Review of ef19cdd (3): a frozen request's yes is saved as an answer only
+  // (no outcome accepted, no hour), so settleBids or a queued offer can never
+  // send it later. Before: it was written as accepted at 18:00.
+  check(G, "frozen: the card says nothing new is sent and the yes is saved as an answer only, never sent later", [/but the request is frozen \(Marta asked to change or cancel it\), so nothing new is sent to them: the yes is saved as an answer only \(no accepted hour\), so no later step can send it either/.test(fc.body), /Record yes records their yes at 18:00, with the price 45 EUR, on their ask, as an answer only\./.test(fc.body), /Once Marta names a time, forward Estudio Sol's answer again\./.test(fc.body), /can still show it to them later/.test(fc.body), /Nothing is sent to the studio or the customer from here\./.test(fc.body)], [true, true, true, false, true]);
   await fz.tap(yesBtn(fc).id);
-  check(G, "frozen: recorded, no offer, the reply says why", [yesRow(fz).outcome, fz.spies.forwardOffer, /Nothing was sent to Marta: the request is frozen/.test(lastTo(fz, JORDAN).body), toOthers(fz).length], ["accepted", 0, true, 0]);
+  check(G, "frozen: saved as an answer only (pending, no accepted time, no hour; the words and the price kept), no offer, the reply says why", [yesRow(fz).outcome, yesRow(fz).accepted_at, yesRow(fz).offered_time, yesRow(fz).offered_times ?? null, yesRow(fz).quoted_price, !!yesRow(fz).replied_at, fz.spies.forwardOffer, /Saved as their answer only \(no accepted hour\): nothing was sent to Marta, the request is frozen/.test(lastTo(fz, JORDAN).body), toOthers(fz).length], ["pending", null, null, null, 45, true, 0, true, 0]);
   const fx = yesWorld({ flag: "cancelled" });
   await fx.tap(yesBtn(await pickYes(fx)).id);
-  check(G, "customer_flag cancelled: no offer either", fx.spies.forwardOffer, 0);
+  check(G, "customer_flag cancelled: no offer either, and saved as an answer only", [fx.spies.forwardOffer, yesRow(fx).outcome, yesRow(fx).offered_time], [0, "pending", null]);
   // Frozen after the card, before the tap: the hash sees it.
   const fl = yesWorld();
   const flc = await pickYes(fl);
@@ -1250,7 +1265,19 @@ const confirmWrites = (w) => w.db.writes("whatsapp_requests").filter((x) => x.bo
   const realFetch = race.env.fetch;
   race.env.fetch = async (u, o = {}) => { const r = await realFetch(u, o); if (o.method === "PATCH" && String(u).includes(`request_dispatch?id=eq.${YES_ROW}`)) race.db.t.whatsapp_requests.find((x) => x.id === 9306).customer_flag = "cancelled"; return r; };
   await race.tap(yesBtn(rc).id);
-  check(G, "frozen between the record and the offer: recorded, nothing sent", [yesRow(race).outcome, race.spies.forwardOffer, /Nothing was sent to Marta: the request is frozen/.test(lastTo(race, JORDAN).body)], ["accepted", 0, true]);
+  check(G, "frozen between the record and the offer: nothing sent, and the yes put back to an answer only (no accepted hour)", [yesRow(race).outcome, yesRow(race).accepted_at, yesRow(race).offered_time, yesRow(race).offered_times, yesRow(race).quoted_price, race.spies.forwardOffer, /Saved as their answer only \(no accepted hour\): nothing was sent to Marta, the request is frozen/.test(lastTo(race, JORDAN).body)], ["pending", null, null, null, 45, 0, true]);
+  // The put-back failing: Jordan is told plainly that the yes stayed accepted.
+  const rf = yesWorld();
+  const rfc = await pickYes(rf);
+  const rff = rf.env.fetch;
+  rf.env.fetch = async (u, o = {}) => {
+    if (o.method === "PATCH" && String(u).includes("customer_offered_at=is.null")) return res(500, "down");
+    const r = await rff(u, o);
+    if (o.method === "PATCH" && String(u).includes(`request_dispatch?id=eq.${YES_ROW}`)) rf.db.t.whatsapp_requests.find((x) => x.id === 9306).customer_flag = "change_requested";
+    return r;
+  };
+  await rf.tap(yesBtn(rfc).id);
+  check(G, "frozen after the record and the put-back failing: nothing sent, and Jordan told it stayed accepted", [yesRow(rf).outcome, rf.spies.forwardOffer, /Nothing was sent to Marta or to Estudio Sol: the request is frozen \(they asked to change or cancel it\)\. But the yes stays recorded as accepted, because I could not put it back to an answer only/.test(lastTo(rf, JORDAN).body)], ["accepted", 0, true]);
   // Closed.
   const cl = yesWorld({ stage: "cancelled" });
   const clc = await pickYes(cl);
@@ -1265,7 +1292,7 @@ const confirmWrites = (w) => w.db.writes("whatsapp_requests").filter((x) => x.bo
   const f3 = cl3.env.fetch;
   cl3.env.fetch = async (u, o = {}) => { const r = await f3(u, o); if (o.method === "PATCH" && String(u).includes(`request_dispatch?id=eq.${YES_ROW}`)) cl3.db.t.whatsapp_requests.find((x) => x.id === 9306).stage = "cancelled"; return r; };
   await cl3.tap(yesBtn(cl3c).id);
-  check(G, "cancelled between the record and the offer: nothing sent", [cl3.spies.forwardOffer, /Nothing was sent to anyone: the request is cancelled\./.test(lastTo(cl3, JORDAN).body)], [0, true]);
+  check(G, "cancelled between the record and the offer: nothing sent, and the yes put back to an answer only", [cl3.spies.forwardOffer, yesRow(cl3).outcome, yesRow(cl3).offered_time, /Saved as their answer only \(no accepted hour\): nothing was sent to anyone, the request is cancelled/.test(lastTo(cl3, JORDAN).body)], [0, "pending", null, true]);
   for (const st of ["needs_review", "no_show", "dismissed"]) {
     const x = yesWorld({ stage: st });
     const xc = await pickYes(x);
@@ -1533,6 +1560,235 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
   check(G, "reopenOfferClaim clears the customer's answer to the first offer", /customer_answer: null, customer_answered_at: null/.test(ro), true);
   const fo = lift(botSrc, "async function forwardOffer(");
   check(G, "forwardOffer's founder cards say the studio was told only when there is a studio number", [/studioFrom \? "The studio was told it is not booked yet\." : "The studio was told nothing by the bot/.test(fo), /studioFrom \? "The studio was told we are checking with the client\." : "The studio was told nothing by the bot/.test(fo)], [true, true]);
+}
+
+// ---------------------------------------------------------------------------
+// 14. Review of ef19cdd (24 Nov): nine fixes, each checked here.
+// ---------------------------------------------------------------------------
+{
+  // 1. A percentage counts as given only in a positive phrase. Before:
+  // parseDiscount's figure was taken whatever the words around it said.
+  const G = "14.1 discount: given only in a positive phrase";
+  const stance = (t) => (R.relayDiscountStance ? R.relayDiscountStance(t) : "(none)");
+  const GIVEN = [
+    "un 10% de descuento", "Os hacemos un 10% de descuento", "Sí, a las 18:00, 45€, con un 10% de descuento", "Le dejamos el 10%", "Te hacemos el 10% de descuento",
+    "Aplicamos el 10%", "Sí al 10%", "Sí, el 10% sin problema", "Perfecto, os hacemos el 10%", "Sí, a las 18:00. Con el 10% se queda en 45€", "le hacemos el 10/ de descuento",
+    "Podemos hacerle un 15%", "Le podemos dejar un 10%", "No hay problema, os hacemos el 10%", "No podemos a las 18, pero a las 19 sí, con el 10%", "Sí, 10% incluido",
+    "Os hacemos el diez por ciento", "Os hacemos el 10%, no más", "El 10% lo hacemos encantados", "Sí, os aplicamos un descuento del 10%",
+    "We can do 10%", "Yes, with the 10% discount", "Yes to the 10%", "We'll give you 10% off",
+  ];
+  const NOT = [
+    ["Sí, a las 18:00, 50€. El 10% no lo hacemos.", "refused"], ["Sí, a las 18:00, 50€ sin el 10%", "refused"], ["sin el 10%", "refused"], ["No hacemos descuento del 10%", "refused"],
+    ["No hacemos descuento, el 10% no", "refused"], ["El descuento del 10% no", "refused"], ["Sí, 45€. El descuento del 10% no podemos.", "refused"], ["Sí a las diez, no hacemos descuento", "refused"],
+    ["Imposible el 10%", "refused"], ["Lo siento, el 10% no es posible", "refused"], ["El 10% tampoco", "refused"], ["Ningún descuento del 10%", "refused"], ["Nada de 10%", "refused"],
+    ["Un 10% es mucho", "refused"], ["No el 10%, pero sí un 5%", "refused"], ["Sí, a las 18:00 (el 10% no)", "refused"], ["Sí. No, el 10% no.", "refused"],
+    ["We can't do 10%", "refused"], ["Sorry, no 10% discount", "refused"], ["Without the 10% it is 50", "refused"], ["We don't do 10%", "refused"],
+    ["Sí, a las diez, os hacemos descuento", "unclear"], ["¿El 10%?", "unclear"], ["¿Con el 10% de descuento?", "unclear"], ["10%", "unclear"], ["El 10%", "unclear"], ["El 10%, no", "unclear"],
+    ["Os hacemos el 10% solo entre semana", "unclear"], ["Os hacemos el 10% si reserva dos sesiones", "unclear"], ["Un 10% o un 5%", "unclear"], ["Le haríamos el 10% si repite", "unclear"],
+    ["Sí, a las 18:00. El 10% lo consulto y te digo", "unclear"], ["10% de descuento?", "unclear"],
+  ];
+  for (const t of GIVEN) check(G, `given: ${JSON.stringify(t)}`, stance(t), "given");
+  for (const [t, want] of NOT) check(G, `${want}: ${JSON.stringify(t)}`, stance(t), want);
+  // Through studioRelayPlan, studioWrites and the card line.
+  const refusal = "Sí, a las 18:00, 50€. El 10% no lo hacemos.";
+  const rp = R.studioRelayPlan(refusal, facts(), SP);
+  check(G, "the plan: a yes at 18:00 with 50 EUR, no discount, the 10% shown as turned down", [rp.kinds, rp.time, rp.price, rp.pct, rp.pctBlocked, rp.pctWhy, rp.pctSeen], [["yes_ask", "price"], "18:00", 50, null, true, "refused", 10]);
+  const rw = R.studioWrites("yes", rp, facts(), "NOW", "[s]", refusal);
+  check(G, "Record yes writes no discount_pct and no offer_note", [rw?.dispatch?.discount_pct, rw?.dispatch?.offer_note, rw?.dispatch?.quoted_price, rw?.dispatch?.offered_time], [undefined, undefined, 50, "18:00"]);
+  check(G, "the card line says they turned the 10% down", /a 10% they turned down, so no Massage Club rate is recorded/.test(R.relayReadText(rp.kinds, rp, (n) => `${n} EUR`)), true);
+  check(G, "and Record yes's words carry no rate", /Massage Club rate/.test(R.relayActionWords("yes", rp, (n) => `${n} EUR`)), false);
+  for (const t of ["sin el 10%", "no hacemos descuento del 10%", "el descuento del 10% no", "¿con el 10%?", "Os hacemos el 10% si repite"]) {
+    const p = R.studioRelayPlan(`Sí, a las 18:00, 45€. ${t}`, facts(), SP);
+    check(G, `no rate from "Sí, a las 18:00, 45€. ${t}"`, [p.pct, p.kinds.includes("discount"), p.pctBlocked, R.studioActions(p, facts()), R.studioWrites("rate", p, facts(), "NOW", "[s]", t)], [null, false, true, ["yes", "undo"], null]);
+  }
+  const ok = R.studioRelayPlan("Sí, a las 18:00, 45€. Os hacemos el 10%.", facts(), SP);
+  check(G, "a written yes to the 10% is still taken", [ok.pct, ok.kinds.includes("discount"), ok.pctBlocked, R.studioWrites("yes", ok, facts(), "NOW", "[s]", "x")?.dispatch?.discount_pct], [10, true, false, 10]);
+  const unclearLine = R.relayReadText(["unclear"], { pctBlocked: true, pctWhy: "unclear", pctSeen: 10 }, (n) => `${n} EUR`);
+  check(G, "the unclear line gives the Spanish example with English", [/a 10% I did not take as a discount/.test(unclearLine), /"os hacemos el 10%" \(EN: "we give you 10%"\)/.test(unclearLine), dash(unclearLine)], [true, true, false]);
+  // End to end: the card and the tap, through the real forwardOffer.
+  const w = yesWorld({ real: true, windowOpen: true });
+  const card = await pickYes(w, refusal);
+  check(G, "the card: Record yes, no rate on it, and the 10% shown as turned down", [(card?.buttons || []).map((b) => b.title), /a 10% they turned down/.test(card?.body || ""), /a 10% Massage Club rate|their 10% Massage Club rate|Record the rate/.test(card?.body || ""), !!shownWa(card), /Massage Club rate|tarifa Massage Club|descuento|discount/i.test(shownWa(card)?.text || "")], [["Record yes", "Not theirs"], true, false, true, false]);
+  await w.tap(yesBtn(card).id);
+  const sentWa = toCust(w).find((s) => s.kind === "buttons");
+  check(G, "the tap: no discount_pct on the row, and the offer that went has no Massage Club rate", [yesRow(w).discount_pct, yesRow(w).quoted_price, !!sentWa, /Massage Club rate|tarifa Massage Club|descuento|discount/i.test(sentWa?.body || "")], [null, 50, true, false]);
+}
+{
+  // 2. reopenOfferClaim keeps the history: the old answer is logged first.
+  const G = "14.2 reopenOfferClaim logs the answer it clears";
+  const mk = () => {
+    const w = relayWorld({ mode: "on" });
+    w.db.t.request_dispatch.push({ id: "d0000000-0000-4000-8000-000000000909", request_id: 9302, partner_id: "p-real", phone: "34911000202", outcome: "no", customer_answer: "no", customer_answered_at: "2026-11-24T10:00:00.000Z", customer_offered_at: "2026-11-24T09:00:00.000Z", customer_offered_time: "19:00", customer_offer_via: "email" });
+    return w;
+  };
+  const row = (w) => w.db.t.request_dispatch.find((d) => d.id === "d0000000-0000-4000-8000-000000000909");
+  const ev = (w) => w.db.t.funnel_events.filter((e) => e.event === "offer_answer_cleared");
+  const a = mk();
+  await a.fns.reopenOfferClaim("d0000000-0000-4000-8000-000000000909", false, "relay_record_yes");
+  check(G, "logged with the row, the old answer, its time, the hour and the reason, then cleared", [ev(a).length, ev(a)[0]?.meta?.row, ev(a)[0]?.meta?.old_answer, ev(a)[0]?.meta?.old_answered_at, ev(a)[0]?.meta?.old_offered_time, ev(a)[0]?.meta?.why, row(a).customer_answer, row(a).customer_answered_at, row(a).customer_offered_at], [1, "d0000000-0000-4000-8000-000000000909", "no", "2026-11-24T10:00:00.000Z", "19:00", "relay_record_yes", null, null, null]);
+  const b = mk();
+  b.env.logEvent = async () => { throw new Error("log down"); };
+  await b.fns.reopenOfferClaim("d0000000-0000-4000-8000-000000000909", false, "x");
+  check(G, "the log failing does not stop the clear", [row(b).customer_answer, row(b).customer_offered_at], [null, null]);
+  const c = mk();
+  const f0 = c.env.fetch;
+  c.env.fetch = async (u, o = {}) => ((o.method || "GET") === "GET" && String(u).includes("request_dispatch?id=eq.") ? res(500, "down") : f0(u, o));
+  await c.fns.reopenOfferClaim("d0000000-0000-4000-8000-000000000909", true, "reask_after_lapse");
+  check(G, "the read failing does not stop the clear either", [row(c).customer_answer, !!row(c).asked_again_at, ev(c).length], [null, true, 0]);
+  const d = mk();
+  Object.assign(row(d), { customer_answer: null, customer_answered_at: null });
+  await d.fns.reopenOfferClaim("d0000000-0000-4000-8000-000000000909", false, "x");
+  check(G, "no answer to clear: nothing logged", ev(d).length, 0);
+  const calls = botSrc.match(/reopenOfferClaim\([^)]*\)[^;]*;/g) || [];
+  const uses = calls.filter((x) => !/^reopenOfferClaim\(rowId/.test(x));
+  check(G, "every caller names its reason", [uses.length >= 6, uses.every((x) => /reopenOfferClaim\(String\([^)]*\), (true|false), [`"]/.test(x))], [true, true], JSON.stringify(uses));
+  // The relay's own reopen (another hour after the customer's no) logs her no.
+  const dn = yesWorld({ real: true });
+  Object.assign(marta(dn), { time1: "18:00-21:00", proposed_time: "18:00" });
+  Object.assign(yesRow(dn), { outcome: "no", customer_answer: "no", customer_answered_at: iso(T.now - 3600e3), offered_time: "18:00", customer_offered_at: iso(T.now - 2 * 3600e3), customer_offered_time: "18:00", customer_offer_via: "email", sent_at: iso(T.now - 60e3) });
+  await dn.forward("Mejor a las 19:00, 45€");
+  await dn.tap(lastTo(dn, JORDAN).rows.find((r) => r.title === "Someone else").id);
+  await dn.type("+34 911 000 202");
+  await dn.tap(yesBtn(lastCard(dn)).id);
+  const de = ev(dn)[0]?.meta || {};
+  check(G, "Record yes on another hour after her no: her no and its time are in funnel_events, and the new offer still goes", [de.old_answer, de.old_offered_time, de.why, !!de.old_answered_at, yesRow(dn).customer_answer, (dn.spies.emails || []).length], ["no", "18:00", "relay_record_yes", true, null, 1]);
+}
+{
+  // 3. Record yes on a frozen or closed request: an answer only. (The tap
+  // itself is in "12 Record yes: frozen, closed, test".)
+  const G = "14.3 frozen or closed: an answer only";
+  check(G, "relayYesAnswerOnly", ["declined", "frozen", "closed", "unchecked", "offer", "already", "test", ""].map((x) => (R.relayYesAnswerOnly ? R.relayYesAnswerOnly(x) : null)), [true, true, true, true, false, false, false, false]);
+  const base = { customer: "Marta", studio: "Estudio Sol", time: "18:00", day: "Thursday 26 November", price: 45, windowOpen: false, email: "m@correo.invalid", template: false, live: null, muted: false, stage: "cancelled" };
+  const fw = R.relayYesWords({ ...base, send: "frozen" }, (n) => `${n} EUR`);
+  const cw = R.relayYesWords({ ...base, send: "closed" }, (n) => `${n} EUR`);
+  check(G, "the card no longer says a frozen or closed yes can be shown later", [/can still show it|show it to them later|bidding window closes\), as for any recorded yes/.test(fw + cw), /saved as an answer only \(no accepted hour\), so no later step can send it/.test(fw), /saved as an answer only \(no accepted hour\), so no later step can send it/.test(cw)], [false, true, true]);
+  // settleBids reads accepted rows: a frozen yes is never one of them.
+  const fz = yesWorld({ flag: "change_requested" });
+  await fz.tap(yesBtn(await pickYes(fz)).id);
+  check(G, "a frozen yes leaves no accepted row for settleBids or a queue", fz.db.t.request_dispatch.filter((d) => d.request_id === 9306 && d.outcome === "accepted").length, 0);
+}
+{
+  // 4. The preview throws: the card only records, and says so.
+  const G = "14.4 a failed preview: record only";
+  const w = yesWorld({ real: true });
+  w.env.listedPrice = async () => { throw new Error("preview boom"); };
+  const card = await pickYes(w, "Sí, a las 18:00");
+  check(G, "the card: no words shown, says the preview failed and to forward it again, and that nothing is sent", [/Exactly what/.test(card?.body || ""), /I could not work out what the offer step would send Marta \(the preview failed\), so on this card Record yes only records/.test(card?.body || ""), /Forward Estudio Sol's message to me again for a card that can send the offer\./.test(card?.body || ""), /Nothing is sent to the studio or the customer from here\./.test(card?.body || ""), /and nothing to the customer unless you tap Record yes/.test(card?.body || "")], [false, true, true, true, false]);
+  await w.tap(yesBtn(card).id);
+  check(G, "the tap: saved as an answer only, no offer, nothing to anyone", [yesRow(w).outcome, yesRow(w).offered_time, !!yesRow(w).replied_at, fwdRes(w), (w.spies.emails || []).length, toCust(w).length, toSol(w), /Saved as their answer only \(no accepted hour\): the offer preview failed/.test(lastTo(w, JORDAN)?.body || "")], ["pending", null, true, [], 0, 0, 0, true]);
+  // Failed on the card, working on the tap: nothing is recorded, the new card shows.
+  const w2 = yesWorld({ real: true });
+  w2.env.listedPrice = async () => { throw new Error("preview boom"); };
+  const c2 = await pickYes(w2, "Sí, a las 18:00");
+  w2.env.listedPrice = async () => null;
+  await w2.tap(yesBtn(c2).id);
+  check(G, "the preview works again by the tap: nothing recorded, the new card with the words instead", [yesRow(w2).outcome, fwdRes(w2), /^Something changed since that card/.test(lastCard(w2)?.body || ""), /Exactly what Marta gets/.test(lastCard(w2)?.body || "")], ["pending", [], true, true]);
+}
+{
+  // 5. sendOfferTemplate reads the contact fields again.
+  const G = "14.5 the template audience reads last_name";
+  const fo = lift(botSrc, "async function forwardOffer(");
+  const sot = lift(botSrc, "async function sendOfferTemplate(");
+  const otm = lift(botSrc, "async function offerTplMode(");
+  const run = async (dbReq) => {
+    T.now = M(12, 20);
+    const st = { id: "row-1", request_id: 9501, partner_id: "p-1", phone: "34911000501", offered_time: "18:00", outcome: "accepted", reply_text: "Sí", replied_at: iso(T.now), customer_answer: null, customer_offered_at: null, customer_offered_time: null, customer_offer_via: null, quoted_price: 45, discount_pct: null, offer_slot_at: null };
+    // As most forwardOffer callers read it: no last_name.
+    const req = { id: 9501, first_name: "Lucia", service_name: "Relaxing massage", day1: "Thursday 26 Nov, 18:00", time1: "18:00", proposed_time: "18:00", contact_email: "lucia@correo.invalid", client_phone: "+34699000501", languages: "en", stage: "studio_asked", message_text: "", created_at: iso(T.now - 3600e3), area: "Centro" };
+    const tpl = [], reads = [];
+    const env = {
+      Date: FakeDate, SUPABASE_URL: "https://db.invalid", H: () => ({}),
+      fetch: async (u, opt = {}) => { u = decodeURIComponent(String(u)); if (opt.method === "PATCH" && u.includes("request_dispatch?id=eq.row-1")) { Object.assign(st, JSON.parse(opt.body || "{}")); return res(200, [st]); } if (u.includes("request_dispatch?id=eq.row-1")) return res(200, [st]); if (u.includes("whatsapp_requests?id=eq.9501")) { reads.push(u); return dbReq === "fail" ? res(500, "down") : res(200, [{ ...req, ...dbReq }]); } return res(200, []); },
+      digitsOf, getSession: async () => ({ step: "", data: {} }), saveSession: async () => {}, partnerCard: async () => ({ business_name: "Estudio Uno", address: "Calle Inventada 1", phone: "", neighbourhood: "Chamberí" }),
+      dispatchRowFor: async () => st, emailOffer: async () => true, waWindowOpen: async () => false, studioSay: async () => true, studioNoteSure: async () => "sent",
+      logEvent: async () => {}, founderCard: async () => {}, notifyJordanWa: async () => {}, appSecret: async (k) => (k === "OFFER_TEMPLATE" ? "on" : ""),
+      mktTemplateGate: async () => ({ ok: true, category: "UTILITY" }), sendTemplate: async (...a) => { tpl.push(a); return true; },
+      offerTplParams: OT.offerTplParams, renderOfferTpl: OT.renderOfferTpl, offerTplAudience: OT.offerTplAudience, offerTplPayloads: OT.offerTplPayloads, parseOfferTplMode: OT.parseOfferTplMode, OFFER_TPL_NAME: OT.OFFER_TPL_NAME,
+      resolveRequestDate: O.resolveRequestDate, madridMidnight: O.madridMidnight, COPY: O.COPY, trSvc: O.trSvc, trSvcLow: C.trSvcLow, dayLabelFor: () => "Thursday 26 November", parseQuotedPrice: C.parseQuotedPrice, parseOfferedTimes: () => [], listedPrice: async () => null,
+      OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"], FAKE_NUM_RE: /(^|\D)34600000\d{3}(\D|$)/, TEST_NAME_RE: /\b(test|prueba|uitest|mctest)\b/i,
+      TEST_PHONES: ["15622355063", "17867276503", "34612474827"], TEST_EMAIL_RE: /@(example|test|testing)\.com$/i, REL_TEST_EMAIL_RE: /@(testing|example|test)\.com$/i, heldNum: () => false, heldMail: () => false, TPL_NOT_LIVE: /not approved/i, lastWaError: "",
+      ...P,
+    };
+    const { fns } = sandbox([fo, sot, otm, one("offerTplCache"), one("offerTplToldNotLive"), one("LONG_EN"), one("LONG_ES"), lift(botSrc, "function offerTestCustomer("), lift(botSrc, "function offerDayFromText("), one("isSameDayReq"), liftArrow("reqDuration"), liftArrow("askedMins"), words].filter(Boolean), env, ["forwardOffer"]);
+    const out = await fns.forwardOffer(req, { id: "p-1", business_name: "Estudio Uno" }, "row-1", "18:00", "Sí, a las 18:00, 45€", "34911000501", {});
+    return { out, tpl, reads };
+  };
+  const prueba = await run({ last_name: "Prueba" });
+  check(G, "a request whose last_name is Prueba (not passed in): no template, the email still goes", [prueba.out, prueba.tpl.length, prueba.reads.some((u) => /select=first_name,last_name,contact_email,client_phone/.test(u))], ["email", 0, true], "before: the caller's request had no last_name, so the test name was missed and the template went");
+  const none = await run({});
+  check(G, "a request with no last_name at all: the template goes as before", [none.out, none.tpl.length], ["email", 1]);
+  const real = await run({ last_name: "Ejemplo" });
+  check(G, "a real surname: the template goes", real.tpl.length, 1);
+  const testMail = await run({ contact_email: "lucia@test.com" });
+  check(G, "a test address only in the database: no template", testMail.tpl.length, 0);
+  const failed = await run("fail");
+  check(G, "the read failing: no template (the email still goes)", [failed.out, failed.tpl.length], ["email", 0]);
+}
+{
+  // 6. Never tell Jordan to answer a studio from his own phone.
+  const G = "14.6 studio advice: as the bot";
+  const all = [];
+  for (const r of ["go", "whatsapp", "email", "email_pending", "queued", "held_window", "none", "withheld_too_soon", "withheld_dearer", "withheld_mismatch", "muted", "held", "x"]) for (const link of ["", "https://x.invalid/bot.html?reply=1&sig=2"]) all.push([r, link, R.relayStudioAdvice(r, "Estudio Sol", "Marta", link)]);
+  const base = { customer: "Marta", studio: "Estudio Sol", time: "18:00", day: "Thursday 26 November", price: 45, windowOpen: false, email: "m@correo.invalid", template: false, live: null, muted: false, stage: "studio_asked" };
+  const yw = [];
+  for (const send of ["offer", "declined", "frozen", "closed", "unchecked", "already", "test"]) for (const fate of ["", "go", "queued", "withheld_too_soon", "withheld_mismatch", "held_window", "withheld_dearer", "held", "muted"]) yw.push(R.relayYesWords({ ...base, send, fate }, (n) => `${n} EUR`, "https://x.invalid/bot.html?reply=1&sig=2"));
+  for (const res0 of ["whatsapp", "email", "email_pending", "queued", "held_window", "withheld_too_soon", "withheld_mismatch", "withheld_dearer", "held", "none", "declined", "frozen", "closed", "unchecked"]) yw.push(R.relayYesDone(res0, { customer: "Marta", studio: "Estudio Sol", time: "18:00", email: "", template: false, stage: "", link: "https://x.invalid/bot.html?reply=1&sig=2" }));
+  check(G, "no advice, card or reply mentions Jordan's phone", [...all.map((x) => x[2]), ...yw].filter((x) => /phone/i.test(x)), []);
+  check(G, "the checking-with line says to reply as the bot, with the link when given", [R.relayStudioAdvice("go", "Estudio Sol", "Marta"), R.relayStudioAdvice("go", "Estudio Sol", "Marta", "https://x.invalid/l")], ["Nothing is sent to Estudio Sol from here: reply to them as the bot that you are checking with Marta.", "Nothing is sent to Estudio Sol from here: reply to them as the bot (https://x.invalid/l) that you are checking with Marta."]);
+  check(G, "every studio advice that asks Jordan to say something says as the bot", all.filter(([r]) => !["muted", "x"].includes(r)).every(([, link, t]) => t.includes(`reply to them as the bot${link ? ` (${link})` : ""}`)), true);
+  check(G, "no dash", [...all.map((x) => x[2]), ...yw].some(dash), false);
+}
+{
+  // 7. Spanish shown to Jordan always has English.
+  const G = "14.7 English beside the Spanish";
+  const ne = (t) => R.relayNeedsEnglish(t, C.strongSpanish);
+  check(G, "short Spanish needs English; words both languages use are no evidence", ["No, completo", "Vale ok", "Ok", "No", "Completo", "No time", "vale"].map(ne), [true, true, true, true, true, true, true], "before: 'No, completo' and 'Vale ok' read as English");
+  check(G, "clear English still goes without", ["Yes, we can do 18:00", "Sorry, we are fully booked", "Thanks, see you tomorrow", "We have 18:00 available"].map(ne), [false, false, false, false]);
+  const w = relayWorld({ mode: "test" });
+  await w.forward("No, completo");
+  check(G, "the list for \"No, completo\" carries its English", /"No, completo"\n\(EN: "EN\[No, completo\]"\)/.test(lastTo(w, JORDAN)?.body || ""), true);
+  // The OFFER FORWARDED and NOT DELIVERED cards, when no English came back.
+  const fw = yesWorld({ real: true });
+  fw.env.aiText = async () => null;
+  await fw.tap(yesBtn(await pickYes(fw)).id);
+  const fwc = (fw.spies.cards || []).find((c) => c.badge === "OFFER FORWARDED");
+  check(G, "OFFER FORWARDED with no English: '(English not available)' under the Spanish quote", [fwc?.quote, fwc?.after], ["[reenviado por Jordan, jueves 26 de noviembre] Sí, a las 18:00, 45€", ["(English not available)"]]);
+  const nd = yesWorld({ real: true, email: "" });
+  nd.env.aiText = async () => null;
+  await nd.tap(yesBtn(await pickYes(nd)).id);
+  const ndc = (nd.spies.cards || []).find((c) => c.badge === "OFFER NOT DELIVERED");
+  check(G, "OFFER NOT DELIVERED with no English: the same line", ndc?.after, ["(English not available)"]);
+  const fo = lift(botSrc, "async function forwardOffer(");
+  check(G, "the HELD, NOT DELIVERED and FORWARDED cards all carry that line", (fo.match(/after: quoteEnLine/g) || []).length, 3);
+  const soc = (botSrc.match(/const SOC_STUDIO_CHAT_PARA = "([^"]+)";/) || [])[1] || "";
+  check(G, "the new-studio card's «Jordan, de Massage Club» has its English", soc.includes("sign it «Jordan, de Massage Club» (EN: Jordan, from Massage Club)."), true);
+}
+{
+  // 9. ops switches: the effective modes, never a value.
+  const G = "14.9 ops switches";
+  const sw = async (w, payload) => { const r = await w.fns.relaySwitchesOps(payload); return r && typeof r.text === "function" ? { status: r.status, text: await r.text() } : { status: 0, text: "{}" }; };
+  const w = relayWorld({ hookKey: "hook-key-for-tests-only-0123456789" });
+  w.db.t.app_secrets.push({ key: "RELAY", value: "test" }, { key: "OFFER_TEMPLATE", value: "on" });
+  const before = w.db.log.filter((x) => x.method !== "GET").length;
+  const a = await sw(w, { ops: "switches", key: OPS });
+  const j = JSON.parse(a.text);
+  check(G, "app_secrets: the modes, where they came from, and the secrets only as there or not", [a.status, j.RELAY, j.OFFER_TEMPLATE, j.META_APP_SECRET, j.RELAY_HOOK_KEY, j.relay_verifiable], [200, { mode: "test", from: "app_secrets", recognised: true }, { mode: "on", from: "app_secrets", recognised: true }, { set: true, from: "app_secrets" }, { set: true, long_enough: true, from: "app_secrets" }, true]);
+  check(G, "never a secret's value, and nothing written", [a.text.includes(APP_SECRET), a.text.includes("hook-key-for-tests-only"), w.db.log.filter((x) => x.method !== "GET").length - before, w.sent.length], [false, false, 0, 0]);
+  check(G, "the wrong key or none: forbidden", [(await sw(w, { ops: "switches", key: "nope" })).status, (await sw(w, { ops: "switches" })).status], [403, 403]);
+  // An Edge Function secret wins over app_secrets, as relayMode and appSecret read it.
+  w.env.Deno = { env: { get: (k) => (k === "RELAY" ? "on" : k === "OFFER_TEMPLATE" ? "  " : undefined) } };
+  const e = JSON.parse((await sw(w, { ops: "switches", key: OPS })).text);
+  check(G, "env first: RELAY on from env; a blank env OFFER_TEMPLATE reads off, as appSecret does", [e.RELAY, e.OFFER_TEMPLATE?.mode, e.OFFER_TEMPLATE?.from], [{ mode: "on", from: "env", recognised: true }, "off", "env"]);
+  const w2 = relayWorld();
+  w2.db.t.app_secrets = [{ key: "RELAY", value: "yes" }, { key: "RELAY_HOOK_KEY", value: "short" }];
+  const k = JSON.parse((await sw(w2, { ops: "switches", key: OPS })).text);
+  check(G, "an unknown value reads off (and says so); a short hook key is there but too short; no META_APP_SECRET", [k.RELAY, k.OFFER_TEMPLATE, k.META_APP_SECRET, k.RELAY_HOOK_KEY, k.relay_verifiable, JSON.stringify(k).includes("short\"")], [{ mode: "off", from: "app_secrets", recognised: false }, { mode: "off", from: "none", recognised: true }, { set: false, from: "none" }, { set: true, long_enough: false, from: "app_secrets" }, false, false]);
+  const w3 = relayWorld();
+  const f3 = w3.env.fetch;
+  w3.env.fetch = async (u, o) => (String(u).includes("app_secrets") ? res(500, "down") : f3(u, o));
+  const u3 = JSON.parse((await sw(w3, { ops: "switches", key: OPS })).text);
+  check(G, "app_secrets unreadable: RELAY is what the worker last read (off before any read), OFFER_TEMPLATE off", [u3.RELAY?.mode, u3.RELAY?.from, u3.OFFER_TEMPLATE?.mode, u3.META_APP_SECRET?.set], ["off", "unreadable", "off", false]);
+  check(G, "handleInner routes ops switches to it", /if \(payload\?\.ops === "switches"\) return await relaySwitchesOps\(payload\);/.test(botSrc), true);
 }
 
 // ---------------------------------------------------------------------------

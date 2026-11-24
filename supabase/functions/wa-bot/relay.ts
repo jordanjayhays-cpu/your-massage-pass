@@ -214,14 +214,83 @@ export type StudioFacts = {
   hoursOnFile: string;             // partners.opening_hours as text, "" when empty
   open: boolean;                   // the request is still open
 };
-export type StudioPlan = { kinds: string[]; time: string; price: number | null; pct: number | null; pctBlocked: boolean; gender: boolean | null; hours: string; hoursRaw: boolean };
+// pctSeen is the percentage parseDiscount found, pct only one that counts as
+// given; pctWhy says why one seen was not taken: "relay" (not one forwarded
+// text message in their own writing), "refused" (their words say no to it) or
+// "unclear" (their words do not clearly give it).
+export type StudioPlan = { kinds: string[]; time: string; price: number | null; pct: number | null; pctBlocked: boolean; pctSeen: number | null; pctWhy: "" | "relay" | "refused" | "unclear"; gender: boolean | null; hours: string; hoursRaw: boolean };
+// ---- a written percentage: given, refused or unclear ----
+// Review of ef19cdd (major; CLAUDE.md discounts: never quote one to a customer
+// before the studio has confirmed it in writing). parseDiscount finds a
+// percentage anywhere in the words, so "Sí, a las 18:00, 50€. El 10% no lo
+// hacemos." (EN: "Yes, at 18:00, 50 EUR. We don't do the 10%.") read as a 10%
+// Massage Club rate, and Record yes would have printed it on the customer's
+// offer. A percentage now counts as given only in a positive phrase: "os
+// hacemos el 10%" (EN: "we give you 10%"), "le dejamos un 10%" (EN: "we leave
+// you 10%"), "con el 10%" (EN: "with the 10%"), "aplicamos el 10%" (EN: "we
+// apply 10%"), "sí al 10%" (EN: "yes to the 10%"), "un 10% de descuento" (EN:
+// "a 10% discount"), "we can do 10%", "with the 10% discount". A refusal next
+// to it ("no", "sin el 10%" (EN: "without the 10%"), "el descuento no" (EN:
+// "the discount, no"), "we can't"), a question, a condition ("si repite" (EN:
+// "if they come back"), "only if"), two different percentages, or a number
+// word that is not tied to the discount ("a las diez" (EN: "at ten")) make it
+// refused or unclear, and it is never recorded.
+export type DiscountStance = "given" | "refused" | "unclear";
+const PCT_WORDS = "cinco|diez|quince|veinte|veinticinco|treinta";
+// The percentage itself, written so it cannot be anything else.
+const PCT_ANCHOR_RE = new RegExp(`(\\d{1,2})\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:^|[^a-z])(${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|de\\s+(?:descuento|dto))|(?:descuento|dto)\\s+(?:del?|de\\s+un)\\s+(\\d{1,2}|${PCT_WORDS})(?![0-9a-z])`, "g");
+const PCT_WORD_N: Record<string, number> = { cinco: 5, diez: 10, quince: 15, veinte: 20, veinticinco: 25, treinta: 30 };
+// A clause about the discount ("a las diez" (EN: "at ten") is not one).
+const PCT_MARK_RE = new RegExp(`\\d{1,2}\\s*(?:%|\\/(?!\\s*\\d)|por\\s*ciento|porciento|percent)|(?:^|[^a-z])(?:descuento|descuentos|dto|discount|rebaja|rate)(?![a-z])|(?:^|[^a-z])(?:${PCT_WORDS})\\s*(?:%|por\\s*ciento|porciento|de\\s+(?:descuento|dto))`);
+// Words that only look like a no.
+const NOT_A_NO_RE = /\b(no hay (ningun )?problemas?|sin problemas?|ningun problema|no problem|no worries|no te preocupes|no os preocupeis|no pasa nada)\b/g;
+const PCT_NO_RE = /(^|[^a-z0-9ñ'])(no|sin|nada|ningun|ninguno|ninguna|tampoco|imposible|nunca|jamas|siento|demasiado|mucho|not|without|cannot|can't|cant|don't|dont|won't|wont|isn't|isnt|unable|sorry|too much)(?![a-z0-9ñ'])/;
+const PCT_IF_RE = /(^|[^a-z0-9ñ])(si (reserva|reservan|reservas|viene|vienen|vienes|repite|repiten|repites|paga|pagan|pagas|son|es|trae|traen|compra|compran|hace|hacen|coge|cogen)|solo (los|las|entre|para|con|si|en|de|el|la|a|por)|solamente|unicamente|a partir de|excepto|salvo|para grupos|en grupo|bono|if|only if|only for|only on|unless|except|for groups)(?![a-z0-9ñ])/;
+const PCT_YES_RE: RegExp[] = [
+  /(^|[^a-z])(os|le|les|te|lo|la|se lo|se la)\s+(hacemos|hago|haremos|dejamos|dejo|dejaremos|aplicamos|aplico|aplicaremos|ofrecemos|ofrezco|ofreceremos|damos|doy|daremos|ponemos|pongo|respetamos|mantenemos|incluimos)(?![a-z])/,
+  /(^|[^a-z])(os|le|les|te)\s+podemos\s+(hacer|dejar|aplicar|ofrecer|dar|poner)(?![a-z])/,
+  new RegExp(`(^|[^a-z])(hacemos|aplicamos|ofrecemos|damos|dejamos|ponemos|incluimos|podemos\\s+(hacer|dejar|aplicar|ofrecer|dar|poner)(le|les|os|te)?)\\s+(el\\s+|un\\s+|una\\s+|del\\s+|de\\s+un\\s+)?(descuento\\s+(del?\\s+)?)?(\\d|descuento|dto|${PCT_WORDS})`),
+  new RegExp(`(^|[^a-z])con\\s+(el\\s+|un\\s+|una\\s+)?(descuento|dto|\\d{1,2}\\s*(%|\\/|por\\s*ciento|porciento)|${PCT_WORDS})`),
+  new RegExp(`(^|[^a-z])si\\s*[,!:]?\\s*(al\\s+|el\\s+|un\\s+|con\\s+el\\s+|con\\s+un\\s+)?(\\d{1,2}\\s*(%|\\/|por\\s*ciento|porciento)|${PCT_WORDS})`),
+  /(^|[^a-z])(al|el|un)\s+\d{1,2}\s*(%|\/|por\s*ciento|porciento)(\s*de\s*(descuento|dto))?\s*,?\s*(si|vale|ok|okay|perfecto|de acuerdo|claro|genial)(?![a-z])/,
+  new RegExp(`(^|[^a-z])un\\s+(\\d{1,2}\\s*(%|\\/(?!\\s*\\d)|por\\s*ciento|porciento)|(${PCT_WORDS})\\s*(%|por\\s*ciento|porciento))`),
+  /(^|[^a-z])(incluido|incluida|incluye|incluyendo|aplicado|aplicada|descontado|ya descontado)(?![a-z])/,
+  /\b(we|i)\s*('ll|ll|will|can|could|do|are happy to|'re happy to|re happy to|am happy to|'m happy to)?\s*(do|give|offer|apply|include|honou?r)\b/,
+  /\bhappy to (do|give|offer|apply)\b/,
+  /\bwith\s+(the\s+|a\s+|an\s+)?(\d{1,2}\s*(%|percent)|discount)/,
+  /\b(a|an)\s+\d{1,2}\s*(%|percent)/,
+  /\d{1,2}\s*%\s*off\b/,
+  /\byes\b[^a-z0-9]*(to\s+)?(the\s+|a\s+)?\d{1,2}\s*(%|percent)/,
+  /\b(included|including|applied)\b/,
+];
+export function relayDiscountStance(text: string): DiscountStance {
+  const t = norm(text).replace(NOT_A_NO_RE, " ok ");
+  let refused = false, unclear = false, given = false;
+  // Sentences (a question keeps its mark), then the parts of each: a no
+  // counts when it is in the same part as the discount.
+  for (const sent of t.split(/(?<=[.!?;\n])/)) {
+    if (!PCT_MARK_RE.test(sent)) continue;
+    const parts = sent.split(/,|\(|\)|(?:^|\s)(?:pero|but|y|and|aunque|though)(?=\s)/);
+    for (const part of parts) if (PCT_MARK_RE.test(part) && PCT_NO_RE.test(part)) refused = true;
+    if (/[?¿]/.test(sent) || PCT_IF_RE.test(sent)) unclear = true;
+    if (PCT_YES_RE.some((re) => re.test(sent))) given = true;
+  }
+  if (refused) return "refused";
+  // The percentage must be written as one, and as one figure only.
+  const figs = new Set<number>();
+  for (const m of t.matchAll(PCT_ANCHOR_RE)) {
+    const n = m[1] ? Number(m[1]) : m[2] ? PCT_WORD_N[m[2]] : /^\d+$/.test(m[3] || "") ? Number(m[3]) : PCT_WORD_N[m[3] || ""];
+    if (n) figs.add(n);
+  }
+  return figs.size !== 1 || unclear || !given ? "unclear" : "given";
+}
 const NO_RE = /(^|[^a-zñáéíóúü])(no (podemos|puedo|tenemos|hay|nos (da|va|viene))|imposible|complet[oa]s?|llen[oa]s?|ocupad[oa]s?|lo siento|no disponible|sin hueco|no queda|no nos queda)(?![a-zñáéíóúü])/i;
 const OTHER_RE = /(^|[^a-zñáéíóúü])(otra hora|otro d[ií]a|otro momento|m[aá]s tarde|m[aá]s temprano)(?![a-zñáéíóúü])/i;
 const YES_OPEN_RE = /^\s*[¡]?\s*(s[ií]|claro|perfecto|perfecta|vale|ok|okay|de acuerdo|genial)(?![a-zñáéíóúü])/i;
 const AVAIL_RE = /(^|[^a-zñáéíóúü])(hueco|podemos|puedo|tenemos|disponible|libre|os esperamos|le esperamos|la esperamos|sin problema)(?![a-zñáéíóúü])/i;
 export function studioRelayPlan(text: string, f: StudioFacts, P: StudioParsers): StudioPlan {
   const t = String(text || "").trim();
-  const plan: StudioPlan = { kinds: [], time: "", price: null, pct: null, pctBlocked: false, gender: null, hours: "", hoursRaw: false };
+  const plan: StudioPlan = { kinds: [], time: "", price: null, pct: null, pctBlocked: false, pctSeen: null, pctWhy: "", gender: null, hours: "", hoursRaw: false };
   if (!t) { plan.kinds.push("unclear"); return plan; }
   if (P.bajaIntent(t) || P.stopIntent(t)) { plan.kinds.push("stop"); return plan; }
   if (P.AUTOREPLY_RE.test(t)) { plan.kinds.push("away"); return plan; }
@@ -246,10 +315,15 @@ export function studioRelayPlan(text: string, f: StudioFacts, P: StudioParsers):
     else if (OTHER_RE.test(t)) plan.kinds.push("other");
     if (price !== null && !plan.kinds.includes("no")) { plan.kinds.push("price"); plan.price = price; }
     if (pct !== null) {
-      // A discount counts only in the studio's own writing: one forwarded
-      // text message, with none of our own lines in the batch.
-      if (f.source === "text" && f.single && !f.echo) { plan.kinds.push("discount"); plan.pct = pct; }
-      else plan.pctBlocked = true;
+      // A discount counts only when their words give it (relayDiscountStance:
+      // "El 10% no lo hacemos" (EN: "We don't do the 10%") is a no), and only
+      // in the studio's own writing: one forwarded text message, with none of
+      // our own lines in the batch. Anything else is shown, never recorded.
+      plan.pctSeen = pct;
+      const stance = relayDiscountStance(t);
+      if (stance !== "given") { plan.pctBlocked = true; plan.pctWhy = stance; }
+      else if (f.source === "text" && f.single && !f.echo) { plan.kinds.push("discount"); plan.pct = pct; }
+      else { plan.pctBlocked = true; plan.pctWhy = "relay"; }
     }
   }
   if (f.wantGender) {
@@ -290,7 +364,9 @@ export function studioWrites(action: string, p: StudioPlan, f: StudioFacts & { a
   const answered = { replied_at: nowIso, reply_text: stamped.slice(0, 500) };
   const gender = p.gender !== null && f.source === "text" ? { therapist_gender_ok: p.gender, therapist_gender_note: raw.slice(0, 300) } : {};
   const price = p.price !== null && f.source === "text" ? { quoted_price: p.price } : {};
-  const rate = p.pct !== null && f.source === "text" && f.single && !f.echo ? { discount_pct: p.pct, offer_note: raw.slice(0, 200) } : {};
+  // Only a rate studioRelayPlan read as given (kind "discount"): a refused
+  // or unclear percentage is never written (review of ef19cdd, major).
+  const rate = p.pct !== null && p.kinds.includes("discount") && !p.pctBlocked && f.source === "text" && f.single && !f.echo ? { discount_pct: p.pct, offer_note: raw.slice(0, 200) } : {};
   const accept = f.outcome === "won" ? {} : { outcome: "accepted", accepted_at: f.acceptedAt || nowIso };
   if (action === "yes") return p.time ? { dispatch: { ...accept, ...answered, offered_time: p.time, offered_times: [p.time], ...price, ...rate, ...gender } } : null;
   if (action === "price") return p.price !== null ? { dispatch: { ...answered, ...price, ...gender } } : null;
@@ -483,15 +559,17 @@ export function relayActionWords(action: string, p: { time?: string; price?: num
 }
 // Whether Jordan needs an English line under the text (CLAUDE.md: always an
 // English translation for any Spanish shown to him). Only clearly English
-// text goes without one.
+// text goes without one. Review of ef19cdd (minor 7): words both languages
+// use (no, ok, okay, i, time) are no evidence of English, so "No, completo"
+// (EN: "No, fully booked") and "Vale ok" (EN: "OK, fine") get their line.
 export function relayNeedsEnglish(t: string, strongSpanish: (t: string) => boolean): boolean {
   const s = String(t || "").trim();
   if (!s) return false;
   if (strongSpanish(s) || /[ñáéíóúü¿¡]/i.test(s)) return true;
-  return !/\b(the|and|is|are|you|we|can|yes|no|ok|okay|thanks|thank|please|time|book|i|my|hi|hello|sorry|tomorrow|today)\b/i.test(s);
+  return !/\b(the|and|is|are|you|we|can|yes|thanks|thank|please|book|my|hi|hello|sorry|tomorrow|today|have|not|with|for|available|booked|that|this|will)\b/i.test(s);
 }
 // One line: what the bot read.
-export function relayReadText(kinds: string[], p: { time?: string; price?: number | null; pct?: number | null; gender?: boolean | null; hours?: string; hoursRaw?: boolean; pctBlocked?: boolean }, euro: (n: number) => string): string {
+export function relayReadText(kinds: string[], p: { time?: string; price?: number | null; pct?: number | null; gender?: boolean | null; hours?: string; hoursRaw?: boolean; pctBlocked?: boolean; pctSeen?: number | null; pctWhy?: string }, euro: (n: number) => string): string {
   const out: string[] = [];
   for (const k of kinds) {
     if (k === "yes_ask") out.push(p.time ? `yes at the hour asked, ${p.time}` : "yes, but the request has no exact hour");
@@ -515,7 +593,10 @@ export function relayReadText(kinds: string[], p: { time?: string; price?: numbe
     else if (k === "offmenu") out.push("an off-menu request");
     else if (k === "unclear") out.push("nothing I can act on");
   }
-  if (p.pctBlocked) out.push("a discount I did not take (a discount counts only from one forwarded text message in their own writing)");
+  const seen = p.pctSeen ? `${p.pctSeen}%` : "percentage";
+  if (p.pctBlocked && p.pctWhy === "refused") out.push(`a ${seen} they turned down, so no Massage Club rate is recorded (their words say no to it)`);
+  else if (p.pctBlocked && p.pctWhy === "unclear") out.push(`a ${seen} I did not take as a discount: their words do not clearly give it (it counts only when they write that they give it, such as "os hacemos el 10%" (EN: "we give you 10%")), so nothing is recorded; ask them as the bot if it matters`);
+  else if (p.pctBlocked) out.push("a discount I did not take (a discount counts only from one forwarded text message in their own writing)");
   return out.join("; ") || "nothing I can act on";
 }
 // What a recorded studio answer can set off later, by the bot's normal steps,
@@ -554,7 +635,15 @@ export const STUDIO_FOLLOWS: Record<string, string[]> = {
 //   frozen    customer_flag change_requested or cancelled: nothing new is sent
 //   test      a test contact or friend tester: the relay never reaches them
 //   closed    the request is no longer open: nothing is sent
-export type YesSend = "offer" | "already" | "declined" | "frozen" | "test" | "closed";
+//   unchecked what the offer step would send could not be worked out (the
+//             preview failed), so this card only records (relayYesFacts)
+// Review of ef19cdd (3, 4): declined, frozen, closed and unchecked are saved
+// as an answer only (yesAsAnswer: the words, the price, a rate, a therapist
+// answer; no outcome accepted, no accepted time, no hour), so settleBids, a
+// queued offer or any later step can never send it.
+export type YesSend = "offer" | "already" | "declined" | "frozen" | "test" | "closed" | "unchecked";
+export const YES_ANSWER_ONLY: YesSend[] = ["declined", "frozen", "closed", "unchecked"];
+export const relayYesAnswerOnly = (send: unknown): boolean => YES_ANSWER_ONLY.includes(String(send || "") as YesSend);
 export function relayYesSend(o: { open: boolean; flag: string; test: boolean; already: boolean; declined?: boolean }): YesSend {
   if (!o.open) return "closed";
   if (o.test) return "test";
@@ -603,37 +692,45 @@ export type YesFacts = {
   turnedDown?: string;     // an hour they turned down on this ask, when it is not this one
 };
 const capFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-// What Jordan should tell the studio from his phone, since the bot says
-// nothing to it (it wrote to him), worded as the bot's own path words it for
-// each answer (review of a9c4c0e, minor 5): "Lo confirmo con..." when it
-// goes, "no le guardéis el hueco todavía" when it waits, "no hace falta que le
-// guardéis el hueco" when nothing can reach the customer, "no le guardéis el
-// hueco" when it is not sent.
-export function relayStudioAdvice(res: string, studio: string, who: string): string {
+// What Jordan should tell the studio, since the bot says nothing to it (it
+// wrote to him), worded as the bot's own path words it for each answer
+// (review of a9c4c0e, minor 5): that he is checking with the customer when it
+// goes, not to hold it yet when it waits, no need to hold it when nothing can
+// reach the customer, not to hold it when it is not sent. Review of ef19cdd
+// (6): always as the bot, from the bot number (link: replyUrl), never from his
+// own phone, so their answer reaches the bot.
+export function relayStudioAdvice(res: string, studio: string, who: string, link = ""): string {
+  const asBot = `reply to them as the bot${link ? ` (${link})` : ""}`;
   switch (res) {
-    case "go": case "whatsapp": case "email": case "email_pending": return `Nothing is sent to ${studio} from here: tell them on your phone that you are checking with ${who}.`;
-    case "queued": case "held_window": return `Nothing is sent to ${studio} from here: tell them on your phone not to hold it yet. If it is shown to ${who} later, the bot sends ${studio} its usual note then, inside its hours.`;
-    case "none": return `Nothing is sent to ${studio} from here: tell them on your phone that it is not booked yet and there is no need to hold it.`;
-    case "withheld_too_soon": case "withheld_dearer": return `Nothing is sent to ${studio} from here: tell them on your phone not to hold it.`;
-    case "withheld_mismatch": return `Nothing is sent to ${studio} from here: ask them on your phone for a time inside the hours ${who} asked for.`;
+    case "go": case "whatsapp": case "email": case "email_pending": return `Nothing is sent to ${studio} from here: ${asBot} that you are checking with ${who}.`;
+    case "queued": case "held_window": return `Nothing is sent to ${studio} from here: ${asBot} that you are checking with ${who} and that they should not hold it yet. If it is shown to ${who} later, the bot sends ${studio} its usual note then, inside its hours.`;
+    case "none": return `Nothing is sent to ${studio} from here: ${asBot} that it is not booked yet and there is no need to hold it.`;
+    case "withheld_too_soon": case "withheld_dearer": return `Nothing is sent to ${studio} from here: ${asBot} that they should not hold it.`;
+    case "withheld_mismatch": return `Nothing is sent to ${studio} from here: ${asBot} and ask them for a time inside the hours ${who} asked for.`;
     case "muted": return `The request closes, so dispatch-studios tells ${studio}, inside its hours, that it is not going ahead, as for any closed request.`;
-    case "held": return `Nothing is sent to ${studio} from here: tell them yourself what you decide.`;
+    case "held": return `Nothing is sent to ${studio} from here: ${asBot} with what you decide.`;
     default: return `Nothing is sent to ${studio} from here.`;
   }
 }
 // The card, before the tap: exactly what Record yes then does for the
 // customer, in plain words, and that it goes by the normal offer. The words
 // themselves come after it (relayYesPreview).
-export function relayYesWords(f: YesFacts, euro: (n: number) => string): string {
+export function relayYesWords(f: YesFacts, euro: (n: number) => string, link = ""): string {
   const who = f.customer || "the customer";
   const Who = capFirst(who);
   const tap = `It counts as ${f.studio}'s tap (your rule of 24 Nov)`;
-  if (f.send === "closed") return `The request is ${f.stage || "closed"}, so nothing is sent to anyone: the yes is only recorded.`;
+  const asBot = `reply to them as the bot${link ? ` (${link})` : ""}`;
+  // Review of ef19cdd (3): saved as an answer only, so no later step sends it.
+  const only = "the yes is saved as an answer only (no accepted hour), so no later step can send it either: not a bidding window closing, not their next offer";
+  if (f.send === "closed") return `The request is ${f.stage || "closed"}, so nothing is sent to anyone: ${only}.`;
   if (f.send === "test") return f.testStudio
     ? `${tap}, but ${f.studio} is a test studio, and a test studio's yes never reaches a real customer from the relay: the yes is only recorded.`
     : `${tap}, but ${who} is a test contact, and the relay never sends a test contact anything: the yes is only recorded.`;
-  if (f.send === "frozen") return `${tap}, but the request is frozen (${who} asked to change or cancel it), so nothing new is sent to them: the yes is only recorded. The bot's normal steps can still show it to them later (after they turn down another offer, or when a bidding window closes), as for any recorded yes.`;
-  if (f.send === "declined") return `${tap}, but ${who} turned down ${f.studio} at ${f.time}, so nothing goes to them again: the yes is saved as an answer only and their ask stays closed. If this is a new message from ${f.studio}, tell them on your phone that ${who} has already said no to that time.`;
+  if (f.send === "frozen") return `${tap}, but the request is frozen (${who} asked to change or cancel it), so nothing new is sent to them: ${only}. Once ${who} names a time, forward ${f.studio}'s answer again.`;
+  // Review of ef19cdd (4): the preview failed, so this card cannot show what
+  // would be sent, and its Record yes only records.
+  if (f.send === "unchecked") return `${tap}, but I could not work out what the offer step would send ${who} (the preview failed), so on this card Record yes only records: nothing is sent to ${who}, and ${only}. Forward ${f.studio}'s message to me again for a card that can send the offer.`;
+  if (f.send === "declined") return `${tap}, but ${who} turned down ${f.studio} at ${f.time}, so nothing goes to them again: the yes is saved as an answer only and their ask stays closed. If this is a new message from ${f.studio}, ${asBot} that ${who} has already said no to that time.`;
   if (f.send === "already") return `${tap}, but ${who} already got this offer (${f.studio} at ${f.time}), so nothing goes to them again: the yes is only recorded.`;
   const fate = f.fate || "";
   if (f.muted || fate === "muted") return `${tap}, but ${who} is muted (off-menu requests), so, as for any studio yes, nothing is sent to them and the bot closes the request. ${relayStudioAdvice("muted", f.studio, who)}`;
@@ -661,7 +758,7 @@ export function relayYesWords(f: YesFacts, euro: (n: number) => string): string 
     if (!sure) out.push("As with any studio yes, it is not sent if it starts in under 45 minutes, is outside the day or hours they asked for, or costs more than an offer they already have; I tell you if that happens.");
   }
   const adv = fate === "go" || !fate ? (f.preview?.via === "none" || (!f.preview && !f.windowOpen && !f.email && !f.template) ? "none" : "go") : fate;
-  out.push(relayStudioAdvice(adv, f.studio, who));
+  out.push(relayStudioAdvice(adv, f.studio, who, link));
   return out.join(" ");
 }
 // The words themselves, after the card's description (review of a9c4c0e,
@@ -688,14 +785,16 @@ export function relayYesPreview(f: YesFacts): string {
 }
 // The reply, after the tap: what became of it. res is the send above when
 // nothing was offered, or forwardOffer's own answer.
-export function relayYesDone(res: string, o: { customer: string; studio: string; time: string; email: string; template: boolean; stage: string }): string {
+export function relayYesDone(res: string, o: { customer: string; studio: string; time: string; email: string; template: boolean; stage: string; link?: string }): string {
   const who = o.customer || "the customer";
   const Who = capFirst(who);
-  const adv = (r: string) => " " + relayStudioAdvice(r, o.studio, who).replace(/^Nothing is sent to (.*?) from here/, "Nothing was sent to $1");
+  const adv = (r: string) => " " + relayStudioAdvice(r, o.studio, who, o.link || "").replace(/^Nothing is sent to (.*?) from here/, "Nothing was sent to $1");
+  const only = "so no later step can send it (not a bidding window closing, not their next offer)";
   switch (res) {
-    case "closed": return `Nothing was sent to anyone: the request is ${o.stage || "closed"}.`;
+    case "closed": return `Saved as their answer only (no accepted hour): nothing was sent to anyone, the request is ${o.stage || "closed"}, ${only}.`;
     case "test": return `Nothing was sent to ${who} or to ${o.studio}: the relay never sends a test anything.`;
-    case "frozen": return `Nothing was sent to ${who}: the request is frozen (they asked to change or cancel it). Nothing was sent to ${o.studio}.`;
+    case "frozen": return `Saved as their answer only (no accepted hour): nothing was sent to ${who}, the request is frozen (they asked to change or cancel it), ${only}. Nothing was sent to ${o.studio}. Once ${who} names a time, forward ${o.studio}'s answer again.`;
+    case "unchecked": return `Saved as their answer only (no accepted hour): the offer preview failed, so nothing went to ${who}, ${only}. Nothing was sent to ${o.studio}. Forward ${o.studio}'s message to me again for a card that can send the offer.`;
     case "declined": return `Saved as their answer only: ${who} turned down ${o.studio} at ${o.time}, so nothing went to them and the ask stays closed. Nothing was sent to ${o.studio}.`;
     case "already": return `${Who} already had this offer, so nothing went again.`;
     case "whatsapp": return (o.template ? `Sent ${who} the normal offer as the request_update_v1 WhatsApp template (their 24 hours were closed and there is no email on file).` : `Sent ${who} the normal offer on WhatsApp, with its Yes button.`) + adv("whatsapp");
