@@ -64,7 +64,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply, bareAnswer } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
-import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, relayYesSend, relayYesWords, relayYesDone, relayYesPreview, relayStudioAdvice, yesAsAnswer, relayYesAnswerOnly, relayOtherDay, type RelayMode, type RelayCand, type RelayId, type YesFacts, type YesFate, type YesPreview, type YesWordsOut } from "./relay.ts";
+import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, relayYesSend, relayYesWords, relayYesDone, relayYesPreview, relayStudioAdvice, yesAsAnswer, relayYesAnswerOnly, relayOtherDay, relayDiscountRead, relayDiscountNote, type RelayMode, type RelayCand, type RelayId, type YesFacts, type YesFate, type YesPreview, type YesWordsOut } from "./relay.ts";
 import { offerTplParams, renderOfferTpl, offerTplAudience, offerTplPayloads, parseOfferTplMode, OFFER_TPL_NAME, type OfferTplMode } from "./offer_tpl.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -2483,6 +2483,29 @@ async function bareYesAsk(partnerId: string, phone: string): Promise<number | nu
   if (!askEcho(last, Date.parse(String(rows[0].sent_at || "")))) return null;
   return Number(rows[0].request_id) || null;
 }
+// v220 (24 Nov): a percentage a studio wrote that handleStudioReply did not
+// take as a discount (relayDiscountRead says refused or unclear). Jordan sees
+// the percentage, why it was not taken, their words and the English. Nothing
+// is said to the studio or the customer, and nothing is written.
+async function discountNotTakenCard(partner: { id: string; business_name: string }, from: string, freeText: string, seen: number, read: { stance: string; why: string } | null) {
+  const r = read && read.stance !== "given" ? read : { stance: "unclear", why: "the percentage read is not the one written" };
+  const since48 = new Date(Date.now() - 48 * 3600e3).toISOString();
+  const od = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted,won)&created_at=gte.${since48}&order=created_at.desc&limit=1&select=request_id`, { headers: H() }).then((x) => x.json()).catch(() => []);
+  const rid = Array.isArray(od) && od[0] ? Number(od[0].request_id) || 0 : 0;
+  const needsEn = relayNeedsEnglish(freeText, strongSpanish);
+  const en = needsEn ? await letterEnglish(freeText).catch(() => "") : "";
+  await logEvent(from, "studio_discount_not_taken", { id: rid || null, studio: partner.business_name, pct: seen, stance: r.stance, why: r.why });
+  await founderCard(`${partner.business_name} wrote ${seen}%, not taken as a discount${rid ? ` · #${rid}` : ""}`, {
+    badge: r.stance === "refused" ? "DISCOUNT TURNED DOWN" : "DISCOUNT NOT CLEAR",
+    title: `${partner.business_name}'s ${seen}% was not taken as a discount`,
+    paras: [
+      relayDiscountNote(seen, r),
+      "Their message is handled as a reply with no discount: a yes, an hour or a price in it goes on as usual, and the customer hears nothing about a discount.",
+      en ? `English: "${en}"` : needsEn ? "English not available: the translation failed." : "",
+    ].filter(Boolean),
+    quote: freeText, waNum: from, waLabel: "Reply to the studio",
+  });
+}
 async function handleStudioReply(from: string, payloadId: string, btnText: string, freeText: string, partner: { id: string; business_name: string } | null) {
   const m = payloadId.match(/^studio_(confirm|other|no)_(\d+)$/);
   if (m) {
@@ -2700,7 +2723,21 @@ async function handleStudioReply(from: string, payloadId: string, btnText: strin
     // v46: a written discount is an offer on the open request. 10% or more goes
     // to the customer at once (v199: as an offer they tap Yes on, never as a
     // booking); less waits for the window to close.
-    const pct = parseDiscount(freeText);
+    // v220 (24 Nov; CLAUDE.md discounts: never invent one, never quote one to a
+    // customer before the studio has confirmed it in writing). parseDiscount
+    // finds a percentage anywhere in the words, so "El 10% no lo hacemos" (EN:
+    // "We don't do the 10%"), "Lo del 10% lo dejamos para otra ocasión" (EN:
+    // "We'll leave the 10% for another time") or a bare "un 10%" (EN: "a 10%")
+    // wrote discount_pct, saved it as the studio's Massage Club rate and
+    // awarded the booking on it. Only a percentage relayDiscountRead (relay.ts)
+    // reads as given for this booking, at the figure parseDiscount found, is a
+    // discount. Any other is handled as a reply with no discount (the price,
+    // yes and time steps below run unchanged) and Jordan gets a card with the
+    // percentage seen and why it was not taken. Buttons never come here.
+    const pctSeen = parseDiscount(freeText);
+    const pctRead = pctSeen !== null ? relayDiscountRead(freeText) : null;
+    const pct = pctSeen !== null && pctRead && pctRead.stance === "given" && pctRead.pct === pctSeen ? pctSeen : null;
+    if (pctSeen !== null && pct === null) await discountNotTakenCard(partner, from, freeText, pctSeen, pctRead).catch((e) => console.log("[studio] discount card failed", String(e)));
     if (pct !== null) {
       const since48 = new Date(Date.now() - 48 * 3600e3).toISOString();
       const od = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&outcome=in.(pending,accepted)&created_at=gte.${since48}&order=created_at.desc&limit=1&select=id,request_id,outcome,accepted_at,asked_service`, { headers: H() });

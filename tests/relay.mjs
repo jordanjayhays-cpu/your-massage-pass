@@ -623,7 +623,9 @@ const FIX = [
   ["Mejor a las 19:30", facts(), { kinds: ["time"], time: "19:30" }],
   ["Abrimos de 10 a 21", facts(), { kinds: ["hours"], time: "", hours: "Lun-Dom 10:00-21:00" }],
   ["76,50€", facts(), { kinds: ["price"], price: 76.5 }],
-  ["un 10% de descuento", facts(), { kinds: ["discount"], pct: 10 }],
+  // 24 Nov: a percentage on its own does not say they give it, so unclear.
+  ["un 10% de descuento", facts(), { kinds: ["unclear"], pct: null, pctBlocked: true, pctWhy: "unclear", pctSeen: 10 }],
+  ["Os hacemos un 10% de descuento", facts(), { kinds: ["discount"], pct: 10 }],
   ["chica sí", facts({ wantGender: "female" }), { kinds: ["gender"], gender: true }],
   ["¡Hola! Gracias por comunicarte con Estudio Tres. En breve te atenderemos.", facts(), { kinds: ["away"] }],
   ["Ok", facts(), { kinds: ["ack"] }],
@@ -652,20 +654,22 @@ const FIX = [
 {
   const G = "6 parity with handleStudioReply";
   const hs = lift(botSrc, "async function handleStudioReply(");
-  const parts = [hs, lift(botSrc, "async function patchDispatch("), lift(botSrc, "async function dispatchRowFor("), lift(botSrc, "function parseDiscount("), lift(botSrc, "function exactTime("), lift(botSrc, "async function reopenOfferClaim("), one("isSameDayReq"), one("OFFER_ROW_CLOSED"), one("OPEN_STAGES"), replies, words].filter(Boolean);
+  const parts = [hs, lift(botSrc, "async function discountNotTakenCard("), lift(botSrc, "async function patchDispatch("), lift(botSrc, "async function dispatchRowFor("), lift(botSrc, "function parseDiscount("), lift(botSrc, "function exactTime("), lift(botSrc, "async function reopenOfferClaim("), one("isSameDayReq"), one("OFFER_ROW_CLOSED"), one("OPEN_STAGES"), replies, words].filter(Boolean);
   const live = async (text, o = {}) => {
     T.now = M(15, 0);
     const now = T.now;
     const db = makeDb({
       whatsapp_requests: [{ id: 9401, first_name: "Lucia", service_name: "Relaxing massage", studio_name: null, partner_id: null, day1: "Thursday 26 Nov, 18:00", time1: "18:00", proposed_time: "18:00", languages: "en", client_phone: "+34600000401", stage: "studio_asked", contact_email: "x@correo.invalid", settle_after: null, message_text: "", created_at: iso(now - 3600e3), therapist_gender: o.gender || null, area: "Centro" }],
       request_dispatch: [{ id: "d-401", request_id: 9401, partner_id: "p-1", phone: "34911000401", outcome: "pending", created_at: iso(now - 3600e3), sent_at: iso(now - 3600e3), replied_at: null, quoted_price: null, discount_pct: null, accepted_at: null, chased_at: null }],
+      partners: [{ id: "p-1", business_name: "Estudio Uno", mc_discount_pct: null, mc_discount_confirmed_at: null, mc_discount_note: null }],
     });
-    const log = { forward: [], award: [], said: [] };
+    const log = { forward: [], award: [], said: [], cards: [], events: [], jordan: [] };
     const env = {
       Date: FakeDate, SUPABASE_URL: "https://db.invalid", H: () => ({}), fetch: db.fetch, digitsOf, ...C,
+      relayDiscountRead: R.relayDiscountRead, relayDiscountNote: R.relayDiscountNote, relayNeedsEnglish: R.relayNeedsEnglish, letterEnglish: async () => "(english)",
       forwardOffer: async (req, p, row, time) => { log.forward.push(time); return "email"; },
       awardWinner: async (req, p, from, pct) => { log.award.push(pct); return true; },
-      sendText: async (to, t) => { log.said.push(t); return true; }, founderCard: async () => {}, logEvent: async () => {}, notifyJordanWa: async () => {},
+      sendText: async (to, t) => { log.said.push(t); return true; }, founderCard: async (subject, c) => { log.cards.push({ subject, ...c }); }, logEvent: async (p, e, m) => { log.events.push({ e, m }); }, notifyJordanWa: async (t) => { log.jordan.push(t); },
       severalAsked: async () => true, priceAsk: () => "", askedMins: () => 60, sendHeldOfferEmail: async () => false, offerPriceUpdate: async () => false,
       lastOutTo: async () => null, studioOpener: () => "", studioWhenEs: () => "", studioDayEs: () => "", coveredLine: () => "", handleLiveStudioMessage: async () => {},
       OPEN_STAGES: ["new", "dispatching", "studio_asked", "studio_replied", "offered", "bidding"], BID_WINDOW_MS: 600000, eurEs: (n) => `${n} €`,
@@ -675,7 +679,8 @@ const FIX = [
     if (o.button) await fns.handleStudioReply("34911000401", `studio_${o.button}_9401`, text, "", partner);
     else await fns.handleStudioReply("34911000401", "", "", text, partner);
     const row = db.t.request_dispatch[0];
-    return { outcome: row.outcome, quoted_price: row.quoted_price ?? null, discount_pct: row.discount_pct ?? null, gender: row.therapist_gender_ok ?? null, forward: log.forward[0] || "", award: log.award.length > 0 };
+    const pr = db.t.partners[0];
+    return { outcome: row.outcome, quoted_price: row.quoted_price ?? null, discount_pct: row.discount_pct ?? null, offer_note: row.offer_note ?? null, gender: row.therapist_gender_ok ?? null, forward: log.forward[0] || "", award: log.award.length > 0, awardPct: log.award[0] ?? null, mc: pr.mc_discount_pct ?? null, mcAt: pr.mc_discount_confirmed_at ?? null, said: log.said, cards: log.cards, events: log.events, stage: db.t.whatsapp_requests[0].stage };
   };
   const planOf = (text, f = facts()) => R.studioRelayPlan(text, f, SP);
   const cases = [
@@ -683,7 +688,13 @@ const FIX = [
     ["Sí, a las 18:00, 45€", {}, (l, p) => [l.forward === "18:00" && l.quoted_price === 45, p.time === "18:00" && p.price === 45]],
     ["Mejor a las 19:30", {}, (l, p) => [l.forward === "19:30", p.kinds.includes("time") && p.time === "19:30"]],
     ["76,50€", {}, (l, p) => [l.quoted_price === 76.5 && !l.forward, p.price === 76.5 && !p.time]],
-    ["un 10% de descuento", {}, (l, p) => [l.discount_pct === 10 && l.outcome === "accepted" && l.award, p.pct === 10]],
+    ["Os hacemos un 10% de descuento", {}, (l, p) => [l.discount_pct === 10 && l.outcome === "accepted" && l.award, p.pct === 10]],
+    // 24 Nov: neither takes a bare percentage, a refusal or a deferral.
+    ["un 10% de descuento", {}, (l, p) => [l.discount_pct === null && !l.award && l.mc === null, p.pct === null && p.pctBlocked]],
+    ["El 10% no lo hacemos", {}, (l, p) => [l.discount_pct === null && !l.award && l.mc === null, p.pct === null && p.pctWhy === "refused"]],
+    ["Lo del 10% lo dejamos para otra ocasión", {}, (l, p) => [l.discount_pct === null && !l.award && l.mc === null, p.pct === null && p.pctWhy === "unclear"]],
+    ["Sí, a las 18:00. No hay problema, le hacemos el 10%", {}, (l, p) => [l.discount_pct === 10 && l.award, p.pct === 10 && p.kinds.includes("yes_ask")]],
+    ["Tenemos hueco a las 18:00, lo siento por la tardanza", {}, (l, p) => [l.forward === "18:00", p.kinds.includes("yes_ask") && !p.kinds.includes("no")]],
     ["chica sí", { gender: "female" }, (l, p) => [l.gender === true, p.gender === true], facts({ wantGender: "female" })],
     ["Abrimos de 10 a 21", {}, (l, p) => [!l.forward, p.kinds.includes("hours") && !p.time]],
     ["No podemos (botón)", { button: "no" }, (l, p) => [l.outcome === "declined", planOf("No podemos, lo siento").kinds.includes("no")]],
@@ -691,8 +702,57 @@ const FIX = [
   for (const [text, o, cmpFn, f] of cases) {
     const l = await live(text, o);
     const [a, b] = cmpFn(l, planOf(text, f || facts()));
-    check(G, `live and relay read ${JSON.stringify(text)} the same way`, [a, b], [true, true], JSON.stringify(l));
+    check(G, `live and relay read ${JSON.stringify(text)} the same way`, [a, b], [true, true], JSON.stringify({ ...l, cards: l.cards.length, events: l.events.map((x) => x.e) }));
   }
+  // ---- 15.L The live studio path (24 Nov): a discount only when given ----
+  // handleStudioReply, lifted from bot.ts, on an in-memory database: a
+  // percentage that is not given writes no discount_pct, no
+  // mc_discount_pct, awards nothing, and is handled exactly as the same
+  // message without it; Jordan gets one card with the percentage and why.
+  const GL = "15.L live: a discount only when given";
+  const LIVE = [
+    // [text, stance, the same message with no percentage in it (or null)]
+    ["Sí, a las 18:00, 50€. El 10% no lo hacemos.", "refused", "Sí, a las 18:00, 50€."],
+    ["Sí a las 18:00. Normalmente hacemos el 10% pero hoy no", "unclear", "Sí a las 18:00."],
+    ["Lo del 10% lo dejamos para otra ocasión", "unclear", null],
+    ["Os hacemos el 10%. Bueno no, perdona, no podemos.", "refused", null],
+    ["El 10% no lo hacemos", "refused", null],
+    ["sin el 10%", "refused", null],
+    ["un 10% de descuento", "unclear", null],
+    ["10% si repite", "unclear", null],
+    ["Sorry, no discount", "refused", null],
+    ["Mejor a las 19:30, el 10% lo consulto", "unclear", "Mejor a las 19:30"],
+    ["76,50€, un 10% de descuento", "unclear", "76,50€"],
+  ];
+  for (const [text, stance, bare] of LIVE) {
+    const l = await live(text);
+    const seen = RB.parseDiscount(text);
+    const card = l.cards.find((c) => /not taken as a discount/.test(c.subject || ""));
+    check(GL, `${JSON.stringify(text)}: no discount_pct, no mc_discount_pct, no award on it`, [l.discount_pct, l.offer_note, l.mc, l.mcAt, l.awardPct], [null, null, null, null, null]);
+    if (seen !== null) {
+      check(GL, `${JSON.stringify(text)}: Jordan gets one card with ${seen}% and why, and the event is logged`, [l.cards.filter((c) => /not taken as a discount/.test(c.subject || "")).length, card?.badge, new RegExp(`They wrote ${seen}%`).test((card?.paras || [])[0] || ""), (card?.paras || []).some((p) => /English: "\(english\)"/.test(p)) || !R.relayNeedsEnglish(text, C.strongSpanish), card?.quote, l.events.some((e) => e.e === "studio_discount_not_taken" && e.m.pct === seen && e.m.stance === stance), dash(JSON.stringify(card || {}))], [1, stance === "refused" ? "DISCOUNT TURNED DOWN" : "DISCOUNT NOT CLEAR", true, true, text, true, false]);
+    }
+    if (bare) {
+      const b = await live(bare);
+      check(GL, `${JSON.stringify(text)} is handled as ${JSON.stringify(bare)}`, [l.outcome, l.quoted_price, l.forward, l.award, l.said, l.stage], [b.outcome, b.quoted_price, b.forward, b.award, b.said, b.stage]);
+    }
+  }
+  // Given: written, saved and awarded as before, and no card.
+  for (const text of ["Sí, le hacemos el 10%", "Con el 10% queda en 45€", "No hay problema, le hacemos el 10%", "We can do 10% off", "Sí, a las 18:00. No hay problema, le hacemos el 10%"]) {
+    const l = await live(text);
+    check(GL, `${JSON.stringify(text)}: given, written, saved for the studio and awarded at 10`, [l.discount_pct, l.mc, !!l.mcAt, l.awardPct, l.cards.filter((c) => /not taken as a discount/.test(c.subject || "")).length], [10, 10, true, 10, 0]);
+  }
+  // The buttons are untouched: a tap never reads the words for a discount.
+  const tapYes = await live("Sí, tenemos hueco. El 10% no lo hacemos.", { button: "confirm" });
+  check(GL, "the Sí button with refusing words: the normal yes, no discount, no card", [tapYes.outcome, tapYes.forward, tapYes.discount_pct, tapYes.mc, tapYes.cards.length], ["accepted", "18:00", null, null, 0]);
+  const tapNo = await live("No podemos", { button: "no" });
+  check(GL, "the No button: declined as before", [tapNo.outcome, tapNo.discount_pct, tapNo.cards.length], ["declined", null, 0]);
+  const tapOther = await live("Otra hora, un 10%", { button: "other" });
+  check(GL, "the Otra hora button: no discount from its text", [tapOther.discount_pct, tapOther.mc, tapOther.award], [null, null, false]);
+  // The source: the only discount write and the only discount award come after the gate.
+  const gate = hs.indexOf('const pct = pctSeen !== null && pctRead && pctRead.stance === "given" && pctRead.pct === pctSeen ? pctSeen : null;');
+  const writes = [hs.indexOf("discount_pct: pct"), hs.indexOf("mc_discount_pct: pct"), hs.indexOf("await awardWinner(rqrow, partner, from, pct)")];
+  check(GL, "handleStudioReply: parseDiscount is read once, and every discount write and award is after the gate", [(hs.match(/parseDiscount\(/g) || []).length, gate > 0, writes.every((i) => i > gate), (hs.match(/(?<!mc_)discount_pct:/g) || []).length, (hs.match(/mc_discount_pct:/g) || []).length], [1, true, true, 1, 1]);
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,7 +1077,8 @@ const relayedRows = (w) => w.db.t.wa_messages.filter((m) => m.msg_type === "rela
   const sb = sandbox([lift(botSrc, "async function settleBids(")], { fetch: w.db.fetch, SUPABASE_URL: "https://db.invalid", H: () => ({}), digitsOf, Date: FakeDate, awardWinner: async () => { w.spies.awardWinner++; return true; } }, ["settleBids"]);
   await sb.fns.settleBids();
   check(G, "the bidding settle offers nothing from the rate alone", w.spies.awardWinner, 0, "before the fix it awarded the asked hour to the customer");
-  check(G, "studioWrites rate: no outcome", R.studioWrites("rate", R.studioRelayPlan("un 10% de descuento", facts(), SP), facts(), "NOW", "[s]", "un 10% de descuento"), { dispatch: { replied_at: "NOW", reply_text: "[s]", discount_pct: 10, offer_note: "un 10% de descuento" } });
+  check(G, "studioWrites rate: no outcome", R.studioWrites("rate", R.studioRelayPlan("Os hacemos un 10% de descuento", facts(), SP), facts(), "NOW", "[s]", "Os hacemos un 10% de descuento"), { dispatch: { replied_at: "NOW", reply_text: "[s]", discount_pct: 10, offer_note: "Os hacemos un 10% de descuento" } });
+  check(G, "studioWrites rate: nothing for a bare percentage (24 Nov)", R.studioWrites("rate", R.studioRelayPlan("un 10% de descuento", facts(), SP), facts(), "NOW", "[s]", "un 10% de descuento"), null);
   check(G, "the card no longer points Jordan at ops studio_offer (review M5)", Object.values(R.STUDIO_FOLLOWS).flat().some((x) => /studio_offer/.test(x)), false);
 }
 {
@@ -1570,11 +1631,14 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
   // parseDiscount's figure was taken whatever the words around it said.
   const G = "14.1 discount: given only in a positive phrase";
   const stance = (t) => (R.relayDiscountStance ? R.relayDiscountStance(t) : "(none)");
+  // 24 Nov (made strict, group 15): "un 10% de descuento", "Aplicamos el
+  // 10%", "No podemos a las 18, pero a las 19 sí, con el 10%" and "Os hacemos
+  // el 10%, no más" were given here; they are unclear now (in NOT below).
   const GIVEN = [
-    "un 10% de descuento", "Os hacemos un 10% de descuento", "Sí, a las 18:00, 45€, con un 10% de descuento", "Le dejamos el 10%", "Te hacemos el 10% de descuento",
-    "Aplicamos el 10%", "Sí al 10%", "Sí, el 10% sin problema", "Perfecto, os hacemos el 10%", "Sí, a las 18:00. Con el 10% se queda en 45€", "le hacemos el 10/ de descuento",
-    "Podemos hacerle un 15%", "Le podemos dejar un 10%", "No hay problema, os hacemos el 10%", "No podemos a las 18, pero a las 19 sí, con el 10%", "Sí, 10% incluido",
-    "Os hacemos el diez por ciento", "Os hacemos el 10%, no más", "El 10% lo hacemos encantados", "Sí, os aplicamos un descuento del 10%",
+    "Os hacemos un 10% de descuento", "Sí, a las 18:00, 45€, con un 10% de descuento", "Le dejamos el 10%", "Te hacemos el 10% de descuento",
+    "Sí, aplicamos el 10%", "Sí al 10%", "Sí, el 10% sin problema", "Perfecto, os hacemos el 10%", "Sí, a las 18:00. Con el 10% se queda en 45€", "le hacemos el 10/ de descuento",
+    "Podemos hacerle un 15%", "Le podemos dejar un 10%", "No hay problema, os hacemos el 10%", "Sí, 10% incluido",
+    "Os hacemos el diez por ciento", "El 10% lo hacemos encantados", "Sí, os aplicamos un descuento del 10%",
     "We can do 10%", "Yes, with the 10% discount", "Yes to the 10%", "We'll give you 10% off",
   ];
   const NOT = [
@@ -1583,7 +1647,8 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
     ["Imposible el 10%", "refused"], ["Lo siento, el 10% no es posible", "refused"], ["El 10% tampoco", "refused"], ["Ningún descuento del 10%", "refused"], ["Nada de 10%", "refused"],
     ["Un 10% es mucho", "refused"], ["No el 10%, pero sí un 5%", "refused"], ["Sí, a las 18:00 (el 10% no)", "refused"], ["Sí. No, el 10% no.", "refused"],
     ["We can't do 10%", "refused"], ["Sorry, no 10% discount", "refused"], ["Without the 10% it is 50", "refused"], ["We don't do 10%", "refused"],
-    ["Sí, a las diez, os hacemos descuento", "unclear"], ["¿El 10%?", "unclear"], ["¿Con el 10% de descuento?", "unclear"], ["10%", "unclear"], ["El 10%", "unclear"], ["El 10%, no", "unclear"],
+    ["Sí, a las diez, os hacemos descuento", "unclear"], ["¿El 10%?", "unclear"], ["¿Con el 10% de descuento?", "unclear"], ["10%", "unclear"], ["El 10%", "unclear"], ["El 10%, no", "refused"],
+    ["un 10% de descuento", "unclear"], ["Aplicamos el 10%", "unclear"], ["No podemos a las 18, pero a las 19 sí, con el 10%", "unclear"], ["Os hacemos el 10%, no más", "unclear"],
     ["Os hacemos el 10% solo entre semana", "unclear"], ["Os hacemos el 10% si reserva dos sesiones", "unclear"], ["Un 10% o un 5%", "unclear"], ["Le haríamos el 10% si repite", "unclear"],
     ["Sí, a las 18:00. El 10% lo consulto y te digo", "unclear"], ["10% de descuento?", "unclear"],
   ];
@@ -1789,6 +1854,151 @@ const marta = (w) => w.db.t.whatsapp_requests.find((r) => r.id === 9306);
   const u3 = JSON.parse((await sw(w3, { ops: "switches", key: OPS })).text);
   check(G, "app_secrets unreadable: RELAY is what the worker last read (off before any read), OFFER_TEMPLATE off", [u3.RELAY?.mode, u3.RELAY?.from, u3.OFFER_TEMPLATE?.mode, u3.META_APP_SECRET?.set], ["off", "unreadable", "off", false]);
   check(G, "handleInner routes ops switches to it", /if \(payload\?\.ops === "switches"\) return await relaySwitchesOps\(payload\);/.test(botSrc), true);
+}
+
+// ---------------------------------------------------------------------------
+// 15. 24 Nov: the discount reading errs to "unclear" (CLAUDE.md discounts:
+// never invent one, never quote one before the studio confirmed it in
+// writing). Unclear means no discount_pct, no mc_discount_pct, no award on
+// it, and Jordan is shown the percentage seen and why. The live path is in
+// "15.L" (group 6's harness); this is relay.ts itself.
+// FIXTURES=1 prints every fixture with its stance.
+// ---------------------------------------------------------------------------
+{
+  const G = "15 discount stance";
+  const read = (t) => (R.relayDiscountRead ? R.relayDiscountRead(t) : { stance: "(none)", why: "", pct: null });
+  const FIX15 = [
+    // The ones asked for, with the stance each must have.
+    ["Sí a las 18:00. Normalmente hacemos el 10% pero hoy no", ["unclear", "refused"]],
+    ["Lo del 10% lo dejamos para otra ocasión", ["unclear"]],
+    ["Os hacemos el 10%. Bueno no, perdona, no podemos.", ["refused"]],
+    ["El 10% no lo hacemos", ["refused"]],
+    ["sin el 10%", ["refused"]],
+    ["Con el 10% queda en 45€", ["given"]],
+    ["Sí, le hacemos el 10%", ["given"]],
+    ["No hay problema, le hacemos el 10%", ["given"]],
+    ["un 10% de descuento", ["unclear"], "decided: unclear. A percentage on its own does not say they give it for this booking, and our ask names the 10% itself"],
+    ["10% si repite", ["unclear"]],
+    ["We can do 10% off", ["given"]],
+    ["Sorry, no discount", ["refused"]],
+    ["Sí, a las 18:00. No hay problema, le hacemos el 10%", ["given"]],
+    // Our own, given.
+    ["Perfecto, le dejamos el 15% para Massage Club", ["given"]],
+    ["Sí, a las 18:00 y le hacemos el 10%", ["given"]],
+    ["Claro que sí, el 10%", ["given"]],
+    ["Por supuesto, os hacemos el 10%", ["given"]],
+    ["Sí, tenemos hueco. Le aplicamos el 10%, se queda en 54€", ["given"]],
+    ["Te podemos hacer un 10%, sin problema", ["given"]],
+    ["Sí, con el 10% de descuento son 45€", ["given"]],
+    ["45€ con el 10% incluido", ["given"]],
+    ["Sí, el diez por ciento", ["given"]],
+    ["Yes, we can give you a 10% discount", ["given"]],
+    ["With the 10% it is 45 euros", ["given"]],
+    ["Hola! Sí, os hacemos el 10% encantados", ["given"]],
+    ["Vale, el 10%", ["given"]],
+    ["No podemos a las 18. A las 19 sí, y os hacemos el 10%", ["given"], "the no is in an earlier sentence, about the hour"],
+    // Our own, not given.
+    ["Os hacemos el 10% la próxima vez", ["unclear"]],
+    ["El 10% es para socios", ["unclear"]],
+    ["Hacemos el 10% a partir de la segunda visita", ["unclear"]],
+    ["Os haríamos el 10%", ["unclear"]],
+    ["Os hacemos el 10% solo los martes", ["unclear"]],
+    ["No, el 10% no podemos", ["refused"]],
+    ["Lo siento, no hacemos descuentos", ["refused"]],
+    ["Os hacemos el 10% pero no a las 18:00", ["unclear"]],
+    ["Os hacemos el 10%, ¿vale?", ["unclear"]],
+    ["¿Os vale con el 10%?", ["unclear"]],
+    ["Imposible, ni el 10% ni el 5%", ["refused"]],
+    ["Tampoco podemos hacer el 10%", ["refused"]],
+    ["Le hacemos el 10% cuando vuelva", ["unclear"]],
+    ["Normalmente le hacemos el 10%", ["unclear"]],
+    ["Habitualmente aplicamos un 10%", ["unclear"]],
+    ["We can't do the 10%, sorry", ["refused"]],
+    ["We can do 10% next time", ["unclear"]],
+    ["10% for members only", ["unclear"]],
+    ["We could do 10%", ["unclear"]],
+    ["Os hacemos el 10% o el 15% si son dos", ["unclear"]],
+    ["Sí, os hacemos el 10%. Perdona, no, me equivoqué: el 5%", ["refused"]],
+    ["Os hacemos el 10% desde el lunes", ["unclear"]],
+    ["Le hacemos el 10% más adelante", ["unclear"]],
+    ["Os hacemos el 10% de descuento, lo consulto con mi jefa", ["unclear"]],
+    ["Un 10% si repite", ["unclear"]],
+    ["Sin descuento, 50€", ["refused"]],
+    ["Os dejamos el 10%. No tenemos hueco a las 18, solo a las 19.", ["unclear"]],
+    ["Os hacemos el 10% siempre que paguen en efectivo", ["unclear"]],
+    ["We usually do 10%", ["unclear"]],
+    ["Sorry for the delay, we can do 10%", ["unclear"]],
+    ["Nunca hacemos el 10%", ["refused"]],
+    ["Os hacemos el 10% en la segunda sesión", ["unclear"]],
+    ["Le hacemos el 10% si viene otra vez", ["unclear"]],
+    ["Lo siento, 10% no", ["refused"]],
+    ["Os hacemos el 10%, no más", ["unclear"], "a ceiling, not a no"],
+    ["Aplicamos el 10%", ["unclear"], "no os, le or te and no yes in front: it can be their general policy"],
+    // Conditions and habits that a narrower reading let through as given.
+    ["Os hacemos el 10% si nos deja una reseña", ["unclear"], "si with no accent and a word after it is if"],
+    ["Si os hacemos el 10%", ["unclear"], "no accent, no comma: yes or if, so unclear"],
+    ["Os hacemos el 10% en la 2ª sesión", ["unclear"]],
+    ["Os hacemos el 10% para estudiantes", ["unclear"]],
+    ["Os hacemos el 10% entre semana", ["unclear"]],
+    ["Os hacemos el 10% los martes", ["unclear"]],
+    ["Os hacemos el 10% hasta las 16:00", ["unclear"]],
+    ["Os hacemos el 10% en el pack de 5 sesiones", ["unclear"]],
+    ["Antes os hacíamos el 10%", ["unclear"]],
+    ["We can do 10% on weekdays", ["unclear"]],
+    ["Hoy no, pero mañana os hacemos el 10%", ["unclear"]],
+    ["Os hacemos el 10% (no acumulable)", ["unclear"], "small print, not a no"],
+    ["10% ok?", ["unclear"]],
+    ["45€ sin IVA, con el 10%", ["unclear"]],
+    ["Os hacemos el 10% y si repite el 15%", ["unclear"]],
+    ["Ya no hacemos el 10%", ["refused"]],
+    ["Not 10%, but we can do 5%", ["refused"]],
+    ["Sí os hacemos el 10%", ["given"], "the accent makes it yes"],
+    ["Si claro, os hacemos el 10%", ["given"]],
+    ["Happy to do 10%", ["given"]],
+    ["Os hacemos el 10% sin compromiso", ["given"]],
+    ["Sí, os haremos el 10%", ["given"]],
+    ["Le hacemos el 10% para clientes de Massage Club", ["given"]],
+    ["Le dejamos 45€ con el 10%", ["given"]],
+    ["¡Claro! Os hacemos el 10%", ["given"]],
+    ["10% ok", ["given"]],
+  ];
+  const table = [];
+  for (const [t, want, note] of FIX15) {
+    const r = read(t);
+    table.push({ t, stance: r.stance, why: r.why, note: note || "" });
+    check(G, `${want.join(" or ")}: ${JSON.stringify(t)}`, want.includes(r.stance), true, `got ${r.stance} (${r.why})`);
+    check(G, `a reason exactly when not given: ${JSON.stringify(t)}`, r.stance === "given" ? r.why === "" && r.pct !== null : r.why.length > 0, true);
+  }
+  check(G, "at least 30 fixtures of our own, both ways", [FIX15.length - 13 >= 30, FIX15.slice(13).some(([, w]) => w.includes("given")), FIX15.slice(13).some(([, w]) => !w.includes("given"))], [true, true, true]);
+  check(G, "relayDiscountStance is relayDiscountRead's stance", FIX15.every(([t]) => R.relayDiscountStance(t) === read(t).stance), true);
+  // Every reason and the note shown to Jordan: no dash, English beside Spanish.
+  const notes = FIX15.map(([t]) => read(t)).filter((r) => r.stance !== "given").map((r) => R.relayDiscountNote(10, r));
+  check(G, "the note to Jordan: no dash, names the figure, the Spanish example has its English", [notes.some(dash), notes.every((n) => /They wrote 10%/.test(n)), notes.filter((n) => /os hacemos el 10%/.test(n)).every((n) => /"os hacemos el 10%" \(EN: "we give you 10%"\)/.test(n))], [false, true, true]);
+  // Through studioRelayPlan: the reason reaches the card line.
+  const p = R.studioRelayPlan("Sí, a las 18:00. Lo del 10% lo dejamos para otra ocasión", facts(), SP);
+  check(G, "the relay card line carries the reason", [p.kinds, p.pct, p.pctWhy, /not given for this booking/.test(R.relayReadText(p.kinds, p, (n) => `${n} EUR`))], [["yes_ask"], null, "unclear", true]);
+  // 3. "No hay problema" is not a no; "lo siento" is a no only with no hour or slot word.
+  const NOFIX = [
+    ["Sí, a las 18:00. No hay problema, le hacemos el 10%", false, { kinds: ["yes_ask", "discount"], pct: 10 }],
+    ["Tenemos hueco a las 18:00, lo siento por la tardanza", false, { kinds: ["yes_ask"], pct: null }],
+    ["No hay problema, os esperamos a las 18:00", false, { kinds: ["yes_ask"], pct: null }],
+    ["No pasa nada, tenemos hueco a las 18:00", false, { kinds: ["yes_ask"], pct: null }],
+    ["Lo siento, no podemos", true, { kinds: ["no"], pct: null }],
+    ["Lo siento", true, { kinds: ["no"], pct: null }],
+    ["Lo siento, completo", true, { kinds: ["no"], pct: null }],
+    ["Sorry, we are full", true, { kinds: ["no"], pct: null }],
+    ["Sorry, at 18:00 we can", false, { kinds: ["yes_ask"], pct: null }],
+    ["No podemos, lo siento", true, { kinds: ["no"], pct: null }],
+  ];
+  for (const [t, no, want] of NOFIX) {
+    const pl = R.studioRelayPlan(t, facts(), SP);
+    check(G, `relayStudioNo ${JSON.stringify(t)}`, R.relayStudioNo ? R.relayStudioNo(t) : null, no);
+    check(G, `studioRelayPlan ${JSON.stringify(t)}`, { kinds: pl.kinds, pct: pl.pct }, want);
+  }
+  if (process.env.FIXTURES) {
+    console.log("| # | Studio text | Stance | Why (when not given) |\n|---|---|---|---|");
+    table.forEach((r, i) => console.log(`| ${i + 1} | ${r.t.replace(/\|/g, "/")} | ${r.stance} | ${[r.why, r.note].filter(Boolean).join("; ")} |`));
+  }
 }
 
 // ---------------------------------------------------------------------------
