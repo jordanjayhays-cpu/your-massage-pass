@@ -1,4 +1,4 @@
--- DRAFT, NOT APPLIED. Step 3 of 3 of the partners lock. Apply ONLY after
+-- DRAFT, NOT APPLIED. Step 3 of 4 (then 20261124f_rotate_hours_links.sql, Jordan said yes 24 Nov) of the partners lock. Apply ONLY after
 -- step 1 (20261124d_partners_claim_rpcs.sql) is live AND the site change
 -- (step 2: no select("*") on partners, claim page by slug or through
 -- claim_lookup, claim merge through claim_release_verified, no

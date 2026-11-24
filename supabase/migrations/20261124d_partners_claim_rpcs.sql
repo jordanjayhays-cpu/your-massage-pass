@@ -7,8 +7,10 @@
 --      (PGRST202, function not found) without them. It is safe with today's
 --      site: the only change today's site can notice is that its claim
 --      cleanup call (claim_release_prebuilt) is refused, and that call's
---      error is ignored, so a claim made in the gap simply waits in
---      claim_reviews for Jordan (see below).
+--      error is ignored, so a claim made in the gap saves the studio's own
+--      row but is NOT recorded in claim_reviews (today's site never calls
+--      claim_release_verified). Ship step 2 straight after this, then look
+--      for active rows created in the gap whose phone matches a pending row.
 --   2. the site stops reading the hidden columns (explicit column lists,
 --      these RPCs instead of .eq("claim_token", ...)); ship to main, check live
 --   3. 20261124e_partners_column_lock.sql: the grants (it refuses to run
@@ -205,6 +207,12 @@ begin
   elsif not exists (
     select 1 from jsonb_array_elements(amr) a
      where coalesce(a ->> 'method', a #>> '{}') = 'oauth'
+  ) or not exists (
+    -- The Google identity itself must carry the studio's email: an account
+    -- email can be changed, the email Google vouched for cannot.
+    select 1 from auth.identities i
+     where i.user_id = uid and i.provider = 'google'
+       and lower(btrim(coalesce(i.identity_data ->> 'email', ''))) = pre_email
   ) then
     reason := 'sign_in_method';
   end if;
