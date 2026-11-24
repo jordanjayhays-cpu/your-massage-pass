@@ -38,6 +38,7 @@ import { findNearbyStudios, sixtyMinFrom, isForTwo, isFourHands, type NearbyList
 import { studioPath } from "@/lib/studioHref";
 import { madridTodayIso, madridDays, isTooSoon, isoToLocalDate } from "@/lib/madridTime";
 import StudioGallery from "@/app/components/StudioGallery";
+import HowItWorksStrip from "@/components/HowItWorksStrip";
 
 
 
@@ -2178,6 +2179,8 @@ function StudioBookingPageInner() {
               <div className="min-[900px]:hidden">{visualBlock}</div>
               {identityBlock}
 
+              {/* 24 Nov (Jordan): how it works, right above the menu. */}
+              {profile.services.length > 0 && <HowItWorksStrip lang={lang} where={`studio:${studioSlug || ""}`} className="mt-6 min-[900px]:mt-8" />}
               {profile.services.length > 0 && (
                 <div id="mc-services-menu" className="mt-6 min-[900px]:mt-8 text-left scroll-mt-4">
                   <p className="text-xs min-[900px]:text-xl min-[900px]:leading-7 font-bold min-[900px]:font-semibold uppercase min-[900px]:normal-case mb-2 min-[900px]:mb-3 text-[#B85C38] min-[900px]:text-[#2b2b2b] tracking-[2px] min-[900px]:tracking-normal">{c.servicesLabel}</p>
@@ -2993,6 +2996,8 @@ function StudioBookingPageInner() {
             {/* STEP 1: service */}
             {step === 1 && (
               <div ref={serviceRef}>
+                {/* 24 Nov (Jordan): how it works, right above the menu. */}
+                <HowItWorksStrip lang={lang} where={`studio:${partner?.slug || studioId}`} className="mb-5" />
                 <Section step="1" title={c.chooseService}>
                   {!rebookId && (
                     <BookAgainBanner

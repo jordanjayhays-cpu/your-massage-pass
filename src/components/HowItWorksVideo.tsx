@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { trackEvent } from "@/lib/siteVisit";
 
@@ -26,10 +26,13 @@ export default function HowItWorksVideo({
   lang = "en",
   where,
   className = "",
+  autoStart = false,
 }: {
   lang?: string;
   where: string;
   className?: string;
+  /** Start playing at once (a dialog opened by a tap). */
+  autoStart?: boolean;
 }) {
   const key = String(lang || "en").slice(0, 2) as Lang;
   const t = COPY[key] ?? COPY.en;
@@ -43,6 +46,11 @@ export default function HowItWorksVideo({
       /* the controls are showing, a second tap plays it */
     });
   };
+
+  useEffect(() => {
+    if (autoStart) start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <figure className={`mx-auto w-full max-w-[300px] ${className}`}>
