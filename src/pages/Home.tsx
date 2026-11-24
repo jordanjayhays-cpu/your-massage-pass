@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, MapPin, ArrowRight } from "lucide-react";
+import { Search, MapPin, ArrowRight, Sparkles } from "lucide-react";
 import { fetchShops } from "@/lib/supabase";
+import StudioStatusBadge from "@/app/components/StudioStatusBadge";
+import { fetchFreeTodayPartnerIds, studioBadgeVariant } from "@/lib/studioStatus";
 import { supabase } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
-import { RecentBookings } from "@/components/RecentBookings";
-import { studioImageFallback } from "@/lib/studioImages";
+import { DealsFooterLine, DealsJoinSection } from "@/components/DealsLink";
+import { StudioPhoto } from "@/app/components/StudioPhoto";
 import { GUIDES } from "@/pages/guides/GuideLayout";
-import { useSiteVisit } from "@/lib/siteVisit";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import { BookAgainCard } from "@/app/components/BookAgain";
+import HowBookingWorksVideo from "@/components/HowBookingWorksVideo";
+
 
 type ShopWithSlug = Shop & { slug?: string | null; rating_avg?: number; rating_count?: number };
 
@@ -24,8 +29,8 @@ export default function Home() {
       : ""
   );
   const [visibleCount, setVisibleCount] = useState(9);
+  const [freeTodayIds, setFreeTodayIds] = useState<Set<string>>(new Set());
 
-  useSiteVisit("/");
 
   useEffect(() => {
     const target = "Massage Club — Massage studios in Madrid";
@@ -61,18 +66,29 @@ export default function Home() {
         rating_count: ratingMap[s.partner_id]?.count,
       })));
       setLoading(false);
+      const claimed = list.filter((s) => s.status === "active").map((s) => s.partner_id).filter(Boolean);
+      if (claimed.length) fetchFreeTodayPartnerIds(claimed).then(setFreeTodayIds).catch(() => {});
     })();
   }, []);
 
   const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
+    // Accent-insensitive normalization so "tailandes" matches "Tailandés".
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const query = norm(q.trim());
     if (!query) return shops;
-    return shops.filter(
-      (s) =>
-        s.studio.toLowerCase().includes(query) ||
-        s.name.toLowerCase().includes(query) ||
-        (s.district ?? "").toLowerCase().includes(query)
-    );
+    return shops.filter((s) => {
+      const haystacks: string[] = [
+        s.studio,
+        s.name,
+        s.district ?? "",
+        s.address ?? "",
+        s.description ?? "",
+        ...(s.tags ?? []),
+        ...(s.services ?? []),
+      ];
+      return haystacks.some((h) => norm(h).includes(query));
+    });
   }, [shops, q]);
 
   const bookHref = (s: ShopWithSlug) => `/book/${s.slug || s.partner_id}`;
@@ -95,24 +111,28 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <LanguageFlagToggle />
             <Link
-              to="/partner"
+              to="/for-studios"
               className="hidden sm:inline-flex h-9 px-4 rounded-full border border-border/80 text-foreground text-[11px] font-bold tracking-[0.12em] uppercase hover:bg-accent transition items-center"
             >
-              For massage businesses
+              For studios
             </Link>
             <Link
-              to="/app"
+              to="/book"
               className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.12em] uppercase shadow-soft hover:opacity-90 transition inline-flex items-center gap-1.5"
             >
-              Open app <ArrowRight className="h-3 w-3" />
+              Book a massage <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4">
+        {/* Returning customers: repeat their last booking in one tap */}
+        <BookAgainCard className="mt-4 max-w-md" />
+
         {/* Compact hero */}
         <section className="pt-6 md:pt-8 pb-5 md:pb-6">
+
           <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-primary">
             Massage Club · Madrid
           </p>
@@ -141,13 +161,72 @@ export default function Home() {
                 className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
               />
             </div>
+            <Link
+              to="/login?create=1"
+              className="inline-flex items-center gap-1 mt-3 text-sm text-muted-foreground underline underline-offset-4 hover:text-primary transition"
+            >
+              {isSpanish ? "Crea tu perfil gratis" : "Create a free profile"}
+            </Link>
           </div>
         </section>
 
-        <RecentBookings />
+        {/* How booking works */}
+        <section className="pb-10 md:pb-12">
+          <h2 className="font-display text-xl md:text-2xl text-foreground mb-4">
+            {isSpanish ? "Cómo funciona la reserva" : "How booking works"}
+          </h2>
+          <div className="grid gap-6 md:grid-cols-[auto_1fr] md:items-center">
+            <HowBookingWorksVideo
+              label={isSpanish ? "Cómo funciona la reserva" : "How booking works"}
+            />
+            <div className="space-y-3 max-w-md mx-auto md:mx-0">
+              {(isSpanish
+                ? [
+                    "Elige un masaje y una hora",
+                    "Enviamos la solicitud en español",
+                    "Recibes la confirmación por email",
+                  ]
+                : [
+                    "Pick a massage and a time",
+                    "We send the request in Spanish",
+                    "You get confirmation by email",
+                  ]
+              ).map((line, i) => (
+                <div key={line} className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm md:text-base text-foreground leading-snug pt-1">{line}</p>
+                </div>
+              ))}
+              <Link
+                to="/studios"
+                className="inline-flex items-center gap-1.5 mt-2 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-soft hover:opacity-90 transition"
+              >
+                {isSpanish ? "Ver estudios" : "Browse studios"} <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
 
         {/* Grid */}
         <section className="pb-12">
+          <Link
+            to="/match"
+            className="mb-5 flex items-center gap-3 rounded-2xl border border-primary/30 bg-card shadow-soft px-4 py-3.5 hover:border-primary transition"
+          >
+            <span className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-primary">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <span className="text-sm md:text-base font-semibold text-foreground leading-snug">
+              {isSpanish
+                ? "Emparejamiento inteligente con IA: encuentra tu masaje en 3 toques"
+                : "Smart matching with AI: find your massage in 3 taps"}
+            </span>
+            <ArrowRight className="ml-auto h-4 w-4 flex-shrink-0 text-primary" />
+          </Link>
+
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-display text-xl md:text-2xl text-foreground">
               Estudios en Madrid
@@ -172,7 +251,7 @@ export default function Home() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.slice(0, visibleCount).map((s) => (
-                  <StudioCard key={s.id} shop={s} href={bookHref(s)} />
+                  <StudioCard key={s.id} shop={s} href={bookHref(s)} freeTodayIds={freeTodayIds} />
                 ))}
               </div>
               {filtered.length > visibleCount && (
@@ -191,6 +270,8 @@ export default function Home() {
         </section>
       </main>
 
+      <DealsJoinSection className="max-w-6xl mx-auto px-4 pt-4 pb-10" />
+
       {/* Footer */}
       <footer className="border-t border-border/60 bg-background">
         <div className="max-w-6xl mx-auto px-4 py-8 text-center">
@@ -205,6 +286,7 @@ export default function Home() {
             ))}
           </ul>
 
+          <DealsFooterLine className="mb-4" />
           <p className="text-xs text-muted-foreground">
             Massage Club · Madrid{" "}
             <span className="mx-1">·</span>{" "}
@@ -282,7 +364,7 @@ function InviteStudioCard({ defaultName = "" }: { defaultName?: string }) {
 }
 
 
-function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
+function StudioCard({ shop, href, freeTodayIds }: { shop: ShopWithSlug; href: string; freeTodayIds: Set<string> }) {
   const services = (shop.partner_services ?? []).slice(0, 3);
   return (
     <Link
@@ -290,24 +372,15 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
       className="group bg-card border border-border/60 rounded-2xl overflow-hidden shadow-soft hover:shadow-elegant hover:border-primary/50 transition-all flex flex-col"
     >
       <div className="relative aspect-[4/3] bg-secondary overflow-hidden">
-        {shop.image ? (
-          <img
-            src={shop.image}
-            alt={shop.studio}
-            className="absolute inset-0 h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-            loading="lazy"
-            onError={studioImageFallback}
-          />
-
-        ) : (
-          <div className="absolute inset-0 bg-gradient-warm flex items-center justify-center">
-            <img
-              src="/brand/mc-avatar-terracotta.png"
-              alt=""
-              className="h-14 w-14 rounded-full opacity-90"
-            />
-          </div>
-        )}
+        {/* Own photo, else the studio's labelled stock photo, else its tile. */}
+        <StudioPhoto
+          name={shop.studio}
+          hood={shop.district || null}
+          ownImage={shop.ownImage}
+          stockImage={shop.stockImage}
+          width={640}
+          imgClassName="group-hover:scale-[1.03] transition-transform duration-500"
+        />
       </div>
       <div className="p-3.5 flex-1 flex flex-col">
         <h3 className="font-display text-lg font-semibold text-foreground leading-tight truncate">
@@ -342,7 +415,14 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
           <ul className="mt-2.5 space-y-1 text-xs text-foreground/80">
             {services.map((sv, i) => (
               <li key={i} className="flex items-baseline justify-between gap-3">
-                <span className="truncate">{sv.name}</span>
+                <span className="min-w-0">
+                  <span className="block truncate">{servicePrimaryName(sv)}</span>
+                  {serviceSecondaryName(sv) && (
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {serviceSecondaryName(sv)}
+                    </span>
+                  )}
+                </span>
                 <span className="text-muted-foreground flex-shrink-0">
                   {sv.duration ? `${sv.duration} min` : ""}
                   {sv.price != null ? ` · €${sv.price}` : ""}
@@ -351,6 +431,10 @@ function StudioCard({ shop, href }: { shop: ShopWithSlug; href: string }) {
             ))}
           </ul>
         )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <StudioStatusBadge variant={studioBadgeVariant(shop.status, shop.partner_id, freeTodayIds, shop)} />
+        </div>
 
         <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-foreground">

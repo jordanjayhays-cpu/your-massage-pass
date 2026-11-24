@@ -1,10 +1,52 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Massage Club — Book massages in Madrid, in English</title>
-    <meta name="description" content="Book a massage in Madrid in English. Real menus and prices, online booking in 8 languages, no prepayment — pay at the studio.">
+    <!-- One front door: "/", "/start", "/book" and "/booking" open the request
+         flow at /reserve (public/go.html) before the 2 MB bundle loads.
+         KEEP IN SYNC with requestFlowTarget() in src/lib/requestFlowRedirect.ts,
+         which applies the same rules to client-side navigations. ES5 only. -->
+    <script>
+      (function () {
+        try {
+          var l = window.location;
+          var p = l.pathname.replace(/\/+$/, '') || '/';
+          var map = { '/': 'home', '/start': 'start', '/book': 'book', '/booking': 'book' };
+          var mapped = Object.prototype.hasOwnProperty.call(map, p) ? map[p] : null;
+          if (!mapped) return;
+          if (l.hostname.indexOf('lovable') !== -1) return;
+          // Only the booking host and local previews: on any other host "/"
+          // is the marketing Home (App.tsx).
+          if (l.hostname.indexOf('book.') !== 0 && l.hostname !== 'localhost' && l.hostname !== '127.0.0.1') return;
+          var q = new URLSearchParams(l.search);
+          if (q.get('stay') === '1') return;
+          if (p === '/') {
+            // Supabase sign-in links land on "/": leave them to Login.
+            if (/access_token|refresh_token|error_description|type=(signup|magiclink|recovery|invite)/.test(l.hash)) return;
+            if (q.has('code') || q.has('token') || q.has('token_hash') || q.has('error')) return;
+            // A signed-in visitor keeps Login, which forwards them on.
+            for (var i = 0; i < localStorage.length; i++) {
+              if (/^sb-.*-auth-token$/.test(localStorage.key(i) || '')) return;
+            }
+          }
+          // A valid src wins ("IG" and "ig_bio" count as "ig" and "ig-bio");
+          // a missing or invalid one becomes where the visitor landed.
+          var s = (q.get('src') || '').toLowerCase().replace(/_/g, '-');
+          if (!/^[a-z0-9-]{1,20}$/.test(s)) s = (q.get('gclid') || q.get('gbraid') || q.get('wbraid')) ? 'google' : mapped;
+          q.set('src', s);
+          // After the hop document.referrer is our own "/", so the real one
+          // and the landing path travel in sessionStorage (go.html reads and
+          // removes "mc_hop"). Blocked storage only loses the referrer.
+          try {
+            sessionStorage.setItem('mc_hop', JSON.stringify({ ref: String(document.referrer || '').slice(0, 300), path: p, t: new Date().getTime() }));
+          } catch (e) { /* keep going */ }
+          l.replace('/reserve?' + q.toString());
+        } catch (e) { /* fall through to the React page */ }
+      })();
+    </script>
+    <title>Massage in Madrid · Massage Club</title>
+    <meta name="description" content="Tell us the massage, day and area. We ask Madrid massage studios for you and send you their times. Nothing is booked until you tap Yes. You pay at the studio.">
     <meta name="author" content="Massage Club" />
     <link rel="canonical" href="https://book.massageclub.io/" />
 
@@ -17,15 +59,77 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Outfit:wght@100..900&family=EB+Garamond:ital,wght@0,400..800&display=swap" rel="stylesheet" />
-    <meta property="og:title" content="Massage Club — Book massages in Madrid, in English">
-    <meta name="twitter:title" content="Massage Club — Book massages in Madrid, in English">
+    <meta property="og:title" content="Massage in Madrid · Massage Club">
+    <meta name="twitter:title" content="Massage in Madrid · Massage Club">
     <meta property="og:url" content="https://book.massageclub.io/">
-    <meta property="og:description" content="Book a massage in Madrid in English. Real menus and prices, online booking in 8 languages, no prepayment — pay at the studio.">
-    <meta name="twitter:description" content="Book a massage in Madrid in English. Real menus and prices, online booking in 8 languages, no prepayment — pay at the studio.">
+    <meta property="og:description" content="Tell us the massage, day and area. We ask Madrid massage studios for you and send you their times. Nothing is booked until you tap Yes. You pay at the studio.">
+    <meta name="twitter:description" content="Tell us the massage, day and area. We ask Madrid massage studios for you and send you their times. Nothing is booked until you tap Yes. You pay at the studio.">
 
     <link rel="icon" type="image/png" href="/brand/mc-avatar-terracotta.png">
     <link rel="apple-touch-icon" href="/brand/mc-avatar-terracotta.png">
+
+    <!-- Google tag, basic consent mode (19 Nov 2026). The tag itself
+         (gtag.js) loads only after the visitor taps "Accept" on the cookie
+         notice: before that, Google receives nothing, not even a cookieless
+         ping with the page address. The privacy page (section 9) says so, and
+         it must stay true. ConsentBanner calls window.__mcLoadGtag() on Accept.
+         Never on pages whose address carries a person's token or contact
+         (/unsubscribe, /review, /r/...): those addresses must not reach Google.
+         KEEP IN SYNC with public/go.html and src/lib/clarity.ts (NO_TAG_PATHS). -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        wait_for_update: 500
+      });
+
+      (function () {
+        function noTagPath() {
+          var p = window.location.pathname;
+          return p === '/unsubscribe' || p.indexOf('/unsubscribe/') === 0 || p === '/review' || p.indexOf('/review/') === 0 || p.indexOf('/r/') === 0;
+        }
+        function optedOut() {
+          // The personal analytics opt-out (?nt=1 sets localStorage "mc_nt").
+          try {
+            var p = new URLSearchParams(window.location.search).get('nt');
+            if (p === '1') localStorage.setItem('mc_nt', '1');
+            else if (p === '0') localStorage.removeItem('mc_nt');
+            return localStorage.getItem('mc_nt') === '1';
+          } catch (e) { return false; }
+        }
+        function granted() {
+          try {
+            var v = localStorage.getItem('mc_consent');
+            return v === 'granted' || v === 'accepted';
+          } catch (e) { return false; }
+        }
+        var nt = optedOut();
+        window.__mcLoadGtag = function () {
+          if (nt || window.__mcGtag || noTagPath() || !granted()) return;
+          window.__mcGtag = 1;
+          gtag('consent', 'update', {
+            ad_storage: 'granted',
+            ad_user_data: 'granted',
+            ad_personalization: 'granted',
+            analytics_storage: 'granted'
+          });
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=AW-18401185487';
+          document.head.appendChild(s);
+          gtag('js', new Date());
+          gtag('config', 'AW-18401185487');
+        };
+        // A choice made on an earlier visit.
+        window.__mcLoadGtag();
+      })();
+    </script>
 </head>
+
 
   <body>
     <div id="root"></div>

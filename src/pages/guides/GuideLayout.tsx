@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
-import { useSiteVisit } from "@/lib/siteVisit";
 
 /**
  * The static tags in index.html would otherwise sit alongside the per-route
@@ -39,7 +38,10 @@ const SITE = "https://book.massageclub.io";
 
 export const GUIDES: { path: string; label: string }[] = [
   { path: "/massage-in-english-madrid", label: "Massage in English, Madrid" },
+  { path: "/guides/massage-prices-madrid-study", label: "What a massage costs in Madrid (study)" },
   { path: "/guides/massage-prices-madrid", label: "Massage prices in Madrid" },
+  { path: "/guides/your-first-massage-in-madrid", label: "Your first massage in Madrid" },
+
   { path: "/guides/deep-tissue-massage-madrid", label: "Deep tissue massage Madrid" },
   { path: "/madrid/chamberi", label: "Massage in Chamberí" },
   { path: "/guides/is-massage-good-for-you", label: "Is massage good for you?" },
@@ -58,7 +60,6 @@ export default function GuideLayout({
   jsonLd?: Record<string, unknown>;
   children: ReactNode;
 }) {
-  useSiteVisit(path);
   useSuppressStaticHead();
   const url = `${SITE}${path}`;
 
@@ -79,7 +80,9 @@ export default function GuideLayout({
         )}
       </Helmet>
 
-      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60">
+      {/* Phones and tablets. From 900px SiteHeader and SiteFooter take over
+          (App.tsx, SiteChromeLayout); the guide list below stays. */}
+      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur border-b border-border/60 desk:hidden">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <img src="/brand/mc-avatar-terracotta.png" alt="Massage Club" className="h-8 w-8 rounded-full" />
@@ -88,16 +91,16 @@ export default function GuideLayout({
           <div className="flex items-center gap-2">
             <LanguageFlagToggle />
             <Link
-              to="/partner"
+              to="/for-studios"
               className="hidden sm:inline-flex h-9 px-4 rounded-full border border-border/80 text-foreground text-[11px] font-bold tracking-[0.12em] uppercase hover:bg-accent transition items-center"
             >
-              For massage businesses
+              For studios
             </Link>
             <Link
-              to="/app"
+              to="/studios"
               className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tracking-[0.12em] uppercase shadow-soft hover:opacity-90 transition inline-flex items-center gap-1.5"
             >
-              Open app <ArrowRight className="h-3 w-3" />
+              Book a massage <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </div>
@@ -105,7 +108,9 @@ export default function GuideLayout({
 
       <main className="max-w-3xl mx-auto px-4 py-8 md:py-12">{children}</main>
 
-      <footer className="border-t border-border/60 bg-background mt-8">
+      {/* Phones only: from 900px SiteFooter carries the site links and each
+          guide already ends with "Keep reading", so this row would repeat them. */}
+      <footer className="border-t border-border/60 bg-background mt-8 desk:hidden">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center">
             <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-primary mb-2">Guides</p>
@@ -119,7 +124,7 @@ export default function GuideLayout({
               ))}
             </ul>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-6">
+          <p className="text-xs text-muted-foreground text-center mt-6 desk:hidden">
             Massage Club · Madrid <span className="mx-1">·</span>{" "}
             <Link to="/privacy" className="hover:text-primary transition underline-offset-2 hover:underline">
               Privacy
@@ -149,7 +154,7 @@ export function CalmaCard({ note }: { note?: string }) {
       </p>
       <p className="text-sm text-foreground/85 mt-3">
         {note ??
-          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €45) and relaxing rituals. Book online in English — you pay at the studio."}
+          "Deep tissue (Masaje Descontracturante, 60 min · €85), Kobido facial (60 min · €85) and relaxing rituals. Book online in English. You pay at the studio."}
       </p>
       <Link
         to="/spa-calma"
@@ -175,7 +180,7 @@ export function GuideLinks({ exclude }: { exclude: string }) {
         ))}
         <li>
           <Link to="/spa-calma" className="text-foreground hover:text-primary underline-offset-2 hover:underline transition">
-            Calma Madrid — book a massage
+            Calma Madrid: book a massage
           </Link>
         </li>
       </ul>

@@ -6,6 +6,9 @@ import { MobileFrame } from "./MobileFrame";
 import { supabase } from "@/lib/supabase";
 import { captureReferralFromUrl } from "@/lib/referral";
 import { captureSource } from "@/lib/attribution";
+import { migrateFavouritesToAccount } from "@/lib/favourites";
+import { DealsFooterLine } from "@/components/DealsLink";
+import { FLOW_LANGS } from "@/lib/flowLang";
 
 export default function AppLayout() {
   const { i18n } = useTranslation();
@@ -14,7 +17,14 @@ export default function AppLayout() {
   useEffect(() => {
     captureReferralFromUrl();
     captureSource();
+    // Any favourites saved while logged out follow the visitor into the account.
+    void migrateFavouritesToAccount();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") void migrateFavouritesToAccount();
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
+
 
 
   // Sync preferred language from the signed-in user's profile (once per session).
@@ -30,7 +40,11 @@ export default function AppLayout() {
           .eq("id", user.id)
           .maybeSingle();
         const lang = (data as any)?.preferred_language;
-        if (!cancelled && (lang === "es" || lang === "en") && lang !== i18n.resolvedLanguage) {
+        if (
+          !cancelled &&
+          (FLOW_LANGS as readonly string[]).includes(lang) &&
+          lang !== i18n.resolvedLanguage
+        ) {
           i18n.changeLanguage(lang);
         }
       } catch {
@@ -52,6 +66,11 @@ export default function AppLayout() {
     <BookingProvider>
       <MobileFrame>
         <Outlet />
+        {/* Shared quiet footer entry point to the deals list. From 900px the
+            shell closes with SiteFooter instead (MobileFrame). */}
+        <footer className="px-4 pb-8 pt-6 text-center desk:hidden">
+          <DealsFooterLine />
+        </footer>
       </MobileFrame>
     </BookingProvider>
   );

@@ -4,14 +4,38 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
+  "redirects": [
+    {
+      "source": "/app",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/app/massages",
+      "destination": "/studios",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
-      "source": "/:slug/hours",
-      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours?slug=:slug"
+      "source": "/sitemap.xml",
+      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/sitemap"
     },
     {
       "source": "/confirm-hours",
       "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/confirm-hours"
+    },
+    {
+      "source": "/booking-action",
+      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/booking-action"
+    },
+    {
+      "source": "/p/:token",
+      "destination": "https://jglftdstrowwckwqmpue.supabase.co/functions/v1/pick?t=:token"
+    },
+    {
+      "source": "/reserve",
+      "destination": "/go.html"
     },
     {
       "source": "/socios",

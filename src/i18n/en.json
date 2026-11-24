@@ -77,7 +77,7 @@
     "q2": "Does it cost anything?",
     "a2": "No. Browsing is free, there is no account or subscription, and you pay the studio directly.",
     "q3": "What types of massage are included?",
-    "a3": "All of them: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more — depending on the studio.",
+    "a3": "All of them: Swedish, deep tissue, sports, Thai, hot stone, reflexology and more, depending on the studio.",
     "q4": "Can I go every day?",
     "a4": "Yes. As often as you like, subject to each studio's availability."
   },
@@ -98,7 +98,8 @@
       "continue": "Continue",
       "confirm": "Confirm",
       "loading": "Loading…",
-      "free": "Free"
+      "free": "Free",
+      "stockPhoto": "Stock photo"
     },
     "bottomNav": {
       "massages": "Massages",
@@ -113,9 +114,14 @@
       "quizTitle": "Not sure which to try?",
       "quizDesc": "Answer 4 quick questions and we'll suggest the perfect massage for you.",
       "takeQuiz": "Take the quiz",
+      "quizCardAria": "Take the quiz to find your massage",
+      "quizMidPrompt": "Not sure which one? Take the 60-second quiz →",
+      "quizBottomTitle": "Still not sure?",
+      "quizBottomCta": "Take the 60-second quiz",
       "nearbyTitle": "Studios near you",
+      "nearbyTitleMadrid": "Studios in Madrid",
       "exploreTitle": "Explore massage styles",
-      "exploreSub": "Learn what each style does — then book the right one.",
+      "exploreSub": "Learn what each style does, then book the right one.",
       "inMadrid": "In Madrid"
     },
     "customize": {
@@ -162,11 +168,13 @@
     },
     "massageList": {
       "profile": "Profile",
-      "switchToPartner": "Your business dashboard →",
+      "switchToPartner": "Your studio dashboard →",
       "searchPlaceholder": "Search studios or area…",
       "filters": "Filters",
       "filterAll": "All",
       "yourLocation": "Your location",
+      "quizPrompt": "Not sure which massage? Take the quiz →",
+      "quizButton": "Take the quiz",
       "nearMadrid": "Near Madrid · tap to locate",
       "bookNow": "Book now →",
       "studiosNearYou": "Studios near you",
@@ -177,14 +185,22 @@
       "favorite": "Favorite",
       "payAtStudio": "Pay at studio",
       "availableToday": "Available today",
+      "bookOnline": "Book online",
+      "askOnWhatsapp": "Ask on WhatsApp",
       "madrid": "Madrid",
       "youAreHere": "You are here",
       "minutes": "min",
       "minutesShort": "m",
-      "studioCta": "Do you run a massage business? Get listed free on Massage Club →"
+      "studioCta": "Do you run a massage studio? Get listed free on Massage Club →",
+      "quizCardTitle": "Not sure which massage to pick?",
+      "quizCardSub": "Answer 4 quick questions and we will tell you what to book, and what it is called in Spanish.",
+      "quizCardCta": "Take the quiz"
     },
     "shopDetail": {
       "not_found": "Not found.",
+      "notFoundTitle": "We couldn't find that studio.",
+      "notFoundSub": "We can still ask professional massage studios near you.",
+      "askStudiosNearMe": "Ask studios near me",
       "back": "Back",
       "default_address": "Madrid, Spain",
       "default_description": "Intensive pressure to relieve chronic tension.",
@@ -201,7 +217,9 @@
       "location_title": "Location",
       "directions": "Directions",
       "call": "Call",
-      "chat": "Chat"
+      "chat": "Chat",
+      "whatsapp": "Ask on WhatsApp",
+      "whatsappEs": "Preguntar por WhatsApp"
     },
     "calendar": {
       "back": "Back",
@@ -209,7 +227,7 @@
       "chooseDay": "Choose a day",
       "availableTimes": "Available times",
       "pickDayFirst": "Pick a day first.",
-      "closedDay": "Closed on this day — please pick another date.",
+      "closedDay": "Closed on this day. Please pick another date.",
       "fullyBooked": "Fully booked",
       "continue": "Continue",
       "days": {
@@ -232,7 +250,7 @@
         "gettingThere": "Getting there",
         "feedback": {
           "title": "Enjoyed Massage Club?",
-          "description": "After your visit, leave {{studio}} a review on Google — it helps the studio and other clients.",
+          "description": "After your visit, leave {{studio}} a review on Google. It helps the studio and other clients.",
           "button": "Leave a Google review ⭐"
         },
         "whatsapp": {
@@ -255,7 +273,7 @@
           "success": "Booking confirmed!"
         },
         "note": {
-          "referralCredit": "€{{amount}} referral credit — deduct from bill at studio."
+          "referralCredit": "€{{amount}} referral credit. Deduct from bill at studio."
         }
       },
       "main": {
@@ -276,7 +294,7 @@
         },
         "payment": {
           "title": "Pay at the studio",
-          "description": "No payment needed now — pay when you arrive."
+          "description": "No payment needed now. Pay when you arrive."
         },
         "referral": {
           "apply": "Apply €{{amount}} referral credit",
@@ -299,7 +317,14 @@
       "signedOut": {
         "title": "Sign in to set up your profile",
         "subtitle": "Save your preferences so every studio knows how you like your massage.",
-        "signInButton": "Sign in"
+        "signInButton": "Sign in",
+        "createTitle": "Create your profile",
+        "createSubtitle": "Set up your Massage Club profile in under a minute.",
+        "createButton": "Create your profile",
+        "alreadyHave": "Already have one? Sign in",
+        "benefit1": "Your photo and preferences reach the studio before you arrive",
+        "benefit2": "Book faster next time, details prefilled",
+        "benefit3": "All your bookings in one place"
       },
       "header": {
         "back": "Back",
@@ -338,7 +363,7 @@
         "share": "Share",
         "creditBalance": "Your credit balance",
         "shareTitle": "Massage Club",
-        "shareText": "I've been booking massages in Madrid through Massage Club — get €{{amount}} off your first booking with my link: {{url}}"
+        "shareText": "I've been booking massages in Madrid through Massage Club. Get €{{amount}} off your first booking with my link: {{url}}"
       },
       "photo": {
         "changePhoto": "Change photo",
@@ -390,7 +415,7 @@
       },
       "health": {
         "title": "Health & safety",
-        "subtitle": "Private — only shared with your therapist",
+        "subtitle": "Private: only shared with your therapist",
         "reasonForVisit": "Reason for visit / goals",
         "reasonForVisitPlaceholder": "e.g. lower back pain from desk work",
         "medicalConditions": "Medical conditions",
@@ -413,7 +438,7 @@
         "photoUpdated": "Photo updated",
         "profileSaved": "Profile saved",
         "linkCopied": "Link copied",
-        "copyFailed": "Couldn't copy — long-press to copy"
+        "copyFailed": "Couldn't copy. Long-press to copy"
       },
       "options": {
         "pressures": {
@@ -469,8 +494,8 @@
         },
         "budgets": {
           "under_40": "Under €40",
-          "40_60": "€40–60",
-          "60_90": "€60–90",
+          "40_60": "€40-60",
+          "60_90": "€60-90",
           "90_plus": "€90+"
         },
         "addons": {
@@ -520,7 +545,14 @@
           "dim": "Dim",
           "normal": "Normal"
         }
-      }
+      },
+      "savedInline": "Saved",
+      "savedBtn": "Saved",
+      "successTitle": "Profile saved.",
+      "successBody": "Studios will see your preferences when you book.",
+      "successCta": "Find your massage",
+      "keepEditing": "Keep editing",
+      "saveError": "Could not save"
     },
     "myBookings": {
       "title": "My bookings",
@@ -557,16 +589,16 @@
       },
       "cancelConfirm": "Cancel your {{type}} on {{date}} at {{time}}?",
       "messages": {
-        "cancelError": "Could not cancel — {{message}}",
+        "cancelError": "Could not cancel: {{message}}",
         "cancelSuccess": "Booking cancelled",
-        "rescheduleError": "Could not reschedule — {{message}}",
+        "rescheduleError": "Could not reschedule: {{message}}",
         "rescheduleSuccess": "Booking rescheduled"
       },
       "rescheduleModal": {
         "title": "Reschedule",
         "chooseDay": "Choose a day",
         "availableTimes": "Available times",
-        "closed": "Closed on this day — please pick another date.",
+        "closed": "Closed on this day. Please pick another date.",
         "full": "Full",
         "saving": "Saving...",
         "confirm": "Confirm new time"
@@ -598,7 +630,7 @@
     "login": {
       "toasts": {
         "invalidEmail": "Please enter a valid email",
-        "googleError": "Google sign-in isn't switched on yet — browse as guest for now.",
+        "googleError": "Google sign-in isn't switched on yet. Browse as guest for now.",
         "missingName": "Please enter your name",
         "welcome": "Welcome, {{name}}!"
       },
@@ -608,7 +640,7 @@
       },
       "nameStep": {
         "title": "Almost there.",
-        "subtitle": "Just your name — so the studio knows who's coming.",
+        "subtitle": "Just your name, so the studio knows who's coming.",
         "label": "Your name",
         "placeholder": "Alex Martinez",
         "phoneLabel": "Phone (optional)",
@@ -624,47 +656,78 @@
       },
       "hero": {
         "established": "Madrid · Est. 2026",
-        "title1": "The city's best",
-        "title2": "massages,",
-        "title3": "on demand.",
+        "title1": "Your first",
+        "title2": "massage",
+        "title3": "in Madrid",
         "imageAlt": "Calm Madrid massage studio",
-        "studiosCount": "12+ studios",
+        "studiosCount": "{{studios}}+ studios across Madrid",
         "payAtStudio": "Pay at studio",
-        "description": "Browse top-rated studios near you. No account needed to look — pay at the studio."
+        "description": "{{studios}}+ studios with real prices, in English. We ask the studios for you in Spanish. You pay at the studio.",
+        "ctaNote": "No account needed to look. No booking fee. You pay the studio directly."
+      },
+      "newInMadrid": {
+        "eyebrow": "New in Madrid",
+        "heading": "You carried your life up four flights of stairs.",
+        "body": "Your shoulders have opinions about it. But every studio website is in Spanish, the reviews are in Spanish, and nobody tells you whether \"descontracturante\" means relaxing or painful. (It's the deep one.) That's what this is for."
       },
       "actions": {
-        "forStudios": "For massage businesses",
-        "browse": "Browse studios",
+        "forStudios": "For studios",
+        "browse": "Book a massage",
         "google": "Continue with Google",
-        "ownStudio": "Own a massage business?",
+        "ownStudio": "Own a massage studio?",
         "listFree": "List it free"
       },
       "howItWorks": {
         "title": "How it works",
         "step1": {
-          "title": "Find a studio",
-          "subtitle": "Browse top-rated spots near you."
+          "title": "Browse by barrio",
+          "subtitle": "Chamberí, Chueca, Salamanca, Malasaña. Real services, real prices, in English."
         },
         "step2": {
-          "title": "Pick a time",
-          "subtitle": "Book instantly — pressure, focus, add-ons."
+          "title": "You pick the time",
+          "subtitle": "We ask the studios for you in Spanish and send you their times. Nothing is booked until you tap Yes."
         },
         "step3": {
-          "title": "Show up & relax",
-          "subtitle": "Get a confirmation. That's it."
+          "title": "Turn up and switch off",
+          "subtitle": "You'll get a confirmation with the address and how to get in. Pay at the studio."
         }
       },
+      "trust": {
+        "line1": "We don't take a cut of your massage. The prices you see are the studio's own.",
+        "line2": "We won't promise your therapist speaks English. Some do, some don't. What we promise is that booking the appointment doesn't need Spanish.",
+        "line3": "Every studio here is a real place we found, checked and listed by hand."
+      },
       "studioCard": {
-        "label": "For massage businesses",
-        "title": "List your business in minutes.",
-        "subtitle": "Calendar sync, branded link, no setup fees.",
-        "button": "Become a partner"
+        "label": "For studios",
+        "title": "Own a studio? You're probably already listed.",
+        "subtitle": "We built pages for 50+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.",
+        "button": "Claim your studio"
       },
       "saveDetails": {
         "title": "Save details for faster booking",
         "button": "Save"
       },
-      "feedback": "Share feedback — help us build this"
+      "feedback": "Share feedback: help us build this",
+      "emailAuth": {
+        "or": "Or",
+        "continueWithEmail": "Continue with email",
+        "codeSent": "We emailed a 6-digit code to {{email}}",
+        "codeLabel": "6-digit code",
+        "signIn": "Sign in",
+        "resend": "Resend code",
+        "changeEmail": "Use another email",
+        "errors": {
+          "wrongCode": "Wrong code, try again",
+          "expired": "Code expired, request a new one",
+          "noActiveCode": "No active code. Request a new one.",
+          "tooManyAttempts": "Too many attempts, request a new code",
+          "rateLimited": "Too many codes requested. Please wait a few minutes.",
+          "generic": "Something went wrong. Please try again."
+        },
+        "createHeading": "Create your profile",
+        "createSubheading": "Enter your email and we will send you a 6-digit code.",
+        "createSubmit": "Create your profile"
+      }
     },
     "handoff": {
       "notRegistered": "This studio isn't on Massage Club yet.",
@@ -677,11 +740,21 @@
       "callStudioSub": "Llamar al estudio",
       "visitWebsite": "Visit their website",
       "visitWebsiteSub": "Ver su web",
-      "waReassurance": "We'll write your message in Spanish for you ✍️"
+      "waReassurance": "We’ll write it in Spanish. All they have to do is say yes.",
+      "prefTitle": "Tell them what you want",
+      "prefService": "Service",
+      "prefName": "Your first name",
+      "prefDate": "Preferred day",
+      "prefTime": "Time",
+      "prefAlt": "Backup option (optional)",
+      "prefOptional": "Optional. If you skip these, we’ll ask the studio for their free times.",
+      "afterNote": "If they reply with something you don’t understand, forward it to jordan@massageclub.io and we’ll translate.",
+      "prefLanguages": "Languages you speak",
+      "prefLanguagesAdd": "add"
     },
     "partnerAuth": {
       "resetTitle": "Create a new password",
-      "resetHelp": "Choose a new password for your business account. Minimum 8 characters.",
+      "resetHelp": "Choose a new password for your studio account. Minimum 8 characters.",
       "newPassword": "New password",
       "confirmPassword": "Confirm password",
       "savePassword": "Save password",
@@ -710,10 +783,10 @@
       "to": "To",
       "slots": "{{count}} slots",
       "copyAll": "Copy this schedule to every day",
-      "copyWeekdays": "Weekdays only (Mon–Fri)",
+      "copyWeekdays": "Weekdays only (Mon-Fri)",
       "copied": "Schedule copied",
       "helper": "Set an open/close time for each day. We turn it into hourly slots automatically.",
-      "staffTitle": "How many people work in the business in total?",
+      "staffTitle": "How many people work at the studio in total?",
       "staffHelp": "Therapists, reception, the whole team.",
       "staffOptional": "Optional",
       "chip6Plus": "6+"
@@ -722,13 +795,13 @@
   "partner": {
     "login": {
       "title": "Partner Portal",
-      "subtitle": "List your business on Massage Club",
+      "subtitle": "List your spa on Massage Club",
       "signInTab": "Sign In",
-      "registerTab": "List My Business",
+      "registerTab": "List My Spa",
       "businessNameLabel": "Business Name",
-      "businessNamePlaceholder": "e.g. Wellness Madrid",
+      "businessNamePlaceholder": "e.g. Wellness Center Madrid",
       "emailLabel": "Email",
-      "emailPlaceholder": "hello@yourbusiness.com",
+      "emailPlaceholder": "spa@example.com",
       "passwordLabel": "Password",
       "pleaseWait": "Please wait…",
       "createAccount": "Create Account",
@@ -742,7 +815,7 @@
       "errInvalidCredentials": "Invalid email or password",
       "benefits": [
         "Reach 12,000+ digital nomads in Madrid",
-        "Commission-only — no upfront cost",
+        "Free until 31 December 2026, no monthly fee",
         "Get bookings 24/7 automatically"
       ],
       "recovery": {
@@ -759,20 +832,20 @@
       }
     },
     "resetPassword": {
-      "emailPlaceholder": "hello@yourbusiness.com"
+      "emailPlaceholder": "spa@example.com"
     },
     "onboarding": {
       "backToHome": "Back to home",
       "partnerPortalBadge": "Partner Portal",
-      "heading": "List your business",
+      "heading": "List your studio",
       "subheading": "Set up your profile, team and services in a few minutes",
-      "stepStudio": "Business",
+      "stepStudio": "Studio",
       "stepHours": "Hours",
       "stepTeam": "Team",
       "stepServices": "Services",
       "stepGoLive": "Go Live",
       "businessDetailsTitle": "Business details",
-      "studioNameLabel": "Business name *",
+      "studioNameLabel": "Studio / business name *",
       "studioNamePlaceholder": "e.g. Casa Delfines Spa",
       "streetAddressLabel": "Street address *",
       "streetAddressPlaceholder": "e.g. Calle de Alcalá 20",
@@ -788,9 +861,9 @@
       "phonePlaceholder": "Phone",
       "websitePlaceholder": "Website (optional)",
       "instagramPlaceholder": "@instagram (optional)",
-      "descriptionPlaceholder": "Short description of your business (shown to customers)",
+      "descriptionPlaceholder": "Short description of your studio (shown to customers)",
       "whereDoYouWork": "Where do you work?",
-      "atMyStudio": "At my business",
+      "atMyStudio": "At my studio",
       "iTravel": "I travel to clients",
       "both": "Both",
       "amenities": "Amenities",
@@ -814,7 +887,7 @@
       "addService": "Add service",
       "addonsTitle": "Add-ons",
       "optional": "(optional)",
-      "addonsHelp": "Paid extras clients can add — e.g. Aromatherapy, Hot stones, CBD oil.",
+      "addonsHelp": "Paid extras clients can add, e.g. Aromatherapy, Hot stones, CBD oil.",
       "addonNamePlaceholder": "Add-on name",
       "addAddon": "Add an add-on",
       "bookingPolicyTitle": "Booking policy",
@@ -829,26 +902,26 @@
       "createPasswordPlaceholder": "Create a password (6+ characters)",
       "publishing": "Publishing…",
       "publishListing": "Publish my listing",
-      "commissionFooter": "Commission-only · No upfront cost · Cancel anytime",
+      "commissionFooter": "Free until 31 Dec 2026 · No monthly fee · No contract",
       "alreadyHaveAccount": "Already have an account?",
       "signIn": "Sign in",
       "errAddressFirst": "Enter your street address first",
       "locationConfirmedToast": "📍 Location confirmed on the map",
-      "errAddressNotFound": "Couldn't find that address — check the spelling",
-      "errStudioName": "Enter your business name",
+      "errAddressNotFound": "Couldn't find that address. Check the spelling",
+      "errStudioName": "Enter your studio name",
       "errAddress": "Enter your street address",
       "errAtLeastOneService": "Add at least one service",
       "errOpeningHours": "Set your opening hours for at least one day",
       "errAtLeastOneTherapist": "Add at least one therapist",
       "errEmailPassword": "Enter your email and password to go live",
       "errPasswordShort": "Password must be at least 6 characters",
-      "savedAtMadridCenter": "We've placed your business roughly on the Madrid map. Tap “Find my location on the map” later to fine-tune the pin.",
-      "errConfirmEmail": "Account created — confirm your email then sign in. (Tip: disable “Confirm email” in Supabase → Authentication to go live instantly.)",
-      "errSaveStudio": "Could not save your business details: {{message}}",
+      "savedAtMadridCenter": "Saved your studio at Madrid center. Tap “Find my location” later to fine-tune the pin.",
+      "errConfirmEmail": "Account created. Confirm your email then sign in. (Tip: disable “Confirm email” in Supabase → Authentication to go live instantly.)",
+      "errSaveStudio": "Could not save your studio: {{message}}",
       "errSaveHours": "Could not save opening hours: {{message}}",
       "errSaveServices": "Could not save your services: {{message}}",
       "errSaveTherapists": "Could not save therapists: {{message}}",
-      "liveToast": "🎉 Your business is live on Massage Club!",
+      "liveToast": "🎉 Your studio is live on Massage Club!",
       "errGeneric": "Something went wrong"
     },
     "dashboard": {
@@ -870,7 +943,7 @@
       "statToday": "Today",
       "statThisMonth": "This Month",
       "bookingLinkTitle": "Your booking link",
-      "bookingLinkDesc": "Share this anywhere — your Google listing, Instagram bio, or a WhatsApp message. Customers book right from it.",
+      "bookingLinkDesc": "Share this anywhere: your Google listing, Instagram bio, or a WhatsApp message. Customers book right from it.",
       "linkCopied": "Link copied!",
       "copied": "Copied",
       "copy": "Copy",
@@ -902,7 +975,7 @@
       "noAppointmentsThisDay": "No appointments this day.",
       "details": "details",
       "bookingEmailSubject": "Your booking at {{business}}",
-      "ourStudio": "our centre",
+      "ourStudio": "our studio",
       "email": "Email",
       "recentBookings": "Recent bookings",
       "noBookingsYet": "No bookings yet. They'll appear here when customers book.",
@@ -927,7 +1000,7 @@
       "visibilityTitle": "Visibility",
       "visibilityViews30": "page views (30 days)",
       "visibilityViews7": "last 7 days: {{n}}",
-      "visibilityEmpty": "Your page is live — you'll soon see who's visiting",
+      "visibilityEmpty": "Your page is live. You'll soon see who's visiting",
       "visibilitySource": {
         "google": "Google",
         "reddit": "Reddit",
@@ -940,7 +1013,7 @@
     },
     "clients": {
       "title": "Clients & Treatment Notes",
-      "studio": "Business",
+      "studio": "Studio",
       "searchPlaceholder": "Search by name, email or phone",
       "clientsTotal": "{{count}} client total",
       "clientsTotal_plural": "{{count}} clients total",
@@ -963,8 +1036,8 @@
       "writeSomething": "Write something in at least one field.",
       "couldNotSave": "Couldn't save the note.",
       "noteSaved": "Treatment note saved",
-      "soapHintSubjective": "What the client reports — pain, stress, goals",
-      "soapHintObjective": "What you observe — tension, posture, range of motion",
+      "soapHintSubjective": "What the client reports: pain, stress, goals",
+      "soapHintObjective": "What you observe: tension, posture, range of motion",
       "soapHintAssessment": "Your interpretation",
       "soapHintPlan": "What you did + next session"
     },
@@ -973,8 +1046,8 @@
       "objective": "Objective",
       "assessment": "Assessment",
       "plan": "Plan",
-      "hintSubjective": "What the client reports — pain, stress, goals in their words",
-      "hintObjective": "What you observe — tension, posture, range of motion",
+      "hintSubjective": "What the client reports: pain, stress, goals in their words",
+      "hintObjective": "What you observe: tension, posture, range of motion",
       "hintAssessment": "Your interpretation of the findings",
       "hintPlan": "What you did + recommendations / next session",
       "soapNoteLabel": "SOAP note",
@@ -985,7 +1058,7 @@
       "loading": "Loading…",
       "fieldPlaceholder": "{{field}}…",
       "lastSaved": "Last saved {{date}}",
-      "privateNote": "Private: only your business can see this.",
+      "privateNote": "Private: only your studio can see this.",
       "saving": "Saving…",
       "updateNote": "Update note",
       "saveNote": "Save note",
@@ -1000,10 +1073,10 @@
       "stepLabel": "Step 1 of 3",
       "title": "Business Profile",
       "findLabel": "Find your business on Google",
-      "searchPlaceholder": "Search for your business on Google…",
+      "searchPlaceholder": "Search for your spa on Google…",
       "noResults": "No results found. Try a different name or enter manually below.",
       "ratingReviews": "{{rating}} ({{count}} reviews)",
-      "googleDataLoaded": "Google data loaded — verify and edit below",
+      "googleDataLoaded": "Google data loaded. Verify and edit below",
       "businessName": "Business Name",
       "address": "Address",
       "phone": "Phone",
@@ -1012,7 +1085,7 @@
       "whatsappPlaceholder": "+34 6XX XXX XXX",
       "whatsappHint": "Leave blank to use your phone number.",
       "descriptionLabel": "Description (for customers)",
-      "descriptionPlaceholder": "Tell customers what makes your business special…",
+      "descriptionPlaceholder": "Tell customers what makes your spa special…",
       "accessLabel": "How to enter the building",
       "accessPlaceholder": "e.g. Calle X 12, ring buzzer 3B, 2nd floor, door on the left.",
       "accessHint": "Shown to customers on their booking confirmation and reminder email.",
@@ -1027,10 +1100,10 @@
       "toastSaveError": "Error saving: {{message}}",
       "toastSaved": "Profile saved! Now add your services.",
       "slugLabel": "Your link",
-      "slugPlaceholder": "my-business",
+      "slugPlaceholder": "my-studio",
       "slugTaken": "That link is already taken",
       "slugInvalid": "The link must be between 3 and 40 characters",
-      "slugUpdatedWarning": "Link updated — the previous link will stop working, update it wherever you shared it."
+      "slugUpdatedWarning": "Link updated. The previous link will stop working, update it wherever you shared it."
     },
     "services": {
       "stepLabel": "Step 2 of 3",
@@ -1060,7 +1133,7 @@
     "calendar": {
       "stepLabel": "Availability",
       "title": "Set your opening hours",
-      "intro": "Set when you're open each day — we'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.",
+      "intro": "Set when you're open each day. We'll create the bookable times for you. Set one day, then tap “Copy to all” to reuse it.",
       "capacityLabel": "How many massages can you give at the same time?",
       "capacityHint": "Usually the number of tables or therapists working at once.",
       "days": {
@@ -1075,7 +1148,7 @@
       "closed": "Closed",
       "bookableTimes": "{{count}} bookable times",
       "copyToAll": "Copy to all days",
-      "noHoursSet": "No hours set — you won't appear in search yet",
+      "noHoursSet": "No hours set. You won't appear in search yet",
       "summary": "{{days}} day(s) open · {{slots}} bookable times",
       "done": "✓ Done!",
       "goLive": "Go Live",
@@ -1113,7 +1186,7 @@
       "yourGoogleCalendar": "your Google Calendar",
       "connectionFailedTitle": "Connection failed",
       "connectButton": "Connect Google Calendar",
-      "connectHint": "One click — no password stored. Read-only access to your calendar.",
+      "connectHint": "One click. No password stored. Read-only access to your calendar.",
       "disconnectButton": "Disconnect Google Calendar",
       "howItWorks": "How it works",
       "step1Title": "Connect in one click",
@@ -1126,13 +1199,13 @@
       "step4Desc": "New bookings from Massage Club appear as events in your Google Calendar instantly.",
       "autoConfirmTitle": "Auto-confirm bookings",
       "autoConfirmDesc": "When enabled, bookings appear confirmed immediately. When off, you manually approve each one.",
-      "autoConfirmOnLabel": "On — bookings confirmed automatically",
-      "autoConfirmOffLabel": "Off — you confirm each booking",
+      "autoConfirmOnLabel": "On: bookings confirmed automatically",
+      "autoConfirmOffLabel": "Off: you confirm each booking",
       "manualAvailabilityLink": "Set manual availability instead",
       "confirmDisconnect": "Disconnect Google Calendar? Your manual availability will still work.",
       "toastConnected": "Google Calendar connected!",
       "toastConnectionFailed": "Connection failed: {{error}}",
-      "toastNotSetUp": "Google isn't set up yet — add your Google Client ID first.",
+      "toastNotSetUp": "Google isn't set up yet. Add your Google Client ID first.",
       "toastDisconnectFailed": "Failed to disconnect",
       "toastDisconnected": "Google Calendar disconnected",
       "toastUpdateFailed": "Failed to update",
@@ -1140,11 +1213,38 @@
       "toastAutoConfirmOff": "Auto-confirm disabled"
     },
     "studioSetup": {
+      "oneStepBadge": "Your page, as a draft",
+      "oneStepHeading": "We have prepared your page",
+      "oneStepSub": "It is not active until you say so.",
+      "oneStepServicesTitle": "Services and prices we have for you",
+      "oneStepNoServices": "No services listed yet. We can add them for you later.",
+      "oneStepYes": "Yes, start sending me bookings",
+      "oneStepReassure": "Bookings arrive by email. You confirm with one click. No account needed.",
+      "oneStepEmailLabel": "Email to receive bookings at",
+      "oneStepAddressLabel": "Studio address",
+      "oneStepAddressPlaceholder": "Street, number, Madrid",
+      "oneStepEmailInvalid": "Please enter a valid email address",
+      "oneStepAddressRequired": "Please add your studio address",
+      "oneStepConfirm": "Confirm and go live",
+      "oneStepActivating": "Going live",
+      "oneStepFailed": "Could not activate your page. Please try again or use the link below.",
+      "oneStepLiveTitle": "You are live",
+      "oneStepLiveUrl": "Your page is at {{url}}",
+      "oneStepLiveBody": "From now on, bookings come to {{email}}. You confirm or decline with one click. No login.",
+      "oneStepViewPage": "View your page",
+      "oneStepOptionalTitle": "Optional, whenever you have time",
+      "oneStepOptAccount": "Create an account to edit your page",
+      "oneStepOptCalendar": "Connect your calendar",
+      "oneStepOptHours": "Set your opening hours",
+      "oneStepOptPhotos": "Add photos",
+      "oneStepHelp": "Set it up for me",
+      "oneStepHelpSub": "We will do it with you over WhatsApp: +34 612 474 827",
+      "oneStepEmailHelp": "We only use this to send you bookings.",
       "pwErrorMinLength": "Password must be at least 8 characters.",
       "pwErrorMismatch": "Passwords do not match.",
       "pwSavedToast": "Password saved",
       "claimNoTokenError": "No claim token provided",
-      "claimInvalidError": "This claim link is invalid or the business has already been claimed.",
+      "claimInvalidError": "This claim link is invalid or the studio has already been claimed.",
       "draftNoTokenError": "No draft token provided",
       "draftInvalidError": "This claim link is invalid or already used.",
       "inviteNoTokenError": "No token provided",
@@ -1160,7 +1260,7 @@
       "emailRequired": "Please provide an email",
       "accountCreatedToast": "Account created!",
       "accountCreateFailed": "Failed to create account",
-      "studioNameRequired": "Business name is required",
+      "studioNameRequired": "Studio name is required",
       "profileSavedToast": "Profile saved!",
       "profileSaveFailed": "Failed to save profile",
       "addAtLeastOneService": "Add at least one service",
@@ -1181,8 +1281,8 @@
       "stepLabelHours": "Hours",
       "stepLabelDone": "Done",
       "backButton": "Back",
-      "claimBadgeLabel": "Claim Your Business",
-      "setupBadgeLabel": "Business Setup",
+      "claimBadgeLabel": "Claim Your Studio",
+      "setupBadgeLabel": "Studio Setup",
       "claimHeading": "We built your Massage Club page",
       "claimSubheading": "Review it for {{businessName}}, then connect your calendar to go live.",
       "welcomeHeading": "Welcome, {{businessName}}",
@@ -1196,32 +1296,32 @@
       "orDivider": "or",
       "checkEmailTitle": "Check your email for a login link.",
       "checkEmailDesc": "We sent it to {{email}}. Open it on this device to continue.",
-      "emailPlaceholder": "you@yourbusiness.com",
+      "emailPlaceholder": "you@studio.com",
       "continueWithEmail": "Continue with email",
       "backAfterSignIn": "We'll bring you right back here after sign-in.",
       "step1CreateAccountTitle": "Create your account",
-      "step1DraftEmailDesc": "Enter the email you want to use to manage your business.",
+      "step1DraftEmailDesc": "Enter the email you want to use to manage your studio.",
       "step1InvitePrefilledDesc": "Email is pre-filled from your invite.",
       "passwordPlaceholder": "Create a password (min 8 chars)",
       "confirmPasswordPlaceholder": "Confirm password",
       "creatingAccount": "Creating account…",
       "continueButton": "Continue",
-      "step2ReviewTitle": "Review business details",
-      "step2Title": "Business details",
+      "step2ReviewTitle": "Review studio details",
+      "step2Title": "Studio details",
       "step2ReviewHelper": "Everything is pre-filled from the page we built for you. Edit anything that's wrong.",
-      "studioNameLabel": "Business name",
+      "studioNameLabel": "Studio Name",
       "addressLabel": "Address",
       "addressPlaceholder": "Calle Gran Vía 15, Madrid",
       "addressHelper": "Shown to customers on their booking confirmation.",
       "accessInstructionsLabel": "Arrival instructions (optional)",
-      "accessInstructionsPlaceholder": "E.g.: 'Building 1A — buzz the intercom and we'll let you in. First floor, right-hand door.'",
+      "accessInstructionsPlaceholder": "E.g.: 'Building 1A, buzz the intercom and we'll let you in. First floor, right-hand door.'",
       "accessInstructionsHelper": "Included in the customer's confirmation email.",
       "phoneLabel": "Phone",
       "phonePlaceholder": "+34 600 000 000",
       "websiteLabel": "Website (optional)",
-      "websitePlaceholder": "https://yourbusiness.com",
+      "websitePlaceholder": "https://yourstudio.com",
       "descriptionLabel": "Description",
-      "descriptionPlaceholder": "Tell customers what makes your business special…",
+      "descriptionPlaceholder": "Tell members about your studio…",
       "savingButton": "Saving…",
       "nextButton": "Next",
       "step3ReviewTitle": "Review your services",
@@ -1234,16 +1334,16 @@
       "capacityQuestion": "How many massages can you give at the same time?",
       "capacityHelper": "Usually the number of tables or therapists working at once. We use it so you never get more bookings than you can handle.",
       "step4CalendarTitle": "Connect Google Calendar",
-      "calendarRecommendedDesc": "Connecting Google Calendar is recommended — we'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.",
+      "calendarRecommendedDesc": "Connecting Google Calendar is recommended. We'll show your real availability and drop new bookings straight into your calendar automatically. You can also set your opening hours manually below.",
       "calendarBullet1": "Read-only access to your busy times",
       "calendarBullet2": "New bookings appear as events in your calendar",
       "calendarBullet3": "Customers only ever see truly free slots",
       "connectGoogleCalendar": "Connect Google Calendar",
-      "oneClickNote": "One click — no password stored.",
+      "oneClickNote": "One click. No password stored.",
       "orDividerEs": "or",
       "setManuallyButton": "Set availability manually",
       "saveAndContinue": "Save & continue",
-      "skipForNow": "Skip for now — you can connect it later from your portal",
+      "skipForNow": "Skip for now. You can connect it later from your portal",
       "step5Title": "Create your password",
       "step5Desc": "With this password you'll be able to log in to your dashboard whenever you want, without relying on email links.",
       "loginDetailsTitle": "Your login details",
@@ -1254,9 +1354,9 @@
       "repeatPasswordPlaceholder": "Repeat password",
       "savePasswordButton": "Save password and continue",
       "doneTitle": "You're live on Massage Club! 🎉",
-      "doneDescCalendarConnected": "Your calendar is connected and your business is now visible to customers in Madrid.",
-      "doneDescReviewNoCalendar": "Your business is now visible to customers in Madrid. You can connect Google Calendar whenever you want from your partner portal.",
-      "doneDescInvite": "Your business is now visible to thousands of customers in Madrid.",
+      "doneDescCalendarConnected": "Your calendar is connected and your studio is now visible to members in Madrid.",
+      "doneDescReviewNoCalendar": "Your studio is now visible to members in Madrid. You can connect Google Calendar whenever you want from your studio portal.",
+      "doneDescInvite": "Your studio is now visible to thousands of members in Madrid.",
       "goToDashboard": "Go to your dashboard →",
       "customTypeOption": "Other…",
       "customTypePlaceholder": "Type the massage type",

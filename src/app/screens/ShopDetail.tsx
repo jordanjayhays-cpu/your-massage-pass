@@ -15,22 +15,38 @@ import {
   Compass,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MASSAGES, MADRID_CENTER } from "../data";
+import { useFavouriteAction } from "../components/FavouriteSignupSheet";
+import { favouriteKey } from "@/lib/favourites";
+import { MADRID_CENTER, type Massage } from "../data";
 import { fetchShopById } from "@/lib/supabase";
 import type { Shop } from "@/lib/supabase";
 import { loadGoogleMaps } from "../lib/googleMaps";
 import { googleReviewUrl } from "../lib/googleReview";
+import { servicePrimaryName, serviceSecondaryName } from "@/lib/serviceName";
+import MassageTypeInfoButton from "@/app/components/MassageTypeInfo";
+import { clarityEvent } from "@/lib/clarity";
+import { telHref, conciergePrefill, MASSAGE_CLUB_WA } from "@/app/lib/whatsapp";
+import WhatsAppAskButton from "@/components/WhatsAppAskButton";
+import { logWhatsappRequest } from "@/lib/whatsappLog";
+import { sendTrack, trackEvent } from "@/lib/siteVisit";
+import { studioPath } from "@/lib/studioHref";
+import { StudioPhoto } from "../components/StudioPhoto";
 
 
 export default function ShopDetail() {
-  const { t } = useTranslation(undefined, { keyPrefix: "app.shopDetail" });
+  const { t, i18n } = useTranslation(undefined, { keyPrefix: "app.shopDetail" });
   const navigate = useNavigate();
   const { id } = useParams();
-  const [massage, setMassage] = useState<Shop | typeof MASSAGES[0] | null>(null);
+  const [massage, setMassage] = useState<Shop | Massage | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fav, setFav] = useState(false);
+  const { isFavourite, toggle: toggleFavourite, sheet: favouriteSheet } = useFavouriteAction();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInitedFor = useRef<string | null>(null);
+  const waLoggedRef = useRef(false);
+
+  useEffect(() => { clarityEvent("studio_view"); }, [id]);
+
+
 
 
   useEffect(() => {
@@ -41,8 +57,7 @@ export default function ShopDetail() {
         setLoading(false);
         return;
       }
-      const fallback = MASSAGES.find((m) => m.id === id) ?? null;
-      setMassage(fallback);
+      setMassage(null);
       setLoading(false);
     });
   }, [id]);
@@ -86,7 +101,7 @@ export default function ShopDetail() {
           zoom,
           disableDefaultUI: true,
           zoomControl: true,
-          gestureHandling: "cooperative",
+          gestureHandling: "greedy",
           styles: mapStyles,
         });
 
@@ -132,7 +147,7 @@ export default function ShopDetail() {
     return (
       <div className="p-8 text-center bg-background h-full">
         <p className="text-foreground">{t("not_found")}</p>
-        <Button onClick={() => navigate("/app/massages")} className="mt-4">{t("back")}</Button>
+        <Button onClick={() => navigate("/studios")} className="mt-4">{t("back")}</Button>
       </div>
     );
   }
@@ -141,6 +156,10 @@ export default function ShopDetail() {
   const district = m.district ?? "";
   const address = m.address ?? m.location ?? t("default_address");
   const phone = m.phone as string | undefined;
+
+  // Concierge model: client CTAs open a chat with Massage Club, not the studio.
+  const waMessage = conciergePrefill({ lang: i18n.language, studio: m.studio });
+
   const firstSentence =
     (m.description as string | undefined)?.split(/[.!?](\s|$)/)[0]?.trim() ||
     t("default_description");
@@ -165,7 +184,17 @@ export default function ShopDetail() {
     <div className="flex flex-col h-full overflow-y-auto bg-background">
       {/* Hero */}
       <div className="relative h-72 flex-shrink-0">
-        <img src={m.image} alt={m.name} className="absolute inset-0 h-full w-full object-cover" />
+        {/* Own photo, else the studio's labelled stock photo, else its tile. */}
+        <StudioPhoto
+          name={m.studio || m.name}
+          hood={m.district || null}
+          ownImage={m.ownImage}
+          stockImage={m.stockImage}
+          width={1000}
+          label="lg"
+          labelPosition="bottom-11 left-4"
+          eager
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-background/40" />
         <button
           onClick={() => navigate(-1)}
@@ -183,11 +212,11 @@ export default function ShopDetail() {
             <Share2 className="h-4 w-4 text-foreground" />
           </button>
           <button
-            onClick={() => setFav((v) => !v)}
+            onClick={() => toggleFavourite(massage as any)}
             aria-label={t("favorite")}
             className="h-11 w-11 rounded-full bg-card/95 backdrop-blur flex items-center justify-center shadow-soft border border-border/60 hover:bg-card transition"
           >
-            <Heart className={`h-4 w-4 ${fav ? "fill-primary text-primary" : "text-foreground"}`} />
+            <Heart className={`h-4 w-4 ${isFavourite(favouriteKey(massage as any)) ? "fill-primary text-primary" : "text-foreground"}`} />
           </button>
         </div>
       </div>
@@ -201,12 +230,16 @@ export default function ShopDetail() {
               {district ? t("district_label", { district }) : t("madrid")}
             </span>
             <div className="text-right">
-              <div className="flex items-center gap-1 justify-end">
-                <Star className="h-4 w-4 fill-accent text-accent" />
-                <span className="font-display text-base font-semibold text-foreground">{m.rating}</span>
-              </div>
-              {m.reviews != null && (
-                <p className="text-[11px] text-muted-foreground mt-0.5">{t("reviews_count", { count: m.reviews })}</p>
+              {m.rating != null && (
+                <>
+                  <div className="flex items-center gap-1 justify-end">
+                    <Star className="h-4 w-4 fill-accent text-accent" />
+                    <span className="font-display text-base font-semibold text-foreground">{Number(m.rating).toFixed(1)}</span>
+                  </div>
+                  {m.reviews != null && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("reviews_count", { count: m.reviews })}</p>
+                  )}
+                </>
               )}
               <a
                 href={googleReviewUrl(m.studio, address)}
@@ -259,18 +292,24 @@ export default function ShopDetail() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-display text-lg font-semibold text-foreground leading-snug">
-                        {s.name}
+                        {servicePrimaryName(s)}
                       </h3>
+                      {serviceSecondaryName(s) && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{serviceSecondaryName(s)}</p>
+                      )}
                       <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                         {s.description?.split(/[.!?](\s|$)/)[0]?.trim() || firstSentence}.
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      {s.price != null && (
-                        <p className="font-display text-2xl font-semibold text-foreground">
-                          €{s.price}
-                        </p>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {s.price != null && (
+                          <p className="font-display text-2xl font-semibold text-foreground">
+                            €{s.price}
+                          </p>
+                        )}
+                        <MassageTypeInfoButton names={[(s as any).name_en, s.name, (s as any).type]} />
+                      </div>
                       <span className="inline-block mt-1 text-[10px] font-bold tracking-[0.12em] uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary">
                         {t("pay_at_studio")}
                       </span>
@@ -282,7 +321,7 @@ export default function ShopDetail() {
                       <Clock className="h-3.5 w-3.5" /> {t("duration_min", { count: s.duration })}
                     </span>
                     <button
-                      onClick={() => navigate(`/app/booking/${m.id}/calendar`)}
+                      onClick={() => navigate(studioPath(m as any))}
                       className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold tracking-wide uppercase shadow-soft hover:opacity-90 transition"
                     >
                       {t("book_btn")}
@@ -325,16 +364,56 @@ export default function ShopDetail() {
               </div>
             </div>
 
+            <WhatsAppAskButton
+              source="studio-page"
+              studioName={m.studio || m.name || null}
+              meta={{ slug: m.slug || m.id }}
+              className="mt-4"
+              renderTrigger={({ open }) => (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!waLoggedRef.current) {
+                      waLoggedRef.current = true;
+                      clarityEvent("whatsapp_click");
+                      trackEvent("wa_click", { slug: m.slug || m.id });
+                      sendTrack({
+                        event: "whatsapp_click",
+                        path: window.location.pathname,
+                        slug: m.slug || m.id,
+                        meta: { filled: false, service: false, date: false },
+                      });
+                      logWhatsappRequest({
+                        partner_id: m.partner_id || m.id,
+                        slug: m.slug || null,
+                        studio_name: m.studio || m.name || "Unknown studio",
+                        wa_number: MASSAGE_CLUB_WA,
+                        message_text: waMessage,
+                        handoff: true,
+                      });
+                    }
+                    open();
+                  }}
+                  className="w-full inline-flex flex-col items-center justify-center min-h-[56px] px-6 py-2 rounded-full bg-primary text-primary-foreground font-semibold shadow-soft motion-safe:transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" /> {t("whatsapp")}
+                  </span>
+                  <span className="text-xs font-normal opacity-90">{t("whatsappEs")}</span>
+                </button>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-3 mt-4">
               <a
-                href={phone ? `tel:${phone}` : undefined}
+                href={telHref(phone) || undefined}
                 onClick={(e) => { if (!phone) e.preventDefault(); }}
                 className="h-12 rounded-full border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/50 transition shadow-soft"
               >
                 <Phone className="h-4 w-4 text-primary" /> {t("call")}
               </a>
               <button
-                onClick={() => navigate(`/app/booking/${m.id}/calendar`)}
+                onClick={() => navigate(studioPath(m as any))}
                 className="h-12 rounded-full border border-border bg-card text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/50 transition shadow-soft"
               >
                 <MessageSquare className="h-4 w-4 text-primary" /> {t("chat")}
@@ -343,6 +422,7 @@ export default function ShopDetail() {
           </div>
         </div>
       </div>
+      {favouriteSheet}
     </div>
   );
 }

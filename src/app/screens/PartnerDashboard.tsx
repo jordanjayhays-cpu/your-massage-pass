@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Calendar, Clock, DollarSign, Star, Users, Settings, ChevronRight, ChevronLeft, CheckCircle, XCircle, Loader2, Link2, Unlink, Copy, Check, MessageCircle, Image as ImageIcon, ArrowLeft, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -81,7 +81,7 @@ export default function PartnerDashboard() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error(t("partner.dashboard.pleaseSignIn")); navigate("/partner/login"); return; }
-    setShareUrl(`https://book.massageclub.io/s/${user.id}`);
+    setShareUrl(`https://book.massageclub.io/${user.id}`);
 
     const [{ data: partnerData }, { data: bookingsData }] = await Promise.all([
       supabase.from("partners").select("business_name, address, google_calendar_connected, google_calendar_id, auto_confirm_bookings, slug").eq("id", user.id).single(),
@@ -89,7 +89,7 @@ export default function PartnerDashboard() {
     ]);
 
     const slug = (partnerData as { slug?: string } | null)?.slug?.trim();
-    setShareUrl(slug ? `https://book.massageclub.io/${slug}` : `https://book.massageclub.io/s/${user.id}`);
+    setShareUrl(`https://book.massageclub.io/${slug || user.id}`);
     setPartner(partnerData);
     setBookings(bookingsData ?? []);
     setLoading(false);
@@ -178,6 +178,12 @@ export default function PartnerDashboard() {
               </div>
             </div>
             <div className="flex gap-2 items-center">
+              <Link
+                to="/for-studios"
+                className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
+              >
+                For studios
+              </Link>
               <button
                 onClick={() => window.open("/portal-tour.html", "_blank", "noopener,noreferrer")}
                 className="text-xs font-medium text-primary hover:text-primary/80 px-2 py-1 rounded-full bg-secondary/50 hover:bg-secondary"
@@ -352,6 +358,7 @@ export default function PartnerDashboard() {
             {[
               { label: t("partner.dashboard.quickEditProfile"), sub: t("partner.dashboard.quickEditProfileSub"), path: "/partner/profile", icon: Settings },
               { label: t("partner.dashboard.quickAddServices"), sub: t("partner.dashboard.quickAddServicesSub"), path: "/partner/services", icon: Star },
+              { label: "Add-ons / Extras", sub: "Hot stones, aromatherapy and more", path: "/partner/addons", icon: Sparkles },
               { label: t("partner.dashboard.quickPhotos"), sub: t("partner.dashboard.quickPhotosSub"), path: "/partner/photos", icon: ImageIcon },
               { label: t("partner.dashboard.quickAvailability"), sub: t("partner.dashboard.quickAvailabilitySub"), path: "/partner/calendar", icon: Clock },
               { label: t("partner.dashboard.quickClients"), sub: t("partner.dashboard.quickClientsSub"), path: "/partner/clients", icon: Users },

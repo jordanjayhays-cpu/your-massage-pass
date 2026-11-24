@@ -16,16 +16,16 @@ type FeaturedStudio = {
 
 
 const STEPS = [
-  { n: "01", t: "Browse studios", d: "Explore Madrid's top massage studios. No account needed to look around." },
-  { n: "02", t: "Compare menus", d: "See real services and prices. Pick the studio that fits your day." },
-  { n: "03", t: "Get in touch", d: "Contact the studio directly. Pay at the studio. That's it." },
+  { n: "01", t: "Browse by barrio", d: "Chamberí, Chueca, Salamanca, Malasaña. Real services, real prices, in English." },
+  { n: "02", t: "You pick the time", d: "We ask the studios for you in Spanish and send you their times. Nothing is booked until you tap Yes." },
+  { n: "03", t: "Turn up and switch off", d: "You'll get a confirmation with the address and how to get in. Pay at the studio." },
 ];
 
 export default function Web() {
   const [studios, setStudios] = useState<FeaturedStudio[]>([]);
 
   useEffect(() => {
-    document.title = "Massage Club — Madrid's best massage studios, in one place";
+    document.title = "Massage in Madrid, in English · Massage Club";
     const meta = document.querySelector('meta[name="description"]') || (() => {
       const m = document.createElement("meta");
       m.setAttribute("name", "description");
@@ -34,7 +34,7 @@ export default function Web() {
     })();
     meta.setAttribute(
       "content",
-      "Browse Madrid's top-rated massage studios: real menus, prices and contact details. Pay at the studio."
+      "50+ Madrid massage studios with real prices and services. We ask the studios for you in Spanish and send you their times. No booking fee: you pay the studio."
     );
   }, []);
 
@@ -81,12 +81,12 @@ export default function Web() {
           <nav className="hidden md:flex items-center gap-8 text-sm text-[#56433a]">
             <a href="#studios" className="hover:text-[#99420d]">Studios</a>
             <a href="#how" className="hover:text-[#99420d]">How it works</a>
-            <a href="#partners" className="hover:text-[#99420d]">For massage businesses</a>
+            <Link to="/for-studios" className="hover:text-[#99420d]">For studios</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link to="/app" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
+            <Link to="/studios" className="text-sm text-[#56433a] hover:text-[#99420d] hidden sm:inline">Sign in</Link>
             <Link
-              to="/app"
+              to="/studios"
               className="bg-[#99420d] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#C4622D] transition"
             >
               Browse studios
@@ -107,32 +107,41 @@ export default function Web() {
               className="text-5xl lg:text-7xl leading-[1.05] text-[#1f1b19] mb-6"
               style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
             >
-              Madrid's best massage studios, in one place.
+              Your first massage in Madrid
             </h1>
             <p className="text-lg text-[#7A7068] max-w-xl mb-8">
-              Browse top-rated studios near you. No account needed to look around — pay at the studio.
+              50+ studios with real prices, in English. We ask the studios for you in Spanish. You pay at the studio.
             </p>
-            <div className="flex flex-wrap gap-3 mb-10">
+            <div className="flex flex-wrap gap-3 mb-4">
               <Link
-                to="/app/massages"
+                to="/studios"
                 className="bg-[#99420d] text-white px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#C4622D] shadow-[0_8px_24px_rgba(153,66,13,0.25)] transition"
               >
-                Browse studios — no account needed
+                Book a massage
               </Link>
               <Link
-                to="/app"
+                to="/studios"
                 className="border border-[#dcc1b5] bg-white/50 backdrop-blur px-7 h-12 rounded-full inline-flex items-center font-medium text-[#1f1b19] hover:bg-white transition"
               >
                 Sign in
               </Link>
             </div>
+
+            <Link
+              to="/login?create=1"
+              className="inline-flex items-center gap-1 mb-4 text-sm text-[#7A7068] underline underline-offset-4 hover:text-[#99420d] transition"
+            >
+              Create a free profile
+            </Link>
+
+
+            <p className="text-sm text-[#7A7068] mb-10">
+              No account needed to look. No booking fee. You pay the studio directly.
+            </p>
+
             <div className="flex items-center gap-6 text-sm text-[#56433a]">
-              <div className="flex items-center gap-1">
-                <span className="text-[#E0A458]">★</span>
-                <span className="font-medium">4.8</span>
-              </div>
-              <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
-              <span>12+ studios · Madrid</span>
+              <span>50+ studios across Madrid</span>
+
               <span className="w-1 h-1 rounded-full bg-[#dcc1b5]" />
               <span>Pay at studio</span>
             </div>
@@ -152,6 +161,24 @@ export default function Web() {
         </div>
       </section>
 
+      {/* New in Madrid */}
+      <section className="max-w-6xl mx-auto px-6 lg:px-10 pb-20">
+        <div className="max-w-2xl">
+          <span className="text-xs tracking-[0.15em] uppercase text-[#99420d] font-semibold mb-4 block">
+            New in Madrid
+          </span>
+          <h2
+            className="text-3xl lg:text-4xl mb-4"
+            style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
+          >
+            You carried your life up four flights of stairs.
+          </h2>
+          <p className="text-lg text-[#7A7068] leading-relaxed">
+            Your shoulders have opinions about it. But every studio website is in Spanish, the reviews are in Spanish, and nobody tells you whether "descontracturante" means relaxing or painful. (It's the deep one.) That's what this is for.
+          </p>
+        </div>
+      </section>
+
       {/* Featured studios */}
       <section id="studios" className="max-w-6xl mx-auto px-6 lg:px-10 py-16">
         <div className="flex items-end justify-between mb-10">
@@ -161,8 +188,8 @@ export default function Web() {
               Loved by locals
             </h2>
           </div>
-          <Link to="/app/massages" className="text-sm text-[#99420d] hover:underline hidden md:inline">
-            See all 12 →
+          <Link to="/studios" className="text-sm text-[#99420d] hover:underline hidden md:inline">
+            See all 50+ →
           </Link>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
@@ -188,7 +215,7 @@ export default function Web() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#56433a]">Massage · Madrid</span>
                   <span className="text-base font-medium text-[#99420d]">
-                    {s.price_from != null ? `from €${s.price_from}` : "—"}
+                    {s.price_from != null ? `from €${s.price_from}` : ""}
                   </span>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#f1e6e2] flex items-center justify-between">
@@ -215,21 +242,34 @@ export default function Web() {
               From sore to sorted in three steps.
             </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            {STEPS.map((step) => (
-              <div key={step.n}>
-                <div
-                  className="text-5xl text-[#ffb693] mb-4"
-                  style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
-                >
-                  {step.n}
+          <div>
+            <div className="grid md:grid-cols-3 gap-10">
+              {STEPS.map((step) => (
+                <div key={step.n}>
+                  <div
+                    className="text-5xl text-[#ffb693] mb-4"
+                    style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}
+                  >
+                    {step.n}
+                  </div>
+                  <h3 className="text-xl mb-2" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
+                    {step.t}
+                  </h3>
+                  <p className="text-[#7A7068] leading-relaxed">{step.d}</p>
                 </div>
-                <h3 className="text-xl mb-2" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-                  {step.t}
-                </h3>
-                <p className="text-[#7A7068] leading-relaxed">{step.d}</p>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust block */}
+      <section className="bg-white border-t border-[#f1e6e2] py-16">
+        <div className="max-w-6xl mx-auto px-6 lg:px-10">
+          <div className="max-w-3xl space-y-4 text-[#56433a] leading-relaxed">
+            <p>We don't take a cut of your massage. The prices you see are the studio's own.</p>
+            <p>We won't promise your therapist speaks English. Some do, some don't. What we promise is that booking the appointment doesn't need Spanish.</p>
+            <p>Every studio here is a real place we found, checked and listed by hand.</p>
           </div>
         </div>
       </section>
@@ -239,20 +279,19 @@ export default function Web() {
         <div className="rounded-[40px] bg-gradient-to-br from-[#99420d] to-[#b95925] text-white p-10 lg:p-16 grid lg:grid-cols-2 gap-10 items-center overflow-hidden relative">
           <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
           <div className="relative">
-            <span className="text-xs tracking-[0.15em] uppercase text-[#ffdbcc] font-semibold">For massage businesses</span>
+            <span className="text-xs tracking-[0.15em] uppercase text-[#ffdbcc] font-semibold">For studios</span>
             <h2 className="text-3xl lg:text-5xl mt-3 mb-4" style={{ fontFamily: "EB Garamond, serif", fontWeight: 600 }}>
-              List your business in minutes.
+              Own a studio? You're probably already listed.
             </h2>
             <p className="text-white/85 text-lg mb-8 max-w-md">
-              Get discovered by clients looking for a great massage in Madrid. Manage bookings, calendar and clients
-              in one place.
+              We built pages for 50+ Madrid studios. Claim yours to manage photos, services and hours, and take bookings directly. Free, no exclusivity.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/partner/onboarding"
                 className="bg-white text-[#99420d] px-7 h-12 rounded-full inline-flex items-center font-medium hover:bg-[#fff8f6] transition"
               >
-                Become a partner
+                Claim your studio
               </Link>
               <Link
                 to="/partner/login"
@@ -267,7 +306,7 @@ export default function Web() {
               "Real-time calendar sync with Google",
               "Branded booking link for WhatsApp & Maps",
               "Client profiles, health notes & preferences",
-              "No setup fees · Free to list your business",
+              "No setup fees · Free to list your studio",
             ].map((b) => (
               <li key={b} className="flex items-start gap-3 text-white/95">
                 <span className="mt-1 w-6 h-6 rounded-full bg-white/15 flex items-center justify-center text-sm">✓</span>
@@ -290,14 +329,15 @@ export default function Web() {
           <div>
             <div className="font-medium text-[#1f1b19] mb-3">Explore</div>
             <ul className="space-y-2">
-              <li><Link to="/app/massages" className="hover:text-[#99420d]">Studios</Link></li>
+              <li><Link to="/studios" className="hover:text-[#99420d]">Studios</Link></li>
               <li><a href="#how" className="hover:text-[#99420d]">How it works</a></li>
               <li><Link to="/app/bookings" className="hover:text-[#99420d]">My bookings</Link></li>
             </ul>
           </div>
           <div>
-            <div className="font-medium text-[#1f1b19] mb-3">For massage businesses</div>
+            <div className="font-medium text-[#1f1b19] mb-3">For studios</div>
             <ul className="space-y-2">
+              <li><Link to="/for-studios" className="hover:text-[#99420d]">Terms for studios</Link></li>
               <li><Link to="/partner/onboarding" className="hover:text-[#99420d]">Become a partner</Link></li>
               <li><Link to="/partner/login" className="hover:text-[#99420d]">Partner login</Link></li>
             </ul>

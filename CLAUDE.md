@@ -40,3 +40,34 @@
   - A. Studio chase. A studio asked about an open request has not answered 3 hours after the ask: one WhatsApp per studio per request (dispatch-studios studio_note, which falls back to the approved aviso_centro_v2 template outside the 24 h window): "Hola, soy Jordan, de Massage Club. Os escribo por el masaje de [nombre, día y hora]. ¿Me decís si tenéis hueco? Si no podéis, no pasa nada, así se lo digo al cliente. Gracias." (EN: "Hi, it's Jordan from Massage Club. I'm writing about [name]'s massage on [day, time]. Could you tell me if you have a slot? If you can't, no problem, I'll let the client know. Thanks.") Stop if the studio has answered.
   - C. Ask more studios. When every studio asked has said no or been silent for 3 hours: ask up to 3 more proper studios inside the customer's area, respecting the card's FIRM marks, with the standard booking request (solicitud_reserva_v7 / solicitud_intro_v2 through dispatch-studios: extra, explicit partner_ids, customer_note false, max_asks at most 10 on the request), and tell Jordan which ones and why.
   - Customer updates are NOT pre-approved: still show Jordan the text first.
+
+## Setup notes (from main, 12 Oct; kept when the bot branch was merged, 24 Nov)
+
+### This lane
+- **Massage Club** — Madrid massage-studio marketplace, LIVE at book.massageclub.io (Vercel).
+- Database: Supabase `jglftdstrowwckwqmpue`. **Separate from the agent board** (`neurodashboards`,
+  `dprdnrgjkzgfgtcsguuq`) — never mix the two.
+- Business reality (do not inflate): **1 onboarded studio (Calma Madrid Spa)**, not "73 partners" —
+  the directory lists scraped studios, onboarded ≠ listed. The model: client books via MC, pays the
+  studio full rate, MC reimburses test bookings. **A reimbursed test is a paid experiment, not revenue.**
+- Current play: concierge-first (book massages for real people by hand, learn, then automate).
+
+### Operator rules (binding)
+- Ambiguous ask → ask up to 5 short questions before building. Never guess constraints.
+- Never state a fact, name, or email you haven't verified — write UNSURE and flag it.
+- Outward-facing work (outreach, posts, payments) → list top 3 failure modes, fix, then proceed.
+- Creative work → 3 versions (safe/bold/weird), one-line tradeoffs.
+- Big deliverables end with "Accept when: …".
+- Minimal surgical edits; verify with a read-back before claiming success; check output, never status.
+- Anything only Jordan can do → task on the `agent_tasks` board (`neurodashboards`), assigned `jordan` —
+  his 09:00 brief reads it. If it is not on the board, it does not exist.
+
+### Token discipline
+One lane per session. Name columns + LIMIT in SQL. Iterate functions locally, deploy once.
+Bulk row analysis (>~20 rows) → delegate to the `agent-worker` edge function on `neurodashboards`.
+
+**The master map lives in `mission-control/CLAUDE.md`.**
+
+### Session protocol
+Follow the session protocol in `mission-control/CLAUDE.md` (route, brief, plan, fresh-critic verify,
+close the loop). Concierge bookings: use the `concierge-booking` skill in `.claude/skills/`.

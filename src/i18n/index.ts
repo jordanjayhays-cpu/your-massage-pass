@@ -8,9 +8,10 @@ import de from "./de.json";
 import it from "./it.json";
 import pt from "./pt.json";
 import zh from "./zh.json";
-import ar from "./ar.json";
 
-const SUPPORTED = ["es", "en", "fr", "de", "it", "pt", "zh", "ar"] as const;
+// Arabic was only ever a stub (a handful of handoff keys) so it is not offered:
+// a half-translated language reads worse than English. Re-add with a full ar.json.
+const SUPPORTED = ["es", "en", "fr", "de", "it", "pt", "zh"] as const;
 
 i18n
   .use(LanguageDetector)
@@ -24,13 +25,16 @@ i18n
       it: { translation: it },
       pt: { translation: pt },
       zh: { translation: zh },
-      ar: { translation: ar },
     },
     fallbackLng: "en",
     supportedLngs: SUPPORTED as unknown as string[],
     nonExplicitSupportedLngs: true,
     detection: {
-      order: ["localStorage", "navigator"],
+      // ?lang=es on a link (bot, ads, emails) wins, then the visitor's saved
+      // choice, then the browser. The link's language is saved, so a reload
+      // without the parameter stays in that language.
+      order: ["querystring", "localStorage", "navigator"],
+      lookupQuerystring: "lang",
       caches: ["localStorage"],
       lookupLocalStorage: "mm-lang",
     },
@@ -38,8 +42,16 @@ i18n
   });
 
 // First-visit auto-detect: if no mm-lang set, pick from navigator against SUPPORTED (default en).
+// Skipped when the link carries ?lang=, which the detector above already applied.
+const hasLangParam = (): boolean => {
+  try {
+    return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("lang");
+  } catch {
+    return false;
+  }
+};
 try {
-  if (typeof window !== "undefined" && !localStorage.getItem("mm-lang")) {
+  if (typeof window !== "undefined" && !hasLangParam() && !localStorage.getItem("mm-lang")) {
     const nav = (navigator.language || "en").toLowerCase().slice(0, 2);
     const picked = (SUPPORTED as readonly string[]).includes(nav) ? nav : "en";
     if (picked !== i18n.resolvedLanguage) i18n.changeLanguage(picked);
@@ -48,7 +60,7 @@ try {
 
 const applyDir = (lng: string) => {
   if (typeof document === "undefined") return;
-  document.documentElement.dir = lng === "ar" ? "rtl" : "ltr";
+  document.documentElement.dir = "ltr";
   document.documentElement.lang = lng;
 };
 applyDir(i18n.resolvedLanguage || "en");

@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { toast } from "sonner";
 import { Check, MapPin, Sparkles, Infinity as InfinityIcon, Heart, Bell, User, Gift, Star, Store } from "lucide-react";
 import madridHero from "@/assets/madrid-hero.jpg";
-import { LanguageToggle } from "@/components/LanguageToggle";
+import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { saveLead } from "@/lib/supabase";
 
 const SHOPS = [
@@ -46,7 +46,7 @@ const Index = () => {
     setLoading(false);
     if (ok) {
       toast.success("Let's finish setting up your account.");
-      navigate("/app");
+      navigate("/studios");
     } else {
       toast.error("Something went wrong. Try again.");
     }
@@ -69,7 +69,7 @@ const Index = () => {
     "Real menus and prices per studio",
     "Browse all 8+ listed studios",
     "Opening hours and locations",
-    "Free to browse — no account",
+    "Free to browse, no account",
     "Your preferences saved everywhere",
     "Save the studios you like",
     "Share studios with friends",
@@ -92,8 +92,8 @@ const Index = () => {
       icon: User,
       title: "Your personal profile",
       titleEs: "Tu perfil personal",
-      desc: "Your massage notes, preferred pressure, allergies, favorite studios — all saved in one place. Browse anywhere and your preferences follow you.",
-      descEs: "Tu historial de masajes, presión preferida, alergias, terapeutas favoritos — todo en un solo lugar.",
+      desc: "Your massage notes, preferred pressure, allergies, favorite studios: all saved in one place. Browse anywhere and your preferences follow you.",
+      descEs: "Tu historial de masajes, presión preferida, alergias, terapeutas favoritos: todo en un solo lugar.",
       highlight: "Preferences travel with you"
     },
     {
@@ -131,15 +131,15 @@ const Index = () => {
             <a href="#estudios" className="hover:text-accent transition-colors">{t("nav.studios")}</a>
             <a href="#como-funciona" className="hover:text-accent transition-colors">{t("nav.how")}</a>
             <a href="#faq" className="hover:text-accent transition-colors">{t("nav.faq")}</a>
-            <a href="/partner/onboarding" className="text-accent hover:text-accent/80 transition-colors font-semibold">List your business</a>
+            <a href="/partner/onboarding" className="text-accent hover:text-accent/80 transition-colors font-semibold">List your studio</a>
           </nav>
           <div className="flex items-center gap-2">
-            <LanguageToggle />
+            <LanguageFlagToggle />
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
-              <a href="/app">Open app</a>
+              <a href="/studios">Book a massage</a>
             </Button>
             <Button asChild variant="outline" size="sm" className="border-accent/60 bg-transparent text-accent hover:bg-accent hover:text-accent-foreground">
-              <a href="/partner/onboarding">For Massage Businesses</a>
+              <a href="/partner/onboarding">For Studios</a>
             </Button>
             <Button asChild variant="secondary" size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-gold">
               <a href="#join">{t("nav.join")}</a>
@@ -167,10 +167,10 @@ const Index = () => {
               size="lg"
               className="mb-5 h-auto min-h-14 w-full max-w-md justify-start gap-3 bg-accent px-5 py-3 text-left text-accent-foreground shadow-gold hover:bg-accent/90 sm:w-auto"
             >
-              <a href="/partner/onboarding" aria-label="Open massage business partner onboarding form">
+              <a href="/partner/onboarding" aria-label="Open massage studio partner onboarding form">
                 <Store className="h-5 w-5 shrink-0" />
                 <span className="flex flex-col leading-tight">
-                  <span className="text-sm font-bold">Massage business?</span>
+                  <span className="text-sm font-bold">Massage studio?</span>
                   <span className="text-xs font-medium opacity-90">Open the partner onboarding form →</span>
                 </span>
               </a>
@@ -206,7 +206,7 @@ const Index = () => {
                   {loading ? "…" : "Get started"}
                 </Button>
               </form>
-              <a href="/app" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
+              <a href="/studios" className="h-12 px-6 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center font-semibold text-sm transition">
                 Browse studios →
               </a>
             </div>
@@ -305,10 +305,10 @@ const Index = () => {
           <div className="max-w-2xl mb-16">
             <p className="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">What you get</p>
             <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground text-balance">
-              Everything you need to choose a studio — in one directory
+              Everything you need to choose a studio, in one directory
             </h2>
             <p className="text-muted-foreground mt-4 text-lg">
-              We looked at how people actually pick a massage in Madrid. Then we put everything that matters into Massage Club — and made it simple.
+              We looked at how people actually pick a massage in Madrid. Then we put everything that matters into Massage Club, and made it simple.
             </p>
           </div>
 
@@ -373,7 +373,7 @@ const Index = () => {
                   </Button>
                 </form>
                 <div className="text-center text-sm text-muted-foreground">or</div>
-                <a href="/app" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
+                <a href="/studios" className="block w-full h-12 bg-gradient-gold text-foreground hover:opacity-90 rounded-xl flex items-center justify-center font-semibold text-base transition">
                   Open the app →
                 </a>
               </div>

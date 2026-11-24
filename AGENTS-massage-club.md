@@ -4,8 +4,8 @@ Read this before touching anything. It exists so you don't burn tokens rediscove
 
 ## What this is
 Vite + React + TypeScript + shadcn/ui. A pay-per-session massage booking marketplace for Madrid studios.
-Live: https://massage-madrid-magic.lovable.app
-Deploys via Lovable ↔ GitHub sync. Push to `main` → Lovable syncs → Jordan publishes.
+Live (production): https://book.massageclub.io on Vercel (see `vercel.json`); `CLAUDE.md` is the source of truth.
+massage-madrid-magic.lovable.app is the Lovable preview, not production. UNSURE whether the Lovable ↔ GitHub sync is still active; treat Lovable edits as previews that spend credits.
 
 ## Where things live
 

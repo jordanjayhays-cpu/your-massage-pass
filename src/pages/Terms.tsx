@@ -12,7 +12,7 @@ export default function Terms() {
   return (
     <div className="min-h-screen" style={{ background: "#FAF6F1" }}>
       <div
-        className="flex items-center gap-2.5 px-5 py-3.5 border-b"
+        className="flex items-center gap-2.5 px-5 py-3.5 border-b desk:hidden"
         style={{ borderColor: "#ece4d7", background: "#FAF6F1" }}
       >
         <img
@@ -34,8 +34,8 @@ export default function Terms() {
         >
           <div className="text-center mb-8">
             <div
-              className="text-xs font-bold uppercase mb-3"
-              style={{ color: "#B85C38", letterSpacing: "2.5px" }}
+              className="text-xs font-bold uppercase tracking-[2.5px] mb-3 desk:text-caption desk:font-semibold desk:normal-case desk:tracking-normal"
+              style={{ color: "#B85C38" }}
             >
               Massage Club
             </div>

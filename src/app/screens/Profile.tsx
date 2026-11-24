@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera, UserCircle, Gift, Copy, Share2, ChevronDown, Check, Sparkles, Clock, CalendarCheck } from "lucide-react";
 import { LanguageFlagToggle } from "@/components/LanguageFlagToggle";
 import { useTranslation } from "react-i18next";
+import MarketingOptInCard from "@/app/components/MarketingOptInCard";
 import {
   REFERRAL_REWARD_EUR,
   getOrCreateReferralCode,
@@ -41,8 +42,8 @@ const MASSAGE_TYPES: { label: string; value: string }[] = [
 const DURATIONS = [30, 60, 90, 120];
 const BUDGETS: { label: string; value: string }[] = [
   { label: "Under €40", value: "under_40" },
-  { label: "€40–60", value: "40_60" },
-  { label: "€60–90", value: "60_90" },
+  { label: "€40-60", value: "40_60" },
+  { label: "€60-90", value: "60_90" },
   { label: "€90+", value: "90_plus" },
 ];
 const ADDONS: { label: string; value: string }[] = [
@@ -92,10 +93,26 @@ const LIGHTING: { label: string; value: string }[] = [
   { label: "Dim", value: "dim" },
   { label: "Normal", value: "normal" },
 ];
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 85 }, (_, i) => CURRENT_YEAR - 16 - i);
+
+const LANGUAGE_OPTIONS = ["English", "Español", "Français", "Deutsch", "Italiano", "Português", "中文", "العربية"];
+const LANG_BY_CODE: Record<string, string> = {
+  en: "English", es: "Español", fr: "Français", de: "Deutsch",
+  it: "Italiano", pt: "Português", zh: "中文", ar: "العربية",
+};
 
 export default function Profile() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+
+
 
   const SHOW_REFERRAL = false; // Parked until we process payments — see docs/PARKED_IDEAS.md
   const [loading, setLoading] = useState(true);
@@ -115,6 +132,27 @@ export default function Profile() {
   const [gender, setGender] = useState("");
   const [city, setCity] = useState("");
   const [preferredLanguage, setPreferredLanguage] = useState("");
+
+  // Birthday split into three selects; stored as the same YYYY-MM-DD string.
+  const [dobParts, setDobParts] = useState({ day: "", month: "", year: "" });
+  useEffect(() => {
+    const [yy, mm, dd] = (dateOfBirth || "").split("-");
+    if (yy && mm && dd) {
+      setDobParts({ year: yy, month: String(Number(mm)), day: String(Number(dd)) });
+    }
+  }, [dateOfBirth]);
+  const setDobPart = (part: "day" | "month" | "year", value: string) => {
+    const next = { ...dobParts, [part]: value };
+    setDobParts(next);
+    setDateOfBirth(
+      next.day && next.month && next.year
+        ? `${next.year}-${String(Number(next.month)).padStart(2, "0")}-${String(Number(next.day)).padStart(2, "0")}`
+        : ""
+    );
+  };
+
+
+
 
   // New preferences
   const [preferredMassageTypes, setPreferredMassageTypes] = useState<string[]>([]);
@@ -165,6 +203,15 @@ export default function Profile() {
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [mySuggestions, setMySuggestions] = useState<any[]>([]);
 
+  // Auto-save state
+  const hydrated = useRef(false);
+  const [savedSection, setSavedSection] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+
+
 
   useEffect(() => {
     (async () => {
@@ -192,7 +239,10 @@ export default function Profile() {
         setDateOfBirth(data?.date_of_birth || "");
         setGender(data?.gender || "");
         setCity(data?.city || "");
-        setPreferredLanguage(data?.preferred_language || "");
+        setPreferredLanguage(
+          data?.preferred_language || LANG_BY_CODE[(i18n.language || "en").slice(0, 2)] || ""
+        );
+
 
         setPressure(data?.preferred_pressure || "");
         setPreferredTherapistGender(data?.preferred_therapist_gender || "");
@@ -251,8 +301,109 @@ export default function Profile() {
 
       }
       setLoading(false);
+      window.setTimeout(() => { hydrated.current = true; }, 300);
     })();
   }, []);
+
+
+  // ---- Auto-save (per section, debounced ~1s). Consent + emergency contact
+  // are intentionally excluded: they need the explicit Save press.
+  const autoSaveSection = async (section: string, patch: Record<string, any>) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: user.id, ...patch, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    if (error) { setSaveError(error.message); return; }
+    setSaveError("");
+    setSavedSection(section);
+    window.setTimeout(() => setSavedSection(s => (s === section ? null : s)), 2200);
+  };
+
+  const useSectionAutoSave = (section: string, deps: any[], patch: () => Record<string, any>) => {
+    useEffect(() => {
+      if (!hydrated.current || !user) return;
+      const id = window.setTimeout(() => { void autoSaveSection(section, patch()); }, 1000);
+      return () => window.clearTimeout(id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+  };
+
+  useSectionAutoSave(
+    "prefs",
+    [preferredMassageTypes, preferredDuration, typicalBudget, usualAddons, massageFrequency, massageGoals, pressure, preferredTherapistGender, focusAreas, allergies, healthNotes],
+    () => ({
+      preferred_massage_types: preferredMassageTypes.length ? preferredMassageTypes : null,
+      preferred_duration: preferredDuration ?? null,
+      typical_budget: typicalBudget || null,
+      usual_addons: usualAddons.length ? usualAddons : null,
+      massage_frequency: massageFrequency || null,
+      massage_goals: massageGoals.length ? massageGoals : null,
+      preferred_pressure: pressure || null,
+      preferred_therapist_gender: preferredTherapistGender || null,
+      focus_areas: focusAreas.length ? focusAreas : null,
+      allergies: allergies || null,
+      health_notes: healthNotes || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "comfort",
+    [conversationPref, musicPref, temperaturePref, scentPref, lightingPref, comfortNotes],
+    () => ({
+      conversation_pref: conversationPref || null,
+      music_pref: musicPref || null,
+      temperature_pref: temperaturePref || null,
+      scent_pref: scentPref || null,
+      lighting_pref: lightingPref || null,
+      comfort_notes: comfortNotes || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "personal",
+    [firstName, lastName, phone, dateOfBirth, gender, city, preferredLanguage],
+    () => ({
+      first_name: firstName || null,
+      last_name: lastName || null,
+      full_name: `${firstName} ${lastName}`.trim() || null,
+      phone: phone || null,
+      date_of_birth: dateOfBirth || null,
+      gender: gender || null,
+      city: city || null,
+      preferred_language: preferredLanguage || null,
+    }),
+  );
+
+  useSectionAutoSave(
+    "health",
+    [reasonForVisit, medicalConditions, medications, pastSurgeries, avoidAreas],
+    () => ({
+      reason_for_visit: reasonForVisit || null,
+      medical_conditions: medicalConditions.length ? medicalConditions : null,
+      medications: medications || null,
+      past_surgeries: pastSurgeries || null,
+      avoid_areas: avoidAreas || null,
+    }),
+  );
+
+  const SavedTag = ({ section }: { section: string }) => (
+    <span
+      className={`text-xs font-medium text-[#C4622D] transition-opacity duration-500 ${
+        savedSection === section ? "opacity-100" : "opacity-0"
+      }`}
+      aria-live="polite"
+    >
+      {t("app.profile.savedInline")}
+    </span>
+  );
+
+  const goBack = () => {
+    // location.key is "default" only when this is the first entry in the app's history
+    if (location.key !== "default" && window.history.length > 1) navigate(-1);
+    else navigate("/app/massages");
+  };
+
+
 
   const toggleFocus = (v: string) =>
     setFocusAreas(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
@@ -384,9 +535,17 @@ export default function Profile() {
       updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
     setSaving(false);
-    if (error) toast.error(error.message);
-    else toast.success(t("app.profile.toasts.profileSaved"));
+    if (error) {
+      setSaveError(error.message);
+      toast.error(error.message);
+      return;
+    }
+    setSaveError("");
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 2000);
+    setShowSaveSuccess(true);
   };
+
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -414,15 +573,33 @@ export default function Profile() {
         <div className="h-16 w-16 rounded-full bg-[#C4622D]/10 flex items-center justify-center mb-4">
           <UserCircle className="h-8 w-8 text-[#C4622D]" />
         </div>
-        <h1 className="text-xl font-bold text-gray-900">{t("app.profile.signedOut.title")}</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t("app.profile.signedOut.createTitle")}</h1>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
-          {t("app.profile.signedOut.subtitle")}
+          {t("app.profile.signedOut.createSubtitle")}
         </p>
+        <ul className="mt-6 space-y-3 text-left max-w-xs w-full">
+          {[
+            { Icon: Sparkles, text: t("app.profile.signedOut.benefit1") },
+            { Icon: Clock, text: t("app.profile.signedOut.benefit2") },
+            { Icon: CalendarCheck, text: t("app.profile.signedOut.benefit3") },
+          ].map(({ Icon, text }, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
+              <Icon className="h-4 w-4 text-[#C4622D] mt-0.5 flex-shrink-0" />
+              <span>{text}</span>
+            </li>
+          ))}
+        </ul>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/login?create=1")}
           className="mt-6 h-12 px-6 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
         >
-          {t("app.profile.signedOut.signInButton")}
+          {t("app.profile.signedOut.createButton")}
+        </button>
+        <button
+          onClick={() => navigate("/login")}
+          className="mt-3 text-sm text-[#7A7068] underline underline-offset-4 hover:text-[#C4622D] min-h-11"
+        >
+          {t("app.profile.signedOut.alreadyHave")}
         </button>
       </div>
     );
@@ -434,11 +611,13 @@ export default function Profile() {
     <div className="h-full overflow-y-auto bg-[#F7F4F0]">
       <div className="max-w-lg mx-auto px-5 pt-6 pb-8">
         <button
-          onClick={() => navigate("/app/bookings")}
-          className="flex items-center gap-1 text-sm text-gray-500 mb-3"
+          onClick={goBack}
+          aria-label={t("app.profile.header.back")}
+          className="flex items-center gap-1.5 text-sm text-gray-600 mb-3 h-10 pl-2 pr-4 -ml-2 rounded-full bg-white border border-[#E5DDD3] shadow-sm"
         >
-          <ArrowLeft size={14} /> {t("app.profile.header.back")}
+          <ArrowLeft size={18} /> {t("app.profile.header.back")}
         </button>
+
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">{t("app.profile.header.title")}</h1>
           <button
@@ -735,93 +914,9 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Personal details card */}
-        <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.firstName")}</label>
-              <input
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.lastName")}</label>
-              <input
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.email")}</label>
-            <input
-              value={user.email || ""}
-              readOnly
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.phone")}</label>
-            <input
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder={t("app.profile.personal.phonePlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
-            <input
-              type="date"
-              value={dateOfBirth}
-              onChange={e => setDateOfBirth(e.target.value)}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {GENDERS.map(g => (
-                <button key={g} type="button" onClick={() => setGender(g)} className={chip(gender === g)}>
-                  {t(`app.profile.options.genders.${GENDER_KEYS[g]}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.city")}</label>
-            <input
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              placeholder={t("app.profile.personal.cityPlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
-            <input
-              value={preferredLanguage}
-              onChange={e => setPreferredLanguage(e.target.value)}
-              placeholder={t("app.profile.personal.preferredLanguagePlaceholder")}
-              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
-            />
-          </div>
-        </div>
-
         {/* Massage preferences card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
-          <h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2>
+          <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.massagePrefs.title")}</h2><SavedTag section="prefs" /></div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.massagePrefs.preferredPressure")}</label>
@@ -989,7 +1084,7 @@ export default function Profile() {
         {/* Comfort & experience card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2>
+            <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.comfort.title")}</h2><SavedTag section="comfort" /></div>
             <p className="text-xs text-gray-500">{t("app.profile.comfort.subtitle")}</p>
           </div>
 
@@ -1085,10 +1180,125 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Personal details card */}
+        <div className="mt-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+          <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.personal.title")}</h2><SavedTag section="personal" /></div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.firstName")}</label>
+              <input
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.lastName")}</label>
+              <input
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.email")}</label>
+            <input
+              value={user.email || ""}
+              readOnly
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.phone")}</label>
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder={t("app.profile.personal.phonePlaceholder")}
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.dateOfBirth")}</label>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              <select
+                aria-label="Day"
+                value={dobParts.day}
+                onChange={e => setDobPart("day", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Day</option>
+                {DAY_OPTIONS.map(d => <option key={d} value={String(d)}>{d}</option>)}
+              </select>
+              <select
+                aria-label="Month"
+                value={dobParts.month}
+                onChange={e => setDobPart("month", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Month</option>
+                {MONTH_NAMES.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+              </select>
+              <select
+                aria-label="Year"
+                value={dobParts.year}
+                onChange={e => setDobPart("year", e.target.value)}
+                className="h-11 px-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="">Year</option>
+                {YEAR_OPTIONS.map(y => <option key={y} value={String(y)}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.gender")}</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GENDERS.map(g => (
+                <button key={g} type="button" onClick={() => setGender(g)} className={chip(gender === g)}>
+                  {t(`app.profile.options.genders.${GENDER_KEYS[g]}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.city")}</label>
+            <input
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              placeholder={t("app.profile.personal.cityPlaceholder")}
+              className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.personal.preferredLanguage")}</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreferredLanguage(l)}
+                  className={chip(preferredLanguage === l)}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
         {/* Health & safety card */}
         <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2>
+            <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-bold text-gray-900">{t("app.profile.health.title")}</h2><SavedTag section="health" /></div>
             <p className="text-xs text-gray-500">{t("app.profile.health.subtitle")}</p>
           </div>
 
@@ -1144,6 +1354,13 @@ export default function Profile() {
               className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 bg-white"
             />
           </div>
+        </div>
+
+        {/* Emergency contact & consent */}
+        <div className="mt-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-5">
+
+
+
 
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("app.profile.health.emergencyContact")}</label>
@@ -1187,21 +1404,64 @@ export default function Profile() {
             </label>
           </div>
         </div>
+
+        {/* Offers (the Kelly rule, 19 Nov): the same two equal buttons as at
+            booking, saved on tap. Also the place to change your mind: the
+            latest answer is the one that counts. */}
+        <MarketingOptInCard
+          className="mt-5"
+          email={user?.email ?? null}
+          source="profile"
+          lang={i18n.language}
+          getAccessToken={async () => (await supabase.auth.getSession()).data.session?.access_token ?? null}
+        />
       </div>
+
+      {/* Save success card */}
+      {showSaveSuccess && (
+        <div className="px-5 pb-4">
+          <div className="max-w-lg mx-auto rounded-2xl border border-[#E5DDD3] bg-white p-5 shadow-sm text-center">
+            <div className="mx-auto h-11 w-11 rounded-full bg-[#C4622D]/10 flex items-center justify-center">
+              <Check className="h-6 w-6 text-[#C4622D]" />
+            </div>
+            <p className="mt-3 font-bold text-gray-900">{t("app.profile.successTitle")}</p>
+            <p className="text-sm text-gray-600 mt-1">{t("app.profile.successBody")}</p>
+            <button
+              onClick={() => navigate("/studios")}
+              className="mt-4 w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg"
+            >
+              {t("app.profile.successCta")}
+            </button>
+            <button
+              onClick={() => setShowSaveSuccess(false)}
+              className="mt-2 w-full h-10 text-sm text-gray-500"
+            >
+              {t("app.profile.keepEditing")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sticky Save */}
       <div className="sticky bottom-0 inset-x-0 bg-[#F7F4F0]/95 backdrop-blur border-t border-gray-200 px-5 py-3">
         <div className="max-w-lg mx-auto">
+          {saveError && (
+            <p className="text-sm text-red-600 mb-2 text-center">
+              {t("app.profile.saveError")}: {saveError}
+            </p>
+          )}
           <button
             onClick={save}
             disabled={saving}
             className="w-full h-12 rounded-full bg-[#C4622D] text-white font-semibold shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {t("app.profile.save")}
+            {!saving && justSaved && <Check className="h-4 w-4" />}
+            {justSaved && !saving ? t("app.profile.savedBtn") : t("app.profile.save")}
           </button>
         </div>
       </div>
+
     </div>
   );
 }

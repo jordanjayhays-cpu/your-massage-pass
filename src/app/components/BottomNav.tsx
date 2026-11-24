@@ -2,9 +2,20 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Flower2, Sparkles, CalendarDays, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useFlowLang } from "@/lib/flowLang";
+
+const ARIA_PRIMARY = {
+  en: "Primary",
+  es: "Principal",
+  fr: "Principal",
+  de: "Hauptnavigation",
+  it: "Principale",
+  pt: "Principal",
+  zh: "主导航",
+} as const;
 
 const TAB_DEFS = [
-  { key: "massages", to: "/app/massages", icon: Flower2, match: ["/app/massages", "/massages"] },
+  { key: "massages", to: "/studios", icon: Flower2, match: ["/studios", "/studios", "/massages"] },
   { key: "discovery", to: "/app/discovery", icon: Sparkles, match: ["/app/discovery", "/discovery"] },
   { key: "bookings", to: "/app/bookings", icon: CalendarDays, match: ["/app/bookings", "/bookings"] },
   { key: "profile", to: "/app/profile", icon: User, match: ["/app/profile", "/profile"] },
@@ -26,12 +37,14 @@ export default function BottomNav() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { t } = useTranslation();
+  const lang = useFlowLang();
   if (!shouldShowBottomNav(pathname)) return null;
 
   return (
     <nav
-      className="absolute bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/60 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-      aria-label="Primary"
+      // From 900px the tabs live in SiteHeader (desktop fix F8).
+      className="relative flex-shrink-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/60 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] desk:hidden"
+      aria-label={ARIA_PRIMARY[lang]}
     >
       <ul className="flex items-stretch justify-around w-full md:max-w-2xl md:mx-auto">
         {TAB_DEFS.map((tab) => {

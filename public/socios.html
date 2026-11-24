@@ -391,6 +391,24 @@ html:has(.screen.on[data-s="days"]),html:has(.screen.on[data-s="times"]){scroll-
 .check .ttl{display:block;font-weight:700;font-size:15.5px;margin-top:2px}
 .check .line{display:block;font-size:13.5px;color:var(--muted);line-height:1.45;margin-top:4px}
 .check .tl{display:inline-block;margin-top:6px;font-size:13.5px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+/* Privacy (Nov 2026): go.html's quiet consent type above the send button,
+   its «Más información» a link-like button, and the full text under it, all
+   in one white card (like .srv). The card is what keeps the muted text
+   readable: on the moving background it fell to about 2.7:1, on white it is
+   4.76:1 (WCAG AA). */
+.privbox{margin-top:12px;padding:12px 16px;background:#fff;border-radius:18px;box-shadow:0 4px 12px rgba(80,40,20,.06)}
+.privbox .consent{margin-top:0}
+.consent button{display:inline;padding:0;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.privfull{margin-top:10px;padding-top:10px;border-top:1px solid rgba(38,32,25,.08);font-size:13.5px;line-height:1.45}
+.privfull p + p{margin-top:8px}
+/* An opted-out, suspended or archived business opening its link (wa-bot
+   prefill status "inactive"): one short screen instead of the form. Its own
+   class name: the calendar's closed days are ".cd.off", and a bare ".off"
+   rule here hid every one of them. */
+.offlink{display:none;margin-top:14px}
+body.inactive .offlink{display:block}
+body.inactive .stage{display:none}
+body.inactive .top .back,body.inactive .top .how,body.inactive .top .bar{visibility:hidden}
 /* "Esto parece un fijo": the studio says which, in two taps. */
 .lchoice{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
 .lchoice .chip{padding:9px 12px;font-size:14px}
@@ -649,6 +667,37 @@ body.noscroll{overflow:hidden}
         </label>
         <p class="ferr" id="acceptErr" aria-live="polite"></p>
 
+        <!-- Email news (legal.md 3, plan.md 5.2): a box of its own, never
+             ticked for them and not needed to send. buildPayload sends the
+             tick, the exact sentence shown and lang (marketing_opt_in,
+             marketing_opt_in_text); wa-bot keeps the payload as posted in
+             studio_signups.payload, and the row's created_at is when it was
+             given. -->
+        <label class="check" id="newsBox" for="news">
+          <input type="checkbox" id="news" aria-describedby="newsNote">
+          <span>
+            <span class="ttl" data-t="newsYes"></span>
+            <span class="line" id="newsNote" data-t="newsNote"></span>
+          </span>
+        </label>
+
+        <!-- Privacy notice at collection (GDPR art. 13, LOPDGDD art. 11): at
+             most 4 short lines on a phone (in its white card, for contrast),
+             the rest one tap away on this page. The facts are
+             the letters' «Datos» line. No link to book.massageclub.io/privacy:
+             it has no section for businesses yet. -->
+        <div class="privbox">
+          <p class="consent"><span data-t="privShort"></span> <button type="button" id="privMore" aria-expanded="false" aria-controls="privFull"></button></p>
+          <div class="privfull" id="privFull" hidden>
+            <p><b data-t="priv1k"></b> <span data-t="priv1"></span></p>
+            <p><b data-t="priv2k"></b> <span data-t="priv2"></span></p>
+            <p><b data-t="priv3k"></b> <span data-t="priv3"></span></p>
+            <p><b data-t="priv4k"></b> <span data-t="priv4"></span></p>
+            <p><b data-t="priv5k"></b> <span data-t="priv5"></span></p>
+            <p><b data-t="priv6k"></b> <span data-t="priv6"></span></p>
+          </div>
+        </div>
+
         <p class="err" id="missErr" aria-live="assertive"></p>
         <p class="err" id="saveErr" aria-live="assertive"></p>
         <button type="submit" class="cta" id="save" data-t="save"></button>
@@ -694,6 +743,20 @@ body.noscroll{overflow:hidden}
     </section>
 
   </main>
+
+  <!-- The link of a business that opted out, or is suspended or archived
+       (wa-bot answers status "inactive"): this instead of the form. No form,
+       no WhatsApp; Jordan's email only. -->
+  <section class="offlink" id="offScreen" aria-labelledby="hOff">
+    <div class="card">
+      <div class="kicker" data-t="kick"></div>
+      <h2 id="hOff" tabindex="-1" data-t="offTitle"></h2>
+      <p class="sub" data-t="offText"></p>
+      <div class="reach">
+        <a href="mailto:jordan@massageclub.io?subject=Massage%20Club"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg><span>jordan@massageclub.io</span></a>
+      </div>
+    </div>
+  </section>
   <p class="pv" id="previewNote" data-t="preview" hidden></p>
 </div>
 
@@ -919,6 +982,38 @@ const T = {
     missPrice: "el precio", missAccept: "la casilla de las condiciones",
     save: "Enviar nuestras horas", saving: "Enviando…",
     dup: "Ya nos habéis enviado estas mismas horas.",
+    // Email news and the privacy notice (Nov 2026; legal.md 3, plan.md 5.2;
+    // the facts of the letters' «Datos» line). newsYes is also sent, word for
+    // word, as marketing_opt_in_text.
+    newsYes: "Sí, quiero recibir novedades de Massage Club por email",
+    // A «baja» from the news is recorded on its own, the same day, and NEVER
+    // in partners.opted_out_at: wa-bot reads that field as "this business
+    // left" (socInactive), so its link would show «Este enlace ya no está
+    // activo» and it would stop getting bookings.
+    newsNote: "Podéis daros de baja cuando queráis: escribid «baja» a jordan@massageclub.io.",
+    privShort: "Datos: los trata Jordan Hays (Massage Club) para ofrecer vuestras horas a clientes y enviaros sus reservas. Vuestros derechos, en jordan@massageclub.io.",
+    privMore: "Más información",
+    privLess: "Menos información",
+    priv1k: "Responsable:",
+    priv1: "Jordan Hays (Massage Club), jordan@massageclub.io.",
+    priv2k: "Para qué:",
+    priv2: "Dar de alta a vuestro negocio, ofrecer vuestras horas a los clientes de Massage Club y enviaros sus reservas. Sin estos datos no podemos daros de alta. Las novedades por email, solo si marcáis la casilla.",
+    priv3k: "Base legal:",
+    priv3: "Los pasos que nos pedís antes de un acuerdo, y el propio acuerdo con vuestro negocio. Las novedades, vuestro consentimiento, que podéis retirar cuando queráis.",
+    priv4k: "Cuánto tiempo:",
+    priv4: "Mientras vuestro negocio trabaje con nosotros; después, solo lo que la ley nos obligue a guardar (por ejemplo, las facturas) y durante el plazo que marque. Si al final no trabajamos juntos, como mucho 12 meses. Si pedís la baja de las novedades, dejamos de enviarlas y anotamos vuestra baja para no volver a enviároslas.",
+    priv5k: "Quién más:",
+    // The transfer line was checked on 2 Nov 2026 against each provider's
+    // data processing terms: Resend (SCCs and DPF), Vercel (SCCs and DPF),
+    // Supabase (SCCs; the database is in eu-central-1, Frankfurt), Meta for
+    // WhatsApp (SCCs), Google Workspace for Jordan's email (SCCs and DPF).
+    // Check again before adding a provider.
+    priv5: "Los clientes de Massage Club ven el nombre, la dirección, las horas y el precio de vuestro negocio en nuestra web y en sus reservas. Además, los proveedores que guardan nuestros datos y envían nuestros emails y mensajes de WhatsApp, solo por encargo nuestro. Algunos de estos proveedores tratan los datos fuera de la Unión Europea, por ejemplo en Estados Unidos, con las garantías que pide la ley (cláusulas tipo de la Comisión Europea o el Marco de Privacidad de Datos UE-EE. UU.). Podéis pedirnos el detalle en jordan@massageclub.io.",
+    priv6k: "Vuestros derechos:",
+    priv6: "Podéis pedir ver vuestros datos, corregirlos, borrarlos, limitar su uso u oponeros a él, o llevaros una copia, en jordan@massageclub.io. También podéis reclamar ante la Agencia Española de Protección de Datos (AEPD).",
+    // The link of a business that opted out, or is suspended or archived.
+    offTitle: "Este enlace ya no está activo.",
+    offText: "Si queréis volver a trabajar con Massage Club, escribid a jordan@massageclub.io.",
 
     tkKick: "Massage Club · Negocios",
     kCentro: "Negocio", kDur: "Horas libres", kPrice: "Precio", tkPriceLater: "Os lo pedimos más tarde",
@@ -1103,6 +1198,25 @@ const T = {
     missPrice: "the price", missAccept: "the terms box",
     save: "Send our times", saving: "Sending…",
     dup: "You've already sent us these exact times.",
+    newsYes: "Yes, I want Massage Club news by email",
+    newsNote: "You can unsubscribe at any time: write \"baja\" (unsubscribe) to jordan@massageclub.io.",
+    privShort: "Data: handled by Jordan Hays (Massage Club) to offer your times to customers and send you their bookings. Your rights: jordan@massageclub.io.",
+    privMore: "More information",
+    privLess: "Less information",
+    priv1k: "Controller:",
+    priv1: "Jordan Hays (Massage Club), jordan@massageclub.io.",
+    priv2k: "What for:",
+    priv2: "To sign up your business, offer your times to Massage Club customers and send you their bookings. Without these details we can't sign you up. News by email only if you tick the box.",
+    priv3k: "Legal basis:",
+    priv3: "The steps you ask us to take before an agreement, and the agreement with your business itself. For the news, your consent, which you can withdraw whenever you like.",
+    priv4k: "How long:",
+    priv4: "While your business works with us; after that, only what the law requires us to keep (for example invoices), for as long as it requires. If we don't end up working together, at most 12 months. If you unsubscribe from the news, we stop sending it and note your unsubscribe so we never send it to you again.",
+    priv5k: "Who else:",
+    priv5: "Massage Club customers see your business's name, address, times and price on our website and in their bookings. Also, the providers that store our data and send our emails and WhatsApp messages, only on our behalf. Some of these providers process the data outside the European Union, for example in the United States, with the safeguards the law requires (European Commission standard clauses or the EU-US Data Privacy Framework). You can ask us for the details at jordan@massageclub.io.",
+    priv6k: "Your rights:",
+    priv6: "You can ask to see your data, correct it, delete it, restrict or object to its use, or take a copy with you, at jordan@massageclub.io. You can also complain to the Spanish Data Protection Agency (AEPD).",
+    offTitle: "This link is no longer active.",
+    offText: "If you want to work with Massage Club again, write to jordan@massageclub.io.",
 
     tkKick: "Massage Club · Businesses",
     kCentro: "Business", kDur: "Free times", kPrice: "Price", tkPriceLater: "We'll ask you for it later",
@@ -2096,6 +2210,8 @@ function renderLast() {
   // which, and a way back.
   const drop = droppedText();
   $("sumMini").innerHTML = drop ? `<p class="warn">${esc(drop)}</p><button type="button" class="skip left" data-goto="${ST.times}">${esc(t("editTimes"))}</button>` : "";
+  // The privacy notice's «Más información» / «Menos información».
+  setText("privMore", t($("privFull").hidden ? "privMore" : "privLess"));
   paintMiss();
 }
 // The ticket, in go.html's shape: one short value per row. Each day with its
@@ -2540,6 +2656,13 @@ $("priceChips").addEventListener("click", (e) => {
 });
 $("priceLater").addEventListener("click", () => setPrice("later"));
 $("p60").addEventListener("input", () => setPrice("typed"));
+// The full privacy text opens and closes on the page itself.
+$("privMore").addEventListener("click", () => {
+  const open = $("privFull").hidden;
+  $("privFull").hidden = !open;
+  $("privMore").setAttribute("aria-expanded", String(open));
+  setText("privMore", t(open ? "privLess" : "privMore"));
+});
 document.addEventListener("input", (e) => { if (e.target && FIELDS.includes(e.target.id)) saveDraft(); });
 
 function buildPayload(list) {
@@ -2549,6 +2672,16 @@ function buildPayload(list) {
     form: "socios",
     form_version: FORM_VERSION,
     lang: L,
+    // Email news: the separate box (never ticked for them) and the sentence
+    // it showed, word for word. wa-bot keeps this payload as posted
+    // (studio_signups.payload); the row's created_at is when it was given.
+    marketing_opt_in: $("news").checked === true,
+    marketing_opt_in_text: T[L].newsYes,
+    // The privacy notice shown above the send button: the date of its words.
+    // Change it whenever newsYes, privShort or priv1 to priv6 change, so each
+    // stored row says which text the business saw. "2026-11-02" is the text
+    // reviewed and fixed on 2 Nov 2026, the first one to go live.
+    privacy_notice: "2026-11-02",
     // Nothing here is trusted: wa-bot checks the link's signature (link_sig)
     // and every field itself. A signed link is applied at once; anything else
     // waits for Jordan. This flag is ignored.
@@ -2755,6 +2888,8 @@ async function loadPartner() {
       const { ok, j } = await getJson(API + qs, { headers: { Accept: "application/json" } }, 7000);
       if (ok && j && j.ok === true) {
         reached = true;
+        // A business that opted out, or is suspended or archived: no form.
+        if (j.status === "inactive") { showInactive(); return; }
         S.signed = j.status === "signed";
         if (j.partner) fillPartner(j.partner, S.signed);
       }
@@ -2765,8 +2900,18 @@ async function loadPartner() {
     if (ok && Array.isArray(j) && j[0]) fillPartner(j[0], false);
   } catch (_) { /* a personal link that cannot load is just the plain page */ }
 }
+// wa-bot's prefill said "inactive" (opted out, suspended or archived): the
+// short screen instead of the form. Nothing can be sent from it.
+function showInactive() {
+  document.body.classList.add("inactive");
+  window.scrollTo(0, 0);
+  $("hOff").focus({ preventScroll: true });
+}
 
 // ---------------------------------------------------------------- start
+// The email news box is never ticked for them, not even by a browser
+// restoring the form on reload. It is not kept in the draft.
+$("news").checked = false;
 loadDraft();
 HOURS = parseHours(val("hours"));
 paintStatic();
@@ -2783,12 +2928,14 @@ if (DEV) {
   bar.className = "devbar";
   bar.innerHTML = "<b>DEV</b>";
   const jumps = [["Inicio", 0], ["1 Días", ST.days], ["2 Horas", ST.times], ["3 Semana", ST.repeat], ["4 Negocio", ST.centro], ["5 Último", ST.last],
-    ["Fin: vista previa", "preview"], ["Fin: guardado", "saved"], ["Fin: recibido", "received"], ["Fin: falta un paso", "fallback"]];
+    ["Fin: vista previa", "preview"], ["Fin: guardado", "saved"], ["Fin: recibido", "received"], ["Fin: falta un paso", "fallback"], ["Enlace inactivo", "inactive"]];
   jumps.forEach(([label, n]) => {
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = label;
     b.addEventListener("click", () => {
+      document.body.classList.remove("inactive");
+      if (n === "inactive") { showInactive(); return; }
       if (typeof n === "string") {
         S.result = n;
         S.server = n === "saved" ? { live: true } : n === "received" ? {} : null;

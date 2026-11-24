@@ -55,9 +55,9 @@ const QUESTIONS: Q[] = [
     key: "foreign_pct",
     question: "¿Qué porcentaje de tus clientes son extranjeros o turistas?",
     options: [
-      { value: "pct_0_10", label: "0–10%" },
-      { value: "pct_10_30", label: "10–30%" },
-      { value: "pct_30_50", label: "30–50%" },
+      { value: "pct_0_10", label: "0 a 10%" },
+      { value: "pct_10_30", label: "10 a 30%" },
+      { value: "pct_30_50", label: "30 a 50%" },
       { value: "pct_50_plus", label: "Más del 50%" },
     ],
   },
@@ -67,15 +67,15 @@ const QUESTIONS: Q[] = [
     question: "¿Cuántas ausencias tienes por semana?",
     options: [
       { value: "zero", label: "0" },
-      { value: "one_two", label: "1–2" },
-      { value: "three_five", label: "3–5" },
+      { value: "one_two", label: "1 a 2" },
+      { value: "three_five", label: "3 a 5" },
       { value: "five_plus", label: "Más de 5" },
     ],
   },
   {
     type: "choice",
     key: "would_list",
-    question: "¿Listarías tu negocio gratis y sin comisión en una web para extranjeros y turistas?",
+    question: "¿Listarías tu estudio gratis y sin comisión en una web para extranjeros y turistas?",
     options: [
       { value: "yes", label: "Sí" },
       { value: "maybe", label: "Quizás" },
@@ -129,7 +129,7 @@ export default function SurveyStudios() {
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
-    const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" — ") || null;
+    const contact = [studio.trim(), whatsapp.trim()].filter(Boolean).join(" · ") || null;
     const payloadAnswers: Record<string, string | string[]> = { ...answers };
     if (comments.trim()) {
       payloadAnswers.comments = comments.trim();
@@ -181,8 +181,8 @@ export default function SurveyStudios() {
     <div style={shellStyle}>
       <link href={FONT_CSS} rel="stylesheet" />
       <div className="max-w-xl mx-auto px-5 py-10">
-        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">Negocios de masajes · Madrid</p>
-        <h1 style={serif} className="text-4xl leading-[1.05] mb-2">Ayúdanos a construir algo útil para tu negocio.</h1>
+        <p className="text-[11px] tracking-[0.3em] uppercase text-[#7A7068] mb-3">Estudios de masaje · Madrid</p>
+        <h1 style={serif} className="text-4xl leading-[1.05] mb-2">Ayúdanos a construir algo útil para tu estudio.</h1>
         <p className="text-[#7A7068] mb-6">Menos de 90 segundos. Sin compromiso.</p>
 
         <div className="h-1.5 rounded-full bg-[#E5DDD3] mb-8 overflow-hidden">
@@ -244,7 +244,7 @@ export default function SurveyStudios() {
             <textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              placeholder="Cuéntanos lo que quieras — ideas, dudas, lo que sea."
+              placeholder="Cuéntanos lo que quieras: ideas, dudas, lo que sea."
               rows={3}
               className="w-full rounded-xl bg-white border border-[#E5DDD3] p-3 placeholder:text-[#9E9387]"
             />
@@ -252,12 +252,12 @@ export default function SurveyStudios() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Nombre del negocio</label>
+              <label className="text-[11px] tracking-[0.2em] uppercase text-[#7A7068] mb-2 block">Nombre del estudio</label>
               <input
                 type="text"
                 value={studio}
                 onChange={(e) => setStudio(e.target.value)}
-                placeholder="Nombre del negocio"
+                placeholder="Studio X"
                 className="w-full h-12 rounded-xl bg-white border border-[#E5DDD3] px-4 placeholder:text-[#9E9387]"
               />
             </div>

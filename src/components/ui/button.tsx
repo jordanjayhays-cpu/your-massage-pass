@@ -10,9 +10,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // Hover colours from design system 3.1 (desktop fix F19), with a mouse
+        // only: a phone keeps the hover look after a tap, so under 900px the
+        // button keeps batch-1's 90% fade.
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 desk:hover:bg-primary-hover",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground desk:hover:bg-brand-tint desk:hover:text-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",

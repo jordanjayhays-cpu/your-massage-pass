@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Gauge, Clock, Droplet, Shirt, Info, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MASSAGE_GUIDE, MASSAGE_TYPES, MASSAGES, type MassageGuide } from "../data";
+import { MASSAGE_GUIDE, MASSAGE_TYPES, type Massage, type MassageGuide } from "../data";
 import { fetchShops, type Shop } from "@/lib/supabase";
 import { useBooking } from "../BookingContext";
+import { studioPath } from "@/lib/studioHref";
+import { StudioPhoto } from "../components/StudioPhoto";
 
-type AnyStudio = Shop | (typeof MASSAGES)[number];
+type AnyStudio = Shop | Massage;
 
 function matchesGuide(s: AnyStudio, g: MassageGuide): boolean {
   if (g.relatedType && (s as any).type === g.relatedType) return true;
@@ -46,7 +48,7 @@ export default function MassageTypePage() {
 
   // Legacy fallback (shouldn't normally happen, all ids covered in guide)
   if (!guide && legacy) {
-    const studios = MASSAGES.filter((m) => m.type === type);
+    const studios: Massage[] = [];
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="relative h-56 flex-shrink-0">
@@ -98,7 +100,7 @@ export default function MassageTypePage() {
 
   const g = guide!;
 
-  const allStudios: AnyStudio[] = [...realShops, ...MASSAGES];
+  const allStudios: AnyStudio[] = [...realShops];
   const seen = new Set<string>();
   const matched = allStudios.filter((s) => {
     if (!s || !(s as any).id || seen.has((s as any).id)) return false;
@@ -109,7 +111,7 @@ export default function MassageTypePage() {
 
   const handleBook = (s: AnyStudio) => {
     if ((s as Shop).partner_id) {
-      navigate(`/s/${(s as Shop).partner_id}`);
+      navigate(studioPath(s as Shop));
       return;
     }
     set({ massageId: (s as any).id, shop: s as any });
@@ -192,7 +194,15 @@ export default function MassageTypePage() {
                   className="w-full flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-card hover:border-primary/50 hover:shadow-soft transition text-left"
                 >
                   {(s as any).image && (
-                    <img src={(s as any).image} alt={(s as any).studio} className="h-14 w-14 rounded-xl object-cover flex-shrink-0" />
+                    <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-secondary [&_.text-3xl]:text-2xl">
+                      <StudioPhoto
+                        name={(s as any).studio}
+                        ownImage={(s as Shop).ownImage}
+                        stockImage={(s as Shop).stockImage}
+                        width={160}
+                        label="sm"
+                      />
+                    </span>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-display text-base font-semibold text-foreground truncate">{(s as any).studio}</p>
@@ -210,7 +220,7 @@ export default function MassageTypePage() {
               <p className="text-sm text-muted-foreground mb-3">
                 No studios in our directory currently list this style. New partners are joining all the time.
               </p>
-              <Button onClick={() => navigate("/app/massages")} className="rounded-full">
+              <Button onClick={() => navigate("/studios")} className="rounded-full">
                 Browse all studios
               </Button>
             </div>
