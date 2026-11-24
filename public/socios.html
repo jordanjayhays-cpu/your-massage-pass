@@ -117,7 +117,7 @@
     the button, nothing else changes.
   Only when the save cannot be reached at all (network, a server error, an
   answer that is not JSON) does the page show "Falta un paso": the studio
-  sends the same times by WhatsApp to the bot number, +34 613 977 900 (text prefilled), or by
+  sends the same times by WhatsApp to +34 612 474 827 (text prefilled) or by
   email to jordan@massageclub.io, so the times are never lost and the page
   never says "Guardado" when nothing was kept.
   The fallback WhatsApp text starts "Hola, Massage Club. Somos <name>, un
@@ -822,7 +822,7 @@ body.noscroll{overflow:hidden}
       <p><b data-t="contactName"></b><span data-t="contactLine"></span></p>
     </div>
     <div class="reach">
-      <a class="wa" data-wa-contact target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp +34&nbsp;613&nbsp;977&nbsp;900</span></a>
+      <a class="wa" data-wa-contact target="_blank" rel="noopener"><svg class="ico" aria-hidden="true"><use href="#i-wa"/></svg><span>WhatsApp +34&nbsp;612&nbsp;474&nbsp;827</span></a>
       <a href="mailto:jordan@massageclub.io"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg><span>jordan@massageclub.io</span></a>
     </div>
     <p class="seeus"><span data-t="seeUs"></span> <a href="https://book.massageclub.io" target="_blank" rel="noopener">book.massageclub.io</a></p>
@@ -842,11 +842,8 @@ const API = SB + "/functions/v1/wa-bot";
 const SAVE_URL = API + "?socios=1";
 const FORM_VERSION = "socios-2026-10-18";
 const TERMS_VERSION = "2026-10-19";
-// The number studios get confirmed bookings from (the bot line). Relay review
-// M4 (24 Nov): it was Jordan's own 827, which the bot never sees, so the
-// fallback times and the hello message (SOCIOS_FALLBACK_RE, SOCIOS_HELLO_RE)
-// never reached wa-bot.
-const WA_NUM = "34613977900";
+// The number studios get confirmed bookings from (the bot line).
+const WA_NUM = "34612474827";
 const MAIL_TO = "jordan@massageclub.io";
 
 const q = new URLSearchParams(location.search);
@@ -1031,7 +1028,7 @@ const T = {
     manage: "Ver y cambiar vuestras horas",
     srvNext: "Próximas fechas", srvNot: "No guardadas",
     nextB: "Si un cliente coge una hora, os llega la reserva por WhatsApp y por email. Tenéis 15 minutos para rechazarla.",
-    nextC: "¿Se os llena una hora? Escribid «ocupado» y la hora al +34\u00a0613\u00a0977\u00a0900.",
+    nextC: "¿Se os llena una hora? Escribid «ocupado» y la hora al +34\u00a0612\u00a0474\u00a0827.",
     more: "Añadir más horas", askJordan: "Escribir a Jordan",
     s4Fallback: "Falta un paso",
     fbSub: "No hemos podido guardar vuestras horas. Enviádnoslas por WhatsApp.",
@@ -1234,7 +1231,7 @@ const T = {
     manage: "See and change your times",
     srvNext: "Next dates", srvNot: "Not saved",
     nextB: "If a customer takes a time, you get the booking on WhatsApp and by email. You have 15 minutes to turn it down.",
-    nextC: "A time filled up? Write \"ocupado\" (taken) and the time to +34\u00a0613\u00a0977\u00a0900.",
+    nextC: "A time filled up? Write \"ocupado\" (taken) and the time to +34\u00a0612\u00a0474\u00a0827.",
     more: "Add more times", askJordan: "Write to Jordan",
     s4Fallback: "One more step",
     fbSub: "We couldn't save your times. Send them to us on WhatsApp.",

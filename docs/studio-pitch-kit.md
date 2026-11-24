@@ -256,7 +256,7 @@ Write it here and send us a photo on WhatsApp.
 
 ## Notes for Jordan
 
-- **Phone number:** the one-pager prints +34 612 474 827, which is the bot line. It asks studios to send a photo and free slots there. Before printing, check that wa-bot passes studio messages and photos to you, or put a different number on the sheet.
+- **Phone number (corrected 24 Nov):** the one-pager prints +34 612 474 827 (ES and EN sign-off lines). That is not the bot line: it is your own WhatsApp Business app, which the bot cannot see, so whatever a studio sends there you would have to pass on by hand. The bot is +34 613 977 900. The sheet still asks for a photo, and the bot cannot open photos; a photo from a studio that is not a partner yet would reach the bot as a customer's first message. Before printing, either change the ask to text ("escribidnos la hora por WhatsApp", EN: "write us the time on WhatsApp") and print the bot number, or keep 827 and forward what arrives to the bot once forwarding is switched on.
 - **The "ocupado" (taken) step:** step 4 of the one-pager and objection 1 promise that we remove a slot when a studio writes "ocupado". For now that means you doing it by hand.
 - **The 15-minute window:** a therapist in a 60 or 90 minute session can miss it. Think about making it longer.
 - **"Vuestro precio" (your price):** your 5 Sept rule has the bot ask each studio for a Massage Club rate on every request, and it tells them several studios were asked. The pitch doesn't mention this. Decide whether it still applies to slots a studio released in advance. If it does, add a line about it before any of this goes out, or a studio will feel misled.

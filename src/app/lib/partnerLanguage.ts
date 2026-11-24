@@ -45,6 +45,8 @@ export async function savePartnerLang(lang: PartnerLang) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("partners").update({ preferred_language: lang }).eq("id", user.id);
+    const { error } = await supabase.from("partners").update({ preferred_language: lang }).eq("id", user.id);
+    // Best effort (the choice is already applied), but never silent.
+    if (error) console.error("[partner-lang] save failed", error.message);
   } catch { /* ignore */ }
 }

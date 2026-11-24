@@ -313,8 +313,15 @@ function StudioSetupInner() {
   const navigate = useNavigate();
   const token = searchParams.get("token");
   const draftToken = searchParams.get("draft");
+  // Claim links: /claim/<slug> lands here as ?claim_slug=<slug>; older
+  // emails carried ?claim=<token>. Either way the token is never needed in
+  // the browser (24 Nov 2026 lock), see claim_release_verified.
   const claimToken = searchParams.get("claim");
-  const mode: "invite" | "draft" | "claim" = claimToken ? "claim" : draftToken ? "draft" : "invite";
+  const claimSlugParam = searchParams.get("claim_slug");
+  const claimParam = claimToken
+    ? `claim=${encodeURIComponent(claimToken)}`
+    : `claim_slug=${encodeURIComponent(claimSlugParam || "")}`;
+  const mode: "invite" | "draft" | "claim" = (claimToken || claimSlugParam) ? "claim" : draftToken ? "draft" : "invite";
 
   const [step, setStep] = useState(1);
   // Studio owners get their own language choice (es default, plus en / zh / th).
@@ -322,6 +329,11 @@ function StudioSetupInner() {
   const [lang, setLang] = useState<SetupLang>(() => loadSetupLang() ?? "es");
   const [langTouched, setLangTouched] = useState(() => loadSetupLang() !== null);
   const t = useMemo(() => makeSetupT(lang), [lang]);
+  // partners.preferred_language only accepts es or en (live CHECK
+  // partners_preferred_language_check). For zh / th the column is left out
+  // of the save (undefined is dropped from the JSON), so the save itself
+  // never fails on it; the page still shows the chosen language.
+  const dbLang: "es" | "en" | undefined = lang === "es" || lang === "en" ? lang : undefined;
   const chooseLang = (l: SetupLang) => {
     setLang(l);
     setLangTouched(true);
@@ -371,7 +383,7 @@ function StudioSetupInner() {
   const persistLang = async (l: SetupLang) => {
     try {
       const uid = partnerId || (await supabase.auth.getUser()).data.user?.id;
-      if (uid) await supabase.from("partners").update({ preferred_language: l }).eq("id", uid);
+      if (uid && (l === "es" || l === "en")) await supabase.from("partners").update({ preferred_language: l }).eq("id", uid);
     } catch { /* ignore */ }
   };
 
@@ -465,13 +477,28 @@ function StudioSetupInner() {
   // Validate token/draft/claim on mount
   useEffect(() => {
     if (mode === "claim") {
-      if (!claimToken) { setSourceError(t("partner.studioSetup.claimNoTokenError")); setValidatingSource(false); return; }
+      if (!claimToken && !claimSlugParam) { setSourceError(t("partner.studioSetup.claimNoTokenError")); setValidatingSource(false); return; }
       (async () => {
-        const { data: partner, error } = await supabase
-          .from("partners")
-          .select("*")
-          .eq("claim_token", claimToken)
-          .maybeSingle();
+        // Since the 24 Nov column lock the public key cannot read or filter
+        // on claim_token. By slug: the studio's public fields (pending or
+        // active rows, which RLS shows to everyone). By an old token link:
+        // claim_lookup returns the same fields, never the token.
+        let partner: any = null;
+        let error: unknown = null;
+        if (claimToken) {
+          const res = await supabase.rpc("claim_lookup", { p_claim_token: claimToken });
+          partner = Array.isArray(res.data) ? res.data[0] ?? null : null;
+          error = res.error;
+        } else {
+          const res = await supabase
+            .from("partners")
+            .select("id, business_name, email, address, phone, website, description, city, access_instructions, preferred_language, status, slug, opening_hours")
+            .eq("slug", claimSlugParam as string)
+            .in("status", ["pending", "active"])
+            .maybeSingle();
+          partner = res.data;
+          error = res.error;
+        }
         if (error || !partner) {
           setSourceError(t("partner.studioSetup.claimInvalidError"));
           setValidatingSource(false);
@@ -564,7 +591,7 @@ function StudioSetupInner() {
         }
         setValidatingSource(false);
       });
-  }, [token, draftToken, claimToken, mode]);
+  }, [token, draftToken, claimToken, claimSlugParam, mode]);
 
   // Detect return from Google Calendar OAuth
   useEffect(() => {
@@ -586,7 +613,7 @@ function StudioSetupInner() {
   // Step 1 (claim): sign in with Google — comes back to this same claim URL.
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
-    const redirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}&full=1`;
+    const redirectTo = `${window.location.origin}/studio-setup?${claimParam}&full=1`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -601,7 +628,7 @@ function StudioSetupInner() {
   const handleMagicLink = async () => {
     if (!email) { toast.error(t("partner.studioSetup.enterEmailFirst")); return; }
     setMagicLoading(true);
-    const emailRedirectTo = `${window.location.origin}/studio-setup?claim=${claimToken}&full=1`;
+    const emailRedirectTo = `${window.location.origin}/studio-setup?${claimParam}&full=1`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo },
@@ -647,7 +674,7 @@ function StudioSetupInner() {
     if (!studio.business_name.trim()) { toast.error(t("partner.studioSetup.studioNameRequired")); return; }
     setProfileLoading(true);
     try {
-      await supabase.from("partners").upsert({
+      const { error: saveError } = await supabase.from("partners").upsert({
         id: partnerId || (await supabase.auth.getUser()).data.user?.id,
         business_name: studio.business_name,
         email,
@@ -658,8 +685,9 @@ function StudioSetupInner() {
         description: studio.description,
         city: studio.city,
         status: "active",
-        preferred_language: lang,
+        preferred_language: dbLang,
       });
+      if (saveError) throw saveError;
       toast.success(t("partner.studioSetup.profileSavedToast"));
       setStep(3);
     } catch (err: any) {
@@ -688,10 +716,15 @@ function StudioSetupInner() {
 
       // In claim mode, the original pre-built partner row is keyed to the scraped uuid,
       // not the owner's auth uid, so the studio's own login can't delete it via RLS.
-      // Call the SECURITY DEFINER RPC to remove that still-pending row (and its
-      // services/availability) so the studio doesn't appear twice in the customer app.
-      if (mode === "claim" && claimToken) {
-        await supabase.rpc("claim_release_prebuilt", { p_claim_token: claimToken });
+      // claim_release_verified (SECURITY DEFINER) merges that still-pending row into
+      // this account's row so the studio doesn't appear twice, but only when this
+      // account proved the email on file (Google or emailed-link sign-in to that
+      // email). Otherwise it parks the merge for Jordan (claim_reviews) and the
+      // studio carries on: its own row is already saved.
+      if (mode === "claim" && sourceData?.id && sourceData.status === "pending" && sourceData.id !== uid) {
+        const { data: released, error: releaseError } = await supabase.rpc("claim_release_verified", { p_prebuilt: sourceData.id });
+        if (releaseError) console.error("[studio-setup] claim merge failed", releaseError.message);
+        else if (released !== "released") console.info("[studio-setup] claim merge:", released);
       }
 
       toast.success(t("partner.studioSetup.servicesSavedToast"));
@@ -713,7 +746,8 @@ function StudioSetupInner() {
 
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang, hours_confirmed_at: new Date().toISOString() }).eq("id", uid);
+      const { error: saveError } = await supabase.from("partners").update({ capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: dbLang, hours_confirmed_at: new Date().toISOString() }).eq("id", uid);
+      if (saveError) throw saveError;
       toast.success(t("partner.studioSetup.availabilitySavedToast"));
       setStep(5);
     } catch (err: any) {
@@ -732,7 +766,8 @@ function StudioSetupInner() {
         (availability[day.num] || []).map(slot => ({ partner_id: uid, day_of_week: day.num, time_slot: slot, capacity: dayCapFor(day.num) === capacity ? null : dayCapFor(day.num) }))
       );
       if (rows.length > 0) await supabase.from("partner_availability").insert(rows);
-      await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: lang, hours_confirmed_at: new Date().toISOString() }).eq("id", uid);
+      const { error: saveError } = await supabase.from("partners").update({ auto_confirm_bookings: false, capacity: Math.max(1, Number(capacity) || 1), staff_count: staffCount.trim() === "" ? null : Math.max(1, Number(staffCount) || 1), preferred_language: dbLang, hours_confirmed_at: new Date().toISOString() }).eq("id", uid);
+      if (saveError) throw saveError;
       toast.success(t("partner.studioSetup.availabilitySavedToast"));
       setStep(5);
     } catch (err: any) {

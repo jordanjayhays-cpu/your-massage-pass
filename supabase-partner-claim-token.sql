@@ -1,3 +1,6 @@
+-- HISTORICAL (July 2026), already applied. Do not re-run: see the RETIRED
+-- note at the bottom. Since 24 Nov 2026 the claim token is never read in the
+-- browser (supabase/migrations/20261124d and 20261124e).
 -- Adds a shareable claim token to every partner row (scraped/pending or otherwise).
 -- Run once in the Supabase SQL editor:
 --   https://jglftdstrowwckwqmpue.supabase.co
@@ -29,5 +32,9 @@ create policy "Partner_services: public read for pending partners"
     )
   );
 
-grant select on public.partners to anon;
+-- RETIRED 24 Nov 2026. Do not restore this line. A table-level SELECT for
+-- anon undoes the partners column lock (supabase/migrations/
+-- 20261124e_partners_column_lock.sql) and hands every studio's claim and
+-- hours codes to the public key again. Column grants live in that migration.
+-- grant select on public.partners to anon;
 grant select on public.partner_services to anon;

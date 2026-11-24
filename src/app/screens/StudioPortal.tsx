@@ -51,7 +51,8 @@ export default function StudioPortal() {
     if (!user) { navigate("/partner"); return; }
 
     const [{ data: partnerData }, { data: bookingsData }, { data: availData }] = await Promise.all([
-      supabase.from("partners").select("*").eq("id", user.id).single(),
+      // Named columns only: select("*") on partners is refused since the 24 Nov column lock.
+      supabase.from("partners").select("id, business_name, address, phone, website, description, email, google_calendar_connected").eq("id", user.id).single(),
       supabase.from("bookings").select("*").eq("partner_id", user.id).order("booking_date", { ascending: false }),
       supabase.from("partner_availability").select("*").eq("partner_id", user.id),
     ]);

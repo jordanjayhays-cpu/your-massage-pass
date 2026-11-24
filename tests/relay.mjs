@@ -1094,9 +1094,16 @@ const relayedRows = (w) => w.db.t.wa_messages.filter((m) => m.msg_type === "rela
   check(G, "m8: sendHeldOfferEmail reads last_name", /select=id,first_name,last_name,service_name,day1/.test(lift(botSrc, "async function sendHeldOfferEmail(")), true);
 }
 {
-  const G = "11 M4 socios";
+  // Review M4 wanted the /socios page on the bot number (SOCIOS_FALLBACK_RE,
+  // SOCIOS_HELLO_RE and «ocupado» are read there). Main's review B1 (24 Nov,
+  // CLAUDE.md) holds that repoint on its own branch,
+  // claude/repoint-socios-after-wabot, until wa-bot runs bot.ts v216 or later:
+  // main sends socios.html to Vercel at once and the live loader very likely
+  // pins bot_v214_2.ts, which has no /socios code. So this branch keeps main's
+  // page, and tests/replay.mjs pins it to 827 the same way.
+  const G = "11 M4 socios (held)";
   const html = read("public/socios.html");
-  check(G, "the /socios page sends studios to the bot number (SOCIOS_FALLBACK_RE, SOCIOS_HELLO_RE and «ocupado» are read there), never 827", [/const WA_NUM = "34613977900";/.test(html), /612\D?474\D?827|612\\u00a0474/.test(html), /WhatsApp \+34&nbsp;613&nbsp;977&nbsp;900/.test(html)], [true, false, true]);
+  check(G, "the /socios page keeps 827 until wa-bot runs bot.ts v216+; the repoint waits on claude/repoint-socios-after-wabot", [/const WA_NUM = "34612474827";/.test(html), /const WA_NUM = "34613977900";/.test(html)], [true, false]);
 }
 
 // ---------------------------------------------------------------------------
