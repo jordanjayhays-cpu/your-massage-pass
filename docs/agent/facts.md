@@ -14,20 +14,22 @@ Jordan, never as a guess.
   the studios near you and send you their offers here in WhatsApp. You pick one.
   Nothing is booked until you say yes and the studio confirms.
 - You pay the studio directly. Massage Club charges you nothing.
-- We talk to you in English or Spanish. Do not promise that the studio staff
-  speak English.
+- We talk to you in your own language: English, Spanish, or whatever language
+  you write to us in. Do not promise that the studio staff speak English or any
+  other language; studios in Madrid usually speak Spanish.
 - Never say the therapists are licensed, certified, qualified or of any
   nationality. We do not check individual therapists. Say they are the
   studio's own professional massage therapists.
-- We do not translate into any other language and we have no translator.
-  If someone writes in another language (Romanian, French, Arabic...), say in
-  simple Spanish and English that we can help in Spanish or English.
+- If someone writes in another language (Romanian, French, Arabic...), answer
+  them normally; the bot sends every message in their language. Never say we
+  only speak English or Spanish. (Jordan, 10 Oct: Alexandru wrote Romanian ten
+  times and was told "English or Spanish only".)
 - Booking page (the only link we ever send): https://book.massageclub.io/reserve
 
 ## Prices
 
-- 60 minutes is usually 40 to 85 EUR; 90 minutes 60 to 100 EUR, depending on
-  the studio and the massage.
+- A 60 minute relaxing massage is usually 50 to 85 EUR at the studio's listed
+  price; 90 minutes costs more. It depends on the studio and the massage.
 - The exact price comes with the studio's offer, before anything is booked.
 - Never mention, promise or invent a discount, and never say "we don't offer
   discounts" either. Studios set their own prices; the exact price comes with
@@ -58,6 +60,38 @@ Centro / Sol, Malasaña, Chueca, Chamberí, Salamanca, Retiro, La Latina,
 Lavapiés, Argüelles / Moncloa, Chamartín, Tetuán, and more. "Anywhere in
 Madrid" is fine: we pick the closest good studio. Outside Madrid: ask which
 town and say we will check if a studio is close.
+
+## Who does the massage
+
+- A customer can ask for a woman or a man therapist. Say yes, we ask the
+  studios for that when we ask for their times, and the offer tells them
+  whether the studio confirmed it. Never answer only "it depends on the
+  studio".
+
+## Where the massage happens
+
+- Always at the studio. We do not do home, hotel or office visits, and no
+  therapist travels to the customer, in Madrid or anywhere else. "Would you
+  come to Illescas?" is answered with that, plus the offer to find a studio
+  in Madrid close to them.
+
+## Same-day bookings
+
+- You are given the current date and time in Madrid (madrid_now in the
+  message). Use it for anything about today.
+- Before 19:00 Madrid time same day can work: a 60 minute massage must start
+  at least an hour from now and by 20:00 Madrid time. Most studios open at
+  11:00 or 12:00.
+- From 19:00 Madrid time there is nothing left for today: say it is late for
+  tonight and offer tomorrow.
+- If you are not given the time, never say today still works or that it is
+  too late: give the rule above, and say the day buttons show what is left.
+
+## When they are not ready yet
+
+- "I'll tell you the day when I know", "next week, no rush": say that is
+  fine and they can write here any time. Do not ask the day again in the same
+  message.
 
 ## What happens at the studio
 
@@ -108,7 +142,9 @@ The bot POSTs to `AGENT_URL` with `Authorization: Bearer AGENT_KEY`:
 ```json
 { "phone": "34600000000", "name": "Ana", "lang": "es", "text": "what they wrote",
   "step": "await_time", "booking": "one line on their booking, or none",
-  "thread": [{ "dir": "in|out", "body": "..." }], "facts_url": "this file" }
+  "thread": [{ "dir": "in|out", "body": "..." }], "facts_url": "this file",
+  "madrid_now": "Saturday, 14 November 2026 at 18:30",
+  "context": "only when the team wrote the last message by hand: what they wrote" }
 ```
 
 The agent answers within 15 seconds:
