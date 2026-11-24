@@ -4563,19 +4563,26 @@ for (const [msg, want, note] of [
 {
   const fs = await import("node:fs");
   const { fileURLToPath } = await import("node:url");
+  const { stripTypeScriptTypes } = await import("node:module");
   const read = (p) => fs.readFileSync(fileURLToPath(new URL(p, import.meta.url)), "utf8");
   const botSrc = read("../supabase/functions/wa-bot/bot.ts");
   const socios = read("../public/socios.html");
   const G = "bot number (24 Nov)";
-  const own827 = /34612474827|612[ \u00a0]474[ \u00a0]827|612&nbsp;474&nbsp;827|612\\u00a0474\\u00a0827/;
+  // Any spelling of 827: with or without 34, spaced 612 474 827 or
+  // 612 47 48 27, with plain, non-breaking, &nbsp; or \u00a0 spaces.
+  const SEP = "(?:[ \\u00a0.\\-]|&nbsp;|\\\\u00a0)?";
+  const own827 = new RegExp("612474827".split("").join(SEP));
+  check(G + ": own827", "the 827 matcher finds every spelling, and not the bot number", [
+    "34612474827", "612474827", "+34 612 474 827", "612 47 48 27", "+34&nbsp;612&nbsp;474&nbsp;827", "+34\\u00a0612\\u00a0474\\u00a0827", "+34\u00a0612\u00a047\u00a048\u00a027", "34613977900", "+34 613 97 79 00",
+  ].map((x) => own827.test(x)), [true, true, true, true, true, true, true, false, false], "review nit: it missed 612474827 and 612 47 48 27");
+  // Review B1 (24 Nov): the /socios repoint is held on its own branch
+  // (claude/repoint-socios-after-wabot) until wa-bot runs bot.ts v216 or
+  // later. main deploys socios.html to Vercel at once, and the live loader very
+  // likely pins bot_v214_2.ts, which has no /socios handlers, so the page's
+  // times and hello would land in the customer flow. That branch replaces
+  // this check with the bot-number ones.
   const waNum = (socios.match(/const WA_NUM = "(\d+)";/) || [])[1] || "";
-  check(G + ": socios.html", "every WhatsApp button goes to the bot number", waNum, "34613977900", "waLink builds every wa.me link on the page from WA_NUM");
-  check(G + ": socios.html", "no 827 left, in any spelling", own827.test(socios), false, "the contact button, the fallback times and the «ocupado» line");
-  check(G + ": socios.html", "the shown number is the bot number, ES and EN", [
-    socios.includes("WhatsApp +34&nbsp;613&nbsp;97&nbsp;79&nbsp;00"),
-    socios.includes("Escribid «ocupado» y la hora al +34\\u00a0613\\u00a097\\u00a079\\u00a000."),
-    socios.includes("Write \\\"ocupado\\\" (taken) and the time to +34\\u00a0613\\u00a097\\u00a079\\u00a000."),
-  ], [true, true, true], "a studio partner's «ocupado» on the bot number reaches studioOcupado");
+  check(G + ": socios.html (held)", "the page keeps 827 until wa-bot runs bot.ts v216+, see CLAUDE.md", waNum, "34612474827", "review B1: merge claude/repoint-socios-after-wabot only with or after that deploy");
   const label = "Write from your own phone (the bot will not see their answer)";
   check(G + ": founder cards", "the small own-phone link says the bot will not see the answer, in the email and its plain text", [
     botSrc.includes(`const ownPhoneLabel = "${label}";`),
@@ -4589,6 +4596,51 @@ for (const [msg, want, note] of [
     botSrc.includes("will reply from ${JORDAN_MAIN_NUMBER}"),
     botSrc.includes("you can watch live or reply as the bot below."),
   ], [false, false, true], "v39: the bot never hands off to a representative");
+  // A pure function lifted out of bot.ts, by name, up to its closing brace.
+  const lift = (name) => {
+    const a = botSrc.indexOf(`function ${name}(`);
+    const b = a < 0 ? -1 : botSrc.indexOf("\n}\n", a);
+    return a < 0 || b < 0 ? "" : botSrc.slice(a, b + 2);
+  };
+  const dash = /[\u2012-\u2015\u2212]/;
+  // Review M1: the card for a studio's hello from /socios. The studio was just
+  // told "os contestamos por aquí" (we answer you here), on the bot number.
+  const socPara = (botSrc.match(/const SOC_STUDIO_CHAT_PARA = "([^"]+)";/) || [])[1] || "";
+  const socCard = botSrc.slice(botSrc.indexOf("async function socStudioChatCard("), botSrc.indexOf("async function socStudioChatCard(") + 700);
+  check(G + ": new-studio card", "tells Jordan to reply as the bot, rewrite the customer draft and sign as Jordan, never to answer from his own WhatsApp", [
+    socCard.includes("paras: [SOC_STUDIO_CHAT_PARA]"),
+    socPara.includes("They were told we would answer here, on the bot number, so reply as the bot below."),
+    socPara.includes("rewrite it for a studio and sign it «Jordan, de Massage Club»"),
+    /from your own WhatsApp/i.test(socPara),
+    dash.test(socPara),
+    botSrc.includes("They were told we would confirm here, on the bot number, so reply as the bot below."),
+    botSrc.includes("They were told we will confirm by WhatsApp."),
+  ], [true, true, true, false, false, true, false], "review M1 and the /socios fallback card");
+  // Review minor 1: the wants-a-person card, for both callers.
+  const nhSrc = lift("notifyHumanPara");
+  const notifyHumanPara = nhSrc ? new Function(`${stripTypeScriptTypes(nhSrc)}\nreturn notifyHumanPara;`)() : () => "";
+  const person = notifyHumanPara("34600000001", "person");
+  const job = notifyHumanPara("34600000001", "job");
+  check(G + ": wants-a-person card", "says the team was told, promises no reply from a person or another number, and tells a job seeker apart", [
+    person.includes("asked for a person") && person.includes("said the team has been told"),
+    job.includes("asked about work") && !job.includes("asked for a person"),
+    [person, job].every((p) => p.includes("no reply from a person or from another number was promised") && p.includes("Reply as the bot below")),
+    [person, job].some((p) => dash.test(p) || /nothing is waiting on you|representative/i.test(p)),
+    botSrc.includes('await notifyHuman(s, text, "job");'),
+    botSrc.includes('async function notifyHuman(s: Session, lastText: string, why: "person" | "job" = "person")'),
+  ], [true, true, true, false, true, true], "agent_core wants_person and closeAsJobSeeker");
+  // Review minor 3: the STUDIO MEDIA card. The media came to the bot number.
+  const smSrc = lift("studioMediaPara");
+  const studioMediaPara = smSrc ? new Function(`${stripTypeScriptTypes(smSrc)}\nreturn studioMediaPara;`)() : () => "";
+  const media = [studioMediaPara(true, false), studioMediaPara(false, false), studioMediaPara(true, true), studioMediaPara(false, true)];
+  check(G + ": studio media card", "never sends Jordan to a WhatsApp chat that cannot show it; a kept voice note plays on the reply page", [
+    media.some((p) => /Open the chat on WhatsApp/i.test(p) || dash.test(p)),
+    media[0].includes("The bot asked them to write the time or price as text."),
+    media[1].includes("reply as the bot below and ask them to write it as text."),
+    media[2].includes("It plays on the reply page") && media[3].includes("It plays on the reply page"),
+    botSrc.includes("paras: [studioMediaPara(asked, !!voice?.path)],"),
+    botSrc.includes("Open the chat on WhatsApp to see it."),
+  ], [false, true, true, true, true, false], "review minor 3");
 }
 
 // ---------------------------------------------------------------------------

@@ -2242,18 +2242,28 @@ async function notifyJordanWa(text: string, aboutPhone?: string) {
   } catch (e) { console.log("[wa] jordan wa failed", String(e)); }
 }
 
-async function notifyHuman(s: Session, lastText: string) {
+// The card's main line (24 Nov). Two callers: the AI agent's wants_person (it
+// has just told the customer "the team has been told") and closeAsJobSeeker
+// (someone asking for work, told "we will keep you in mind"). Neither was
+// promised a reply from a person or from another number (v39: no hand-off).
+function notifyHumanPara(num: string, why: "person" | "job"): string {
+  return why === "job"
+    ? `+${num} asked about work on the WhatsApp bot. The bot answered them itself (we do not hire directly, send your details and we will keep you in mind); no reply from a person or from another number was promised. Reply as the bot below if you want to step in.`
+    : `+${num} asked for a person on the WhatsApp bot. The bot kept helping them and said the team has been told; no reply from a person or from another number was promised. Reply as the bot below if you want to step in.`;
+}
+async function notifyHuman(s: Session, lastText: string, why: "person" | "job" = "person") {
   const num = s.phone.replace(/[^0-9]/g, "");
-  await notifyJordanWa(`${s.wa_name || "+" + num} wants a person${lastText ? ": " + lastText.slice(0, 120) : ""}`, s.phone);
+  const job = why === "job";
+  await notifyJordanWa(`${s.wa_name || "+" + num} ${job ? "asked about work" : "wants a person"}${lastText ? ": " + lastText.slice(0, 120) : ""}`, s.phone);
   const hist = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(s.phone)}&order=created_at.desc&limit=12&select=direction,body`, { headers: H() }).then((r) => r.json()).catch(() => []);
   const lines = (Array.isArray(hist) ? hist : []).reverse().map((m: any) => `${m.direction === "in" ? "THEM" : "BOT"}: ${m.body}`);
   const prefill = await customerPrefill(s.phone);
-  await founderCard(`🙋 ${s.wa_name || "+" + num} wants a person`, {
-    badge: "WANTS A PERSON",
-    title: `${s.wa_name || "A customer"} asked for a person`,
+  await founderCard(`🙋 ${s.wa_name || "+" + num} ${job ? "asked about work" : "wants a person"}`, {
+    badge: job ? "ASKED ABOUT WORK" : "WANTS A PERSON",
+    title: `${s.wa_name || (job ? "Someone" : "A customer")} ${job ? "asked about work" : "asked for a person"}`,
     // 24 Nov: the line used to say they were told a representative would reply
     // from Jordan's own number. Nobody is told that (v39: no hand-off), so it went.
-    paras: [`+${num} asked to talk to a human on the WhatsApp bot. The bot answered them itself and nobody was promised a reply from a person, so nothing is waiting on you unless you want to write.`],
+    paras: [notifyHumanPara(num, why)],
     quote: lastText || "",
     transcript: lines,
     waNum: num,
@@ -2263,7 +2273,7 @@ async function notifyHuman(s: Session, lastText: string) {
 }
 const wantsHuman = (t: string) => /\b(human|person|agent|jordan|persona|humano|agente|hablar con alguien|real person)\b/i.test(t);
 // v39: the customer is never parked on "a representative will write". We answer,
-// keep them in the flow, and tell Jordan so he can jump in from his number.
+// keep them in the flow, and tell Jordan so he can reply as the bot.
 // v55: message types the bot cannot read. WhatsApp also sends "unsupported"
 // for things like polls and view-once media.
 const MEDIA_TYPES = ["image", "sticker", "audio", "video", "document", "contacts", "unsupported", "order"];
@@ -2280,6 +2290,18 @@ const MEDIA_LINE: Record<string, string> = {
 // v212: no "se lo paso al cliente ahora mismo", which was untrue for a held
 // customer. Sent only to a studio with an open ask, never for a sticker.
 const STUDIO_MEDIA_LINE = "Gracias. Por aquí no puedo abrir fotos ni audios. Si es la hora o el precio, ¿me lo escribís en un mensaje?";
+// Jordan's STUDIO MEDIA card (24 Nov, review). The media came to the bot
+// number, which no phone app opens, and the bot keeps only a line about a
+// photo or file, not the file. A voice note it could not transcribe is kept
+// (voice.path) and plays on the reply page.
+function studioMediaPara(asked: boolean, voiceKept: boolean): string {
+  const what = voiceKept
+    ? "A voice note the bot could not transcribe. It plays on the reply page: open Reply as the bot below."
+    : "The bot cannot open it, and the bot number has no phone app to see it in.";
+  return asked
+    ? `${what} The bot asked them to write the time or price as text.`
+    : `${what} They have no open ask from us, so nothing was said back. To know what it says, reply as the bot below and ask them to write it as text.`;
+}
 // v212: the holding line a studio gets when nothing else answered it. The
 // customers' line said "te" (tú) to a studio and promised a reply that
 // depends on Jordan seeing a ping.
@@ -9338,10 +9360,16 @@ async function socLinksUrl(): Promise<string> {
   return `${REPLY_BASE}?socios_links=1&sig=${await replySig("inbox")}`;
 }
 // Jordan's card for a new studio writing to the bot number from the page.
+// 24 Nov (review M1): it used to say "Answer them from your own WhatsApp",
+// which moved the studio back to 827 right after the bot told it "os
+// contestamos por aquí" (we answer you here), on the bot number. Jordan now
+// replies as the bot. The reply page drafts for a customer when the number
+// has no partner row (suggestReply with no studio), so the card says so.
+const SOC_STUDIO_CHAT_PARA = "Not a partner number yet, so the bot sent one acknowledgement and kept it out of the customer flow. They were told we would answer here, on the bot number, so reply as the bot below. The suggested draft there is written for a customer: rewrite it for a studio and sign it «Jordan, de Massage Club». If they are a new studio, send them their signed /socios link once they have a row (or approve their form).";
 async function socStudioChatCard(from: string, text: string, what: string) {
   await founderCard(`📝 +${digitsOf(from)} ${what}`, {
     badge: "NEW STUDIO ON WHATSAPP", title: `A studio ${what}`,
-    paras: ["Not a partner number yet, so the bot said nothing beyond one acknowledgement and kept it out of the customer flow. Answer them from your own WhatsApp; if they are a new studio, send them their signed /socios link once they have a row (or approve their form)."],
+    paras: [SOC_STUDIO_CHAT_PARA],
     quote: text, waNum: from, waLabel: "Chat with the studio", prefill: "Hola, soy Jordan, de Massage Club. ",
     links: [{ href: await socLinksUrl(), label: "Studio links" }],
     to: ["jordan@massageclub.io"],
@@ -11927,7 +11955,7 @@ async function closeAsJobSeeker(s: Session, from: string, L: string, text: strin
   const jrows = jr ? await jr.json().catch(() => []) : [];
   const closed = (Array.isArray(jrows) ? jrows : []).map((x: any) => x?.id).filter(Boolean);
   await logEvent(from, "job_seeker", { step: wasAt, kind: jobKind, closed, said: text.slice(0, 80) });
-  await notifyHuman(s, text);
+  await notifyHuman(s, text, "job");
 }
 let coreCtxMemo: CoreCtx | null = null;
 function coreCtx(): CoreCtx {
@@ -13118,7 +13146,7 @@ const handleInner = async (req: Request) => {
       if (!known) { fbSess.data.socStudioAt = Date.now(); await saveSession(fbSess); }
       await founderCard(`📝 ${known ? known.business_name : "+" + digitsOf(from)} sent its times by WhatsApp (from /socios)`, {
         badge: "STUDIO SIGN-UP BY WHATSAPP", title: `${known ? known.business_name : "A studio"} sent the /socios message by hand`,
-        paras: ["The page could not reach the save, so the studio sent the prefilled message. Nothing was saved. Enter the times on their times page or send them their signed /socios link. They were told we will confirm by WhatsApp."],
+        paras: ["The page could not reach the save, so the studio sent the prefilled message. Nothing was saved. Enter the times on their times page or send them their signed /socios link. They were told we would confirm here, on the bot number, so reply as the bot below."],
         quote: text, waNum: from, waLabel: "Chat with the studio", prefill: "Hola, soy Jordan, de Massage Club. ",
         links: [{ href: await socLinksUrl(), label: "Studio links" }],
         to: ["jordan@massageclub.io"],
@@ -13224,7 +13252,9 @@ const handleInner = async (req: Request) => {
           if (asked && !(await sentRecently(from, STUDIO_MEDIA_LINE, 2 * 3600e3))) await sendText(from, STUDIO_MEDIA_LINE);
           await founderCard(`📎 ${partner.business_name} sent a ${msg.type}`, {
             badge: "STUDIO MEDIA", title: `${partner.business_name} sent a ${msg.type} the bot cannot read`,
-            paras: [asked ? `Open the chat on WhatsApp to see it. The bot asked them to write the time or price as text.` : `Open the chat on WhatsApp to see it. They have no open ask from us, so nothing was said back.`],
+            // 24 Nov (review): it said "Open the chat on WhatsApp to see it",
+            // but it came to the bot number, which no phone app opens.
+            paras: [studioMediaPara(asked, !!voice?.path)],
             waNum: from, waLabel: "Open the chat", prefill: "Hola, soy Jordan, de Massage Club. ",
           }).catch(() => {});
         }
