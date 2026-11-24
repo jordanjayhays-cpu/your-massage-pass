@@ -64,7 +64,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply, bareAnswer } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
-import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, relayYesSend, relayYesWords, relayYesDone, type RelayMode, type RelayCand, type RelayId, type YesFacts } from "./relay.ts";
+import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, relayHoursShown, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, relayYesSend, relayYesWords, relayYesDone, relayYesPreview, relayStudioAdvice, yesAsAnswer, relayOtherDay, type RelayMode, type RelayCand, type RelayId, type YesFacts, type YesFate, type YesPreview, type YesWordsOut } from "./relay.ts";
 import { offerTplParams, renderOfferTpl, offerTplAudience, offerTplPayloads, parseOfferTplMode, OFFER_TPL_NAME, type OfferTplMode } from "./offer_tpl.ts";
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -6484,8 +6484,11 @@ const socPriceAskEn = (minutes = 60): string => `Hi, this is Jordan from Massage
 // opts.lead is a line above the offer ("No problem. Here is the next option:").
 // v219: willAskPrice says the caller asks this studio for its price straight
 // after (the "Sí, tenemos hueco" tap), so an email offer may wait for it.
-async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean; fromQueue?: boolean; lead?: string; willAskPrice?: boolean } = {}): Promise<string> {
+// Review of a9c4c0e (relay): opts.quoteEn is the studio's words in English,
+// put under the quote on Jordan's cards (CLAUDE.md: English beside Spanish).
+async function forwardOffer(req: any, partner: { id: string; business_name: string }, rowId: string, time: string, freeText: string, studioFrom: string, opts: { dayHint?: string; ownOption?: boolean; fromQueue?: boolean; lead?: string; willAskPrice?: boolean; quoteEn?: string } = {}): Promise<string> {
   const clientNum = digitsOf(req.client_phone || "");
+  const quoteEnLine = opts.quoteEn ? [`(EN: "${opts.quoteEn}")`] : undefined;
   const who0 = String(req.first_name || "").trim() || "el cliente";
   // v219 review: the row as it stands, read first (select=*, so a database
   // without the 20261119_offer_once.sql columns still works). If this row and
@@ -6727,8 +6730,10 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     await founderCard(`⏸ ${partner.business_name} offers ${time} for ${req.first_name || "the customer"} · #${req.id} (held for you)`, {
       badge: "OFFER HELD FOR YOU",
       title: `${partner.business_name} can do ${time}`,
-      paras: [`You asked that nothing goes to ${req.first_name || "this customer"} automatically, so nothing was sent to them. The studio was told we are checking with the client. Tell ${req.first_name || "them"} yourself, or reply below.`],
-      quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
+      // Review of a9c4c0e (relay, minor 6): with no studio number (a yes
+      // relayed from Jordan's phone, a call or email offer) nothing was said.
+      paras: [`You asked that nothing goes to ${req.first_name || "this customer"} automatically, so nothing was sent to them. ${studioFrom ? "The studio was told we are checking with the client." : "The studio was told nothing by the bot (no WhatsApp number on this offer, for example a yes you relayed): tell it yourself."} Tell ${req.first_name || "them"} yourself, or reply below.`],
+      quote: freeText, after: quoteEnLine, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
     });
     return "held";
   }
@@ -6900,8 +6905,8 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   if (offerVia === "none") {
     await founderCard(`⚠️ ${partner.business_name} offered ${time} but ${req.first_name || "the customer"} cannot see it · #${req.id}`, {
       badge: "OFFER NOT DELIVERED", title: `${partner.business_name} can do ${time} ${day}, and the customer cannot be reached`,
-      paras: [`WhatsApp is outside its 24 hour window and there is no email on file, so the Yes button could not be sent. Nothing is confirmed. The studio was told it is not booked yet.`],
-      quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
+      paras: [`WhatsApp is outside its 24 hour window and there is no email on file, so the Yes button could not be sent. Nothing is confirmed. ${studioFrom ? "The studio was told it is not booked yet." : "The studio was told nothing by the bot (no WhatsApp number on this offer, for example a yes you relayed): tell it yourself that it is not booked yet."}`],
+      quote: freeText, after: quoteEnLine, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
     });
   }
   // v81 (Jordan, 12 Sept): his own words for this moment. The old line asked the
@@ -6936,7 +6941,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     badge: "OFFER FORWARDED",
     title: `${partner.business_name} can do ${time} ${day}`,
     paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : offerVia === "email_pending" ? "by email with a Yes / No page, held up to 3 minutes so it can carry the price the studio is being asked for" : tplSent ? "by the request_update_v1 template (their 24 hours had closed)" : "with Yes / Another time / Closer or cheaper buttons"}${tplSent && offerVia === "email" ? ", and by the request_update_v1 template on WhatsApp (their 24 hours had closed)" : ""}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
-    quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
+    quote: freeText, after: quoteEnLine, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
   });
   return offerVia;
 }
@@ -8301,11 +8306,19 @@ async function reaskStudio(row: any, req: any, studio: string, from: string, L: 
 // gets it. askedAgain marks a re-ask the customer asked for (forwardOffer then
 // lets it through inside the last 45 minutes). A separate PATCH: a database
 // without these columns only loses this.
+// Review of a9c4c0e (relay, major 2): the customer's answer to the first
+// offer goes too. Left as "no", the new offer was invisible to every
+// one-live-offer check (relayLiveOffer, forwardOffer's emailed-offer check,
+// queuedOffers, releaseHeldOffers all read customer_answer=is.null), so a
+// second studio's yes could go out beside it (the #126 two-rooms problem),
+// and a held offer email refused to send. Every caller reopens only a row in
+// OFFER_ROW_CLOSED or one the customer asked for again (reaskStudio), never a
+// won one.
 const OFFER_ROW_CLOSED = ["expired", "declined", "stood_down", "lost", "no"];
 async function reopenOfferClaim(rowId: string, askedAgain = false): Promise<void> {
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}`, {
     method: "PATCH", headers: { ...H(), Prefer: "return=minimal" },
-    body: JSON.stringify({ customer_offered_at: null, customer_offered_time: null, customer_offer_via: null, offer_email_due_at: null, offer_slot_at: null, nudged_at: null, offer_update_sent_at: null, offer_price_eur: null, ...(askedAgain ? { asked_again_at: new Date().toISOString() } : {}) }),
+    body: JSON.stringify({ customer_offered_at: null, customer_offered_time: null, customer_offer_via: null, offer_email_due_at: null, offer_slot_at: null, nudged_at: null, offer_update_sent_at: null, offer_price_eur: null, customer_answer: null, customer_answered_at: null, ...(askedAgain ? { asked_again_at: new Date().toISOString() } : {}) }),
   }).catch(() => null);
 }
 
@@ -12243,10 +12256,17 @@ export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: stri
 //   gets the normal offer by the path ops studio_offer uses: the ask recorded
 //   as accepted with the hour and price, then forwardOffer with no studio
 //   number (relayYesOffer). Never on a frozen or closed request, never to a
-//   test contact, never twice. No price ask, stand-down or other message to a
-//   studio is sent from here, and a customer's relayed "yes" never confirms
-//   anything: nothing in this block books, awards or confirms. The booking
-//   is made only by the customer's own tap (acceptOffer).
+//   test contact, never twice, never to an hour the customer turned down, and
+//   never while this ask's other hour is in front of them. The card shows the
+//   exact words first (relayOfferPreview). No price ask, stand-down or other
+//   message to a studio is sent from this block. forwardOffer itself can
+//   write to a studio: a replaced live offer's studio is told not to hold its
+//   slot ("Better news", shown on the card), and an offer that queues or is
+//   held for 15 minutes is shown later by the bot's normal steps, which then
+//   send the relayed studio the usual note, inside its hours. A customer's
+//   relayed "yes" never confirms anything: nothing in this block books,
+//   awards or confirms. The booking is made only by the customer's own tap
+//   (acceptOffer).
 // - Every list row and button id is signed (relaySig), and a request is acted
 //   on only once it is proven to come from Meta or from our webhook relay
 //   (relayVerified): the function is reachable with the public key (critique
@@ -12692,15 +12712,35 @@ async function relayStudioView(ctx: { row: any; req: any; p: any; phone: string;
   // A studio that is an active partner: a BAJA there means letters only
   // (handleLetterReply), so it is shown, not recorded here.
   if (String(ctx.p.status || "") === "active" || ctx.p.opted_out_at) acts = acts.filter((x) => x !== "stop");
+  // Review of a9c4c0e (major 3): this ask's own offer at another hour is still
+  // in front of the customer. Recording the new hour would rewrite
+  // offered_time under it (studioWrites, and forwardOffer's first write), and
+  // their Yes on that offer books row.offered_time (acceptOffer), so they
+  // would be booked at an hour they never saw. No Record yes: the card says to
+  // reply to the studio as the bot.
+  const moved = acts.includes("yes") ? relaySameRowLive(ctx.row, plan.time, Date.now()) : "";
+  if (moved) acts = acts.filter((x) => x !== "yes");
+  // Jordan, 24 Nov: what Record yes then does for the customer, and the exact
+  // words. It is in the yes button's hash, so a tap after any of it changed (a
+  // freeze, their window closing, another offer reaching them, the words)
+  // shows the new card instead.
+  const yes = acts.includes("yes") ? await relayYesFacts(ctx, plan, f.open, stamped) : null;
   const writes: Record<string, any> = {};
-  for (const x of acts) writes[x] = studioWrites(x, plan, f, "@now", stamped, w.text);
-  // Jordan, 24 Nov: what Record yes then does for the customer. It is in the
-  // yes button's hash, so a tap after any of it changed (a freeze, their
-  // window closing, another offer reaching them) shows the new card instead.
-  const yes = acts.includes("yes") ? await relayYesFacts(ctx, plan, f.open) : null;
+  // A yes to an hour they turned down is saved as an answer only (yesAsAnswer).
+  for (const x of acts) writes[x] = x === "yes" && yes?.send === "declined" ? yesAsAnswer(studioWrites(x, plan, f, "@now", stamped, w.text)) : studioWrites(x, plan, f, "@now", stamped, w.text);
+  // Review of a9c4c0e (minor 7): a weekday or date in their words that is not
+  // the request's day. The card warns; forwardOffer would offer the request's day.
+  const otherDay = acts.includes("yes") ? relayOtherDay(w.text, relayAskDay(ctx.req), plan.kinds.includes("hours")) : null;
   const hashes: Record<string, string> = {};
-  for (const x of acts) hashes[x] = await relayHash({ a: x, row: String(ctx.row.id), w: writes[x], outcome: f.outcome, replied: ctx.row.replied_at || null, via: ctx.row.customer_offer_via || null, hours: f.hoursOnFile, opt: ctx.p.opted_out_at || null, status: ctx.p.status || null, text: w.text, offer: x === "yes" && yes ? { s: yes.send, o: yes.windowOpen, e: yes.email, t: yes.template, l: yes.liveRow, m: yes.muted } : null });
-  return { f, plan, day, nowIso, stamped, acts, writes, hashes, yes };
+  for (const x of acts) hashes[x] = await relayHash({ a: x, row: String(ctx.row.id), w: writes[x], outcome: f.outcome, replied: ctx.row.replied_at || null, via: ctx.row.customer_offer_via || null, hours: f.hoursOnFile, opt: ctx.p.opted_out_at || null, status: ctx.p.status || null, text: w.text, offer: x === "yes" && yes ? { s: yes.send, o: yes.windowOpen, e: yes.email, t: yes.template, l: yes.liveRow, m: yes.muted, f: yes.fate || "", p: yes.preview || null, d: yes.turnedDown || "", od: otherDay?.word || "" } : null });
+  return { f, plan, day, nowIso, stamped, acts, writes, hashes, yes, moved, otherDay };
+}
+// The request's own day as relayOtherDay compares it (Madrid), or null.
+function relayAskDay(req: any): { dow: number; dom: number; month: number } | null {
+  const d = req ? studioDate(req) : null;
+  if (!d) return null;
+  const noon = new Date(d.getTime() + 12 * 3600e3); // Madrid midnight is 22:00 or 23:00 UTC the day before
+  return { dow: noon.getUTCDay(), dom: noon.getUTCDate(), month: noon.getUTCMonth() + 1 };
 }
 // A customer the relay never sends anything to: CLAUDE.md's test contacts
 // (offerTestCustomer) and anyone releasedAudience does not call real (the
@@ -12709,21 +12749,152 @@ function relayTestCustomer(req: any): boolean {
   const phone = digitsOf(String(req?.client_phone || ""));
   return offerTestCustomer(req) || releasedAudience({ phone, email: req?.contact_email, name: `${req?.first_name || ""} ${req?.last_name || ""}` }) !== "real";
 }
+// Review of a9c4c0e (major 2): the hour this customer turned down on this ask
+// (declineOffer writes outcome "no" and customer_answer "no"; the hour stays
+// in customer_offered_time). "" when they did not; "?" when they did and the
+// hour is not on the row.
+function relayTurnedDown(row: any): string {
+  if (String(row?.customer_answer || "") !== "no" && String(row?.outcome || "") !== "no") return "";
+  return String(row?.customer_offered_time || row?.offered_time || "") || "?";
+}
+// Review of a9c4c0e (major 3): this ask's own offer at another hour is still
+// in front of the customer. Recording a new hour would rewrite offered_time
+// under it, and their Yes on that offer would then book the new hour, so
+// Record yes is not offered (relayStudioView).
+function relaySameRowLive(row: any, time: string, nowMs: number): string {
+  const lo = relayLiveOffer([row], nowMs);
+  const t = String(lo?.customer_offered_time || "");
+  return lo && t && t !== String(time || "") ? t : "";
+}
+// Review of a9c4c0e (major 1; CLAUDE.md: the relay shows Jordan "the exact
+// text of anything it would send, before a tap sends it"). forwardOffer's own
+// steps, read only and in its order, for this row as Record yes leaves it
+// (accepted, the hour and the price recorded), with no studio number: which
+// of its checks stops the offer, and if none does, the words that go and what
+// carries them. The words come from the same helpers forwardOffer and
+// emailOffer use; tests/relay.mjs runs the real forwardOffer after the card
+// and checks that it sent exactly these words. The offer page's link is a
+// placeholder: it opens the customer's own Yes.
+const RELAY_LINK_SHOWN = "[the link to their offer page]";
+async function relayOfferPreview(req0: any, partner: { id: string; business_name: string }, row: any, time: string, freeText: string, over: { quoted_price: number | null; discount_pct: number | null }): Promise<{ fate: YesFate; preview: YesPreview | null; live: { studio: string; time: string } | null }> {
+  let req = req0;
+  const rowId = String(row.id);
+  const clientNum = digitsOf(req.client_phone || "");
+  const askedAgain = !!row.asked_again_at;
+  const cs = await getSession(clientNum);
+  if (clientNum && cs.step === "muted") return { fate: "muted", preview: null, live: null };
+  const mine = parseQuotedPrice(freeText) || 0;
+  const shown: string[] = cs.data.offersShown && Number(cs.data.offersShown.request) === Number(req.id) ? (cs.data.offersShown.rows || []).map(String).filter((x: string) => x !== rowId) : [];
+  if (mine > 0 && shown.length) {
+    const best = (await relayGet(`request_dispatch?id=in.(${shown.map(encodeURIComponent).join(",")})&quoted_price=not.is.null&outcome=in.(pending,accepted,won)&order=quoted_price.asc&limit=1&select=quoted_price,partner_id`))[0] || null;
+    if (best && Number(best.quoted_price) < mine) return { fate: "withheld_dearer", preview: null, live: null };
+  }
+  const L: "en" | "es" = cs.data.lang === "es" || req.languages === "es" ? "es" : "en";
+  if (req.area === undefined || req.message_text === undefined || req.created_at === undefined) {
+    const got = (await relayGet(`whatsapp_requests?id=eq.${Number(req.id)}&select=area,message_text,created_at`))[0] || {};
+    req = { ...req, area: req.area === undefined ? String(got.area || "") : req.area, message_text: req.message_text === undefined ? String(got.message_text || "") : req.message_text, created_at: req.created_at === undefined ? (got.created_at || null) : req.created_at };
+  }
+  const pc = await partnerCard(partner.id);
+  const now = new Date();
+  const offerDay = offerDayFromText(freeText, L);
+  const dayOk = offerFitsDay(offerDay, req.day1, req.message_text, now, "");
+  const fits = dayOk && offerFitsTime(time, req.time1, req.message_text);
+  const slotAt = offerSlotAt(time, offerDayDate(offerDay, "", req.day1, req.message_text, now));
+  const askedDate = resolveRequestDate(req.day1, req.message_text, now);
+  const sameDayReq = isSameDayReq(req) || (!!askedDate && askedDate.getTime() === madridMidnight(now).getTime());
+  if (slotAt !== null && slotAt - now.getTime() < OFFER_LEAD_MS && !(askedAgain && slotAt > now.getTime())) return { fate: "withheld_too_soon", preview: null, live: null };
+  const liveOffer = cs.step === "await_offer" && cs.data.offer && Number(cs.data.offer.request) === Number(req.id);
+  const betterThanLive = !!liveOffer && !!cs.data.offer.miss && fits;
+  if (liveOffer && String(cs.data.offer.row) !== rowId && !betterThanLive) return { fate: "queued", preview: null, live: { studio: String(cs.data.offer.studio || "another studio"), time: String(cs.data.offer.time || "") } };
+  if (!liveOffer && !askedAgain) {
+    const lrows = await relayGet(`request_dispatch?request_id=eq.${Number(req.id)}&id=neq.${encodeURIComponent(rowId)}&customer_offer_via=in.(email,email_pending)&customer_answer=is.null&outcome=in.(pending,accepted)&select=id,partner_id,customer_offered_time,offer_slot_at&limit=5`);
+    const liveMail = lrows.find((x: any) => { const t = Date.parse(String(x?.offer_slot_at || "")); return !Number.isFinite(t) || t > now.getTime(); });
+    if (liveMail) return { fate: "queued", preview: null, live: { studio: String((await partnerCard(String(liveMail.partner_id || ""))).business_name || "another studio"), time: String(liveMail.customer_offered_time || "") } };
+  }
+  if (!fits && !sameDayReq) return { fate: "withheld_mismatch", preview: null, live: null };
+  if (!fits) return { fate: "held_window", preview: null, live: null };
+  if (clientNum && heldNum(clientNum)) return { fate: "held", preview: null, live: null };
+  // The price line, as forwardOffer reads it, on the row as the tap leaves it.
+  let dsp: any = null;
+  try { dsp = await dispatchRowFor(Number(req.id), partner.id, ""); } catch (_e) { dsp = null; }
+  if (dsp && String(dsp.id) === rowId) dsp = { ...dsp, ...(over.quoted_price !== null ? { quoted_price: over.quoted_price } : {}), ...(over.discount_pct !== null ? { discount_pct: over.discount_pct } : {}) };
+  const quoted = Number((dsp && dsp.quoted_price) || parseQuotedPrice(freeText) || 0);
+  const pct = dsp && dsp.discount_pct ? Number(dsp.discount_pct) : 0;
+  const lp = quoted > 0 ? null : await listedPrice(partner.id, String(req.service_name || ""), askedMins(dsp, req));
+  const priceNum = quoted > 0 ? quoted : lp ? lp.price : 0;
+  const statedMins = askedMins(dsp, req);
+  const qr = priceNum > 0 && clientNum && Math.abs(statedMins - 60) <= 5 ? await quotedRangeFor(clientNum) : null;
+  const kd = (await relayGet(`request_dispatch?id=eq.${encodeURIComponent(rowId)}&select=*`))[0] || {};
+  const email = String(req.contact_email || "").trim();
+  const windowOpen = !!clientNum && await waWindowOpen(clientNum);
+  // The template, as sendOfferTemplate decides it (the consent gate for a
+  // MARKETING filing aside: the card says "if Meta has approved it").
+  let tm = "off";
+  try { tm = String((await offerTplMode()) || "off"); } catch (_e) { tm = "off"; }
+  const tplGoes = !windowOpen && !!clientNum && (tm === "on" || tm === "test") && !!offerTplAudience(tm as OfferTplMode, { phone: clientNum, testCustomer: offerTestCustomer(req), held: heldNum(clientNum) || heldMail(email), muted: false });
+  const wordsIn = (LL: "en" | "es"): YesWordsOut => {
+    const day = offerDay ? offerDayFromText(freeText, LL) : (dayLabelFor(req.day1, req.message_text, LL) || (LL === "es" ? "ese día" : "that day"));
+    const priceLine = quoted > 0 ? COPY[LL].priceLine(quoted, statedMins, pct > 0) : lp ? listedPriceLine(LL, lp) : "";
+    const above = qr && priceNum > qr.hi ? OFFER_COPY[LL].above(qr.lo, qr.hi) : "";
+    const far = kd.km === null || kd.km === undefined ? "" : offerFar(Number(kd.km), String(req.area || ""), LL);
+    const text = offerBody(LL, {
+      lead: betterThanLive ? OFFER_COPY[LL].better : "",
+      name: String(req.first_name || "").trim(), studio: partner.business_name, where: pc.neighbourhood, time, day,
+      band: fits ? "" : (dayOk ? windowText(askWindow(req.time1, req.message_text), LL) : OFFER_COPY[LL].anyToday),
+      svc: trSvcLow(custSvc(req.service_name), LL), price: priceLine, above, address: pc.address, far,
+    });
+    // emailOffer's text part, the link shown as a placeholder.
+    const es = LL === "es";
+    const who = String(req.first_name || "").trim();
+    const price = String(priceLine || "").replace(/^\s+/, "").replace(/\*/g, "");
+    const lead = es ? `${who ? who + ", b" : "B"}uenas noticias: ${partner.business_name} puede darte el masaje.` : `Good news${who ? ", " + who : ""}: ${partner.business_name} can do your massage.`;
+    const mail = `${lead}\n${partner.business_name}${pc.address ? ", " + pc.address : ""}\n${[day, time].filter(Boolean).join(", ")}${price ? "\n" + price : ""}\n\n${LATE_COPY[es ? "es" : "en"].tapNote(time)}\n${RELAY_LINK_SHOWN}\n\nMassage Club`;
+    const params = tplGoes ? offerTplParams(LL, { firstName: String(req.first_name || ""), studio: partner.business_name, neighbourhood: pc.neighbourhood, slotAtMs: slotAt, time, svc: trSvcLow(custSvc(req.service_name), LL), mins: statedMins, price: quoted > 0 ? quoted : null, listed: quoted <= 0 && priceNum > 0 ? priceNum : null }, (ms, lang) => (lang === "es" ? LONG_ES : LONG_EN).format(new Date(ms))) : null;
+    return { text, buttons: offerButtons(LL, rowId, time).map((b) => b.title), subject: offerSubject(LL, partner.business_name, time, day), email: mail, tpl: params ? renderOfferTpl(LL, params) : "" };
+  };
+  const mainW = wordsIn(L);
+  const via: YesPreview["via"] = windowOpen ? "whatsapp" : email && !heldMail(email) && !heldNum(clientNum) ? "email" : mainW.tpl ? "template" : "none";
+  // The note the replaced studio gets ("Better news"), as forwardOffer writes it.
+  let replaced: YesPreview["replaced"] = null;
+  if (betterThanLive && via !== "none" && String(cs.data.offer?.row || "") !== rowId) {
+    const old = (await relayGet(`request_dispatch?id=eq.${encodeURIComponent(String(cs.data.offer.row))}&outcome=in.(pending,accepted)&select=id,partner_id,phone,offered_time`))[0] || null;
+    if (old?.phone && !(FAKE_NUM_RE.test(clientNum) && !TEST_NAME_RE.test(String(cs.data.offer.studio || "")))) {
+      const t0 = String(old.offered_time || cs.data.offer.time || "");
+      const slot0 = cs.data.offer.slotAt ? Date.parse(String(cs.data.offer.slotAt)) : NaN;
+      const d0 = cs.data.offer.slotAt ? studioDayAt(slot0) : studioDayEs(req);
+      const hm = /^\d{1,2}:\d{2}$/.test(t0);
+      const ref0 = [deDay(d0), hm ? `a las ${t0}` : ""].filter(Boolean).join(" ");
+      const dd = Number.isFinite(slot0) ? madridMidnight(new Date(slot0)) : studioDate(req);
+      const d0En = d0 === "hoy" ? "today" : d0 === "mañana" ? "tomorrow" : dd ? `on ${LONG_EN.format(dd).replace(/,/g, "")}` : "";
+      const ref0En = [d0 ? d0En : "", hm ? `at ${t0}` : ""].filter(Boolean).join(" ");
+      const fn = String(req.first_name || "").trim();
+      replaced = {
+        studio: String(cs.data.offer.studio || (await partnerCard(String(old.partner_id || ""))).business_name || "the other studio"),
+        es: `Hola de nuevo. ${fn ? "A " + fn : "Al cliente"} le ha salido otra opción más cerca de la hora que pidió, así que no hace falta que le guardéis el hueco${ref0 ? " " + ref0 : ""}. Si al final lo prefiere, os escribo enseguida.`,
+        en: `Hi again. ${fn || "The client"} has found another option closer to the time they asked for, so there is no need to hold the slot${ref0En ? " " + ref0En : ""}. If they end up preferring yours, I will write to you straight away.`,
+      };
+    }
+  }
+  return { fate: "go", preview: { via, L, ...mainW, en: L === "es" ? wordsIn("en") : null, replaced }, live: null };
+}
 // Record yes, worked out the same way for the card and for the tap.
-async function relayYesFacts(ctx: { row: any; req: any; p: any; name: string }, plan: { time: string; price: number | null }, open: boolean): Promise<YesFacts & { liveRow: string }> {
+async function relayYesFacts(ctx: { row: any; req: any; p: any; name: string }, plan: { time: string; price: number | null; pct?: number | null }, open: boolean, stamped = ""): Promise<YesFacts & { liveRow: string }> {
   const req = ctx.req;
   const phone = digitsOf(String(req.client_phone || ""));
   const email = String(req.contact_email || "").trim();
   // As forwardOffer reads it: this row and hour already reached them. A row
-  // that had lapsed or was declined is a new offer (reopenOfferClaim).
+  // that had lapsed is a new offer (reopenOfferClaim); one they turned down
+  // at this hour is not (declined).
   const already = !OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || "")) && !!ctx.row.customer_offered_at && String(ctx.row.customer_offered_time || "") === String(plan.time || "");
+  const down = relayTurnedDown(ctx.row);
+  const declined = !!down && (down === "?" || down === String(plan.time || ""));
   const testCust = relayTestCustomer(req);
   // Review m3's rule, kept here too: a test studio's yes never reaches a real customer.
   const testStudio = !testCust && REL_TEST_STUDIO_RE.test(ctx.name);
-  const send = relayYesSend({ open, flag: String(req.customer_flag || ""), test: testCust || testStudio, already });
+  const send = relayYesSend({ open, flag: String(req.customer_flag || ""), test: testCust || testStudio, already, declined });
   const price = plan.price !== null && plan.price !== undefined ? Number(plan.price) : Number(ctx.row.quoted_price) > 0 ? Number(ctx.row.quoted_price) : null;
-  const out = { send, customer: String(req.first_name || "").trim().split(/\s+/)[0] || "", studio: ctx.name, time: String(plan.time || ""), day: relayReqDay(req).en, price, windowOpen: false, email, template: false, live: null as { studio: string; time: string } | null, muted: false, stage: String(req.stage || ""), testStudio, liveRow: "" };
-  if (send !== "offer") return out;
+  const out = { send, customer: String(req.first_name || "").trim().split(/\s+/)[0] || "", studio: ctx.name, time: String(plan.time || ""), day: relayReqDay(req).en, price, windowOpen: false, email, template: false, live: null as { studio: string; time: string } | null, muted: false, stage: String(req.stage || ""), testStudio, liveRow: "", fate: "" as YesFate, preview: null as YesPreview | null, turnedDown: down && !declined ? down : "" };
+  if (send !== "offer" && send !== "test") return out;
   if (phone) {
     out.windowOpen = await waWindowOpen(phone);
     out.muted = (await getSession(phone)).step === "muted";
@@ -12735,6 +12906,17 @@ async function relayYesFacts(ctx: { row: any; req: any; p: any; name: string }, 
   const offers = await relayGet(`request_dispatch?request_id=eq.${Number(req.id)}&id=neq.${encodeURIComponent(String(ctx.row.id))}&customer_offered_at=not.is.null&customer_answer=is.null&outcome=in.(pending,accepted)&limit=5&select=id,partner_id,outcome,customer_answer,customer_offered_at,customer_offered_time,customer_offer_via,offer_slot_at`);
   const lo = relayLiveOffer(offers, Date.now());
   if (lo) { out.live = { studio: String((await partnerCard(String(lo.partner_id || ""))).business_name || "another studio"), time: String(lo.customer_offered_time || "") }; out.liveRow = String(lo.id); }
+  // What forwardOffer would do now, and the words (a test contact's too, so
+  // test mode shows them: review of a9c4c0e, minor 12). Read only.
+  if (stamped && plan.time) {
+    try {
+      const pv = await relayOfferPreview(req, { id: String(ctx.p.id), business_name: ctx.name }, ctx.row, String(plan.time), stamped, { quoted_price: plan.price !== null && plan.price !== undefined ? Number(plan.price) : null, discount_pct: plan.pct !== null && plan.pct !== undefined ? Number(plan.pct) : null });
+      out.fate = pv.fate;
+      out.preview = pv.preview;
+      if (pv.live && !out.live) out.live = pv.live;
+      if (pv.fate === "muted") out.muted = true;
+    } catch (e) { console.log("[relay] the offer preview failed", String(e)); out.fate = ""; out.preview = null; }
+  }
   return out;
 }
 // Jordan, 24 Nov: the yes is recorded (relayApplyStudio), so the customer
@@ -12754,8 +12936,11 @@ async function relayYesOffer(ctx: { row: any; req: any; p: any; phone: string; n
   const again: string = fresh ? relayYesSend({ open: OPEN_STAGES.includes(String(fresh.stage || "")), flag: String(fresh.customer_flag || ""), test: relayTestCustomer(fresh) || REL_TEST_STUDIO_RE.test(ctx.name), already: false }) : "closed";
   if (again !== "offer") return words(again, { stage: String(fresh?.stage || "") });
   const phone = digitsOf(String(fresh.client_phone || ""));
+  // The stored words are Spanish: Jordan's OFFER FORWARDED card quotes them,
+  // so it carries the English too (review of a9c4c0e, minor 13).
+  const quoteEn = relayNeedsEnglish(v.stamped, strongSpanish) ? await relayEnglish(v.stamped).catch(() => "") : "";
   let res = "";
-  try { res = await forwardOffer(fresh, { id: String(ctx.p.id), business_name: ctx.name }, String(ctx.row.id), v.plan.time, v.stamped, "", {}); }
+  try { res = await forwardOffer(fresh, { id: String(ctx.p.id), business_name: ctx.name }, String(ctx.row.id), v.plan.time, v.stamped, "", quoteEn ? { quoteEn } : {}); }
   catch (e) { console.log("[relay] the offer step failed", String(e)); res = ""; }
   // forwardOffer says "whatsapp" for the buttons and for the template alone,
   // and "email" with or without the template: the session says which.
@@ -12799,6 +12984,13 @@ async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; 
   lines.push(`I read: ${relayReadText(plan.kinds, plan, euro)}.`);
   const rel = relayRelativeWords(w.text);
   if (rel.length && day.en) lines.push(`They wrote "${rel[0]}". A forward carries no time, so I read it as the request's own day, ${day.en}, and store it that way. If they meant another day, do not record it.`);
+  // Review of a9c4c0e (minor 11): with no day on the request, "mañana" stays
+  // in the stored words and forwardOffer reads it from the moment of the tap.
+  else if (rel.length && v.acts.includes("yes")) lines.push(`They wrote "${rel[0]}", and the request has no day I can read, so I cannot pin it: the bot reads "${rel[0]}" from the moment of your tap, and if that is not a day ${who} asked for, the offer is not sent.`);
+  // Review of a9c4c0e (minor 7): a different weekday or date in their words.
+  if (v.otherDay) lines.push(`They wrote "${v.otherDay.word}" (${v.otherDay.en}), but the request is for ${day.en || "another day"}, and Record yes sends ${who} the offer for ${day.en || "the request's day"}. If they meant ${v.otherDay.en}, do not record it: reply to them as the bot.`);
+  // Review of a9c4c0e (major 3): this ask's other hour is in front of them.
+  if (v.moved) lines.push(`${ctx.name}'s ${v.moved} is already with ${who}, who has not answered it. Recording ${plan.time} would change what ${who}'s Yes on that offer books, so there is no Record yes here: reply to ${ctx.name} as the bot, or ask ${who} first.`);
   if (f.source === "voice") lines.push(`A voice note is not their writing, so I will not record a yes, a time, a price or a discount from it. Ask them to write it to the bot: ${await replyUrl(ctx.phone)}`);
   if (w.echo) lines.push("I left out the messages that were our own words.");
   if (plan.kinds.includes("hours") && plan.hours && !socHoursWritable(plan.hours)) lines.push(`Their hours read as "${relayHoursShown(plan.hours)}", which the asks cannot use as they are, so nothing is saved.`);
@@ -12813,19 +13005,36 @@ async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; 
     // Jordan, 24 Nov: Record yes is the studio's tap, and the card says what
     // it then sends the customer (or why it sends nothing), before the tap.
     const yesWords = x === "yes" && v.yes ? ` ${relayYesWords(v.yes, euro)}` : "";
-    next.push(`${RELAY_LABELS[x]} ${aud === "testcard" ? "would record" : "records"} ${relayActionWords(x, plan, euro, f.source === "voice")}.${yesWords} ${(STUDIO_FOLLOWS[x] || []).join(" ")}`.trim());
+    // A yes to an hour the customer turned down is saved as an answer only,
+    // so what a recorded yes sets off later does not apply to it.
+    const declined = x === "yes" && v.yes?.send === "declined";
+    next.push(`${RELAY_LABELS[x]} ${aud === "testcard" ? "would record" : "records"} ${relayActionWords(x, plan, euro, f.source === "voice")}${declined ? ", as an answer only" : ""}.${yesWords} ${declined ? "" : (STUDIO_FOLLOWS[x] || []).join(" ")}`.trim());
   }
   lines.push(next.length ? `Next:\n${next.join("\n")}` : "Next: nothing to record. Reply to them as the bot if it needs an answer.");
-  const yesSends = aud === "write" && v.acts.includes("yes") && v.yes?.send === "offer" && !v.yes.muted;
-  lines.push(yesSends
-    ? `Nothing is sent to the studio from here, and nothing to the customer unless you tap Record yes. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`
+  // Review of a9c4c0e (major 1): the exact words Record yes sends, below the
+  // description, unchanged (not run through noDashes: they are what goes).
+  const pv = v.acts.includes("yes") && v.yes ? relayYesPreview(v.yes) : "";
+  const stopped = ["withheld_too_soon", "withheld_mismatch", "withheld_dearer", "held", "muted"].includes(String(v.yes?.fate || ""));
+  const yesSends = aud === "write" && v.acts.includes("yes") && v.yes?.send === "offer" && !v.yes.muted && !stopped;
+  const tail = noDashes(yesSends
+    ? `Nothing is sent to ${v.yes?.preview?.replaced ? ctx.name : "the studio"} from here, and nothing to the customer unless you tap Record yes. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`
     : `Nothing is sent to the studio or the customer from here. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`);
-  const text = noDashes(lines.join("\n\n"));
-  if (aud === "testcard") { await relaySay(from, text); return; }
+  const head = noDashes(lines.join("\n\n"));
+  const text = [head, pv, tail].filter(Boolean).join("\n\n");
+  // Review of a9c4c0e (minor 12): test mode cannot send, so it logs the exact
+  // call Record yes would make, for the first on-mode tap to be checked against.
+  if (aud === "testcard" && v.yes?.send === "offer") {
+    const dry = { request_id: Number(req.id), partner: { id: String(ctx.p.id), business_name: ctx.name }, row: String(ctx.row.id), time: v.plan.time, freeText: v.stamped, studioFrom: "", opts: {}, fate: v.yes.fate || "", via: v.yes.preview?.via || "" };
+    console.log("[relay] TEST MODE: Record yes would call forwardOffer", JSON.stringify(dry));
+    await logEvent(from, "relay_yes_dry", dry);
+  }
+  // WhatsApp text stops at 4096 characters: a long preview goes on its own.
+  const parts = text.length > 3800 && pv ? [`${head}\n\n${tail}`, pv] : [text];
+  if (aud === "testcard") { for (const t of parts) await relaySay(from, t); return; }
   const btns: Array<{ id: string; title: string }> = [];
   for (const x of v.acts) btns.push({ id: await relaySigned(relayBase("a", a, String(ctx.row.id), x, v.hashes[x] || "00000000", "s")), title: RELAY_LABELS[x] });
-  if (text.length <= 1000) await sendButtons(from, text, btns, { manual: true });
-  else { await relaySay(from, text); await sendButtons(from, "What should I record?", btns, { manual: true }); }
+  if (parts.length === 1 && text.length <= 1000) await sendButtons(from, text, btns, { manual: true });
+  else { for (const t of parts) await relaySay(from, t); await sendButtons(from, "What should I record?", btns, { manual: true }); }
 }
 async function relayCustomerView(ctx: { req: any; offers: any[]; phone: string }, w: RelayWords) {
   const lo = relayLiveOffer(ctx.offers, Date.now());
@@ -13000,12 +13209,21 @@ async function relayApplyStudio(ctx: { row: any; req: any; p: any; phone: string
   }
   if (!wr?.dispatch) return "";
   const body = relayFill(wr.dispatch, nowIso);
-  const u = await relayPatch(`request_dispatch?id=eq.${encodeURIComponent(String(ctx.row.id))}`, body);
+  // Review of a9c4c0e (minor 9): only from the outcome this tap read. Two
+  // cards on one lapsed row tapped together each read "expired", each wrote
+  // accepted and reopened the claim, and the customer got the offer twice.
+  // Now the second write matches nothing and changes nothing.
+  const was = String(ctx.row.outcome ?? "");
+  const u = await relayPatch(`request_dispatch?id=eq.${encodeURIComponent(String(ctx.row.id))}&outcome=${was ? `eq.${encodeURIComponent(was)}` : "is.null"}`, body);
   if (!u || !u.length) return "";
-  // A yes on a row that had lapsed or was declined is a new offer, not the
-  // old one again (forwardOffer's "already"), as the live tap path does. A
-  // rate alone leaves the ask as it was (review M3), so it reopens nothing.
-  if (action === "yes" && OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || ""))) await reopenOfferClaim(String(ctx.row.id));
+  const declined = action === "yes" && v.yes?.send === "declined";
+  // A yes on a row that had lapsed or was declined by the studio is a new
+  // offer, not the old one again (forwardOffer's "already"), as the live tap
+  // path does. A rate alone leaves the ask as it was (review M3), so it
+  // reopens nothing; nor does a yes to an hour the customer turned down,
+  // which is saved as an answer only.
+  if (action === "yes" && !declined && OFFER_ROW_CLOSED.includes(was)) await reopenOfferClaim(String(ctx.row.id));
+  if (declined) return `Recorded for ${what}: ${relayActionWords(action, v.plan, euro, v.f.source === "voice")}. ${relayYesDone("declined", { customer: v.yes?.customer || "", studio: ctx.name, time: v.plan.time, email: "", template: false, stage: "" })}`.trim();
   // Jordan, 24 Nov: the recorded yes is the studio's tap, so the customer
   // now gets the normal offer (or the reply says why not). The yes stays
   // recorded whatever the offer step says, so this never returns "".

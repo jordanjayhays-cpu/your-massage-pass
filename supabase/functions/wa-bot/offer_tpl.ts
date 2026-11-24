@@ -3,9 +3,12 @@
 // reach them without Jordan writing from his own phone (827). Pure: no
 // imports, no fetch, no clock; tests/relay.mjs runs it.
 //
-// Jordan, 24 Nov (pop-up "Yes, automatic"): the bot may send it on its own
-// once Meta approves it, so it no longer needs his OK each time. It is still
-// NOT SUBMITTED to Meta and NOT DEPLOYED: it needs Meta's approval and a
+// Jordan, 24 Nov, by pop-up: "Yes, submit it" (the wording) and "Yes,
+// automatic" (the bot may send it on its own once Meta approves it, so it no
+// longer needs his OK each time). Whether it reached Meta is UNSURE from the
+// repo: CLAUDE.md on claude/repoint-bot-number (fc3dfbb) records it as
+// submitted that morning and pending, and nothing here can check it (ops
+// tplist answers that). It is NOT DEPLOYED: it needs Meta's approval and a
 // deploy of wa-bot, and app_secrets OFFER_TEMPLATE stays off (the default
 // here, and for anything missing or unknown) until both are done.
 //

@@ -15,8 +15,15 @@
 // path ops studio_offer uses (the ask recorded as accepted with the hour and
 // price, then forwardOffer). The customer still has to tap Yes themselves
 // before anything is booked, and the studio gets the confirmation in writing
-// only after that tap. Nothing else here or in the bot's relay block sends
-// anything to a studio or a customer: no price ask, no stand-down, no note.
+// only after that tap. The card shows the exact words before the tap
+// (relayYesPreview). forwardOffer can write to a studio itself: when this
+// offer replaces a live one outside the hours asked ("Better news"), the
+// replaced studio gets a note not to hold its slot (the card shows it), and
+// an offer that waits behind another or is held for 15 minutes is shown
+// later by the bot's normal steps, which then send the studio that wrote the
+// yes the bot's usual note, inside its hours. Nothing else here or in the
+// bot's relay block sends anything to a studio or a customer: no price ask,
+// no stand-down, no other note.
 // A forwarded message is Jordan's report of someone's words: a customer's
 // relayed "yes" never confirms a booking or their attendance, and a discount
 // counts only from one forwarded text message in the studio's own writing
@@ -412,6 +419,43 @@ export function relayRelativeWords(t: string): string[] {
   }
   return out;
 }
+// Review of a9c4c0e (minor 7): a weekday or a date in the studio's words that
+// is not the request's own day. "Sí, el viernes a las 18:00" on a Thursday
+// request read as a yes at the hour asked, and forwardOffer (which reads only
+// hoy and mañana) would offer Thursday. The card says so before the tap. ask
+// is the request's own day (dow 0 Sunday to 6, dom 1 to 31, month 1 to 12);
+// null when the request has no day, or the words name none that differs.
+// Hours statements ("de lunes a sábado") are not a day for the slot.
+const WEEKDAY_RE = /(^|[^a-zñáéíóúü])(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?![a-zñáéíóúü])/gi;
+const WEEKDAY_IDX: Record<string, number> = { domingo: 0, lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6, sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+const WEEKDAY_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+export function relayOtherDay(text: string, ask: { dow: number; dom: number; month: number } | null, isHours = false): { word: string; en: string } | null {
+  if (!ask || isHours) return null;
+  const s = String(text || "");
+  for (const m of s.matchAll(WEEKDAY_RE)) {
+    const i = WEEKDAY_IDX[norm(m[2])];
+    if (i !== undefined && i !== ask.dow) return { word: m[2].toLowerCase(), en: WEEKDAY_EN[i] };
+  }
+  const t = norm(s);
+  const named = t.match(new RegExp(`(?:^|[^0-9])([0-3]?\\d)\\s+de\\s+(${MONTHS_ES.join("|")})`));
+  if (named) {
+    const dom = Number(named[1]), month = MONTHS_ES.indexOf(named[2]) + 1;
+    if (dom >= 1 && dom <= 31 && (dom !== ask.dom || month !== ask.month)) return { word: `${dom} de ${named[2]}`, en: `${dom} ${MONTHS_EN[month - 1]}` };
+  }
+  const slash = t.match(/(?:^|[^0-9:.])([0-3]?\d)\/([01]?\d)(?![0-9])/);
+  if (slash) {
+    const dom = Number(slash[1]), month = Number(slash[2]);
+    if (dom >= 1 && dom <= 31 && month >= 1 && month <= 12 && (dom !== ask.dom || month !== ask.month)) return { word: `${slash[1]}/${slash[2]}`, en: `${dom} ${MONTHS_EN[month - 1]}` };
+  }
+  const el = t.match(/(?:^|[^a-z0-9])el\s+([0-3]?\d)(?![0-9:.h])/);
+  if (el) {
+    const dom = Number(el[1]);
+    if (dom >= 1 && dom <= 31 && dom !== ask.dom) return { word: `el ${el[1]}`, en: `the ${dom}${dom % 10 === 1 && dom !== 11 ? "st" : dom % 10 === 2 && dom !== 12 ? "nd" : dom % 10 === 3 && dom !== 13 ? "rd" : "th"}` };
+  }
+  return null;
+}
 export function relayStoredText(t: string, dayEs: string): string {
   const s = String(t || "");
   const body = dayEs ? s.replace(REL_DAY_RE, (all: string, pre: string, _w: string, off: number) => (morningBefore(s, off + pre.length) ? all : `${pre}${dayEs}`)) : s;
@@ -502,19 +546,44 @@ export const STUDIO_FOLLOWS: Record<string, string[]> = {
 // studio_offer uses (the ask recorded as accepted, then forwardOffer). The
 // customer's own tap on Yes is still the only thing that books it.
 // What the tap does after recording:
-//   offer    the normal offer goes to the customer (forwardOffer)
-//   already  this studio's offer at this hour is already with them: nothing again
-//   frozen   customer_flag change_requested or cancelled: nothing new is sent
-//   test     a test contact or friend tester: the relay never reaches them
-//   closed   the request is no longer open: nothing is sent
-export type YesSend = "offer" | "already" | "frozen" | "test" | "closed";
-export function relayYesSend(o: { open: boolean; flag: string; test: boolean; already: boolean }): YesSend {
+//   offer     the normal offer goes to the customer (forwardOffer)
+//   already   this studio's offer at this hour is already with them: nothing again
+//   declined  they turned this studio down at this hour (review of a9c4c0e,
+//             major 2): the yes is saved as an answer only, the ask stays
+//             closed, and nothing goes to them again
+//   frozen    customer_flag change_requested or cancelled: nothing new is sent
+//   test      a test contact or friend tester: the relay never reaches them
+//   closed    the request is no longer open: nothing is sent
+export type YesSend = "offer" | "already" | "declined" | "frozen" | "test" | "closed";
+export function relayYesSend(o: { open: boolean; flag: string; test: boolean; already: boolean; declined?: boolean }): YesSend {
   if (!o.open) return "closed";
   if (o.test) return "test";
   if (o.flag === "change_requested" || o.flag === "cancelled") return "frozen";
+  if (o.declined) return "declined";
   if (o.already) return "already";
   return "offer";
 }
+// A declined hour's yes, saved as an answer only: the words, the price, a
+// rate and a therapist answer, but not the outcome, the accepted time or the
+// hour. Written as accepted, settleBids (which reads every accepted row) could
+// offer it to them again when a bidding window closes.
+export function yesAsAnswer(w: { dispatch?: Record<string, unknown> } | null): { dispatch?: Record<string, unknown> } | null {
+  if (!w?.dispatch) return w;
+  const { outcome: _o, accepted_at: _a, offered_time: _t, offered_times: _ts, ...rest } = w.dispatch;
+  return { dispatch: rest };
+}
+// What forwardOffer would do with the offer now, worked out by the bot from
+// the same reads in the same order (relayOfferPreview): "go" (it is sent,
+// preview.via says how) or the check that stops it. "" when it could not be
+// worked out: the card then gives the general rule.
+export type YesFate = "" | "go" | "queued" | "withheld_too_soon" | "withheld_mismatch" | "held_window" | "withheld_dearer" | "held" | "muted";
+export type YesWordsOut = { text: string; buttons: string[]; subject: string; email: string; tpl: string };
+export type YesPreview = YesWordsOut & {
+  via: "whatsapp" | "email" | "template" | "none"; // what carries it: the buttons, the email (tpl says if the template goes too), the template alone, nothing
+  L: "en" | "es";
+  en: YesWordsOut | null;                          // the same words in English, for Jordan, when the customer reads Spanish
+  replaced: { studio: string; es: string; en: string } | null; // the note the studio of the offer this replaces gets
+};
 export type YesFacts = {
   send: YesSend;
   customer: string;        // their first name, "" when none
@@ -529,53 +598,117 @@ export type YesFacts = {
   muted: boolean;          // their session is muted (off-menu requests)
   stage: string;
   testStudio?: boolean;    // send "test" because the studio is a test studio
+  fate?: YesFate;
+  preview?: YesPreview | null;
+  turnedDown?: string;     // an hour they turned down on this ask, when it is not this one
 };
 const capFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+// What Jordan should tell the studio from his phone, since the bot says
+// nothing to it (it wrote to him), worded as the bot's own path words it for
+// each answer (review of a9c4c0e, minor 5): "Lo confirmo con..." when it
+// goes, "no le guardéis el hueco todavía" when it waits, "no hace falta que le
+// guardéis el hueco" when nothing can reach the customer, "no le guardéis el
+// hueco" when it is not sent.
+export function relayStudioAdvice(res: string, studio: string, who: string): string {
+  switch (res) {
+    case "go": case "whatsapp": case "email": case "email_pending": return `Nothing is sent to ${studio} from here: tell them on your phone that you are checking with ${who}.`;
+    case "queued": case "held_window": return `Nothing is sent to ${studio} from here: tell them on your phone not to hold it yet. If it is shown to ${who} later, the bot sends ${studio} its usual note then, inside its hours.`;
+    case "none": return `Nothing is sent to ${studio} from here: tell them on your phone that it is not booked yet and there is no need to hold it.`;
+    case "withheld_too_soon": case "withheld_dearer": return `Nothing is sent to ${studio} from here: tell them on your phone not to hold it.`;
+    case "withheld_mismatch": return `Nothing is sent to ${studio} from here: ask them on your phone for a time inside the hours ${who} asked for.`;
+    case "muted": return `The request closes, so dispatch-studios tells ${studio}, inside its hours, that it is not going ahead, as for any closed request.`;
+    case "held": return `Nothing is sent to ${studio} from here: tell them yourself what you decide.`;
+    default: return `Nothing is sent to ${studio} from here.`;
+  }
+}
 // The card, before the tap: exactly what Record yes then does for the
-// customer, in plain words, and that it goes by the normal offer.
+// customer, in plain words, and that it goes by the normal offer. The words
+// themselves come after it (relayYesPreview).
 export function relayYesWords(f: YesFacts, euro: (n: number) => string): string {
   const who = f.customer || "the customer";
+  const Who = capFirst(who);
   const tap = `It counts as ${f.studio}'s tap (your rule of 24 Nov)`;
   if (f.send === "closed") return `The request is ${f.stage || "closed"}, so nothing is sent to anyone: the yes is only recorded.`;
   if (f.send === "test") return f.testStudio
     ? `${tap}, but ${f.studio} is a test studio, and a test studio's yes never reaches a real customer from the relay: the yes is only recorded.`
     : `${tap}, but ${who} is a test contact, and the relay never sends a test contact anything: the yes is only recorded.`;
   if (f.send === "frozen") return `${tap}, but the request is frozen (${who} asked to change or cancel it), so nothing new is sent to them: the yes is only recorded. The bot's normal steps can still show it to them later (after they turn down another offer, or when a bidding window closes), as for any recorded yes.`;
+  if (f.send === "declined") return `${tap}, but ${who} turned down ${f.studio} at ${f.time}, so nothing goes to them again: the yes is saved as an answer only and their ask stays closed. If this is a new message from ${f.studio}, tell them on your phone that ${who} has already said no to that time.`;
   if (f.send === "already") return `${tap}, but ${who} already got this offer (${f.studio} at ${f.time}), so nothing goes to them again: the yes is only recorded.`;
-  if (f.muted) return `${tap}, but ${who} is muted (off-menu requests), so, as for any studio yes, nothing is sent to them and the bot closes the request.`;
+  const fate = f.fate || "";
+  if (f.muted || fate === "muted") return `${tap}, but ${who} is muted (off-menu requests), so, as for any studio yes, nothing is sent to them and the bot closes the request. ${relayStudioAdvice("muted", f.studio, who)}`;
   const what = `${f.studio}${f.day ? `, ${f.day},` : ""} at ${f.time}, ${f.price !== null && f.price !== undefined ? `with the price they wrote (${euro(f.price)})` : "with their listed price if they have one"}`;
   const out: string[] = [];
-  if (f.windowOpen) out.push(`${tap}, so ${who} then gets the normal offer, the same message a studio's own yes sends: ${what}, on WhatsApp with its Yes, Another time and Closer or cheaper buttons, since their 24 hours with the bot are open.`);
-  else if (f.email) out.push(`${tap}, so ${who} then gets the normal offer, the same message a studio's own yes sends: ${what}, by email to ${f.email} with Yes and No on its offer page${f.template ? ", and as the request_update_v1 WhatsApp template too if Meta has approved it" : ""}, since their 24 hours with the bot are closed.`);
-  else if (f.template) out.push(`${tap}, so ${who} then gets the normal offer: ${what}, as the request_update_v1 WhatsApp template, since their 24 hours with the bot are closed and there is no email on file. If Meta has not approved it yet, nothing reaches them and you get the OFFER NOT DELIVERED card.`);
-  else out.push(`${tap}, so ${who} would get the normal offer (${what}), but nothing can reach them: their 24 hours with the bot are closed and there is no email on file. The offer is held, nothing is booked, and you get the OFFER NOT DELIVERED card.`);
-  if (f.live) out.push(`${capFirst(who)} already has ${f.live.studio}${f.live.time ? " " + f.live.time : ""} open, so this one waits behind it and is shown if they turn that one down (unless that one is outside the hours they asked for and this one is inside: then this one goes now, and that studio is told, inside its hours, not to hold its slot).`);
-  out.push("As with any studio yes, it is not sent if it starts in under 45 minutes, is outside the day or hours they asked for, or costs more than an offer they already have; I tell you if that happens.");
-  out.push(`Nothing is sent to ${f.studio} from here: tell them on your phone that you are checking with ${who}.`);
+  if (f.turnedDown) out.push(`${Who} turned down ${f.studio}'s ${f.turnedDown} before; ${f.time} is a new hour, so it goes as a new offer.`);
+  const lv = f.live ? `${f.live.studio}${f.live.time ? " " + f.live.time : ""}` : "another offer";
+  if (fate === "withheld_too_soon") out.push(`${tap}, but ${f.time} starts in under 45 minutes, so, as for any studio yes, it is not sent to ${who}: the yes is only recorded.`);
+  else if (fate === "withheld_mismatch") out.push(`${tap}, but ${what} is outside the day or hours ${who} asked for, so, as for any studio yes, it is not sent to them: the yes is only recorded.`);
+  else if (fate === "held_window") out.push(`${tap}, but ${f.time} is outside the hours ${who} asked for today, so, as for any studio yes, it is held for up to 15 minutes while the bot waits for a studio inside them, and then the best time it has goes to them.`);
+  else if (fate === "withheld_dearer") out.push(`${tap}, but ${who} already has a cheaper offer open, so, as for any studio yes, it is not sent to them: the yes is only recorded.`);
+  else if (fate === "held") out.push(`${tap}, but ${who} is on your hold list, so nothing goes to them and you get the OFFER HELD FOR YOU card.`);
+  else if (fate === "queued") out.push(`${tap}, so ${who} gets the normal offer (${what}), but not yet: they already have ${lv} open, so this one waits behind it and is shown if they turn that one down.`);
+  else {
+    const v = f.preview?.via;
+    const sure = fate === "go";
+    const tplToo = v === "email" && f.preview ? !!f.preview.tpl : f.template;
+    if (v === "whatsapp" || (!v && f.windowOpen)) out.push(`${tap}, so ${who} then gets the normal offer, the same message a studio's own yes sends: ${what}, on WhatsApp with its Yes, Another time and Closer or cheaper buttons, since their 24 hours with the bot are open.`);
+    else if (v === "email" || (!v && f.email)) out.push(`${tap}, so ${who} then gets the normal offer, the same message a studio's own yes sends: ${what}, by email to ${f.email} with Yes and No on its offer page${tplToo ? ", and as the request_update_v1 WhatsApp template too if Meta has approved it" : ""}, since their 24 hours with the bot are closed.`);
+    else if (v === "template" || (!v && f.template)) out.push(`${tap}, so ${who} then gets the normal offer: ${what}, as the request_update_v1 WhatsApp template, since their 24 hours with the bot are closed and there is no email on file. If Meta has not approved it yet, nothing reaches them and you get the OFFER NOT DELIVERED card.`);
+    else out.push(`${tap}, so ${who} would get the normal offer (${what}), but nothing can reach them: their 24 hours with the bot are closed and there is no email on file. The offer is held, nothing is booked, and you get the OFFER NOT DELIVERED card.`);
+    if (f.preview?.replaced) out.push(`It goes now although ${Who} has ${f.preview.replaced.studio}'s offer open, because that one is outside the hours they asked for and this one is inside: ${f.preview.replaced.studio} is then told, inside its hours, not to hold its slot (its words are below).`);
+    else if (f.live && !sure) out.push(`${Who} already has ${lv} open, so this one waits behind it and is shown if they turn that one down (unless that one is outside the hours they asked for and this one is inside: then this one goes now, and that studio is told, inside its hours, not to hold its slot).`);
+    if (sure && f.preview && f.preview.via !== "none") out.push("The exact words are below.");
+    if (!sure) out.push("As with any studio yes, it is not sent if it starts in under 45 minutes, is outside the day or hours they asked for, or costs more than an offer they already have; I tell you if that happens.");
+  }
+  const adv = fate === "go" || !fate ? (f.preview?.via === "none" || (!f.preview && !f.windowOpen && !f.email && !f.template) ? "none" : "go") : fate;
+  out.push(relayStudioAdvice(adv, f.studio, who));
   return out.join(" ");
+}
+// The words themselves, after the card's description (review of a9c4c0e,
+// major 1: "the exact text of anything it would send, before a tap sends
+// it"). With an English version when the customer reads Spanish, and the
+// note the replaced studio gets in Spanish and English. The offer page's
+// link is a placeholder: it opens the customer's own Yes. "" when nothing is
+// sent now.
+export function relayYesPreview(f: YesFacts): string {
+  const p = f.preview;
+  if (!p || (f.send !== "offer" && f.send !== "test") || (f.send === "offer" && f.fate !== "go")) return "";
+  const who = f.customer || "the customer";
+  const q = (s: string) => `"${s}"`;
+  const enOf = (pick: (x: YesWordsOut) => string) => (p.en && pick(p.en) ? `\n(EN: ${q(pick(p.en))})` : "");
+  const head = f.send === "test" ? `A real customer would get exactly this (nothing goes to a test contact)` : `Exactly what ${who} gets`;
+  const out: string[] = [];
+  if (p.via === "whatsapp") out.push(`${head} on WhatsApp, with the buttons ${p.buttons.map((b) => `[${b}]`).join(" ")}${p.en ? ` (EN: ${p.en.buttons.map((b) => `[${b}]`).join(" ")})` : ""}:\n${q(p.text)}${enOf((x) => x.text)}`);
+  else if (p.via === "email") out.push(`${head} by email, subject ${q(p.subject)}${p.en ? ` (EN: ${q(p.en.subject)})` : ""}:\n${q(p.email)}${enOf((x) => x.email)}`);
+  else if (p.via === "template") out.push(`${head} as the request_update_v1 template, if Meta has approved it:\n${q(p.tpl)}${enOf((x) => x.tpl)}`);
+  else return "";
+  if (p.via === "email" && p.tpl) out.push(`And as the request_update_v1 template, if Meta has approved it:\n${q(p.tpl)}${enOf((x) => x.tpl)}`);
+  if (p.replaced) out.push(`And ${p.replaced.studio}, whose offer this replaces, gets inside its hours:\n${q(p.replaced.es)}\n(EN: ${q(p.replaced.en)})`);
+  return out.join("\n\n");
 }
 // The reply, after the tap: what became of it. res is the send above when
 // nothing was offered, or forwardOffer's own answer.
 export function relayYesDone(res: string, o: { customer: string; studio: string; time: string; email: string; template: boolean; stage: string }): string {
   const who = o.customer || "the customer";
   const Who = capFirst(who);
-  const told = ` Nothing was sent to ${o.studio}: tell them on your phone that you are checking with ${who}.`;
+  const adv = (r: string) => " " + relayStudioAdvice(r, o.studio, who).replace(/^Nothing is sent to (.*?) from here/, "Nothing was sent to $1");
   switch (res) {
     case "closed": return `Nothing was sent to anyone: the request is ${o.stage || "closed"}.`;
     case "test": return `Nothing was sent to ${who} or to ${o.studio}: the relay never sends a test anything.`;
     case "frozen": return `Nothing was sent to ${who}: the request is frozen (they asked to change or cancel it). Nothing was sent to ${o.studio}.`;
+    case "declined": return `Saved as their answer only: ${who} turned down ${o.studio} at ${o.time}, so nothing went to them and the ask stays closed. Nothing was sent to ${o.studio}.`;
     case "already": return `${Who} already had this offer, so nothing went again.`;
-    case "whatsapp": return (o.template ? `Sent ${who} the normal offer as the request_update_v1 WhatsApp template (their 24 hours were closed and there is no email on file).` : `Sent ${who} the normal offer on WhatsApp, with its Yes button.`) + told;
-    case "email": return `Sent ${who} the normal offer by email${o.email ? ` to ${o.email}` : ""}, with Yes and No on its offer page${o.template ? ", and as the request_update_v1 WhatsApp template" : ""}.` + told;
-    case "email_pending": return `The normal offer email goes to ${who} within 3 minutes.` + told;
-    case "queued": return `${Who} has another offer open, so this one waits behind it and is shown if they turn that one down.` + told;
-    case "held_window": return `Held for up to 15 minutes: ${o.time} is outside the hours ${who} asked for today, so the bot waits for a studio inside them and then sends the best time it has.` + told;
-    case "withheld_too_soon": return `Not sent to ${who}: ${o.time} starts in under 45 minutes. Nothing was sent to ${o.studio} either: tell them on your phone not to hold it.`;
-    case "withheld_mismatch": return `Not sent to ${who}: ${o.time} is outside the day or hours they asked for. Nothing was sent to ${o.studio} either: ask them on your phone for a time inside those.`;
-    case "withheld_dearer": return `Not sent to ${who}: they already have a cheaper offer open. Nothing was sent to ${o.studio}.`;
-    case "held": return `Held for you: ${who} is on your hold list, so nothing went to them (see the OFFER HELD FOR YOU card).`;
-    case "muted": return `Not sent: ${who} is muted (off-menu requests), so the request is now closed.`;
-    case "none": return `Nothing could reach ${who} (their 24 hours are closed and there is no email on file), so nothing is booked: see the OFFER NOT DELIVERED card.`;
+    case "whatsapp": return (o.template ? `Sent ${who} the normal offer as the request_update_v1 WhatsApp template (their 24 hours were closed and there is no email on file).` : `Sent ${who} the normal offer on WhatsApp, with its Yes button.`) + adv("whatsapp");
+    case "email": return `Sent ${who} the normal offer by email${o.email ? ` to ${o.email}` : ""}, with Yes and No on its offer page${o.template ? ", and as the request_update_v1 WhatsApp template" : ""}.` + adv("email");
+    case "email_pending": return `The normal offer email goes to ${who} within 3 minutes.` + adv("email_pending");
+    case "queued": return `${Who} has another offer open, so this one waits behind it and is shown if they turn that one down.` + adv("queued");
+    case "held_window": return `Held for up to 15 minutes: ${o.time} is outside the hours ${who} asked for today, so the bot waits for a studio inside them and then sends the best time it has.` + adv("held_window");
+    case "withheld_too_soon": return `Not sent to ${who}: ${o.time} starts in under 45 minutes.` + adv("withheld_too_soon");
+    case "withheld_mismatch": return `Not sent to ${who}: ${o.time} is outside the day or hours they asked for.` + adv("withheld_mismatch");
+    case "withheld_dearer": return `Not sent to ${who}: they already have a cheaper offer open.` + adv("withheld_dearer");
+    case "held": return `Held for you: ${who} is on your hold list, so nothing went to them (see the OFFER HELD FOR YOU card).` + adv("held");
+    case "muted": return `Not sent: ${who} is muted (off-menu requests), so the request is now closed.` + adv("muted");
+    case "none": return `Nothing could reach ${who} (their 24 hours are closed and there is no email on file), so nothing is booked: see the OFFER NOT DELIVERED card.` + adv("none");
     default: return `The offer step did not finish (${!res || res === "error" ? "an error" : res}), so ${who} may not have the offer. The yes is recorded; ask Claude to check it.`;
   }
 }
