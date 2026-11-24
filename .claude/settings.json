@@ -5,7 +5,11 @@
       "WebFetch",
       "WebSearch",
       "mcp__Firecrawl__firecrawl_scrape",
-      "mcp__Firecrawl__firecrawl_search"
+      "mcp__Firecrawl__firecrawl_search",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git push -u origin claude/massage-club-studio-menus-ll5s8v)"
     ],
     "ask": [
       "mcp__Supabase__pause_project",

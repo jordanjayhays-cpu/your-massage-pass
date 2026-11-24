@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "replay": "node --experimental-strip-types tests/replay.mjs",
+    "test:letters": "node --experimental-strip-types --test 'tests/letters/*.test.mjs'"
   },
   "dependencies": {
     "@fontsource/instrument-serif": "^5.2.8",

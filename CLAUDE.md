@@ -1,8 +1,49 @@
-# Working notes for Claude sessions — Massage Club (your-massage-pass)
+# Massage Club — working notes for Claude
 
-Read this first; it saves every session from rediscovering the setup.
+## Time and location (do not guess)
+- Jordan lives and works in **Madrid, Spain — timezone Europe/Madrid** (CEST, UTC+2 in summer; CET, UTC+1 in winter).
+- **Always convert the current UTC time to Madrid time before saying anything about "tonight", "this morning", or scheduling.** Never infer the hour from conversation vibes. Timestamps Jordan pastes from WhatsApp are Madrid local time.
+- Jordan often works very late or very early. Do not assume the time of day.
 
-## This lane
+## Who / what
+- Legal entity (Jordan, 19 Nov): Massage Club is operated by Kinsol LLC, a US company. The privacy page names "Kinsol LLC, trading as Massage Club, 1500 N Grant St, Ste N, Denver, CO 80203, United States" (Jordan, 19 Nov) as the data controller, contact support@massageclub.io. Registered in Colorado (Jordan confirmed, 19 Nov). An EU representative (GDPR art. 27) is still to be named.
+- Jordan Hays runs Massage Club (book.massageclub.io), a Madrid massage concierge for English speakers. WhatsApp Business +34 612 474 827. Emails: jordan@massageclub.io, jordanjayhays@gmail.com, support@massageclub.io (Workspace admin), jordan.hays@student.ie.edu (student).
+- Frontend built with Lovable (project 13ab3b1d-1034-4ac7-b40c-8e51807e553c) deploying to this repo's main; Supabase project jglftdstrowwckwqmpue for DB and edge functions.
+
+## Hard rules (standing)
+- Customer-facing links must be massageclub.io only. Never send claude.ai links to customers.
+- In WhatsApp chats: answers and offers only, links only if someone asks what the service is. Every conversation gets an offer with prices within the first two messages.
+- No em dashes in any user-facing copy.
+- Always provide an English translation for any Spanish text shown to Jordan.
+- Never claim massage releases toxins, detoxes, cures, or boosts immunity. Never promise studios speak English.
+- Discounts (Jordan, 5 Sept): we never fund a discount, never invent one, and never quote one to a customer before the studio has confirmed it in writing. On every request the bot asks each studio for a 10% Massage Club rate, tells them truthfully that several studios were asked and the client goes with the best offer, and awards the booking to the best offer (same-day requests go to the first yes). Never tell a studio the client has another booking unless that is true. The customer hears about a discount only on the confirmation, once the studio gave it.
+- PARTNER FEE (Jordan, 17 Oct; free period extended and repeats added 19 Oct): "Let's do 5 euros I think it's more fair at first." FREE UNTIL 31 DEC 2026 (Jordan, 19 Oct: "it's going to be free until the end of the year, we can't accept money because we don't have a bank account yet"). From 1 Jan 2027 a studio pays 5 EUR + IVA for EVERY visit Massage Club books for it, first or repeat, only if the customer actually comes; 0 if a customer books the studio directly without us; no monthly fee, no contract (Jordan, 19 Oct: "i want to earn when the customer comes back because i want to sell that customer the option to go to other studios because the studios will offer the best deal to MC"; he chose "5 EUR + IVA every visit"). Never quote a studio any other figure or date, and never tell a studio the bank-account reason. Billing reads `billing_settings` (default_fee_eur 5, fees_from 2027-01-01) through `mc_booking_ledger`, which bills every completed visit (migration 20261019_fee_every_visit.sql, live).
+- Instagram account is banned from automation: no DMs, no scheduling tools.
+- "Special massage" seekers get the standard shutdown line and no further replies.
+- Approval required before any outbound message to third parties, except automations Jordan has explicitly approved (lead-to-studio offer email).
+- ASK BEFORE SENDING (Jordan, 7 Sept): when we are drafting, brainstorming or discussing a message, that is NOT permission to send it. Show the final text and ask "can I send it out?", then wait for a yes on that turn. "Send it if it works", a yes to an earlier draft, or enthusiasm mid-discussion do not count. Applies to every channel: WhatsApp, email, anything. Automations Jordan has already approved and told to keep running (the studio outreach drip, the lead-to-studio offer email, and the post-massage review email to the customer: Jordan, 19 Nov, "yes each massage cmon, this shoudl be automatic") carry on without asking each time.
+- Test contacts that must never trigger real emails or nudges: jordan.hays@student.ie.edu, jordanjayhays@gmail.com, jordan@massageclub.io, support@massageclub.io, jordan@niahconnect.com, +15622355063, testing.com/example.com/test.com/placeholder.local domains, +mctest/+uitest, names containing test/prueba. Friend testers (never contact, never save as real customers, tests must never reach real studios): Cata (+17867276503, cata.waack@gmail.com) and Yi (+86 numbers ending 997, elon_yilong@student.ie.edu).
+- PRE-RELEASED SLOTS (Jordan, 12 Oct): when a studio has released a specific time to Massage Club in advance, that release counts as the studio's tap. The customer's tap on that released time confirms the booking; the studio gets the written confirmation at once and may reject it within 15 minutes, in which case the customer is told and offered the next released time. Every other path still needs BOTH PARTIES TAP.
+- Never confirm attendance to a studio on a customer's behalf. Only the customer's own tap or words confirm. A customer who asks to change or cancel a confirmed booking freezes it: nothing new is promised to the studio until the customer names a time.
+- BOTH PARTIES TAP (Jordan, 10 Oct): a booking is confirmed only when the studio has tapped that it has the slot AND the customer has tapped Yes on that offer (WhatsApp button, or Yes on the offer page linked from the offer email). A studio tap, a written discount or a closed bidding window only ever sends the customer an offer; a typed "yes" re-sends the buttons. The studio gets the confirmation in writing only after the customer's tap. The Nook's email tap confirmed request #110 on 9 Oct with no word from the customer; that must never happen again.
+- Names (Jordan, 6 Sept): messages to customers on the bot number are signed "Massage Club", never with Jordan's name. Messages to studios (asks, notes, sign-up) are from "Jordan, de Massage Club".
+- Studio hours (6 Sept): never ask a studio for a day or time its `partners.opening_hours` say it is closed. dispatch-studios v16 and notify-whatsapp-request v16 enforce this; when a studio tells us its hours in a reply, write them into `opening_hours`. If a customer cancels, every studio that was asked (WhatsApp or email) must be told.
+- EVERY BOOKING NEEDS AN EMAIL (Jordan, 8 Sept). A phone number on its own is not a way of reaching anyone: WhatsApp only carries free text for 24 hours after the customer last wrote to us, so someone who arrives through the website and never messages the bot is unreachable the moment we need them. Sharo J asked for a couples massage with no email and no WhatsApp history, five studios were asked, and she could never be told anything. The bot asks for the email before the booking is created (wa-bot v67), the web form must require it, and dispatch-studios v21 refuses to contact a single studio for a request with neither an email nor a phone that has written to the bot: it parks at stage needs_contact and emails Jordan the phone number instead. If a WhatsApp customer refuses to give an email the booking still goes ahead, because they can be reached in that thread, but Jordan is told there is no second channel.
+- THE KELLY RULE (Jordan, 19 Nov: "make this the kelly rule"). Every customer who books through ANY path (homepage request form public/go.html, studio booking page, Payment, WhatsApp bot, anything new) is asked, at booking, with two equal buttons: "Yes, send me offers" / "No thanks" (ES "Sí, quiero ofertas" / "No, gracias"), next to a short notice naming Massage Club and the channels (email, WhatsApp) and how to stop. The booking goes ahead whatever the answer (LOPDGDD 6.3), nothing is pre-selected, and every promotional email carries an unsubscribe link and a working opt-out address. Three states are saved: yes, no, not answered. Promotions go ONLY to "yes" until a Spanish data-protection adviser confirms that the LSSI 21.2 existing-customer exception covers "not answered" (research of 19 Nov: weak while studios pay us nothing, never for the 39 customers from before this rule). Existing customers are asked only inside messages they already expect (next booking, open WhatsApp window, the review email), never by a standalone promotional blast. (Jordan, 19 Nov: "yes do it", replacing the earlier notice-plus-opt-out wording.) The answer, the exact wording shown and the time are saved in a table that exists in the live DB, and the write never fails silently. No booking path may collect an email or phone without this step, and every new form or bot flow is checked for it before it ships. Why: on 19 Nov a customer booked through the homepage form, which never asked, so she could never be sent a promotion; the studio-page opt-in saved into tables that did not exist (marketing_optins, quiz_leads), and 0 of 39 customers were on the list.
+- The bot never hands off to "a representative". It answers, keeps the customer in the booking flow, and tells Jordan. A "wants a person" email goes to jordan@massageclub.io and jordanjayhays@gmail.com only when someone explicitly asks for a person.
+
+## Working together (Jordan, 24 Nov)
+- Decisions go to Jordan as pop-up questions (AskUserQuestion), one clear question each, never buried in a list. "No", "later" and "skip" are answers. Anything urgent goes first.
+- The request card. Every request is held as: name · day and time · massage and length (and the fallback length) · therapist man/woman/any, FIRM or preferred · area, FIRM or nearby ok · studio standard (proper studio, nice premises) · price aim (best deal) · how we reach them (bot, 827, email). When Jordan passes on a customer, ask once, up front, for any missing field before searching. The customer's FIRM marks are hard limits for that request only, never a blanket rule for everyone.
+- Two kinds of rules. Hard rules (consent, money, never sending without OK, honesty, everything under Hard rules above) are never bent. Everything else is a default with its reason: judge an exception by the reason, and say so when you depart from one. Write any new rule with its reason.
+- Standing approvals (Jordan, 24 Nov, pop-up "A. Studio chase, C. Ask more studios"). Sent without asking each time, 09:00-21:00 Madrid only, never to test contacts or opted-out studios, never on a request that is closed, cancelled or frozen; tell Jordan after each one.
+  - A. Studio chase. A studio asked about an open request has not answered 3 hours after the ask: one WhatsApp per studio per request (dispatch-studios studio_note, which falls back to the approved aviso_centro_v2 template outside the 24 h window): "Hola, soy Jordan, de Massage Club. Os escribo por el masaje de [nombre, día y hora]. ¿Me decís si tenéis hueco? Si no podéis, no pasa nada, así se lo digo al cliente. Gracias." (EN: "Hi, it's Jordan from Massage Club. I'm writing about [name]'s massage on [day, time]. Could you tell me if you have a slot? If you can't, no problem, I'll let the client know. Thanks.") Stop if the studio has answered.
+  - C. Ask more studios. When every studio asked has said no or been silent for 3 hours: ask up to 3 more proper studios inside the customer's area, respecting the card's FIRM marks, with the standard booking request (solicitud_reserva_v7 / solicitud_intro_v2 through dispatch-studios: extra, explicit partner_ids, customer_note false, max_asks at most 10 on the request), and tell Jordan which ones and why.
+  - Customer updates are NOT pre-approved: still show Jordan the text first.
+
+## Setup notes (from main, 12 Oct; kept when the bot branch was merged, 24 Nov)
+
+### This lane
 - **Massage Club** — Madrid massage-studio marketplace, LIVE at book.massageclub.io (Vercel).
 - Database: Supabase `jglftdstrowwckwqmpue`. **Separate from the agent board** (`neurodashboards`,
   `dprdnrgjkzgfgtcsguuq`) — never mix the two.
@@ -11,7 +52,7 @@ Read this first; it saves every session from rediscovering the setup.
   studio full rate, MC reimburses test bookings. **A reimbursed test is a paid experiment, not revenue.**
 - Current play: concierge-first (book massages for real people by hand, learn, then automate).
 
-## Operator rules (binding)
+### Operator rules (binding)
 - Ambiguous ask → ask up to 5 short questions before building. Never guess constraints.
 - Never state a fact, name, or email you haven't verified — write UNSURE and flag it.
 - Outward-facing work (outreach, posts, payments) → list top 3 failure modes, fix, then proceed.
@@ -21,12 +62,12 @@ Read this first; it saves every session from rediscovering the setup.
 - Anything only Jordan can do → task on the `agent_tasks` board (`neurodashboards`), assigned `jordan` —
   his 09:00 brief reads it. If it is not on the board, it does not exist.
 
-## Token discipline
+### Token discipline
 One lane per session. Name columns + LIMIT in SQL. Iterate functions locally, deploy once.
 Bulk row analysis (>~20 rows) → delegate to the `agent-worker` edge function on `neurodashboards`.
 
 **The master map lives in `mission-control/CLAUDE.md`.**
 
-## Session protocol
+### Session protocol
 Follow the session protocol in `mission-control/CLAUDE.md` (route, brief, plan, fresh-critic verify,
 close the loop). Concierge bookings: use the `concierge-booking` skill in `.claude/skills/`.
